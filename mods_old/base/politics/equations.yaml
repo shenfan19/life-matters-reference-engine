@@ -1,0 +1,24 @@
+mod_id: default_kingdom_001
+
+name: 王国模块
+initial_parameters:
+  - name: 人口
+    value: 1000
+    unit: 人
+    description: 王国人口
+    type: internal
+  - name: 税收
+    value: 100
+    unit: 金币
+    description: 王国每月税收
+    type: internal
+
+equations:
+  - target_parameter: 人口
+    expression: 'max(0, get_value(''人口'') + (get_value(''人口'') * 0.01) - 10)'
+    expression2: 'max(0, population) + (population * 0.01) - 10)'
+  - target_parameter: 税收
+    expression: get_value('人口') * 0.1
+  - condition_expression: get_value('人口') < 500
+    event_name: 人口锐减警告
+    event_data_expression: '{''原因'': ''人口过低''}'

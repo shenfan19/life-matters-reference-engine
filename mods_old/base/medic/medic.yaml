@@ -1,0 +1,6 @@
+region: Berlin
+timePeriod: '1939_1945'
+availableMedicines:
+  - Penicillin
+  - Aspirin
+  - Sulfonamides

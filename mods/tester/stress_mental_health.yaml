@@ -1,0 +1,61 @@
+metadata:
+  name: "stress_mental_health_model"
+  version: "1.0.0"
+  author: "AI Assisted Generator"
+  description: "压力导致心理健康改变的动态模型，基于医学论文中的行为干预和时间依赖效应。指数随干预变化。"
+  conflicts: []
+  tags: [stress, mental_health, behavior_model]
+  reference: ["Dynamic models of stress and mental health", "Behavioral change in psychology"]
+  comments: ["Emphasizes recovery through intervention.", "Note: Environmental factors simplified."]
+
+variables:
+  stress_intervention:
+    description: "压力干预水平 (0=无干预, 1=轻度, 2=中度, 3=强干预，如冥想或治疗)"
+    value: 0.0
+    unit: "干预级别"
+    type: input
+    bounds: [0.0, 3.0]
+    reference: ["Stress management interventions", "CBT dynamic models"]
+    comments: ["User-controlled for simulation.", "Higher levels promote recovery."]
+
+  mental_health_index:
+    description: "心理健康指数，0-1之间，1表示最佳状态"
+    value: 0.5
+    unit: "健康指数"
+    type: state
+    bounds: [0.0, 1.0]
+    reference: ["Mental health scoring in longitudinal studies", "Stress-depression dynamics"]
+    comments: ["Declines with chronic stress.", "Recovers with intervention."]
+
+formulas:
+  behavior_change_response:
+    description: "干预导致心理健康改善，受时间影响"
+    condition: "stress_intervention > 0"
+    priority: 100
+    dynamics:
+      mental_health_index: "min(1.0, mental_health_index + (0.001 * stress_intervention) * dt)"
+    reference: ["Dynamic behavioral models", "Intervention efficacy studies"]
+    comments: ["Positive change rate.", "Chain with stress factors."]
+
+  health_decay:
+    description: "无干预时健康缓慢衰减（模拟慢性压力）"
+    condition: "stress_intervention == 0 and mental_health_index > 0"
+    priority: 90
+    dynamics:
+      mental_health_index: "max(0.0, mental_health_index - 0.0005 * dt)"
+    reference: ["Chronic stress models", "Depression progression dynamics"]
+    comments: ["Slow decay for realism.", "Adjust for individual resilience."]
+
+# 输出指标
+  wellbeing_score:
+    description: "整体福祉评分，受心理健康影响"
+    formula: "(mental_health_index * 100)"
+    reference: ["Wellbeing metrics in psychology", "WHO mental health indicators"]
+    comments: ["Direct mapping.", "Add social factors later."]
+
+  critical_condition_low_health:
+    condition: "mental_health_index < 0.3"
+    description: "低心理健康警报（抑郁风险）"
+    severity: "warning"
+    reference: ["Depression thresholds", "Mental health screening tools"]
+    comments: ["Trigger support recommendations.", "Customize alert levels."]

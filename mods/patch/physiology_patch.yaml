@@ -1,0 +1,25 @@
+variables:
+  blood_glucose:
+    description: Placeholder for blood_glucose
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  plasma_insulin:
+    description: Placeholder for plasma_insulin
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  physical_activity:
+    description: Placeholder for physical_activity
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100

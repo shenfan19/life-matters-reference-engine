@@ -1,0 +1,50 @@
+metadata:
+  name: organs
+  version: 2.1.0
+  author: Minghui Wu
+  description: 肝、胰腺、胃、小肠等器官功能系数
+  conflicts: []
+  tags: [organs, function]
+
+imports:
+  - insulin_system.yaml
+  - glucose_regulation.yaml
+
+variables:
+  liver_function:
+    description: 肝功能系数
+    value: 1.0
+    unit: 系数
+    type: state
+    bounds: [0.1, 1.0]
+
+  pancreatic_function:
+    description: 胰腺功能系数
+    value: 1.0
+    unit: 系数
+    type: state
+    bounds: [0.1, 1.0]
+
+  gastric_function:
+    description: 胃功能效率
+    value: 0.9
+    unit: 系数
+    type: state
+    bounds: [0.0, 1.0]
+
+  intestinal_function:
+    description: 小肠功能效率
+    value: 0.85
+    unit: 系数
+    type: state
+    bounds: [0.0, 1.0]
+
+formulas:
+  organ_function_recovery:
+    description: 休息状态下器官功能逐渐恢复
+    condition: blood_glucose < 120 and plasma_insulin < 20 and physical_activity == 0
+    dynamics:
+      gastric_function: min(1.0, gastric_function + 0.0001)
+      pancreatic_function: min(1.0, pancreatic_function + 0.00005)
+      liver_function: min(1.0, liver_function + 0.0001)
+    priority: 2

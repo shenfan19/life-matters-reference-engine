@@ -1,0 +1,406 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2024 Your Name/Organization
+#
+# This file is part of the LifeMatters simulation framework.
+#
+# Purpose:
+# The `loader_engine.py` module acts as an entry point for model-related operations in the LifeMatters framework. It provides high-level interfaces for locating, caching, merging, and splitting YAML-based models, while delegating the core logic—such as recursive loading, dependency resolution via imports, data merging, and structural validation—to the `ModStructure` class. This separation enhances modularity, reusability, and maintainability across the framework's components, including Loader, VitalSim, BioCraft, and HealthTuner.
+#
+# For more information, please refer to the project README.md.
+#
+#-----------------------------------------------------------------------------
+
+import os
+import logging
+import yaml
+from typing import Dict, Any, List, Optional, Set
+from mod_structure import ModStructure, ModelMetadata  # 注意：假设mod_structure.py是core.py的重命名或别名，根据您的文件结构调整
+
+# 设置日志记录器，用于在程序运行时输出信息和错误。
+logger = logging.getLogger(__name__)
+
+class LoaderEngine:
+    """
+    模型加载引擎，负责处理模型文件的查找、加载、合并、拆分等核心操作。
+    它管理模型缓存，并处理模型间的导入关系。
+    """
+    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+        """
+        初始化 LoaderEngine 实例。
+        :param mods_directory: 存放模型文件的根目录。
+        :param language: 语言设置，尽管此模块主要处理文件操作，但保留此参数以备将来扩展。
+        """
+        self.mods_directory = mods_directory
+        self.language = language
+        # 模型缓存，用于存储已加载的模型，避免重复加载。
+        self.models_cache: Dict[tuple, ModStructure] = {}
+    
+    def find_model_file(self, model_name: str, folder: Optional[str] = None) -> Optional[str]:
+        """
+        在指定目录中查找模型的 YAML 文件路径。不递归搜索，支持 model_name 带路径。
+        :param model_name: 模型名称（可带路径，不含或含扩展名）。
+        :param folder: 可选的子文件夹（如果 model_name 带路径则忽略）。
+        :return: 找到的文件绝对路径，如果没有找到则返回 None。
+        """
+        # 如果 model_name 是绝对路径，直接检查是否存在（自动添加 .yaml 如果缺失）
+        if os.path.isabs(model_name):
+            file_path = model_name if model_name.endswith('.yaml') else model_name + '.yaml'
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return os.path.abspath(file_path)
+            return None
+        
+        # 确定基础目录
+        base_dir = self.mods_directory
+        
+        # 如果 model_name 包含路径分隔符，视作相对路径（相对于 mods_directory）
+        if os.sep in model_name:
+            # 分离路径和文件名
+            dir_path, base_name = os.path.split(model_name)
+            search_dir = os.path.join(base_dir, dir_path)
+            # 自动添加 .yaml 如果 base_name 缺失
+            file_name = base_name if base_name.endswith('.yaml') else base_name + '.yaml'
+            file_path = os.path.join(search_dir, file_name)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return os.path.abspath(file_path)
+            return None
+        
+        # 如果指定 folder，则在 mods_directory/folder 中查找
+        if folder:
+            search_dir = os.path.join(base_dir, folder)
+        else:
+            search_dir = base_dir
+        
+        # 只检查当前目录的文件，不递归
+        if not os.path.exists(search_dir):
+            return None
+        files = os.listdir(search_dir)
+        # 自动添加 .yaml 如果 model_name 缺失
+        target_file = model_name if model_name.endswith('.yaml') else model_name + '.yaml'
+        if target_file in files:
+            file_path = os.path.join(search_dir, target_file)
+            if os.path.isfile(file_path):
+                return os.path.abspath(file_path)
+        return None
+    
+    def scan_models(self, folder: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+        """
+        扫描指定文件夹中的所有模型文件（不递归），并返回它们的元数据。
+        :param folder: 可选的子文件夹。
+        :return: 一个字典，键是模型名称，值是包含模型元数据的字典。
+        """
+        models = {}
+        base_dir = self.mods_directory
+        search_dir = os.path.join(base_dir, folder) if folder else base_dir
+        
+        if not os.path.exists(search_dir):
+            logger.error(f"目录 {search_dir} 未找到")
+            return models
+        
+        # 只列出当前目录的文件，不递归
+        files = [f for f in os.listdir(search_dir) if os.path.isfile(os.path.join(search_dir, f))]
+        
+        for file in files:
+            if file.endswith('.yaml'):
+                model_name = os.path.splitext(file)[0]
+                try:
+                    # 尝试加载模型以获取其元数据（使用新 find_model_file）
+                    file_path = self.find_model_file(model_name, folder)
+                    if file_path:
+                        model = ModStructure()  # 创建临时 ModStructure 加载
+                        model.load_model(file_path, model_name)
+                        models[model_name] = {
+                            "name": model.metadata.name,
+                            "variables": len(model.variables),
+                            "formulas": len(model.formulas),
+                            "version": model.metadata.version,
+                            "hooks": len(model.simulator.get('hooks', [])),
+                            "optimizer_method": model.optimizer.get('method', 'N/A'),
+                            "extra_deps": len(model.optimizer.get('python_envs', []))
+                        }
+                except Exception as e:
+                    logger.warning(f"跳过模型 {model_name} 因错误: {e}")
+                    continue
+        return models
+    
+    def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None) -> Optional[ModStructure]:
+        """
+        递归地加载指定名称的模型及其所有导入项。
+        :param model_name: 要加载的模型名称。
+        :param folder: 可选的子文件夹。
+        :param loaded_models: 用于检测循环依赖的集合。
+        :return: 加载并合并后的 ModStructure 实例，或在失败时返回 None。
+        """
+        # 初始化已加载模型集合，用于检测循环依赖。
+        loaded_models = loaded_models or set()
+        if model_name in loaded_models:
+            logger.error(f"检测到循环依赖: {model_name}")
+            return None
+        loaded_models.add(model_name)
+
+        # 检查缓存。
+        cache_key = (model_name, folder or "")
+        if cache_key in self.models_cache:
+            return self.models_cache[cache_key]
+
+        # 查找模型文件路径。
+        file_path = self.find_model_file(model_name, folder)
+        if not file_path:
+            logger.error(f"模型 {model_name} 在 {self.mods_directory} 中未找到")
+            return None
+        # 使用绝对路径作为缓存键
+        cache_key = os.path.abspath(file_path)
+        if cache_key in self.models_cache:
+            return self.models_cache[cache_key]
+
+        try:
+            model = ModStructure()
+            # 加载主模型（会自动处理 imports）。
+            model.load_model(file_path, model_name)
+            
+            # 验证合并后的模型。
+            try:
+                model.validate_model()
+            except ValueError as ve:
+                logger.warning(f"模型 {model_name} 验证问题: {ve}")
+            
+            # 将加载的模型存入缓存。
+            self.models_cache[cache_key] = model
+            return model
+            
+        except Exception as e:
+            logger.error(f"加载模型 {model_name} 错误: {e}")
+            return None
+
+    def merge_models_by_names(self, model_names: List[str], output_path: Optional[str] = None, 
+                            merged_name: str = "MergedModel", folder: Optional[str] = None) -> Dict[str, Any]:
+        try:
+            if not model_names:
+                return {
+                    "success": False,
+                    "error": "未提供任何模型用于合并",
+                    "variables": 0,
+                    "formulas": 0
+                }
+            
+            merged_model = ModStructure()  # 创建空合并模型
+            mod_name = merged_name  # 默认名称
+            
+            # 遍历并追加所有指定模型及其导入项，以第一个为根，后续覆盖
+            loaded_models = set()  # 跟踪已加载，避免循环
+            first_model_processed = False  # 标志：是否处理了第一个模型
+            for model_name in model_names:
+                if model_name in loaded_models:
+                    logger.warning(f"跳过模型 {model_name} 因循环依赖")  # 警告循环
+                    continue
+                    
+                file_path = self.find_model_file(model_name, folder)  # 查找文件路径
+                if not file_path:
+                    logger.warning(f"无法加载模型文件: {model_name}")  # 警告未找到
+                    continue
+                
+                # 如果是第一个模型，从中获取 metadata 名称等（不覆盖后续）
+                if not first_model_processed:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = yaml.safe_load(f) or {}  # 加载 raw data
+                        if 'metadata' in data and 'name' in data['metadata']:
+                            mod_name = data['metadata']['name']  # 从第一个取名称
+                    first_model_processed = True  # 标记已处理第一个
+                
+                # 追加模型文件，依赖由 load_model 内部处理，后续覆盖前面
+                merged_model.append_model(file_path, model_name, log_as_loaded=True, validate=False)  # 追加并覆盖
+                loaded_models.add(model_name)  # 添加到已加载
+            
+            # 创建合并模型的元数据（只基于第一个，不覆盖）
+            merged_model.metadata = ModelMetadata(
+                name=mod_name,  # 使用从第一个获取的名称
+                version="1.0.0",  # 默认版本
+                author="LoaderEngine",  # 默认作者
+                description=f"合并模型来自 {', '.join(model_names)}",  # 描述合并来源
+                conflicts=[],  # 默认空
+                tags=[]  # 默认空
+            )
+            
+            try:
+                # 最终验证合并后的模型
+                merged_model.validate_model()  # 验证：这是目前唯一验证点 2025-09-29
+            except ValueError as ve:
+                return {
+                    "success": False,
+                    "error": str(ve),
+                    "variables": len(merged_model.variables),
+                    "formulas": len(merged_model.formulas)
+                }
+            
+            # 如果指定了输出路径，则导出模型
+            if output_path:
+                merged_model.export_to_yaml(output_path)  # 导出
+            
+            return {
+                "success": True,
+                "data": merged_model,
+                "variables": len(merged_model.variables),
+                "formulas": len(merged_model.formulas)
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "variables": 0,
+                "formulas": 0
+            }
+    
+    def merge_models_by_folder(self, folders: List[str], output_path: Optional[str] = None, 
+                            merged_name: str = "MergedModel") -> Dict[str, Any]:
+        """
+        合并指定文件夹中的所有模型，以同名文件为根，包含其 imports 和文件夹所有文件。
+        :param folders: 包含模型的文件夹列表。
+        :param output_path: 合并后模型的输出文件路径。
+        :param merged_name: 合并后模型的元数据名称。
+        :return: 包含合并结果的字典。
+        """
+        if len(folders) != 1:
+            raise ValueError("merge_models_by_folder 只支持单个文件夹，上层应分别调用")  # 限制单个文件夹
+        folder = folders[0]  # 取唯一文件夹
+        try:
+            merged_model = ModStructure()  # 创建空合并模型
+            mod_name = merged_name  # 默认名称
+            loaded_models = set()  # 跟踪已加载模型
+            
+            # 检查同名文件
+            root_file_name = f"{folder}.yaml"  # 同名文件
+            root_file_path = self.find_model_file(folder, folder)  # 查找文件
+            if not root_file_path:
+                return {
+                    "success": False,
+                    "error": f"未找到根模型文件 {root_file_name} 在文件夹 {folder}",
+                    "variables": 0,
+                    "formulas": 0
+                }
+            
+            # 加载根文件（包含 imports）
+            with open(root_file_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}  # 加载根文件数据
+                if 'metadata' in data and 'name' in data['metadata']:
+                    mod_name = data['metadata']['name']  # 取名称
+            merged_model.append_model(root_file_path, folder, log_as_loaded=True, validate=False)  # 加载根文件及其 imports
+            loaded_models.add(folder)  # 标记已加载
+            
+            # 加载文件夹中所有其他 YAML 文件
+            search_dir = os.path.join(self.mods_directory, folder)  # 拼接文件夹路径
+            files = [f for f in os.listdir(search_dir) if os.path.isfile(os.path.join(search_dir, f)) and f.endswith('.yaml') and f != root_file_name]
+            for file in files:
+                model_name = os.path.splitext(file)[0]  # 提取文件名
+                if model_name in loaded_models:
+                    logger.warning(f"跳过模型 {model_name} 因循环依赖")  # 警告循环
+                    continue
+                file_path = self.find_model_file(model_name, folder)  # 查找文件路径
+                if file_path:
+                    merged_model.append_model(file_path, model_name, log_as_loaded=True, validate=False)  # 追加其他文件
+                    loaded_models.add(model_name)  # 标记已加载
+            
+            if not loaded_models:
+                return {
+                    "success": False,
+                    "error": f"在文件夹 {folder} 中未找到有效模型",
+                    "variables": 0,
+                    "formulas": 0
+                }
+            
+            # 设置元数据
+            merged_model.metadata = ModelMetadata(
+                name=mod_name,
+                version="1.0.0",
+                author="LoaderEngine",
+                description=f"合并模型来自文件夹 {folder}（包含 imports 和所有 YAML 文件）",
+                conflicts=[],
+                tags=[]
+            )
+            
+            try:
+                merged_model.validate_model()  # 验证模型
+            except ValueError as ve:
+                return {
+                    "success": False,
+                    "error": str(ve),
+                    "variables": len(merged_model.variables),
+                    "formulas": len(merged_model.formulas)
+                }
+            
+            if output_path:
+                merged_model.export_to_yaml(output_path)  # 导出模型
+            
+            return {
+                "success": True,
+                "data": merged_model,
+                "variables": len(merged_model.variables),
+                "formulas": len(merged_model.formulas)
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "variables": 0,
+                "formulas": 0
+            }
+        
+    def split_model(self, model_name: str, output_dir: str, folder: Optional[str] = None) -> Dict[str, Any]:
+        """
+        拆分模型并生成 patch 文件，使用文件名而非 metadata.name。
+        :param model_name: 模型名称（文件或文件夹名）。
+        :param output_dir: 输出目录。
+        :param folder: 可选的子文件夹（用于 --folder）。
+        :return: 包含拆分结果的字典。
+        """
+        try:
+            model = ModStructure()  # 创建空模型
+            if folder:
+                # 处理 --folder：加载文件夹所有文件，以同名文件为根
+                result = self.merge_models_by_folder([folder], None)
+                if not result["success"]:
+                    return {"success": False, "error": result["error"]}
+                model = result["data"]  # 获取合并模型
+                # 使用文件夹名生成 patch 文件名
+                patch_filename = f"{folder}_patch.yaml"
+                # 放在文件夹内
+                patch_path = os.path.join(self.mods_directory, folder, patch_filename)
+                model.current_filename = folder  # 修改：设置current_filename
+            else:
+                # 处理 --file：加载指定文件及其 imports
+                model_path = self.find_model_file(model_name, folder)
+                if not model_path:
+                    return {"success": False, "error": f"未找到模型文件 {model_name}"}
+                model.append_model(model_path, model_name, log_as_loaded=True, validate=False)  # 加载文件
+                # 使用文件名生成 patch 文件名
+                base_name = os.path.splitext(os.path.basename(model_name))[0]  # 提取文件名（无扩展名）
+                patch_filename = f"{base_name}_patch.yaml"
+                # 放在与输入文件同目录
+                patch_path = os.path.join(os.path.dirname(model_path), patch_filename)
+                model.current_filename = base_name  # 修改：设置current_filename
+            
+            # 确保输出目录存在
+            os.makedirs(os.path.dirname(patch_path), exist_ok=True)
+            
+            # 导出合并模型为 patch 文件
+            model.metadata = ModelMetadata(
+                name=f"{model.current_filename}_patch",  # 修改：使用current_filename
+                version="1.0.0",
+                author="LoaderEngine",
+                description=f"Patch 模型来自 {'文件夹 ' + folder if folder else '文件 ' + model_name}",
+                conflicts=[],
+                tags=["patch"]
+            )
+            model.export_to_yaml(patch_path)  # 导出到 patch 文件
+            
+            return {
+                "success": True,
+                "data": {
+                    "patch_file": patch_path,
+                    "variables": len(model.variables),
+                    "formulas": len(model.formulas)
+                }
+            }
+        except Exception as e:
+            logger.error(f"拆分模型失败: {e}")  # 记录错误
+            return {"success": False, "error": str(e)}

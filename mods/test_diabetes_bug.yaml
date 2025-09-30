@@ -1,0 +1,49 @@
+metadata:
+  name: obesity_diabetes
+  version: 1.0.0
+  author: Test Author
+  description: Test model
+variables:
+  blood_glucose:
+    description: Blood glucose level
+    value: 100.0
+    type: state
+    unit: mg/dL
+  fluid_balance:
+    description: Fluid balance
+    value: 0.0
+    type: state
+    unit: L
+formulas:
+  obesity_increase:
+    description: Increase obesity
+    priority: 0
+    dynamics:
+      obesity_index: obesity_index + 0.1
+  fasting_glucose_update:
+    description: Update fasting glucose
+    condition: exercise_intensity == 0 and carb_intake == 0
+    priority: 0
+    dynamics:
+      blood_glucose: blood_glucose + 1
+  organ_function_recovery:
+    description: Recover organ function
+    condition: blood_glucose < 120 and insulin_level < 20 and physical_activity == 0
+    priority: 1
+    dynamics:
+      blood_glucose: blood_glucose - 0.5
+  hypoglycemia_protection:
+    description: Prevent hypoglycemia
+    priority: 2
+    dynamics:
+      blood_glucose: liver_glycogen + muscle_glycogen
+  dehydration_protection:
+    description: Prevent dehydration
+    priority: 3
+    dynamics:
+      fluid_balance: fluid_balance - urine_production
+  health_score:
+    description: Update health score
+    priority: 4
+    dynamics:
+      health_score: health_score + 1

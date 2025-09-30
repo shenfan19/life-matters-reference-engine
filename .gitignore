@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Personal archived
+_saved_/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.so
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+
+# Environment files
+.env
+.venv/
+venv/
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,36 @@
+- name: berry_raw #生浆果 直接从灌木丛采摘的浆果，味道不错但保质期短。
+  type: food
+  mass: 1
+  nutrition: 10
+  hydration: 5
+  effect: none
+
+- name: meat_cooked #烤肉 在火上烤熟的肉，美味且能提供充足的能量。
+  type: food
+  mass: 1
+  nutrition: 40
+  hydration: 5
+  effect: none
+
+- name: mushroom_poison #毒蘑菇 色彩鲜艳的蘑菇，但有毒。食用后会中毒。
+  type: food
+  mass: 1
+  unit: kg
+  nutrition: 5
+  hydration: 2
+  effect: poisoned
+
+- name: banana
+  type: food
+  mass: 1
+  caloris: 100
+  nutrition: 5
+  hydration: 2
+
+- name: rice
+  type: food
+  mass: 1
+  unit: kg
+  caloris: 100
+  nutrition: 5
+  hydration: 2

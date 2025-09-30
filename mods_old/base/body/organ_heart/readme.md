@@ -1,0 +1,3 @@
+- [ ] trigger
+    - [ ] stuck
+    - [ ] pause

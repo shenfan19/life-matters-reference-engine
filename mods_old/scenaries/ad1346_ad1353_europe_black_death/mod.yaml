@@ -1,0 +1,24 @@
+general:
+  name: 黑死病事件
+  year_start: 1347
+
+variables:
+  - name: 疫情活跃度
+    value: 0
+    unit: '%'
+    description: 黑死病活跃程度
+    type: internal
+  - name: 传染率
+    value: 0.1
+    unit: ''
+    description: 黑死病传染率
+    type: internal
+  - name: 致死率
+    value: 0.05
+    unit: ''
+    description: 黑死病致死率
+    type: internal
+
+dynamics:
+  - target_parameter: 疫情活跃度
+    expression: 'min(100, get_value(''疫情活跃度'') + 10)'

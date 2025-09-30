@@ -1,0 +1,25 @@
+include:
+  - default_man
+  - dracula
+
+variables:
+  blood_max:
+    description: 生物体的最大血量
+    value: 80
+    unit: 点
+  blood_regenerating:
+    description: 生物体的血量再生速度
+    value: 0.1
+    unit: 点/秒
+  refreshment:
+    description: 生物体的新陈代谢率
+    value: 1.2
+    unit: 倍
+  neuration_obsorb:
+    description: 生物体的神经吸收率
+    value: 1.1
+    unit: 倍
+  age_increasement:
+    description: 生物体的衰老速度
+    value: 0.2
+    unit: 倍

@@ -1,0 +1,28 @@
+
+variables:
+  饱腹感:
+    value: 100
+    description: 角色的饱腹程度
+  健康度:
+    value: 1000
+    description: 角色的健康程度
+  blood_max:
+    value: 1000
+    unit: 点
+    description: 生物体的最大血量
+  blood_regenerating:
+    value: 2.0
+    unit: 点/秒
+    description: 生物体的血量再生速度
+  mind_pressure:
+    value: 50
+    unit: 点
+    description: 生物体的精神压迫值
+  refreshment:
+    value: 10
+    unit: 倍
+    description: 生物体的新陈代谢率
+  age_increasement:
+    value: 1
+    unit: 倍
+    description: 生物体的衰老速度

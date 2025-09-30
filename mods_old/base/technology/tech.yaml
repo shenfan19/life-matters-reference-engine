@@ -1,0 +1,13 @@
+region: Berlin
+timePeriod: '1939_1945'
+techLevel: medium
+scientificProgress: slow
+keyTechnologies:
+  - Radio communication
+  - Machine guns
+  - Early radar systems
+  - V-2 Rocket
+militaryTech:
+  - MP40 submachine gun
+  - Tiger tank
+  - Stuka dive bomber

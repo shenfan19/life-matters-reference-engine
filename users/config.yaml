@@ -1,0 +1,12 @@
+app_name: 'Life Matters'
+version: '0.1.0'
+log_level: INFO
+default_language: zh-CN
+asset_path: assets/
+data_path: data/
+mods_path: mods/
+debug_mode: false
+enable_developer_console: false
+language: en-US
+backup_frequency: ''
+last_user_id: sample
