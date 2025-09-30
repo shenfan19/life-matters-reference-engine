@@ -30,4 +30,4 @@ variables:
     unit: unknown
     bounds:
       - 0
-      - 100
+      - 10011111
