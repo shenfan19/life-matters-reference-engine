@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class PlayerCLI:
     """Player 命令行接口，调用 PlayerEngine 运行仿真并显示状态。"""
     
-    def __init__(self, mods_directory: str = "mods_med", language: str = "en"):
+    def __init__(self, mods_directory: str = "mods", language: str = "en"):
         # 初始化 LanguageManager 以支持多语言，默认使用指定语言。
         self.lang_manager = LanguageManager(default_language=language)
         # 初始化 PlayerEngine 用于执行仿真任务，指定模型目录和语言。
@@ -135,7 +135,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     # 定义命令行参数，包括模型目录、语言、仿真参数等。
-    parser.add_argument('--mods-dir', default='mods_med', help='Models directory (default: mods_med)')
+    parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
     parser.add_argument('--lang', default='en', choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], help='Language for output')
     parser.add_argument('--folder', help='Subfolder in mods directory')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')

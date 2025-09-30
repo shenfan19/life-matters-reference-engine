@@ -214,12 +214,12 @@ optimizer:
   ```
 
 ## 多语言支持
-- **实现**：通过 `lang_manager.py` 提供动态语言切换，翻译文件存储在 `lang` 文件夹中（如 `lang/en.yaml`、`lang/zh-Hans.yaml`）。
+- **实现**：通过 `lang_manager.py` 提供动态语言切换，翻译文件存储在 `lang` 文件夹中（如 `langs/en.yaml`、`langs/zh-Hans.yaml`）。
 - **语言代码**：
   - `en`：英文
   - `zh-Hans`：简体中文（中国大陆、新加坡）
   - `zh-Hant`：繁体中文（香港、台湾、澳门）
-- **添加新语言**：创建新文件（如 `lang/fr.yaml`），文件名即语言代码，格式参考 `lang/en.yaml`。
+- **添加新语言**：创建新文件（如 `langs/fr.yaml`），文件名即语言代码，格式参考 `lang/en.yaml`。
 - **CLI 使用**：通过 `--lang` 参数指定语言。
 - **示例**：
   ```bash

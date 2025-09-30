@@ -17,7 +17,7 @@ LifeMatters/
 │   │   ├── glucose_regulation.yaml
 │   │   ├── circular_a.yaml
 │   │   ├── circular_b.yaml
-├── lang/
+├── langs/
 │   ├── zh-Hans.yaml
 ├── mod_structure.py
 ├── loader_cli.py
@@ -340,7 +340,7 @@ python -m logging loader_cli.py --list --folder physiology --lang zh-Hans
 ### 调试注意事项
 1. **环境准备**：
    - 确保安装了依赖：`pip install PyYAML numpy asteval logging`
-   - 确保 `lang/zh-Hans.yaml` 包含必要的翻译键（如 `table_hooks`、`table_optimizer`、`table_deps`），否则可能导致 KeyError。如果缺失，我可以提供翻译文件示例。
+   - 确保 `langs/zh-Hans.yaml` 包含必要的翻译键（如 `table_hooks`、`table_optimizer`、`table_deps`），否则可能导致 KeyError。如果缺失，我可以提供翻译文件示例。
 
 2. **文件路径**：
    - 调整 `mods_directory`（默认 `mods_med`）和 `folder`（默认 `physiology`）以匹配您的实际目录结构。

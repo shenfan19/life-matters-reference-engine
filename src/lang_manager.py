@@ -28,7 +28,7 @@ class LanguageManager:
     """
     语言管理器，负责加载和提供多语言翻译，供 LifeMatters 模块使用。
     """
-    def __init__(self, default_language: str = "en", translation_dir: str = "lang"):
+    def __init__(self, default_language: str = "en", translation_dir: str = "langs"):
         """
         初始化 LanguageManager 实例。
         :param default_language: 默认语言代码，例如 "en"（英语）或 "zh-Hans"（简体中文）。
