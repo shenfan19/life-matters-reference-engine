@@ -154,7 +154,7 @@ class LoaderEngine:
             return self.models_cache[cache_key]
 
         try:
-            model = ModStructure()
+            model = ModStructure(self.language)
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
             
@@ -194,7 +194,7 @@ class LoaderEngine:
                     "formulas": 0
                 }
             
-            merged_model = ModStructure(self.mods_directory)
+            merged_model = ModStructure(self.mods_directory, self.language)
             merged_model.visited.clear()  # 清空访问记录
             mod_name = merged_name
             first_item_processed = False
@@ -324,7 +324,7 @@ class LoaderEngine:
         :return: 包含拆分结果的字典。
         """
         try:
-            model = ModStructure()  # 创建空模型
+            model = ModStructure(language=self.language)  # 创建空模型
             if folder:
                 # 处理 --folder：加载文件夹所有文件，以同名文件为根
                 result = self.merge_models_by_folder([folder], None)

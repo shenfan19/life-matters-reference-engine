@@ -98,7 +98,15 @@ class LanguageManager:
                 "display_state_failed": "Failed to display state: {error}",
                 "model_loaded": "Model loaded: {model_name}",
                 "saved_to": "Saved to: {output}",
-                "unexpected_error": "Unexpected error: {error}"
+                "unexpected_error": "Unexpected error: {error}",
+                "split_to_conflict": "--split-to can only be used with either --file or --folder, not both",
+                "split_to_single_file_required": "--split-to requires exactly one --file",
+                "split_to_input_required": "--split-to requires one --file or one --folder",
+                "merge_failed": "Merge failed: {error}",
+                "split_failed": "Split failed: {error}",
+                "variable_description_string": "Variable {var_name} description must be a string, got {type_name}",
+                "model_validation_failed": "Model validation failed with {num_errors} errors:\n- {errors}\n\n{patch_message}",
+                "failed_generate_patch": "Failed to generate patch file {patch_file}: {e}",
             },
             "zh-Hans": {
                 "model_not_found": "模型 {model_name} 未找到",
@@ -140,7 +148,14 @@ class LanguageManager:
                 "display_state_failed": "显示状态失败：{error}",
                 "model_loaded": "模型加载成功：{model_name}",
                 "saved_to": "保存到：{output}",
-                "unexpected_error": "意外错误：{error}"
+                "unexpected_error": "意外错误：{error}",
+                "split_to_conflict": "--split-to 只能与 --file 或 --folder 之一一起使用",
+                "split_to_single_file_required": "--split-to 需要正好一个 --file",
+                "split_to_input_required": "--split-to 需要一个 --file 或一个 --folder",
+                "merge_failed": "合并失败: {error}",
+                "split_failed": "拆分失败: {error}",
+                "model_validation_failed": "模型验证失败，有 {num_errors} 个错误:\n- {errors}\n\n{patch_message}",
+                "failed_generate_patch": "生成 patch 文件失败 {patch_file}: {e}",
             }
         }
 

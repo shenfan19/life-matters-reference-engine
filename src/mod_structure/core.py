@@ -4,6 +4,7 @@ from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
 from .base import ModelMetadata, Variable, Formula
+from lang_manager import LanguageManager
 from typing import Dict, Any, Set
 from asteval import Interpreter
 import logging
@@ -14,7 +15,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 class ModStructure(Loader, Validator, Simulation):
-    def __init__(self, mods_directory: str = "mods"):
+    def __init__(self, mods_directory: str = "mods", language: str = "en"):
         # 初始化元数据
         self.metadata = None
         # 初始化变量字典
@@ -37,7 +38,7 @@ class ModStructure(Loader, Validator, Simulation):
         self.mods_directory = mods_directory
         # 当前文件名（无扩展名），由 loader.py 设置
         self.current_filename: str = None
-
+        self.lang_manager = LanguageManager(default_language=language)  # + 初始化 LanguageManager，用于国际化消息
     def _initialize_asteval(self):
         # 清空符号表
         self.asteval.symtable.clear()

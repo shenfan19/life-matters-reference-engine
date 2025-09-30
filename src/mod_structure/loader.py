@@ -26,9 +26,8 @@ class Loader:
                 data = yaml.safe_load(f) or {}
             
             if not isinstance(data, dict):
-                logger.error(f"模型 {file_path} 的 YAML 文件格式无效")
-                raise ValueError(f"无效的 YAML 文件: {file_path}")
-            
+                logger.error(self.lang_manager.get_translation("invalid_yaml_format", file_path=file_path))  # 用翻译替换
+                raise ValueError(self.lang_manager.get_translation("invalid_yaml_file", file_path=file_path))  # 用翻译替换
             # 处理 imports
             merged_data = {}
             imports = data.get('imports', [])
@@ -147,7 +146,7 @@ class Loader:
             # 应用数据（追加模式）
             self._apply_model_data(data, module_name, clear_existing=False)
             
-            log_message = f"{'加载' if log_as_loaded else '追加'} 模型从 {file_path}"
+            log_message = self.lang_manager.get_translation("load_model_from" if log_as_loaded else "append_model_from", file_path=file_path)  # 用翻译替换，假设添加 'append_model_from' 键
             logger.info(log_message)
             
         except Exception as e:

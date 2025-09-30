@@ -227,11 +227,11 @@ def main():
                 print(f"✗ {result['message']}")
         elif args.split_to:
             if args.file and args.folder:
-                print(f"✗ --split-to 只能与 --file 或 --folder 之一一起使用")
+                print(f"✗ {cli.lang_manager.get_translation('split_to_conflict')}")
                 parser.print_help()
                 success = False
             elif args.file and len(args.file) != 1:
-                print(f"✗ --split-to 需要正好一个 --file")
+                print(f"✗ {cli.lang_manager.get_translation('split_to_single_file_required')}")
                 parser.print_help()
                 success = False
             elif args.file:
@@ -241,7 +241,7 @@ def main():
                 result = cli.split_model(args.folder[0], args.split_to, args.folder[0])  # 处理 --folder
                 success = result["success"]
             else:
-                print(f"✗ --split-to 需要一个 --file 或一个 --folder")
+                print(f"✗ {cli.lang_manager.get_translation('split_to_input_required')}")
                 parser.print_help()
                 success = False
         elif args.file or args.folder:
