@@ -142,89 +142,25 @@ class LoaderCLI:
     def load_and_merge(self, folders: Optional[List[str]] = None, files: Optional[List[str]] = None, output_path: Optional[str] = None) -> Dict[str, Any]:
         """
         加载并合并指定文件夹和文件的模型。
-        :param folders: 要合并的子文件夹列表（每个以同名文件为根，包含 imports 和所有文件）。
-        :param files: 要合并的模型文件列表（可带路径）。
-        :param output_path: 合并后模型的输出路径。
-        :return: 包含合并结果的字典。
         """
         try:
             if not folders and not files:
-                return {"success": False, "error": "未提供任何模型或文件夹用于合并", "variables": 0, "formulas": 0}  # 无输入时返回错误
+                return {"success": False, "error": "未提供任何模型或文件夹用于合并", "variables": 0, "formulas": 0}
             
-            merged_model = ModStructure()  # 创建空合并模型
+            # 使用统一的合并方法
+            result = self.engine.merge_models(model_names=files, folders=folders, output_path=output_path)
             
-            # 处理文件夹
-            if folders:
-                for idx, folder in enumerate(folders):
-                    folder_result = self.engine.merge_models_by_folder([folder], None)  # 合并单个文件夹（含 imports 和所有文件）
-                    if not folder_result["success"]:
-                        print(f"✗ {folder_result['error']}")  # 打印错误
-                        return folder_result
-                    if idx == 0:
-                        merged_model = folder_result["data"]  # 第一个文件夹为根
-                    else:
-                        for var_name, var in folder_result["data"].variables.items():
-                            if var_name in merged_model.variables:
-                                logger.warning(f"覆盖变量 (从文件夹 {folder}): {var_name}")  # 警告覆盖
-                            merged_model.variables[var_name] = var  # 覆盖变量
-                            merged_model.variable_history[var_name] = [var.value]  # 更新历史
-                        for form_name, form in folder_result["data"].formulas.items():
-                            if form_name in merged_model.formulas:
-                                logger.warning(f"覆盖公式 (从文件夹 {folder}): {form_name}")  # 警告覆盖
-                            merged_model.formulas[form_name] = form  # 覆盖公式
-                        merged_model.simulator = merge_dicts(merged_model.simulator, folder_result["data"].simulator)  # 合并 simulator
-                        merged_model.optimizer = merge_dicts(merged_model.optimizer, folder_result["data"].optimizer)  # 合并 optimizer
-                        merged_model._initialize_asteval()  # 更新符号表
+            if result["success"]:
+                print(f"✓ 合并成功: 变量 {result['variables']}, 公式 {result['formulas']}, 输出到 {output_path or 'memory'}")
+            else:
+                print(f"✗ {result['error']}")
             
-            # 处理文件
-            if files:
-                file_result = self.engine.merge_models_by_names(files, None, "MergedModel", None)  # 合并文件
-                if not file_result["success"]:
-                    print(f"✗ {file_result['error']}")  # 打印错误
-                    return file_result
-                for var_name, var in file_result["data"].variables.items():
-                    if var_name in merged_model.variables:
-                        logger.warning(f"覆盖变量 (从文件): {var_name}")  # 警告覆盖
-                    merged_model.variables[var_name] = var  # 覆盖变量
-                    merged_model.variable_history[var_name] = [var.value]  # 更新历史
-                for form_name, form in file_result["data"].formulas.items():
-                    if form_name in merged_model.formulas:
-                        logger.warning(f"覆盖公式 (从文件): {form_name}")  # 警告覆盖
-                    merged_model.formulas[form_name] = form  # 覆盖公式
-                merged_model.simulator = merge_dicts(merged_model.simulator, file_result["data"].simulator)  # 合并 simulator
-                self.optimizer = merge_dicts(merged_model.optimizer, file_result["data"].optimizer)  # 合并 optimizer
-                merged_model._initialize_asteval()  # 更新符号表
+            return result
             
-            # 设置元数据
-            mod_name = "MergedModel"
-            if folders:
-                mod_name = folders[0]  # 从第一个文件夹取名称
-            elif files:
-                mod_name = files[0]  # 从第一个文件取名称
-            merged_model.metadata = ModelMetadata(
-                name=mod_name,
-                version="1.0.0",
-                author="LoaderEngine",
-                description=f"合并模型来自文件夹 {', '.join(folders or [])} 和文件 {', '.join(files or [])}",
-                conflicts=[],
-                tags=[]
-            )
-            
-            try:
-                merged_model.validate_model()  # 验证模型
-            except ValueError as ve:
-                return {"success": False, "error": str(ve), "variables": len(merged_model.variables), "formulas": len(merged_model.formulas)}
-            
-            if output_path:
-                merged_model.export_to_yaml(output_path)  # 导出模型
-            
-            print(f"✓ 合并成功: 变量 {len(merged_model.variables)}, 公式 {len(merged_model.formulas)}, 输出到 {output_path or 'memory'}")
-            return {"success": True, "data": merged_model, "variables": len(merged_model.variables), "formulas": len(merged_model.formulas)}
         except Exception as e:
             print(f"✗ 合并失败: {str(e)}")
-            # logger.error(f"加载和合并失败: {e}")
             return {"success": False, "error": str(e)}
-    
+
     def split_model(self, model_name: str, output_dir: str, folder: Optional[str] = None) -> Dict[str, Any]:
         """
         拆分模型并生成单一 patch 文件。
