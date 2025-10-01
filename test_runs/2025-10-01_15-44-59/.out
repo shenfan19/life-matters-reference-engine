@@ -1,0 +1,17 @@
+Exit code: 9009 
+===== Test 6 Complete ===== 
+Running test 7: Detect cyclic dependency 
+Command: python loader_cli.py --file "C:\Dropbox\c_med_life\code_med\test_data\cyclic_model.yaml" 
+python: can't open file 'C:\\Dropbox\\c_med_life\\code_med\\loader_cli.py': [Errno 2] No such file or directory
+Exit code: 2 
+===== Test 7 Complete ===== 
+Running performance test: Large file 
+Command: python loader_cli.py --file "C:\Dropbox\c_med_life\code_med\test_data\large_model.yaml" 
+Start: 16:11:31.29 
+python: can't open file 'C:\\Dropbox\\c_med_life\\code_med\\loader_cli.py': [Errno 2] No such file or directory
+End: 16:11:31.50 
+Exit code: 2 
+===== Performance Test Complete ===== 
+=== 测试完成 === 
+输出保存至: C:\Dropbox\c_med_life\code_med\test_runs\2025-10-01_15-44-59\.out 
+请检查 C:\Dropbox\c_med_life\code_med\test_runs\2025-10-01_15-44-59\.out 和生成文件（如 merged_2025-10-01_16-07-40.yaml） 

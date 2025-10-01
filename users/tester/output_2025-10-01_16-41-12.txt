@@ -1,0 +1,111 @@
+当前目录: C:\Dropbox\c_med_life\code_med 
+=== 开始 Loader CLI 测试 === 
+Running test 1: List models in physiology 
+Command: python loader_cli.py --list --folder physiology 
+2025-10-01 16:41:12,982 - ERROR - 列出模型失败: join() argument must be str, bytes, or os.PathLike object, not 'list'
+✗ Failed to list models: join() argument must be str, bytes, or os.PathLike object, not 'list'
+Exit code: 1 
+ 
+ 
+Running test 2: List nonexistent folder 
+Command: python loader_cli.py --list --folder nonexistent 
+2025-10-01 16:41:13,845 - ERROR - 列出模型失败: join() argument must be str, bytes, or os.PathLike object, not 'list'
+✗ Failed to list models: join() argument must be str, bytes, or os.PathLike object, not 'list'
+Exit code: 1 
+ 
+ 
+Running test 3: Load valid file 
+Command: python loader_cli.py --file physiology\obesity_diabetes.yaml 
+2025-10-01 16:41:14,567 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:14,570 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:14,572 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:14,574 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:14,574 - INFO - Initialized LanguageManager with language en
+2025-10-01 16:41:14,575 - WARNING - 无法加载模型文件: physiology\obesity_diabetes.yaml
+2025-10-01 16:41:14,575 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+Exit code: 0 
+ 
+ 
+Running test 4: Load invalid file 
+Command: python loader_cli.py --file nonexistent.yaml 
+2025-10-01 16:41:15,305 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:15,307 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:15,309 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:15,311 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:15,311 - INFO - Initialized LanguageManager with language en
+2025-10-01 16:41:15,311 - WARNING - 无法加载模型文件: nonexistent.yaml
+2025-10-01 16:41:15,311 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+Exit code: 0 
+ 
+ 
+Running test 5: Merge models 
+Command: python loader_cli.py --folder physiology --merge-to "C:\Dropbox\c_med_life\code_med\users\tester\merged_2025-10-01_16-41-12.yaml" 
+2025-10-01 16:41:16,030 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:16,033 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:16,036 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:16,038 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:16,038 - INFO - Initialized LanguageManager with language en
+2025-10-01 16:41:16,182 - INFO - load_model_from
+2025-10-01 16:41:16,245 - INFO - load_model_from
+2025-10-01 16:41:16,304 - WARNING - 覆盖变量 (从 diabetes_core): liver_function
+2025-10-01 16:41:16,304 - WARNING - 覆盖变量 (从 diabetes_core): pancreatic_function
+2025-10-01 16:41:16,304 - WARNING - 覆盖变量 (从 diabetes_core): gastric_function
+2025-10-01 16:41:16,304 - WARNING - 覆盖变量 (从 diabetes_core): intestinal_function
+2025-10-01 16:41:16,304 - WARNING - 覆盖公式 (从 diabetes_core): organ_function_recovery
+2025-10-01 16:41:16,304 - INFO - load_model_from
+2025-10-01 16:41:16,305 - INFO - load_model_from
+2025-10-01 16:41:16,306 - INFO - load_model_from
+2025-10-01 16:41:16,306 - INFO - load_model_from
+2025-10-01 16:41:16,307 - INFO - load_model_from
+2025-10-01 16:41:16,308 - INFO - load_model_from
+2025-10-01 16:41:16,309 - INFO - load_model_from
+2025-10-01 16:41:16,309 - INFO - load_model_from
+2025-10-01 16:41:16,310 - INFO - load_model_from
+2025-10-01 16:41:16,310 - INFO - load_model_from
+✗ 'targets'
+"Exit code: 1" 
+ 
+ 
+Running test 6: Split model 
+Command: python loader_cli.py --file "C:\Dropbox\c_med_life\code_med\test_data\complex_model.yaml" --split-to "C:\Dropbox\c_med_life\code_med\users\tester\split" 
+2025-10-01 16:41:17,086 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:17,088 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:17,091 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:17,094 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:17,094 - INFO - Initialized LanguageManager with language en
+✗ 未找到模型文件 C:\Dropbox\c_med_life\code_med\test_data\complex_model.yaml
+"Exit code: 1" 
+ 
+ 
+Running test 7: Detect cyclic dependency 
+Command: python loader_cli.py --file "C:\Dropbox\c_med_life\code_med\test_data\cyclic_model.yaml" 
+2025-10-01 16:41:17,871 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:17,874 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:17,876 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:17,878 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:17,879 - INFO - Initialized LanguageManager with language en
+2025-10-01 16:41:17,879 - WARNING - 无法加载模型文件: C:\Dropbox\c_med_life\code_med\test_data\cyclic_model.yaml
+2025-10-01 16:41:17,879 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+"Exit code: 0" 
+ 
+ 
+Running performance test: Large file 
+Command: python loader_cli.py --file "C:\Dropbox\c_med_life\code_med\test_data\large_model.yaml" 
+Start: 16:41:18.11 
+2025-10-01 16:41:18,842 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 16:41:18,845 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 16:41:18,847 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 16:41:18,849 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 16:41:18,849 - INFO - Initialized LanguageManager with language en
+2025-10-01 16:41:18,849 - WARNING - 无法加载模型文件: C:\Dropbox\c_med_life\code_med\test_data\large_model.yaml
+2025-10-01 16:41:18,849 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+End: 16:41:18.90 
+Exit code: 0 
+"===== Performance Test Complete =====" 
+=== 测试完成 === 
+输出保存至: C:\Dropbox\c_med_life\code_med\users\tester\output_2025-10-01_16-41-12.txt 
+请检查 C:\Dropbox\c_med_life\code_med\users\tester\output_2025-10-01_16-41-12.txt 和生成文件（如 merged_2025-10-01_16-41-12.yaml） 
