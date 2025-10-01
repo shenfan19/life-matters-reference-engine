@@ -1,0 +1,76 @@
+当前目录: C:\Dropbox\c_med_life\code_med 
+=== 开始 Loader CLI 测试 === 
+Test 1: List models in physiology 
+python src\loader_cli.py --list --folder physiology 
+2025-10-01 17:21:10,889 - ERROR - 列出模型失败: join() argument must be str, bytes, or os.PathLike object, not 'list'
+✗ Failed to list models: join() argument must be str, bytes, or os.PathLike object, not 'list'
+Exit code: 1 
+ 
+ 
+Test 2: List nonexistent folder 
+python src\loader_cli.py --list --folder nonexistent 
+2025-10-01 17:21:11,581 - ERROR - 列出模型失败: join() argument must be str, bytes, or os.PathLike object, not 'list'
+✗ Failed to list models: join() argument must be str, bytes, or os.PathLike object, not 'list'
+Exit code: 1 
+ 
+ 
+Test 3: Load valid file 
+python src\loader_cli.py --file physiology\obesity_diabetes.yaml 
+2025-10-01 17:21:12,286 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 17:21:12,288 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 17:21:12,290 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 17:21:12,292 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 17:21:12,292 - INFO - Initialized LanguageManager with language en
+2025-10-01 17:21:12,292 - WARNING - 无法加载模型文件: physiology\obesity_diabetes.yaml
+2025-10-01 17:21:12,293 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+Exit code: 0 
+ 
+ 
+Test 4: Load invalid file 
+python src\loader_cli.py --file nonexistent.yaml 
+2025-10-01 17:21:13,043 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 17:21:13,045 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 17:21:13,048 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 17:21:13,049 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 17:21:13,049 - INFO - Initialized LanguageManager with language en
+2025-10-01 17:21:13,050 - WARNING - 无法加载模型文件: nonexistent.yaml
+2025-10-01 17:21:13,050 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+Exit code: 0 
+ 
+ 
+Test 5: Merge models 
+python src\loader_cli.py --folder physiology --merge-to C:\Dropbox\c_med_life\code_med\users\tester\merged_2025-10-01_17-21-10.yaml 
+"Exit code: 123" 
+ 
+ 
+Test 6: Split model 
+python src\loader_cli.py --file C:\Dropbox\c_med_life\code_med\test_data\complex_model.yaml 
+2025-10-01 17:21:14,064 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 17:21:14,067 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 17:21:14,070 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 17:21:14,073 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 17:21:14,074 - INFO - Initialized LanguageManager with language en
+2025-10-01 17:21:14,074 - WARNING - 无法加载模型文件: C:\Dropbox\c_med_life\code_med\test_data\complex_model.yaml
+2025-10-01 17:21:14,074 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+"Exit code: 0" 
+ 
+ 
+Test 7: Detect cyclic dependency 
+python src\loader_cli.py --file C:\Dropbox\c_med_life\code_med\test_data\cyclic_model.yaml 
+2025-10-01 17:21:14,909 - INFO - Loaded translations from langs\en.yaml
+2025-10-01 17:21:14,912 - INFO - Loaded translations from langs\fr.yaml
+2025-10-01 17:21:14,915 - INFO - Loaded translations from langs\zh-Hans.yaml
+2025-10-01 17:21:14,917 - INFO - Loaded translations from langs\zh-Hant.yaml
+2025-10-01 17:21:14,917 - INFO - Initialized LanguageManager with language en
+2025-10-01 17:21:14,918 - WARNING - 无法加载模型文件: C:\Dropbox\c_med_life\code_med\test_data\cyclic_model.yaml
+2025-10-01 17:21:14,918 - INFO - Model validation passed
+✓ 合并成功: 变量 0, 公式 0, 输出到 memory
+"Exit code: 0" 
+ 
+ 
+=== 测试完成 === 
+输出保存至: C:\Dropbox\c_med_life\code_med\users\tester\test_2025-10-01_17-21-10.txt 
+请检查 C:\Dropbox\c_med_life\code_med\users\tester\test_2025-10-01_17-21-10.txt 和生成文件（如 merged_2025-10-01_17-21-10.yaml） 

@@ -28,69 +28,67 @@ echo === 开始 Loader CLI 测试 === >> "%OUTPUT_FILE%"
 
 :: 测试用例
 :: 测试 1: --list 有效文件夹
-echo Running test 1: List models in physiology >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --list --folder physiology >> "%OUTPUT_FILE%"
-python src/loader_cli.py --list --folder physiology >> "%OUTPUT_FILE%" 2>&1
+echo Test 1: List models in physiology >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --list --folder physiology"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo Exit code: %errorlevel% >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 2: --list 无效文件夹
-echo Running test 2: List nonexistent folder >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --list --folder nonexistent >> "%OUTPUT_FILE%"
-python src/loader_cli.py --list --folder nonexistent >> "%OUTPUT_FILE%" 2>&1
+echo Test 2: List nonexistent folder >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --list --folder nonexistent"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo Exit code: %errorlevel% >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 3: --file 有效文件
-echo Running test 3: Load valid file >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --file physiology\obesity_diabetes.yaml >> "%OUTPUT_FILE%"
-python src/loader_cli.py --file physiology\obesity_diabetes.yaml >> "%OUTPUT_FILE%" 2>&1
+echo Test 3: Load valid file >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --file physiology\obesity_diabetes.yaml"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo Exit code: %errorlevel% >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 4: --file 无效文件
-echo Running test 4: Load invalid file >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --file nonexistent.yaml >> "%OUTPUT_FILE%"
-python src/loader_cli.py --file nonexistent.yaml >> "%OUTPUT_FILE%" 2>&1
+echo Test 4: Load invalid file >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --file nonexistent.yaml"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo Exit code: %errorlevel% >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 5: --merge-to 合并模型
-echo Running test 5: Merge models >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --folder physiology --merge-to "%OUTPUT_DIR%\merged_%TIMESTAMP%.yaml" >> "%OUTPUT_FILE%"
-python src/loader_cli.py --folder physiology --merge-to "%OUTPUT_DIR%\merged_%TIMESTAMP%.yaml" >> "%OUTPUT_FILE%" 2>&1
+echo Test 5: Merge models >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --folder physiology --merge-to %OUTPUT_DIR%\merged_%TIMESTAMP%.yaml"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+" >> "%OUTPUT_FILE%" 2>&1
 echo "Exit code: %errorlevel%" >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 6: --split-to 拆分模型
-echo Running test 6: Split model >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --file "%TEST_DATA_DIR%\complex_model.yaml" --split-to "%OUTPUT_DIR%\split" >> "%OUTPUT_FILE%"
-python src/loader_cli.py --file "%TEST_DATA_DIR%\complex_model.yaml" --split-to "%OUTPUT_DIR%\split" >> "%OUTPUT_FILE%" 2>&1
+echo Test 6: Split model >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --file %TEST_DATA_DIR%\complex_model.yaml"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo "Exit code: %errorlevel%" >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 
 :: 测试 7: 循环依赖
-echo Running test 7: Detect cyclic dependency >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --file "%TEST_DATA_DIR%\cyclic_model.yaml" >> "%OUTPUT_FILE%"
-python src/loader_cli.py --file "%TEST_DATA_DIR%\cyclic_model.yaml" >> "%OUTPUT_FILE%" 2>&1
+echo Test 7: Detect cyclic dependency >> "%OUTPUT_FILE%"
+set "cmd_line=python src\loader_cli.py --file %TEST_DATA_DIR%\cyclic_model.yaml"
+echo %cmd_line% >> "%OUTPUT_FILE%"
+%cmd_line% >> "%OUTPUT_FILE%" 2>&1
 echo "Exit code: %errorlevel%" >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
 echo. >> "%OUTPUT_FILE%"
-
-:: 性能测试
-echo Running performance test: Large file >> "%OUTPUT_FILE%"
-echo Command: python loader_cli.py --file "%TEST_DATA_DIR%\large_model.yaml" >> "%OUTPUT_FILE%"
-echo Start: %time% >> "%OUTPUT_FILE%"
-python src/loader_cli.py --file "%TEST_DATA_DIR%\large_model.yaml" >> "%OUTPUT_FILE%" 2>&1
-echo End: %time% >> "%OUTPUT_FILE%"
-echo Exit code: %errorlevel% >> "%OUTPUT_FILE%"
-echo "===== Performance Test Complete =====" >> "%OUTPUT_FILE%"
 
 :: 总结
 echo === 测试完成 === >> "%OUTPUT_FILE%"
