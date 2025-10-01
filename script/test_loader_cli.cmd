@@ -17,7 +17,7 @@ if "%DATE_STR:~0,3%"=="星期" set "DATE_STR=%DATE_STR:~4,10%"
 set "DATE_STR=%DATE_STR:/=-%"
 set "TIME_STR=%time::=-%"
 set "TIMESTAMP=%DATE_STR%_%TIME_STR:~0,8%"
-set "OUTPUT_DIR=%PROJECT_DIR%\users\tester"
+set "OUTPUT_DIR=%PROJECT_DIR%\users\test"
 set "OUTPUT_FILE=%OUTPUT_DIR%\test_%TIMESTAMP%.txt"
 :: 创建输出目录
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
