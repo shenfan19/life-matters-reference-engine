@@ -58,31 +58,31 @@ variables:
     unit: 毫升
     value: 0
   ## tester
-  stomach_carbohydrate:
-    description: Placeholder for stomach_carbohydrate
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-      - 0
-      - 100
-  stomach_fat:
-    description: Placeholder for stomach_fat
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-      - 0
-      - 100
-  stomach_protein:
-    description: Placeholder for stomach_protein
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-      - 0
-      - 100
-  body_water:
+  # stomach_carbohydrate:
+  #   description: Placeholder for stomach_carbohydrate
+  #   value: 0.0
+  #   type: state
+  #   unit: unknown
+  #   bounds:
+  #     - 0
+  #     - 100
+  # stomach_fat:
+  #   description: Placeholder for stomach_fat
+  #   value: 0.0
+  #   type: state
+  #   unit: unknown
+  #   bounds:
+  #     - 0
+  #     - 100
+  # stomach_protein:
+  #   description: Placeholder for stomach_protein
+  #   value: 0.0
+  #   type: state
+  #   unit: unknown
+  #   bounds:
+  #     - 0
+  #     - 100
+  # body_water:
     description: Placeholder for body_water
     value: 0.0
     type: state
