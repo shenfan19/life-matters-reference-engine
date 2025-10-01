@@ -118,6 +118,7 @@ class ModStructure(Loader, Validator, Simulation):
                 }
             }
             # 直接使用output_dir生成文件路径（如physiology/或mods/physiology/）
+            # patch_path2 = os.path.join(output_dir, "patch")
             patch_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
             with open(patch_path, 'w', encoding='utf-8') as f:
                 yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True)

@@ -80,20 +80,23 @@ class LoaderCLI:
                                 "extra_deps": len(model.optimizer.get('python_envs', []))
                             }
                     except Exception as e:
-                        logger.warning(f"跳过模型 {file} 因错误: {e}")  # 警告错误并跳过
+                        logger.warning(f"跳过模型 {file} 因错误: {e}")
                         continue
             else:
-                # 否则，扫描多个文件夹
-                models = self.engine.scan_models(folders)  # 调用扫描多个文件夹
+                # 否则，扫描文件夹（直接传递列表）
+                models = self.engine.scan_models(folders)
             
             # 如果没有找到任何模型，返回错误信息
             if not models:
-                return {"success": False, "message": self.lang_manager.get_translation("no_models_in_folder", folder=', '.join(folders) if folders else "root")}
+                folder_display = ', '.join(folders) if folders else "root"
+                return {"success": False, "message": self.lang_manager.get_translation("no_models_in_folder", folder=folder_display)}
             
             result_data = []
             # 遍历模型信息并获取更详细的数据。
             for name, info in models.items():
                 try:
+                    # 确定模型所在的文件夹
+                    folder = folders[0] if folders and len(folders) == 1 else None
                     model = self.engine.fetch(name, folder)
                     if model:
                         result_data.append({
@@ -103,7 +106,6 @@ class LoaderCLI:
                             "critical": sum(1 for formula in model.formulas.values() if formula.condition != True and not isinstance(formula.condition, bool)),
                             "version": info["version"],
                             "description": model.metadata.description,
-                            # 更新：添加 simulator 和 optimizer 信息
                             "hooks": info["hooks"],
                             "optimizer_method": info["optimizer_method"],
                             "extra_deps": info["extra_deps"]
@@ -114,31 +116,32 @@ class LoaderCLI:
 
             # 如果详细数据为空，返回错误信息。
             if not result_data:
-                return {"success": False, "message": self.lang_manager.get_translation("no_models_in_folder", folder=folder or "root")}
+                folder_display = ', '.join(folders) if folders else "root"
+                return {"success": False, "message": self.lang_manager.get_translation("no_models_in_folder", folder=folder_display)}
 
             # 打印格式化的表格输出。
             print(f"\n{self.lang_manager.get_translation('list_header', count=len(result_data))}")
             print(f"{self.lang_manager.get_translation('table_name'):<30} "
-                  f"{self.lang_manager.get_translation('table_variables'):<10} "
-                  f"{self.lang_manager.get_translation('table_formulas'):<10} "
-                  f"{self.lang_manager.get_translation('table_critical'):<10} "
-                  f"{self.lang_manager.get_translation('table_version'):<10} "
-                  f"{self.lang_manager.get_translation('table_hooks'):<10} "  # 更新：添加 hooks 列
-                  f"{self.lang_manager.get_translation('table_optimizer'):<15} "  # 更新：添加 optimizer 方法列
-                  f"{self.lang_manager.get_translation('table_deps'):<10} "  # 更新：添加额外依赖列
-                  f"{self.lang_manager.get_translation('table_state'):<50}")
+                f"{self.lang_manager.get_translation('table_variables'):<10} "
+                f"{self.lang_manager.get_translation('table_formulas'):<10} "
+                f"{self.lang_manager.get_translation('table_critical'):<10} "
+                f"{self.lang_manager.get_translation('table_version'):<10} "
+                f"{self.lang_manager.get_translation('table_hooks'):<10} "
+                f"{self.lang_manager.get_translation('table_optimizer'):<15} "
+                f"{self.lang_manager.get_translation('table_deps'):<10} "
+                f"{self.lang_manager.get_translation('table_state'):<50}")
             print("-" * 150)
             for model in result_data:
                 print(f"{model['name']:<30} {model['variables']:<10} {model['formulas']:<10} "
-                      f"{model['critical']:<10} {model['version']:<10} {model['hooks']:<10} "
-                      f"{model['optimizer_method']:<15} {model['extra_deps']:<10} {model['description']:<50}")
+                    f"{model['critical']:<10} {model['version']:<10} {model['hooks']:<10} "
+                    f"{model['optimizer_method']:<15} {model['extra_deps']:<10} {model['description']:<50}")
             
             return {"success": True, "data": result_data}
 
         except Exception as e:
             logger.error(f"列出模型失败: {e}")
             return {"success": False, "message": self.lang_manager.get_translation("list_models_failed", error=str(e))}
-    
+
     def load_and_merge(self, folders: Optional[List[str]] = None, files: Optional[List[str]] = None, output_path: Optional[str] = None) -> Dict[str, Any]:
         """
         加载并合并指定文件夹和文件的模型。

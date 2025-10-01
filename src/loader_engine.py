@@ -83,46 +83,53 @@ class LoaderEngine:
                 return os.path.abspath(file_path)
         return None
     
-    def scan_models(self, folder: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    def scan_models(self, folders: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
         扫描指定文件夹中的所有模型文件（不递归），并返回它们的元数据。
-        :param folder: 可选的子文件夹。
+        :param folders: 可选的子文件夹列表。
         :return: 一个字典，键是模型名称，值是包含模型元数据的字典。
         """
         models = {}
         base_dir = self.mods_directory
-        search_dir = os.path.join(base_dir, folder) if folder else base_dir
         
-        if not os.path.exists(search_dir):
-            logger.error(f"目录 {search_dir} 未找到")
-            return models
+        # 如果没有提供文件夹，扫描根目录
+        if not folders:
+            folders = [None]
         
-        # 只列出当前目录的文件，不递归
-        files = [f for f in os.listdir(search_dir) if os.path.isfile(os.path.join(search_dir, f))]
-        
-        for file in files:
-            if file.endswith('.yaml'):
-                model_name = os.path.splitext(file)[0]
-                try:
-                    # 尝试加载模型以获取其元数据（使用新 find_model_file）
-                    file_path = self.find_model_file(model_name, folder)
-                    if file_path:
-                        model = ModStructure()  # 创建临时 ModStructure 加载
-                        model.load_model(file_path, model_name)
-                        models[model_name] = {
-                            "name": model.metadata.name,
-                            "variables": len(model.variables),
-                            "formulas": len(model.formulas),
-                            "version": model.metadata.version,
-                            "hooks": len(model.simulator.get('hooks', [])),
-                            "optimizer_method": model.optimizer.get('method', 'N/A'),
-                            "extra_deps": len(model.optimizer.get('python_envs', []))
-                        }
-                except Exception as e:
-                    logger.warning(f"跳过模型 {model_name} 因错误: {e}")
-                    continue
+        # 遍历每个文件夹
+        for folder in folders:
+            search_dir = os.path.join(base_dir, folder) if folder else base_dir
+            
+            if not os.path.exists(search_dir):
+                logger.error(f"目录 {search_dir} 未找到")
+                continue
+            
+            # 只列出当前目录的文件，不递归
+            files = [f for f in os.listdir(search_dir) if os.path.isfile(os.path.join(search_dir, f))]
+            
+            for file in files:
+                if file.endswith('.yaml'):
+                    model_name = os.path.splitext(file)[0]
+                    try:
+                        # 尝试加载模型以获取其元数据（使用新 find_model_file）
+                        file_path = self.find_model_file(model_name, folder)
+                        if file_path:
+                            model = ModStructure()  # 创建临时 ModStructure 加载
+                            model.load_model(file_path, model_name)
+                            models[model_name] = {
+                                "name": model.metadata.name,
+                                "variables": len(model.variables),
+                                "formulas": len(model.formulas),
+                                "version": model.metadata.version,
+                                "hooks": len(model.simulator.get('hooks', [])),
+                                "optimizer_method": model.optimizer.get('method', 'N/A'),
+                                "extra_deps": len(model.optimizer.get('python_envs', []))
+                            }
+                    except Exception as e:
+                        logger.warning(f"跳过模型 {model_name} 因错误: {e}")
+                        continue
         return models
-    
+
     def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None) -> Optional[ModStructure]:
         """
         递归地加载指定名称的模型及其所有导入项。
@@ -154,7 +161,7 @@ class LoaderEngine:
             return self.models_cache[cache_key]
 
         try:
-            model = ModStructure(self.language)
+            model = ModStructure(self.mods_directory, self.language)
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
             
@@ -324,7 +331,7 @@ class LoaderEngine:
         :return: 包含拆分结果的字典。
         """
         try:
-            model = ModStructure(language=self.language)  # 创建空模型
+            model = ModStructure(mods_directory=self.mods_directory, language=self.language)  # 创建空模型
             if folder:
                 # 处理 --folder：加载文件夹所有文件，以同名文件为根
                 result = self.merge_models_by_folder([folder], None)
