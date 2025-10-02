@@ -6,6 +6,7 @@ __pycache__/
 # Personal archived
 _saved_/
 users/test/
+mods/patch/
 
 # Build artifacts
 build/

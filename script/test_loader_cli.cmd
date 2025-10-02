@@ -46,7 +46,7 @@ python src\loader_cli.py --folder physiology --merge-to merged.yaml >>%LOGF% & c
 python src\loader_cli.py --file %TEST_DATA_DIR%\cyclic_model.yaml >>%LOGF% & call :RUNN
 
 :: file split
-python src\loader_cli.py --merged.yaml --merge-to merged.yaml >>%LOGF% & call :RUNN
+python src\loader_cli.py --file merged.yaml --split-to merged >>%LOGF% & call :RUNN
 python src\loader_cli.py --file %TEST_DATA_DIR%\complex_model.yaml >>%LOGF% & call :RUNN
 
 :: file list

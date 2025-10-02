@@ -3,6 +3,7 @@ metadata:
   version: 1.0.0
   author: Test Author
   description: Test model
+
 variables:
   blood_glucose:
     description: Blood glucose level
@@ -14,6 +15,7 @@ variables:
     value: 0.0
     type: state
     unit: L
+
 formulas:
   obesity_increase:
     description: Increase obesity
