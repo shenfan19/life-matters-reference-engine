@@ -1,0 +1,33 @@
+variables:
+  exercise_intensity:
+    description: Placeholder for exercise_intensity
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  carb_intake:
+    description: Placeholder for carb_intake
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  insulin_level:
+    description: Placeholder for insulin_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  physical_activity:
+    description: Placeholder for physical_activity
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100

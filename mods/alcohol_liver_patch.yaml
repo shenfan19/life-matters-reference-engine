@@ -1,0 +1,17 @@
+variables:
+  dt:
+    description: Placeholder for dt
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  liver_health_score:
+    description: Placeholder for liver_health_score
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
