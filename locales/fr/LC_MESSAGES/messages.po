@@ -19,6 +19,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
+msgid "test_lang_message"
+msgstr "Fr language loaded"
+
 msgid "model_not_found"
 msgstr "Modèle {model_name} non trouvé"
 

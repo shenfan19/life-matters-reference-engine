@@ -21,7 +21,7 @@ import sys
 import logging
 from typing import Dict, Any, List, Optional
 from loader_engine import LoaderEngine
-from lang_manager import LanguageManager
+from babel_manager import BabelLanguageManager
 from mod_structure import ModStructure, ModelMetadata, merge_dicts
 
 # 配置日志记录器，以便在运行时输出信息和错误。
@@ -39,7 +39,8 @@ class LoaderCLI:
         :param language: 命令行界面的显示语言。
         """
         # 初始化语言管理器，用于多语言支持。
-        self.lang_manager = LanguageManager(default_language=language)
+        self.lang_manager = BabelLanguageManager(default_language=language)
+        print(f"LifeMatters Loader CLI - {self.lang_manager.get_translation('test_lang_message')}")
         # 初始化核心加载引擎。
         self.engine = LoaderEngine(mods_directory, language)
         # 设置日志记录器。
@@ -181,7 +182,7 @@ class LoaderCLI:
             return result
         except Exception as e:
             print(f"✗ {self.lang_manager.get_translation('split_failed', error=str(e))}")
-            logger.error(f"拆分失败: {e}")
+            logger.error(f"Split failed: {e}")
             return {"success": False, "error": str(e)}
     
 def create_parser() -> argparse.ArgumentParser:
@@ -204,7 +205,7 @@ Examples:
     )
     # 添加各种命令行参数
     parser.add_argument('--mods-dir', default='mods', help='模型目录 (默认: mods)')  # 模型根目录参数
-    parser.add_argument('--lang', default='en', choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], help='输出语言')  # 语言选择参数
+    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='输出语言')  # 语言选择参数
     parser.add_argument('--folder', nargs='*', help='模型目录中的子文件夹（支持多个）')  # 修改为 nargs='*', 返回列表，支持0或多个
     parser.add_argument('--list', action='store_true', help='列出可用模型')  # 列出模型标志
     parser.add_argument('--file', nargs='+', help='加载和合并指定的模型（支持相对路径，如 physiology/obesity_diabetes）')  # 文件参数，支持多个

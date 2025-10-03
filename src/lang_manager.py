@@ -31,7 +31,7 @@ class LanguageManager:
     def __init__(self, default_language: str = "en", translation_dir: str = "langs"):
         """
         初始化 LanguageManager 实例。
-        :param default_language: 默认语言代码，例如 "en"（英语）或 "zh-Hans"（简体中文）。
+        :param default_language: 默认语言代码，例如 "en"（英语）或 "zh_Hans"（简体中文）。
         :param translation_dir: 包含外部翻译文件的目录路径。
         """
         # 设置当前语言为默认语言。
@@ -108,7 +108,7 @@ class LanguageManager:
                 "model_validation_failed": "Model validation failed with {num_errors} errors:\n- {errors}\n\n{patch_message}",
                 "failed_generate_patch": "Failed to generate patch file {patch_file}: {e}",
             },
-            "zh-Hans": {
+            "zh_Hans": {
                 "model_not_found": "模型 {model_name} 未找到",
                 "merge_success": "成功合并 {vars} 个变量和 {formulas} 个公式到 {output}",
                 "merge_no_export": "在内存中合并 {vars} 个变量和 {formulas} 个公式",

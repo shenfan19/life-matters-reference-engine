@@ -34,5 +34,5 @@ if __name__ == '__main__':
     # 假设你的 YAML 文件在 langs/ 目录
     convert_yaml_to_po('langs/en.yaml', 'locales', 'en')
     convert_yaml_to_po('langs/fr.yaml', 'locales', 'fr')
-    convert_yaml_to_po('langs/zh-Hans.yaml', 'locales', 'zh_Hans')
-    convert_yaml_to_po('langs/zh-Hant.yaml', 'locales', 'zh_Hant')
+    convert_yaml_to_po('langs/zh_Hans.yaml', 'locales', 'zh_Hans')
+    convert_yaml_to_po('langs/zh_Hant.yaml', 'locales', 'zh_Hant')

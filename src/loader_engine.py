@@ -101,7 +101,7 @@ class LoaderEngine:
             search_dir = os.path.join(base_dir, folder) if folder else base_dir
             
             if not os.path.exists(search_dir):
-                logger.error(f"目录 {search_dir} 未找到")
+                logger.error(f"Fail to find folder {search_dir}")
                 continue
             
             # 只列出当前目录的文件，不递归

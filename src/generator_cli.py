@@ -3,14 +3,14 @@ import sys
 import logging
 from typing import Dict, Any
 from generator_engine import GeneratorEngine
-from lang_manager import LanguageManager
+from babel_manager import BabelLanguageManager
 
 logger = logging.getLogger(__name__)
 
 class GeneratorCLI:
     """模型生成命令行接口，基于 GeneratorEngine 生成 YAML 模型文件。"""
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
-        self.lang_manager = LanguageManager(default_language=language)
+        self.lang_manager = BabelLanguageManager(default_language=language)
         self.engine = GeneratorEngine(mods_directory)
         self.setup_logging()
 
@@ -56,7 +56,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
-    parser.add_argument('--lang', default='en', choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], help='Language for output')
+    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='Language for output')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')
     group = parser.add_mutually_exclusive_group(required=True)

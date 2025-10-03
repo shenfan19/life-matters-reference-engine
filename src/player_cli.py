@@ -8,9 +8,8 @@ import sys
 import logging
 import yaml
 from typing import Dict, Any, Optional
-from lang_manager import LanguageManager
+from babel_manager import BabelLanguageManager
 from player_engine import PlayerEngine
-from mod_structure import ModStructure
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。
 logger = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ class PlayerCLI:
     
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
         # 初始化 LanguageManager 以支持多语言，默认使用指定语言。
-        self.lang_manager = LanguageManager(default_language=language)
+        self.lang_manager = BabelLanguageManager(default_language=language)
         # 初始化 PlayerEngine 用于执行仿真任务，指定模型目录和语言。
         self.engine = PlayerEngine(mods_directory, language)
         # 配置日志设置。
@@ -128,7 +127,7 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Player CLI - Run simulations and display states.',
         epilog='''
 Examples:
-  %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zh-Hans
+  %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zh_Hans
   %(prog)s --state digestive --format yaml --folder physiology
   %(prog)s --event 'variables: {blood_glucose: 100}' --folder physiology
         ''',
@@ -136,7 +135,7 @@ Examples:
     )
     # 定义命令行参数，包括模型目录、语言、仿真参数等。
     parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
-    parser.add_argument('--lang', default='en', choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], help='Language for output')
+    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='Language for output')
     parser.add_argument('--folder', help='Subfolder in mods directory')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')
