@@ -152,24 +152,21 @@ class LoaderCLI:
             if not folders and not files:
                 return {"success": False, "error": "未提供任何模型或文件夹用于合并", "variables": 0, "formulas": 0}
             
-            # 如果没有指定输出路径，使用默认的 merged 目录
-            if not output_path:
-                # 生成默认文件名
-                if folders and len(folders) == 1:
-                    default_name = folders[0]
-                elif files and len(files) == 1:
-                    default_name = os.path.splitext(os.path.basename(files[0]))[0]
-                else:
-                    default_name = "merged_model"
+            # 处理输出路径：只有指定了 --merge-to 才处理输出
+            final_output_path = None
+            if output_path:
+                # 如果指定了输出路径，添加到 merged 目录
+                if not output_path.endswith('.yaml'):
+                    output_path = output_path + '.yaml'
                 
-                output_path = os.path.join(self.engine.mods_directory, "merged", f"{default_name}.yaml")
-            
-            # 确保输出路径以 .yaml 结尾
-            if not output_path.endswith('.yaml'):
-                output_path = output_path + '.yaml'
+                # 如果是相对路径，放到 mods/merged/ 下
+                if not os.path.isabs(output_path):
+                    final_output_path = os.path.join(self.engine.mods_directory, "merged", output_path)
+                else:
+                    final_output_path = output_path
             
             # 使用统一的合并方法
-            result = self.engine.merge_models(model_names=files, folders=folders, output_path=output_path)
+            result = self.engine.merge_models(model_names=files, folders=folders, output_path=final_output_path)
             
             if result["success"]:
                 print(f"✓ 合并成功: 变量 {result['variables']}, 公式 {result['formulas']}, 输出到 {output_path or 'memory'}")

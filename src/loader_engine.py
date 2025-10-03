@@ -278,8 +278,8 @@ class LoaderEngine:
                 conflicts=[],
                 tags=[]
             )
-            
-            # 最终验证
+                
+            # 验证模型
             try:
                 merged_model.validate_model()
             except ValueError as ve:
@@ -290,16 +290,8 @@ class LoaderEngine:
                     "formulas": len(merged_model.formulas)
                 }
             
-            # 导出
+            # 只有指定了 output_path 才导出
             if output_path:
-                # 如果没有指定路径，使用默认的 merged 目录
-                if not output_path:
-                    output_path = os.path.join(self.mods_directory, "merged", f"{mod_name}.yaml")
-                
-                # 确保输出路径是 .yaml 文件
-                if not output_path.endswith('.yaml'):
-                    output_path = output_path + '.yaml'
-                
                 # 确保目录存在
                 output_dir = os.path.dirname(output_path)
                 if output_dir:
@@ -311,8 +303,7 @@ class LoaderEngine:
                 "success": True,
                 "data": merged_model,
                 "variables": len(merged_model.variables),
-                "formulas": len(merged_model.formulas),
-                "output_path": output_path  # 添加输出路径信息
+                "formulas": len(merged_model.formulas)
             }
             
         except Exception as e:
