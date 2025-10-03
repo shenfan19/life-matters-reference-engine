@@ -292,13 +292,27 @@ class LoaderEngine:
             
             # 导出
             if output_path:
+                # 如果没有指定路径，使用默认的 merged 目录
+                if not output_path:
+                    output_path = os.path.join(self.mods_directory, "merged", f"{mod_name}.yaml")
+                
+                # 确保输出路径是 .yaml 文件
+                if not output_path.endswith('.yaml'):
+                    output_path = output_path + '.yaml'
+                
+                # 确保目录存在
+                output_dir = os.path.dirname(output_path)
+                if output_dir:
+                    os.makedirs(output_dir, exist_ok=True)
+                
                 merged_model.export_to_yaml(output_path)
             
             return {
                 "success": True,
                 "data": merged_model,
                 "variables": len(merged_model.variables),
-                "formulas": len(merged_model.formulas)
+                "formulas": len(merged_model.formulas),
+                "output_path": output_path  # 添加输出路径信息
             }
             
         except Exception as e:

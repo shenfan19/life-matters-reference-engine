@@ -23,6 +23,7 @@ from typing import Dict, Any, List, Optional
 from loader_engine import LoaderEngine
 from babel_manager import BabelLanguageManager
 from mod_structure import ModStructure, ModelMetadata, merge_dicts
+import os
 
 # 配置日志记录器，以便在运行时输出信息和错误。
 logger = logging.getLogger(__name__)
@@ -150,6 +151,22 @@ class LoaderCLI:
         try:
             if not folders and not files:
                 return {"success": False, "error": "未提供任何模型或文件夹用于合并", "variables": 0, "formulas": 0}
+            
+            # 如果没有指定输出路径，使用默认的 merged 目录
+            if not output_path:
+                # 生成默认文件名
+                if folders and len(folders) == 1:
+                    default_name = folders[0]
+                elif files and len(files) == 1:
+                    default_name = os.path.splitext(os.path.basename(files[0]))[0]
+                else:
+                    default_name = "merged_model"
+                
+                output_path = os.path.join(self.engine.mods_directory, "merged", f"{default_name}.yaml")
+            
+            # 确保输出路径以 .yaml 结尾
+            if not output_path.endswith('.yaml'):
+                output_path = output_path + '.yaml'
             
             # 使用统一的合并方法
             result = self.engine.merge_models(model_names=files, folders=folders, output_path=output_path)
