@@ -7,6 +7,7 @@ __pycache__/
 _saved_/
 users/test/
 mods/patch/
+messages.mo
 
 # Build artifacts
 build/

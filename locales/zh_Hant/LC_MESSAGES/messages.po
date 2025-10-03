@@ -1,9 +1,9 @@
-# Chinese (Simplified) translations for LifeMatters.
+# Chinese (Traditional) translations for LifeMatters.
 # Copyright (C) 2025 ORGANIZATION
 # This file is distributed under the same license as the LifeMatters
 # project.
-# FIRST AUTHOR shenfan19@gmail.com, 2025.
-
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: LifeMatters VERSION\n"
@@ -11,8 +11,8 @@ msgstr ""
 "POT-Creation-Date: 2025-10-03 09:10+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh_Hans\n"
-"Language-Team: zh_Hans <LL@li.org>\n"
+"Language: zh_Hant\n"
+"Language-Team: zh_Hant <LL@li.org>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,80 +20,74 @@ msgstr ""
 "Generated-By: Babel 2.17.0\n"
 
 msgid "model_not_found"
-msgstr "模型 {model_name} 未找到"
+msgstr "模型 {model_name} 未尋找"
 
 msgid "merge_success"
-msgstr "成功合并 {vars} 个变量和 {formulas} 个公式到 {output}"
+msgstr "成功合併 {vars} 個變量和 {formulas} 個公式到 {output}"
 
 msgid "merge_no_export"
-msgstr "在内存中合并 {vars} 个变量和 {formulas} 个公式"
+msgstr "在記憶體中合併 {vars} 個變量和 {formulas} 個公式"
 
 msgid "list_header"
 msgstr "可用模型 ({count})："
 
 msgid "table_name"
-msgstr "名称"
+msgstr "名稱"
 
 msgid "table_variables"
-msgstr "变量"
+msgstr "變量"
 
 msgid "table_formulas"
 msgstr "公式"
 
 msgid "table_critical"
-msgstr "临界条件"
+msgstr "臨界條件"
 
 msgid "table_version"
 msgstr "版本"
 
 msgid "error_output_required"
-msgstr "错误：合并操作需要指定 --merge-to 参数"
+msgstr "錯誤：合併操作需要指定 --merge-to 參數"
 
 msgid "error_no_input"
-msgstr "错误：必须指定 --folder 或 --file 参数"
+msgstr "錯誤：必須指定 --folder 或 --file 參數"
 
 msgid "folder_not_found"
-msgstr "文件夹 {folder} 在 mods 目录中未找到"
+msgstr "文件夾 {folder} 在 mods 目錄中未尋找"
 
 msgid "no_models_in_folder"
-msgstr "文件夹 {folder} 中未找到有效模型"
+msgstr "文件夾 {folder} 中未尋找有效模型"
+
+msgid "simulation_start"
+msgstr "為 {model_name} 啟動模擬"
 
 msgid "simulation_complete"
-msgstr "模拟完成，结果保存到 {output}"
+msgstr "模擬完成，結果保存到 {output}"
+
+msgid "variable_state"
+msgstr "變量 {var_name}：{value} {unit}"
 
 msgid "invalid_parameter"
-msgstr "无效参数：{param}"
+msgstr "無效參數：{param}"
 
 msgid "table_state"
-msgstr "状态"
+msgstr "狀態"
 
 msgid "table_value"
 msgstr "值"
 
 msgid "table_unit"
-msgstr "单位"
+msgstr "單位"
 
 msgid "critical_conditions_header"
-msgstr "触发的临界条件"
+msgstr "觸發的臨界條件"
 
 msgid "event_applied"
-msgstr "事件应用成功"
+msgstr "事件應用成功"
 
 msgid "app_title"
 msgstr "LifeMatters 仿真框架"
 
 msgid "welcome_message"
-msgstr "欢迎使用 LifeMatters"
-
-msgid "simulation_start"
-msgstr "开始模拟模型：{model_name}"
-
-msgid "variable_state"
-msgstr "变量 {var_name}: {value} {unit}"
-
-msgid "optimization_success"
-msgstr "优化建议：参数={params}, 目标值={value}"
-
-msgid "invalid_dt_unit"
-msgstr "无效时间单位：{unit}"
+msgstr "歡迎使用 LifeMatters"
 
