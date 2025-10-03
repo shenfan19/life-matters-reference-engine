@@ -1,0 +1,30 @@
+metadata:
+  name: abc_carbohydrate_ingestion
+  version: 1.0.0
+  author: ''
+  description: Split module for formula carbohydrate_ingestion
+variables:
+  food_carbohydrate:
+    description: 食物碳水化合物含量，包括糖类和淀粉
+    value: 0
+    type: input
+    unit: 克
+    bounds:
+    - 0
+    - 200
+  stomach_carbohydrate:
+    description: Placeholder for stomach_carbohydrate
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+formulas:
+  carbohydrate_ingestion:
+    description: 碳水化合物摄入到胃
+    condition: food_carbohydrate > 0
+    priority: 1
+    dynamics:
+      food_carbohydrate: '0'
+      stomach_carbohydrate: stomach_carbohydrate + food_carbohydrate

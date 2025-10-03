@@ -188,7 +188,10 @@ class LoaderCLI:
         :return: 包含拆分结果的字典。
         """
         try:
-            result = self.engine.split_model(model_name, output_dir, folder)  # 调用引擎拆分
+            # 构建完整的输出路径：mods/splited/output_dir/
+            full_output_dir = os.path.join(self.engine.mods_directory, "splited", output_dir)
+            
+            result = self.engine.split_model(model_name, full_output_dir, folder)
             if result["success"]:
                 print(f"✓ {self.lang_manager.get_translation('split_success', output=result['data']['patch_file'], vars=result['data']['variables'], formulas=result['data']['formulas'])}")
             else:

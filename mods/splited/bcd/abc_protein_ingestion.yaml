@@ -1,0 +1,30 @@
+metadata:
+  name: abc_protein_ingestion
+  version: 1.0.0
+  author: ''
+  description: Split module for formula protein_ingestion
+variables:
+  food_protein:
+    description: 蛋白质摄入量，通过饮食摄入
+    value: 0
+    type: input
+    unit: 克
+    bounds:
+    - 0
+    - 100
+  stomach_protein:
+    description: Placeholder for stomach_protein
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+formulas:
+  protein_ingestion:
+    description: 蛋白质摄入到胃
+    condition: food_protein > 0
+    priority: 1
+    dynamics:
+      food_protein: '0'
+      stomach_protein: stomach_protein + food_protein

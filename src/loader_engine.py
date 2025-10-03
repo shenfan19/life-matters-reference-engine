@@ -329,60 +329,45 @@ class LoaderEngine:
     
     def split_model(self, model_name: str, output_dir: str, folder: Optional[str] = None) -> Dict[str, Any]:
         """
-        拆分模型并生成 patch 文件，使用文件名而非 metadata.name。
+        拆分模型并生成多个文件，使用文件名而非 metadata.name。
         :param model_name: 模型名称（文件或文件夹名）。
-        :param output_dir: 输出目录。
+        :param output_dir: 输出目录（完整路径，如 mods/splited/bcd/）。
         :param folder: 可选的子文件夹（用于 --folder）。
         :return: 包含拆分结果的字典。
         """
         try:
-            model = ModStructure(mods_directory=self.mods_directory, language=self.language)  # 创建空模型
+            model = ModStructure(mods_directory=self.mods_directory, language=self.language)
+            
             if folder:
                 # 处理 --folder：加载文件夹所有文件，以同名文件为根
                 result = self.merge_models_by_folder([folder], None)
                 if not result["success"]:
                     return {"success": False, "error": result["error"]}
-                model = result["data"]  # 获取合并模型
-                # 使用文件夹名生成 patch 文件名
-                patch_filename = f"{folder}_patch.yaml"
-                # 放在文件夹内
-                patch_path = os.path.join(self.mods_directory, folder, patch_filename)
-                model.current_filename = folder  # 修改：设置current_filename
+                model = result["data"]
+                model.current_filename = folder
             else:
                 # 处理 --file：加载指定文件及其 imports
                 model_path = self.find_model_file(model_name, folder)
                 if not model_path:
                     return {"success": False, "error": f"未找到模型文件 {model_name}"}
-                model.append_model(model_path, model_name, log_as_loaded=True, validate=False)  # 加载文件
-                # 使用文件名生成 patch 文件名
-                base_name = os.path.splitext(os.path.basename(model_name))[0]  # 提取文件名（无扩展名）
-                patch_filename = f"{base_name}_patch.yaml"
-                # 放在与输入文件同目录
-                patch_path = os.path.join(os.path.dirname(model_path), patch_filename)
-                model.current_filename = base_name  # 修改：设置current_filename
+                model.append_model(model_path, model_name, log_as_loaded=True, validate=False)
+                base_name = os.path.splitext(os.path.basename(model_name))[0]
+                model.current_filename = base_name
             
             # 确保输出目录存在
-            os.makedirs(os.path.dirname(patch_path), exist_ok=True)
+            os.makedirs(output_dir, exist_ok=True)
             
-            # 导出合并模型为 patch 文件
-            model.metadata = ModelMetadata(
-                name=f"{model.current_filename}_patch",  # 修改：使用current_filename
-                version="1.0.0",
-                author="LoaderEngine",
-                description=f"Patch 模型来自 {'文件夹 ' + folder if folder else '文件 ' + model_name}",
-                conflicts=[],
-                tags=["patch"]
-            )
-            model.export_to_yaml(patch_path)  # 导出到 patch 文件
+            # 调用 ModStructure 的 split_model 方法，传入输出目录
+            model.split_model(output_dir)
             
             return {
                 "success": True,
                 "data": {
-                    "patch_file": patch_path,
+                    "output_dir": output_dir,
                     "variables": len(model.variables),
                     "formulas": len(model.formulas)
                 }
             }
         except Exception as e:
-            logger.error(f"拆分模型失败: {e}")  # 记录错误
+            logger.error(f"拆分模型失败: {e}")
             return {"success": False, "error": str(e)}

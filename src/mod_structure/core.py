@@ -53,14 +53,17 @@ class ModStructure(Loader, Validator, Simulation):
         # 注入变量到符号表
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
-
+    
     def split_model(self, output_dir: str):
-        """将模型分解为独立公式文件和剩余文件，文件生成在output_dir（--file同级目录，--folder在文件夹内）"""
+        """
+        将模型分解为独立公式文件和剩余文件，所有文件生成在 output_dir 目录下。
+        :param output_dir: 输出目录（如 mods/splited/bcd/）
+        """
         # 确保输出目录存在
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        # 使用self.current_filename作为前缀，fallback到'unknown'
+        # 使用 self.current_filename 作为前缀
         prefix = self.current_filename or 'unknown'
 
         # 提取公式依赖变量
@@ -68,11 +71,11 @@ class ModStructure(Loader, Validator, Simulation):
         for form_name, formula in self.formulas.items():
             deps = set()
             if isinstance(formula.condition, str):
-                deps.update(self._extract_vars_from_expr(formula.condition))
+                deps.update(self.extract_vars_from_expr(formula.condition))
             for var, expr in formula.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
-                deps.update(self._extract_vars_from_expr(expr))
+                deps.update(self.extract_vars_from_expr(expr))
                 if var in self.variables:
                     deps.add(var)
             formula_deps[form_name] = deps
@@ -95,8 +98,8 @@ class ModStructure(Loader, Validator, Simulation):
             patch_data = {
                 'metadata': {
                     'name': f"{prefix}_{form_name}",
-                    'version': self.metadata.version,
-                    'author': self.metadata.author,
+                    'version': self.metadata.version if self.metadata else '1.0.0',
+                    'author': self.metadata.author if self.metadata else '',
                     'description': f"Split module for formula {form_name}",
                 },
                 'variables': {
@@ -117,30 +120,30 @@ class ModStructure(Loader, Validator, Simulation):
                     }
                 }
             }
-            # 直接使用output_dir生成文件路径（如physiology/或mods/physiology/）
-            # patch_path2 = os.path.join(output_dir, "patch")
-            patch_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
-            with open(patch_path, 'w', encoding='utf-8') as f:
+            # 直接在 output_dir 下生成文件
+            split_file_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
+            with open(split_file_path, 'w', encoding='utf-8') as f:
                 yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True)
-            logger.info(f"Generated split file: {patch_path}")
+            logger.info(f"Generated split file: {split_file_path}")
 
         # 生成剩余模型文件
         remaining_formulas = {k: v for k, v in self.formulas.items() if k not in independent_formulas}
         remaining_vars = set()
         for formula in remaining_formulas.values():
             if isinstance(formula.condition, str):
-                remaining_vars.update(self._extract_vars_from_expr(formula.condition))
+                remaining_vars.update(self.extract_vars_from_expr(formula.condition))
             for var, expr in formula.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
-                remaining_vars.update(self._extract_vars_from_expr(expr))
+                remaining_vars.update(self.extract_vars_from_expr(expr))
                 if var in self.variables:
                     remaining_vars.add(var)
+        
         remaining_data = {
             'metadata': {
                 'name': f"{prefix}_remaining",
-                'version': self.metadata.version,
-                'author': self.metadata.author,
+                'version': self.metadata.version if self.metadata else '1.0.0',
+                'author': self.metadata.author if self.metadata else '',
                 'description': f"Remaining shared modules of {prefix}",
             },
             'variables': {
@@ -161,12 +164,12 @@ class ModStructure(Loader, Validator, Simulation):
                 } for k, v in remaining_formulas.items()
             }
         }
-        # 直接使用output_dir生成文件路径
+        # 直接在 output_dir 下生成文件
         remaining_path = os.path.join(output_dir, f"{prefix}_remaining.yaml")
         with open(remaining_path, 'w', encoding='utf-8') as f:
             yaml.safe_dump(remaining_data, f, sort_keys=False, allow_unicode=True)
         logger.info(f"Generated remaining file: {remaining_path}")
-
+        
     def export_to_yaml(self, file_path: str):
         # 导出模型为 YAML 文件
         data = {
