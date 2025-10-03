@@ -43,11 +43,11 @@ python src\loader_cli.py --file test.yaml nonexistent >>%LOGF% & call :RUNN
 
 :: file merge model
 python src\loader_cli.py --folder physiology --merge-to merged.yaml >>%LOGF% & call :RUNN
-python src\loader_cli.py --file %TEST_DATA_DIR%\cyclic_model.yaml >>%LOGF% & call :RUNN
+python src\loader_cli.py --file %TEST_DATA_DIR%\merged.yaml >>%LOGF% & call :RUNN
 
 :: file split
-python src\loader_cli.py --file merged.yaml --split-to merged >>%LOGF% & call :RUNN
-python src\loader_cli.py --file %TEST_DATA_DIR%\complex_model.yaml >>%LOGF% & call :RUNN
+python src\loader_cli.py --file test.yaml --split-to splited >>%LOGF% & call :RUNN
+python src\loader_cli.py --file %TEST_DATA_DIR%\splited.yaml >>%LOGF% & call :RUNN
 
 :: file list
 @REM python src\loader_cli.py --list --file physiology\obesity_diabetes.yaml >>%LOGF% & call :RUNN

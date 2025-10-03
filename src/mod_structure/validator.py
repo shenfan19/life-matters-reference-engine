@@ -47,7 +47,7 @@ class Validator:
                     elif self.variables[param].type != VariableType.parameter:
                         all_errors.append(f"optimizer.parameters_to_optimize 中的 {param} 非 parameter 类型。")
             if 'targets_to_optimize' in self.optimizer:
-                for target in self.optimizer['targets']:
+                for target in self.optimizer['targets_to_optimize']:
                     if target not in self.variables:
                         all_missing_vars.append({'variable': target, 'context': 'optimizer.targets'})
             if 'python_envs' in self.optimizer:
