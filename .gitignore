@@ -5,9 +5,11 @@ __pycache__/
 
 # Personal archived
 _saved_/
-users/test/
-mods/patch/
 messages.mo
+mods/patch/
+mods/splited/
+mods/merged/
+users/test/
 
 # Build artifacts
 build/
