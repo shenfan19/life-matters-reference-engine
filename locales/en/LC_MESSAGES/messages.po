@@ -100,3 +100,8 @@ msgstr "Optimization suggestion: Parameters={params}, Target value={value}"
 msgid "invalid_dt_unit"
 msgstr "Invalid time unit: {unit}"
 
+msgid "load_model_from"
+msgstr "Load model from: {file_path}"
+
+msgid "append_model_from"
+msgstr "Append model from: {file_path}"

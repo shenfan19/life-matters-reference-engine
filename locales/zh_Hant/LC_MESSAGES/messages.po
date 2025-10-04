@@ -20,7 +20,7 @@ msgstr ""
 "Generated-By: Babel 2.17.0\n"
 
 msgid "test_lang_message"
-msgstr "中文繁体加载完成"
+msgstr "zh_Hant language loaded [to translate]"
 
 msgid "model_not_found"
 msgstr "模型 {model_name} 未尋找"
@@ -94,3 +94,8 @@ msgstr "LifeMatters 仿真框架"
 msgid "welcome_message"
 msgstr "歡迎使用 LifeMatters"
 
+msgid "load_model_from"
+msgstr "Load model from: {file_path} [to translate]"
+
+msgid "append_model_from"
+msgstr "Append model from: {file_path} [to translate]"

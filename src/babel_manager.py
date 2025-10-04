@@ -39,21 +39,17 @@ class BabelLanguageManager:
         return self._translations.gettext(message)
     
     def get_translation(self, message: str, **kwargs) -> str:
-        """获取翻译并格式化（兼容旧接口）"""
+        """获取翻译并格式化"""
         translated = self._translations.gettext(message)
-        try:
-            # 支持两种格式化方式
-            if kwargs:
-                # 尝试 % 格式化
-                try:
-                    return translated % kwargs
-                except (KeyError, TypeError):
-                    # 回退到 .format()
-                    return translated.format(**kwargs)
-            return translated
-        except Exception as e:
-            logger.warning(f"Translation formatting failed for '{message}': {e}")
-            return translated
+        
+        if kwargs:
+            try:
+                return translated.format(**kwargs)
+            except (KeyError, ValueError) as e:
+                logger.warning(f"Translation formatting failed for '{message}': {e}, kwargs={kwargs}")
+                return translated
+        
+        return translated
     
     @property
     def language(self):

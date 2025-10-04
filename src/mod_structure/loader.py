@@ -146,7 +146,11 @@ class Loader:
             # 应用数据（追加模式）
             self._apply_model_data(data, module_name, clear_existing=False)
             
-            log_message = self.lang_manager.get_translation("load_model_from" if log_as_loaded else "append_model_from", file_path=file_path)  # 用翻译替换，假设添加 'append_model_from' 键
+            if log_as_loaded:
+                log_message = self.lang_manager.get_translation("load_model_from", file_path=file_path)
+            else:
+                log_message = self.lang_manager.get_translation("append_model_from", file_path=file_path)
+            
             logger.info(log_message)
             
         except Exception as e:

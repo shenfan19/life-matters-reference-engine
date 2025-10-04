@@ -100,3 +100,8 @@ msgstr "优化建议：参数={params}, 目标值={value}"
 msgid "invalid_dt_unit"
 msgstr "无效时间单位：{unit}"
 
+msgid "load_model_from"
+msgstr "读取模型: {file_path}"
+
+msgid "append_model_from"
+msgstr "追加模型: {file_path}"

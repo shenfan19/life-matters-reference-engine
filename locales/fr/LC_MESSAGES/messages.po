@@ -20,7 +20,7 @@ msgstr ""
 "Generated-By: Babel 2.17.0\n"
 
 msgid "test_lang_message"
-msgstr "Fr language loaded"
+msgstr "Fr language loaded [to translate]"
 
 msgid "model_not_found"
 msgstr "Modèle {model_name} non trouvé"
@@ -90,3 +90,9 @@ msgstr "Événement appliqué avec succès"
 
 msgid "app_title"
 msgstr "Cadre de simulation LifeMatters"
+
+msgid "load_model_from"
+msgstr "Load model from: {file_path} [to translate]"
+
+msgid "append_model_from"
+msgstr "Append model from: {file_path} [to translate]"
