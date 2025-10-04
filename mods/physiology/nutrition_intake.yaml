@@ -11,48 +11,48 @@ metadata:
 variables:
   exercise_intensity:
     bounds:
-    - 0.0
-    - 3.0
+      - 0.0
+      - 3.0
     description: 运动强度，0-无运动，1-轻度，2-中度，3-高强度
     type: input
     unit: 强度级别
     value: 0.0
   food_carbohydrate:
     bounds:
-    - 0
-    - 200
+      - 0
+      - 200
     description: 食物碳水化合物含量，包括糖类和淀粉
     type: input
     unit: 克
     value: 0
   food_fat:
     bounds:
-    - 0
-    - 50
+      - 0
+      - 50
     description: 食物脂肪含量
     type: input
     unit: 克
     value: 0
   food_protein:
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
     description: 蛋白质摄入量，通过饮食摄入
     type: input
     unit: 克
     value: 0
   physical_activity:
     bounds:
-    - 0
-    - 300
+      - 0
+      - 300
     description: 体力活动水平
     type: input
     unit: METs
     value: 0
   water_intake:
     bounds:
-    - 0
-    - 1000
+      - 0
+      - 1000
     description: 水分摄入量
     type: input
     unit: 毫升

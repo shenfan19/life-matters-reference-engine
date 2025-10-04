@@ -45,8 +45,8 @@ imports:
 variables:
   body_water:
     bounds:
-    - 30000
-    - 45000
+      - 30000
+      - 45000
     description: 体液总量
     type: state
     unit: 毫升

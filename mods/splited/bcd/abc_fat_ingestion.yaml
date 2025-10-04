@@ -10,16 +10,16 @@ variables:
     type: input
     unit: 克
     bounds:
-    - 0
-    - 50
+      - 0
+      - 50
   stomach_fat:
     description: Placeholder for stomach_fat
     value: 0.0
     type: state
     unit: unknown
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
 formulas:
   fat_ingestion:
     description: 脂肪摄入到胃

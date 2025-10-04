@@ -14,192 +14,192 @@ imports:
 variables:
   amino_acids:
     bounds:
-    - 0.0
-    - 5.0
+      - 0.0
+      - 5.0
     description: 氨基酸血浆浓度
     type: state
     unit: mmol/L
     value: 0.0
   bile_acids:
     bounds:
-    - 0.0
-    - 50.0
+      - 0.0
+      - 50.0
     description: 胆汁酸水平
     type: state
     unit: mmol/L
     value: 0.0
   bile_function:
     bounds:
-    - 0.0
-    - 1.0
+      - 0.0
+      - 1.0
     description: 胆汁分泌功能，范围0-1，1为完全正常
     type: parameter
     unit: 效率系数
     value: 0.8
   cholecystokinin_level:
     bounds:
-    - 0.0
-    - 100.0
+      - 0.0
+      - 100.0
     description: 胆囊收缩素水平
     type: state
     unit: pg/mL
     value: 0.0
   digestive_efficiency:
     bounds:
-    - 0.0
-    - 1.0
+      - 0.0
+      - 1.0
     description: 整体消化效率
     type: state
     unit: 效率系数
     value: 0.8
   fatty_acids:
     bounds:
-    - 0.0
-    - 2.0
+      - 0.0
+      - 2.0
     description: 脂肪酸血浆浓度
     type: state
     unit: mmol/L
     value: 0.0
   gastric_carbohydrate:
     bounds:
-    - 0
-    - 250
+      - 0
+      - 250
     description: 胃内碳水化合物含量
     type: state
     unit: 克
     value: 0
   gastric_fat:
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
     description: 胃内脂肪含量
     type: state
     unit: 克
     value: 0
   gastric_ph:
     bounds:
-    - 1.0
-    - 7.0
+      - 1.0
+      - 7.0
     description: 胃内pH值
     type: state
     unit: pH单位
     value: 1.5
   gastric_protein:
     bounds:
-    - 0
-    - 150
+      - 0
+      - 150
     description: 胃内蛋白质含量
     type: state
     unit: 克
     value: 0
   gastric_ulcer_risk:
     bounds:
-    - 0.0
-    - 1.0
+      - 0.0
+      - 1.0
     description: 胃溃疡风险
     type: state
     unit: 风险指数
     value: 0.0
   gastric_volume:
     bounds:
-    - 50
-    - 1500
+      - 50
+      - 1500
     description: 胃容积
     type: state
     unit: 毫升
     value: 50
   gastrin_level:
     bounds:
-    - 0.0
-    - 200.0
+      - 0.0
+      - 200.0
     description: 胃泌素水平
     type: state
     unit: pg/mL
     value: 0.0
   glucose:
     bounds:
-    - 0.0
-    - 20.0
+      - 0.0
+      - 20.0
     description: 葡萄糖血浆浓度
     type: state
     unit: mmol/L
     value: 5.0
   hunger_level:
     bounds:
-    - 0
-    - 1.0
+      - 0
+      - 1.0
     description: 饥饿感水平，0-饱食，1-极度饥饿
     type: state
     unit: 指数
     value: 0.5
   intestinal_carbohydrate:
     bounds:
-    - 0
-    - 150
+      - 0
+      - 150
     description: 小肠内碳水化合物含量
     type: state
     unit: 克
     value: 0
   intestinal_fat:
     bounds:
-    - 0
-    - 80
+      - 0
+      - 80
     description: 小肠内脂肪含量
     type: state
     unit: 克
     value: 0
   intestinal_protein:
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
     description: 小肠内蛋白质含量
     type: state
     unit: 克
     value: 0
   malnutrition_risk:
     bounds:
-    - 0.0
-    - 1.0
+      - 0.0
+      - 1.0
     description: 营养不良风险
     type: state
     unit: 风险指数
     value: 0.0
   pepsin_level:
     bounds:
-    - 0.0
-    - 100.0
+      - 0.0
+      - 100.0
     description: 胃蛋白酶水平
     type: state
     unit: 单位
     value: 0.0
   secretin_level:
     bounds:
-    - 0.0
-    - 100.0
+      - 0.0
+      - 100.0
     description: 分泌素水平
     type: state
     unit: pg/mL
     value: 0.0
   stomach_carbohydrate:
     bounds:
-    - 0.0
-    - 500.0
+      - 0.0
+      - 500.0
     description: 胃内碳水化合物含量
     type: state
     unit: 克
     value: 0.0
   stomach_fat:
     bounds:
-    - 0.0
-    - 100.0
+      - 0.0
+      - 100.0
     description: 胃内脂肪含量
     type: state
     unit: 克
     value: 0.0
   stomach_protein:
     bounds:
-    - 0.0
-    - 200.0
+      - 0.0
+      - 200.0
     description: 胃内蛋白质含量
     type: state
     unit: 克

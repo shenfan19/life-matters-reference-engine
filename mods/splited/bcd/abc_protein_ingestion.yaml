@@ -10,16 +10,16 @@ variables:
     type: input
     unit: 克
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
   stomach_protein:
     description: Placeholder for stomach_protein
     value: 0.0
     type: state
     unit: unknown
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
 formulas:
   protein_ingestion:
     description: 蛋白质摄入到胃

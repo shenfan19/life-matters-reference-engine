@@ -10,16 +10,16 @@ variables:
     type: input
     unit: 毫升
     bounds:
-    - 0
-    - 1000
+      - 0
+      - 1000
   body_water:
     description: Placeholder for body_water
     value: 0.0
     type: state
     unit: unknown
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
 formulas:
   water_ingestion:
     description: 水分摄入

@@ -10,16 +10,16 @@ variables:
     type: input
     unit: 克
     bounds:
-    - 0
-    - 200
+      - 0
+      - 200
   stomach_carbohydrate:
     description: Placeholder for stomach_carbohydrate
     value: 0.0
     type: state
     unit: unknown
     bounds:
-    - 0
-    - 100
+      - 0
+      - 100
 formulas:
   carbohydrate_ingestion:
     description: 碳水化合物摄入到胃
