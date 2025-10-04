@@ -68,14 +68,14 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Optimizer CLI - Optimize model parameters using SciPy.',
         epilog='''
 Examples:
-  %(prog)s --optimize digestive diabetes --target min_error --params '[0.5,1.0]' --bounds '[(0,1),(0,2)]' --method scipy-grid --lang zh_Hans
+  %(prog)s --optimize digestive diabetes --target min_error --params '[0.5,1.0]' --bounds '[(0,1),(0,2)]' --method scipy-grid --lang zhhans
   %(prog)s --config opt_config.yaml
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     # 定义命令行参数，包括模型目录、语言和优化参数。
     parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
-    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='Language for output')
+    parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='Language for output')
     parser.add_argument('--folder', help='Subfolder in mods directory')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')

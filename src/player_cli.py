@@ -127,7 +127,7 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Player CLI - Run simulations and display states.',
         epilog='''
 Examples:
-  %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zh_Hans
+  %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zhhans
   %(prog)s --state digestive --format yaml --folder physiology
   %(prog)s --event 'variables: {blood_glucose: 100}' --folder physiology
         ''',
@@ -135,7 +135,7 @@ Examples:
     )
     # 定义命令行参数，包括模型目录、语言、仿真参数等。
     parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
-    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='Language for output')
+    parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='Language for output')
     parser.add_argument('--folder', help='Subfolder in mods directory')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')

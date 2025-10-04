@@ -222,7 +222,7 @@ Examples:
     )
     # 添加各种命令行参数
     parser.add_argument('--mods-dir', default='mods', help='模型目录 (默认: mods)')  # 模型根目录参数
-    parser.add_argument('--lang', default='en', choices=['en', 'zh_Hans', 'zh_Hant', 'fr'], help='输出语言')  # 语言选择参数
+    parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='输出语言')  # 语言选择参数
     parser.add_argument('--folder', nargs='*', help='模型目录中的子文件夹（支持多个）')  # 修改为 nargs='*', 返回列表，支持0或多个
     parser.add_argument('--list', action='store_true', help='列出可用模型')  # 列出模型标志
     parser.add_argument('--file', nargs='+', help='加载和合并指定的模型（支持相对路径，如 physiology/obesity_diabetes）')  # 文件参数，支持多个
