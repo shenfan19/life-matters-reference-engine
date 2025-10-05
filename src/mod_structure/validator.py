@@ -236,7 +236,8 @@ class Validator:
             }
             try:
                 with open(patch_file, 'w', encoding='utf-8') as f:
-                    yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True)
+                    yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
+                                default_flow_style=False, indent=2)  # 添加 indent=2
                 patch_message = f"Please define the missing variables in your YAML file or use the generated '{patch_file}' alongside your original model."
             except Exception as e:
                 logger.warning(f"Failed to generate patch file {patch_file}: {e}")

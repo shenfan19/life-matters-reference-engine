@@ -94,19 +94,19 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
 - **依赖**：`loader_engine.py`、`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
   ```bash
-  python player_cli.py --run digestive --steps 100 --lang zh-Hans --folder physiology
+  python simulator_cli.py --run digestive --steps 100 --lang zh-Hans --folder physiology
   ```
 - **编程接口**：
   ```python
-  from player_engine import PlayerEngine
-  engine = PlayerEngine("mods_med", language="zh-Hans")
+  from simulator_engine import simulatorEngine
+  engine = simulatorEngine("mods_med", language="zh-Hans")
   result = engine.run_simulation("digestive", 100, folder="physiology")
   yaml.dump(result, open("result.yaml", "w"), allow_unicode=True)
   ```
 
 ### 4. HealthTuner 模块
 - **功能**：优化模型参数（如最小化误差或多目标优化），调用 VitalSim 仿真引擎。要求模型包含 `optimizer` 字段。
-- **依赖**：`player_engine.py`、`loader_engine.py`、`lang_manager.py`、`PyYAML`、模型指定的额外依赖（如 `pymoo`）。
+- **依赖**：`simulator_engine.py`、`loader_engine.py`、`lang_manager.py`、`PyYAML`、模型指定的额外依赖（如 `pymoo`）。
 - **CLI 示例**：
   ```bash
   python optimizer_cli.py --optimize digestive diabetes --target min_error --duration 60 --method grid --lang zh-Hans --folder physiology --output result.yaml

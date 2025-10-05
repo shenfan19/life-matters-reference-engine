@@ -37,7 +37,7 @@ target: architecture 架构系统整体
     - 输出：组合动力学模型，初始组合变量表
 - Generator
 - Validator
-- Player模块
+- simulator模块
     - 输入：组合动力学模型，初始组合变量表，每步更新变量表
     - 输出：组合动力学模型，更新组合变量表
 - Optimizer模块
@@ -49,7 +49,7 @@ target: architecture 架构系统整体
 ## 数据生命周期示例：资源生成与消耗
 1.  初始化：从 `dataenvironmentbiomes.json` 加载生物群落数据。
 2.  仿真步进：`srcsystemssimulation_system.py` 根据 `docsdata_specsresource_generation_spec.md` 中的规则计算资源生成量。
-3.  用户交互：玩家消耗资源，更新 `SurvivalSimulator_UserDatausers[user_id]game_experiences[save_name]player_state.json`。
+3.  用户交互：玩家消耗资源，更新 `SurvivalSimulator_UserDatausers[user_id]game_experiences[save_name]simulator_state.json`。
 4.  数据持久化：游戏存档时，相关数据被序列化并存储到 `.sav` 文件中。
 
 # 系统架构
@@ -59,7 +59,7 @@ graph TD
     A[Collector] -->|组装模型| B(Simulator)
     B -->|生成数据| C(Optimizer)
     C -->|调参建议| B
-    B -->|实时流| D(Player)
+    B -->|实时流| D(simulator)
 ```
 
 ## 📦 关键组件

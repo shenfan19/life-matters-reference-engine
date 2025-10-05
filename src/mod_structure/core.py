@@ -123,7 +123,8 @@ class ModStructure(Loader, Validator, Simulation):
             # 直接在 output_dir 下生成文件
             split_file_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
             with open(split_file_path, 'w', encoding='utf-8') as f:
-                yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True)
+                yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
+                            default_flow_style=False, indent=2)  # 添加 indent=2
             logger.info(f"Generated split file: {split_file_path}")
 
         # 生成剩余模型文件
@@ -167,7 +168,8 @@ class ModStructure(Loader, Validator, Simulation):
         # 直接在 output_dir 下生成文件
         remaining_path = os.path.join(output_dir, f"{prefix}_remaining.yaml")
         with open(remaining_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(remaining_data, f, sort_keys=False, allow_unicode=True)
+            yaml.safe_dump(remaining_data, f, sort_keys=False, allow_unicode=True,
+                        default_flow_style=False, indent=2)  # 添加 indent=2
         logger.info(f"Generated remaining file: {remaining_path}")
         
     def export_to_yaml(self, file_path: str):
@@ -204,4 +206,5 @@ class ModStructure(Loader, Validator, Simulation):
             'optimizer': self.optimizer
         }
         with open(file_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
+            yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True, 
+                        default_flow_style=False, indent=2)  # 添加 indent=2

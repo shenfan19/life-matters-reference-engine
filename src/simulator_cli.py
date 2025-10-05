@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# 文件名: player_cli.py
-# 描述: LifeMatters Player 模块的命令行接口，用于运行仿真、显示模型状态和应用事件。
-#       本脚本通过命令行参数处理用户输入，调用 PlayerEngine 执行仿真任务，并支持多语言输出和 YAML 格式结果保存。
+# 文件名: simulator_cli.py
+# 描述: LifeMatters simulator 模块的命令行接口，用于运行仿真、显示模型状态和应用事件。
+#       本脚本通过命令行参数处理用户输入，调用 simulatorEngine 执行仿真任务，并支持多语言输出和 YAML 格式结果保存。
 
 import argparse
 import sys
@@ -9,21 +9,21 @@ import logging
 import yaml
 from typing import Dict, Any, Optional
 from babel_manager import BabelLanguageManager
-from player_engine import PlayerEngine
+from simulator_engine import simulatorEngine
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。
 logger = logging.getLogger(__name__)
 
-# 示例调试命令：python player_cli.py --run diabetes --time 200 --dt 1 --pause-every 5 --target min_error --auto-adjust
+# 示例调试命令：python simulator_cli.py --run diabetes --time 200 --dt 1 --pause-every 5 --target min_error --auto-adjust
 
-class PlayerCLI:
-    """Player 命令行接口，调用 PlayerEngine 运行仿真并显示状态。"""
+class simulatorCLI:
+    """simulator 命令行接口，调用 simulatorEngine 运行仿真并显示状态。"""
     
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
         # 初始化 LanguageManager 以支持多语言，默认使用指定语言。
         self.lang_manager = BabelLanguageManager(default_language=language)
-        # 初始化 PlayerEngine 用于执行仿真任务，指定模型目录和语言。
-        self.engine = PlayerEngine(mods_directory, language)
+        # 初始化 simulatorEngine 用于执行仿真任务，指定模型目录和语言。
+        self.engine = simulatorEngine(mods_directory, language)
         # 配置日志设置。
         self.setup_logging()
 
@@ -54,7 +54,7 @@ class PlayerCLI:
                 return {"success": False, "message": error_msg}
             # 将时间步长按单位缩放为秒。
             scaled_dt = dt * unit_factors[dt_unit]
-            # 调用 PlayerEngine 执行仿真。
+            # 调用 simulatorEngine 执行仿真。
             result = self.engine.run_simulation(model_name, time, scaled_dt, folder, target, pause_every, auto_adjust)
             # 如果仿真成功，获取临界条件并保存结果。
             if result["success"]:
@@ -124,7 +124,7 @@ class PlayerCLI:
 def create_parser() -> argparse.ArgumentParser:
     # 创建并配置命令行参数解析器。
     parser = argparse.ArgumentParser(
-        description='LifeMatters Player CLI - Run simulations and display states.',
+        description='LifeMatters simulator CLI - Run simulations and display states.',
         epilog='''
 Examples:
   %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zhhans
@@ -166,8 +166,8 @@ def main():
     elif args.quiet:
         logging.getLogger().setLevel(logging.ERROR)
 
-    # 初始化 PlayerCLI，指定模型目录和语言。
-    cli = PlayerCLI(args.mods_dir, args.lang)
+    # 初始化 simulatorCLI，指定模型目录和语言。
+    cli = simulatorCLI(args.mods_dir, args.lang)
     success = False
 
     try:

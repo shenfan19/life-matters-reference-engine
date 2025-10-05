@@ -8,7 +8,7 @@ users/
 │   ├── simulation/        # 游戏体验存档
 │   │   ├── [存档名称_1]/           # 例如：my_first_game, hardcore_run
 │   │   │   ├── save_data.sav        # 游戏存档二进制/JSON文件
-│   │   │   ├── player_state.json    # 玩家角色当前状态 (库存、技能、位置等)
+│   │   │   ├── simulator_state.json    # 玩家角色当前状态 (库存、技能、位置等)
 │   │   │   ├── game_config.json     # 该存档的特定游戏设置 (例如：难度、世界种子、MOD列表)
 │       │   ├── input_scenario.json        # 仿真输入场景或初始条件定义
 │       │   ├── output_data/               # 仿真输出原始数据 (时间序列、事件日志)
@@ -24,7 +24,7 @@ users/
 │   │   │   └── run_configs/              # 每次优化运行的具体配置快照
 │   │   └── [任务名称_2]/
 │   │       └── ...
-└── user_player/
+└── user_simulator/
 └── ...
 
 ### 管理用户数据

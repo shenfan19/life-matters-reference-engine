@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 文件名: player_engine.py
+# 文件名: simulator_engine.py
 # 描述: LifeMatters 框架的仿真控制器，负责加载模型、运行仿真、管理仿真状态以及处理事件和优化建议。
 #       本模块通过与 LoaderEngine 和 OptimizerEngine 交互，执行动态仿真并支持暂停、继续和参数调整。
 
@@ -12,7 +12,7 @@ from optimizer_engine import OptimizerEngine
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
 
-class PlayerEngine:
+class simulatorEngine:
     """仿真控制器，负责运行和管理仿真流程。"""
     
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
