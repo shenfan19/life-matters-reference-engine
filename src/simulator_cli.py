@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # 文件名: simulator_cli.py
-# 描述: LifeMatters simulator 模块的命令行接口，用于运行仿真、显示模型状态和应用事件。
-#       本脚本通过命令行参数处理用户输入，调用 simulatorEngine 执行仿真任务，并支持多语言输出和 YAML 格式结果保存。
+# 描述: LifeMatters Simulator 模块的命令行接口，用于运行仿真和显示模型状态。
+#       本脚本通过命令行参数处理用户输入，调用 SimulatorEngine 执行仿真任务，
+#       并支持多语言输出和交互式暂停功能。
 
 import argparse
 import sys
@@ -9,66 +10,80 @@ import logging
 import yaml
 from typing import Dict, Any, Optional
 from babel_manager import BabelLanguageManager
-from simulator_engine import simulatorEngine
+from simulator_engine import SimulatorEngine
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。
 logger = logging.getLogger(__name__)
 
-# 示例调试命令：python simulator_cli.py --run diabetes --time 200 --dt 1 --pause-every 5 --target min_error --auto-adjust
-
-class simulatorCLI:
-    """simulator 命令行接口，调用 simulatorEngine 运行仿真并显示状态。"""
+class SimulatorCLI:
+    """Simulator 命令行接口，调用 SimulatorEngine 运行仿真并显示状态。"""
     
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
+        """
+        初始化命令行接口。
+        :param mods_directory: 模型目录路径。
+        :param language: 语言设置（如 "en", "zh-Hans"）。
+        """
         # 初始化 LanguageManager 以支持多语言，默认使用指定语言。
         self.lang_manager = BabelLanguageManager(default_language=language)
-        # 初始化 simulatorEngine 用于执行仿真任务，指定模型目录和语言。
-        self.engine = simulatorEngine(mods_directory, language)
+        # 初始化 SimulatorEngine 用于执行仿真任务，指定模型目录和语言。
+        self.engine = SimulatorEngine(mods_directory, language)
         # 配置日志设置。
         self.setup_logging()
 
     def setup_logging(self):
-        # 配置日志系统，设置标准格式并输出到标准输出。
+        """配置日志系统，设置标准格式并输出到标准输出。"""
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[logging.StreamHandler(sys.stdout)]
         )
 
-    def run_simulation(self, model_name: str, time: int, output_path: Optional[str] = None, 
-                   folder: Optional[str] = None, dt: float = 1.0, dt_unit: str = 'second', 
-                   target: str = 'min_error', pause_every: int = 5, auto_adjust: bool = False) -> Dict[str, Any]:
-        # 执行指定模型的仿真任务。
+    def run_simulation(self, model_name: str, time_hours: float, 
+                      folder: Optional[str] = None, output_path: Optional[str] = None,
+                      pause_every: int = 0, interactive: bool = False) -> Dict[str, Any]:
+        """
+        执行指定模型的仿真任务。
+        :param model_name: 模型名称。
+        :param time_hours: 仿真总时间（小时）。
+        :param folder: 子文件夹名称。
+        :param output_path: 输出文件路径（YAML 格式）。
+        :param pause_every: 每隔多少步暂停。
+        :param interactive: 是否启用交互式暂停。
+        :return: 仿真结果字典。
+        """
         try:
-            # 定义时间单位转换因子，将时间步长转换为秒。
-            unit_factors = {
-                'second': 1.0,
-                'minute': 60.0,
-                'hour': 3600.0,
-                'day': 86400.0
-            }
-            # 检查时间单位是否有效，若无效则返回错误。
-            if dt_unit not in unit_factors:
-                error_msg = self.lang_manager.get_translation("invalid_dt_unit", unit=dt_unit)
-                logger.error(error_msg)
-                return {"success": False, "message": error_msg}
-            # 将时间步长按单位缩放为秒。
-            scaled_dt = dt * unit_factors[dt_unit]
-            # 调用 simulatorEngine 执行仿真。
-            result = self.engine.run_simulation(model_name, time, scaled_dt, folder, target, pause_every, auto_adjust)
-            # 如果仿真成功，获取临界条件并保存结果。
+            # 调用 SimulatorEngine 执行仿真。
+            result = self.engine.run_simulation(
+                model_name=model_name,
+                time_hours=time_hours,
+                folder=folder,
+                pause_every=pause_every,
+                interactive=interactive
+            )
+            
+            # 如果仿真成功。
             if result["success"]:
-                critical_conditions = self.engine.get_critical_conditions()
-                result["critical_conditions"] = critical_conditions["triggered_conditions"]
                 # 如果指定了输出路径，将结果保存为 YAML 文件。
                 if output_path:
                     with open(output_path, 'w', encoding='utf-8') as f:
                         yaml.dump(result, f, allow_unicode=True, sort_keys=False)
-                    logger.info(self.lang_manager.get_translation("simulation_complete", output=output_path))
+                    # 记录保存成功日志。
+                    logger.info(self.lang_manager.get_translation(
+                        "simulation_complete", 
+                        output=output_path
+                    ))
+                # 返回仿真结果。
                 return result
             else:
                 # 如果仿真失败，返回错误信息。
-                return {"success": False, "message": self.lang_manager.get_translation("simulation_failed", error=result["error"])}
+                return {
+                    "success": False, 
+                    "message": self.lang_manager.get_translation(
+                        "simulation_failed", 
+                        error=result.get("error", "未知错误")
+                    )
+                }
         except Exception as e:
             # 处理意外异常，记录错误并返回失败信息。
             error_msg = self.lang_manager.get_translation("simulation_failed", error=str(e))
@@ -77,20 +92,33 @@ class simulatorCLI:
 
     def display_state(self, model_name: str, folder: Optional[str] = None, 
                      output_format: str = "table") -> Dict[str, Any]:
-        # 显示指定模型的当前状态。
+        """
+        显示指定模型的当前状态。
+        :param model_name: 模型名称。
+        :param folder: 子文件夹名称。
+        :param output_format: 输出格式（table/yaml）。
+        :return: 状态字典。
+        """
         try:
             # 加载指定模型。
-            model = self.engine.loader.fetch(model_name, folder)
-            # 如果模型加载失败，返回错误信息。
-            if not model:
-                return {"success": False, "message": self.lang_manager.get_translation("model_not_found", model_name=model_name)}
+            if not self.engine.load_models([model_name], folder):
+                return {
+                    "success": False, 
+                    "message": self.lang_manager.get_translation(
+                        "model_not_found", 
+                        model_name=model_name
+                    )
+                }
             
             # 获取模型当前状态。
-            state = self.engine.get_state()
+            state_result = self.engine.get_state()
             # 如果状态获取失败，返回错误信息。
-            if not state["success"]:
-                return state
+            if not state_result["success"]:
+                return state_result
 
+            # 提取状态数据。
+            state = state_result["state"]
+            
             # 组织状态数据为表格格式。
             table_data = [
                 {
@@ -99,63 +127,87 @@ class simulatorCLI:
                     "unit": var_info.get("unit", "N/A"),
                     "description": var_info.get("description", "N/A")
                 }
-                for var_name, var_info in state["state"].items()
+                for var_name, var_info in state.items()
             ]
 
             # 根据输出格式返回结果或打印表格。
             if output_format == "yaml":
                 return {"success": True, "data": table_data, "format": "yaml"}
             else:
-                # 打印状态表格，包括变量名、值、单位和描述。
+                # 打印状态表格头部。
                 print(f"\n{self.lang_manager.get_translation('list_header', count=len(table_data))}")
-                print(f"{self.lang_manager.get_translation('table_name'):<30} "
-                      f"{self.lang_manager.get_translation('table_value'):<10} "
-                      f"{self.lang_manager.get_translation('table_unit'):<10} "
-                      f"{self.lang_manager.get_translation('table_state'):<50}")
-                print("-" * 100)
+                print(f"{'变量名':<30} {'值':<15} {'单位':<10} {'描述':<50}")
+                print("-" * 105)
+                # 打印每个变量的状态。
                 for item in table_data:
-                    print(f"{item['name']:<30} {item['value']:<10.2f} {item['unit']:<10} {item['description']:<50}")
+                    print(f"{item['name']:<30} {item['value']:<15.4f} {item['unit']:<10} {item['description']:<50}")
                 return {"success": True, "data": table_data, "format": "table"}
         except Exception as e:
             # 处理意外异常，记录错误并返回失败信息。
-            logger.error(f"Display state failed: {e}")
-            return {"success": False, "message": self.lang_manager.get_translation("display_state_failed", error=str(e))}
+            logger.error(f"显示状态失败: {e}")
+            return {
+                "success": False, 
+                "message": self.lang_manager.get_translation(
+                    "display_state_failed", 
+                    error=str(e)
+                )
+            }
 
 def create_parser() -> argparse.ArgumentParser:
-    # 创建并配置命令行参数解析器。
+    """
+    创建并配置命令行参数解析器。
+    :return: 配置好的参数解析器。
+    """
     parser = argparse.ArgumentParser(
-        description='LifeMatters simulator CLI - Run simulations and display states.',
+        description='LifeMatters Simulator CLI - 运行仿真和显示模型状态',
         epilog='''
-Examples:
-  %(prog)s --run digestive --time 100 --dt 1.0 --output result.yaml --folder physiology --lang zhhans
+示例命令:
+  %(prog)s --file digestive --time 1000 --lang zh-Hans --interactive
+  %(prog)s --file physiology/obesity_diabetes --time 500 --folder physiology --output result.yaml
   %(prog)s --state digestive --format yaml --folder physiology
-  %(prog)s --event 'variables: {blood_glucose: 100}' --folder physiology
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    # 定义命令行参数，包括模型目录、语言、仿真参数等。
-    parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
-    parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='Language for output')
-    parser.add_argument('--folder', help='Subfolder in mods directory')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
-    parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')
-    # 定义互斥参数组，确保运行、状态显示或事件应用之一被选择。
+    
+    # 定义通用参数。
+    parser.add_argument('--mods-dir', default='mods', 
+                       help='模型目录（默认: mods）')
+    parser.add_argument('--lang', default='en', 
+                       choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], 
+                       help='输出语言')
+    parser.add_argument('--folder', 
+                       help='模型子文件夹（如 physiology）')
+    parser.add_argument('--verbose', '-v', action='store_true', 
+                       help='启用详细日志输出')
+    parser.add_argument('--quiet', '-q', action='store_true', 
+                       help='仅显示错误信息')
+    
+    # 定义互斥参数组（运行仿真或显示状态）。
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--run', help='Run simulation for the specified model')
-    group.add_argument('--state', help='Display current state of the model')
-    group.add_argument('--event', help='Apply an event (YAML string)')
-    parser.add_argument('--time', type=int, default=3600, help='Full time for simulation in seconds (default: 3600)')
-    parser.add_argument('--dt', type=float, default=1.0, help='Time step for simulation')
-    parser.add_argument('--format', choices=['table', 'yaml'], default='table', help='Output format')
-    parser.add_argument('--output', help='Output file for simulation results (YAML format)')
-    parser.add_argument('--pause-every', type=int, default=5, help='Pause every N steps for input (default: 5)')
-    parser.add_argument('--target', default='min_error', help='Optimization target for suggestions')
-    parser.add_argument('--auto-adjust', action='store_true', help='Enable automatic Optimizer adjustments')
+    group.add_argument('--file', 
+                      help='运行指定模型的仿真')
+    group.add_argument('--state', 
+                      help='显示指定模型的当前状态')
+    
+    # 定义仿真相关参数。
+    parser.add_argument('--time', type=float, default=24*30*12, 
+                       help='仿真总时间（小时，默认: 8640 = 1 年）')
+    parser.add_argument('--pause-every', type=int, default=0, 
+                       help='每隔多少步暂停（默认: 0，不暂停）')
+    parser.add_argument('--interactive', action='store_true', 
+                       help='启用交互式暂停（CLI 输入）')
+    parser.add_argument('--output', 
+                       help='输出文件路径（YAML 格式）')
+    
+    # 定义状态显示相关参数。
+    parser.add_argument('--format', choices=['table', 'yaml'], default='table', 
+                       help='输出格式（默认: table）')
+    
     # 返回配置好的解析器。
     return parser
 
 def main():
-    # 脚本的主入口函数。
+    """脚本的主入口函数。"""
     # 解析命令行参数。
     parser = create_parser()
     args = parser.parse_args()
@@ -166,57 +218,63 @@ def main():
     elif args.quiet:
         logging.getLogger().setLevel(logging.ERROR)
 
-    # 初始化 simulatorCLI，指定模型目录和语言。
-    cli = simulatorCLI(args.mods_dir, args.lang)
+    # 初始化 SimulatorCLI，指定模型目录和语言。
+    cli = SimulatorCLI(args.mods_dir, args.lang)
     success = False
 
     try:
-        # 如果指定了运行仿真，执行仿真任务。
-        if args.run:
-            result = cli.run_simulation(args.run, args.time, args.output, args.folder, args.dt, args.target, args.pause_every, args.auto_adjust)
-            # 如果仿真成功，根据格式输出结果。
+        # 如果指定了运行仿真。
+        if args.file:
+            # 执行仿真任务。
+            result = cli.run_simulation(
+                model_name=args.file,
+                time_hours=args.time,
+                folder=args.folder,
+                output_path=args.output,
+                pause_every=args.pause_every,
+                interactive=args.interactive
+            )
+            # 如果仿真成功。
             if result["success"]:
-                if args.format == "yaml":
+                # 根据格式输出结果。
+                if args.format == "yaml" and not args.output:
                     print(yaml.dump(result, allow_unicode=True, sort_keys=False))
                 else:
-                    cli.display_state(args.run, args.folder, args.format)
-                    # 如果存在临界条件，打印临界条件信息。
-                    if result.get("critical_conditions"):
-                        print(f"\n{cli.lang_manager.get_translation('critical_conditions_header')}")
-                        for condition in result["critical_conditions"]:
-                            print(f"- {condition['description']}")
+                    # 显示仿真完成信息。
+                    print(f"\n✓ 仿真完成")
+                    print(f"  模型: {result['model_name']}")
+                    print(f"  步数: {result['steps']}")
+                    print(f"  时间: {result['time']/3600:.2f} 小时")
+                    # 显示部分状态变量。
+                    print(f"\n最终状态（前 5 个变量）:")
+                    for var_name, var_info in list(result['state'].items())[:5]:
+                        print(f"  {var_name}: {var_info['value']:.4f} {var_info.get('unit', '')}")
                 success = True
             else:
                 # 如果仿真失败，打印错误信息。
-                print(f"✗ {result['message']}")
+                print(f"✗ {result.get('message', '仿真失败')}")
                 success = False
-        # 如果指定了显示状态，显示模型状态。
+        
+        # 如果指定了显示状态。
         elif args.state:
+            # 显示模型状态。
             result = cli.display_state(args.state, args.folder, args.format)
-            if args.format == "yaml":
+            # 如果格式为 YAML，输出 YAML 格式数据。
+            if args.format == "yaml" and result["success"]:
                 print(yaml.dump(result["data"], allow_unicode=True, sort_keys=False))
             success = result["success"]
+            # 如果显示失败，打印错误信息。
             if not success:
-                print(f"✗ {result['message']}")
-        # 如果指定了应用事件，解析并应用事件。
-        elif args.event:
-            try:
-                event = yaml.safe_load(args.event)
-                # 应用事件并输出结果。
-                if cli.engine.apply_event(event):
-                    print(f"✓ {cli.lang_manager.get_translation('event_applied')}")
-                    success = True
-                else:
-                    print(f"✗ {cli.lang_manager.get_translation('event_apply_failed')}")
-                    success = False
-            except yaml.YAMLError as e:
-                # 如果事件 YAML 格式无效，打印错误信息。
-                print(f"✗ {cli.lang_manager.get_translation('invalid_yaml_event', error=str(e))}")
-                success = False
+                print(f"✗ {result.get('message', '显示状态失败')}")
+    
+    except KeyboardInterrupt:
+        # 处理用户中断（Ctrl+C）。
+        print("\n✗ 用户中断仿真")
+        sys.exit(1)
     except Exception as e:
         # 处理意外错误，打印错误信息，记录日志，并以失败状态码退出。
-        print(f"✗ {cli.lang_manager.get_translation('unexpected_error', error=str(e))}")
-        logger.error(f"Unexpected error: {e}")
+        print(f"✗ 意外错误: {str(e)}")
+        logger.error(f"意外错误: {e}")
         sys.exit(1)
 
     # 根据操作成功或失败退出程序，返回相应的状态码。
