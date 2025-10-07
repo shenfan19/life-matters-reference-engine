@@ -22,7 +22,7 @@ class SimulatorCLI:
         """
         初始化命令行接口。
         :param mods_directory: 模型目录路径。
-        :param language: 语言设置（如 "en", "zh-Hans"）。
+        :param language: 语言设置（如 "en", "zhhans"）。
         """
         # 初始化 LanguageManager 以支持多语言，默认使用指定语言。
         self.lang_manager = BabelLanguageManager(default_language=language)
@@ -154,8 +154,8 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Simulator CLI - 运行仿真和显示模型状态',
         epilog='''
 示例命令:
-  %(prog)s --file digestive --time 1000 --lang zh-Hans --interactive
-  %(prog)s --file physiology/obesity_diabetes --time 500 --folder physiology --output result.yaml
+  %(prog)s --file digestive --time 1000 --lang zhhans --interactive
+  %(prog)s --file physiology/obesity_diabetes --time 500 --folder physiology
   %(prog)s --state digestive --format yaml --folder physiology
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -165,10 +165,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--mods-dir', default='mods', 
                        help='模型目录（默认: mods）')
     parser.add_argument('--lang', default='en', 
-                       choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], 
+                       choices=['en', 'zhhans', 'zhhant', 'fr'], 
                        help='输出语言')
-    parser.add_argument('--folder', 
-                       help='模型子文件夹（如 physiology）')
     parser.add_argument('--verbose', '-v', action='store_true', 
                        help='启用详细日志输出')
     parser.add_argument('--quiet', '-q', action='store_true', 
@@ -178,6 +176,8 @@ def create_parser() -> argparse.ArgumentParser:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--file', 
                       help='运行指定模型的仿真')
+    group.add_argument('--folder', 
+                       help='模型子文件夹（如 physiology）')
     group.add_argument('--state', 
                       help='显示指定模型的当前状态')
     
@@ -188,8 +188,6 @@ def create_parser() -> argparse.ArgumentParser:
                        help='每隔多少步暂停（默认: 0，不暂停）')
     parser.add_argument('--interactive', action='store_true', 
                        help='启用交互式暂停（CLI 输入）')
-    parser.add_argument('--output', 
-                       help='输出文件路径（YAML 格式）')
     
     # 定义状态显示相关参数。
     parser.add_argument('--format', choices=['table', 'yaml'], default='table', 
@@ -222,7 +220,6 @@ def main():
                 model_name=args.file,
                 time_hours=args.time,
                 folder=args.folder,
-                output_path=args.output,
                 pause_every=args.pause_every,
                 interactive=args.interactive
             )

@@ -23,7 +23,7 @@ class OptimizerCLI:
         """
         初始化命令行接口。
         :param mods_directory: 模型目录路径。
-        :param language: 语言设置（如 "en", "zh-Hans"）。
+        :param language: 语言设置（如 "en", "zhhans"）。
         """
         # 初始化 LanguageManager 以支持多语言，默认使用指定的语言。
         self.lang_manager = BabelLanguageManager(default_language=language)
@@ -121,7 +121,7 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Optimizer CLI - 优化模型参数',
         epilog='''
 示例命令:
-  %(prog)s --folder physiology --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zh-Hans
+  %(prog)s --folder physiology --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zhhans
   %(prog)s --file digestive --mode real_time --method grid --time 720
   %(prog)s --file obesity_diabetes --mode full_inputs --method pymoo --time 8640 --output result.yaml
         ''',
@@ -132,7 +132,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--mods-dir', default='mods', 
                        help='模型目录（默认: mods）')
     parser.add_argument('--lang', default='en', 
-                       choices=['en', 'zh-Hans', 'zh-Hant', 'fr'], 
+                       choices=['en', 'zhhans', 'zhhant', 'fr'], 
                        help='输出语言')
     parser.add_argument('--folder', 
                        help='模型子文件夹（如 physiology）')

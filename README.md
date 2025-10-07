@@ -41,7 +41,7 @@ python interface_expert.py
 - 编辑 `mods` 目录中的 YAML 文件（如 `enhanced_yaml_config.yaml`）。
 - 在 Web 界面或 CLI 中选择模型，运行仿真或调整参数。例如：
   ```bash
-  python loader_cli.py --list --lang zh-Hans --folder physiology
+  python loader_cli.py --list --lang zhhans --folder physiology
   python generator_cli.py --generate risk_increase lung_cancer.yaml --param risk_name=lung_cancer risk_factor=smoking_status increase_rate=0.05
   ```
 
@@ -77,14 +77,14 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
 - **依赖**：`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
   ```bash
-  python loader_cli.py --list --lang zh-Hans --folder physiology
+  python loader_cli.py --list --lang zhhans --folder physiology
   python loader_cli.py --folder physiology --merge-to merged.yaml
   python loader_cli.py --file physiology/obesity_diabetes.yaml --split-to split_dir
   ```
 - **编程接口**：
   ```python
   from loader_engine import LoaderEngine
-  engine = LoaderEngine("mods_med", language="zh-Hans")
+  engine = LoaderEngine("mods_med", language="zhhans")
   models = engine.scan_models_in_folder("physiology")
   result = engine.merge_models_by_names(["digestive", "diabetes"], "combined.yaml", folder="physiology")
   ```
@@ -94,12 +94,12 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
 - **依赖**：`loader_engine.py`、`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
   ```bash
-  python simulator_cli.py --run digestive --steps 100 --lang zh-Hans --folder physiology
+  python simulator_cli.py --run digestive --steps 100 --lang zhhans --folder physiology
   ```
 - **编程接口**：
   ```python
   from simulator_engine import simulatorEngine
-  engine = simulatorEngine("mods_med", language="zh-Hans")
+  engine = simulatorEngine("mods_med", language="zhhans")
   result = engine.run_simulation("digestive", 100, folder="physiology")
   yaml.dump(result, open("result.yaml", "w"), allow_unicode=True)
   ```
@@ -109,7 +109,7 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
 - **依赖**：`simulator_engine.py`、`loader_engine.py`、`lang_manager.py`、`PyYAML`、模型指定的额外依赖（如 `pymoo`）。
 - **CLI 示例**：
   ```bash
-  python optimizer_cli.py --optimize digestive diabetes --target min_error --duration 60 --method grid --lang zh-Hans --folder physiology --output result.yaml
+  python optimizer_cli.py --optimize digestive diabetes --target min_error --duration 60 --method grid --lang zhhans --folder physiology --output result.yaml
   ```
 - **编程接口**：
   ```python
@@ -235,15 +235,15 @@ graph TD
 ```
 
 ## 多语言支持
-- **实现**：通过 `lang_manager.py` 提供动态语言切换，翻译文件存储在 `lang` 文件夹（如 `langs/en.yaml`、`langs/zh-Hans.yaml`）。
+- **实现**：通过 `lang_manager.py` 提供动态语言切换，翻译文件存储在 `lang` 文件夹（如 `langs/en.yaml`、`langs/zhhans.yaml`）。
 - **支持语言**：
   - `en`：英文
-  - `zh-Hans`：简体中文
-  - `zh-Hant`：繁体中文
+  - `zhhans`：简体中文
+  - `zhhant`：繁体中文
 - **添加新语言**：创建新文件（如 `langs/fr.yaml`），格式参考 `lang/en.yaml`。
 - **CLI 示例**：
   ```bash
-  python loader_cli.py --list --lang zh-Hans --folder physiology
+  python loader_cli.py --list --lang zhhans --folder physiology
   # 输出：可用模型 (2)：
   # 名称       变量  公式  临界条件  版本
   # digestive  18   10   2         2.0.0

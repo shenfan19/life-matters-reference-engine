@@ -21,7 +21,7 @@ class OptimizerEngine:
         """
         初始化优化引擎。
         :param mods_directory: 模型目录路径。
-        :param language: 语言设置（如 "en", "zh-Hans"）。
+        :param language: 语言设置（如 "en", "zhhans"）。
         """
         # 初始化 LoaderEngine 以加载模型。
         self.loader = LoaderEngine(mods_directory, language)

@@ -18,7 +18,7 @@ LifeMatters/
 │   │   ├── circular_a.yaml
 │   │   ├── circular_b.yaml
 ├── langs/
-│   ├── zh-Hans.yaml
+│   ├── zhhans.yaml
 ├── mod_structure.py
 ├── loader_cli.py
 ├── loader_engine.py
@@ -165,7 +165,7 @@ optimizer: {}
 
 - **列出所有模型（验证基本扫描和输出）**：
   ```bash
-  python loader_cli.py --list --folder physiology --lang zh-Hans
+  python loader_cli.py --list --folder physiology --lang zhhans
   ```
   **预期输出**：
   ```
@@ -182,7 +182,7 @@ optimizer: {}
 
 - **加载单一模型（验证 `imports` 递归加载）**：
   ```bash
-  python loader_cli.py --file metabolism --folder physiology --lang zh-Hans
+  python loader_cli.py --file metabolism --folder physiology --lang zhhans
   ```
   **预期输出**：
   ```
@@ -201,7 +201,7 @@ optimizer: {}
 
 - **合并多个模型（验证合并逻辑）**：
   ```bash
-  python loader_cli.py --file metabolism nutrition_intake --merge-to merged.yaml --folder physiology --lang zh-Hans
+  python loader_cli.py --file metabolism nutrition_intake --merge-to merged.yaml --folder physiology --lang zhhans
   ```
   **预期输出**：
   ```
@@ -213,7 +213,7 @@ optimizer: {}
 
 - **测试循环依赖**：
   ```bash
-  python loader_cli.py --file circular_a --folder physiology --lang zh-Hans
+  python loader_cli.py --file circular_a --folder physiology --lang zhhans
   ```
   **预期输出**：
   ```
@@ -223,7 +223,7 @@ optimizer: {}
 
 - **测试空文件夹**：
   ```bash
-  python loader_cli.py --list --folder nonexistent_folder --lang zh-Hans
+  python loader_cli.py --list --folder nonexistent_folder --lang zhhans
   ```
   **预期输出**：
   ```
@@ -240,7 +240,7 @@ optimizer: {}
   from mod_structure import ModStructure
   import yaml
 
-  engine = LoaderEngine(mods_directory="mods_med", language="zh-Hans")
+  engine = LoaderEngine(mods_directory="mods_med", language="zhhans")
   model = engine.fetch("metabolism", folder="physiology")
   if model:
       print("元数据:", model.metadata)
@@ -269,7 +269,7 @@ optimizer: {}
   from loader_engine import LoaderEngine
   from mod_structure import ModStructure
 
-  engine = LoaderEngine(mods_directory="mods_med", language="zh-Hans")
+  engine = LoaderEngine(mods_directory="mods_med", language="zhhans")
   model = engine.fetch("metabolism", folder="physiology")
   if model:
       model.step(dt=3600)  # 1 小时
@@ -289,7 +289,7 @@ optimizer: {}
   ```python
   from loader_engine import LoaderEngine
 
-  engine = LoaderEngine(mods_directory="mods_med", language="zh-Hans")
+  engine = LoaderEngine(mods_directory="mods_med", language="zhhans")
   result = engine.merge_models_by_names(["metabolism", "nutrition_intake"], output_path="merged.yaml", folder="physiology")
   if result["success"]:
       print(f"合并成功: 变量数={result['variables']}, 公式数={result['formulas']}")
@@ -311,7 +311,7 @@ optimizer: {}
   ```python
   from loader_engine import LoaderEngine
 
-  engine = LoaderEngine(mods_directory="mods_med", language="zh-Hans")
+  engine = LoaderEngine(mods_directory="mods_med", language="zhhans")
   model = engine.fetch("circular_a", folder="physiology")
   print("加载结果:", model)
   ```
@@ -325,7 +325,7 @@ optimizer: {}
 启用详细日志以捕获警告和错误：
 ```bash
 export PYTHON_LOG_LEVEL=DEBUG
-python -m logging loader_cli.py --list --folder physiology --lang zh-Hans
+python -m logging loader_cli.py --list --folder physiology --lang zhhans
 ```
 **调试点**：
 - 查找 `glucose_regulation.yaml` 的时间单位警告：
@@ -340,7 +340,7 @@ python -m logging loader_cli.py --list --folder physiology --lang zh-Hans
 ### 调试注意事项
 1. **环境准备**：
    - 确保安装了依赖：`pip install PyYAML numpy asteval logging`
-   - 确保 `langs/zh-Hans.yaml` 包含必要的翻译键（如 `table_hooks`、`table_optimizer`、`table_deps`），否则可能导致 KeyError。如果缺失，我可以提供翻译文件示例。
+   - 确保 `langs/zhhans.yaml` 包含必要的翻译键（如 `table_hooks`、`table_optimizer`、`table_deps`），否则可能导致 KeyError。如果缺失，我可以提供翻译文件示例。
 
 2. **文件路径**：
    - 调整 `mods_directory`（默认 `mods_med`）和 `folder`（默认 `physiology`）以匹配您的实际目录结构。
