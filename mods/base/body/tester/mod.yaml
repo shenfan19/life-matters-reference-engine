@@ -1,8 +1,0 @@
-# mods/hunger_model.yaml
-variables:
-  hunger: 0.0
-  energy: 100.0
-  food_intake: 0.0
-formulas:
-  hunger_rate: "0.02 * coefficient"
-  movement_cost: "2.0 * coefficient"
