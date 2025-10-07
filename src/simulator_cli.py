@@ -40,14 +40,13 @@ class SimulatorCLI:
         )
 
     def run_simulation(self, model_name: str, time_hours: float, 
-                      folder: Optional[str] = None, output_path: Optional[str] = None,
-                      pause_every: int = 0, interactive: bool = False) -> Dict[str, Any]:
+                      folder: Optional[str] = None, pause_every: int = 0, 
+                      interactive: bool = False) -> Dict[str, Any]:
         """
         执行指定模型的仿真任务。
         :param model_name: 模型名称。
         :param time_hours: 仿真总时间（小时）。
         :param folder: 子文件夹名称。
-        :param output_path: 输出文件路径（YAML 格式）。
         :param pause_every: 每隔多少步暂停。
         :param interactive: 是否启用交互式暂停。
         :return: 仿真结果字典。
@@ -64,15 +63,8 @@ class SimulatorCLI:
             
             # 如果仿真成功。
             if result["success"]:
-                # 如果指定了输出路径，将结果保存为 YAML 文件。
-                if output_path:
-                    with open(output_path, 'w', encoding='utf-8') as f:
-                        yaml.dump(result, f, allow_unicode=True, sort_keys=False)
-                    # 记录保存成功日志。
-                    logger.info(self.lang_manager.get_translation(
-                        "simulation_complete", 
-                        output=output_path
-                    ))
+                # 记录仿真完成日志。
+                logger.info(f"仿真完成: {result['model_name']}, 步数: {result['steps']}")
                 # 返回仿真结果。
                 return result
             else:
