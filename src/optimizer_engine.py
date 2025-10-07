@@ -78,12 +78,11 @@ class OptimizerEngine:
         # 记录日志。
         logger.info("已注入 SimulatorEngine 实例")
 
-    def optimize(self, mode: str = 'full_params', target: str = 'min_error', 
-                method: str = 'grid', time_hours: float = 720.0) -> Dict[str, Any]:
+    def optimize(self, mode: str = 'full_params', method: str = 'grid', 
+                time_hours: float = 720.0) -> Dict[str, Any]:
         """
         执行优化任务。
         :param mode: 优化模式 (real_time/full_inputs/full_params)。
-        :param target: 优化目标（从模型的 optimizer.targets 读取）。
         :param method: 优化方法 (grid/pymoo/rl)。
         :param time_hours: 优化时长（小时）。
         :return: 优化结果字典。
@@ -96,9 +95,12 @@ class OptimizerEngine:
         if not self.simulator:
             return {"success": False, "error": "未注入 SimulatorEngine"}
         
-        # 从模型配置中读取优化参数（如果未指定）。
-        if 'targets' in self.config and not target:
-            target = self.config['targets'][0]
+        # 从模型配置中读取优化目标（必需）。
+        if 'targets' not in self.config or not self.config['targets']:
+            return {"success": False, "error": "模型配置中未定义优化目标 (optimizer.targets)"}
+        target = self.config['targets'][0]
+        
+        # 从模型配置中读取优化方法（如果未指定）。
         if 'method' in self.config and method == 'grid':
             method = self.config['method']
         
