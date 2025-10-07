@@ -57,8 +57,6 @@ Examples:
     )
     parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
     parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='Language for output')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
-    parser.add_argument('--quiet', '-q', action='store_true', help='Suppress non-error output')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--list-templates', action='store_true', help='List available templates')
     group.add_argument('--generate', nargs=2, metavar=('TEMPLATE', 'OUTPUT'), 

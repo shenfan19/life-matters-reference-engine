@@ -167,10 +167,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--lang', default='en', 
                        choices=['en', 'zhhans', 'zhhant', 'fr'], 
                        help='输出语言')
-    parser.add_argument('--verbose', '-v', action='store_true', 
-                       help='启用详细日志输出')
-    parser.add_argument('--quiet', '-q', action='store_true', 
-                       help='仅显示错误信息')
     
     # 定义互斥参数组（运行仿真或显示状态）。
     group = parser.add_mutually_exclusive_group(required=True)
