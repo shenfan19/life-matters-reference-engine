@@ -122,7 +122,7 @@ def create_parser() -> argparse.ArgumentParser:
         epilog='''
 示例命令:
   %(prog)s --folder physiology --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zh-Hans
-  %(prog)s --file digestive --mode real_time --method grid --target min_error --time 720
+  %(prog)s --file digestive --mode real_time --method grid --time 720
   %(prog)s --file obesity_diabetes --mode full_inputs --method pymoo --time 8640 --output result.yaml
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -143,15 +143,11 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--mode', default='full_params', 
                        choices=['real_time', 'full_inputs', 'full_params'], 
                        help='优化模式（默认: full_params）')
-    parser.add_argument('--target', default='min_error', 
-                       help='优化目标（默认: min_error）')
     parser.add_argument('--method', default='grid', 
                        choices=['grid', 'pymoo', 'rl'], 
                        help='优化方法（默认: grid）')
     parser.add_argument('--time', type=float, default=24*30*12, 
                        help='优化时长（小时，默认: 8640 = 1 年）')
-    parser.add_argument('--output', 
-                       help='输出文件路径（YAML 格式）')
     
     # 返回配置好的解析器。
     return parser
@@ -216,6 +212,11 @@ def main():
                 print(f"\n✓ 输入序列优化完成")
                 print(f"  最优适应度: {result.get('value', 0):.6f}")
                 print(f"  迭代次数: {len(result.get('history', []))}")
+            
+            # 如果未指定输出路径但需要查看详细结果，输出 YAML 格式。
+            if not output_path:
+                print("\n详细结果:")
+                print(yaml.dump(result, allow_unicode=True, sort_keys=False))
             
             success = True
         else:
