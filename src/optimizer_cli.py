@@ -124,7 +124,6 @@ def create_parser() -> argparse.ArgumentParser:
   %(prog)s --folder physiology --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zh-Hans
   %(prog)s --file digestive --mode real_time --method grid --target min_error --time 720
   %(prog)s --file obesity_diabetes --mode full_inputs --method pymoo --time 8640 --output result.yaml
-  %(prog)s --config opt_config.yaml
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -137,16 +136,10 @@ def create_parser() -> argparse.ArgumentParser:
                        help='输出语言')
     parser.add_argument('--folder', 
                        help='模型子文件夹（如 physiology）')
-    parser.add_argument('--verbose', '-v', action='store_true', 
-                       help='启用详细日志输出')
-    parser.add_argument('--quiet', '-q', action='store_true', 
-                       help='仅显示错误信息')
     
     # 定义优化相关参数。
     parser.add_argument('--file', 
                        help='优化模型名称（逗号分隔，如 digestive,diabetes）')
-    parser.add_argument('--config', 
-                       help='优化配置文件（YAML 格式）')
     parser.add_argument('--mode', default='full_params', 
                        choices=['real_time', 'full_inputs', 'full_params'], 
                        help='优化模式（默认: full_params）')
@@ -169,12 +162,6 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    # 根据 verbose 或 quiet 标志调整日志级别。
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    elif args.quiet:
-        logging.getLogger().setLevel(logging.ERROR)
-
     # 使用指定的模型目录和语言初始化 OptimizerCLI。
     cli = OptimizerCLI(args.mods_dir, args.lang)
     success = False
@@ -189,18 +176,6 @@ def main():
         folder = args.folder
         output_path = args.output
         
-        # 如果提供了配置文件，则加载 YAML 配置文件。
-        if args.config:
-            with open(args.config, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            # 如果配置文件中存在相应字段，则覆盖命令行参数。
-            model_names = config.get('models', [])
-            folder = config.get('folder', args.folder)
-            mode = config.get('mode', args.mode)
-            target = config.get('target', args.target)
-            method = config.get('method', args.method)
-            time_hours = config.get('time_hours', args.time)
-            output_path = config.get('output', args.output)
         
         # 如果指定了 --file 参数，解析模型名称列表。
         if args.file:
@@ -241,11 +216,6 @@ def main():
                 print(f"\n✓ 输入序列优化完成")
                 print(f"  最优适应度: {result.get('value', 0):.6f}")
                 print(f"  迭代次数: {len(result.get('history', []))}")
-            
-            # 如果未指定输出路径但需要查看详细结果，输出 YAML 格式。
-            if not output_path and args.verbose:
-                print("\n详细结果:")
-                print(yaml.dump(result, allow_unicode=True, sort_keys=False))
             
             success = True
         else:
