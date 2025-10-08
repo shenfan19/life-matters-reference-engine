@@ -6,6 +6,8 @@
 
 import logging
 import numpy as np
+import csv
+import os
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
 from mod_structure import ModStructure
@@ -53,7 +55,8 @@ class SimulatorEngine:
         return self.current_model is not None
 
     def run_simulation(self, model_name: str, time_hours: float, folder: Optional[str] = None, 
-                      pause_every: int = 0, interactive: bool = False) -> Dict[str, Any]:
+                      pause_every: int = 0, interactive: bool = False, 
+                      output_path: Optional[str] = None) -> Dict[str, Any]:
         """
         运行仿真主函数。
         :param model_name: 模型名称。
@@ -61,6 +64,7 @@ class SimulatorEngine:
         :param folder: 子文件夹名称。
         :param pause_every: 每隔多少步暂停（0 表示不暂停）。
         :param interactive: 是否启用交互式暂停。
+        :param output_path: CSV 输出文件路径（可选）。
         :return: 仿真结果字典。
         """
         # 如果指定了模型名称但加载失败，返回错误信息。
@@ -77,11 +81,18 @@ class SimulatorEngine:
         self.time = 0.0
         
         # 从模型的 simulator 配置中获取时间步长（秒）。
-        dt = self.current_model.simulator.get('step_size', 3600.0)  # 默认 1 小时
+        step_size = self.current_model.simulator.get('step_size', 3600.0)  # 默认 1 小时
         # 计算总仿真时间（秒）。
         total_time = time_hours * 3600.0
         # 计算总步数。
-        total_steps = int(total_time / dt)
+        total_steps = int(total_time / step_size)
+        
+        # 获取需要输出的变量列表
+        output_variables = self.current_model.simulator.get('output_variables', [])
+        
+        # 准备 CSV 数据存储
+        csv_data = []
+        csv_headers = ['step', 'time'] + output_variables
         
         # 注册暂停回调（如果启用交互式暂停）。
         if interactive and pause_every > 0:
@@ -91,11 +102,20 @@ class SimulatorEngine:
             # 逐步运行仿真，直到达到指定步数或停止。
             while self.current_step < total_steps and self.running:
                 # 执行单步仿真。
-                self.current_model.step(dt)
+                self.current_model.step(step_size)
                 # 增加步数计数。
                 self.current_step += 1
                 # 更新仿真时间。
-                self.time += dt
+                self.time += step_size
+                
+                # 收集当前步的数据
+                row = [self.current_step, self.time]
+                for var_name in output_variables:
+                    if var_name in self.current_model.variables:
+                        row.append(self.current_model.variables[var_name].value)
+                    else:
+                        row.append(0.0)  # 变量不存在时填充 0
+                csv_data.append(row)
                 
                 # 检查是否需要暂停。
                 if pause_every > 0 and self.current_step % pause_every == 0:
@@ -108,13 +128,29 @@ class SimulatorEngine:
             
             # 设置仿真运行状态为 False。
             self.running = False
-            # 返回仿真结果，包括模型名称、当前状态、步数和时间。
+            
+            # 写入 CSV 文件
+            csv_output_path = output_path
+            if not csv_output_path:
+                # 默认输出到 mods/output/ 目录
+                output_dir = os.path.join(self.loader.mods_directory, "output")
+                os.makedirs(output_dir, exist_ok=True)
+                csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_simulation.csv")
+            
+            with open(csv_output_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(csv_headers)
+                writer.writerows(csv_data)
+            
+            # 返回仿真结果，包括模型名称、当前状态、步数、时间和 CSV 路径。
             return {
                 "success": True,
                 "model_name": self.current_model.metadata.name,
                 "state": self.current_model.get_current_state(),
                 "steps": self.current_step,
-                "time": self.time
+                "time": self.time,
+                "csv_output": csv_output_path,
+                "output_variables": output_variables
             }
         except Exception as e:
             # 记录仿真失败错误。
@@ -145,11 +181,11 @@ class SimulatorEngine:
             self.current_model.set_parameters(parameters)
         
         # 从模型的 simulator 配置中获取时间步长（秒）。
-        dt = self.current_model.simulator.get('step_size', 3600.0)
+        step_size = self.current_model.simulator.get('step_size', 3600.0)
         # 计算总仿真时间（秒）。
         total_time = time_hours * 3600.0
         # 计算总步数。
-        total_steps = int(total_time / dt)
+        total_steps = int(total_time / step_size)
         
         try:
             # 如果提供了输入序列，按序列执行仿真。
@@ -162,10 +198,10 @@ class SimulatorEngine:
                     for var_name, value in step_inputs.items():
                         self.current_model.set_variable_value(var_name, value)
                     # 执行单步仿真。
-                    self.current_model.step(dt)
+                    self.current_model.step(step_size)
             else:
                 # 否则，直接运行指定步数的仿真。
-                self.current_model.run_steps(total_steps, dt)
+                self.current_model.run_steps(total_steps, step_size)
             
             # 从模型的 optimizer 配置中获取目标函数。
             target = self.current_model.optimizer.get('targets', ['min_error'])[0]

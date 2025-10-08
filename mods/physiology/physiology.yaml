@@ -101,6 +101,10 @@ simulator:
   step_size: 60  # 默认时间步长（秒），例如每小时更新一次
   total_time: 8640000  # 仿真步数
   output_format: yaml  # 输出格式
+  output_variables:  # 需要输出的变量列表
+    - blood_glucose
+    - plasma_insulin
+    - body_water
   monitor_conditions:  # 监控条件列表
     - blood_glucose < 70  # 示例：低血糖警报
 

@@ -41,7 +41,7 @@ class SimulatorCLI:
 
     def run_simulation(self, model_name: str, time_hours: float, 
                       folder: Optional[str] = None, pause_every: int = 0, 
-                      interactive: bool = False) -> Dict[str, Any]:
+                      interactive: bool = False, output_path: Optional[str] = None) -> Dict[str, Any]:
         """
         执行指定模型的仿真任务。
         :param model_name: 模型名称。
@@ -49,6 +49,7 @@ class SimulatorCLI:
         :param folder: 子文件夹名称。
         :param pause_every: 每隔多少步暂停。
         :param interactive: 是否启用交互式暂停。
+        :param output_path: CSV 输出文件路径（可选）。
         :return: 仿真结果字典。
         """
         try:
@@ -58,7 +59,8 @@ class SimulatorCLI:
                 time_hours=time_hours,
                 folder=folder,
                 pause_every=pause_every,
-                interactive=interactive
+                interactive=interactive,
+                output_path=output_path
             )
             
             # 如果仿真成功。
@@ -157,6 +159,7 @@ def create_parser() -> argparse.ArgumentParser:
   %(prog)s --file digestive --time 1000 --lang zhhans --interactive
   %(prog)s --file physiology/obesity_diabetes --time 500 --folder physiology
   %(prog)s --state digestive --format yaml --folder physiology
+  %(prog)s --file digestive --time 8760 --output results/simulation.csv
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -178,12 +181,14 @@ def create_parser() -> argparse.ArgumentParser:
                       help='显示指定模型的当前状态')
     
     # 定义仿真相关参数。
-    parser.add_argument('--time', type=float, default=24*30*12, 
-                       help='仿真总时间（小时，默认: 8640 = 1 年）')
+    parser.add_argument('--time', type=float, default=8760.0, 
+                       help='仿真总时间（小时，默认: 8760 = 1 年）')
     parser.add_argument('--pause-every', type=int, default=0, 
                        help='每隔多少步暂停（默认: 0，不暂停）')
     parser.add_argument('--interactive', action='store_true', 
                        help='启用交互式暂停（CLI 输入）')
+    parser.add_argument('--output', 
+                       help='CSV 输出文件路径（默认: mods/output/<model_name>_simulation.csv）')
     
     # 定义状态显示相关参数。
     parser.add_argument('--format', choices=['table', 'yaml'], default='table', 
@@ -211,23 +216,22 @@ def main():
                 time_hours=args.time,
                 folder=args.folder,
                 pause_every=args.pause_every,
-                interactive=args.interactive
+                interactive=args.interactive,
+                output_path=args.output
             )
             # 如果仿真成功。
             if result["success"]:
-                # 根据格式输出结果。
-                if args.format == "yaml" and not args.output:
-                    print(yaml.dump(result, allow_unicode=True, sort_keys=False))
-                else:
-                    # 显示仿真完成信息。
-                    print(f"\n✓ 仿真完成")
-                    print(f"  模型: {result['model_name']}")
-                    print(f"  步数: {result['steps']}")
-                    print(f"  时间: {result['time']/3600:.2f} 小时")
-                    # 显示部分状态变量。
-                    print(f"\n最终状态（前 5 个变量）:")
-                    for var_name, var_info in list(result['state'].items())[:5]:
-                        print(f"  {var_name}: {var_info['value']:.4f} {var_info.get('unit', '')}")
+                # 显示仿真完成信息。
+                print(f"\n✓ 仿真完成")
+                print(f"  模型: {result['model_name']}")
+                print(f"  步数: {result['steps']}")
+                print(f"  时间: {result['time']/3600:.2f} 小时")
+                print(f"  CSV 输出: {result['csv_output']}")
+                print(f"  输出变量: {', '.join(result['output_variables'])}")
+                # 显示部分状态变量。
+                print(f"\n最终状态（前 5 个变量）:")
+                for var_name, var_info in list(result['state'].items())[:5]:
+                    print(f"  {var_name}: {var_info['value']:.4f} {var_info.get('unit', '')}")
                 success = True
             else:
                 # 如果仿真失败，打印错误信息。
