@@ -55,8 +55,8 @@ formulas:
     description: 胰岛素分泌响应血糖
     condition: blood_glucose > 100 and beta_cell_function > 0.1
     dynamics:
-      insulin_secretion_rate: min(20, insulin_secretion_rate + (blood_glucose - 100) * beta_cell_function * 0.005 * step_size)
-      plasma_insulin: plasma_insulin + insulin_secretion_rate * step_size - plasma_insulin * 0.05 * step_size
+      insulin_secretion_rate: min(20, insulin_secretion_rate + (blood_glucose - 100) * beta_cell_function * 0.005 * dt)
+      plasma_insulin: plasma_insulin + insulin_secretion_rate * dt - plasma_insulin * 0.05 * dt
     priority: 5
   type1_autoimmune_destruction:
     description: 1型糖尿病的自身免疫性β细胞破坏
