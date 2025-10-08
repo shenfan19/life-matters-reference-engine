@@ -198,12 +198,6 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    # 根据 verbose 或 quiet 标志调整日志级别。
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    elif args.quiet:
-        logging.getLogger().setLevel(logging.ERROR)
-
     # 初始化 SimulatorCLI，指定模型目录和语言。
     cli = SimulatorCLI(args.mods_dir, args.lang)
     success = False

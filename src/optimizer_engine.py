@@ -420,8 +420,7 @@ class OptimizerEngine:
             res = minimize(
                 problem,
                 algorithm,
-                ('n_gen', n_gen),
-                verbose=True
+                ('n_gen', n_gen)
             )
             
             # 返回优化结果。

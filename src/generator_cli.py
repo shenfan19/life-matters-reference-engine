@@ -68,11 +68,6 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    elif args.quiet:
-        logging.getLogger().setLevel(logging.ERROR)
-
     cli = GeneratorCLI(args.mods_dir, args.lang)
     success = False
     result = None

@@ -166,12 +166,9 @@ def main():
         # 初始化配置变量。
         model_names = []
         mode = args.mode
-        target = args.target
         method = args.method
         time_hours = args.time
         folder = args.folder
-        output_path = args.output
-        
         
         # 如果指定了 --file 参数，解析模型名称列表。
         if args.file:
