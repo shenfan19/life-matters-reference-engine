@@ -95,6 +95,16 @@ class ModStructure(Loader, Validator, Simulation):
         # 生成独立公式文件
         for form_name in independent_formulas:
             deps = formula_deps[form_name]
+            # 过滤 variables，排除 'dt' 如果存在
+            filtered_vars = {
+                var: {
+                    'description': self.variables[var].description,
+                    'value': self.variables[var].value,
+                    'type': self.variables[var].type.value,
+                    'unit': self.variables[var].unit,
+                    'bounds': self.variables[var].bounds
+                } for var in deps if var in self.variables and var != 'dt'  # 添加过滤条件：排除 'dt'
+            }
             patch_data = {
                 'metadata': {
                     'name': f"{prefix}_{form_name}",
@@ -102,15 +112,7 @@ class ModStructure(Loader, Validator, Simulation):
                     'author': self.metadata.author if self.metadata else '',
                     'description': f"Split module for formula {form_name}",
                 },
-                'variables': {
-                    var: {
-                        'description': self.variables[var].description,
-                        'value': self.variables[var].value,
-                        'type': self.variables[var].type.value,
-                        'unit': self.variables[var].unit,
-                        'bounds': self.variables[var].bounds
-                    } for var in deps if var in self.variables
-                },
+                'variables': filtered_vars,  # 使用过滤后的 variables
                 'formulas': {
                     form_name: {
                         'description': self.formulas[form_name].description,
@@ -124,7 +126,7 @@ class ModStructure(Loader, Validator, Simulation):
             split_file_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
             with open(split_file_path, 'w', encoding='utf-8') as f:
                 yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
-                            default_flow_style=False, indent=2)  # 添加 indent=2
+                            default_flow_style=False, indent=2)
             logger.info(f"Generated split file: {split_file_path}")
 
         # 生成剩余模型文件
@@ -140,6 +142,16 @@ class ModStructure(Loader, Validator, Simulation):
                 if var in self.variables:
                     remaining_vars.add(var)
         
+        # 过滤 remaining_vars，排除 'dt' 如果存在
+        filtered_remaining_vars = {
+            var: {
+                'description': self.variables[var].description,
+                'value': self.variables[var].value,
+                'type': self.variables[var].type.value,
+                'unit': self.variables[var].unit,
+                'bounds': self.variables[var].bounds
+            } for var in remaining_vars if var in self.variables and var != 'dt'  # 添加过滤条件：排除 'dt'
+        }
         remaining_data = {
             'metadata': {
                 'name': f"{prefix}_remaining",
@@ -147,15 +159,7 @@ class ModStructure(Loader, Validator, Simulation):
                 'author': self.metadata.author if self.metadata else '',
                 'description': f"Remaining shared modules of {prefix}",
             },
-            'variables': {
-                var: {
-                    'description': self.variables[var].description,
-                    'value': self.variables[var].value,
-                    'type': self.variables[var].type.value,
-                    'unit': self.variables[var].unit,
-                    'bounds': self.variables[var].bounds
-                } for var in remaining_vars if var in self.variables
-            },
+            'variables': filtered_remaining_vars,  # 使用过滤后的 variables
             'formulas': {
                 k: {
                     'description': v.description,
@@ -169,7 +173,7 @@ class ModStructure(Loader, Validator, Simulation):
         remaining_path = os.path.join(output_dir, f"{prefix}_remaining.yaml")
         with open(remaining_path, 'w', encoding='utf-8') as f:
             yaml.safe_dump(remaining_data, f, sort_keys=False, allow_unicode=True,
-                        default_flow_style=False, indent=2)  # 添加 indent=2
+                        default_flow_style=False, indent=2)
         logger.info(f"Generated remaining file: {remaining_path}")
         
     def export_to_yaml(self, file_path: str):
