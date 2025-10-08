@@ -8,7 +8,7 @@ class SimEngine:  # 定义模拟引擎类，核心科学计算和事件处理
             self.model = yaml.safe_load(f)  # 安全加载YAML内容到字典
         self.states = {k: v['value'] for k, v in self.model['variables'].items()}  # 从variables提取初始states字典
         self.parameters = {k: v['value'] for k, v in self.model['parameters'].items()}  # 从parameters提取常值字典
-        self.dt = self.model['simulator']['dt']  # 从simulator获取时间步长
+        self.dt = self.model['simulator']['step_size']  # 从simulator获取时间步长
         self.total_steps = self.model['simulator']['steps']  # 获取总步数
         self.pause_every = self.model['simulator']['pause_every']  # 获取暂停间隔
         self.step = 0  # 当前步数初始化为0

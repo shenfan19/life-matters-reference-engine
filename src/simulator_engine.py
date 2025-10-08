@@ -77,7 +77,7 @@ class SimulatorEngine:
         self.time = 0.0
         
         # 从模型的 simulator 配置中获取时间步长（秒）。
-        dt = self.current_model.simulator.get('dt', 3600.0)  # 默认 1 小时
+        dt = self.current_model.simulator.get('step_size', 3600.0)  # 默认 1 小时
         # 计算总仿真时间（秒）。
         total_time = time_hours * 3600.0
         # 计算总步数。
@@ -145,7 +145,7 @@ class SimulatorEngine:
             self.current_model.set_parameters(parameters)
         
         # 从模型的 simulator 配置中获取时间步长（秒）。
-        dt = self.current_model.simulator.get('dt', 3600.0)
+        dt = self.current_model.simulator.get('step_size', 3600.0)
         # 计算总仿真时间（秒）。
         total_time = time_hours * 3600.0
         # 计算总步数。

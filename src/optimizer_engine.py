@@ -202,7 +202,7 @@ class OptimizerEngine:
             return {"success": False, "error": "没有输入变量可优化"}
         
         # 计算输入序列的长度（基于时间步长）。
-        dt = self.current_model.simulator.get('dt', 3600.0)
+        dt = self.current_model.simulator.get('step_size', 3600.0)
         sequence_length = int(time_hours * 3600.0 / dt)
         
         # 定义输入序列的边界（每个时间步的每个输入变量）。
@@ -277,7 +277,7 @@ class OptimizerEngine:
             return {"success": False, "error": "没有输入变量可优化"}
         
         # 获取时间步长和总步数。
-        dt = self.current_model.simulator.get('dt', 3600.0)
+        dt = self.current_model.simulator.get('step_size', 3600.0)
         total_steps = int(time_hours * 3600.0 / dt)
         
         # 初始化仿真器的模型（与优化器使用同一模型）。
