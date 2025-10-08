@@ -148,9 +148,9 @@ formulas:
     dynamics:
       var_name: "变量更新表达式"
 simulator:
-  dt: 3600  # 时间步长（秒）
+  step_size: 3600  # 时间步长（秒）
   dt_unit: hour  # 时间单位
-  steps: 100  # 仿真步数
+  total_time: 8640000  # 仿真步数
   output_format: yaml
   pause_every: 10  # 每 10 步暂停
   hooks:

@@ -175,9 +175,9 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
 - **示例**：
   ```yaml
   simulator:
-    dt: 3600
+    step_size: 3600
     dt_unit: hour
-    steps: 100
+    total_time: 8640000
     output_format: yaml
     pause_every: 10
     hooks:

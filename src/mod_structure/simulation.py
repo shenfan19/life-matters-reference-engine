@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class Simulation:
     # Simulation
-    def step(self, dt: float = 1.0):
+    def step(self, step_size: float = 1.0):
         # 执行单步仿真。
         # 新增：执行 pre_step 钩子
         for hook in self.hooks['pre_step']:
@@ -67,7 +67,7 @@ class Simulation:
         # 返回公式结果。
         return formula_results
 
-    def run_steps(self, steps: int, dt: float = 1.0):
+    def run_steps(self, steps: int, step_size: float = 1.0):
         # 运行指定步数的仿真。
         for _ in range(steps):
             self.step(dt)

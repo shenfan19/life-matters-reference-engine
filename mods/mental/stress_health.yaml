@@ -10,8 +10,8 @@ python_envs:
   - scipy: ">=1.10.0"  # 可选：单目标优化
 
 simulator:
-  steps: 100  # 仿真步数
-  dt: 1.0  # 时间步长
+  total_time: 8640000  # 仿真步数
+  step_size: 1.0  # 时间步长
   dt_unit: hour  # 时间单位
   pause_every: 5  # 每 5 步暂停，触发钩子
   hooks:
