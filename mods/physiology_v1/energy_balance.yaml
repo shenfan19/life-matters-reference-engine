@@ -1,0 +1,51 @@
+metadata:
+  name: "EnergyBalance"  # 模型名称
+  version: "1.0.0"  # 版本号
+  author: "Prototype"  # 作者
+  description: "简单能量平衡模型：营养摄入 - 运动消耗 - 衰老影响"  # 描述
+
+variables:  # 动态states：可随时间变化的状态变量
+  energy:  # 能量水平（kcal）
+    description: "当前能量储备"
+    value: 2000.0  # 初始值
+    unit: "kcal"
+    type: "state"  # 类型：动态状态
+  metabolism_rate:  # 代谢率系数（动态，受衰老影响）
+    description: "基础代谢率系数"
+    value: 1.0  # 初始值（无衰老）
+    unit: "relative"
+    type: "dynamic_coeff"  # 类型：动态系数，作为states但用于公式
+
+parameters:  # 常值parameters：全局常量，可优化但模拟中稳定
+  nutrition_base:  # 基础营养摄入
+    description: "每日基础营养（kcal）"
+    value: 2000.0  # 默认值
+    unit: "kcal/day"
+    type: "constant"  # 类型：常值
+  exercise_consume:  # 运动消耗率
+    description: "每日运动消耗系数"
+    value: 500.0  # 默认值
+    unit: "kcal/day"
+    type: "constant"  # 类型：常值
+  aging_decay:  # 衰老衰减率
+    description: "每日代谢衰减率"
+    value: 0.001  # 默认值（小值，避免快速衰老）
+    unit: "per_day"
+    type: "constant"  # 类型：常值
+
+formulas:  # 公式：定义动态更新逻辑（非线性ODE）
+  energy_update:  # 能量更新公式
+    description: "d(energy)/dt = metabolism_rate * nutrition - exercise_consume"
+    dynamics:
+      energy: "metabolism_rate * nutrition_base - exercise_consume"  # 非线性：依赖动态metabolism_rate
+  aging_update:  # 衰老更新公式（非线性衰减）
+    description: "metabolism_rate = metabolism_rate * (1 - aging_decay)"
+    dynamics:
+      metabolism_rate: "metabolism_rate * (1 - aging_decay)"  # 指数衰减，非线性
+
+simulator:  # 模拟器设置
+  step_size: 1  # 时间步长（抽象天）
+  dt_unit: day  # 时间单位
+  total_time: 365  # 总步数（1年）
+  output_format: yaml  # 输出格式
+  pause_every: 10  # 每10步暂停交互

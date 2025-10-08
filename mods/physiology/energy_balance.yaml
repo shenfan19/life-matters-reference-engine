@@ -1,51 +1,102 @@
 metadata:
-  name: "EnergyBalance"  # 模型名称
-  version: "1.0.0"  # 版本号
-  author: "Prototype"  # 作者
-  description: "简单能量平衡模型：营养摄入 - 运动消耗 - 衰老影响"  # 描述
-
-variables:  # 动态states：可随时间变化的状态变量
-  energy:  # 能量水平（kcal）
-    description: "当前能量储备"
-    value: 2000.0  # 初始值
-    unit: "kcal"
-    type: "state"  # 类型：动态状态
-  metabolism_rate:  # 代谢率系数（动态，受衰老影响）
-    description: "基础代谢率系数"
-    value: 1.0  # 初始值（无衰老）
-    unit: "relative"
-    type: "dynamic_coeff"  # 类型：动态系数，作为states但用于公式
-
-parameters:  # 常值parameters：全局常量，可优化但模拟中稳定
-  nutrition_base:  # 基础营养摄入
-    description: "每日基础营养（kcal）"
-    value: 2000.0  # 默认值
-    unit: "kcal/day"
-    type: "constant"  # 类型：常值
-  exercise_consume:  # 运动消耗率
-    description: "每日运动消耗系数"
-    value: 500.0  # 默认值
-    unit: "kcal/day"
-    type: "constant"  # 类型：常值
-  aging_decay:  # 衰老衰减率
-    description: "每日代谢衰减率"
-    value: 0.001  # 默认值（小值，避免快速衰老）
-    unit: "per_day"
-    type: "constant"  # 类型：常值
-
-formulas:  # 公式：定义动态更新逻辑（非线性ODE）
-  energy_update:  # 能量更新公式
-    description: "d(energy)/dt = metabolism_rate * nutrition - exercise_consume"
+  name: energy_balance
+  version: 2.1.0
+  author: Minghui Wu
+  description: 能量平衡模型，包括基础代谢率、能量消耗和运动影响
+  tags:
+  - metabolism
+  - energy
+imports:
+- nutrition_intake
+- glucose_regulation
+variables:
+  energy:
+    description: 当前能量储备
+    value: 2000.0
+    unit: kcal
+    type: state
+  metabolism_rate:
+    description: 基础代谢率系数
+    value: 1.0
+    unit: relative
+    type: dynamic_coeff
+  basal_metabolic_rate:
+    bounds:
+    - 800
+    - 3000
+    description: 基础代谢率
+    type: state
+    unit: kcal/day
+    value: 1800
+  energy_expenditure:
+    bounds:
+    - 0.5
+    - 3.0
+    description: 能量消耗率
+    type: state
+    unit: 倍数
+    value: 1.2
+parameters:
+  nutrition_base:
+    description: 每日基础营养（kcal）
+    value: 2000.0
+    unit: kcal/day
+    type: constant
+  exercise_consume:
+    description: 每日运动消耗系数
+    value: 500.0
+    unit: kcal/day
+    type: constant
+  aging_decay:
+    description: 每日代谢衰减率
+    value: 0.001
+    unit: per_day
+    type: constant
+formulas:
+  energy_update:
+    description: 能量更新公式
     dynamics:
-      energy: "metabolism_rate * nutrition_base - exercise_consume"  # 非线性：依赖动态metabolism_rate
-  aging_update:  # 衰老更新公式（非线性衰减）
-    description: "metabolism_rate = metabolism_rate * (1 - aging_decay)"
+      energy: metabolism_rate * nutrition_base - exercise_consume
+    priority: 3
+  aging_update:
+    description: 代谢率随衰老衰减
     dynamics:
-      metabolism_rate: "metabolism_rate * (1 - aging_decay)"  # 指数衰减，非线性
-
-simulator:  # 模拟器设置
-  step_size: 1  # 时间步长（抽象天）
-  dt_unit: day  # 时间单位
-  total_time: 365  # 总步数（1年）
-  output_format: yaml  # 输出格式
-  pause_every: 10  # 每10步暂停交互
+      metabolism_rate: metabolism_rate * (1 - aging_decay)
+    priority: 2
+  circadian_hormone_variation:
+    condition: true
+    description: 昼夜节律对代谢的影响
+    dynamics:
+      basal_metabolic_rate: 1800 + 200 * sin(time * 3.14159 / 720)
+      insulin_sensitivity: 0.8 + 0.1 * cos(time * 3.14159 / 720)
+    priority: 1
+  exercise_effect:
+    condition: exercise_intensity > 0
+    description: 运动增加葡萄糖利用和胰岛素敏感性
+    dynamics:
+      energy_expenditure: min(3.0, energy_expenditure + exercise_intensity * 0.1 * step_size)
+      glucose_utilization: glucose_utilization + exercise_intensity * 0.2 * step_size
+      insulin_sensitivity: min(1.0, insulin_sensitivity + exercise_intensity * 0.005 * step_size)
+    priority: 3
+  metabolic_efficiency:
+    condition: true
+    description: 代谢效率指标
+    dynamics:
+      metabolic_efficiency: (digestive_efficiency + insulin_sensitivity) / 2 * 100
+    priority: 1
+simulator:
+  step_size: 1
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - energy
+  - metabolism_rate
+  - basal_metabolic_rate
+  - energy_expenditure
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_to_optimize:
+  - energy_expenditure
+  parameters_to_optimize:
+  - insulin_sensitivity

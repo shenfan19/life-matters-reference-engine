@@ -1,92 +1,56 @@
 metadata:
-  name: organs
+  name: physiology
   version: 2.1.0
   author: Minghui Wu
-  description: 肝、胰腺、胃、小肠等器官功能系数
+  description: 肝、胰腺、胃、小肠等器官功能系数及恢复机制
   conflicts: []
-  tags: [organs, function]
-
+  tags:
+  - organs
+  - function
 imports:
-  - insulin_system.yaml
-  - glucose_regulation.yaml
-
+- insulin_system
+- glucose_regulation
 variables:
   liver_function:
     description: 肝功能系数
     value: 1.0
     unit: 系数
     type: state
-    bounds: [0.1, 1.0]
-
+    bounds:
+    - 0.1
+    - 1.0
   pancreatic_function:
     description: 胰腺功能系数
     value: 1.0
     unit: 系数
     type: state
-    bounds: [0.1, 1.0]
-
+    bounds:
+    - 0.1
+    - 1.0
   gastric_function:
     description: 胃功能效率
     value: 0.9
     unit: 系数
     type: state
-    bounds: [0.0, 1.0]
-
+    bounds:
+    - 0.0
+    - 1.0
   intestinal_function:
     description: 小肠功能效率
     value: 0.85
     unit: 系数
     type: state
-    bounds: [0.0, 1.0]
-  body_water:
-    description: Placeholder for body_water
-    value: 0.0
-    type: state
-    unit: unknown
     bounds:
-    - 0
-    - 100
-  liver_glycogen:
-    description: Placeholder for liver_glycogen
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100
+    - 0.0
+    - 1.0
   kidney_function:
-    description: Placeholder for kidney_function
-    value: 0.0
+    description: 肾功能系数
+    value: 0.8
+    unit: 系数
     type: state
-    unit: unknown
     bounds:
-    - 0
-    - 100
-  carb_intake:
-    description: Placeholder for carb_intake
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100
-  muscle_glycogen:
-    description: Placeholder for muscle_glycogen
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100
-  diabetes_type:
-    description: Placeholder for diabetes_type
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100
-
+    - 0.0
+    - 1.0
 formulas:
   organ_function_recovery:
     description: 休息状态下器官功能逐渐恢复
@@ -95,23 +59,23 @@ formulas:
       gastric_function: min(1.0, gastric_function + 0.0001)
       pancreatic_function: min(1.0, pancreatic_function + 0.00005)
       liver_function: min(1.0, liver_function + 0.0001)
+      intestinal_function: min(1.0, intestinal_function + 0.0001)
+      kidney_function: min(1.0, kidney_function + 0.0001)
     priority: 2
-
 simulator:
-  step_size: 60  # 默认时间步长（秒），例如每小时更新一次
-  total_time: 8640000  # 仿真步数
-  output_format: yaml  # 输出格式
-  output_variables:  # 需要输出的变量列表
-    - blood_glucose
-    - plasma_insulin
-    - body_water
-  monitor_conditions:  # 监控条件列表
-    - blood_glucose < 70  # 示例：低血糖警报
-
+  step_size: 1
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - liver_function
+  - pancreatic_function
+  - gastric_function
+  - intestinal_function
+  - kidney_function
 optimizer:
+  method: grid
+  duration: 60.0
   targets_to_optimize:
-    - energy_expenditure
-  parameters_to_optimize:  # 要优化的参数列表
-    - insulin_sensitivity
-  method: grid  # 优化方法，例如网格搜索
-  duration: 60.0  # 优化持续时间（分钟）
+  - energy_expenditure
+  parameters_to_optimize:
+  - insulin_sensitivity
