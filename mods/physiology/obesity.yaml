@@ -58,7 +58,7 @@ simulator:
 optimizer:
   method: grid
   duration: 60.0
-  targets_to_optimize:
+  targets_of_optimization:
   - diabetes_risk
   variables_to_optimize:
   - obesity_index

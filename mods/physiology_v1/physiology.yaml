@@ -109,7 +109,7 @@ simulator:
     - blood_glucose < 70  # 示例：低血糖警报
 
 optimizer:
-  targets_to_optimize:
+  targets_of_optimization:
     - energy_expenditure
   variables_to_optimize:  # 要优化的参数列表
     - insulin_sensitivity

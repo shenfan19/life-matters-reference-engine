@@ -207,7 +207,7 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
 - **示例**：
   ```yaml
   optimizer:
-    targets_of_optimization
+    targets_of_optimization:
       - max_happiness
       - min_health_risk
     variables_to_optimize:

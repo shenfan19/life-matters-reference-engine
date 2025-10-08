@@ -99,7 +99,7 @@ simulator:
 optimizer:
   method: grid
   duration: 60.0
-  targets_to_optimize:
+  targets_of_optimization:
   - body_water
   variables_to_optimize:
   - water_intake

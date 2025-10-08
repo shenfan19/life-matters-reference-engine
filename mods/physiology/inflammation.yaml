@@ -56,7 +56,7 @@ simulator:
 optimizer:
   method: grid
   duration: 60.0
-  targets_to_optimize:
+  targets_of_optimization:
   - inflammation_level
   variables_to_optimize:
   - exercise_intensity

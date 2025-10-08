@@ -161,7 +161,7 @@ optimizer:
   method: "grid"  # 优化方法
   python_envs:  # 优化任务额外依赖
     - package_name: ">=version"
-  targets_of_optimization
+  targets_of_optimization:
     - target_name
   pop_size: 20
   n_gen: 50

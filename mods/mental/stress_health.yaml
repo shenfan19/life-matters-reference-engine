@@ -19,7 +19,7 @@ simulator:
 
 optimizer:
   method: nsga2  # MOO 算法
-  targets:
+  targets_of_optimization:
     - max_happiness
     - min_health_risk
   pop_size: 50  # 种群大小
