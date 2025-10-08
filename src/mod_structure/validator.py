@@ -40,12 +40,12 @@ class Validator:
         if self.optimizer:
             if 'method' not in self.optimizer:
                 all_errors.append("optimizer 缺少 method。")
-            if 'parameters_to_optimize' in self.optimizer:
-                for param in self.optimizer['parameters_to_optimize']:
+            if 'variables_to_optimize' in self.optimizer:
+                for param in self.optimizer['variables_to_optimize']:
                     if param not in self.variables:
-                        all_missing_vars.append({'variable': param, 'context': 'optimizer.parameters_to_optimize'})
+                        all_missing_vars.append({'variable': param, 'context': 'optimizer.variables_to_optimize'})
                     elif self.variables[param].type != VariableType.parameter:
-                        all_errors.append(f"optimizer.parameters_to_optimize 中的 {param} 非 parameter 类型。")
+                        all_errors.append(f"optimizer.variables_to_optimize 中的 {param} 非 parameter 类型。")
             if 'targets_to_optimize' in self.optimizer:
                 for target in self.optimizer['targets_to_optimize']:
                     if target not in self.variables:

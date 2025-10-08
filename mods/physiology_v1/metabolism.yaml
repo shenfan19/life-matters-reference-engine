@@ -60,7 +60,7 @@ simulator:
 optimizer:
   targets_to_optimize:
     - energy_expenditure
-  parameters_to_optimize:  # 要优化的参数列表
+  variables_to_optimize:  # 要优化的参数列表
     - insulin_sensitivity
   method: grid  # 优化方法，例如网格搜索
   duration: 60.0  # 优化持续时间（分钟）

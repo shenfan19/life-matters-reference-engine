@@ -118,5 +118,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - blood_glucose
-  parameters_to_optimize:
+  variables_to_optimize:
   - insulin_sensitivity

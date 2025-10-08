@@ -86,5 +86,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - insulin_sensitivity
-  parameters_to_optimize:
+  variables_to_optimize:
   - beta_cell_function

@@ -25,6 +25,6 @@ optimizer:
   pop_size: 50  # 种群大小
   n_gen: 100  # 迭代次数
   bounds: [[0, 100], [0, 60]]  # 参数边界：sugar_intake, exercise_time
-  parameters_to_optimize:
+  variables_to_optimize:
     - insulin_sensitivity
     - energy_expenditure

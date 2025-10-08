@@ -83,5 +83,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - cardiovascular_risk
-  parameters_to_optimize:
+  variables_to_optimize:
   - kidney_function

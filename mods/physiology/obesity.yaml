@@ -60,5 +60,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - diabetes_risk
-  parameters_to_optimize:
+  variables_to_optimize:
   - obesity_index

@@ -101,5 +101,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - body_water
-  parameters_to_optimize:
+  variables_to_optimize:
   - water_intake

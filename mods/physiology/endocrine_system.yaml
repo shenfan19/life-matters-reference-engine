@@ -63,5 +63,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - glucagon_level
-  parameters_to_optimize:
+  variables_to_optimize:
   - insulin_sensitivity

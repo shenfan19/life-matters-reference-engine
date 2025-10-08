@@ -58,5 +58,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - inflammation_level
-  parameters_to_optimize:
+  variables_to_optimize:
   - exercise_intensity

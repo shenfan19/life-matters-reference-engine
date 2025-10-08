@@ -320,5 +320,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - digestive_efficiency
-  parameters_to_optimize:
+  variables_to_optimize:
   - bile_function

@@ -161,13 +161,13 @@ optimizer:
   method: "grid"  # 优化方法
   python_envs:  # 优化任务额外依赖
     - package_name: ">=version"
-  targets:
+  targets_of_optimization
     - target_name
   pop_size: 20
   n_gen: 50
   duration: 60.0
   bounds: [[min1, max1], [min2, max2]]
-  parameters_to_optimize:
+  variables_to_optimize:
     - var_name
 ```
 

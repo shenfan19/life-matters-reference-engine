@@ -73,5 +73,5 @@ optimizer:
   duration: 60.0
   targets_to_optimize:
   - health_score
-  parameters_to_optimize:
+  variables_to_optimize:
   - diabetes_risk

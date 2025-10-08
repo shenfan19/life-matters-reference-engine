@@ -195,22 +195,22 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
   - `n_gen`：整数，迭代次数（可选，默认为工具默认值）。
   - `duration`：浮点数，优化持续时间（分钟，可选）。
   - `bounds`：列表，优化参数的范围（格式为 `[[min1, max1], [min2, max2], ...]`，可选）。
-  - `parameters_to_optimize`：字符串列表，要优化的参数名（必须）。
+  - `variables_to_optimize`：字符串列表，要优化的参数名（必须）。
 - **约束**：
   - 当 `HealthTuner` 加载模型时，必须存在 `optimizer` 字段（否则抛出错误）。
   - `method` 必须是支持的优化算法（如 `grid`、`nsga2`）。
   - `python_envs` 中的包名和版本格式必须有效（如 `pymoo: ">=0.6.0"`），若为空则依赖框架核心环境。
   - `targets` 至少包含一个目标，支持多目标优化（如 NSGA-II）。
-  - `parameters_to_optimize` 中的变量必须在 `variables` 或导入模型中定义，且 `type` 为 `parameter`。
-  - 若定义 `bounds`，其长度必须与 `parameters_to_optimize` 一致，且每个范围 `[min, max]` 满足 `min <= max`。
+  - `variables_to_optimize` 中的变量必须在 `variables` 或导入模型中定义，且 `type` 为 `parameter`。
+  - 若定义 `bounds`，其长度必须与 `variables_to_optimize` 一致，且每个范围 `[min, max]` 满足 `min <= max`。
   - 在优化过程中，`HealthTuner` 根据根模型及其 `imports` 中的 `variables` 和 `formulas` 执行，根模型的参数覆盖导入模型。
 - **示例**：
   ```yaml
   optimizer:
-    targets:
+    targets_of_optimization
       - max_happiness
       - min_health_risk
-    parameters_to_optimize:
+    variables_to_optimize:
       - sugar_intake
       - exercise_time
     bounds: [[0, 100], [0, 60]]
