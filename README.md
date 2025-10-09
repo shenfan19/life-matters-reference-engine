@@ -90,19 +90,40 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
   ```
 
 ### 3. VitalSim 模块
-- **功能**：运行动态仿真，支持暂停、继续、参数调整、状态保存和事件应用。要求模型包含 `simulator` 字段，定义时间步长、步数和监控条件。
+- **功能**：运行动态仿真，支持暂停、继续、参数调整、状态保存和事件应用。要求模型包含 `simulator` 字段，定义时间步长、总时间和监控条件。
 - **依赖**：`loader_engine.py`、`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
   ```bash
-  python simulator_cli.py --run digestive --steps 100 --lang zhhans --folder physiology
+  python simulator_cli.py --file digestive --time 8760 --lang zhhans
   ```
 - **编程接口**：
   ```python
-  from simulator_engine import simulatorEngine
-  engine = simulatorEngine("mods_med", language="zhhans")
+  from simulator_engine import SimulatorEngine
+  engine = SimulatorEngine("mods_med", language="zhhans")
   result = engine.run_simulation("digestive", 100, folder="physiology")
   yaml.dump(result, open("result.yaml", "w"), allow_unicode=True)
   ```
+#### 指定 CSV 输出路径：
+```bash
+python simulator_cli.py --file physiology/obesity_diabetes --time 4380 --output results/my_simulation.csv
+```
+#### 交互式仿真（每 100 步暂停）：
+```bash
+python simulator_cli.py --file digestive --time 8760 --pause-every 100 --interactive
+```
+#### CSV 输出格式：
+仿真结果以 CSV 格式保存，包含以下列：
+- **step**：仿真步数（从 1 开始）
+- **time**：仿真时间（秒）
+- **output_variables**：模型中 `simulator.output_variables` 指定的变量值
+
+示例 CSV：
+```csv
+step,time,blood_glucose,plasma_insulin,body_water
+1,3600,100.5,15.2,42.0
+2,7200,98.3,14.8,42.1
+3,10800,99.1,15.0,42.0
+```
 
 ### 4. HealthTuner 模块
 - **功能**：优化模型参数（如最小化误差或多目标优化），调用 VitalSim 仿真引擎。要求模型包含 `optimizer` 字段。
@@ -148,15 +169,19 @@ formulas:
     dynamics:
       var_name: "变量更新表达式"
 simulator:
-  step_size: 3600  # 时间步长（秒）
   dt_unit: hour  # 时间单位
-  total_time: 8640000  # 仿真步数
-  output_format: yaml
+  step_size: 3600  # 时间步长（秒）
+  total_time: 8640000  # 总仿真时间（秒）
+  output_format: csv  # 锁定为 CSV
+  output_variables:  # 必须指定要输出的变量
+    - blood_glucose
+    - plasma_insulin
+    - body_water
+  monitor_conditions:
+    - blood_glucose < 70
   pause_every: 10  # 每 10 步暂停
   hooks:
     - post_step: function_name
-  monitor_conditions:
-    - condition_expression
 optimizer:
   method: "grid"  # 优化方法
   python_envs:  # 优化任务额外依赖
@@ -175,7 +200,41 @@ optimizer:
 - `imports`：支持递归加载，根模型覆盖导入模型的同名字段。
 - `simulator`：必须存在于 VitalSim 加载的模型中，定义仿真参数。
 - `optimizer`：必须存在于 HealthTuner 加载的模型中，定义优化参数。
-- 时间步长使用保留单位（如 `HOUR`、`DAY`），详见 `a_mod_rule.md`。
+- 时间步长使用保留单位（如 `HOUR`、`DAY`），详见时间步长处理部分。
+
+## 文件结构
+仿真输出默认保存到：
+```
+mods/
+  output/
+    <model_name>_simulation.csv
+    digestive_simulation.csv
+    obesity_diabetes_simulation.csv
+```
+
+自定义输出路径：
+```bash
+python simulator_cli.py --file digestive --time 8760 --output custom/path/result.csv
+```
+
+## 向后兼容性
+为支持旧模型，`simulator_engine.py` 中添加了兼容代码：
+
+```python
+# 兼容旧的 dt 参数
+if 'dt' in self.current_model.simulator and 'step_size' not in self.current_model.simulator:
+    step_size = self.current_model.simulator['dt']
+    logger.warning("警告: 'dt' 已弃用，请使用 'step_size'")
+else:
+    step_size = self.current_model.simulator.get('step_size', 3600.0)
+
+# 兼容旧的 steps 参数
+if 'steps' in self.current_model.simulator:
+    total_time = self.current_model.simulator['steps'] * step_size
+    logger.warning("警告: 'steps' 已弃用，请使用 'total_time'")
+else:
+    total_time = self.current_model.simulator.get('total_time', 31536000.0)
+```
 
 ## 架构设计
 ### 分层结构
@@ -234,6 +293,29 @@ graph TD
     linkStyle 0,1,2 stroke:#333,stroke-width:2px
 ```
 
+### 编程接口示例
+```python
+from simulator_engine import SimulatorEngine
+
+# 初始化引擎
+engine = SimulatorEngine("mods", language="zhhans")
+
+# 运行仿真
+result = engine.run_simulation(
+    model_name="digestive",
+    time_hours=8760,  # 1 年
+    folder="physiology",
+    output_path="results/simulation.csv"
+)
+
+if result["success"]:
+    print(f"仿真完成！")
+    print(f"总步数: {result['steps']}")
+    print(f"总时间: {result['time']/3600:.2f} 小时")
+    print(f"CSV 文件: {result['csv_output']}")
+    print(f"输出变量: {result['output_variables']}")
+```
+
 ## 多语言支持
 - **实现**：通过 `lang_manager.py` 提供动态语言切换，翻译文件存储在 `lang` 文件夹（如 `langs/en.yaml`、`langs/zhhans.yaml`）。
 - **支持语言**：
@@ -264,7 +346,7 @@ graph TD
   ```
 
 ## 时间步长处理
-- **基单位**：时间步长（`dt`）以秒为默认单位。
+- **基单位**：时间步长（`step_size`）以秒为默认单位。
 - **时间单位常量**：
   - `SECOND`：1 秒
   - `MINUTE`：60 秒
@@ -277,9 +359,9 @@ graph TD
   ```yaml
   formulas:
     glucose_decay:
-      description: Blood glucose decays hourly
+      description: 血糖每小时衰减
       dynamics:
-        blood_glucose: blood_glucose - 0.01 * (dt / HOUR)
+        blood_glucose: blood_glucose - 0.01 * (step_size / HOUR)
   ```
 - **验证代码**：
   ```python
@@ -288,14 +370,22 @@ graph TD
       model.load_model_from_dict({
           'metadata': {'name': 'test', 'version': '1.0.0'},
           'variables': {'x': {'value': 100.0, 'type': 'state'}},
-          'formulas': {'update_x': {'dynamics': {'x': 'x - 0.1 * (dt / HOUR)'}}}
+          'formulas': {'update_x': {'dynamics': {'x': 'x - 0.1 * (step_size / HOUR)'}}}
       })
       model.step(dt=3600)  # 1 小时
       assert abs(model.variables['x'].value - 99.9) < 1e-6
   ```
 
+## 测试建议
+为确保更新后的仿真功能正常运行，建议进行以下测试：
+1. **单步测试**：验证 `step_size` 参数正确传递。
+2. **时间计算**：确认 `total_time` 正确转换为步数。
+3. **CSV 输出**：检查 CSV 文件格式和内容是否符合预期。
+4. **变量缺失**：测试 `output_variables` 中不存在的变量的处理。
+5. **边界情况**：测试 0 步、1 步和极大步数情况。
+
 ## 性能优化
-- **大规模仿真**：增大时间步长（`--dt` 或 `simulator.dt`）。
+- **大规模仿真**：增大时间步长（`--step-size` 或 `simulator.step_size`）。
 - **内存管理**：定期清理预警和事件历史。
 - **批量加载**：
   ```python
