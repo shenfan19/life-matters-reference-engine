@@ -51,6 +51,85 @@ variables:
     bounds:
     - 0.0
     - 1.0
+  
+  dt:
+    description: Placeholder for dt
+    value: 0.0
+    type: state
+    unit: second
+  body_water:
+    description: Placeholder for body_water
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  glucose:
+    description: Placeholder for glucose
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  malnutrition_risk:
+    description: Placeholder for malnutrition_risk
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  pepsin_level:
+    description: Placeholder for pepsin_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  secretin_level:
+    description: Placeholder for secretin_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  liver_glycogen:
+    description: Placeholder for liver_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  carb_intake:
+    description: Placeholder for carb_intake
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  muscle_glycogen:
+    description: Placeholder for muscle_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  diabetes_type:
+    description: Placeholder for diabetes_type
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+
 formulas:
   organ_function_recovery:
     description: 休息状态下器官功能逐渐恢复

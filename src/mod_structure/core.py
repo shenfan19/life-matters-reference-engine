@@ -50,6 +50,7 @@ class ModStructure(Loader, Validator, Simulation):
         self.asteval.symtable['WEEK'] = 604800.0
         self.asteval.symtable['MONTH'] = 2592000.0
         self.asteval.symtable['YEAR'] = 31536000.0
+        
         # 注入变量到符号表
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
@@ -95,7 +96,7 @@ class ModStructure(Loader, Validator, Simulation):
         # 生成独立公式文件
         for form_name in independent_formulas:
             deps = formula_deps[form_name]
-            # 过滤 variables，排除 'dt' 如果存在
+            # 过滤 variables，排除 'dt' 如果存在 // dt不再排除
             filtered_vars = {
                 var: {
                     'description': self.variables[var].description,
@@ -103,7 +104,7 @@ class ModStructure(Loader, Validator, Simulation):
                     'type': self.variables[var].type.value,
                     'unit': self.variables[var].unit,
                     'bounds': self.variables[var].bounds
-                } for var in deps if var in self.variables and var != 'dt'  # 添加过滤条件：排除 'dt'
+                } for var in deps if var in self.variables # 添加过滤条件：排除 'dt' // dt不再排除
             }
             patch_data = {
                 'metadata': {
@@ -150,7 +151,7 @@ class ModStructure(Loader, Validator, Simulation):
                 'type': self.variables[var].type.value,
                 'unit': self.variables[var].unit,
                 'bounds': self.variables[var].bounds
-            } for var in remaining_vars if var in self.variables and var != 'dt'  # 添加过滤条件：排除 'dt'
+            } for var in remaining_vars if var in self.variables # 添加过滤条件：排除 'dt'
         }
         remaining_data = {
             'metadata': {

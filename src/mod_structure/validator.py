@@ -36,24 +36,26 @@ class Validator:
             if 'dt_unit' in self.simulator and self.simulator['dt_unit'] not in ['second', 'minute', 'hour', 'day', 'week', 'month', 'year']:
                 all_errors.append("simulator.dt_unit 无效。")
 
-        # 验证 optimizer
+        # 验证 optimizer（修改部分：去除类型限制，仅检查存在）
         if self.optimizer:
             if 'method' not in self.optimizer:
                 all_errors.append("optimizer 缺少 method。")
+            # 检查 variables_to_optimize（修改：去除类型检查，仅验证存在）
             if 'variables_to_optimize' in self.optimizer:
                 for param in self.optimizer['variables_to_optimize']:
                     if param not in self.variables:
                         all_missing_vars.append({'variable': param, 'context': 'optimizer.variables_to_optimize'})
-                    elif self.variables[param].type != VariableType.parameter:
-                        all_errors.append(f"optimizer.variables_to_optimize 中的 {param} 非 parameter 类型。")
-            if 'targets_to_optimize' in self.optimizer:
-                for target in self.optimizer['targets_to_optimize']:
-                    if target not in self.variables:
-                        all_missing_vars.append({'variable': target, 'context': 'optimizer.targets'})
-            if 'python_envs' in self.optimizer:
-                for env in self.optimizer['python_envs']:
-                    if not isinstance(env, str) or ':' not in env:
-                        all_errors.append("optimizer.python_envs 格式无效 (e.g., 'pymoo: >=0.6.0')。")
+                    # 修改：移除类型检查，允许 input 或 state 类型
+                    # elif self.variables[param].type != VariableType.parameter:
+                    #     all_errors.append(f"optimizer.variables_to_optimize 中的 {param} 非 parameter 类型。")
+            # 检查 parameters_to_optimize（类似修改：去除类型检查，仅验证存在）
+            if 'parameters_to_optimize' in self.optimizer:
+                for param in self.optimizer['parameters_to_optimize']:
+                    if param not in self.variables:
+                        all_missing_vars.append({'variable': param, 'context': 'optimizer.parameters_to_optimize'})
+                    # 修改：移除类型检查，允许 input 或 state 类型
+                    # elif self.variables[param].type != VariableType.parameter:
+                    #     all_errors.append(f"optimizer.parameters_to_optimize 中的 {param} 非 parameter 类型。")
 
         def validate_metadata() -> tuple[bool, list[str], list[dict]]:
             errors = []

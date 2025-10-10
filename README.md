@@ -217,24 +217,6 @@ mods/
 python simulator_cli.py --file digestive --time 8760 --output custom/path/result.csv
 ```
 
-## 向后兼容性
-为支持旧模型，`simulator_engine.py` 中添加了兼容代码：
-
-```python
-# 兼容旧的 dt 参数
-if 'dt' in self.current_model.simulator and 'step_size' not in self.current_model.simulator:
-    step_size = self.current_model.simulator['dt']
-    logger.warning("警告: 'dt' 已弃用，请使用 'step_size'")
-else:
-    step_size = self.current_model.simulator.get('step_size', 3600.0)
-
-# 兼容旧的 steps 参数
-if 'steps' in self.current_model.simulator:
-    total_time = self.current_model.simulator['steps'] * step_size
-    logger.warning("警告: 'steps' 已弃用，请使用 'total_time'")
-else:
-    total_time = self.current_model.simulator.get('total_time', 31536000.0)
-```
 
 ## 架构设计
 ### 分层结构
