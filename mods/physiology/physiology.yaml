@@ -52,11 +52,6 @@ variables:
     - 0.0
     - 1.0
   
-  dt:
-    description: Placeholder for dt
-    value: 0.0
-    type: state
-    unit: second
   body_water:
     description: Placeholder for body_water
     value: 0.0

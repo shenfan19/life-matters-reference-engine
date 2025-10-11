@@ -33,7 +33,7 @@ formulas:
     condition: "alcohol_dose > 0"
     priority: 100
     dynamics:
-      liver_damage_effect: "min(1.0, liver_damage_effect + (0.001 * alcohol_dose) * dt/SECOND)"
+      liver_damage_effect: "min(1.0, liver_damage_effect + (0.001 * alcohol_dose) * step_size/SECOND)"
     reference: ["PK/PD models for alcohol hepatotoxicity", "Time-course of liver injury"]
     comments: ["Simple linear for demo.", "Add non-linear for realism."]
 
@@ -42,7 +42,7 @@ formulas:
     condition: "alcohol_dose == 0 and liver_damage_effect > 0"
     priority: 90
     dynamics:
-      liver_damage_effect: "max(0.0, liver_damage_effect - 0.0005 * dt / SECOND)"
+      liver_damage_effect: "max(0.0, liver_damage_effect - 0.0005 * step_size / SECOND)"
     reference: ["Liver regeneration studies", "Abstinence effects in ALD"]
     comments: ["Slow recovery rate.", "Varies by individual factors."]
 

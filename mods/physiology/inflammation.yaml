@@ -32,19 +32,19 @@ formulas:
     description: 高血糖和肥胖增加炎症
     condition: blood_glucose > 150 or obesity_index > 0.5
     dynamics:
-      inflammation_level: min(5.0, inflammation_level + 0.001 * dt)
+      inflammation_level: min(5.0, inflammation_level + 0.001 * step_size)
     priority: 3
   inflammation_decrease:
     description: 运动和血糖控制减少炎症
     condition: blood_glucose < 100 and exercise_intensity > 1
     dynamics:
-      inflammation_level: max(0.5, inflammation_level - 0.002 * dt)
+      inflammation_level: max(0.5, inflammation_level - 0.002 * step_size)
     priority: 3
   autoimmune_activation:
     description: 1型糖尿病自身免疫激活
     condition: diabetes_type == 1 and autoimmune_activity < 1.0
     dynamics:
-      autoimmune_activity: min(1.0, autoimmune_activity + 0.0005 * dt)
+      autoimmune_activity: min(1.0, autoimmune_activity + 0.0005 * step_size)
     priority: 4
 simulator:
   step_size: 1

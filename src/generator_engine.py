@@ -88,7 +88,7 @@ class GeneratorEngine:
                 description=f"{risk_factor}导致{disease_risk}风险增加",
                 condition=f"{risk_factor} > 0",
                 priority=100,
-                dynamics={disease_risk: f"{disease_risk} + {increase_rate} * dt"}
+                dynamics={disease_risk: f"{disease_risk} + {increase_rate} * step_size"}
             )
         }
         model._initialize_asteval()
@@ -130,7 +130,7 @@ class GeneratorEngine:
                 description=f"{intervention_name}降低{disease_severity}",
                 condition=f"{intervention_status} > 0",
                 priority=100,
-                dynamics={disease_severity: f"{disease_severity} - {efficacy_rate} * {disease_severity} * dt"}
+                dynamics={disease_severity: f"{disease_severity} - {efficacy_rate} * {disease_severity} * step_size"}
             )
         }
         model._initialize_asteval()
@@ -179,9 +179,9 @@ class GeneratorEngine:
                 condition="infected > 0 and susceptible > 0",
                 priority=100,
                 dynamics={
-                    "susceptible": f"susceptible - {beta_rate} * susceptible * infected / {total_population} * dt",
-                    "infected": f"infected + {beta_rate} * susceptible * infected / {total_population} * dt - {recovery_rate} * infected * dt",
-                    "recovered": f"recovered + {recovery_rate} * infected * dt"
+                    "susceptible": f"susceptible - {beta_rate} * susceptible * infected / {total_population} * step_size",
+                    "infected": f"infected + {beta_rate} * susceptible * infected / {total_population} * step_size - {recovery_rate} * infected * step_size",
+                    "recovered": f"recovered + {recovery_rate} * infected * step_size"
                 }
             )
         }
@@ -223,7 +223,7 @@ class GeneratorEngine:
                 description="时间依赖预测",
                 condition="true",
                 priority=100,
-                dynamics={outcome_prediction: f"{outcome_prediction} + {trend_rate} * dt - {decay_rate} * {outcome_prediction} * dt"}
+                dynamics={outcome_prediction: f"{outcome_prediction} + {trend_rate} * step_size - {decay_rate} * {outcome_prediction} * step_size"}
             )
         }
         model._initialize_asteval()
@@ -264,7 +264,7 @@ class GeneratorEngine:
                 description="剂量响应效果",
                 condition="dose_level > 0",
                 priority=100,
-                dynamics={"treatment_effect": f"treatment_effect + {efficacy_rate} * dose_level * dt - {clearance_rate} * treatment_effect * dt"}
+                dynamics={"treatment_effect": f"treatment_effect + {efficacy_rate} * dose_level * step_size - {clearance_rate} * treatment_effect * step_size"}
             )
         }
         model._initialize_asteval()
@@ -305,7 +305,7 @@ class GeneratorEngine:
                 description="干预导致行为改变",
                 condition="intervention_level > 0",
                 priority=100,
-                dynamics={"behavior_index": f"behavior_index + {change_rate} * intervention_level * dt - {habit_decay} * behavior_index * dt"}
+                dynamics={"behavior_index": f"behavior_index + {change_rate} * intervention_level * step_size - {habit_decay} * behavior_index * step_size"}
             )
         }
         model._initialize_asteval()

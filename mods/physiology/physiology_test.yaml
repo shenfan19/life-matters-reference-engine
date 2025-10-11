@@ -74,11 +74,6 @@ variables:
     bounds:
     - 0
     - 100
-  dt:
-    description: Placeholder for dt
-    value: 0.0
-    type: state
-    unit: second
 
 formulas:
   meal_intake:
@@ -97,25 +92,25 @@ formulas:
     description: 血糖代谢，模拟自然下降
     condition: true
     dynamics:
-      blood_glucose: max(30, blood_glucose - 0.2 * gastric_function * dt)
+      blood_glucose: max(30, blood_glucose - 0.2 * gastric_function * step_size)
     priority: 3
   hunger_accumulation:
     description: 饥饿度随时间累积
     condition: true
     dynamics:
-      hunger_level: min(1.0, hunger_level + 0.001 * dt)
+      hunger_level: min(1.0, hunger_level + 0.001 * step_size)
     priority: 2
   water_metabolism:
     description: 体液代谢消耗
     condition: true
     dynamics:
-      body_water: max(30000, body_water - 0.5 * dt)
+      body_water: max(30000, body_water - 0.5 * step_size)
     priority: 3
   gastric_function_recovery:
     description: 休息状态下胃功能恢复
     condition: blood_glucose < 120 and hunger_level < 0.5
     dynamics:
-      gastric_function: min(1.0, gastric_function + 0.0001 * dt)
+      gastric_function: min(1.0, gastric_function + 0.0001 * step_size)
     priority: 2
 simulator:
   step_size: 1

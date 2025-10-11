@@ -175,49 +175,49 @@ formulas:
     condition: gastric_ph > 2.5 and gastric_protein > 0
     description: 胃酸分泌
     dynamics:
-      gastric_ph: max(1.0, gastric_ph - 0.1 * dt)
+      gastric_ph: max(1.0, gastric_ph - 0.1 * step_size)
     priority: 3
   gastric_emptying:
     condition: gastric_volume > 200
     description: 胃排空过程
     dynamics:
-      gastric_carbohydrate: max(0, gastric_carbohydrate - gastric_carbohydrate * 0.02 * dt)
-      gastric_fat: max(0, gastric_fat - gastric_fat * 0.015 * dt)
-      gastric_protein: max(0, gastric_protein - gastric_protein * 0.025 * dt)
-      gastric_volume: max(50, gastric_volume - gastric_volume * 0.02 * dt)
+      gastric_carbohydrate: max(0, gastric_carbohydrate - gastric_carbohydrate * 0.02 * step_size)
+      gastric_fat: max(0, gastric_fat - gastric_fat * 0.015 * step_size)
+      gastric_protein: max(0, gastric_protein - gastric_protein * 0.025 * step_size)
+      gastric_volume: max(50, gastric_volume - gastric_volume * 0.02 * step_size)
     priority: 4
   gastric_ulcer_risk_update:
     condition: gastric_ph < 2.0
     description: 更新胃溃疡风险
     dynamics:
-      gastric_ulcer_risk: min(1.0, gastric_ulcer_risk + 0.001 * dt)
+      gastric_ulcer_risk: min(1.0, gastric_ulcer_risk + 0.001 * step_size)
     priority: 6
   gastric_function_update:
     condition: gastric_function < 0.7
     description: 胃功能更新
     dynamics:
-      gastric_function: max(0.3, gastric_function - 0.02 * dt)
+      gastric_function: max(0.3, gastric_function - 0.02 * step_size)
     priority: 1
   cholecystokinin_secretion:
     condition: gastric_fat > 20 or gastric_protein > 30
     description: 脂肪和蛋白质刺激胆囊收缩素分泌
     dynamics:
-      cholecystokinin_level: min(100, cholecystokinin_level + (gastric_fat / 20 + gastric_protein / 30) * 5 * dt)
+      cholecystokinin_level: min(100, cholecystokinin_level + (gastric_fat / 20 + gastric_protein / 30) * 5 * step_size)
     priority: 3
   bile_secretion:
     condition: cholecystokinin_level > 20
     description: 胆囊收缩素刺激胆汁分泌
     dynamics:
-      bile_acids: min(50, bile_acids + cholecystokinin_level * 0.2 * dt)
-      cholecystokinin_level: max(0, cholecystokinin_level - 5 * dt)
+      bile_acids: min(50, bile_acids + cholecystokinin_level * 0.2 * step_size)
+      cholecystokinin_level: max(0, cholecystokinin_level - 5 * step_size)
     priority: 4
   fat_digestion:
     condition: bile_acids > 5 and gastric_fat > 0
     description: 胆汁酸辅助脂肪消化
     dynamics:
-      fatty_acids: fatty_acids + gastric_fat * bile_function * 0.05 * dt
-      gastric_fat: max(0, gastric_fat - gastric_fat * bile_function * 0.05 * dt)
-      bile_acids: max(0, bile_acids - 1 * dt)
+      fatty_acids: fatty_acids + gastric_fat * bile_function * 0.05 * step_size
+      gastric_fat: max(0, gastric_fat - gastric_fat * bile_function * 0.05 * step_size)
+      bile_acids: max(0, bile_acids - 1 * step_size)
     priority: 5
   impaired_digestion_adaptation:
     condition: gastric_function < 0.5 and gastric_protein > 30
@@ -229,25 +229,25 @@ formulas:
     condition: intestinal_function > 0 and (amino_acids > 0 or glucose > 0 or fatty_acids > 0)
     description: 小肠吸收过程
     dynamics:
-      amino_acids: max(0, amino_acids - amino_acids * intestinal_function * 0.1 * dt)
-      blood_glucose: blood_glucose + glucose * intestinal_function * 0.15 * dt
-      fatty_acids: max(0, fatty_acids - fatty_acids * intestinal_function * 0.08 * dt)
-      glucose: max(0, glucose - glucose * intestinal_function * 0.15 * dt)
-      residue_protein: residue_protein + amino_acids * (1 - intestinal_function) * 0.05 * dt
-      residue_glucose: residue_glucose + glucose * (1 - intestinal_function) * 0.05 * dt
-      residue_fats: residue_fats + fatty_acids * (1 - intestinal_function) * 0.05 * dt
+      amino_acids: max(0, amino_acids - amino_acids * intestinal_function * 0.1 * step_size)
+      blood_glucose: blood_glucose + glucose * intestinal_function * 0.15 * step_size
+      fatty_acids: max(0, fatty_acids - fatty_acids * intestinal_function * 0.08 * step_size)
+      glucose: max(0, glucose - glucose * intestinal_function * 0.15 * step_size)
+      residue_protein: residue_protein + amino_acids * (1 - intestinal_function) * 0.05 * step_size
+      residue_glucose: residue_glucose + glucose * (1 - intestinal_function) * 0.05 * step_size
+      residue_fats: residue_fats + fatty_acids * (1 - intestinal_function) * 0.05 * step_size
     priority: 4
   intestinal_adaptation:
     condition: intestinal_function < 0.7
     description: 模拟肠道功能的适应性调节
     dynamics:
-      intestinal_function: max(0.3, intestinal_function - 0.02 * dt)
+      intestinal_function: max(0.3, intestinal_function - 0.02 * step_size)
     priority: 1
   malnutrition_risk_update:
     condition: amino_acids < 1.0 and glucose < 3.0 and fatty_acids < 0.5
     description: 更新营养不良风险
     dynamics:
-      malnutrition_risk: min(1.0, malnutrition_risk + 0.005 * dt)
+      malnutrition_risk: min(1.0, malnutrition_risk + 0.005 * step_size)
     priority: 6
   nutritional_status:
     description: 营养状态评分
@@ -257,13 +257,13 @@ formulas:
     condition: gastric_ph < 3.0 and gastric_protein > 0
     description: 胃酸激活胃蛋白酶
     dynamics:
-      pepsin_level: min(100, pepsin_level + (3.0 - gastric_ph) * 5 * dt)
+      pepsin_level: min(100, pepsin_level + (3.0 - gastric_ph) * 5 * step_size)
     priority: 2
   secretin_secretion:
     condition: gastric_ph < 4.5 and (gastric_carbohydrate > 0 or gastric_fat > 0)
     description: 酸性食糜刺激分泌素分泌
     dynamics:
-      secretin_level: min(100, secretin_level + (4.5 - gastric_ph) * 10 * dt)
+      secretin_level: min(100, secretin_level + (4.5 - gastric_ph) * 10 * step_size)
     priority: 2
   intestinal_motility_update:
     condition: true
@@ -288,7 +288,7 @@ formulas:
     description: 大肠水分吸收更新
     dynamics:
       water_absorption: (water_intake / 2) + 0.05 * (residue_protein + residue_glucose + residue_fats)
-      body_water: body_water + water_absorption * dt
+      body_water: body_water + water_absorption * step_size
     priority: 3
 simulator:
   step_size: 1

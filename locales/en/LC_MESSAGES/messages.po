@@ -97,7 +97,7 @@ msgstr "Welcome to LifeMatters"
 msgid "optimization_success"
 msgstr "Optimization suggestion: Parameters={params}, Target value={value}"
 
-msgid "invalid_dt_unit"
+msgid "invalid_step_size_unit"
 msgstr "Invalid time unit: {unit}"
 
 msgid "load_model_from"

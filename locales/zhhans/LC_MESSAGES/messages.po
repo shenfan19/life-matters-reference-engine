@@ -97,7 +97,7 @@ msgstr "变量 {var_name}: {value} {unit}"
 msgid "optimization_success"
 msgstr "优化建议：参数={params}, 目标值={value}"
 
-msgid "invalid_dt_unit"
+msgid "invalid_step_size_unit"
 msgstr "无效时间单位：{unit}"
 
 msgid "load_model_from"

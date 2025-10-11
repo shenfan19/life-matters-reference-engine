@@ -33,7 +33,7 @@ formulas:
     condition: "stress_intervention > 0"
     priority: 100
     dynamics:
-      mental_health_index: "min(1.0, mental_health_index + (0.001 * stress_intervention) * dt)"
+      mental_health_index: "min(1.0, mental_health_index + (0.001 * stress_intervention) * step_size)"
     reference: ["Dynamic behavioral models", "Intervention efficacy studies"]
     comments: ["Positive change rate.", "Chain with stress factors."]
 
@@ -42,7 +42,7 @@ formulas:
     condition: "stress_intervention == 0 and mental_health_index > 0"
     priority: 90
     dynamics:
-      mental_health_index: "max(0.0, mental_health_index - 0.0005 * dt)"
+      mental_health_index: "max(0.0, mental_health_index - 0.0005 * step_size)"
     reference: ["Chronic stress models", "Depression progression dynamics"]
     comments: ["Slow decay for realism.", "Adjust for individual resilience."]
 
