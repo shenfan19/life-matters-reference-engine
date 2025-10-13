@@ -3,7 +3,7 @@
 ## 项目简介
 LifeMatters 是一个模块化的仿真建模框架，面向医学与社会学研究，旨在从科研论文生成动力学模型，通过仿真验证和优化得出新结论，同时为普通用户提供交互式人生模拟体验。框架采用类游戏的 Modding 机制，支持通过 YAML 配置文件定义、优化和运行复杂模型，无需编程技能。它支持多语言（英文、中文等）和子文件夹模型加载，适用于学术研究、教育和科普。
 
-LifeMatters 采用混合架构，包含离线工具（BioCraft、HealthTuner、Loader）和运行时服务（VitalSim），通过共享模型库实现高效协作。框架满足以下需求：
+LifeMatters 采用混合架构，包含离线工具（Generator、Optimizer、Loader）和运行时服务（Simulator），通过共享模型库实现高效协作。框架满足以下需求：
 - 学术研究人员：验证和优化理论模型。
 - 教育工作者：教授复杂系统概念。
 - 普通用户：体验直观的人生模拟。
@@ -58,7 +58,7 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
 - 推荐 Python 版本：3.8 或更高。
 
 ## 核心功能
-### 1. BioCraft 模块
+### 1. Generator 模块
 - **功能**：从科研论文或模板生成 YAML 模型，支持多语言字段生成。
 - **依赖**：`loader_engine.py`、`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
@@ -89,7 +89,7 @@ pip install PyYAML==5.4.1 numpy>=1.21.0 flet>=0.22.0 logging
   result = engine.merge_models_by_names(["digestive", "diabetes"], "combined.yaml", folder="physiology")
   ```
 
-### 3. VitalSim 模块
+### 3. Simulator 模块
 - **功能**：运行动态仿真，支持暂停、继续、参数调整、状态保存和事件应用。要求模型包含 `simulator` 字段，定义时间步长、总时间和监控条件。
 - **依赖**：`loader_engine.py`、`lang_manager.py`、`PyYAML`。
 - **CLI 示例**：
@@ -125,8 +125,8 @@ step,time,blood_glucose,plasma_insulin,body_water
 3,10800,99.1,15.0,42.0
 ```
 
-### 4. HealthTuner 模块
-- **功能**：优化模型参数（如最小化误差或多目标优化），调用 VitalSim 仿真引擎。要求模型包含 `optimizer` 字段。
+### 4. Optimizer 模块
+- **功能**：优化模型参数（如最小化误差或多目标优化），调用 Simulator 仿真引擎。要求模型包含 `optimizer` 字段。
 - **依赖**：`simulator_engine.py`、`loader_engine.py`、`lang_manager.py`、`PyYAML`、模型指定的额外依赖（如 `pymoo`）。
 - **CLI 示例**：
   ```bash
@@ -198,8 +198,8 @@ optimizer:
 
 **关键说明**：
 - `imports`：支持递归加载，根模型覆盖导入模型的同名字段。
-- `simulator`：必须存在于 VitalSim 加载的模型中，定义仿真参数。
-- `optimizer`：必须存在于 HealthTuner 加载的模型中，定义优化参数。
+- `simulator`：必须存在于 Simulatorr 加载的模型中，定义仿真参数。
+- `optimizer`：必须存在于 Optimizer 加载的模型中，定义优化参数。
 - 时间步长使用保留单位（如 `HOUR`、`DAY`），详见时间步长处理部分。
 
 ## 文件结构
@@ -222,18 +222,18 @@ python simulator_cli.py --file digestive --time 8760 --output custom/path/result
 ### 分层结构
 ```
 客户端界面层：Web GUI（生成、优化、仿真、加载）
-离线 CLI 工具：BioCraft、HealthTuner、Loader（执行后退出）
-运行时服务：VitalSim（CLI + 后台服务，支持运行时控制）
+离线 CLI 工具：Generator、Optimizer、Loader（执行后退出）
+运行时服务：Simulator（CLI + 后台服务，支持运行时控制）
 共享库层：Loader（通过 fetch() 加载 YAML，支持子文件夹和 imports）
 存储层：YAML 文件（通过 loader.fetch() 访问，支持 imports 字段）
 ```
 
 ### 核心设计理念
-- **单一运行时服务**：仅 VitalSim 支持暂停、继续和参数调整。
-- **模块化调用**：HealthTuner 调用 VitalSim 仿真引擎进行优化。
+- **单一运行时服务**：仅 Simulator 支持暂停、继续和参数调整。
+- **模块化调用**：Optimizer 调用 Simulator 仿真引擎进行优化。
 - **统一数据加载**：所有模块通过 `loader.fetch()` 访问 YAML 文件。
 - **多语言支持**：通过 `lang_manager.py` 实现动态语言切换。
-- **简单优先**：除 VitalSim 外，其他模块为简单 CLI 工具。
+- **简单优先**：除 Simulator 外，其他模块为简单 CLI 工具。
 - **Imports 支持**：支持递归依赖加载，包含循环依赖检测。
 
 ### 图示结构
@@ -241,9 +241,9 @@ python simulator_cli.py --file digestive --time 8760 --output custom/path/result
 graph TD
 
     %% 子图：突出三角关系
-    B{{BioCraft<br>模型构造模块}}
-    V{{VitalSim<br>仿真控制模块}}
-    H{{HealthTuner<br>统计优化模块}}
+    B{{Generator<br>模型构造模块}}
+    V{{Simulator<br>仿真控制模块}}
+    H{{Optimizer<br>统计优化模块}}
     L{{Loader<br>统一Mod结构}}
     S{Structure<br>预定模型结构}
 
@@ -413,7 +413,7 @@ if result["success"]:
 ## 联系与支持
 - **项目主页**：https://github.com/shenfan19/life-matters
 - **问题反馈**：通过 GitHub Issue 提交。
-- **文档**：参见 `a_mod_rule.md` 和模块文档（Loader、VitalSim、BioCraft、HealthTuner）。
+- **文档**：参见 `a_mod_rule.md` 和模块文档（Loader、Simulator、Generator、Optimizer）。
 - **社区讨论**：论坛（待建立）。
 
 ## 免责声明

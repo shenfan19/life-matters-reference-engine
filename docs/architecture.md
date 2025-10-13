@@ -76,23 +76,23 @@ graph TD
     CLI[Local CLI<br/>用户CLI指令]
 
     subgraph "Client Interface Layer"
-        GUI_B[BioCraft GUI<br/>生成界面]
-        GUI_H[HealthTuner GUI<br/>验证与优化界面]
-        GUI_V[VitalSim GUI<br/>控制界面]
+        GUI_B[Generator GUI<br/>生成界面]
+        GUI_H[Optimizer GUI<br/>验证与优化界面]
+        GUI_V[Simulator GUI<br/>控制界面]
         GUI_L[Loader GUI<br/>读取界面]
     end
 
     subgraph "CLI Layer"
         CLI_L[Loader CLI<br/>lifematters-loader<br/>独立exe，执行完即退出]
-        CLI_B[BioCraft CLI<br/>lifematters-biocraft<br/>独立exe，执行完即退出]
-        CLI_V[VitalSim CLI<br/>lifematters-vitalsim<br/>CLI + 后台服务]
-        CLI_H[HealthTuner CLI<br/>lifematters-healthtuner<br/>离线运行，调用VitalSim引擎]
+        CLI_B[Generator CLI<br/>lifematters-biocraft<br/>独立exe，执行完即退出]
+        CLI_V[Simulator CLI<br/>lifematters-vitalsim<br/>CLI + 后台服务]
+        CLI_H[Optimizer CLI<br/>lifematters-healthtuner<br/>离线运行，调用Simulator引擎]
     end
     
     subgraph "Engine Layer"
-        ENG_B[BioCraft Engine<br/>模板生成引擎]
-        ENG_H[HealthTuner Engine<br/>参数优化引擎<br/>内部调用VitalSim引擎]
-        ENG_V[VitalSim Engine<br/>仿真引擎<br/>支持独立运行+被调用]
+        ENG_B[Generator Engine<br/>模板生成引擎]
+        ENG_H[Optimizer Engine<br/>参数优化引擎<br/>内部调用Simulator引擎]
+        ENG_V[Simulator Engine<br/>仿真引擎<br/>支持独立运行+被调用]
         ENG_L[Loader Engine<br/>模板读取引擎<br/>struct,merge,load]
         MOD[Mod Structure<br/>Mod模板结构]
     end

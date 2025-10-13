@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # 文件名: optimizer_cli.py
-# 描述: LifeMatters HealthTuner 模块的命令行接口，用于模型参数优化。
+# 描述: LifeMatters Optimizer 模块的命令行接口，用于模型参数优化。
 #       本脚本通过命令行参数处理用户输入，调用 OptimizerEngine 执行优化任务，
 #       并支持多语言输出和多种优化模式（real_time/full_inputs/full_params）。
 

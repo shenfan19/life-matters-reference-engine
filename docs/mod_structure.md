@@ -1,6 +1,6 @@
 # LifeMatters 模型文件（mods）规则
 
-LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和社会学模型，结合仿真（VitalSim）和优化（HealthTuner）功能，支持递归模型导入和多目标优化。
+LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和社会学模型，结合仿真（Simulator）和优化（Optimizer）功能，支持递归模型导入和多目标优化。
 
 本文档定义了 LifeMatters 项目中模型文件（`mods`，以 YAML 格式存储）的结构和约束规则。这些规则确保模型文件的一致性、可移植性和正确性，适用于加载、验证、仿真和优化过程。
 
@@ -15,8 +15,8 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
   - `imports`：导入模型列表，支持递归依赖加载。
   - `variables`：变量定义，描述模型的状态、输入或参数。
   - `formulas`：公式定义，描述变量的动态行为或静态指标。
-  - `simulator`：仿真参数设置（可选，但 VitalSim 加载时必须存在）。
-  - `optimizer`：优化参数设置（可选，但 HealthTuner 加载时必须存在）。
+  - `simulator`：仿真参数设置（可选，但 Simulator 加载时必须存在）。
+  - `optimizer`：优化参数设置（可选，但 Optimizer 加载时必须存在）。
 - **示例**：
   ```yaml
   metadata:
@@ -167,11 +167,11 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
   - `hooks`：列表，仿真钩子（如 `post_step` 指定触发函数，可选）。
   - `monitor_conditions`：字符串列表，监控条件（如 `blood_glucose < 70`，可选）。
 - **约束**：
-  - 当 `VitalSim` 加载模型时，必须存在 `simulator` 字段（否则抛出错误）。
+  - 当 `Simulator` 加载模型时，必须存在 `simulator` 字段（否则抛出错误）。
   - 参数值必须符合预期类型（例如，`dt` 为正数，`steps` 为正整数）。
   - `dt_unit` 必须是支持的时间单位之一，若未指定，假设 `dt` 以秒为单位。
   - `hooks` 中的函数名（如 `post_step`）需在运行时环境中定义。
-  - 在仿真过程中，`VitalSim` 根据根模型及其 `imports` 中的 `variables` 和 `formulas` 执行，根模型的参数覆盖导入模型。
+  - 在仿真过程中，`Simulator` 根据根模型及其 `imports` 中的 `variables` 和 `formulas` 执行，根模型的参数覆盖导入模型。
 - **示例**：
   ```yaml
   simulator:
@@ -197,13 +197,13 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
   - `bounds`：列表，优化参数的范围（格式为 `[[min1, max1], [min2, max2], ...]`，可选）。
   - `variables_to_optimize`：字符串列表，要优化的参数名（必须）。
 - **约束**：
-  - 当 `HealthTuner` 加载模型时，必须存在 `optimizer` 字段（否则抛出错误）。
+  - 当 `Optimizer` 加载模型时，必须存在 `optimizer` 字段（否则抛出错误）。
   - `method` 必须是支持的优化算法（如 `grid`、`nsga2`）。
   - `python_envs` 中的包名和版本格式必须有效（如 `pymoo: ">=0.6.0"`），若为空则依赖框架核心环境。
   - `targets` 至少包含一个目标，支持多目标优化（如 NSGA-II）。
   - `variables_to_optimize` 中的变量必须在 `variables` 或导入模型中定义，且 `type` 为 `parameter`。
   - 若定义 `bounds`，其长度必须与 `variables_to_optimize` 一致，且每个范围 `[min, max]` 满足 `min <= max`。
-  - 在优化过程中，`HealthTuner` 根据根模型及其 `imports` 中的 `variables` 和 `formulas` 执行，根模型的参数覆盖导入模型。
+  - 在优化过程中，`Optimizer` 根据根模型及其 `imports` 中的 `variables` 和 `formulas` 执行，根模型的参数覆盖导入模型。
 - **示例**：
   ```yaml
   optimizer:
@@ -229,5 +229,5 @@ LifeMatters 是一个模块化框架，支持通过 YAML 文件定义医学和�
 - **数值类型**：变量的 `value` 和 `bounds` 必须是数值类型（整数或浮点数）。
 - **优先级**：公式 `priority` 必须为整数（-100 到 100）。
 - **依赖管理**：在递归加载 `imports` 时，确保无循环依赖，并应用覆盖规则（根模型优先）。
-- **工具要求**：`VitalSim` 要求 `simulator` 字段，`HealthTuner` 要求 `optimizer` 字段。
+- **工具要求**：`Simulator` 要求 `simulator` 字段，`Optimizer` 要求 `optimizer` 字段。
 - **合并覆盖**：根模型的 `variables`、`formulas`、`simulator` 和 `optimizer` 字段覆盖导入模型的同名字段。

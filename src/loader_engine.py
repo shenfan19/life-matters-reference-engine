@@ -5,7 +5,7 @@
 # This file is part of the LifeMatters simulation framework.
 #
 # Purpose:
-# The `loader_engine.py` module acts as an entry point for model-related operations in the LifeMatters framework. It provides high-level interfaces for locating, caching, merging, and splitting YAML-based models, while delegating the core logic—such as recursive loading, dependency resolution via imports, data merging, and structural validation—to the `ModStructure` class. This separation enhances modularity, reusability, and maintainability across the framework's components, including Loader, VitalSim, BioCraft, and HealthTuner.
+# The `loader_engine.py` module acts as an entry point for model-related operations in the LifeMatters framework. It provides high-level interfaces for locating, caching, merging, and splitting YAML-based models, while delegating the core logic—such as recursive loading, dependency resolution via imports, data merging, and structural validation—to the `ModStructure` class. This separation enhances modularity, reusability, and maintainability across the framework's components, including Loader, Simulator, Generator, and Optimizer.
 #
 # For more information, please refer to the project README.md.
 #
