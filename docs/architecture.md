@@ -84,9 +84,9 @@ graph TD
 
     subgraph "CLI Layer"
         CLI_L[Loader CLI<br/>lifematters-loader<br/>独立exe，执行完即退出]
-        CLI_B[Generator CLI<br/>lifematters-biocraft<br/>独立exe，执行完即退出]
-        CLI_V[Simulator CLI<br/>lifematters-vitalsim<br/>CLI + 后台服务]
-        CLI_H[Optimizer CLI<br/>lifematters-healthtuner<br/>离线运行，调用Simulator引擎]
+        CLI_B[Generator CLI<br/>lifematters-Generator<br/>独立exe，执行完即退出]
+        CLI_V[Simulator CLI<br/>lifematters-Simulator<br/>CLI + 后台服务]
+        CLI_H[Optimizer CLI<br/>lifematters-Optimizer<br/>离线运行，调用Simulator引擎]
     end
     
     subgraph "Engine Layer"
