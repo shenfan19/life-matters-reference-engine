@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "ag-grid-community": "^34.2.0",
+    "ag-grid-react": "^34.2.0",
+    "antd": "^5.27.5"
+  }
+}
