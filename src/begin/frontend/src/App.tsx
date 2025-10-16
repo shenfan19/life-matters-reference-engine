@@ -1,77 +1,181 @@
 // frontend/src/App.tsx
 
 import React, { useState } from 'react';
-import { Layout, Menu, theme, Tabs, Card, Row, Col } from 'antd';
-import { SettingOutlined, TableOutlined, LineChartOutlined, FolderOutlined } from '@ant-design/icons';
-import ParamInput from './components/ParamInput'; // 稍后创建
-import ModManager from './components/ModManager'; // 稍后创建
+import { Layout, Menu, theme, Badge } from 'antd';
+import { 
+  AppstoreOutlined, 
+  CloudUploadOutlined, 
+  PlayCircleOutlined, 
+  LineChartOutlined 
+} from '@ant-design/icons';
+import Generator from './components/Generator';
+import Loader from './components/Loader';
+import Simulator from './components/Simulator';
+import Optimizer from './components/Optimizer';
 
 const { Header, Content, Sider } = Layout;
 
-// 假设这是您的所有页面/功能模块
-const items = [
-  { key: '1', icon: <TableOutlined />, label: '参数输入与控制' },
-  { key: '2', icon: <FolderOutlined />, label: 'MOD 模块管理' },
-  { key: '3', icon: <LineChartOutlined />, label: '结果显示与监控' },
-  { key: '4', icon: <SettingOutlined />, label: '优化与高级设置' },
-];
-
 const App: React.FC = () => {
   const [currentKey, setCurrentKey] = useState('1');
+  const [simulationStatus, setSimulationStatus] = useState<'idle' | 'running' | 'paused' | 'completed'>('idle');
+  const [loadedModules, setLoadedModules] = useState<number>(0);
+  
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
-  // 根据选中的菜单渲染不同的内容
+  // 菜单项
+  const menuItems = [
+    { 
+      key: '1', 
+      icon: <AppstoreOutlined />, 
+      label: '参数生成器',
+      description: 'Parameter Generator'
+    },
+    { 
+      key: '2', 
+      icon: <CloudUploadOutlined />, 
+      label: 'MOD 加载器',
+      description: 'Module Loader',
+      badge: loadedModules
+    },
+    { 
+      key: '3', 
+      icon: <PlayCircleOutlined />, 
+      label: '仿真器',
+      description: 'Simulator',
+      status: simulationStatus
+    },
+    { 
+      key: '4', 
+      icon: <LineChartOutlined />, 
+      label: '优化器',
+      description: 'Optimizer'
+    },
+  ];
+
+  // 渲染当前模块
   const renderContent = () => {
     switch (currentKey) {
       case '1':
-        return <ParamInput />; // 核心参数输入 Data Grid
+        return <Generator />;
       case '2':
-        return <ModManager />; // MOD 模块树状图
+        return <Loader onModulesChange={setLoadedModules} />;
       case '3':
-        // 使用 Ant Design 的 Tabs 来分隔不同的结果视图
-        return (
-          <Tabs
-            defaultActiveKey="monitor"
-            items={[
-              { key: 'monitor', label: '实时监控图表', children: <Card title="实时曲线变化">这里是 ECharts 实时图表</Card> },
-              { key: 'status', label: '变量状态显示', children: <Card title="变量状态">这里是多个柱状图/文本显示</Card> },
-              { key: 'text', label: '特殊状态文本', children: <Card title="状态输出">当前特殊状态：未开始仿真</Card> },
-            ]}
-          />
-        );
+        return <Simulator onStatusChange={setSimulationStatus} />;
       case '4':
-        return (
-          <Card title="优化系统配置">
-            这里是公式、约束、最大/最小值等单选框和表单
-          </Card>
-        );
+        return <Optimizer />;
       default:
         return <div>请选择功能模块</div>;
     }
   };
 
+  // 获取状态指示器颜色
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'running': return '#52c41a';
+      case 'paused': return '#faad14';
+      case 'completed': return '#1890ff';
+      default: return '#d9d9d9';
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="light" collapsible collapsed={false} onCollapse={() => {}}>
-        <div style={{ height: 32, margin: 16, textAlign: 'center', fontWeight: 'bold' }}>
-          FEM 系统
+      <Sider 
+        theme="light" 
+        width={250}
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+      >
+        <div style={{ 
+          height: 64, 
+          margin: '16px', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 20,
+          fontWeight: 'bold',
+          color: '#1890ff',
+          borderBottom: '2px solid #f0f0f0'
+        }}>
+          FEM 仿真系统
         </div>
         <Menu 
           theme="light" 
-          defaultSelectedKeys={[currentKey]} 
-          mode="inline" 
-          items={items} 
-          onClick={(e) => setCurrentKey(e.key)} 
+          selectedKeys={[currentKey]} 
+          mode="inline"
+          onClick={(e) => setCurrentKey(e.key)}
+          items={menuItems.map(item => ({
+            key: item.key,
+            icon: item.icon,
+            label: (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div>{item.label}</div>
+                  <div style={{ fontSize: 11, color: '#999' }}>{item.description}</div>
+                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <Badge count={item.badge} style={{ marginLeft: 8 }} />
+                )}
+                {item.status && item.status !== 'idle' && (
+                  <div style={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    backgroundColor: getStatusColor(item.status),
+                    marginLeft: 8
+                  }} />
+                )}
+              </div>
+            ),
+          }))}
         />
+        
+        <div style={{ 
+          position: 'absolute', 
+          bottom: 16, 
+          left: 16, 
+          right: 16,
+          fontSize: 12,
+          color: '#999',
+          textAlign: 'center',
+          padding: '12px',
+          borderTop: '1px solid #f0f0f0'
+        }}>
+          <div>系统状态: {simulationStatus === 'idle' ? '待命' : simulationStatus === 'running' ? '运行中' : simulationStatus === 'paused' ? '已暂停' : '已完成'}</div>
+          <div>已加载模块: {loadedModules}</div>
+        </div>
       </Sider>
-      <Layout>
-        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+      
+      <Layout style={{ marginLeft: 250 }}>
+        <Header style={{ 
+          padding: '0 24px', 
+          background: colorBgContainer,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #f0f0f0'
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>
+            {menuItems.find(item => item.key === currentKey)?.label}
+          </div>
+          <div style={{ fontSize: 12, color: '#999' }}>
+            {new Date().toLocaleString('zh-CN')}
+          </div>
+        </Header>
+        
+        <Content style={{ margin: '24px 24px 0', overflow: 'initial' }}>
           <div
             style={{
               padding: 24,
-              minHeight: '80vh',
+              minHeight: 'calc(100vh - 112px)',
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
             }}
