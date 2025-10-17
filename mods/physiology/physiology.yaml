@@ -15,7 +15,7 @@ variables:
     description: 肝功能系数
     value: 1.0
     unit: 系数
-    type: state
+    type: parameters
     bounds:
     - 0.1
     - 1.0
@@ -23,9 +23,17 @@ variables:
     description: 胰腺功能系数
     value: 1.0
     unit: 系数
-    type: state
+    type: parameters
     bounds:
     - 0.1
+    - 1.0
+  water:
+    description: 喝水
+    value: 1.0
+    unit: L
+    type: input
+    bounds:
+    - 0.0
     - 1.0
   gastric_function:
     description: 胃功能效率
