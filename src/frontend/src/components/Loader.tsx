@@ -1,459 +1,402 @@
 // frontend/src/components/Loader.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Card, Tree, Tabs, Row, Col, Button, Space, Tag, Descriptions, Switch, message, Upload, Modal } from 'antd';
+import { Card, Tree, Row, Col, Descriptions, Tag, Button, Space, Input, message, Divider, Tabs } from 'antd';
 import { 
-  CheckOutlined, 
-  CloseOutlined, 
-  UploadOutlined, 
+  FolderOutlined,
+  FileOutlined,
   ReloadOutlined,
-  FileTextOutlined,
-  FunctionOutlined,
-  InfoCircleOutlined
+  MergeOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 
-interface ModuleDetail {
-  name: string;
-  version: string;
-  author: string;
-  description: string;
-  yaml: string;
-  formula: string;
-  dependencies: string[];
-  parameters: string[];
-  enabled: boolean;
-}
-
 interface LoaderProps {
-  onModulesChange?: (count: number) => void;
+  subPage: string;
+  onModelSelect?: (model: any) => void;
 }
 
-const Loader: React.FC<LoaderProps> = ({ onModulesChange }) => {
-  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>(['0-0-0', '0-0-1', '0-1-0']);
-  const [selectedMod, setSelectedMod] = useState<string>('0-0-0');
-  const [moduleDetails, setModuleDetails] = useState<Record<string, ModuleDetail>>({});
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+interface ModelFile {
+  key: string;
+  title: string;
+  path: string;
+  folder?: string;
+  metadata?: any;
+  variables?: Record<string, any>;
+  formulas?: Record<string, any>;
+  simulator?: any;
+  optimizer?: any;
+}
 
-  useEffect(() => {
-    setModuleDetails({
-      '0-0-0': {
-        name: 'StructureAnalysisMod',
+const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
+  const [searchText, setSearchText] = useState('');
+  const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
+  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
+  
+  // 模拟文件树数据（实际应从后端API获取）
+  const [treeData] = useState<DataNode[]>([
+    {
+      title: 'mods',
+      key: 'mods',
+      icon: <FolderOutlined />,
+      children: [
+        {
+          title: 'physiology',
+          key: 'physiology',
+          icon: <FolderOutlined />,
+          children: [
+            { title: 'physiology.yaml', key: 'physiology/physiology.yaml', icon: <FileOutlined />, isLeaf: true },
+            { title: 'insulin_system.yaml', key: 'physiology/insulin_system.yaml', icon: <FileOutlined />, isLeaf: true },
+            { title: 'glucose_regulation.yaml', key: 'physiology/glucose_regulation.yaml', icon: <FileOutlined />, isLeaf: true },
+          ]
+        },
+        {
+          title: 'diseases',
+          key: 'diseases',
+          icon: <FolderOutlined />,
+          children: [
+            { title: 'diabetes.yaml', key: 'diseases/diabetes.yaml', icon: <FileOutlined />, isLeaf: true },
+            { title: 'obesity.yaml', key: 'diseases/obesity.yaml', icon: <FileOutlined />, isLeaf: true },
+          ]
+        },
+        {
+          title: 'social',
+          key: 'social',
+          icon: <FolderOutlined />,
+          children: [
+            { title: 'policy_impact.yaml', key: 'social/policy_impact.yaml', icon: <FileOutlined />, isLeaf: true },
+          ]
+        },
+      ]
+    }
+  ]);
+
+  // 模拟模型数据库
+  const [modelDatabase] = useState<Record<string, ModelFile>>({
+    'physiology/physiology.yaml': {
+      key: 'physiology/physiology.yaml',
+      title: 'physiology',
+      path: 'physiology/physiology.yaml',
+      folder: 'physiology',
+      metadata: {
+        name: 'physiology',
         version: '2.1.0',
-        author: 'FEM Team',
-        description: '线弹性结构分析模块，支持静力学和动力学分析',
-        yaml: `name: StructureAnalysisMod
-version: 2.1.0
-author: FEM Team
-parameters:
-  - Length
-  - E_Modulus
-  - Poisson_Ratio
-dependencies:
-  - MaterialLibrary
-  - MeshGenerator`,
-        formula: `刚度矩阵: K = E * I / L³
-应力计算: σ = M * y / I
-变形计算: δ = F * L³ / (3 * E * I)`,
-        dependencies: ['MaterialLibrary', 'MeshGenerator'],
-        parameters: ['Length', 'E_Modulus', 'Poisson_Ratio'],
-        enabled: true,
+        author: 'Minghui Wu',
+        description: '肝、胰腺、胃、小肠等器官功能系数及恢复机制',
+        tags: ['organs', 'function'],
       },
-      '0-0-1': {
-        name: 'ThermalAnalysisMod',
-        version: '1.8.5',
-        author: 'Thermal Group',
-        description: '热传导和热应力分析模块',
-        yaml: `name: ThermalAnalysisMod
-version: 1.8.5
-author: Thermal Group
-parameters:
-  - Temperature
-  - Thermal_Conductivity
-  - Heat_Capacity
-dependencies:
-  - MaterialLibrary`,
-        formula: `热传导: Q = -k * A * dT/dx
-热应力: σ_thermal = E * α * ΔT / (1 - ν)
-稳态热传导: ∇·(k∇T) = 0`,
-        dependencies: ['MaterialLibrary'],
-        parameters: ['Temperature', 'Thermal_Conductivity', 'Heat_Capacity'],
-        enabled: true,
+      variables: {
+        liver_function: { description: '肝功能系数', value: 1.0, unit: '系数', type: 'parameters', bounds: [0.1, 1.0] },
+        pancreatic_function: { description: '胰腺功能系数', value: 1.0, unit: '系数', type: 'parameters', bounds: [0.1, 1.0] },
+        water: { description: '喝水', value: 1.0, unit: 'L', type: 'input', bounds: [0.0, 1.0] },
+        gastric_function: { description: '胃功能效率', value: 0.9, unit: '系数', type: 'state', bounds: [0.0, 1.0] },
+        intestinal_function: { description: '小肠功能效率', value: 0.85, unit: '系数', type: 'state', bounds: [0.0, 1.0] },
+        kidney_function: { description: '肾功能系数', value: 0.8, unit: '系数', type: 'state', bounds: [0.0, 1.0] },
       },
-      '0-0-2': {
-        name: 'NonlinearMaterialMod',
-        version: '3.0.2',
-        author: 'Advanced Materials Lab',
-        description: '非线性材料本构关系库',
-        yaml: `name: NonlinearMaterialMod
-version: 3.0.2
-author: Advanced Materials Lab
-material_models:
-  - Elastoplastic
-  - Hyperelastic
-  - Viscoelastic
-dependencies: []`,
-        formula: `弹塑性: σ = f(ε, ε_plastic)
-超弹性: W = C10(I1-3) + C01(I2-3)
-粘弹性: σ(t) = ∫ E(t-τ) dε(τ)/dτ dτ`,
-        dependencies: [],
-        parameters: ['Yield_Stress', 'Hardening_Parameter'],
-        enabled: false,
+      formulas: {
+        organ_function_recovery: {
+          description: '休息状态下器官功能逐渐恢复',
+          condition: 'blood_glucose < 120 and plasma_insulin < 20 and physical_activity == 0',
+          dynamics: {
+            gastric_function: 'min(1.0, gastric_function + 0.0001)',
+            pancreatic_function: 'min(1.0, pancreatic_function + 0.00005)',
+            liver_function: 'min(1.0, liver_function + 0.0001)',
+            intestinal_function: 'min(1.0, intestinal_function + 0.0001)',
+            kidney_function: 'min(1.0, kidney_function + 0.0001)',
+          },
+          priority: 2,
+        },
       },
-      '0-1-0': {
-        name: 'CustomFormulaMod',
-        version: '1.0.0',
-        author: 'User',
-        description: '用户自定义计算公式模块',
-        yaml: `name: CustomFormulaMod
-version: 1.0.0
-author: User
-custom_functions:
-  - myFunction1
-  - myFunction2`,
-        formula: `自定义函数1: result = a * x² + b * x + c
-自定义函数2: output = sin(ωt) * exp(-ζt)`,
-        dependencies: [],
-        parameters: ['a', 'b', 'c', 'ω', 'ζ'],
-        enabled: true,
+      simulator: {
+        step_size: 1,
+        total_time: 1440,
+        output_format: 'csv',
+        output_variables: ['liver_function', 'pancreatic_function', 'gastric_function', 'intestinal_function', 'kidney_function'],
       },
-      '0-1-1': {
-        name: 'LegacyMod_v05',
-        version: '0.5.0',
-        author: 'Legacy System',
-        description: '旧版本兼容模块（建议升级）',
-        yaml: `name: LegacyMod_v05
-version: 0.5.0
-deprecated: true
-compatibility: v1.x`,
-        formula: `旧版计算方法
-已不推荐使用`,
-        dependencies: [],
-        parameters: [],
-        enabled: false,
+      optimizer: {
+        method: 'grid',
+        duration: 60.0,
+        targets_of_optimization: ['energy_expenditure'],
+        variables_to_optimize: ['insulin_sensitivity'],
       },
-    });
-  }, []);
-
-  const treeData: DataNode[] = [
-    {
-      title: '核心 MOD 包',
-      key: '0-0',
-      children: [
-        { title: '结构分析 MOD', key: '0-0-0' },
-        { title: '热力学分析 MOD', key: '0-0-1' },
-        { title: '非线性材料库 MOD', key: '0-0-2' },
-      ],
     },
-    {
-      title: '用户自定义 MOD',
-      key: '0-1',
-      children: [
-        { title: '我的自定义公式', key: '0-1-0' },
-        { title: '旧版本 MOD (v0.5)', key: '0-1-1' },
-      ],
-    },
-  ];
+  });
 
-  useEffect(() => {
-    if (onModulesChange) {
-      onModulesChange(checkedKeys.length);
+  // 选择模型时的处理
+  const handleSelect = (selectedKeys: React.Key[]) => {
+    setSelectedKeys(selectedKeys);
+    if (selectedKeys.length > 0) {
+      const key = selectedKeys[0] as string;
+      if (key.endsWith('.yaml')) {
+        const model = modelDatabase[key];
+        if (model) {
+          setSelectedModel(model);
+          if (onModelSelect) {
+            onModelSelect(model);
+          }
+          message.success(`已选择模型: ${model.metadata?.name || key}`);
+        }
+      }
     }
-  }, [checkedKeys, onModulesChange]);
+  };
 
-  const getModuleDetail = (key: string): ModuleDetail => {
-    return moduleDetails[key] || {
-      name: 'Unknown',
-      version: '0.0.0',
-      author: 'Unknown',
-      description: '未知模块',
-      yaml: '无数据',
-      formula: '-',
-      dependencies: [],
-      parameters: [],
-      enabled: false,
+  // 刷新模型列表
+  const refreshModels = () => {
+    message.loading('正在刷新模型列表...', 1).then(() => {
+      message.success('模型列表已刷新');
+    });
+  };
+
+  // 合并选中的模型
+  const mergeModels = () => {
+    if (checkedKeys.length < 2) {
+      message.warning('请至少选择 2 个模型进行合并');
+      return;
+    }
+    message.success(`正在合并 ${checkedKeys.length} 个模型...`);
+  };
+
+  // 渲染变量列表
+  const renderVariables = () => {
+    if (!selectedModel?.variables) return <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>无变量数据</div>;
+    
+    const varsByType = {
+      input: [] as any[],
+      parameters: [] as any[],
+      state: [] as any[],
     };
-  };
 
-  const currentDetail = getModuleDetail(selectedMod);
-
-  const toggleModuleEnabled = (key: string) => {
-    setModuleDetails(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        enabled: !prev[key]?.enabled,
-      },
-    }));
-    message.success(`模块已${!currentDetail.enabled ? '启用' : '禁用'}`);
-  };
-
-  const toggleAllModules = (enabled: boolean) => {
-    const allKeys = Object.keys(moduleDetails);
-    setModuleDetails(prev => {
-      const updated = { ...prev };
-      allKeys.forEach(key => {
-        updated[key] = { ...updated[key], enabled };
-      });
-      return updated;
+    Object.entries(selectedModel.variables).forEach(([name, data]: [string, any]) => {
+      const type = data.type || 'state';
+      if (varsByType[type as keyof typeof varsByType]) {
+        varsByType[type as keyof typeof varsByType].push({ name, ...data });
+      }
     });
-    if (enabled) {
-      setCheckedKeys(allKeys);
-    } else {
-      setCheckedKeys([]);
+
+    return (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        {Object.entries(varsByType).map(([type, vars]) => (
+          vars.length > 0 && (
+            <Card key={type} size="small" title={
+              <span>
+                <Tag color={type === 'input' ? 'blue' : type === 'parameters' ? 'green' : 'orange'}>
+                  {type.toUpperCase()}
+                </Tag>
+                {vars.length} 个变量
+              </span>
+            }>
+              {vars.map((v: any, idx: number) => (
+                <div key={idx} style={{ marginBottom: 8, padding: 8, background: '#fafafa', borderRadius: 4 }}>
+                  <div style={{ fontWeight: 'bold' }}>{v.name}</div>
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    {v.description} | 初值: {v.value} {v.unit} | 范围: [{v.bounds?.[0]}, {v.bounds?.[1]}]
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )
+        ))}
+      </Space>
+    );
+  };
+
+  // 渲染公式列表
+  const renderFormulas = () => {
+    if (!selectedModel?.formulas) return <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>无公式数据</div>;
+    
+    return (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        {Object.entries(selectedModel.formulas).map(([name, formula]: [string, any], idx) => (
+          <Card key={idx} size="small" style={{ background: '#f0f7ff' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{name}</div>
+            <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>{formula.description}</div>
+            {formula.condition && (
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <Tag color="orange">条件</Tag> {formula.condition}
+              </div>
+            )}
+            <div style={{ fontSize: 12 }}>
+              <Tag color="blue">优先级</Tag> {formula.priority || 100}
+            </div>
+            <Divider style={{ margin: '8px 0' }} />
+            <div style={{ fontSize: 12 }}>
+              <strong>动力学方程:</strong>
+              {Object.entries(formula.dynamics || {}).map(([varName, expr]: [string, any], i) => (
+                <div key={i} style={{ marginLeft: 16, marginTop: 4, fontFamily: 'monospace', background: '#fff', padding: 4, borderRadius: 2 }}>
+                  {varName} = {expr}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </Space>
+    );
+  };
+
+  // 根据子页面渲染内容
+  const renderSubPage = () => {
+    switch (subPage) {
+      case '2-1': // 浏览模型
+        return renderBrowseModels();
+      case '2-2': // 合并模型
+        return renderMergeModels();
+      case '2-3': // 依赖分析
+        return renderDependencyAnalysis();
+      default:
+        return renderBrowseModels();
     }
-    message.success(`已${enabled ? '启用' : '禁用'}所有模块`);
   };
 
-  const reloadModules = () => {
-    message.loading('正在重新加载模块...', 1).then(() => {
-      message.success('模块已重新加载');
-    });
-  };
-
-  return (
-    <Space direction="vertical" style={{ width: '100%' }} size="large">
-      <Card>
-        <Space wrap>
-          <Button 
-            type="primary" 
-            icon={<CheckOutlined />}
-            onClick={() => toggleAllModules(true)}
-          >
-            启用全部
-          </Button>
-          <Button 
-            danger 
-            icon={<CloseOutlined />}
-            onClick={() => toggleAllModules(false)}
-          >
-            禁用全部
-          </Button>
-          <Button 
-            icon={<ReloadOutlined />}
-            onClick={reloadModules}
-          >
-            重新加载
-          </Button>
-          <Button 
-            icon={<UploadOutlined />}
-            onClick={() => setUploadModalVisible(true)}
-          >
-            上传新模块
-          </Button>
-          <Tag color="blue">已启用: {checkedKeys.length} / {Object.keys(moduleDetails).length}</Tag>
-        </Space>
-      </Card>
-
-      <Card title="MOD 模块管理">
-        <Tabs 
-          defaultActiveKey="manager" 
-          items={[
-            { 
-              key: 'manager', 
-              label: '模块选择与配置', 
-              children: (
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Card 
-                      title="可用模块树" 
-                      extra={<Tag color="green">{checkedKeys.length} 已选</Tag>}
-                    >
-                      <Tree
-                        checkable
-                        checkedKeys={checkedKeys}
-                        onCheck={(checkedKeys) => setCheckedKeys(checkedKeys as React.Key[])}
-                        onSelect={(selectedKeys) => {
-                          if (selectedKeys.length > 0) {
-                            setSelectedMod(selectedKeys[0] as string);
-                          }
-                        }}
-                        treeData={treeData}
-                        defaultExpandAll
-                      />
-                    </Card>
-                  </Col>
-                  
-                  <Col span={16}>
-                    <Card 
-                      title={
-                        <Space>
-                          <span>模块详情: {currentDetail.name}</span>
-                          <Tag color={currentDetail.enabled ? 'success' : 'default'}>
-                            {currentDetail.enabled ? '已启用' : '已禁用'}
-                          </Tag>
-                        </Space>
-                      }
-                      extra={
-                        <Switch 
-                          checked={currentDetail.enabled}
-                          onChange={() => toggleModuleEnabled(selectedMod)}
-                          checkedChildren="启用"
-                          unCheckedChildren="禁用"
-                        />
-                      }
-                    >
-                      <Tabs 
-                        defaultActiveKey="info" 
-                        items={[
-                          { 
-                            key: 'info', 
-                            label: <span><InfoCircleOutlined /> 基本信息</span>,
-                            children: (
-                              <Descriptions column={2} bordered size="small">
-                                <Descriptions.Item label="模块名称" span={2}>
-                                  {currentDetail.name}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="版本">
-                                  <Tag color="blue">{currentDetail.version}</Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="作者">
-                                  {currentDetail.author}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="描述" span={2}>
-                                  {currentDetail.description}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="依赖模块" span={2}>
-                                  {currentDetail.dependencies.length > 0 ? (
-                                    <Space>
-                                      {currentDetail.dependencies.map(dep => (
-                                        <Tag key={dep}>{dep}</Tag>
-                                      ))}
-                                    </Space>
-                                  ) : (
-                                    <Tag color="default">无依赖</Tag>
-                                  )}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="所需参数" span={2}>
-                                  {currentDetail.parameters.length > 0 ? (
-                                    <Space wrap>
-                                      {currentDetail.parameters.map(param => (
-                                        <Tag color="purple" key={param}>{param}</Tag>
-                                      ))}
-                                    </Space>
-                                  ) : (
-                                    <Tag color="default">无参数</Tag>
-                                  )}
-                                </Descriptions.Item>
-                              </Descriptions>
-                            )
-                          },
-                          { 
-                            key: 'yaml', 
-                            label: <span><FileTextOutlined /> YAML 配置</span>,
-                            children: (
-                              <pre style={{ 
-                                backgroundColor: '#f5f5f5', 
-                                padding: 16, 
-                                borderRadius: 4,
-                                maxHeight: 400,
-                                overflow: 'auto',
-                                fontFamily: 'monospace',
-                                fontSize: 13
-                              }}>
-                                {currentDetail.yaml}
-                              </pre>
-                            )
-                          },
-                          { 
-                            key: 'formula', 
-                            label: <span><FunctionOutlined /> 核心公式</span>,
-                            children: (
-                              <div style={{ 
-                                padding: 16, 
-                                backgroundColor: '#fafafa',
-                                borderRadius: 4,
-                                minHeight: 200
-                              }}>
-                                <pre style={{ 
-                                  fontFamily: 'monospace',
-                                  fontSize: 14,
-                                  lineHeight: 1.8,
-                                  whiteSpace: 'pre-wrap'
-                                }}>
-                                  {currentDetail.formula}
-                                </pre>
-                              </div>
-                            )
-                          },
-                        ]} 
-                      />
-                    </Card>
-                  </Col>
-                </Row>
-              )
-            },
-            { 
-              key: 'status', 
-              label: '模块状态总览', 
-              children: (
-                <Row gutter={[16, 16]}>
-                  {Object.entries(moduleDetails).map(([key, detail]) => (
-                    <Col span={12} key={key}>
-                      <Card 
-                        size="small"
-                        title={detail.name}
-                        extra={
-                          <Switch 
-                            size="small"
-                            checked={detail.enabled}
-                            onChange={() => toggleModuleEnabled(key)}
-                          />
-                        }
-                      >
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                          <div>
-                            <Tag color="blue">v{detail.version}</Tag>
-                            <Tag color={detail.enabled ? 'success' : 'default'}>
-                              {detail.enabled ? '运行中' : '未启用'}
-                            </Tag>
-                          </div>
-                          <div style={{ fontSize: 12, color: '#666' }}>
-                            {detail.description}
-                          </div>
-                          {detail.dependencies.length > 0 && (
-                            <div style={{ fontSize: 12 }}>
-                              依赖: {detail.dependencies.join(', ')}
-                            </div>
-                          )}
-                        </Space>
-                      </Card>
-                    </Col>
+  // 浏览模型页面
+  const renderBrowseModels = () => (
+    <Row gutter={16} style={{ height: 'calc(100vh - 200px)' }}>
+      <Col span={8}>
+        <Card 
+          title="模型文件树" 
+          extra={
+            <Space>
+              <Button size="small" icon={<ReloadOutlined />} onClick={refreshModels}>刷新</Button>
+            </Space>
+          }
+          style={{ height: '100%', overflow: 'auto' }}
+        >
+          <Input 
+            prefix={<SearchOutlined />}
+            placeholder="搜索模型..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ marginBottom: 8 }}
+          />
+          <Tree
+            showIcon
+            defaultExpandAll
+            selectedKeys={selectedKeys}
+            onSelect={handleSelect}
+            treeData={treeData}
+          />
+        </Card>
+      </Col>
+      
+      <Col span={16}>
+        {selectedModel ? (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {/* 元数据 */}
+            <Card title="模型信息">
+              <Descriptions bordered column={2} size="small">
+                <Descriptions.Item label="名称">{selectedModel.metadata?.name}</Descriptions.Item>
+                <Descriptions.Item label="版本">
+                  <Tag color="blue">{selectedModel.metadata?.version}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="作者">{selectedModel.metadata?.author}</Descriptions.Item>
+                <Descriptions.Item label="文件路径">{selectedModel.path}</Descriptions.Item>
+                <Descriptions.Item label="描述" span={2}>{selectedModel.metadata?.description}</Descriptions.Item>
+                <Descriptions.Item label="标签" span={2}>
+                  {selectedModel.metadata?.tags?.map((tag: string, idx: number) => (
+                    <Tag key={idx} color="purple">{tag}</Tag>
                   ))}
-                </Row>
-              )
-            }
-          ]}
-        />
-      </Card>
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
 
-      <Modal
-        title="上传新模块"
-        open={uploadModalVisible}
-        onCancel={() => setUploadModalVisible(false)}
-        footer={null}
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Upload.Dragger
-            accept=".yaml,.yml,.json"
-            beforeUpload={(file) => {
-              message.success(`文件 ${file.name} 上传成功`);
-              setUploadModalVisible(false);
-              return false;
-            }}
-          >
-            <p className="ant-upload-drag-icon">
-              <UploadOutlined />
-            </p>
-            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-            <p className="ant-upload-hint">
-              支持 YAML 或 JSON 格式的模块配置文件
-            </p>
-          </Upload.Dragger>
-        </Space>
-      </Modal>
-    </Space>
+            {/* 详细内容标签页 */}
+            <Card>
+              <Tabs
+                items={[
+                  {
+                    key: 'variables',
+                    label: `变量 (${Object.keys(selectedModel.variables || {}).length})`,
+                    children: renderVariables(),
+                  },
+                  {
+                    key: 'formulas',
+                    label: `公式 (${Object.keys(selectedModel.formulas || {}).length})`,
+                    children: renderFormulas(),
+                  },
+                  {
+                    key: 'simulator',
+                    label: '仿真配置',
+                    children: selectedModel.simulator ? (
+                      <Descriptions bordered column={2} size="small">
+                        <Descriptions.Item label="步长">{selectedModel.simulator.step_size}</Descriptions.Item>
+                        <Descriptions.Item label="总时间">{selectedModel.simulator.total_time}</Descriptions.Item>
+                        <Descriptions.Item label="输出格式">{selectedModel.simulator.output_format}</Descriptions.Item>
+                        <Descriptions.Item label="输出变量">
+                          {selectedModel.simulator.output_variables?.join(', ')}
+                        </Descriptions.Item>
+                      </Descriptions>
+                    ) : <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>无仿真配置</div>,
+                  },
+                  {
+                    key: 'optimizer',
+                    label: '优化配置',
+                    children: selectedModel.optimizer ? (
+                      <Descriptions bordered column={2} size="small">
+                        <Descriptions.Item label="方法">{selectedModel.optimizer.method}</Descriptions.Item>
+                        <Descriptions.Item label="持续时间">{selectedModel.optimizer.duration}s</Descriptions.Item>
+                        <Descriptions.Item label="优化目标">
+                          {selectedModel.optimizer.targets_of_optimization?.join(', ')}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="优化变量">
+                          {selectedModel.optimizer.variables_to_optimize?.join(', ')}
+                        </Descriptions.Item>
+                      </Descriptions>
+                    ) : <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>无优化配置</div>,
+                  },
+                ]}
+              />
+            </Card>
+          </Space>
+        ) : (
+          <Card style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center', color: '#999' }}>
+              <FileOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+              <div>请从左侧选择一个模型文件</div>
+            </div>
+          </Card>
+        )}
+      </Col>
+    </Row>
   );
+
+  // 合并模型页面
+  const renderMergeModels = () => (
+    <Card title="合并多个模型">
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div>
+          <div style={{ marginBottom: 8, fontWeight: 'bold' }}>选择要合并的模型:</div>
+          <Tree
+            checkable
+            showIcon
+            defaultExpandAll
+            checkedKeys={checkedKeys}
+            onCheck={(keys) => setCheckedKeys(keys as React.Key[])}
+            treeData={treeData}
+          />
+        </div>
+        <div>
+          <Tag color="blue">{checkedKeys.length} 个模型已选中</Tag>
+        </div>
+        <Button type="primary" icon={<MergeOutlined />} onClick={mergeModels}>
+          合并模型
+        </Button>
+      </Space>
+    </Card>
+  );
+
+  // 依赖分析页面
+  const renderDependencyAnalysis = () => (
+    <Card title="模型依赖关系分析">
+      <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
+        依赖分析功能开发中...
+        <div style={{ marginTop: 16 }}>
+          将显示模型间的 imports 关系、循环依赖检测等
+        </div>
+      </div>
+    </Card>
+  );
+
+  return renderSubPage();
 };
 
 export default Loader;

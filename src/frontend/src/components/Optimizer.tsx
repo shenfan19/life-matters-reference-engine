@@ -1,48 +1,36 @@
 // frontend/src/components/Optimizer.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   Form, 
-  Input, 
   Select, 
   InputNumber, 
   Button, 
   Space, 
   Table, 
-  Radio, 
-  Checkbox,
+  Radio,
   Row,
   Col,
-  Divider,
   Alert,
   Tag,
   Progress,
   Statistic,
   Descriptions,
-  message
+  message,
+  Divider,
+  Tabs
 } from 'antd';
 import { 
   PlayCircleOutlined, 
-  PlusOutlined, 
-  DeleteOutlined,
   LineChartOutlined,
-  SettingOutlined
+  SettingOutlined,
+  ExperimentOutlined
 } from '@ant-design/icons';
 
-interface OptimizationVariable {
-  key: string;
-  name: string;
-  min: number;
-  max: number;
-  initial: number;
-}
-
-interface Constraint {
-  key: string;
-  expression: string;
-  type: 'equality' | 'inequality';
-  value: number;
+interface OptimizerProps {
+  subPage: string;
+  selectedModel: any;
 }
 
 interface OptimizationResult {
@@ -52,227 +40,75 @@ interface OptimizationResult {
   feasible: boolean;
 }
 
-const Optimizer: React.FC = () => {
+const Optimizer: React.FC<OptimizerProps> = ({ subPage, selectedModel }) => {
   const [form] = Form.useForm();
   const [optimizing, setOptimizing] = useState(false);
   const [progress, setProgress] = useState(0);
-  
-  const [variables, setVariables] = useState<OptimizationVariable[]>([
-    { key: '1', name: 'Length', min: 5, max: 20, initial: 10 },
-    { key: '2', name: 'Width', min: 0.1, max: 1, initial: 0.5 },
-    { key: '3', name: 'Height', min: 0.1, max: 1, initial: 0.3 },
-  ]);
-
-  const [constraints, setConstraints] = useState<Constraint[]>([
-    { key: '1', expression: 'Width * Height', type: 'inequality', value: 0.3 },
-    { key: '2', expression: 'stress', type: 'inequality', value: 200 },
-  ]);
-
   const [results, setResults] = useState<OptimizationResult[]>([]);
   
   const [config, setConfig] = useState({
     objectiveType: 'minimize' as 'minimize' | 'maximize',
-    objectiveFunction: 'displacement',
-    algorithm: 'genetic',
+    objectiveFunction: '',
+    algorithm: 'grid',
     maxIterations: 100,
-    tolerance: 0.001,
+    duration: 60.0,
     populationSize: 50,
   });
 
-  const variableColumns = [
-    {
-      title: '变量名',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text: string, record: OptimizationVariable) => (
-        <Input 
-          value={text}
-          onChange={(e) => updateVariable(record.key, 'name', e.target.value)}
-          size="small"
-        />
-      ),
-    },
-    {
-      title: '最小值',
-      dataIndex: 'min',
-      key: 'min',
-      render: (value: number, record: OptimizationVariable) => (
-        <InputNumber 
-          value={value}
-          onChange={(val) => updateVariable(record.key, 'min', val || 0)}
-          size="small"
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '最大值',
-      dataIndex: 'max',
-      key: 'max',
-      render: (value: number, record: OptimizationVariable) => (
-        <InputNumber 
-          value={value}
-          onChange={(val) => updateVariable(record.key, 'max', val || 0)}
-          size="small"
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '初始值',
-      dataIndex: 'initial',
-      key: 'initial',
-      render: (value: number, record: OptimizationVariable) => (
-        <InputNumber 
-          value={value}
-          onChange={(val) => updateVariable(record.key, 'initial', val || 0)}
-          size="small"
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (record: OptimizationVariable) => (
-        <Button 
-          type="text" 
-          danger 
-          icon={<DeleteOutlined />}
-          onClick={() => deleteVariable(record.key)}
-          size="small"
-        />
-      ),
-    },
-  ];
+  const [variablesToOptimize, setVariablesToOptimize] = useState<string[]>([]);
+  const [optimizationTargets, setOptimizationTargets] = useState<string[]>([]);
 
-  const constraintColumns = [
-    {
-      title: '约束表达式',
-      dataIndex: 'expression',
-      key: 'expression',
-      render: (text: string, record: Constraint) => (
-        <Input 
-          value={text}
-          onChange={(e) => updateConstraint(record.key, 'expression', e.target.value)}
-          placeholder="例如: x1 + x2"
-          size="small"
-        />
-      ),
-    },
-    {
-      title: '类型',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type: string, record: Constraint) => (
-        <Select
-          value={type}
-          onChange={(val) => updateConstraint(record.key, 'type', val)}
-          size="small"
-          style={{ width: '100%' }}
-          options={[
-            { value: 'equality', label: '等式 (=)' },
-            { value: 'inequality', label: '不等式 (≤)' },
-          ]}
-        />
-      ),
-    },
-    {
-      title: '值',
-      dataIndex: 'value',
-      key: 'value',
-      render: (value: number, record: Constraint) => (
-        <InputNumber 
-          value={value}
-          onChange={(val) => updateConstraint(record.key, 'value', val || 0)}
-          size="small"
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (record: Constraint) => (
-        <Button 
-          type="text" 
-          danger 
-          icon={<DeleteOutlined />}
-          onClick={() => deleteConstraint(record.key)}
-          size="small"
-        />
-      ),
-    },
-  ];
+  // 初始化优化配置
+  useEffect(() => {
+    if (selectedModel?.optimizer) {
+      setConfig({
+        ...config,
+        algorithm: selectedModel.optimizer.method || 'grid',
+        duration: selectedModel.optimizer.duration || 60.0,
+        populationSize: selectedModel.optimizer.pop_size || 50,
+      });
+      
+      if (selectedModel.optimizer.variables_to_optimize) {
+        setVariablesToOptimize(selectedModel.optimizer.variables_to_optimize);
+      }
+      
+      if (selectedModel.optimizer.targets_of_optimization) {
+        setOptimizationTargets(selectedModel.optimizer.targets_of_optimization);
+        setConfig(prev => ({ ...prev, objectiveFunction: selectedModel.optimizer.targets_of_optimization[0] }));
+      }
+    }
+  }, [selectedModel]);
 
-  const resultColumns = [
-    { title: '迭代次数', dataIndex: 'iteration', key: 'iteration' },
-    { 
-      title: '目标函数值', 
-      dataIndex: 'objective', 
-      key: 'objective',
-      render: (val: number) => val.toFixed(6),
-    },
-    {
-      title: '可行性',
-      dataIndex: 'feasible',
-      key: 'feasible',
-      render: (feasible: boolean) => (
-        <Tag color={feasible ? 'success' : 'error'}>
-          {feasible ? '可行' : '不可行'}
-        </Tag>
-      ),
-    },
-  ];
-
-  const updateVariable = (key: string, field: string, value: any) => {
-    setVariables(vars => 
-      vars.map(v => v.key === key ? { ...v, [field]: value } : v)
-    );
+  // 获取可优化的变量列表
+  const getOptimizableVariables = () => {
+    if (!selectedModel?.variables) return [];
+    return Object.entries(selectedModel.variables)
+      .filter(([_, data]: [string, any]) => data.type === 'parameters' || data.type === 'state')
+      .map(([name]) => name);
   };
 
-  const deleteVariable = (key: string) => {
-    setVariables(vars => vars.filter(v => v.key !== key));
-    message.success('变量已删除');
+  // 获取可作为目标的变量列表
+  const getTargetVariables = () => {
+    if (!selectedModel?.variables) return [];
+    return Object.entries(selectedModel.variables)
+      .filter(([_, data]: [string, any]) => data.type === 'state')
+      .map(([name]) => name);
   };
 
-  const addVariable = () => {
-    const newKey = String(Date.now());
-    setVariables([...variables, {
-      key: newKey,
-      name: `Var_${variables.length + 1}`,
-      min: 0,
-      max: 100,
-      initial: 50,
-    }]);
-    message.success('变量已添加');
-  };
-
-  const updateConstraint = (key: string, field: string, value: any) => {
-    setConstraints(cons => 
-      cons.map(c => c.key === key ? { ...c, [field]: value } : c)
-    );
-  };
-
-  const deleteConstraint = (key: string) => {
-    setConstraints(cons => cons.filter(c => c.key !== key));
-    message.success('约束已删除');
-  };
-
-  const addConstraint = () => {
-    const newKey = String(Date.now());
-    setConstraints([...constraints, {
-      key: newKey,
-      expression: '',
-      type: 'inequality',
-      value: 0,
-    }]);
-    message.success('约束已添加');
-  };
-
+  // 开始优化
   const startOptimization = () => {
-    if (variables.length === 0) {
-      message.error('请至少添加一个优化变量');
+    if (!selectedModel) {
+      message.error('请先在 Loader 中选择一个模型');
+      return;
+    }
+
+    if (variablesToOptimize.length === 0) {
+      message.error('请至少选择一个要优化的变量');
+      return;
+    }
+
+    if (!config.objectiveFunction) {
+      message.error('请选择优化目标函数');
       return;
     }
 
@@ -283,13 +119,24 @@ const Optimizer: React.FC = () => {
     let iteration = 0;
     const maxIter = config.maxIterations;
     
+    // 模拟优化过程
     const interval = setInterval(() => {
       iteration++;
       
-      const objective = 100 - iteration * 0.8 + Math.random() * 10;
+      // 生成模拟结果
+      const objective = config.objectiveType === 'minimize' 
+        ? 100 - iteration * 0.8 + Math.random() * 10
+        : iteration * 0.8 + Math.random() * 10;
+      
       const vars: Record<string, number> = {};
-      variables.forEach(v => {
-        vars[v.name] = v.min + Math.random() * (v.max - v.min);
+      variablesToOptimize.forEach(varName => {
+        const varData = selectedModel?.variables?.[varName];
+        if (varData?.bounds) {
+          const [min, max] = varData.bounds;
+          vars[varName] = min + Math.random() * (max - min);
+        } else {
+          vars[varName] = Math.random() * 100;
+        }
       });
       
       setResults(prev => [...prev, {
@@ -309,11 +156,13 @@ const Optimizer: React.FC = () => {
     }, 100);
   };
 
+  // 停止优化
   const stopOptimization = () => {
     setOptimizing(false);
     message.info('优化已停止');
   };
 
+  // 最优结果
   const bestResult = results.reduce((best, current) => {
     if (!best) return current;
     if (config.objectiveType === 'minimize') {
@@ -323,8 +172,63 @@ const Optimizer: React.FC = () => {
     }
   }, results[0]);
 
-  return (
+  // 结果表格列
+  const resultColumns = [
+    { title: '迭代次数', dataIndex: 'iteration', key: 'iteration', width: 100 },
+    { 
+      title: '目标函数值', 
+      dataIndex: 'objective', 
+      key: 'objective',
+      render: (val: number) => val.toFixed(6),
+      width: 150,
+    },
+    {
+      title: '可行性',
+      dataIndex: 'feasible',
+      key: 'feasible',
+      width: 100,
+      render: (feasible: boolean) => (
+        <Tag color={feasible ? 'success' : 'error'}>
+          {feasible ? '可行' : '不可行'}
+        </Tag>
+      ),
+    },
+    ...variablesToOptimize.map(varName => ({
+      title: varName,
+      key: varName,
+      render: (record: OptimizationResult) => record.variables[varName]?.toFixed(4) || '-',
+    })),
+  ];
+
+  // 根据子页面渲染内容
+  const renderSubPage = () => {
+    if (!selectedModel) {
+      return (
+        <Alert
+          message="未选择模型"
+          description="请先在 Loader 模块中选择一个模型文件"
+          type="info"
+          showIcon
+        />
+      );
+    }
+
+    switch (subPage) {
+      case '4-1': // 参数优化
+        return renderParameterOptimization();
+      case '4-2': // 多目标优化
+        return renderMultiObjectiveOptimization();
+      case '4-3': // 优化历史
+        return renderOptimizationHistory();
+      default:
+        return renderParameterOptimization();
+    }
+  };
+
+  // 参数优化页面
+  const renderParameterOptimization = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
+      {/* 状态提示 */}
       {optimizing && (
         <Alert 
           message="优化进行中" 
@@ -334,7 +238,8 @@ const Optimizer: React.FC = () => {
         />
       )}
 
-      <Card title={<><SettingOutlined /> 优化系统配置</>}>
+      {/* 优化配置 */}
+      <Card title={<><SettingOutlined /> 优化配置</>}>
         <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={8}>
@@ -353,13 +258,8 @@ const Optimizer: React.FC = () => {
                 <Select
                   value={config.objectiveFunction}
                   onChange={(val) => setConfig({ ...config, objectiveFunction: val })}
-                  options={[
-                    { value: 'displacement', label: '位移' },
-                    { value: 'stress', label: '应力' },
-                    { value: 'weight', label: '重量' },
-                    { value: 'cost', label: '成本' },
-                    { value: 'custom', label: '自定义公式' },
-                  ]}
+                  options={getTargetVariables().map(v => ({ value: v, label: v }))}
+                  placeholder="选择目标变量"
                 />
               </Form.Item>
             </Col>
@@ -369,10 +269,10 @@ const Optimizer: React.FC = () => {
                   value={config.algorithm}
                   onChange={(val) => setConfig({ ...config, algorithm: val })}
                   options={[
+                    { value: 'grid', label: '网格搜索 (Grid)' },
                     { value: 'genetic', label: '遗传算法 (GA)' },
                     { value: 'pso', label: '粒子群优化 (PSO)' },
                     { value: 'gradient', label: '梯度下降' },
-                    { value: 'simplex', label: '单纯形法' },
                     { value: 'simulated', label: '模拟退火' },
                   ]}
                 />
@@ -393,13 +293,12 @@ const Optimizer: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item label="收敛容差">
+              <Form.Item label="持续时间 (秒)">
                 <InputNumber 
-                  value={config.tolerance}
-                  onChange={(val) => setConfig({ ...config, tolerance: val || 0.001 })}
-                  min={0.0001}
-                  max={0.1}
-                  step={0.001}
+                  value={config.duration}
+                  onChange={(val) => setConfig({ ...config, duration: val || 60 })}
+                  min={10}
+                  max={3600}
                   style={{ width: '100%' }}
                 />
               </Form.Item>
@@ -418,59 +317,47 @@ const Optimizer: React.FC = () => {
             </Col>
           </Row>
 
-          <Form.Item label="高级选项">
-            <Checkbox.Group>
-              <Checkbox value="parallel">并行计算</Checkbox>
-              <Checkbox value="adaptive">自适应参数</Checkbox>
-              <Checkbox value="constraint">约束惩罚</Checkbox>
-              <Checkbox value="log">详细日志</Checkbox>
-            </Checkbox.Group>
+          <Form.Item label="选择要优化的变量">
+            <Select
+              mode="multiple"
+              value={variablesToOptimize}
+              onChange={setVariablesToOptimize}
+              options={getOptimizableVariables().map(v => ({ value: v, label: v }))}
+              placeholder="选择变量"
+              style={{ width: '100%' }}
+            />
           </Form.Item>
         </Form>
       </Card>
 
-      <Card 
-        title="优化变量定义"
-        extra={
-          <Button 
-            type="primary" 
-            size="small" 
-            icon={<PlusOutlined />}
-            onClick={addVariable}
-          >
-            添加变量
-          </Button>
-        }
-      >
-        <Table 
-          columns={variableColumns}
-          dataSource={variables}
-          pagination={false}
-          size="small"
-        />
-      </Card>
+      {/* 变量范围 */}
+      {variablesToOptimize.length > 0 && (
+        <Card title="优化变量范围">
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {variablesToOptimize.map(varName => {
+              const varData = selectedModel?.variables?.[varName] || {};
+              return (
+                <Row key={varName} gutter={8} align="middle">
+                  <Col span={6}>
+                    <div style={{ fontWeight: 'bold' }}>{varName}</div>
+                    <div style={{ fontSize: 12, color: '#666' }}>{varData.description}</div>
+                  </Col>
+                  <Col span={6}>
+                    <Tag color="blue">初值: {varData.value}</Tag>
+                  </Col>
+                  <Col span={12}>
+                    <div style={{ fontSize: 12 }}>
+                      范围: [{varData.bounds?.[0] || 0}, {varData.bounds?.[1] || 100}] {varData.unit}
+                    </div>
+                  </Col>
+                </Row>
+              );
+            })}
+          </Space>
+        </Card>
+      )}
 
-      <Card 
-        title="约束条件"
-        extra={
-          <Button 
-            type="primary" 
-            size="small" 
-            icon={<PlusOutlined />}
-            onClick={addConstraint}
-          >
-            添加约束
-          </Button>
-        }
-      >
-        <Table 
-          columns={constraintColumns}
-          dataSource={constraints}
-          pagination={false}
-          size="small"
-        />
-      </Card>
-
+      {/* 控制按钮 */}
       <Card>
         <Space>
           <Button 
@@ -498,6 +385,7 @@ const Optimizer: React.FC = () => {
         )}
       </Card>
 
+      {/* 优化结果 */}
       {results.length > 0 && (
         <>
           <Row gutter={16}>
@@ -549,11 +437,20 @@ const Optimizer: React.FC = () => {
                 <Descriptions.Item label="目标函数值" span={1}>
                   <Tag color="green">{bestResult.objective?.toFixed(6)}</Tag>
                 </Descriptions.Item>
-                {bestResult.variables && Object.entries(bestResult.variables).map(([key, value]) => (
-                  <Descriptions.Item label={key} key={key}>
-                    {value.toFixed(4)}
-                  </Descriptions.Item>
-                ))}
+                <Descriptions.Item label="可行性" span={2}>
+                  <Tag color={bestResult.feasible ? 'success' : 'error'}>
+                    {bestResult.feasible ? '可行解' : '不可行'}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="优化变量" span={2}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {Object.entries(bestResult.variables || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <Tag color="purple">{key}</Tag> = {value.toFixed(4)}
+                      </div>
+                    ))}
+                  </Space>
+                </Descriptions.Item>
               </Descriptions>
             </Card>
           )}
@@ -564,13 +461,46 @@ const Optimizer: React.FC = () => {
               dataSource={results}
               pagination={{ pageSize: 10 }}
               size="small"
-              scroll={{ y: 300 }}
+              scroll={{ x: 'max-content', y: 400 }}
             />
           </Card>
         </>
       )}
     </Space>
   );
+
+  // 多目标优化页面
+  const renderMultiObjectiveOptimization = () => (
+    <Card title="多目标优化">
+      <Alert
+        message="多目标优化"
+        description="此功能支持同时优化多个目标函数（如最小化成本的同时最大化性能），使用 NSGA-II 等算法"
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+      <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
+        多目标优化功能开发中...
+        <div style={{ marginTop: 16 }}>
+          将支持帕累托前沿分析、多目标权重配置等
+        </div>
+      </div>
+    </Card>
+  );
+
+  // 优化历史页面
+  const renderOptimizationHistory = () => (
+    <Card title="优化历史记录">
+      <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
+        历史记录功能开发中...
+        <div style={{ marginTop: 16 }}>
+          将显示过往的优化任务、参数配置和结果对比
+        </div>
+      </div>
+    </Card>
+  );
+
+  return renderSubPage();
 };
 
 export default Optimizer;
