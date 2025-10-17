@@ -1,18 +1,26 @@
-import React from 'react'; // 导入React
-import { Typography, TextField, Button } from '@mui/material'; // 导入MUI组件
-import Simulator from './Simulator'; // 导入Simulator组件（嵌套使用）
+import React from 'react';
+import { Typography, TextField, Button, Box, Paper, Divider } from '@mui/material'; // 导入 Box, Paper, Divider
+import Simulator from './Simulator'; 
 
 function Optimizer() {
   return (
-    <div>
-      <Typography variant="h5">优化参数输入</Typography> // 标题
-      <TextField label="优化方法 (e.g., grid)" fullWidth /> // 输入字段示例
-      <TextField label="持续时间 (分钟)" fullWidth /> // 另一个输入字段
-      <Button variant="contained">开始优化</Button> // 优化按钮
-      <Typography variant="h6" style={{ marginTop: '16px' }}>嵌套仿真视图</Typography> // 子标题
-      <Simulator /> // 嵌套Simulator组件，提供仿真部分
-    </div>
+    <Box sx={{ p: 2 }}>
+      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h5" gutterBottom>优化参数配置</Typography> 
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 400 }}>
+            <TextField label="优化方法 (e.g., Grid Search)" fullWidth variant="outlined" size="small" /> 
+            <TextField label="最大迭代次数" fullWidth type="number" variant="outlined" size="small" />
+            <TextField label="目标变量" fullWidth variant="outlined" size="small" />
+            <Button variant="contained" color="secondary" sx={{ mt: 1 }}>开始优化</Button>
+        </Box>
+      </Paper>
+      
+      <Divider sx={{ mb: 4 }} />
+      
+      <Typography variant="h6" gutterBottom>优化过程中的嵌套仿真视图</Typography> 
+      <Simulator /> 
+    </Box>
   );
 }
 
-export default Optimizer; // 导出Optimizer组件
+export default Optimizer;

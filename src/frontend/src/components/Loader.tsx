@@ -35,7 +35,6 @@ const Loader: React.FC<LoaderProps> = ({ onModulesChange }) => {
   const [moduleDetails, setModuleDetails] = useState<Record<string, ModuleDetail>>({});
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
 
-  // 初始化模块详情
   useEffect(() => {
     setModuleDetails({
       '0-0-0': {
@@ -136,7 +135,6 @@ compatibility: v1.x`,
     });
   }, []);
 
-  // 树形数据
   const treeData: DataNode[] = [
     {
       title: '核心 MOD 包',
@@ -157,14 +155,12 @@ compatibility: v1.x`,
     },
   ];
 
-  // 更新已选模块数量
   useEffect(() => {
     if (onModulesChange) {
       onModulesChange(checkedKeys.length);
     }
   }, [checkedKeys, onModulesChange]);
 
-  // 获取模块详情
   const getModuleDetail = (key: string): ModuleDetail => {
     return moduleDetails[key] || {
       name: 'Unknown',
@@ -181,7 +177,6 @@ compatibility: v1.x`,
 
   const currentDetail = getModuleDetail(selectedMod);
 
-  // 切换模块启用状态
   const toggleModuleEnabled = (key: string) => {
     setModuleDetails(prev => ({
       ...prev,
@@ -193,7 +188,6 @@ compatibility: v1.x`,
     message.success(`模块已${!currentDetail.enabled ? '启用' : '禁用'}`);
   };
 
-  // 一键启用/禁用所有模块
   const toggleAllModules = (enabled: boolean) => {
     const allKeys = Object.keys(moduleDetails);
     setModuleDetails(prev => {
@@ -211,7 +205,6 @@ compatibility: v1.x`,
     message.success(`已${enabled ? '启用' : '禁用'}所有模块`);
   };
 
-  // 重新加载模块
   const reloadModules = () => {
     message.loading('正在重新加载模块...', 1).then(() => {
       message.success('模块已重新加载');
@@ -220,7 +213,6 @@ compatibility: v1.x`,
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      {/* 快速操作面板 */}
       <Card>
         <Space wrap>
           <Button 
@@ -253,7 +245,6 @@ compatibility: v1.x`,
         </Space>
       </Card>
 
-      {/* 主内容区 */}
       <Card title="MOD 模块管理">
         <Tabs 
           defaultActiveKey="manager" 
@@ -436,7 +427,6 @@ compatibility: v1.x`,
         />
       </Card>
 
-      {/* 上传模块对话框 */}
       <Modal
         title="上传新模块"
         open={uploadModalVisible}
@@ -466,4 +456,4 @@ compatibility: v1.x`,
   );
 };
 
-export default Loader
+export default Loader;

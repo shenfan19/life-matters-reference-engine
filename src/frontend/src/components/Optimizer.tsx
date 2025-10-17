@@ -1,469 +1,576 @@
-// frontend/src/components/Loader.tsx
+// frontend/src/components/Optimizer.tsx
 
-import React, { useState, useEffect } from 'react';
-import { Card, Tree, Tabs, Row, Col, Button, Space, Tag, Descriptions, Switch, message, Upload, Modal } from 'antd';
+import React, { useState } from 'react';
 import { 
-  CheckOutlined, 
-  CloseOutlined, 
-  UploadOutlined, 
-  ReloadOutlined,
-  FileTextOutlined,
-  FunctionOutlined,
-  InfoCircleOutlined
+  Card, 
+  Form, 
+  Input, 
+  Select, 
+  InputNumber, 
+  Button, 
+  Space, 
+  Table, 
+  Radio, 
+  Checkbox,
+  Row,
+  Col,
+  Divider,
+  Alert,
+  Tag,
+  Progress,
+  Statistic,
+  Descriptions,
+  message
+} from 'antd';
+import { 
+  PlayCircleOutlined, 
+  PlusOutlined, 
+  DeleteOutlined,
+  LineChartOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
-import type { DataNode } from 'antd/es/tree';
 
-interface ModuleDetail {
+interface OptimizationVariable {
+  key: string;
   name: string;
-  version: string;
-  author: string;
-  description: string;
-  yaml: string;
-  formula: string;
-  dependencies: string[];
-  parameters: string[];
-  enabled: boolean;
+  min: number;
+  max: number;
+  initial: number;
 }
 
-interface LoaderProps {
-  onModulesChange?: (count: number) => void;
+interface Constraint {
+  key: string;
+  expression: string;
+  type: 'equality' | 'inequality';
+  value: number;
 }
 
-const Loader: React.FC<LoaderProps> = ({ onModulesChange }) => {
-  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>(['0-0-0', '0-0-1', '0-1-0']);
-  const [selectedMod, setSelectedMod] = useState<string>('0-0-0');
-  const [moduleDetails, setModuleDetails] = useState<Record<string, ModuleDetail>>({});
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+interface OptimizationResult {
+  iteration: number;
+  objective: number;
+  variables: Record<string, number>;
+  feasible: boolean;
+}
 
-  // 初始化模块详情
-  useEffect(() => {
-    setModuleDetails({
-      '0-0-0': {
-        name: 'StructureAnalysisMod',
-        version: '2.1.0',
-        author: 'FEM Team',
-        description: '线弹性结构分析模块，支持静力学和动力学分析',
-        yaml: `name: StructureAnalysisMod
-version: 2.1.0
-author: FEM Team
-parameters:
-  - Length
-  - E_Modulus
-  - Poisson_Ratio
-dependencies:
-  - MaterialLibrary
-  - MeshGenerator`,
-        formula: `刚度矩阵: K = E * I / L³
-应力计算: σ = M * y / I
-变形计算: δ = F * L³ / (3 * E * I)`,
-        dependencies: ['MaterialLibrary', 'MeshGenerator'],
-        parameters: ['Length', 'E_Modulus', 'Poisson_Ratio'],
-        enabled: true,
-      },
-      '0-0-1': {
-        name: 'ThermalAnalysisMod',
-        version: '1.8.5',
-        author: 'Thermal Group',
-        description: '热传导和热应力分析模块',
-        yaml: `name: ThermalAnalysisMod
-version: 1.8.5
-author: Thermal Group
-parameters:
-  - Temperature
-  - Thermal_Conductivity
-  - Heat_Capacity
-dependencies:
-  - MaterialLibrary`,
-        formula: `热传导: Q = -k * A * dT/dx
-热应力: σ_thermal = E * α * ΔT / (1 - ν)
-稳态热传导: ∇·(k∇T) = 0`,
-        dependencies: ['MaterialLibrary'],
-        parameters: ['Temperature', 'Thermal_Conductivity', 'Heat_Capacity'],
-        enabled: true,
-      },
-      '0-0-2': {
-        name: 'NonlinearMaterialMod',
-        version: '3.0.2',
-        author: 'Advanced Materials Lab',
-        description: '非线性材料本构关系库',
-        yaml: `name: NonlinearMaterialMod
-version: 3.0.2
-author: Advanced Materials Lab
-material_models:
-  - Elastoplastic
-  - Hyperelastic
-  - Viscoelastic
-dependencies: []`,
-        formula: `弹塑性: σ = f(ε, ε_plastic)
-超弹性: W = C10(I1-3) + C01(I2-3)
-粘弹性: σ(t) = ∫ E(t-τ) dε(τ)/dτ dτ`,
-        dependencies: [],
-        parameters: ['Yield_Stress', 'Hardening_Parameter'],
-        enabled: false,
-      },
-      '0-1-0': {
-        name: 'CustomFormulaMod',
-        version: '1.0.0',
-        author: 'User',
-        description: '用户自定义计算公式模块',
-        yaml: `name: CustomFormulaMod
-version: 1.0.0
-author: User
-custom_functions:
-  - myFunction1
-  - myFunction2`,
-        formula: `自定义函数1: result = a * x² + b * x + c
-自定义函数2: output = sin(ωt) * exp(-ζt)`,
-        dependencies: [],
-        parameters: ['a', 'b', 'c', 'ω', 'ζ'],
-        enabled: true,
-      },
-      '0-1-1': {
-        name: 'LegacyMod_v05',
-        version: '0.5.0',
-        author: 'Legacy System',
-        description: '旧版本兼容模块（建议升级）',
-        yaml: `name: LegacyMod_v05
-version: 0.5.0
-deprecated: true
-compatibility: v1.x`,
-        formula: `旧版计算方法
-已不推荐使用`,
-        dependencies: [],
-        parameters: [],
-        enabled: false,
-      },
-    });
-  }, []);
+const Optimizer: React.FC = () => {
+  const [form] = Form.useForm();
+  const [optimizing, setOptimizing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  
+  const [variables, setVariables] = useState<OptimizationVariable[]>([
+    { key: '1', name: 'Length', min: 5, max: 20, initial: 10 },
+    { key: '2', name: 'Width', min: 0.1, max: 1, initial: 0.5 },
+    { key: '3', name: 'Height', min: 0.1, max: 1, initial: 0.3 },
+  ]);
 
-  // 树形数据
-  const treeData: DataNode[] = [
+  const [constraints, setConstraints] = useState<Constraint[]>([
+    { key: '1', expression: 'Width * Height', type: 'inequality', value: 0.3 },
+    { key: '2', expression: 'stress', type: 'inequality', value: 200 },
+  ]);
+
+  const [results, setResults] = useState<OptimizationResult[]>([]);
+  
+  const [config, setConfig] = useState({
+    objectiveType: 'minimize' as 'minimize' | 'maximize',
+    objectiveFunction: 'displacement',
+    algorithm: 'genetic',
+    maxIterations: 100,
+    tolerance: 0.001,
+    populationSize: 50,
+  });
+
+  const variableColumns = [
     {
-      title: '核心 MOD 包',
-      key: '0-0',
-      children: [
-        { title: '结构分析 MOD', key: '0-0-0' },
-        { title: '热力学分析 MOD', key: '0-0-1' },
-        { title: '非线性材料库 MOD', key: '0-0-2' },
-      ],
+      title: '变量名',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string, record: OptimizationVariable) => (
+        <Input 
+          value={text}
+          onChange={(e) => updateVariable(record.key, 'name', e.target.value)}
+          size="small"
+        />
+      ),
     },
     {
-      title: '用户自定义 MOD',
-      key: '0-1',
-      children: [
-        { title: '我的自定义公式', key: '0-1-0' },
-        { title: '旧版本 MOD (v0.5)', key: '0-1-1' },
-      ],
+      title: '最小值',
+      dataIndex: 'min',
+      key: 'min',
+      render: (value: number, record: OptimizationVariable) => (
+        <InputNumber 
+          value={value}
+          onChange={(val) => updateVariable(record.key, 'min', val || 0)}
+          size="small"
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '最大值',
+      dataIndex: 'max',
+      key: 'max',
+      render: (value: number, record: OptimizationVariable) => (
+        <InputNumber 
+          value={value}
+          onChange={(val) => updateVariable(record.key, 'max', val || 0)}
+          size="small"
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '初始值',
+      dataIndex: 'initial',
+      key: 'initial',
+      render: (value: number, record: OptimizationVariable) => (
+        <InputNumber 
+          value={value}
+          onChange={(val) => updateVariable(record.key, 'initial', val || 0)}
+          size="small"
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (record: OptimizationVariable) => (
+        <Button 
+          type="text" 
+          danger 
+          icon={<DeleteOutlined />}
+          onClick={() => deleteVariable(record.key)}
+          size="small"
+        />
+      ),
     },
   ];
 
-  // 更新已选模块数量
-  useEffect(() => {
-    if (onModulesChange) {
-      onModulesChange(checkedKeys.length);
+  const constraintColumns = [
+    {
+      title: '约束表达式',
+      dataIndex: 'expression',
+      key: 'expression',
+      render: (text: string, record: Constraint) => (
+        <Input 
+          value={text}
+          onChange={(e) => updateConstraint(record.key, 'expression', e.target.value)}
+          placeholder="例如: x1 + x2"
+          size="small"
+        />
+      ),
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string, record: Constraint) => (
+        <Select
+          value={type}
+          onChange={(val) => updateConstraint(record.key, 'type', val)}
+          size="small"
+          style={{ width: '100%' }}
+          options={[
+            { value: 'equality', label: '等式 (=)' },
+            { value: 'inequality', label: '不等式 (≤)' },
+          ]}
+        />
+      ),
+    },
+    {
+      title: '值',
+      dataIndex: 'value',
+      key: 'value',
+      render: (value: number, record: Constraint) => (
+        <InputNumber 
+          value={value}
+          onChange={(val) => updateConstraint(record.key, 'value', val || 0)}
+          size="small"
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (record: Constraint) => (
+        <Button 
+          type="text" 
+          danger 
+          icon={<DeleteOutlined />}
+          onClick={() => deleteConstraint(record.key)}
+          size="small"
+        />
+      ),
+    },
+  ];
+
+  const resultColumns = [
+    { title: '迭代次数', dataIndex: 'iteration', key: 'iteration' },
+    { 
+      title: '目标函数值', 
+      dataIndex: 'objective', 
+      key: 'objective',
+      render: (val: number) => val.toFixed(6),
+    },
+    {
+      title: '可行性',
+      dataIndex: 'feasible',
+      key: 'feasible',
+      render: (feasible: boolean) => (
+        <Tag color={feasible ? 'success' : 'error'}>
+          {feasible ? '可行' : '不可行'}
+        </Tag>
+      ),
+    },
+  ];
+
+  const updateVariable = (key: string, field: string, value: any) => {
+    setVariables(vars => 
+      vars.map(v => v.key === key ? { ...v, [field]: value } : v)
+    );
+  };
+
+  const deleteVariable = (key: string) => {
+    setVariables(vars => vars.filter(v => v.key !== key));
+    message.success('变量已删除');
+  };
+
+  const addVariable = () => {
+    const newKey = String(Date.now());
+    setVariables([...variables, {
+      key: newKey,
+      name: `Var_${variables.length + 1}`,
+      min: 0,
+      max: 100,
+      initial: 50,
+    }]);
+    message.success('变量已添加');
+  };
+
+  const updateConstraint = (key: string, field: string, value: any) => {
+    setConstraints(cons => 
+      cons.map(c => c.key === key ? { ...c, [field]: value } : c)
+    );
+  };
+
+  const deleteConstraint = (key: string) => {
+    setConstraints(cons => cons.filter(c => c.key !== key));
+    message.success('约束已删除');
+  };
+
+  const addConstraint = () => {
+    const newKey = String(Date.now());
+    setConstraints([...constraints, {
+      key: newKey,
+      expression: '',
+      type: 'inequality',
+      value: 0,
+    }]);
+    message.success('约束已添加');
+  };
+
+  const startOptimization = () => {
+    if (variables.length === 0) {
+      message.error('请至少添加一个优化变量');
+      return;
     }
-  }, [checkedKeys, onModulesChange]);
 
-  // 获取模块详情
-  const getModuleDetail = (key: string): ModuleDetail => {
-    return moduleDetails[key] || {
-      name: 'Unknown',
-      version: '0.0.0',
-      author: 'Unknown',
-      description: '未知模块',
-      yaml: '无数据',
-      formula: '-',
-      dependencies: [],
-      parameters: [],
-      enabled: false,
-    };
-  };
+    setOptimizing(true);
+    setProgress(0);
+    setResults([]);
 
-  const currentDetail = getModuleDetail(selectedMod);
-
-  // 切换模块启用状态
-  const toggleModuleEnabled = (key: string) => {
-    setModuleDetails(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        enabled: !prev[key]?.enabled,
-      },
-    }));
-    message.success(`模块已${!currentDetail.enabled ? '启用' : '禁用'}`);
-  };
-
-  // 一键启用/禁用所有模块
-  const toggleAllModules = (enabled: boolean) => {
-    const allKeys = Object.keys(moduleDetails);
-    setModuleDetails(prev => {
-      const updated = { ...prev };
-      allKeys.forEach(key => {
-        updated[key] = { ...updated[key], enabled };
+    let iteration = 0;
+    const maxIter = config.maxIterations;
+    
+    const interval = setInterval(() => {
+      iteration++;
+      
+      const objective = 100 - iteration * 0.8 + Math.random() * 10;
+      const vars: Record<string, number> = {};
+      variables.forEach(v => {
+        vars[v.name] = v.min + Math.random() * (v.max - v.min);
       });
-      return updated;
-    });
-    if (enabled) {
-      setCheckedKeys(allKeys);
-    } else {
-      setCheckedKeys([]);
-    }
-    message.success(`已${enabled ? '启用' : '禁用'}所有模块`);
+      
+      setResults(prev => [...prev, {
+        iteration,
+        objective,
+        variables: vars,
+        feasible: Math.random() > 0.1,
+      }]);
+      
+      setProgress(Math.round((iteration / maxIter) * 100));
+      
+      if (iteration >= maxIter) {
+        clearInterval(interval);
+        setOptimizing(false);
+        message.success('优化完成！');
+      }
+    }, 100);
   };
 
-  // 重新加载模块
-  const reloadModules = () => {
-    message.loading('正在重新加载模块...', 1).then(() => {
-      message.success('模块已重新加载');
-    });
+  const stopOptimization = () => {
+    setOptimizing(false);
+    message.info('优化已停止');
   };
+
+  const bestResult = results.reduce((best, current) => {
+    if (!best) return current;
+    if (config.objectiveType === 'minimize') {
+      return current.objective < best.objective ? current : best;
+    } else {
+      return current.objective > best.objective ? current : best;
+    }
+  }, results[0]);
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      {/* 快速操作面板 */}
-      <Card>
-        <Space wrap>
-          <Button 
-            type="primary" 
-            icon={<CheckOutlined />}
-            onClick={() => toggleAllModules(true)}
-          >
-            启用全部
-          </Button>
-          <Button 
-            danger 
-            icon={<CloseOutlined />}
-            onClick={() => toggleAllModules(false)}
-          >
-            禁用全部
-          </Button>
-          <Button 
-            icon={<ReloadOutlined />}
-            onClick={reloadModules}
-          >
-            重新加载
-          </Button>
-          <Button 
-            icon={<UploadOutlined />}
-            onClick={() => setUploadModalVisible(true)}
-          >
-            上传新模块
-          </Button>
-          <Tag color="blue">已启用: {checkedKeys.length} / {Object.keys(moduleDetails).length}</Tag>
-        </Space>
+      {optimizing && (
+        <Alert 
+          message="优化进行中" 
+          description={`当前迭代: ${results.length} / ${config.maxIterations}`}
+          type="info" 
+          showIcon 
+        />
+      )}
+
+      <Card title={<><SettingOutlined /> 优化系统配置</>}>
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="优化目标">
+                <Radio.Group 
+                  value={config.objectiveType}
+                  onChange={(e) => setConfig({ ...config, objectiveType: e.target.value })}
+                >
+                  <Radio value="minimize">最小化</Radio>
+                  <Radio value="maximize">最大化</Radio>
+                </Radio.Group>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="目标函数">
+                <Select
+                  value={config.objectiveFunction}
+                  onChange={(val) => setConfig({ ...config, objectiveFunction: val })}
+                  options={[
+                    { value: 'displacement', label: '位移' },
+                    { value: 'stress', label: '应力' },
+                    { value: 'weight', label: '重量' },
+                    { value: 'cost', label: '成本' },
+                    { value: 'custom', label: '自定义公式' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="优化算法">
+                <Select
+                  value={config.algorithm}
+                  onChange={(val) => setConfig({ ...config, algorithm: val })}
+                  options={[
+                    { value: 'genetic', label: '遗传算法 (GA)' },
+                    { value: 'pso', label: '粒子群优化 (PSO)' },
+                    { value: 'gradient', label: '梯度下降' },
+                    { value: 'simplex', label: '单纯形法' },
+                    { value: 'simulated', label: '模拟退火' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="最大迭代次数">
+                <InputNumber 
+                  value={config.maxIterations}
+                  onChange={(val) => setConfig({ ...config, maxIterations: val || 100 })}
+                  min={10}
+                  max={1000}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="收敛容差">
+                <InputNumber 
+                  value={config.tolerance}
+                  onChange={(val) => setConfig({ ...config, tolerance: val || 0.001 })}
+                  min={0.0001}
+                  max={0.1}
+                  step={0.001}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="种群大小">
+                <InputNumber 
+                  value={config.populationSize}
+                  onChange={(val) => setConfig({ ...config, populationSize: val || 50 })}
+                  min={10}
+                  max={200}
+                  style={{ width: '100%' }}
+                  disabled={config.algorithm !== 'genetic' && config.algorithm !== 'pso'}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="高级选项">
+            <Checkbox.Group>
+              <Checkbox value="parallel">并行计算</Checkbox>
+              <Checkbox value="adaptive">自适应参数</Checkbox>
+              <Checkbox value="constraint">约束惩罚</Checkbox>
+              <Checkbox value="log">详细日志</Checkbox>
+            </Checkbox.Group>
+          </Form.Item>
+        </Form>
       </Card>
 
-      {/* 主内容区 */}
-      <Card title="MOD 模块管理">
-        <Tabs 
-          defaultActiveKey="manager" 
-          items={[
-            { 
-              key: 'manager', 
-              label: '模块选择与配置', 
-              children: (
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Card 
-                      title="可用模块树" 
-                      extra={<Tag color="green">{checkedKeys.length} 已选</Tag>}
-                    >
-                      <Tree
-                        checkable
-                        checkedKeys={checkedKeys}
-                        onCheck={(checkedKeys) => setCheckedKeys(checkedKeys as React.Key[])}
-                        onSelect={(selectedKeys) => {
-                          if (selectedKeys.length > 0) {
-                            setSelectedMod(selectedKeys[0] as string);
-                          }
-                        }}
-                        treeData={treeData}
-                        defaultExpandAll
-                      />
-                    </Card>
-                  </Col>
-                  
-                  <Col span={16}>
-                    <Card 
-                      title={
-                        <Space>
-                          <span>模块详情: {currentDetail.name}</span>
-                          <Tag color={currentDetail.enabled ? 'success' : 'default'}>
-                            {currentDetail.enabled ? '已启用' : '已禁用'}
-                          </Tag>
-                        </Space>
-                      }
-                      extra={
-                        <Switch 
-                          checked={currentDetail.enabled}
-                          onChange={() => toggleModuleEnabled(selectedMod)}
-                          checkedChildren="启用"
-                          unCheckedChildren="禁用"
-                        />
-                      }
-                    >
-                      <Tabs 
-                        defaultActiveKey="info" 
-                        items={[
-                          { 
-                            key: 'info', 
-                            label: <span><InfoCircleOutlined /> 基本信息</span>,
-                            children: (
-                              <Descriptions column={2} bordered size="small">
-                                <Descriptions.Item label="模块名称" span={2}>
-                                  {currentDetail.name}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="版本">
-                                  <Tag color="blue">{currentDetail.version}</Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="作者">
-                                  {currentDetail.author}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="描述" span={2}>
-                                  {currentDetail.description}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="依赖模块" span={2}>
-                                  {currentDetail.dependencies.length > 0 ? (
-                                    <Space>
-                                      {currentDetail.dependencies.map(dep => (
-                                        <Tag key={dep}>{dep}</Tag>
-                                      ))}
-                                    </Space>
-                                  ) : (
-                                    <Tag color="default">无依赖</Tag>
-                                  )}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="所需参数" span={2}>
-                                  {currentDetail.parameters.length > 0 ? (
-                                    <Space wrap>
-                                      {currentDetail.parameters.map(param => (
-                                        <Tag color="purple" key={param}>{param}</Tag>
-                                      ))}
-                                    </Space>
-                                  ) : (
-                                    <Tag color="default">无参数</Tag>
-                                  )}
-                                </Descriptions.Item>
-                              </Descriptions>
-                            )
-                          },
-                          { 
-                            key: 'yaml', 
-                            label: <span><FileTextOutlined /> YAML 配置</span>,
-                            children: (
-                              <pre style={{ 
-                                backgroundColor: '#f5f5f5', 
-                                padding: 16, 
-                                borderRadius: 4,
-                                maxHeight: 400,
-                                overflow: 'auto',
-                                fontFamily: 'monospace',
-                                fontSize: 13
-                              }}>
-                                {currentDetail.yaml}
-                              </pre>
-                            )
-                          },
-                          { 
-                            key: 'formula', 
-                            label: <span><FunctionOutlined /> 核心公式</span>,
-                            children: (
-                              <div style={{ 
-                                padding: 16, 
-                                backgroundColor: '#fafafa',
-                                borderRadius: 4,
-                                minHeight: 200
-                              }}>
-                                <pre style={{ 
-                                  fontFamily: 'monospace',
-                                  fontSize: 14,
-                                  lineHeight: 1.8,
-                                  whiteSpace: 'pre-wrap'
-                                }}>
-                                  {currentDetail.formula}
-                                </pre>
-                              </div>
-                            )
-                          },
-                        ]} 
-                      />
-                    </Card>
-                  </Col>
-                </Row>
-              )
-            },
-            { 
-              key: 'status', 
-              label: '模块状态总览', 
-              children: (
-                <Row gutter={[16, 16]}>
-                  {Object.entries(moduleDetails).map(([key, detail]) => (
-                    <Col span={12} key={key}>
-                      <Card 
-                        size="small"
-                        title={detail.name}
-                        extra={
-                          <Switch 
-                            size="small"
-                            checked={detail.enabled}
-                            onChange={() => toggleModuleEnabled(key)}
-                          />
-                        }
-                      >
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                          <div>
-                            <Tag color="blue">v{detail.version}</Tag>
-                            <Tag color={detail.enabled ? 'success' : 'default'}>
-                              {detail.enabled ? '运行中' : '未启用'}
-                            </Tag>
-                          </div>
-                          <div style={{ fontSize: 12, color: '#666' }}>
-                            {detail.description}
-                          </div>
-                          {detail.dependencies.length > 0 && (
-                            <div style={{ fontSize: 12 }}>
-                              依赖: {detail.dependencies.join(', ')}
-                            </div>
-                          )}
-                        </Space>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              )
-            }
-          ]}
+      <Card 
+        title="优化变量定义"
+        extra={
+          <Button 
+            type="primary" 
+            size="small" 
+            icon={<PlusOutlined />}
+            onClick={addVariable}
+          >
+            添加变量
+          </Button>
+        }
+      >
+        <Table 
+          columns={variableColumns}
+          dataSource={variables}
+          pagination={false}
+          size="small"
         />
       </Card>
 
-      {/* 上传模块对话框 */}
-      <Modal
-        title="上传新模块"
-        open={uploadModalVisible}
-        onCancel={() => setUploadModalVisible(false)}
-        footer={null}
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Upload.Dragger
-            accept=".yaml,.yml,.json"
-            beforeUpload={(file) => {
-              message.success(`文件 ${file.name} 上传成功`);
-              setUploadModalVisible(false);
-              return false;
-            }}
+      <Card 
+        title="约束条件"
+        extra={
+          <Button 
+            type="primary" 
+            size="small" 
+            icon={<PlusOutlined />}
+            onClick={addConstraint}
           >
-            <p className="ant-upload-drag-icon">
-              <UploadOutlined />
-            </p>
-            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-            <p className="ant-upload-hint">
-              支持 YAML 或 JSON 格式的模块配置文件
-            </p>
-          </Upload.Dragger>
+            添加约束
+          </Button>
+        }
+      >
+        <Table 
+          columns={constraintColumns}
+          dataSource={constraints}
+          pagination={false}
+          size="small"
+        />
+      </Card>
+
+      <Card>
+        <Space>
+          <Button 
+            type="primary" 
+            size="large"
+            icon={<PlayCircleOutlined />}
+            onClick={startOptimization}
+            disabled={optimizing}
+          >
+            开始优化
+          </Button>
+          <Button 
+            danger
+            size="large"
+            onClick={stopOptimization}
+            disabled={!optimizing}
+          >
+            停止优化
+          </Button>
         </Space>
-      </Modal>
+        {optimizing && (
+          <div style={{ marginTop: 16 }}>
+            <Progress percent={progress} status="active" />
+          </div>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <>
+          <Row gutter={16}>
+            <Col span={6}>
+              <Card>
+                <Statistic 
+                  title="迭代次数" 
+                  value={results.length}
+                  prefix={<LineChartOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic 
+                  title={config.objectiveType === 'minimize' ? '最小值' : '最大值'}
+                  value={bestResult?.objective || 0}
+                  precision={4}
+                  valueStyle={{ color: '#3f8600' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic 
+                  title="可行解数量" 
+                  value={results.filter(r => r.feasible).length}
+                  suffix={`/ ${results.length}`}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic 
+                  title="收敛率" 
+                  value={progress}
+                  suffix="%"
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {bestResult && (
+            <Card title="最优解详情">
+              <Descriptions bordered column={2}>
+                <Descriptions.Item label="迭代次数" span={1}>
+                  {bestResult.iteration}
+                </Descriptions.Item>
+                <Descriptions.Item label="目标函数值" span={1}>
+                  <Tag color="green">{bestResult.objective?.toFixed(6)}</Tag>
+                </Descriptions.Item>
+                {bestResult.variables && Object.entries(bestResult.variables).map(([key, value]) => (
+                  <Descriptions.Item label={key} key={key}>
+                    {value.toFixed(4)}
+                  </Descriptions.Item>
+                ))}
+              </Descriptions>
+            </Card>
+          )}
+
+          <Card title="优化历史">
+            <Table 
+              columns={resultColumns}
+              dataSource={results}
+              pagination={{ pageSize: 10 }}
+              size="small"
+              scroll={{ y: 300 }}
+            />
+          </Card>
+        </>
+      )}
     </Space>
   );
 };
 
-export default Loader
+export default Optimizer;
