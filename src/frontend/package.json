@@ -11,11 +11,20 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/lab": "^7.0.1-beta.18",
+    "@mui/material": "^7.3.4",
     "ag-grid-community": "^34.2.0",
     "ag-grid-react": "^34.2.0",
     "antd": "^5.27.5",
+    "js-yaml": "^4.1.0",
+    "mui": "^0.0.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.4",
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
