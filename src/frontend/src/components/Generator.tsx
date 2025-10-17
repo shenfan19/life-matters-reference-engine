@@ -133,10 +133,10 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     switch (subPage) {
       case '1-1': // 模板生成
         return renderTemplateGeneration();
-      case '1-2': // 从论文生成
-        return renderPaperGeneration();
-      case '1-3': // 手动编辑
+      case '1-2': // 手动编辑
         return renderManualEdit();
+      case '1-3': // 从论文生成
+        return renderPaperGeneration();
       default:
         return renderManualEdit();
     }
@@ -187,9 +187,9 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
           <TextArea rows={4} placeholder="例如: 血糖与胰岛素呈负相关" />
         </Form.Item>
         <Space>
-          <Button type="primary" icon={<ExperimentOutlined />}>
+          {/* <Button type="primary" icon={<ExperimentOutlined />}>
             AI 辅助提取
-          </Button>
+          </Button> */}
           <Button icon={<FileAddOutlined />}>
             生成模型草稿
           </Button>

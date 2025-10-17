@@ -35,8 +35,8 @@ const App: React.FC = () => {
       label: 'Generator - 构造器',
       children: [
         { key: '1-1', label: '模板生成' },
-        { key: '1-2', label: '从论文生成' },
-        { key: '1-3', label: '手动编辑' },
+        { key: '1-2', label: '手动编辑' },
+        { key: '1-3', label: '从论文生成' },
       ]
     },
     {
@@ -93,8 +93,8 @@ const App: React.FC = () => {
     const titles: Record<string, string> = {
       '1': 'Generator - 模型构造器',
       '1-1': 'Generator - 模板生成',
-      '1-2': 'Generator - 从论文生成',
-      '1-3': 'Generator - 手动编辑',
+      '1-2': 'Generator - 手动编辑',
+      '1-3': 'Generator - 从论文生成',
       '2': 'Loader - 模型加载器',
       '2-1': 'Loader - 浏览模型',
       '2-2': 'Loader - 合并模型',
