@@ -7,7 +7,7 @@ target: architecture 架构系统整体
 >fan_task.fn_single_page(dv, 0);
 >```
 # 系统架构概览
-本文档描述了 `Life Matters` 的整体系统架构，包括其主要组件、模块及其之间的交互。
+本文档描述了 `LifeMatters` 的整体系统架构，包括其主要组件、模块及其之间的交互。
 
 ## 设计原则
 1. 极致简单
@@ -26,7 +26,7 @@ target: architecture 架构系统整体
 - **主要库**：[列出你的主要库，例如 Pygame, NumPy, Pandas 等]
 
 # 数据流分析
-本文档详细描述了 `Life Matters` 内部主要数据流，包括数据的生成、处理、存储和消费。
+本文档详细描述了 `LifeMatters` 内部主要数据流，包括数据的生成、处理、存储和消费。
 
 - 主要思想：模块化，公用变量有限度更新
 - Scenary模块：

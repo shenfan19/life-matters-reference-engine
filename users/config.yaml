@@ -1,4 +1,4 @@
-app_name: 'Life Matters'
+app_name: 'LifeMatters'
 version: '0.1.0'
 log_level: INFO
 default_language: zh-CN

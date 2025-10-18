@@ -30,8 +30,8 @@ interface ModelFile {
   imports?: string[];
 }
 
-// API 基础地址
-const API_BASE = 'http://localhost:3001/api';
+// API 基础地址 - 连接到 Python Flask 后端
+const API_BASE = 'http://localhost:5000/api';
 
 const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
   const [loading, setLoading] = useState(false);
