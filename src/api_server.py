@@ -301,6 +301,158 @@ def get_folders():
             'error': str(e)
         }), 500
 
+@app.route('/api/validate', methods=['POST'])
+def validate_model():
+    """验证模型"""
+    try:
+        data = request.json
+        file_path = data.get('file_path')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': '未提供文件路径'
+            }), 400
+        
+        # 分离文件夹和文件名
+        if '/' in file_path:
+            parts = file_path.split('/')
+            folder = parts[0] if len(parts) > 1 else None
+            model_name = '/'.join(parts[1:]) if len(parts) > 1 else parts[0]
+        else:
+            folder = None
+            model_name = file_path
+        
+        # 移除 .yaml 扩展名
+        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+            model_name = os.path.splitext(model_name)[0]
+        
+        # 加载模型
+        model = loader_engine.fetch(model_name, folder)
+        
+        if not model:
+            return jsonify({
+                'success': False,
+                'error': f'无法加载模型: {file_path}'
+            }), 404
+        
+        # 验证模型
+        try:
+            # 创建 patch 输出目录
+            patch_dir = os.path.join(MODS_DIR, 'patch')
+            os.makedirs(patch_dir, exist_ok=True)
+            
+            # 验证模型（会自动生成 patch 文件如果需要）
+            model.validate_model(output_dir=patch_dir)
+            
+            # 检查是否生成了 patch 文件
+            mod_name = model.current_filename or model.metadata.name
+            patch_file = os.path.join(patch_dir, f"{mod_name}_patch.yaml")
+            
+            return jsonify({
+                'success': True,
+                'message': '模型验证通过',
+                'data': {
+                    'patch_file': patch_file if os.path.exists(patch_file) else None
+                }
+            })
+        
+        except ValueError as ve:
+            # 验证失败
+            error_msg = str(ve)
+            errors = error_msg.split('\n')
+            
+            # 查找 patch 文件信息
+            patch_file = None
+            mod_name = model.current_filename or model.metadata.name
+            potential_patch = os.path.join(MODS_DIR, 'patch', f"{mod_name}_patch.yaml")
+            if os.path.exists(potential_patch):
+                patch_file = potential_patch
+            
+            return jsonify({
+                'success': False,
+                'errors': errors,
+                'data': {
+                    'patch_file': patch_file
+                }
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"验证模型失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/split', methods=['POST'])
+def split_model():
+    """拆分模型"""
+    try:
+        data = request.json
+        file_path = data.get('file_path')
+        output_dir = data.get('output_dir', 'split_output')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': '未提供文件路径'
+            }), 400
+        
+        # 构建完整输出路径
+        full_output_dir = os.path.join(MODS_DIR, 'splited', output_dir)
+        
+        # 分离文件夹和文件名
+        if '/' in file_path:
+            parts = file_path.split('/')
+            folder = parts[0] if len(parts) > 1 else None
+            model_name = '/'.join(parts[1:]) if len(parts) > 1 else parts[0]
+        else:
+            folder = None
+            model_name = file_path
+        
+        # 移除 .yaml 扩展名
+        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+            model_name = os.path.splitext(model_name)[0]
+        
+        # 调用 LoaderEngine 的拆分方法
+        result = loader_engine.split_model(model_name, output_dir, folder)
+        
+        if result['success']:
+            # 列出生成的文件
+            generated_files = []
+            if os.path.exists(full_output_dir):
+                generated_files = [f for f in os.listdir(full_output_dir) if f.endswith('.yaml')]
+            
+            # 查找 patch 文件
+            patch_file = None
+            for f in generated_files:
+                if '_patch' in f:
+                    patch_file = os.path.join(full_output_dir, f)
+                    break
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'output_dir': full_output_dir,
+                    'files': generated_files,
+                    'patch_file': patch_file,
+                    'variables': result['data'].get('variables', 0),
+                    'formulas': result['data'].get('formulas', 0)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '拆分失败')
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"拆分模型失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     print(f"🚀 LifeMatters API Server")
     print(f"📁 MODS 目录: {MODS_DIR}")
