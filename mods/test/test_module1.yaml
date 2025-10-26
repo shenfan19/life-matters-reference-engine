@@ -1,0 +1,66 @@
+metadata:
+  name: test_module1
+  version: 1.0.0
+  author: Test User
+  description: 测试模块1 - 心血管系统
+  date: 2024-10-27
+  language: en
+  tags:
+    - test
+    - cardiovascular
+
+variables:
+  # 输入变量
+  heart_rate:
+    type: INPUT
+    unit: bpm
+    default: 70
+    description: 心率
+  
+  blood_pressure:
+    type: INPUT
+    unit: mmHg
+    default: 120
+    description: 血压
+  
+  # 参数
+  cardiac_output_coefficient:
+    type: PARAMETERS
+    unit: L/min/bpm
+    default: 0.07
+    description: 心输出量系数
+  
+  # 状态变量
+  cardiac_output:
+    type: STATE
+    unit: L/min
+    default: 5.0
+    description: 心输出量
+  
+  oxygen_delivery:
+    type: STATE
+    unit: mL/min
+    default: 1000
+    description: 氧气输送量
+
+formulas:
+  # 心输出量计算
+  cardiac_output:
+    formula: heart_rate * cardiac_output_coefficient
+    description: 心输出量 = 心率 × 系数
+  
+  # 氧气输送量
+  oxygen_delivery:
+    formula: cardiac_output * 200
+    description: 氧气输送量 = 心输出量 × 200
+
+simulation:
+  dt: 0.1
+  t_end: 10.0
+  method: euler
+  output_variables:
+    - cardiac_output
+    - oxygen_delivery
+
+optimization:
+  enabled: false

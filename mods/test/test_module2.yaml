@@ -1,0 +1,66 @@
+metadata:
+  name: test_module2
+  version: 1.0.0
+  author: Test User
+  description: 测试模块2 - 呼吸系统
+  date: 2024-10-27
+  language: en
+  tags:
+    - test
+    - respiratory
+
+variables:
+  # 输入变量
+  breathing_rate:
+    type: INPUT
+    unit: breaths/min
+    default: 15
+    description: 呼吸频率
+  
+  tidal_volume:
+    type: INPUT
+    unit: mL
+    default: 500
+    description: 潮气量
+  
+  # 参数
+  oxygen_extraction_ratio:
+    type: PARAMETERS
+    unit: dimensionless
+    default: 0.25
+    description: 氧气提取率
+  
+  # 状态变量
+  minute_ventilation:
+    type: STATE
+    unit: L/min
+    default: 7.5
+    description: 分钟通气量
+  
+  oxygen_uptake:
+    type: STATE
+    unit: mL/min
+    default: 250
+    description: 氧气摄取量
+
+formulas:
+  # 分钟通气量
+  minute_ventilation:
+    formula: (breathing_rate * tidal_volume) / 1000
+    description: 分钟通气量 = 呼吸频率 × 潮气量 / 1000
+  
+  # 氧气摄取量
+  oxygen_uptake:
+    formula: minute_ventilation * 1000 * oxygen_extraction_ratio
+    description: 氧气摄取量 = 分钟通气量 × 1000 × 提取率
+
+simulation:
+  dt: 0.1
+  t_end: 10.0
+  method: euler
+  output_variables:
+    - minute_ventilation
+    - oxygen_uptake
+
+optimization:
+  enabled: false

@@ -1,0 +1,29 @@
+metadata:
+  name: test_invalid_patch
+  version: 1.0.0
+  author: Auto-generated
+  description: 补丁文件，补充缺失的变量定义
+  date: 2024-10-27
+  language: en
+  tags:
+    - patch
+
+variables:
+  # 补充缺失的变量定义
+  heart_rate:
+    type: INPUT
+    unit: bpm
+    default: 70
+    description: 心率（补充）
+  
+  stress_level:
+    type: STATE
+    unit: dimensionless
+    default: 0.5
+    description: 压力水平（补充）
+  
+  blood_pressure:
+    type: INPUT
+    unit: mmHg
+    default: 120
+    description: 血压（补充）
