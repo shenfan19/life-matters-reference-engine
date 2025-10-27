@@ -87,7 +87,7 @@ VITE v4.x.x  ready in xxx ms
 
 1. 点击左侧菜单 "Generator"
 2. 填写模型元数据（名称、版本、作者）
-3. 添加变量（INPUT/PARAMETERS/STATE）
+3. 添加变量（input/parameter/state）
 4. 添加公式（动力学方程）
 5. 点击"生成并下载 YAML"
 
@@ -140,9 +140,9 @@ VITE v4.x.x  ready in xxx ms
 2. 切换到 Optimizer
 3. 配置：
    - 优化目标（最小化/最大化）
-   - 目标函数（选择 STATE 变量）
+   - 目标函数（选择 state 变量）
    - 优化算法（遗传算法、粒子群等）
-   - 要优化的变量（PARAMETERS 类型）
+   - 要优化的变量（parameter 类型）
 4. 点击"开始优化"
 5. 查看最优解和优化历史
 

@@ -13,83 +13,83 @@ metadata:
 variables:
   # === 心血管系统变量 ===
   heart_rate:
-    type: INPUT
+    type: input
     unit: bpm
     default: 70
     description: 心率
   
   blood_pressure:
-    type: INPUT
+    type: input
     unit: mmHg
     default: 120
     description: 血压
   
   cardiac_output:
-    type: STATE
+    type: state
     unit: L/min
     default: 5.0
     description: 心输出量
   
   # === 呼吸系统变量 ===
   breathing_rate:
-    type: INPUT
+    type: input
     unit: breaths/min
     default: 15
     description: 呼吸频率
   
   tidal_volume:
-    type: INPUT
+    type: input
     unit: mL
     default: 500
     description: 潮气量
   
   minute_ventilation:
-    type: STATE
+    type: state
     unit: L/min
     default: 7.5
     description: 分钟通气量
   
   # === 代谢系统变量 ===
   temperature:
-    type: INPUT
+    type: input
     unit: celsius
     default: 37.0
     description: 体温
   
   base_metabolic_rate:
-    type: PARAMETERS
+    type: parameter
     unit: kcal/day
     default: 1500
     description: 基础代谢率
   
   energy_level:
-    type: STATE
+    type: state
     unit: kcal
     default: 2000
     description: 能量水平
   
   # === 神经系统变量 ===
   stress_hormone:
-    type: STATE
+    type: state
     unit: ng/mL
     default: 10.0
     description: 应激激素水平
   
   cognitive_load:
-    type: INPUT
+    type: input
     unit: dimensionless
     default: 0.5
     description: 认知负荷
   
   # === 内分泌系统变量 ===
   insulin_level:
-    type: STATE
+    type: state
     unit: mU/L
     default: 10.0
     description: 胰岛素水平
   
   glucose_level:
-    type: STATE
+    type: state
     unit: mg/dL
     default: 90.0
     description: 血糖水平
@@ -97,32 +97,38 @@ variables:
 formulas:
   # 心血管系统公式
   cardiac_output:
-    formula: heart_rate * 0.07
     description: 心输出量计算
+    dynamics:
+      abc: heart_rate * 0.07
   
   # 呼吸系统公式
   minute_ventilation:
-    formula: (breathing_rate * tidal_volume) / 1000
     description: 分钟通气量计算
+    dynamics:
+      minute_ventilation: (breathing_rate * tidal_volume) / 1000
   
   # 代谢系统公式
   energy_level:
-    formula: energy_level + (base_metabolic_rate / 24) - (heart_rate * 0.1)
     description: 能量水平变化
+    dynamics:
+      energy_level: energy_level + (base_metabolic_rate / 24) - (heart_rate * 0.1)
   
   # 神经系统公式
   stress_hormone:
-    formula: stress_hormone + (cognitive_load * 2.0) - (stress_hormone * 0.1)
     description: 应激激素动态
+    dynamics:
+      stress_hormone: stress_hormone + (cognitive_load * 2.0) - (stress_hormone * 0.1)
   
   # 内分泌系统公式
   insulin_level:
-    formula: insulin_level + ((glucose_level - 90.0) * 0.1) - (insulin_level * 0.05)
     description: 胰岛素调节
+    dynamics:
+      insulin_level: insulin_level + ((glucose_level - 90.0) * 0.1) - (insulin_level * 0.05)
   
   glucose_level:
-    formula: glucose_level - (insulin_level * 0.5) + (energy_level * 0.001)
     description: 血糖水平变化
+    dynamics:
+      glucose_level: glucose_level - (insulin_level * 0.5) + (energy_level * 0.001)
 
 simulation:
   dt: 0.1

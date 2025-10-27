@@ -12,33 +12,33 @@ metadata:
 variables:
   # 输入变量
   temperature:
-    type: INPUT
+    type: input
     unit: celsius
     default: 37.0
     description: 体温
   
   heart_rate:
-    type: INPUT
+    type: input
     unit: bpm
     default: 70
     description: 心率
   
   # 参数
   base_metabolic_rate:
-    type: PARAMETERS
+    type: parameter
     unit: kcal/day
     default: 1500
     description: 基础代谢率
   
   # 状态变量
   energy_level:
-    type: STATE
+    type: state
     unit: kcal
     default: 2000
     description: 能量水平
   
   stress_level:
-    type: STATE
+    type: state
     unit: dimensionless
     default: 0.5
     description: 压力水平
@@ -46,13 +46,15 @@ variables:
 formulas:
   # 能量变化
   energy_level:
-    formula: energy_level + (base_metabolic_rate / 24) - (heart_rate * 0.1)
     description: 能量水平随时间变化
+    dynamics: 
+      energy_level: energy_level + (base_metabolic_rate / 24) - (heart_rate * 0.1)
   
   # 压力变化
   stress_level:
-    formula: stress_level + ((temperature - 37.0) * 0.01)
     description: 压力水平受体温影响
+    dynamics: 
+      stress_level: stress_level + ((temperature - 37.0) * 0.01)
 
 simulation:
   dt: 0.1

@@ -15,7 +15,7 @@ variables:
     description: 肝功能系数
     value: 1.0
     unit: 系数
-    type: parameters
+    type: parameter
     bounds:
     - 0.1
     - 1.0
@@ -23,7 +23,7 @@ variables:
     description: 胰腺功能系数
     value: 1.0
     unit: 系数
-    type: parameters
+    type: parameter
     bounds:
     - 0.1
     - 1.0

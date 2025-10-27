@@ -6,7 +6,7 @@
 
 ### 核心特性
 - ✅ **动态模型加载** - 所有变量、公式从 YAML 文件读取
-- ✅ **三种数据类型** - INPUT（输入）、PARAMETERS（参数）、STATE（状态）
+- ✅ **三种数据类型** - input（输入）、parameter（参数）、state（状态）
 - ✅ **四大核心模块** - Generator、Loader、Simulator、Optimizer
 - ✅ **可折叠侧边栏** - 支持子菜单展开/收起
 - ✅ **实时仿真** - 支持暂停、继续、参数调整
@@ -85,7 +85,7 @@ npm run dev
 
 **操作流程：**
 1. 填写模型元数据（名称、版本、作者、描述）
-2. 添加变量（类型：INPUT/PARAMETERS/STATE）
+2. 添加变量（类型：input/parameter/state）
 3. 添加公式（描述动力学方程）
 4. 点击"生成并下载 YAML"保存模型
 
@@ -108,7 +108,7 @@ npm run dev
 - **右侧** - 模型详情（元数据、变量、公式、配置）
 
 **详情标签页：**
-1. **变量** - 按类型分组显示（INPUT/PARAMETERS/STATE）
+1. **变量** - 按类型分组显示（input/parameter/state）
 2. **公式** - 显示所有动力学方程
 3. **仿真配置** - 步长、总时间、输出变量
 4. **优化配置** - 优化方法、目标函数
@@ -124,7 +124,7 @@ npm run dev
 
 **操作流程：**
 1. 在 Loader 中选择一个模型
-2. 配置输入参数（仅 INPUT 类型变量）
+2. 配置输入参数（仅 input 类型变量）
 3. 点击"开始仿真"运行
 4. 实时查看状态变量变化
 5. 支持暂停、继续、终止操作
@@ -154,8 +154,8 @@ npm run dev
 **操作流程：**
 1. 在 Loader 中选择模型
 2. 选择优化目标（最小化/最大化）
-3. 选择目标函数（STATE 类型变量）
-4. 选择要优化的变量（PARAMETERS 类型）
+3. 选择目标函数（state 类型变量）
+4. 选择要优化的变量（parameter 类型）
 5. 配置算法参数（迭代次数、持续时间等）
 6. 点击"开始优化"运行
 7. 查看最优解和优化历史
@@ -374,8 +374,8 @@ type: "INPUT"      # ❌ 错误
 ### Q5: 优化算法不生效？
 **A:** 检查：
 1. 模型是否包含 `optimizer` 字段
-2. `variables_to_optimize` 是否为 PARAMETERS 类型
-3. `targets_of_optimization` 是否为 STATE 类型
+2. `variables_to_optimize` 是否为 parameter 类型
+3. `targets_of_optimization` 是否为 state 类型
 
 ## 📊 性能优化建议
 

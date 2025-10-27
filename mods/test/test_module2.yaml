@@ -12,33 +12,33 @@ metadata:
 variables:
   # 输入变量
   breathing_rate:
-    type: INPUT
+    type: input
     unit: breaths/min
     default: 15
     description: 呼吸频率
   
   tidal_volume:
-    type: INPUT
+    type: input
     unit: mL
     default: 500
     description: 潮气量
   
   # 参数
   oxygen_extraction_ratio:
-    type: PARAMETERS
+    type: parameter
     unit: dimensionless
     default: 0.25
     description: 氧气提取率
   
   # 状态变量
   minute_ventilation:
-    type: STATE
+    type: state
     unit: L/min
     default: 7.5
     description: 分钟通气量
   
   oxygen_uptake:
-    type: STATE
+    type: state
     unit: mL/min
     default: 250
     description: 氧气摄取量
@@ -46,13 +46,15 @@ variables:
 formulas:
   # 分钟通气量
   minute_ventilation:
-    formula: (breathing_rate * tidal_volume) / 1000
     description: 分钟通气量 = 呼吸频率 × 潮气量 / 1000
+    dynamics: 
+      minute_ventilation: (breathing_rate * tidal_volume) / 1000
   
   # 氧气摄取量
   oxygen_uptake:
-    formula: minute_ventilation * 1000 * oxygen_extraction_ratio
     description: 氧气摄取量 = 分钟通气量 × 1000 × 提取率
+    dynamics: 
+      oxygen_uptake: minute_ventilation * 1000 * oxygen_extraction_ratio
 
 simulation:
   dt: 0.1

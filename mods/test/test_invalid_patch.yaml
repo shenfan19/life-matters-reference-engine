@@ -11,19 +11,19 @@ metadata:
 variables:
   # 补充缺失的变量定义
   heart_rate:
-    type: INPUT
+    type: input
     unit: bpm
     default: 70
     description: 心率（补充）
   
   stress_level:
-    type: STATE
+    type: state
     unit: dimensionless
     default: 0.5
     description: 压力水平（补充）
   
   blood_pressure:
-    type: INPUT
+    type: input
     unit: mmHg
     default: 120
     description: 血压（补充）
