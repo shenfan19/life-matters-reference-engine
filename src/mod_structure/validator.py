@@ -13,7 +13,7 @@ class Validator:
     def validate_model(self, output_dir: str = None) -> bool:
         # 验证模型的完整性和一致性
         all_errors = []
-        all_missing_vars = []
+        unique_missing_vars = set()  # 用set自动去重
 
         # 检查时间单位使用
         time_units = {'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'}
@@ -210,6 +210,99 @@ class Validator:
             
             return is_valid, errors, missing_vars
 
+        def validate_formulas222() -> tuple[bool, list[str], list[dict]]:
+            """验证公式,收集所有缺失的变量"""
+            errors = []
+            missing_vars = []
+            is_valid = True
+            
+            # 🔥 新方法: 使用 AST 直接提取变量,不依赖 asteval
+            import ast
+            import re
+            
+            def extract_vars_from_expr(expr: str) -> set:
+                """从表达式中提取所有变量名"""
+                if not isinstance(expr, str):
+                    return set()
+                
+                vars_found = set()
+                try:
+                    # 方法1: 使用 AST (更准确)
+                    tree = ast.parse(expr, mode='eval')
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.Name):
+                            vars_found.add(node.id)
+                except:
+                    # 方法2: 使用正则表达式 (备用)
+                    vars_found = set(re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', expr))
+                
+                # 排除常见的函数和关键字
+                exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs', 
+                        'max', 'min', 'sum', 'pow', 'round',
+                        'True', 'False', 'None', 'and', 'or', 'not',
+                        'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
+                        'dt', 'time', 'pi', 'e'}
+                
+                return vars_found - exclude
+            
+            # 遍历所有公式
+            for form_name, formula in self.formulas.items():
+                
+                # 1. 验证 condition
+                if isinstance(formula.condition, str):
+                    vars_in_condition = extract_vars_from_expr(formula.condition)
+                    for var in vars_in_condition:
+                        if var not in self.variables and var not in self.formulas:
+                            missing_vars.append({
+                                'variable': var,
+                                'context': f"condition of formula '{form_name}'"
+                            })
+                            is_valid = False
+                
+                # 2. 验证 dynamics
+                for dyn_key, dyn_expr in formula.dynamics.items():
+                    # 2a. 检查 dynamics 的 key (左边) 是否定义
+                    if dyn_key not in self.variables:
+                        missing_vars.append({
+                            'variable': dyn_key,
+                            'context': f"dynamics key of formula '{form_name}'"
+                        })
+                        is_valid = False
+                    
+                    # 2b. 检查 dynamics 的 value (右边) 中使用的变量
+                    if isinstance(dyn_expr, str):
+                        vars_in_expr = extract_vars_from_expr(dyn_expr)
+                        for var in vars_in_expr:
+                            if var not in self.variables and var not in self.formulas:
+                                missing_vars.append({
+                                    'variable': var,
+                                    'context': f"dynamics['{dyn_key}'] in formula '{form_name}'"
+                                })
+                                is_valid = False
+                    elif isinstance(dyn_expr, (int, float)):
+                        # 数字常量,无需检查
+                        pass
+                
+                # 3. 验证 formula 字段 (如果有)
+                if hasattr(formula, 'formula') and formula.formula:
+                    if isinstance(formula.formula, str):
+                        vars_in_formula = extract_vars_from_expr(formula.formula)
+                        for var in vars_in_formula:
+                            if var not in self.variables and var not in self.formulas:
+                                missing_vars.append({
+                                    'variable': var,
+                                    'context': f"formula field of '{form_name}'"
+                                })
+                                is_valid = False
+            
+            # 添加错误信息
+            if missing_vars:
+                errors.append("Missing variables:")
+                for mv in missing_vars:
+                    errors.append(f"  - {mv['variable']}: {mv['context']}")
+            
+            return is_valid, errors, missing_vars
+
         validators = [
             ('Metadata', validate_metadata),
             ('Variables', validate_variables),
@@ -217,7 +310,8 @@ class Validator:
         ]
         for section, validator in validators:
             valid, errors, missing_vars = validator()
-            all_missing_vars.extend(missing_vars)
+            for mv in missing_vars:
+                unique_missing_vars.add(mv['variable'])  # 只收集变量名
             if errors:
                 all_errors.extend([f"{section}: {err}" for err in errors])
 
@@ -230,13 +324,13 @@ class Validator:
             patch_file = os.path.join(patch_dir, f"{mod_name}_patch.yaml")
             patch_data = {
                 'variables': {
-                    mv['variable']: {
-                        'description': f'Placeholder for {mv["variable"]}',
+                    var_name: {
+                        'description': f'Placeholder for {var_name}',
                         'value': 0.0,
                         'type': 'state',
                         'unit': 'unknown',
                         'bounds': [0, 100]
-                    } for mv in all_missing_vars
+                    } for var_name in sorted(unique_missing_vars)
                 }
             }
             try:
@@ -249,8 +343,9 @@ class Validator:
                 patch_message = "Please define the missing variables in your YAML file."
 
             raise ValueError(
-                f"Model validation failed with {len(all_errors)} errors:\n- " + "\n- ".join(all_errors) + 
-                f"\n\n{patch_message}"
+                f"Model validation failed with {len(all_errors)} errors:\n- " + 
+                "\n- ".join(all_errors) + 
+                f"\n\nPatch file generated: {patch_file}"
             )
         logger.info("Model validation passed")
         return True
