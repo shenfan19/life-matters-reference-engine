@@ -73,13 +73,13 @@ class GeneratorEngine:
             risk_factor: Variable(
                 description=f"{risk_factor}状态 (0=无, 1=有)",
                 value=initial_value,
-                type=VariableType.INPUT
+                type=VariableType.input
             ),
             disease_risk: Variable(
                 description=f"{disease_risk}风险指数",
                 value=0.01,
                 unit="风险指数",
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, 1.0]
             )
         }
@@ -115,13 +115,13 @@ class GeneratorEngine:
             intervention_status: Variable(
                 description=f"{intervention_name}状态 (0=无, 1=有)",
                 value=initial_status,
-                type=VariableType.INPUT
+                type=VariableType.input
             ),
             disease_severity: Variable(
                 description=f"{disease_severity}严重度",
                 value=1.0,
                 unit="严重度指数",
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, 1.0]
             )
         }
@@ -157,19 +157,19 @@ class GeneratorEngine:
             "susceptible": Variable(
                 description="易感人群",
                 value=total_population - initial_infected,
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, total_population]
             ),
             "infected": Variable(
                 description="感染人群",
                 value=initial_infected,
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, total_population]
             ),
             "recovered": Variable(
                 description="恢复人群",
                 value=0.0,
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, total_population]
             )
         }
@@ -208,13 +208,13 @@ class GeneratorEngine:
             "time_factor": Variable(
                 description="时间因素",
                 value=0.0,
-                type=VariableType.STATE
+                type=VariableType.state
             ),
             outcome_prediction: Variable(
                 description=f"{outcome_prediction}预测值",
                 value=initial_value,
                 unit="指数",
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, 100.0]
             )
         }
@@ -249,13 +249,13 @@ class GeneratorEngine:
             "dose_level": Variable(
                 description="剂量水平",
                 value=initial_dose,
-                type=VariableType.INPUT
+                type=VariableType.input
             ),
             "treatment_effect": Variable(
                 description=f"{dose_response}效果",
                 value=0.0,
                 unit="效果指数",
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, 1.0]
             )
         }
@@ -290,13 +290,13 @@ class GeneratorEngine:
             "intervention_level": Variable(
                 description="干预水平",
                 value=initial_level,
-                type=VariableType.INPUT
+                type=VariableType.input
             ),
             "behavior_index": Variable(
                 description=f"{behavior_change}改变指数",
                 value=0.0,
                 unit="指数",
-                type=VariableType.STATE,
+                type=VariableType.state,
                 bounds=[0.0, 1.0]
             )
         }
