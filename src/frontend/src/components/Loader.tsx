@@ -96,7 +96,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
   };
 
   // 加载文件内容（不自动确认）
-  const loadFileContent = async (filePath: string) => {
+  const loadFileContent222 = async (filePath: string) => {
     setLoading(true);
     try {
       const cleanPath = filePath.replace(/^mods\//, '');
@@ -126,6 +126,113 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
       }
     } catch (error: any) {
       message.error(`网络错误: ${error.message}`);
+      console.error('Failed to load file content:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+// 修复后的 loadFileContent 函数
+// 替换 Loader.tsx 第 98-133 行
+  // 加载文件内容并自动验证(与 CLI 保持一致)
+  const loadFileContent = async (filePath: string) => {
+    setLoading(true);
+    try {
+      const cleanPath = filePath.replace(/^mods\//, '');
+      
+      // 步骤1: 读取文件内容
+      const fileResponse = await fetch(`${API_BASE}/file/${cleanPath}`);
+      const fileResult = await fileResponse.json();
+      
+      if (!fileResult.success) {
+        message.error(`读取文件失败: ${fileResult.error}`);
+        setLoading(false);
+        return;
+      }
+      
+      const { content, path } = fileResult.data;
+      
+      // 步骤2: 立即调用验证 API (与 CLI 保持一致)
+      const validateResponse = await fetch(`${API_BASE}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: cleanPath }),
+      });
+      
+      const validateResult = await validateResponse.json();
+      
+      // 步骤3: 构建模型对象 (无论验证成功与否)
+      const model: ModelFile = {
+        key: filePath,
+        title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
+        path: filePath,
+        content: content,  // 📝 修复: 添加 content 属性供 Simulator 使用
+        metadata: content.metadata,
+        variables: content.variables,
+        formulas: content.formulas,
+        simulator: content.simulator,
+        optimizer: content.optimizer,
+        imports: content.imports,
+        folder: path.includes('/') ? path.split('/')[0] : undefined,
+        validated: validateResult.success,
+        validationErrors: validateResult.success ? [] : (validateResult.errors || [validateResult.error]),
+        patchFile: validateResult.data?.patch_file,
+      };
+      
+      setSelectedModel(model);
+      setConfirmedModel(model);  // 自动确认
+      
+      // 步骤4: 显示验证结果
+      if (validateResult.success) {
+        if (onModelSelect) {
+          onModelSelect(model);
+        }
+        
+        if (validateResult.data?.patch_file) {
+          message.success(
+            <span>
+              ✅ 模型验证通过!已生成补丁文件<br/>
+              <code style={{ fontSize: 11 }}>{validateResult.data.patch_file}</code>
+            </span>,
+            5
+          );
+        } else {
+          message.success('✅ 模型验证通过!可以进入 Simulator 运行仿真');
+        }
+      } else {
+        Modal.error({
+          title: '模型验证失败',
+          width: 600,
+          content: (
+            <div>
+              <div style={{ marginBottom: 12 }}>发现以下问题:</div>
+              <div style={{ maxHeight: 300, overflow: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                {(validateResult.errors || [validateResult.error]).map((err: string, idx: number) => (
+                  <div key={idx} style={{ marginBottom: 4, fontSize: 12 }}>
+                    • {err}
+                  </div>
+                ))}
+              </div>
+              {validateResult.data?.patch_file && (
+                <Alert
+                  message="已生成补丁文件"
+                  description={
+                    <div style={{ fontSize: 12 }}>
+                      <div>补丁文件: <code>{validateResult.data.patch_file}</code></div>
+                      <div style={{ marginTop: 4 }}>请将补丁文件与原模型一起加载,或手动修复缺失的变量</div>
+                    </div>
+                  }
+                  type="info"
+                  style={{ marginTop: 12 }}
+                  showIcon
+                />
+              )}
+            </div>
+          ),
+        });
+      }
+    } catch (error: any) {
+      message.error(`加载失败: ${error.message}`);
       console.error('Failed to load file content:', error);
     } finally {
       setLoading(false);
