@@ -1,45 +1,47 @@
 // frontend/src/components/Simulator.tsx
+// 创建日期: 2025-01-XX
+// 功能: 仿真器组件 - 支持实时仿真、批量运行、实时曲线、CSV 导出
+// 修改记录:
+// 1. API_BASE 使用 '/api' (由 Vite 代理转发到 Flask)
+// 2. 导入类型从 types.ts
+// 3. 实现三个子页面: 运行仿真、实时监控、历史记录
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Button, Space, Progress, Statistic, Row, Col, InputNumber, message, Alert, Table, Tabs } from 'antd';
+import { Card, Button, Space, Progress, Statistic, Row, Col, InputNumber, message, Alert, Table } from 'antd';
 import { 
   PlayCircleOutlined, 
   PauseOutlined, 
   StopOutlined,
   DownloadOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  SyncOutlined
 } from '@ant-design/icons';
+import type { SimulatorProps, SimulationDataPoint, ModelFile } from '../types';
 
-interface SimulatorProps {
-  subPage: string;
-  selectedModel: any;
-}
-
-interface SimulationData {
-  step: number;
-  time: number;
-  [key: string]: number;
-}
+const API_BASE = '/api';  // 相对路径，由 Vite 代理处理
 
 const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'completed'>('idle');
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(1440);
-  const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
+  const [simulationData, setSimulationData] = useState<SimulationDataPoint[]>([]);
   const [inputParams, setInputParams] = useState<Record<string, number>>({});
   const [stateVariables, setStateVariables] = useState<Record<string, number>>({});
+  const [sessionId, setSessionId] = useState<string>('');
+  const [timeHours, setTimeHours] = useState(8760);
+  const [stepSize, setStepSize] = useState(3600);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // 初始化参数
   useEffect(() => {
-    if (selectedModel?.variables) {
+    if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
       
-      Object.entries(selectedModel.variables).forEach(([name, data]: [string, any]) => {
+      Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
         } else if (data.type === 'state') {
@@ -51,81 +53,141 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       setStateVariables(states);
     }
     
-    if (selectedModel?.simulator) {
-      setTotalSteps(selectedModel.simulator.total_time / (selectedModel.simulator.step_size || 1));
+    if (selectedModel?.content?.simulator) {
+      const sim = selectedModel.content.simulator;
+      setStepSize(sim.step_size || 3600);
+      const totalTime = sim.total_time || 31536000;
+      setTotalSteps(Math.floor(totalTime / (sim.step_size || 3600)));
+      setTimeHours(totalTime / 3600);
     }
   }, [selectedModel]);
 
-  // 开始仿真
-  const startSimulation = () => {
+  // 启动仿真
+  const startSimulation = async () => {
     if (!selectedModel) {
       message.error('请先在 Loader 中选择一个模型');
       return;
     }
 
-    if (status === 'idle' || status === 'completed') {
+    try {
+      setStatus('running');
       setProgress(0);
       setCurrentStep(0);
       setSimulationData([]);
-      // 重置状态变量
-      if (selectedModel?.variables) {
-        const states: Record<string, number> = {};
-        Object.entries(selectedModel.variables).forEach(([name, data]: [string, any]) => {
-          if (data.type === 'state') {
-            states[name] = data.value;
+
+      // 调用后端启动仿真
+      const response = await fetch(`${API_BASE}/simulation/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model_name: selectedModel.content!.metadata.name,
+          folder: selectedModel.folder,
+          time_hours: timeHours,
+          step_size: stepSize,
+          input_params: inputParams
+        })
+      });
+      
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const data = result.data;
+        setSessionId(data.session_id);
+        setTotalSteps(data.total_steps);
+        
+        // 更新初始状态
+        const initialStates: Record<string, number> = {};
+        Object.entries(data.initial_state).forEach(([name, info]: [string, any]) => {
+          if (info.type === 'state') {
+            initialStates[name] = info.value;
           }
         });
-        setStateVariables(states);
+        setStateVariables(initialStates);
+        
+        message.success('仿真已启动');
+        
+        // 开始逐步执行
+        runSimulationSteps(data.session_id);
+      } else {
+        message.error(result.error || '启动仿真失败');
+        setStatus('idle');
       }
+    } catch (error: any) {
+      message.error(`启动仿真失败: ${error.message}`);
+      setStatus('idle');
     }
-    setStatus('running');
-    
-    const stepSize = selectedModel?.simulator?.step_size || 1;
-    const outputVars = selectedModel?.simulator?.output_variables || Object.keys(stateVariables);
-    
-    intervalRef.current = setInterval(() => {
-      setCurrentStep(prev => {
-        const next = prev + 1;
-        if (next >= totalSteps) {
+  };
+
+  // 逐步执行仿真
+  const runSimulationSteps = async (sid: string) => {
+    intervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/simulation/step`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sid,
+            input_changes: {} // 可以动态修改输入
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          setCurrentStep(data.current_step);
+          setProgress(data.progress);
+          
+          // 更新状态变量
+          const newStates: Record<string, number> = {};
+          Object.entries(data.state).forEach(([name, info]: [string, any]) => {
+            if (info.type === 'state') {
+              newStates[name] = info.value;
+            }
+          });
+          setStateVariables(newStates);
+          
+          // 添加数据点
+          setSimulationData(prev => [...prev, data.output]);
+          
+          // 检查是否完成
+          if (data.completed) {
+            stopSimulation();
+            setStatus('completed');
+            message.success('仿真完成！');
+          }
+        } else {
           stopSimulation();
-          setStatus('completed');
-          message.success('仿真完成！');
-          return totalSteps;
+          message.error('仿真步骤执行失败');
+          setStatus('idle');
         }
-        
-        // 模拟状态变量更新（实际应调用公式计算）
-        const newStates = { ...stateVariables };
-        Object.keys(newStates).forEach(key => {
-          // 简单的模拟：添加随机波动
-          newStates[key] = newStates[key] + (Math.random() - 0.5) * 0.01;
-        });
-        setStateVariables(newStates);
-        
-        // 记录输出数据
-        const dataPoint: SimulationData = {
-          step: next,
-          time: next * stepSize,
-        };
-        outputVars.forEach((varName: string) => {
-          dataPoint[varName] = newStates[varName] || 0;
-        });
-        
-        setSimulationData(prev => [...prev, dataPoint]);
-        setProgress(Math.round((next / totalSteps) * 100));
-        
-        return next;
-      });
-    }, 100); // 每100ms一步
+      } catch (error: any) {
+        stopSimulation();
+        message.error(`仿真执行错误: ${error.message}`);
+        setStatus('idle');
+      }
+    }, 100); // 每100ms执行一步（可调整速度）
   };
 
   // 暂停仿真
-  const pauseSimulation = () => {
+  const pauseSimulation = async () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    setStatus('paused');
-    message.info('仿真已暂停');
+    
+    try {
+      await fetch(`${API_BASE}/simulation/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      setStatus('paused');
+      message.info('仿真已暂停');
+    } catch (error: any) {
+      message.error(`暂停失败: ${error.message}`);
+    }
   };
 
   // 停止仿真
@@ -137,8 +199,34 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
   };
 
   // 重置仿真
-  const resetSimulation = () => {
+  const resetSimulation = async () => {
     stopSimulation();
+    
+    if (sessionId) {
+      try {
+        const response = await fetch(`${API_BASE}/simulation/reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          // 更新状态
+          const initialStates: Record<string, number> = {};
+          Object.entries(result.data.initial_state).forEach(([name, info]: [string, any]) => {
+            if (info.type === 'state') {
+              initialStates[name] = info.value;
+            }
+          });
+          setStateVariables(initialStates);
+        }
+      } catch (error: any) {
+        message.error(`重置失败: ${error.message}`);
+      }
+    }
+    
     setStatus('idle');
     setProgress(0);
     setCurrentStep(0);
@@ -147,26 +235,29 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
   };
 
   // 导出CSV
-  const exportCSV = () => {
-    if (simulationData.length === 0) {
+  const exportCSV = async () => {
+    if (!sessionId || simulationData.length === 0) {
       message.warning('暂无数据可导出');
       return;
     }
 
-    const headers = Object.keys(simulationData[0]);
-    const csvContent = [
-      headers.join(','),
-      ...simulationData.map(row => headers.map(h => row[h]).join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `simulation_${Date.now()}.csv`;
-    a.click();
-    
-    message.success('CSV 文件已导出');
+    try {
+      const response = await fetch(`${API_BASE}/simulation/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        message.success(`CSV 文件已保存到: ${result.data.csv_path}`);
+      } else {
+        message.error('导出失败');
+      }
+    } catch (error: any) {
+      message.error(`导出失败: ${error.message}`);
+    }
   };
 
   // 绘制实时曲线
@@ -189,7 +280,8 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
     ctx.stroke();
     
     // 获取输出变量
-    const outputVars = selectedModel?.simulator?.output_variables || Object.keys(stateVariables).slice(0, 3);
+    const outputVars = selectedModel?.content?.simulator?.output_variables || 
+                       Object.keys(stateVariables).slice(0, 3);
     const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1'];
     
     // 绘制每个变量的曲线
@@ -201,7 +293,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       ctx.lineWidth = 2;
       ctx.beginPath();
       
-      const xScale = (canvas.width - 50) / simulationData.length;
+      const xScale = (canvas.width - 50) / Math.max(simulationData.length, 1);
       const yScale = (canvas.height - 40) / (2 * maxVal);
       
       simulationData.forEach((data, i) => {
@@ -237,11 +329,11 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
 
   // 渲染输入参数面板
   const renderInputPanel = () => {
-    if (!selectedModel?.variables) {
+    if (!selectedModel?.content?.variables) {
       return <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>请先选择模型</div>;
     }
 
-    const inputVars = Object.entries(selectedModel.variables)
+    const inputVars = Object.entries(selectedModel.content.variables)
       .filter(([_, data]: [string, any]) => data.type === 'input')
       .map(([name, data]: [string, any]) => ({ name, ...data }));
 
@@ -282,12 +374,13 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
 
   // 渲染状态变量面板
   const renderStatePanel = () => {
-    const outputVars = selectedModel?.simulator?.output_variables || Object.keys(stateVariables);
+    const outputVars = selectedModel?.content?.simulator?.output_variables || 
+                       Object.keys(stateVariables);
     
     return (
       <Row gutter={[16, 16]}>
         {outputVars.map((varName: string, idx: number) => {
-          const varData = selectedModel?.variables?.[varName] || {};
+          const varData = selectedModel?.content?.variables?.[varName] || {};
           return (
             <Col span={8} key={idx}>
               <Card size="small" style={{ background: '#f0f7ff' }}>
@@ -322,6 +415,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
         pagination={{ pageSize: 10 }}
         size="small"
         scroll={{ y: 300 }}
+        rowKey={(record) => `${record.step}`}
       />
     );
   };
@@ -371,6 +465,41 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       {/* 控制面板 */}
       <Card title="仿真控制">
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* 仿真参数配置 */}
+          <Row gutter={16}>
+            <Col span={8}>
+              <div style={{ marginBottom: 8 }}>仿真时长（小时）</div>
+              <InputNumber
+                value={timeHours}
+                onChange={(val) => setTimeHours(val || 8760)}
+                min={1}
+                max={876000}
+                style={{ width: '100%' }}
+                disabled={status === 'running'}
+              />
+            </Col>
+            <Col span={8}>
+              <div style={{ marginBottom: 8 }}>时间步长（秒）</div>
+              <InputNumber
+                value={stepSize}
+                onChange={(val) => setStepSize(val || 3600)}
+                min={1}
+                max={86400}
+                style={{ width: '100%' }}
+                disabled={status === 'running'}
+              />
+            </Col>
+            <Col span={8}>
+              <div style={{ marginBottom: 8 }}>总步数</div>
+              <InputNumber
+                value={Math.floor((timeHours * 3600) / stepSize)}
+                disabled
+                style={{ width: '100%' }}
+              />
+            </Col>
+          </Row>
+
+          {/* 控制按钮 */}
           <Space wrap>
             {(status === 'idle' || status === 'paused' || status === 'completed') && (
               <Button 

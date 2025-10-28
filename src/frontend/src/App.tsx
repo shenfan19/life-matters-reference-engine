@@ -140,8 +140,7 @@ const App: React.FC = () => {
           color: '#1890ff',
           borderBottom: '1px solid #f0f0f0',
           padding: '0 16px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: '#fff'
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
         }}>
           {collapsed ? 'LM' : '🧬 LifeMatters'}
         </div>

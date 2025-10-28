@@ -5,6 +5,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sys
 import os
+import time
+import csv
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -25,6 +27,7 @@ CORS(app)  # 启用 CORS
 # 初始化 LoaderEngine
 MODS_DIR = os.path.join(os.path.dirname(__file__), '..', 'mods')
 loader_engine = LoaderEngine(mods_directory=MODS_DIR, language='zhhans')
+simulation_sessions = {} # ??
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -453,6 +456,352 @@ def split_model():
             'error': str(e)
         }), 500
 
+@app.route('/api/simulation/start', methods=['POST'])
+def start_simulation():
+    """
+    启动仿真会话
+    请求体: {model_name, folder?, time_hours, step_size, input_params, session_id?}
+    返回: {session_id, model_name, initial_state, step_size, total_time, total_steps, output_variables}
+    """
+    try:
+        data = request.json
+        model_name = data.get('model_name')
+        folder = data.get('folder')
+        time_hours = data.get('time_hours', 8760.0)
+        step_size = data.get('step_size', 3600.0)
+        input_params = data.get('input_params', {})
+        session_id = data.get('session_id', f"sim_{int(time.time() * 1000)}")
+        
+        if not model_name:
+            return jsonify({
+                'success': False,
+                'error': '未提供模型名称'
+            }), 400
+        
+        # 使用 LoaderEngine 加载模型
+        logger.info(f"正在加载模型: {model_name}, 文件夹: {folder}")
+        model = loader_engine.fetch(model_name, folder)
+        
+        if not model:
+            return jsonify({
+                'success': False,
+                'error': f'无法加载模型: {model_name}'
+            }), 404
+        
+        # 设置输入参数
+        for var_name, value in input_params.items():
+            if var_name in model.variables:
+                model.set_variable_value(var_name, value)
+                logger.debug(f"设置输入参数: {var_name} = {value}")
+        
+        # 计算总步数
+        total_time = time_hours * 3600.0
+        total_steps = int(total_time / step_size)
+        
+        # 获取输出变量列表
+        output_variables = model.simulator.get('output_variables', []) if model.simulator else []
+        if not output_variables:
+            # 如果未指定，默认输出所有 state 变量
+            output_variables = [name for name, var in model.variables.items() if var.type.value == 'state']
+        
+        # 创建会话
+        simulation_sessions[session_id] = {
+            'model': model,
+            'model_name': model_name,
+            'folder': folder,
+            'step_size': step_size,
+            'total_time': total_time,
+            'total_steps': total_steps,
+            'current_step': 0,
+            'running': False,
+            'data': [],
+            'output_variables': output_variables
+        }
+        
+        logger.info(f"仿真会话已创建: {session_id}, 总步数: {total_steps}")
+        
+        # 返回初始状态
+        return jsonify({
+            'success': True,
+            'data': {
+                'session_id': session_id,
+                'model_name': model.metadata.name if model.metadata else model_name,
+                'initial_state': model.get_current_state(),
+                'step_size': step_size,
+                'total_time': total_time,
+                'total_steps': total_steps,
+                'output_variables': output_variables
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"启动仿真失败: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/simulation/step', methods=['POST'])
+def simulation_step():
+    """
+    执行单步仿真
+    请求体: {session_id, input_changes?}
+    返回: {current_step, current_time, state, output, formula_results, completed, progress}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        input_changes = data.get('input_changes', {})
+        
+        if not session_id or session_id not in simulation_sessions:
+            return jsonify({
+                'success': False,
+                'error': f'无效的会话ID: {session_id}'
+            }), 400
+        
+        session = simulation_sessions[session_id]
+        model = session['model']
+        step_size = session['step_size']
+        
+        # 应用输入变化（动态修改输入）
+        for var_name, value in input_changes.items():
+            if var_name in model.variables:
+                model.set_variable_value(var_name, value)
+                logger.debug(f"动态修改输入: {var_name} = {value}")
+        
+        # 执行单步仿真
+        try:
+            formula_results = model.step(step_size)
+        except Exception as step_error:
+            logger.error(f"仿真步骤执行失败: {step_error}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': f'仿真计算错误: {str(step_error)}'
+            }), 500
+        
+        session['current_step'] += 1
+        
+        # 获取输出数据
+        output_variables = session['output_variables']
+        output_data = {
+            'step': model.current_step,
+            'time': model.time
+        }
+        
+        for var_name in output_variables:
+            if var_name in model.variables:
+                output_data[var_name] = model.variables[var_name].value
+            else:
+                logger.warning(f"输出变量 {var_name} 不存在于模型中")
+                output_data[var_name] = 0.0
+        
+        # 保存数据点
+        session['data'].append(output_data)
+        
+        # 检查是否完成
+        completed = session['current_step'] >= session['total_steps']
+        progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'current_step': model.current_step,
+                'current_time': model.time,
+                'state': model.get_current_state(),
+                'output': output_data,
+                'formula_results': formula_results,
+                'completed': completed,
+                'progress': round(progress, 2)
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"执行仿真步失败: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/simulation/pause', methods=['POST'])
+def pause_simulation():
+    """
+    暂停仿真（标记状态为暂停）
+    请求体: {session_id}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id or session_id not in simulation_sessions:
+            return jsonify({
+                'success': False,
+                'error': '无效的会话ID'
+            }), 400
+        
+        session = simulation_sessions[session_id]
+        session['running'] = False
+        
+        logger.info(f"仿真已暂停: {session_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '仿真已暂停'
+        })
+    
+    except Exception as e:
+        logger.error(f"暂停仿真失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/simulation/reset', methods=['POST'])
+def reset_simulation():
+    """
+    重置仿真到初始状态
+    请求体: {session_id}
+    返回: {initial_state}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id or session_id not in simulation_sessions:
+            return jsonify({
+                'success': False,
+                'error': '无效的会话ID'
+            }), 400
+        
+        session = simulation_sessions[session_id]
+        model = session['model']
+        
+        # 重置模型状态
+        model.reset_simulation()
+        session['current_step'] = 0
+        session['running'] = False
+        session['data'] = []
+        
+        logger.info(f"仿真已重置: {session_id}")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'initial_state': model.get_current_state()
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"重置仿真失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/simulation/export', methods=['POST'])
+def export_simulation():
+    """
+    导出仿真数据为 CSV
+    请求体: {session_id, output_path?}
+    返回: {csv_path, rows}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        output_path = data.get('output_path')
+        
+        if not session_id or session_id not in simulation_sessions:
+            return jsonify({
+                'success': False,
+                'error': '无效的会话ID'
+            }), 400
+        
+        session = simulation_sessions[session_id]
+        simulation_data = session['data']
+        
+        if not simulation_data:
+            return jsonify({
+                'success': False,
+                'error': '无数据可导出'
+            }), 400
+        
+        # 确定输出路径
+        if not output_path:
+            output_dir = os.path.join(MODS_DIR, 'output')
+            os.makedirs(output_dir, exist_ok=True)
+            timestamp = int(time.time())
+            output_path = os.path.join(output_dir, f"{session['model_name']}_export_{timestamp}.csv")
+        else:
+            # 确保输出目录存在
+            output_dir = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+        
+        # 写入 CSV
+        headers = list(simulation_data[0].keys())
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(simulation_data)
+        
+        logger.info(f"仿真数据已导出: {output_path}, 共 {len(simulation_data)} 行")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'csv_path': output_path,
+                'rows': len(simulation_data)
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"导出仿真数据失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/simulation/state', methods=['GET'])
+def get_simulation_state():
+    """
+    获取仿真状态
+    查询参数: ?session_id=xxx
+    返回: {session_id, model_name, current_step, total_steps, progress, running, current_state, data_points}
+    """
+    try:
+        session_id = request.args.get('session_id')
+        
+        if not session_id or session_id not in simulation_sessions:
+            return jsonify({
+                'success': False,
+                'error': '无效的会话ID'
+            }), 400
+        
+        session = simulation_sessions[session_id]
+        model = session['model']
+        
+        progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'session_id': session_id,
+                'model_name': session['model_name'],
+                'current_step': session['current_step'],
+                'total_steps': session['total_steps'],
+                'progress': round(progress, 2),
+                'running': session['running'],
+                'current_state': model.get_current_state(),
+                'data_points': len(session['data'])
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"获取仿真状态失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     print(f"🚀 LifeMatters API Server")
     print(f"📁 MODS 目录: {MODS_DIR}")
@@ -464,6 +813,13 @@ if __name__ == '__main__':
     print(f"  GET  /api/search?q=...   - 搜索文件")
     print(f"  POST /api/merge          - 合并模型")
     print(f"  GET  /api/folders        - 获取文件夹列表")
+    print(f"\n仿真 API:")
+    print(f"  POST /api/simulation/start    - 启动仿真")
+    print(f"  POST /api/simulation/step     - 单步执行")
+    print(f"  POST /api/simulation/pause    - 暂停仿真")
+    print(f"  POST /api/simulation/reset    - 重置仿真")
+    print(f"  POST /api/simulation/export   - 导出数据")
+    print(f"  GET  /api/simulation/state    - 获取状态")
     print(f"\n🌐 启动服务器: http://localhost:5000\n")
     
     app.run(host='0.0.0.0', port=5000, debug=True)

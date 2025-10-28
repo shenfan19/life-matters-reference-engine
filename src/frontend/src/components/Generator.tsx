@@ -303,9 +303,9 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
                     size="small"
                     style={{ width: '100%' }}
                     options={[
-                      { value: 'input', label: 'INPUT' },
-                      { value: 'parameters', label: 'PARAMETERS' },
-                      { value: 'state', label: 'STATE' },
+                      { value: 'input', label: 'input' },
+                      { value: 'parameters', label: 'parameter' },
+                      { value: 'state', label: 'state' },
                     ]}
                   />
                 </Col>

@@ -112,7 +112,7 @@ class Validator:
                     is_valid = False
             return is_valid, errors, missing_vars
 
-        def validate_formulas() -> tuple[bool, list[str], list[dict]]:
+        def validate_formulas_old_ver_bug() -> tuple[bool, list[str], list[dict]]:
             errors = []
             missing_vars = []
             is_valid = True
@@ -210,7 +210,7 @@ class Validator:
             
             return is_valid, errors, missing_vars
 
-        def validate_formulas222() -> tuple[bool, list[str], list[dict]]:
+        def validate_formulas() -> tuple[bool, list[str], list[dict]]:
             """验证公式,收集所有缺失的变量"""
             errors = []
             missing_vars = []

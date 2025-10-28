@@ -195,7 +195,7 @@ class OptimizerEngine:
         from mod_structure import VariableType
         input_vars = {
             name: var for name, var in self.current_model.variables.items() 
-            if var.type == VariableType.INPUT
+            if var.type == VariableType.input
         }
         # 如果没有输入变量，返回错误。
         if not input_vars:
@@ -270,7 +270,7 @@ class OptimizerEngine:
         from mod_structure import VariableType
         input_vars = {
             name: var for name, var in self.current_model.variables.items() 
-            if var.type == VariableType.INPUT
+            if var.type == VariableType.input
         }
         # 如果没有输入变量，返回错误。
         if not input_vars:

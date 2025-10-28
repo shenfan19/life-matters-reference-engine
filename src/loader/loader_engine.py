@@ -166,10 +166,7 @@ class LoaderEngine:
             model.load_model(file_path, model_name)
             
             # 验证合并后的模型。
-            try:
-                model.validate_model()
-            except ValueError as ve:
-                logger.warning(f"模型 {model_name} 验证问题: {ve}")
+            model.validate_model()
             
             # 将加载的模型存入缓存。
             self.models_cache[cache_key] = model

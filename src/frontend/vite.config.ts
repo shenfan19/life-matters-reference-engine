@@ -1,4 +1,8 @@
-// src/frontend/vite.config.ts
+// frontend/vite.config.ts
+// 修改记录:
+// 1. 添加 proxy 配置: 将 /api/* 请求代理到 Flask (localhost:5000)
+// 2. 保留 modsPlugin (可选，如果想用 Vite 直接读取文件)
+// 3. 更新端口为 5173 (与架构文档一致)
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -6,11 +10,17 @@ import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
 
-// 扫描 mods 目录生成文件列表的插件
+// 【可选】扫描 mods 目录生成文件列表的插件
+// 注意: 现在所有 /api 请求都会被代理到 Flask，所以这个插件可能不会被使用
+// 保留此代码以备将来切换架构时使用
 function modsPlugin() {
   return {
     name: 'mods-plugin',
     configureServer(server: any) {
+      // 【注释】这些路由现在被代理到 Flask，不再由 Vite 处理
+      // 如果将来想让 Vite 直接读取文件，取消下面的注释
+      
+      /*
       // 添加虚拟模块，提供文件列表
       server.middlewares.use('/api/files', (req: any, res: any) => {
         const modsDir = path.resolve(__dirname, '../../mods')
@@ -41,11 +51,12 @@ function modsPlugin() {
           res.end(JSON.stringify({ success: false, error: error.message }))
         }
       })
+      */
     }
   }
 }
 
-// 递归扫描目录
+// 递归扫描目录 (辅助函数)
 function scanDirectory(dirPath: string, basePath = ''): any[] {
   const items: any[] = []
   
@@ -80,18 +91,34 @@ function scanDirectory(dirPath: string, basePath = ''): any[] {
   return items
 }
 
-// https://vitejs.dev/config/
+// Vite 配置
 export default defineConfig({
-  plugins: [react(), modsPlugin()],
+  plugins: [
+    react(), 
+    // modsPlugin()  // 【注释】暂时不使用，所有请求代理到 Flask
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
-    port: 5173,
+    port: 5173,  // 前端开发服务器端口
+    
+    // 【新增】代理配置: 将所有 /api/* 请求转发到 Flask 后端
     proxy: {
-      // 如果将来需要真正的后端 API，可以在这里配置代理
-    },
+      '/api': {
+        target: 'http://localhost:5000',  // Flask 后端地址
+        changeOrigin: true,                // 修改请求头中的 origin
+        secure: false,                     // 如果是 https，设置为 true
+        
+        // 【可选】请求日志
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('[Proxy]', req.method, req.url, '→', proxyReq.path);
+          });
+        }
+      }
+    }
   },
 })

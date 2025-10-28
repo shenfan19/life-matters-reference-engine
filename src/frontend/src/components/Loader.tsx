@@ -38,7 +38,7 @@ interface ModelFile {
   patchFile?: string;
 }
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
   const [loading, setLoading] = useState(false);
