@@ -177,28 +177,31 @@ class Validator:
                     errors.append(f"condition of formula '{form_name}' invalid: expected bool, number, or string expression, got {type(formula.condition).__name__}")
                     is_valid = False
                 
+                # 🔧 修复：无论 dynamics 的 key 是否存在，都要验证表达式
                 for var, expr in formula.dynamics.items():
+                    # 首先检查 dynamics 的 key 是否存在
                     if var not in self.variables:
                         missing_vars.append({
                             'variable': var,
                             'context': f"dynamics of formula '{form_name}'"
                         })
                         is_valid = False
+                    
+                    # 🔧 关键修复：无论 key 是否存在，都要验证表达式中引用的变量
+                    if isinstance(expr, (int, float)):
+                        expr_str = str(expr)
+                        missing_vars.extend(collect_undefined_vars(
+                            expr_str,
+                            f"dynamics for '{var}' in formula '{form_name}'"
+                        ))
+                    elif isinstance(expr, str):
+                        missing_vars.extend(collect_undefined_vars(
+                            expr,
+                            f"dynamics for '{var}' in formula '{form_name}'"
+                        ))
                     else:
-                        if isinstance(expr, (int, float)):
-                            expr_str = str(expr)
-                            missing_vars.extend(collect_undefined_vars(
-                                expr_str,
-                                f"dynamics for '{var}' in formula '{form_name}'"
-                            ))
-                        elif isinstance(expr, str):
-                            missing_vars.extend(collect_undefined_vars(
-                                expr,
-                                f"dynamics for '{var}' in formula '{form_name}'"
-                            ))
-                        else:
-                            errors.append(f"dynamics for '{var}' in formula '{form_name}' invalid: expected number or string expression, got {type(expr).__name__}")
-                            is_valid = False
+                        errors.append(f"dynamics for '{var}' in formula '{form_name}' invalid: expected number or string expression, got {type(expr).__name__}")
+                        is_valid = False
             
             if missing_vars:
                 errors.append("Missing variables:")
@@ -256,4 +259,3 @@ class Validator:
         variables = extract_vars_from_expr(expr)
         # 使用 variables 进行后续逻辑
         return variables
-        
