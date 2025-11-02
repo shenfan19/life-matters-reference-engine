@@ -564,9 +564,6 @@ pip install numpy>=1.21.0         # 数值计算
 pip install asteval              # 安全的表达式求值
 pip install babel                # 国际化支持
 
-# CLI 界面（可选）
-pip install flet>=0.22.0         # 图形化 CLI 界面
-
 # 优化器额外依赖（按需）
 pip install pymoo                # 多目标优化
 pip install scipy                # 科学计算
