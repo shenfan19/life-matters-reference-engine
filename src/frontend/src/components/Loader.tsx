@@ -95,8 +95,45 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     return count;
   };
 
-  // 修复后的 loadFileContent 函数
-  // 替换 Loader.tsx 第 98-133 行
+  // 加载文件内容（不自动确认）
+  const loadFileContent222 = async (filePath: string) => {
+    setLoading(true);
+    try {
+      const cleanPath = filePath.replace(/^mods\//, '');
+      const response = await fetch(`${API_BASE}/file/${cleanPath}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        const { content, path } = result.data;
+        
+        const model: ModelFile = {
+          key: filePath,
+          title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
+          path: filePath,
+          metadata: content.metadata,
+          variables: content.variables,
+          formulas: content.formulas,
+          simulator: content.simulator,
+          optimizer: content.optimizer,
+          imports: content.imports,
+          validated: false,
+        };
+        
+        setSelectedModel(model);
+        message.info(`已选择模型: ${model.title}，点击"确认并验证"按钮加载到系统`);
+      } else {
+        message.error(`加载失败: ${result.error}`);
+      }
+    } catch (error: any) {
+      message.error(`网络错误: ${error.message}`);
+      console.error('Failed to load file content:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+// 修复后的 loadFileContent 函数
+// 替换 Loader.tsx 第 98-133 行
   // 加载文件内容并自动验证(与 CLI 保持一致)
   const loadFileContent222 = async (filePath: string) => {
     setLoading(true);
