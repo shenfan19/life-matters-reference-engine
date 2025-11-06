@@ -95,10 +95,10 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     return count;
   };
 
-// 修复后的 loadFileContent 函数
-// 替换 Loader.tsx 第 98-133 行
+  // 修复后的 loadFileContent 函数
+  // 替换 Loader.tsx 第 98-133 行
   // 加载文件内容并自动验证(与 CLI 保持一致)
-  const loadFileContent = async (filePath: string) => {
+  const loadFileContent222 = async (filePath: string) => {
     setLoading(true);
     try {
       const cleanPath = filePath.replace(/^mods\//, '');
@@ -201,6 +201,131 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
       setLoading(false);
     }
   };
+
+  // frontend/src/components/Loader.tsx
+  // ---------------------------------------------------------------
+  // 1. 加载文件：错误时清空模型，警告时保留但标记
+  // ---------------------------------------------------------------
+  const loadFileContent = async (filePath: string) => {
+    setLoading(true);
+    try {
+        const cleanPath = filePath.replace(/^mods\//, '');
+        const response = await fetch(`${API_BASE}/file/${cleanPath}`);
+        const result = await response.json();
+    
+        if (result.success) {
+        const { content, path } = result.data;
+    
+        const model: ModelFile = {
+            key: filePath,
+            title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
+            path: filePath,
+            metadata: content.metadata,
+            variables: content.variables,
+            formulas: content.formulas,
+            simulator: content.simulator,
+            optimizer: content.optimizer,
+            imports: content.imports,
+            // 后端返回的字段
+            validated: content.validated ?? true,
+            validationErrors: content.validation_errors ?? [],
+            validationWarnings: content.validation_warnings ?? [], // 新增
+            patchFile: content.patch_file,
+        };
+    
+        // -------------------------------------------------------
+        // 关键：有错误或警告时都要提示
+        // -------------------------------------------------------
+        if (!model.validated || model.validationErrors.length > 0) {
+            // 严重错误 → 清空模型
+            setSelectedModel(null);
+            message.error(`模型加载失败: ${model.validationErrors.join('; ')}`);
+        } else {
+            // 成功（可能有警告）
+            setSelectedModel(model);
+            if (model.validationWarnings.length > 0) {
+            message.warning(`模型加载成功，但有警告: ${model.validationWarnings.join('; ')}`);
+            } else {
+            message.success('模型加载成功');
+            }
+        }
+        } else {
+        // API 本身失败
+        setSelectedModel(null);
+        message.error(`加载失败: ${result.error}`);
+        }
+    } catch (error: any) {
+        setSelectedModel(null);
+        message.error(`网络错误: ${error.message}`);
+    } finally {
+        setLoading(false);
+    }
+      };
+    
+    // ---------------------------------------------------------------
+    // 2. 确认按钮：检查 errors + warnings
+    // ---------------------------------------------------------------
+    const handleConfirm = () => {
+    if (!selectedModel) {
+        message.warning('请先选择并加载一个模型');
+        return;
+    }
+    
+    // 错误（后端 validated: false 或 errors 列表）
+    if (!selectedModel.validated || (selectedModel.validationErrors && selectedModel.validationErrors.    length > 0)) {
+        Modal.warning({
+        title: '模型验证失败',
+        content: (
+            <div>
+            <p>模型存在以下错误：</p>
+            <ul>
+                {selectedModel.validationErrors.map((e, i) => (
+                <li key={i}>{e}</li>
+                ))}
+            </ul>
+            {selectedModel.patchFile && (
+                <p style={{ marginTop: 8 }}>
+                已生成补丁文件: <code>{selectedModel.patchFile}</code>
+                </p>
+            )}
+            </div>
+        ),
+        width: 560,
+        });
+        return;
+    }
+    
+    // 警告（仅提示，不阻止确认）
+    if (selectedModel.validationWarnings && selectedModel.validationWarnings.length > 0) {
+        Modal.confirm({
+        title: '模型存在警告',
+        icon: <ExclamationCircleOutlined style={{ color: '#faad14' }} />,
+        content: (
+            <div>
+            <p>模型可以继续使用，但建议检查以下警告：</p>
+            <ul>
+                {selectedModel.validationWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+                ))}
+            </ul>
+            </div>
+        ),
+        okText: '继续使用',
+        cancelText: '取消',
+        onOk: () => {
+            setConfirmedModel(selectedModel);
+            if (onModelSelect) onModelSelect(selectedModel);
+            message.success('模型已确认');
+        },
+        });
+        return;
+    }
+    
+    // 完全通过
+    setConfirmedModel(selectedModel);
+    if (onModelSelect) onModelSelect(selectedModel);
+    message.success('模型已确认');
+};
 
   // 确认并验证模型
   const confirmAndValidateModel = async () => {
