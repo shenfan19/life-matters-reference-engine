@@ -137,12 +137,7 @@ def get_file_content(file_path):
             'formulas': {},
             'simulator': model.simulator,
             'optimizer': model.optimizer,
-            'imports': [],  # TODO: 从原始 YAML 读取 imports
-            # 新增
-            'validated': getattr(model, 'validation_result', {}).get('valid', True),
-            'validation_errors': getattr(model, 'validation_result', {}).get('errors', []),
-            'validation_warnings': getattr(model, 'validation_result', {}).get('warnings', []),
-            'patch_file': getattr(model, 'validation_result', {}).get('patch_file'),
+            'imports': []  # TODO: 从原始 YAML 读取 imports
         }
         
         # 转换变量

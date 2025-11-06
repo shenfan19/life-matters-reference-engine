@@ -13,7 +13,6 @@ class Validator:
     def validate_model(self, output_dir: str = None) -> bool:
         # 验证模型的完整性和一致性
         all_errors = []
-        all_warnings = []  # 新增
         unique_missing_vars = set()  # 用set自动去重
 
         # 检查时间单位使用
@@ -28,7 +27,7 @@ class Validator:
                     expr = str(expr)
                 vars_in_expr = self.extract_vars_from_expr(expr)
                 if 'dt' in vars_in_expr and not (vars_in_expr & time_units):
-                    all_warnings.append(f"Formula {form_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in seconds.")
+                    logger.warning(f"Formula {form_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in seconds.")
 
         # 验证 simulator
         if self.simulator:
@@ -348,15 +347,8 @@ class Validator:
                 "\n- ".join(all_errors) + 
                 f"\n\nPatch file generated: {patch_file}"
             )
-        else:
-            patch_file = None
         logger.info("Model validation passed")
-        return {
-            'valid': len(all_errors) == 0,
-            'errors': all_errors,
-            'warnings': all_warnings,
-            'patch_file': patch_file
-        }
+        return True
 
     def extract_vars_from_expr(self, expr: str):
         variables = extract_vars_from_expr(expr)

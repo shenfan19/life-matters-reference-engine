@@ -138,10 +138,7 @@ class Loader:
         注意：visited 不会被清空，由调用者管理
         """
         self.current_filename = os.path.splitext(os.path.basename(file_path))[0]
-        if validate:
-            self.validation_result = self.validate_model()  # 保存结果
-            # 不 throw，允许警告继续
-            
+        
         try:
             # 加载数据（包括 imports）
             data = self._load_model_data(file_path, module_name)
