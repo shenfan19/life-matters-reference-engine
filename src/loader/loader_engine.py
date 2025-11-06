@@ -130,12 +130,15 @@ class LoaderEngine:
                         continue
         return models
 
-    def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None) -> Optional[ModStructure]:
+    def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None, 
+              validate: bool = True, output_dir: Optional[str] = None) -> Optional[ModStructure]:
         """
         递归地加载指定名称的模型及其所有导入项。
         :param model_name: 要加载的模型名称。
         :param folder: 可选的子文件夹。
         :param loaded_models: 用于检测循环依赖的集合。
+        :param validate: 是否验证模型（默认 True）。
+        :param output_dir: 验证失败时生成 patch 文件的输出目录（如果为 None，使用 mods/patch）。
         :return: 加载并合并后的 ModStructure 实例，或在失败时返回 None。
         """
         # 初始化已加载模型集合，用于检测循环依赖。
@@ -165,8 +168,9 @@ class LoaderEngine:
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
             
-            # 验证合并后的模型。
-            model.validate_model()
+            # 验证合并后的模型（如果需要）。
+            if validate:
+                model.validate_model(output_dir=output_dir)
             
             # 将加载的模型存入缓存。
             self.models_cache[cache_key] = model
@@ -175,7 +179,7 @@ class LoaderEngine:
         except Exception as e:
             logger.error(f"加载模型 {model_name} 错误: {e}")
             return None
-    
+
     def merge_models(self, 
                     model_names: Optional[List[str]] = None,
                     folders: Optional[List[str]] = None,

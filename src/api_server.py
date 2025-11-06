@@ -114,8 +114,9 @@ def get_file_content(file_path):
         if model_name.endswith('.yaml') or model_name.endswith('.yml'):
             model_name = os.path.splitext(model_name)[0]
         
-        # 使用 fetch 加载模型
-        model = loader_engine.fetch(model_name, folder)
+        # ✅ 关键修改：使用 validate=False 避免在加载时验证
+        # 验证应该由用户手动触发（点击"确认并验证"按钮）
+        model = loader_engine.fetch(model_name, folder, validate=False)
         
         if not model:
             return jsonify({
@@ -137,7 +138,12 @@ def get_file_content(file_path):
             'formulas': {},
             'simulator': model.simulator,
             'optimizer': model.optimizer,
-            'imports': []  # TODO: 从原始 YAML 读取 imports
+            'imports': [],  # TODO: 从原始 YAML 读取 imports
+            # 新增
+            'validated': getattr(model, 'validation_result', {}).get('valid', True),
+            'validation_errors': getattr(model, 'validation_result', {}).get('errors', []),
+            'validation_warnings': getattr(model, 'validation_result', {}).get('warnings', []),
+            'patch_file': getattr(model, 'validation_result', {}).get('patch_file'),
         }
         
         # 转换变量
@@ -306,7 +312,7 @@ def get_folders():
 
 @app.route('/api/validate', methods=['POST'])
 def validate_model():
-    """验证模型"""
+    """验证模型（与 CLI 完全一致）"""
     try:
         data = request.json
         file_path = data.get('file_path')
@@ -330,8 +336,30 @@ def validate_model():
         if model_name.endswith('.yaml') or model_name.endswith('.yml'):
             model_name = os.path.splitext(model_name)[0]
         
-        # 加载模型
-        model = loader_engine.fetch(model_name, folder)
+        logger.info(f"验证模型: {model_name}, 文件夹: {folder}")
+        
+        # 创建 patch 输出目录
+        patch_dir = os.path.join(MODS_DIR, 'patch')
+        os.makedirs(patch_dir, exist_ok=True)
+        
+        # ✅✅✅ 关键修改：先加载但不验证，然后手动验证 ✅✅✅
+        # 方案 A：如果 loader_engine.py 已经修改（添加了 validate 参数）
+        try:
+            # 尝试使用新的 API
+            model = loader_engine.fetch(model_name, folder, validate=False)
+        except TypeError:
+            # 如果 fetch() 还没有 validate 参数，使用旧的方式
+            # 手动加载不验证
+            file_path_full = loader_engine.find_model_file(model_name, folder)
+            if not file_path_full:
+                return jsonify({
+                    'success': False,
+                    'error': f'无法找到模型文件: {file_path}'
+                }), 404
+            
+            from src.models.core import ModStructure
+            model = ModStructure(loader_engine.mods_directory, loader_engine.language)
+            model.load_model(file_path_full, model_name)
         
         if not model:
             return jsonify({
@@ -339,38 +367,43 @@ def validate_model():
                 'error': f'无法加载模型: {file_path}'
             }), 404
         
-        # 验证模型
+        # 手动验证
         try:
-            # 创建 patch 输出目录
-            patch_dir = os.path.join(MODS_DIR, 'patch')
-            os.makedirs(patch_dir, exist_ok=True)
-            
-            # 验证模型（会自动生成 patch 文件如果需要）
             model.validate_model(output_dir=patch_dir)
             
-            # 检查是否生成了 patch 文件
-            mod_name = model.current_filename or model.metadata.name
-            patch_file = os.path.join(patch_dir, f"{mod_name}_patch.yaml")
-            
+            # 验证通过
             return jsonify({
                 'success': True,
                 'message': '模型验证通过',
                 'data': {
-                    'patch_file': patch_file if os.path.exists(patch_file) else None
+                    'patch_file': None
                 }
             })
         
         except ValueError as ve:
-            # 验证失败
+            # 验证失败（validate_model() 抛出的异常）
             error_msg = str(ve)
-            errors = error_msg.split('\n')
             
-            # 查找 patch 文件信息
+            # 提取错误列表
+            errors = []
+            for line in error_msg.split('\n'):
+                line = line.strip()
+                if line.startswith('- '):
+                    errors.append(line[2:])
+                elif line and 'validation failed' not in line.lower() and 'patch file' not in line.lower():
+                    # 也包含其他非空行（但排除标题行）
+                    if not line.startswith('Model validation'):
+                        errors.append(line)
+            
+            # 提取 patch 文件路径
             patch_file = None
-            mod_name = model.current_filename or model.metadata.name
-            potential_patch = os.path.join(MODS_DIR, 'patch', f"{mod_name}_patch.yaml")
-            if os.path.exists(potential_patch):
-                patch_file = potential_patch
+            if "Patch file generated:" in error_msg:
+                for line in error_msg.split('\n'):
+                    if "Patch file generated:" in line:
+                        patch_file = line.split("Patch file generated:")[-1].strip()
+                        break
+            
+            logger.warning(f"模型验证失败: {len(errors)} 个错误, patch: {patch_file}")
             
             return jsonify({
                 'success': False,
@@ -381,7 +414,7 @@ def validate_model():
             }), 400
     
     except Exception as e:
-        logger.error(f"验证模型失败: {e}")
+        logger.error(f"验证模型失败: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
