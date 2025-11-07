@@ -1,506 +1,515 @@
-// frontend/src/components/Optimizer.tsx
+// frontend/src/components/Simulator.tsx
+// 优化版本 - 支持连续运行直到完成或暂停
+// frontend/src/components/Simulator.tsx
+// 优化版本 - 支持连续运行直到完成或暂停
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Form, 
-  Select, 
-  InputNumber, 
-  Button, 
-  Space, 
-  Table, 
-  Radio,
-  Row,
-  Col,
-  Alert,
-  Tag,
-  Progress,
-  Statistic,
-  Descriptions,
-  message,
-  Divider,
-  Tabs
-} from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, Button, Space, Progress, Statistic, Row, Col, InputNumber, message, Alert, Table, Slider } from 'antd';
 import { 
   PlayCircleOutlined, 
-  LineChartOutlined,
-  SettingOutlined,
-  ExperimentOutlined
+  PauseOutlined, 
+  StopOutlined,
+  DownloadOutlined,
+  ClockCircleOutlined,
+  SyncOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
+import type { SimulatorProps, SimulationDataPoint, ModelFile } from '../types';
 
-interface OptimizerProps {
-  subPage: string;
-  selectedModel: any;
-}
+const API_BASE = '/api';
 
-interface OptimizationResult {
-  iteration: number;
-  objective: number;
-  variables: Record<string, number>;
-  feasible: boolean;
-}
-
-const Optimizer: React.FC<OptimizerProps> = ({ subPage, selectedModel }) => {
-  const [form] = Form.useForm();
-  const [optimizing, setOptimizing] = useState(false);
+const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
+  const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'completed'>('idle');
   const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState<OptimizationResult[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(1440);
+  const [simulationData, setSimulationData] = useState<SimulationDataPoint[]>([]);
+  const [inputParams, setInputParams] = useState<Record<string, number>>({});
+  const [stateVariables, setStateVariables] = useState<Record<string, number>>({});
+  const [sessionId, setSessionId] = useState<string>('');
+  const [timeHours, setTimeHours] = useState(8760);
+  const [stepSize, setStepSize] = useState(3600);
   
-  const [config, setConfig] = useState({
-    objectiveType: 'minimize' as 'minimize' | 'maximize',
-    objectiveFunction: '',
-    algorithm: 'grid',
-    maxIterations: 100,
-    duration: 60.0,
-    populationSize: 50,
-  });
+  // 新增：批量执行参数
+  const [batchSize, setBatchSize] = useState(10); // 每次执行10步
+  const [updateInterval, setUpdateInterval] = useState(100); // 每100ms更新一次
+  
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isRunningRef = useRef(false); // 用于控制循环
 
-  const [variablesToOptimize, setVariablesToOptimize] = useState<string[]>([]);
-  const [optimizationTargets, setOptimizationTargets] = useState<string[]>([]);
-
-  // 初始化优化配置
+  // 初始化参数
   useEffect(() => {
-    if (selectedModel?.optimizer) {
-      setConfig({
-        ...config,
-        algorithm: selectedModel.optimizer.method || 'grid',
-        duration: selectedModel.optimizer.duration || 60.0,
-        populationSize: selectedModel.optimizer.pop_size || 50,
+    if (selectedModel?.content?.variables) {
+      const inputs: Record<string, number> = {};
+      const states: Record<string, number> = {};
+      
+      Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
+        if (data.type === 'input') {
+          inputs[name] = data.value;
+        } else if (data.type === 'state') {
+          states[name] = data.value;
+        }
       });
       
-      if (selectedModel.optimizer.variables_to_optimize) {
-        setVariablesToOptimize(selectedModel.optimizer.variables_to_optimize);
-      }
-      
-      if (selectedModel.optimizer.targets_of_optimization) {
-        setOptimizationTargets(selectedModel.optimizer.targets_of_optimization);
-        setConfig(prev => ({ ...prev, objectiveFunction: selectedModel.optimizer.targets_of_optimization[0] }));
-      }
+      setInputParams(inputs);
+      setStateVariables(states);
+    }
+    
+    if (selectedModel?.content?.simulator) {
+      const sim = selectedModel.content.simulator;
+      setStepSize(sim.step_size || 3600);
+      const totalTime = sim.total_time || 31536000;
+      setTotalSteps(Math.floor(totalTime / (sim.step_size || 3600)));
+      setTimeHours(totalTime / 3600);
     }
   }, [selectedModel]);
 
-  // 获取可优化的变量列表
-  const getOptimizableVariables = () => {
-    if (!selectedModel?.variables) return [];
-    return Object.entries(selectedModel.variables)
-      .filter(([_, data]: [string, any]) => data.type === 'parameters' || data.type === 'state')
-      .map(([name]) => name);
-  };
-
-  // 获取可作为目标的变量列表
-  const getTargetVariables = () => {
-    if (!selectedModel?.variables) return [];
-    return Object.entries(selectedModel.variables)
-      .filter(([_, data]: [string, any]) => data.type === 'state')
-      .map(([name]) => name);
-  };
-
-  // 开始优化
-  const startOptimization = () => {
+  // 启动仿真
+  const startSimulation = async () => {
     if (!selectedModel) {
       message.error('请先在 Loader 中选择一个模型');
       return;
     }
 
-    if (variablesToOptimize.length === 0) {
-      message.error('请至少选择一个要优化的变量');
-      return;
-    }
+    try {
+      setStatus('running');
+      setProgress(0);
+      setCurrentStep(0);
+      setSimulationData([]);
+      isRunningRef.current = true;
 
-    if (!config.objectiveFunction) {
-      message.error('请选择优化目标函数');
-      return;
-    }
-
-    setOptimizing(true);
-    setProgress(0);
-    setResults([]);
-
-    let iteration = 0;
-    const maxIter = config.maxIterations;
-    
-    // 模拟优化过程
-    const interval = setInterval(() => {
-      iteration++;
-      
-      // 生成模拟结果
-      const objective = config.objectiveType === 'minimize' 
-        ? 100 - iteration * 0.8 + Math.random() * 10
-        : iteration * 0.8 + Math.random() * 10;
-      
-      const vars: Record<string, number> = {};
-      variablesToOptimize.forEach(varName => {
-        const varData = selectedModel?.variables?.[varName];
-        if (varData?.bounds) {
-          const [min, max] = varData.bounds;
-          vars[varName] = min + Math.random() * (max - min);
-        } else {
-          vars[varName] = Math.random() * 100;
-        }
+      // 调用后端启动仿真
+      const response = await fetch(`${API_BASE}/simulation/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model_name: selectedModel.content!.metadata.name,
+          folder: selectedModel.folder,
+          time_hours: timeHours,
+          step_size: stepSize,
+          input_params: inputParams
+        })
       });
       
-      setResults(prev => [...prev, {
-        iteration,
-        objective,
-        variables: vars,
-        feasible: Math.random() > 0.1,
-      }]);
-      
-      setProgress(Math.round((iteration / maxIter) * 100));
-      
-      if (iteration >= maxIter) {
-        clearInterval(interval);
-        setOptimizing(false);
-        message.success('优化完成！');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const data = result.data;
+        setSessionId(data.session_id);
+        setTotalSteps(data.total_steps);
+        
+        // 更新初始状态
+        const initialStates: Record<string, number> = {};
+        Object.entries(data.initial_state).forEach(([name, info]: [string, any]) => {
+          if (info.type === 'state') {
+            initialStates[name] = info.value;
+          }
+        });
+        setStateVariables(initialStates);
+        
+        message.success('仿真已启动');
+        
+        // ✅ 新方案：使用批量执行
+        runSimulationBatch(data.session_id);
+      } else {
+        message.error(result.error || '启动仿真失败');
+        setStatus('idle');
+        isRunningRef.current = false;
       }
-    }, 100);
+    } catch (error: any) {
+      message.error(`启动仿真失败: ${error.message}`);
+      setStatus('idle');
+      isRunningRef.current = false;
+    }
   };
 
-  // 停止优化
-  const stopOptimization = () => {
-    setOptimizing(false);
-    message.info('优化已停止');
+  // ✅ 新方案：批量执行仿真
+  const runSimulationBatch = async (sid: string) => {
+    const executeBatch = async () => {
+      if (!isRunningRef.current) {
+        return; // 已暂停或停止
+      }
+
+      try {
+        // 调用批量执行接口（一次执行多步）
+        const response = await fetch(`${API_BASE}/simulation/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sid,
+            steps: batchSize, // 一次执行N步
+            input_changes: {}
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          setCurrentStep(data.current_step);
+          setProgress(data.progress);
+          
+          // 更新状态变量（使用最后一步的状态）
+          const newStates: Record<string, number> = {};
+          Object.entries(data.final_state).forEach(([name, info]: [string, any]) => {
+            if (info.type === 'state') {
+              newStates[name] = info.value;
+            }
+          });
+          setStateVariables(newStates);
+          
+          // 添加所有数据点
+          setSimulationData(prev => [...prev, ...data.outputs]);
+          
+          // 检查是否完成
+          if (data.completed) {
+            stopSimulation();
+            setStatus('completed');
+            message.success(`仿真完成！共执行 ${data.current_step} 步`);
+            return;
+          }
+          
+          // 继续下一批
+          if (isRunningRef.current) {
+            setTimeout(executeBatch, updateInterval);
+          }
+        } else {
+          stopSimulation();
+          message.error(result.error || '仿真批量执行失败');
+          setStatus('idle');
+        }
+      } catch (error: any) {
+        stopSimulation();
+        message.error(`仿真执行错误: ${error.message}`);
+        setStatus('idle');
+      }
+    };
+
+    // 开始执行
+    executeBatch();
   };
 
-  // 最优结果
-  const bestResult = results.reduce((best, current) => {
-    if (!best) return current;
-    if (config.objectiveType === 'minimize') {
-      return current.objective < best.objective ? current : best;
+  // 暂停仿真
+  const pauseSimulation = async () => {
+    isRunningRef.current = false;
+    
+    try {
+      await fetch(`${API_BASE}/simulation/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      setStatus('paused');
+      message.info('仿真已暂停');
+    } catch (error: any) {
+      message.error(`暂停失败: ${error.message}`);
+    }
+  };
+
+  // 继续仿真
+  const resumeSimulation = () => {
+    if (status === 'paused' && sessionId) {
+      setStatus('running');
+      isRunningRef.current = true;
+      message.info('仿真继续');
+      runSimulationBatch(sessionId);
+    }
+  };
+
+  // 停止仿真
+  const stopSimulation = () => {
+    isRunningRef.current = false;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  // 重置仿真
+  const resetSimulation = async () => {
+    stopSimulation();
+    
+    if (sessionId) {
+      try {
+        await fetch(`${API_BASE}/simulation/reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        setStatus('idle');
+        setProgress(0);
+        setCurrentStep(0);
+        setSimulationData([]);
+        message.success('仿真已重置');
+      } catch (error: any) {
+        message.error(`重置失败: ${error.message}`);
+      }
     } else {
-      return current.objective > best.objective ? current : best;
-    }
-  }, results[0]);
-
-  // 结果表格列
-  const resultColumns = [
-    { title: '迭代次数', dataIndex: 'iteration', key: 'iteration', width: 100 },
-    { 
-      title: '目标函数值', 
-      dataIndex: 'objective', 
-      key: 'objective',
-      render: (val: number) => val.toFixed(6),
-      width: 150,
-    },
-    {
-      title: '可行性',
-      dataIndex: 'feasible',
-      key: 'feasible',
-      width: 100,
-      render: (feasible: boolean) => (
-        <Tag color={feasible ? 'success' : 'error'}>
-          {feasible ? '可行' : '不可行'}
-        </Tag>
-      ),
-    },
-    ...variablesToOptimize.map(varName => ({
-      title: varName,
-      key: varName,
-      render: (record: OptimizationResult) => record.variables[varName]?.toFixed(4) || '-',
-    })),
-  ];
-
-  // 根据子页面渲染内容
-  const renderSubPage = () => {
-    if (!selectedModel) {
-      return (
-        <Alert
-          message="未选择模型"
-          description="请先在 Loader 模块中选择一个模型文件"
-          type="info"
-          showIcon
-        />
-      );
-    }
-
-    switch (subPage) {
-      case '4-1': // 参数优化
-        return renderParameterOptimization();
-      case '4-2': // 多目标优化
-        return renderMultiObjectiveOptimization();
-      case '4-3': // 优化历史
-        return renderOptimizationHistory();
-      default:
-        return renderParameterOptimization();
+      setStatus('idle');
+      setProgress(0);
+      setCurrentStep(0);
+      setSimulationData([]);
     }
   };
 
-  // 参数优化页面
-  const renderParameterOptimization = () => (
-    <Space direction="vertical" style={{ width: '100%' }} size="large">
-      {/* 状态提示 */}
-      {optimizing && (
-        <Alert 
-          message="优化进行中" 
-          description={`当前迭代: ${results.length} / ${config.maxIterations}`}
-          type="info" 
-          showIcon 
-        />
-      )}
+  // 导出数据
+  const exportData = async () => {
+    if (!sessionId) {
+      message.error('没有可导出的数据');
+      return;
+    }
 
-      {/* 优化配置 */}
-      <Card title={<><SettingOutlined /> 优化配置</>}>
-        <Form form={form} layout="vertical">
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item label="优化目标">
-                <Radio.Group 
-                  value={config.objectiveType}
-                  onChange={(e) => setConfig({ ...config, objectiveType: e.target.value })}
-                >
-                  <Radio value="minimize">最小化</Radio>
-                  <Radio value="maximize">最大化</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="目标函数">
-                <Select
-                  value={config.objectiveFunction}
-                  onChange={(val) => setConfig({ ...config, objectiveFunction: val })}
-                  options={getTargetVariables().map(v => ({ value: v, label: v }))}
-                  placeholder="选择目标变量"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="优化算法">
-                <Select
-                  value={config.algorithm}
-                  onChange={(val) => setConfig({ ...config, algorithm: val })}
-                  options={[
-                    { value: 'grid', label: '网格搜索 (Grid)' },
-                    { value: 'genetic', label: '遗传算法 (GA)' },
-                    { value: 'pso', label: '粒子群优化 (PSO)' },
-                    { value: 'gradient', label: '梯度下降' },
-                    { value: 'simulated', label: '模拟退火' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+    try {
+      const response = await fetch(`${API_BASE}/simulation/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        message.success(`数据已导出到: ${result.data.csv_path}`);
+        
+        // 可选：触发下载
+        // window.open(`${API_BASE}/download/${result.data.csv_path}`);
+      } else {
+        message.error('导出失败');
+      }
+    } catch (error: any) {
+      message.error(`导出失败: ${error.message}`);
+    }
+  };
 
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item label="最大迭代次数">
-                <InputNumber 
-                  value={config.maxIterations}
-                  onChange={(val) => setConfig({ ...config, maxIterations: val || 100 })}
-                  min={10}
-                  max={1000}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="持续时间 (秒)">
-                <InputNumber 
-                  value={config.duration}
-                  onChange={(val) => setConfig({ ...config, duration: val || 60 })}
-                  min={10}
-                  max={3600}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="种群大小">
-                <InputNumber 
-                  value={config.populationSize}
-                  onChange={(val) => setConfig({ ...config, populationSize: val || 50 })}
-                  min={10}
-                  max={200}
-                  style={{ width: '100%' }}
-                  disabled={config.algorithm !== 'genetic' && config.algorithm !== 'pso'}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+  // 渲染运行仿真页面
+  const renderRunSimulation = () => (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      {/* 模型信息 */}
+      <Alert
+        message={selectedModel ? `当前模型: ${selectedModel.name}` : '未选择模型'}
+        description={selectedModel?.content?.metadata?.description || '请在 Loader 中选择模型'}
+        type={selectedModel ? 'info' : 'warning'}
+        showIcon
+      />
 
-          <Form.Item label="选择要优化的变量">
-            <Select
-              mode="multiple"
-              value={variablesToOptimize}
-              onChange={setVariablesToOptimize}
-              options={getOptimizableVariables().map(v => ({ value: v, label: v }))}
-              placeholder="选择变量"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </Form>
+      {/* 参数设置 */}
+      <Card title="⚙️ 仿真参数" size="small">
+        <Row gutter={16}>
+          <Col span={8}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>仿真时长（小时）</div>
+              <InputNumber
+                min={1}
+                max={87600}
+                value={timeHours}
+                onChange={v => setTimeHours(v || 8760)}
+                disabled={status === 'running'}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </Col>
+          <Col span={8}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>时间步长（秒）</div>
+              <InputNumber
+                min={1}
+                max={86400}
+                value={stepSize}
+                onChange={v => setStepSize(v || 3600)}
+                disabled={status === 'running'}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </Col>
+          <Col span={8}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>总步数</div>
+              <InputNumber
+                value={totalSteps}
+                disabled
+                style={{ width: '100%' }}
+              />
+            </div>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>批量大小（每次执行步数）</div>
+              <Slider
+                min={1}
+                max={100}
+                value={batchSize}
+                onChange={setBatchSize}
+                disabled={status === 'running'}
+                marks={{ 1: '1', 10: '10', 50: '50', 100: '100' }}
+              />
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>更新间隔（毫秒）</div>
+              <Slider
+                min={50}
+                max={1000}
+                value={updateInterval}
+                onChange={setUpdateInterval}
+                disabled={status === 'running'}
+                marks={{ 50: '50ms', 100: '100ms', 500: '500ms', 1000: '1s' }}
+              />
+            </div>
+          </Col>
+        </Row>
       </Card>
 
-      {/* 变量范围 */}
-      {variablesToOptimize.length > 0 && (
-        <Card title="优化变量范围">
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {variablesToOptimize.map(varName => {
-              const varData = selectedModel?.variables?.[varName] || {};
-              return (
-                <Row key={varName} gutter={8} align="middle">
-                  <Col span={6}>
-                    <div style={{ fontWeight: 'bold' }}>{varName}</div>
-                    <div style={{ fontSize: 12, color: '#666' }}>{varData.description}</div>
-                  </Col>
-                  <Col span={6}>
-                    <Tag color="blue">初值: {varData.value}</Tag>
-                  </Col>
-                  <Col span={12}>
-                    <div style={{ fontSize: 12 }}>
-                      范围: [{varData.bounds?.[0] || 0}, {varData.bounds?.[1] || 100}] {varData.unit}
-                    </div>
-                  </Col>
-                </Row>
-              );
-            })}
-          </Space>
+      {/* 输入参数 */}
+      {Object.keys(inputParams).length > 0 && (
+        <Card title="📥 输入参数" size="small">
+          <Row gutter={[16, 16]}>
+            {Object.entries(inputParams).map(([name, value]) => (
+              <Col span={8} key={name}>
+                <div style={{ marginBottom: 8 }}>{name}</div>
+                <InputNumber
+                  value={value}
+                  onChange={v => setInputParams({ ...inputParams, [name]: v || 0 })}
+                  disabled={status === 'running'}
+                  style={{ width: '100%' }}
+                />
+              </Col>
+            ))}
+          </Row>
         </Card>
       )}
 
       {/* 控制按钮 */}
-      <Card>
-        <Space>
-          <Button 
-            type="primary" 
+      <Card title="🎮 控制面板" size="small">
+        <Space size="large" style={{ width: '100%', justifyContent: 'center' }}>
+          {status === 'idle' || status === 'completed' ? (
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlayCircleOutlined />}
+              onClick={startSimulation}
+              disabled={!selectedModel}
+            >
+              开始仿真
+            </Button>
+          ) : status === 'running' ? (
+            <Button
+              size="large"
+              icon={<PauseOutlined />}
+              onClick={pauseSimulation}
+            >
+              暂停
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlayCircleOutlined />}
+              onClick={resumeSimulation}
+            >
+              继续
+            </Button>
+          )}
+          
+          <Button
             size="large"
-            icon={<PlayCircleOutlined />}
-            onClick={startOptimization}
-            disabled={optimizing}
-          >
-            开始优化
-          </Button>
-          <Button 
+            icon={<StopOutlined />}
+            onClick={resetSimulation}
+            disabled={status === 'idle'}
             danger
-            size="large"
-            onClick={stopOptimization}
-            disabled={!optimizing}
           >
-            停止优化
+            重置
+          </Button>
+          
+          <Button
+            size="large"
+            icon={<DownloadOutlined />}
+            onClick={exportData}
+            disabled={simulationData.length === 0}
+          >
+            导出 CSV
           </Button>
         </Space>
-        {optimizing && (
-          <div style={{ marginTop: 16 }}>
-            <Progress percent={progress} status="active" />
-          </div>
-        )}
       </Card>
 
-      {/* 优化结果 */}
-      {results.length > 0 && (
-        <>
+      {/* 进度和状态 */}
+      {status !== 'idle' && (
+        <Card title="📊 运行状态" size="small">
           <Row gutter={16}>
-            <Col span={6}>
-              <Card>
-                <Statistic 
-                  title="迭代次数" 
-                  value={results.length}
-                  prefix={<LineChartOutlined />}
-                />
-              </Card>
+            <Col span={8}>
+              <Statistic
+                title="当前步数"
+                value={currentStep}
+                suffix={`/ ${totalSteps}`}
+              />
             </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic 
-                  title={config.objectiveType === 'minimize' ? '最小值' : '最大值'}
-                  value={bestResult?.objective || 0}
-                  precision={4}
-                  valueStyle={{ color: '#3f8600' }}
-                />
-              </Card>
+            <Col span={8}>
+              <Statistic
+                title="完成进度"
+                value={progress}
+                suffix="%"
+                precision={2}
+              />
             </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic 
-                  title="可行解数量" 
-                  value={results.filter(r => r.feasible).length}
-                  suffix={`/ ${results.length}`}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic 
-                  title="收敛率" 
-                  value={progress}
-                  suffix="%"
-                />
-              </Card>
+            <Col span={8}>
+              <Statistic
+                title="状态"
+                value={status === 'running' ? '运行中' : status === 'paused' ? '已暂停' : '已完成'}
+                prefix={status === 'running' ? <SyncOutlined spin /> : <ClockCircleOutlined />}
+              />
             </Col>
           </Row>
-
-          {bestResult && (
-            <Card title="最优解详情">
-              <Descriptions bordered column={2}>
-                <Descriptions.Item label="迭代次数" span={1}>
-                  {bestResult.iteration}
-                </Descriptions.Item>
-                <Descriptions.Item label="目标函数值" span={1}>
-                  <Tag color="green">{bestResult.objective?.toFixed(6)}</Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="可行性" span={2}>
-                  <Tag color={bestResult.feasible ? 'success' : 'error'}>
-                    {bestResult.feasible ? '可行解' : '不可行'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="优化变量" span={2}>
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    {Object.entries(bestResult.variables || {}).map(([key, value]) => (
-                      <div key={key}>
-                        <Tag color="purple">{key}</Tag> = {value.toFixed(4)}
-                      </div>
-                    ))}
-                  </Space>
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-          )}
-
-          <Card title="优化历史">
-            <Table 
-              columns={resultColumns}
-              dataSource={results}
-              pagination={{ pageSize: 10 }}
-              size="small"
-              scroll={{ x: 'max-content', y: 400 }}
+          
+          <div style={{ marginTop: 16 }}>
+            <Progress
+              percent={progress}
+              status={status === 'running' ? 'active' : status === 'completed' ? 'success' : 'normal'}
+              strokeColor={{
+                '0%': '#108ee9',
+                '100%': '#87d068',
+              }}
             />
-          </Card>
-        </>
+          </div>
+        </Card>
+      )}
+
+      {/* 状态变量 */}
+      {Object.keys(stateVariables).length > 0 && (
+        <Card title="📈 状态变量（实时）" size="small">
+          <Row gutter={[16, 16]}>
+            {Object.entries(stateVariables).map(([name, value]) => (
+              <Col span={6} key={name}>
+                <Statistic
+                  title={name}
+                  value={value}
+                  precision={2}
+                  valueStyle={{ fontSize: 20 }}
+                />
+              </Col>
+            ))}
+          </Row>
+        </Card>
       )}
     </Space>
   );
 
-  // 多目标优化页面
-  const renderMultiObjectiveOptimization = () => (
-    <Card title="多目标优化">
-      <Alert
-        message="多目标优化"
-        description="此功能支持同时优化多个目标函数（如最小化成本的同时最大化性能），使用 NSGA-II 等算法"
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
-      <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
-        多目标优化功能开发中...
-        <div style={{ marginTop: 16 }}>
-          将支持帕累托前沿分析、多目标权重配置等
-        </div>
-      </div>
-    </Card>
-  );
-
-  // 优化历史页面
-  const renderOptimizationHistory = () => (
-    <Card title="优化历史记录">
-      <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
-        历史记录功能开发中...
-        <div style={{ marginTop: 16 }}>
-          将显示过往的优化任务、参数配置和结果对比
-        </div>
-      </div>
-    </Card>
-  );
-
-  return renderSubPage();
+  // 根据子页面渲染内容
+  switch (subPage) {
+    case '3-1':
+      return renderRunSimulation();
+    case '3-2':
+      return <div>实时监控（开发中）</div>;
+    case '3-3':
+      return <div>历史记录（开发中）</div>;
+    default:
+      return renderRunSimulation();
+  }
 };
 
-export default Optimizer;
+export default Simulator;

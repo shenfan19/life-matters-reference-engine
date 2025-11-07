@@ -1,23 +1,24 @@
 # -*- coding: utf-8 -*-
-# 文件名: simulator_engine.py
+# 文件名: simulator_engine.py (扩展版)
 # 描述: LifeMatters 框架的仿真引擎，负责加载模型、运行仿真、管理仿真状态。
-#       本模块通过与 LoaderEngine 交互，执行动态仿真并支持暂停、继续。
-#       提供 fitness_func 接口供优化模块调用，支持 ODE 求解器。
+#       扩展功能：支持 GUI 会话管理、批量执行、CSV 输入
+#       同时保持原有 CLI 功能完全兼容
 
 import logging
 import numpy as np
 import csv
 import os
+import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
 from mod_structure import ModStructure
-from loader_engine import LoaderEngine
+from loader.loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
 
 class SimulatorEngine:
-    """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口。"""
+    """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
     
     def __init__(self, mods_directory: str = "mods", language: str = "en"):
         """
@@ -41,6 +42,9 @@ class SimulatorEngine:
         self.ode_solver = 'RK45'  # 默认使用 Runge-Kutta 4-5 阶方法
         self.ode_rtol = 1e-3  # 相对容差
         self.ode_atol = 1e-6  # 绝对容差
+        
+        # ✅ 新增：GUI 会话管理
+        self.sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> session_data
 
     def load_models(self, model_names: List[str], folder: Optional[str] = None) -> bool:
         """
@@ -54,11 +58,13 @@ class SimulatorEngine:
         # 返回加载是否成功的布尔值。
         return self.current_model is not None
 
+    # ==================== 原有 CLI 功能（保持兼容）====================
+    
     def run_simulation(self, model_name: str, time_hours: float, folder: Optional[str] = None, 
                       pause_every: int = 0, interactive: bool = False, 
                       output_path: Optional[str] = None) -> Dict[str, Any]:
         """
-        运行仿真主函数。
+        运行仿真主函数（CLI 使用）。
         :param model_name: 模型名称。
         :param time_hours: 仿真总时间（小时）。
         :param folder: 子文件夹名称。
@@ -158,6 +164,402 @@ class SimulatorEngine:
             # 返回错误信息。
             return {"success": False, "error": str(e)}
 
+    # ==================== 新增：GUI 会话管理功能 ====================
+    
+    def start_session(self, model_name: str, time_hours: float, folder: Optional[str] = None,
+                     step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+        """
+        开始一个新的仿真会话（GUI 使用）。
+        :param model_name: 模型名称。
+        :param time_hours: 仿真总时间（小时）。
+        :param folder: 子文件夹名称。
+        :param step_size: 时间步长（秒），如果为 None 则使用模型默认值。
+        :param input_params: 初始输入参数（可选）。
+        :return: 会话信息字典。
+        """
+        try:
+            # 加载模型
+            if not self.load_models([model_name], folder):
+                return {"success": False, "error": f"无法加载模型：{model_name}"}
+            
+            # 应用输入参数
+            if input_params:
+                for var_name, value in input_params.items():
+                    if var_name in self.current_model.variables:
+                        self.current_model.set_variable_value(var_name, value)
+            
+            # 生成会话 ID
+            session_id = str(uuid.uuid4())
+            
+            # 获取配置
+            if step_size is None:
+                step_size = self.current_model.simulator.get('step_size', 3600.0)
+            
+            total_time = time_hours * 3600.0
+            total_steps = int(total_time / step_size)
+            output_variables = self.current_model.simulator.get('output_variables', [])
+            
+            # 创建会话
+            self.sessions[session_id] = {
+                'model': self.current_model,
+                'model_name': model_name,
+                'folder': folder,
+                'step_size': step_size,
+                'total_time': total_time,
+                'total_steps': total_steps,
+                'current_step': 0,
+                'time': 0.0,
+                'running': True,
+                'output_variables': output_variables,
+                'data': []  # 存储仿真数据
+            }
+            
+            logger.info(f"会话已创建: {session_id}, 模型: {model_name}, 总步数: {total_steps}")
+            
+            return {
+                "success": True,
+                "session_id": session_id,
+                "model_name": model_name,
+                "initial_state": self.current_model.get_current_state(),
+                "step_size": step_size,
+                "total_time": total_time,
+                "total_steps": total_steps,
+                "output_variables": output_variables
+            }
+        
+        except Exception as e:
+            logger.error(f"创建会话失败: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
+    
+    def batch_steps(self, session_id: str, steps: int = 10, 
+                   input_changes: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+        """
+        批量执行多步仿真（GUI 使用）。
+        :param session_id: 会话 ID。
+        :param steps: 要执行的步数。
+        :param input_changes: 动态修改的输入参数（可选）。
+        :return: 执行结果字典。
+        """
+        try:
+            # 检查会话是否存在
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            session = self.sessions[session_id]
+            
+            # 检查会话是否已暂停
+            if not session['running']:
+                return {"success": False, "error": "会话已暂停"}
+            
+            model = session['model']
+            step_size = session['step_size']
+            output_variables = session['output_variables']
+            
+            # 应用输入变化
+            if input_changes:
+                for var_name, value in input_changes.items():
+                    if var_name in model.variables:
+                        model.set_variable_value(var_name, value)
+                        logger.debug(f"动态修改输入: {var_name} = {value}")
+            
+            # 批量执行
+            outputs = []
+            remaining_steps = session['total_steps'] - session['current_step']
+            actual_steps = min(steps, remaining_steps)
+            
+            for i in range(actual_steps):
+                # 执行单步
+                model.step(step_size)
+                session['current_step'] += 1
+                session['time'] += step_size
+                
+                # 收集输出数据
+                output_data = {
+                    'step': session['current_step'],
+                    'time': session['time']
+                }
+                
+                for var_name in output_variables:
+                    if var_name in model.variables:
+                        output_data[var_name] = model.variables[var_name].value
+                    else:
+                        output_data[var_name] = 0.0
+                
+                outputs.append(output_data)
+                session['data'].append(output_data)
+            
+            # 检查是否完成
+            completed = session['current_step'] >= session['total_steps']
+            progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+            
+            logger.info(f"批量执行完成: session={session_id}, steps={actual_steps}/{steps}, total={session['current_step']}/{session['total_steps']}")
+            
+            return {
+                "success": True,
+                "session_id": session_id,
+                "current_step": session['current_step'],
+                "progress": round(progress, 2),
+                "final_state": model.get_current_state(),
+                "outputs": outputs,
+                "completed": completed,
+                "steps_executed": len(outputs)
+            }
+        
+        except Exception as e:
+            logger.error(f"批量执行失败: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
+    
+    def pause_session(self, session_id: str) -> Dict[str, Any]:
+        """
+        暂停指定会话（GUI 使用）。
+        :param session_id: 会话 ID。
+        :return: 操作结果。
+        """
+        try:
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            self.sessions[session_id]['running'] = False
+            logger.info(f"会话已暂停: {session_id}")
+            
+            return {"success": True, "message": "会话已暂停"}
+        
+        except Exception as e:
+            logger.error(f"暂停会话失败: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def resume_session(self, session_id: str) -> Dict[str, Any]:
+        """
+        继续指定会话（GUI 使用）。
+        :param session_id: 会话 ID。
+        :return: 操作结果。
+        """
+        try:
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            self.sessions[session_id]['running'] = True
+            logger.info(f"会话已继续: {session_id}")
+            
+            return {"success": True, "message": "会话已继续"}
+        
+        except Exception as e:
+            logger.error(f"继续会话失败: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def reset_session(self, session_id: str) -> Dict[str, Any]:
+        """
+        重置指定会话（GUI 使用）。
+        :param session_id: 会话 ID。
+        :return: 操作结果。
+        """
+        try:
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            session = self.sessions[session_id]
+            model = session['model']
+            
+            # 重置模型状态
+            model.reset_simulation()
+            
+            # 重置会话状态
+            session['current_step'] = 0
+            session['time'] = 0.0
+            session['running'] = True
+            session['data'] = []
+            
+            logger.info(f"会话已重置: {session_id}")
+            
+            return {
+                "success": True,
+                "message": "会话已重置",
+                "initial_state": model.get_current_state()
+            }
+        
+        except Exception as e:
+            logger.error(f"重置会话失败: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def export_session_csv(self, session_id: str, output_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        导出会话数据到 CSV（GUI 使用）。
+        :param session_id: 会话 ID。
+        :param output_path: 输出文件路径（可选）。
+        :return: 操作结果。
+        """
+        try:
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            session = self.sessions[session_id]
+            data = session['data']
+            
+            if not data:
+                return {"success": False, "error": "没有数据可导出"}
+            
+            # 确定输出路径
+            if not output_path:
+                output_dir = os.path.join(self.loader.mods_directory, "output")
+                os.makedirs(output_dir, exist_ok=True)
+                output_path = os.path.join(output_dir, f"{session['model_name']}_session_{session_id[:8]}.csv")
+            
+            # 写入 CSV
+            headers = list(data[0].keys())
+            with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(data)
+            
+            logger.info(f"会话数据已导出: {output_path}")
+            
+            return {
+                "success": True,
+                "csv_path": output_path,
+                "rows": len(data)
+            }
+        
+        except Exception as e:
+            logger.error(f"导出 CSV 失败: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def get_session_info(self, session_id: str) -> Dict[str, Any]:
+        """
+        获取会话信息（GUI 使用）。
+        :param session_id: 会话 ID。
+        :return: 会话信息字典。
+        """
+        try:
+            if session_id not in self.sessions:
+                return {"success": False, "error": f"会话不存在: {session_id}"}
+            
+            session = self.sessions[session_id]
+            
+            return {
+                "success": True,
+                "session_id": session_id,
+                "model_name": session['model_name'],
+                "current_step": session['current_step'],
+                "total_steps": session['total_steps'],
+                "progress": (session['current_step'] / session['total_steps']) * 100,
+                "running": session['running'],
+                "data_points": len(session['data'])
+            }
+        
+        except Exception as e:
+            logger.error(f"获取会话信息失败: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ==================== 新增：CSV 输入功能 ====================
+    
+    def load_csv_inputs(self, csv_path: str) -> List[Dict[str, float]]:
+        """
+        从 CSV 文件加载输入序列（CLI 使用）。
+        CSV 格式: time,var1,var2,...
+        :param csv_path: CSV 文件路径。
+        :return: 输入序列列表。
+        """
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                data = []
+                for row in reader:
+                    # 转换数值
+                    converted = {}
+                    for key, value in row.items():
+                        try:
+                            converted[key] = float(value)
+                        except ValueError:
+                            converted[key] = value
+                    data.append(converted)
+                
+                logger.info(f"从 CSV 加载了 {len(data)} 个输入时间点")
+                return data
+        
+        except Exception as e:
+            logger.error(f"读取输入 CSV 失败: {e}")
+            return []
+    
+    def run_with_csv_inputs(self, model_name: str, csv_input_path: str, folder: Optional[str] = None,
+                           output_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        使用 CSV 输入序列运行仿真（CLI 使用）。
+        :param model_name: 模型名称。
+        :param csv_input_path: CSV 输入文件路径。
+        :param folder: 子文件夹名称。
+        :param output_path: CSV 输出文件路径（可选）。
+        :return: 仿真结果字典。
+        """
+        try:
+            # 加载模型
+            if not self.load_models([model_name], folder):
+                return {"success": False, "error": f"无法加载模型：{model_name}"}
+            
+            # 加载输入序列
+            input_sequence = self.load_csv_inputs(csv_input_path)
+            if not input_sequence:
+                return {"success": False, "error": "无法加载输入 CSV"}
+            
+            # 获取输出变量
+            output_variables = self.current_model.simulator.get('output_variables', [])
+            
+            # 准备数据存储
+            csv_data = []
+            csv_headers = ['step', 'time'] + output_variables
+            
+            # 按序列执行
+            for idx, input_point in enumerate(input_sequence):
+                # 应用输入（除了 time 字段）
+                for var_name, value in input_point.items():
+                    if var_name != 'time' and var_name in self.current_model.variables:
+                        self.current_model.set_variable_value(var_name, value)
+                
+                # 如果不是第一个点，执行到这个时间点
+                if idx > 0:
+                    prev_time = input_sequence[idx - 1]['time']
+                    curr_time = input_point['time']
+                    dt = curr_time - prev_time
+                    
+                    if dt > 0:
+                        self.current_model.step(dt)
+                
+                # 收集输出数据
+                row = [idx + 1, input_point['time']]
+                for var_name in output_variables:
+                    if var_name in self.current_model.variables:
+                        row.append(self.current_model.variables[var_name].value)
+                    else:
+                        row.append(0.0)
+                
+                csv_data.append(row)
+            
+            # 写入 CSV 文件
+            csv_output_path = output_path
+            if not csv_output_path:
+                output_dir = os.path.join(self.loader.mods_directory, "output")
+                os.makedirs(output_dir, exist_ok=True)
+                csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_csv_input.csv")
+            
+            with open(csv_output_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(csv_headers)
+                writer.writerows(csv_data)
+            
+            return {
+                "success": True,
+                "model_name": self.current_model.metadata.name,
+                "state": self.current_model.get_current_state(),
+                "steps": len(csv_data),
+                "csv_output": csv_output_path,
+                "output_variables": output_variables
+            }
+        
+        except Exception as e:
+            logger.error(f"CSV 输入仿真失败: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ==================== 原有功能（保持不变）====================
+    
     def fitness_func(self, parameters: Optional[List[float]] = None, 
                     inputs_sequence: Optional[List[Dict[str, float]]] = None,
                     time_hours: float = 720.0) -> float:

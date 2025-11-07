@@ -12,6 +12,7 @@ import csv
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.loader.loader_engine import LoaderEngine
+from src.simulator.simulator_engine import SimulatorEngine
 import logging
 
 # 配置日志
@@ -23,6 +24,249 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)  # 启用 CORS
+
+# 初始化 SimulatorEngine
+simulator_engine = SimulatorEngine(mods_directory='mods', language='en')
+
+# ==================== Simulation API 路由 ====================
+
+@app.route('/api/simulation/start', methods=['POST'])
+def simulation_start():
+    """
+    启动仿真会话
+    请求体: {model_name, folder?, time_hours, step_size?, input_params?}
+    返回: {session_id, model_name, initial_state, step_size, total_time, total_steps, output_variables}
+    """
+    try:
+        data = request.json
+        model_name = data.get('model_name')
+        folder = data.get('folder')
+        time_hours = data.get('time_hours', 8760)
+        step_size = data.get('step_size')
+        input_params = data.get('input_params', {})
+        
+        if not model_name:
+            return jsonify({
+                'success': False,
+                'error': '缺少 model_name 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.start_session(
+            model_name=model_name,
+            time_hours=time_hours,
+            folder=folder,
+            step_size=step_size,
+            input_params=input_params
+        )
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    
+    except Exception as e:
+        logger.error(f"启动仿真失败: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/batch', methods=['POST'])
+def simulation_batch():
+    """
+    批量执行仿真步骤
+    请求体: {session_id, steps, input_changes?}
+    返回: {current_step, progress, final_state, outputs[], completed, steps_executed}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        steps = data.get('steps', 10)
+        input_changes = data.get('input_changes', {})
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.batch_steps(
+            session_id=session_id,
+            steps=steps,
+            input_changes=input_changes
+        )
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400 if 'session' in result.get('error', '') else 500
+    
+    except Exception as e:
+        logger.error(f"批量执行失败: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/pause', methods=['POST'])
+def simulation_pause():
+    """
+    暂停仿真会话
+    请求体: {session_id}
+    返回: {success, message}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.pause_session(session_id)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"暂停仿真失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/resume', methods=['POST'])
+def simulation_resume():
+    """
+    继续仿真会话
+    请求体: {session_id}
+    返回: {success, message}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.resume_session(session_id)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"继续仿真失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/reset', methods=['POST'])
+def simulation_reset():
+    """
+    重置仿真会话
+    请求体: {session_id}
+    返回: {success, message, initial_state}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.reset_session(session_id)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"重置仿真失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/export', methods=['POST'])
+def simulation_export():
+    """
+    导出仿真数据到 CSV
+    请求体: {session_id, output_path?}
+    返回: {success, csv_path, rows}
+    """
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        output_path = data.get('output_path')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.export_session_csv(
+            session_id=session_id,
+            output_path=output_path
+        )
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"导出 CSV 失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/simulation/info', methods=['GET'])
+def simulation_info():
+    """
+    获取仿真会话信息
+    查询参数: session_id
+    返回: {success, session_id, model_name, current_step, total_steps, progress, running, data_points}
+    """
+    try:
+        session_id = request.args.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': '缺少 session_id 参数'
+            }), 400
+        
+        # 调用 SimulatorEngine
+        result = simulator_engine.get_session_info(session_id)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"获取会话信息失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ==================== 原有路由保持不变 ====================
+# 保留你原有的 Loader 相关路由，无需修改
 
 # 初始化 LoaderEngine
 MODS_DIR = os.path.join(os.path.dirname(__file__), '..', 'mods')
