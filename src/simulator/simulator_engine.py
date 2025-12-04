@@ -11,8 +11,8 @@ import os
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
-from mod_structure import ModStructure
-from loader.loader_engine import LoaderEngine
+from src.mod_structure import ModStructure
+from src.loader.loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -218,13 +218,15 @@ class SimulatorEngine:
             
             return {
                 "success": True,
-                "session_id": session_id,
-                "model_name": model_name,
-                "initial_state": self.current_model.get_current_state(),
-                "step_size": step_size,
-                "total_time": total_time,
-                "total_steps": total_steps,
-                "output_variables": output_variables
+                "data": {
+                    "session_id": session_id,
+                    "model_name": model_name,
+                    "initial_state": self.current_model.get_current_state(),
+                    "step_size": step_size,
+                    "total_time": total_time,
+                    "total_steps": total_steps,
+                    "output_variables": output_variables
+                }
             }
         
         except Exception as e:
@@ -296,13 +298,15 @@ class SimulatorEngine:
             
             return {
                 "success": True,
-                "session_id": session_id,
-                "current_step": session['current_step'],
-                "progress": round(progress, 2),
-                "final_state": model.get_current_state(),
-                "outputs": outputs,
-                "completed": completed,
-                "steps_executed": len(outputs)
+                "data": {
+                    "session_id": session_id,
+                    "current_step": session['current_step'],
+                    "progress": round(progress, 2),
+                    "final_state": model.get_current_state(),
+                    "outputs": outputs,
+                    "completed": completed,
+                    "steps_executed": len(outputs)
+                }
             }
         
         except Exception as e:
