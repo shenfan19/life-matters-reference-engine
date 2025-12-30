@@ -11,8 +11,8 @@ import csv
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.loader.loader_engine import LoaderEngine
-from src.simulator.simulator_engine import SimulatorEngine
+from src.dynamics.loader.loader_engine import LoaderEngine
+from src.dynamics.simulator.simulator_engine import SimulatorEngine
 import logging
 
 # 配置日志
@@ -601,7 +601,7 @@ def validate_model():
                     'error': f'无法找到模型文件: {file_path}'
                 }), 404
             
-            from src.models.core import ModStructure
+            from src.models.dynamics import ModStructure
             model = ModStructure(loader_engine.mods_directory, loader_engine.language)
             model.load_model(file_path_full, model_name)
         

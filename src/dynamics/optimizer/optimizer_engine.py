@@ -388,7 +388,7 @@ class OptimizerEngine:
         try:
             # 导入 pymoo 库。
             from pymoo.algorithms.soo.nonconvex.ga import GA
-            from pymoo.core.problem import Problem
+            from pymoo.dynamics.problem import Problem
             from pymoo.optimize import minimize
             
             # 定义优化问题类。

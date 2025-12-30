@@ -11,8 +11,8 @@ import os
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
-from src.mod_structure import ModStructure
-from src.loader.loader_engine import LoaderEngine
+from src.dynamics.mod_structure import ModStructure
+from src.dynamics.loader.loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class SimulatorEngine:
         self.current_model: Optional[ModStructure] = None
         # 初始化当前仿真步数。
         self.current_step = 0
-        # 初始化仿真时间（秒）。
+        # 初始化仿真时间（秒）。from mod_structure import ModStructure, ModelMetadata
         self.time = 0.0
         # 初始化仿真运行状态。
         self.running = False
