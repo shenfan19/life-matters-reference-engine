@@ -1,0 +1,26 @@
+id: type_checker
+name: Type Checker
+version: 1.0.0
+category: validators
+
+backend:
+  entry: backend.py
+  class: TypeCheckerPlugin
+
+ui:
+  type: schema
+  schema:
+    title: Type Validation
+    inputs:
+      - name: model_name
+        label: Model Name
+        type: text
+        required: true
+      - name: strict_mode
+        label: Strict Mode
+        type: checkbox
+        default: false
+    outputs:
+      - name: errors
+        label: Validation Errors
+        type: list

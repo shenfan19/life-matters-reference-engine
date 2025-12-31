@@ -1,0 +1,14 @@
+id: mod_merger
+name: Model Merger
+version: 1.0.0
+category: preprocessors
+author: LifeMatters Team
+description: Merge multiple YAML models into one
+
+backend:
+  entry: backend.py
+  class: ModMergerPlugin
+
+ui:
+  type: none  # 无UI，直接后台处理
+  
