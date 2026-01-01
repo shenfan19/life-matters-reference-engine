@@ -1,5 +1,6 @@
 # src/api_server.py
 # Flask API 服务，为前端提供模型文件操作接口
+# 旧版本，已经move到main.py这个新版本，本版本可删除
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -11,8 +12,8 @@ import csv
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.src.loader.loader_engine import LoaderEngine
-from backend.src.simulator.simulator_engine import SimulatorEngine
+from src.loader.loader_engine import LoaderEngine
+from src.simulator.simulator_engine import SimulatorEngine
 import logging
 
 # 配置日志
@@ -263,10 +264,6 @@ def simulation_info():
             'success': False,
             'error': str(e)
         }), 500
-
-
-# ==================== 原有路由保持不变 ====================
-# 保留你原有的 Loader 相关路由，无需修改
 
 # 初始化 LoaderEngine
 MODS_DIR = os.path.join(os.path.dirname(__file__), '..', 'mods')
@@ -601,7 +598,7 @@ def validate_model():
                     'error': f'无法找到模型文件: {file_path}'
                 }), 404
             
-            from backend.src.models.dynamics import ModStructure
+            from src.models.dynamics import ModStructure
             model = ModStructure(loader_engine.mods_directory, loader_engine.language)
             model.load_model(file_path_full, model_name)
         

@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional
-from backend.src.mod_structure import ModStructure
-from backend.src.loader.loader_engine import LoaderEngine
+from src.mod_structure import ModStructure
+from src.loader.loader_engine import LoaderEngine
 
 logger = logging.getLogger(__name__)
 

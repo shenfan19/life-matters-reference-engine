@@ -1,24 +1,27 @@
 """
-LifeMatters Backend - FastAPI Entry Point
-插件系统核心服务
+LifeMatters Backend - FastAPI (完整版)
+合并了原 api_server.py 的所有功能
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 import logging
 import sys
+import os
+import yaml
 
 # ========== 路径配置 ==========
-# 获取当前文件的绝对路径
-CURRENT_FILE = Path(__file__).resolve()      # .../backend/src/main.py
-SRC_DIR = CURRENT_FILE.parent                # .../backend/src/
-BACKEND_DIR = SRC_DIR.parent                 # .../backend/
-PROJECT_ROOT = BACKEND_DIR.parent            # .../项目根目录/
+CURRENT_FILE = Path(__file__).resolve()
+SRC_DIR = CURRENT_FILE.parent
+BACKEND_DIR = SRC_DIR.parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
 # 添加到 Python 路径
-sys.path.insert(0, str(SRC_DIR))            # 让 'from src.xxx' 能工作
-sys.path.insert(0, str(BACKEND_DIR))        # 让 'from src.xxx' 能工作
+sys.path.insert(0, str(SRC_DIR))
+sys.path.insert(0, str(BACKEND_DIR))
 
 # 配置日志
 logging.basicConfig(
@@ -28,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 创建 FastAPI 应用
-app = FastAPI(title="LifeMatters API", version="0.1.0")
+app = FastAPI(title="LifeMatters API", version="0.3.0")
 
 # CORS 配置
 app.add_middleware(
@@ -44,6 +47,23 @@ plugin_manager = None
 loader_engine = None
 
 
+# ========== Pydantic 模型（请求体定义）==========
+class MergeRequest(BaseModel):
+    folders: Optional[List[str]] = None
+    files: Optional[List[str]] = None
+    output_path: Optional[str] = None
+
+
+class ValidateRequest(BaseModel):
+    file_path: str
+
+
+class SplitRequest(BaseModel):
+    file_path: str
+    output_dir: str = "default_split"
+
+
+# ========== 启动事件 ==========
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化"""
@@ -51,23 +71,17 @@ async def startup_event():
     
     logger.info("=" * 60)
     logger.info("Initializing LifeMatters Backend...")
-    logger.info(f"CURRENT_FILE: {CURRENT_FILE}")
-    logger.info(f"SRC_DIR: {SRC_DIR}")
-    logger.info(f"BACKEND_DIR: {BACKEND_DIR}")
     logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
     logger.info("=" * 60)
     
-    # ========== 初始化插件系统 ==========
+    # 初始化插件系统
     try:
-        # 使用正确的导入路径
-        from backend.src.core.plugin_manager import PluginManager
+        from src.core.plugin_manager import PluginManager
         
         plugins_dir = PROJECT_ROOT / "plugins"
         logger.info(f"Plugins directory: {plugins_dir}")
-        logger.info(f"Plugins exists: {plugins_dir.exists()}")
         
         if not plugins_dir.exists():
-            logger.warning(f"Creating plugins directory: {plugins_dir}")
             plugins_dir.mkdir(parents=True, exist_ok=True)
         
         plugin_manager = PluginManager(plugin_dir=str(plugins_dir))
@@ -79,35 +93,28 @@ async def startup_event():
         
     except ImportError as e:
         logger.error(f"❌ Failed to import PluginManager: {e}")
-        logger.error(f"   sys.path: {sys.path[:3]}")
         plugin_manager = None
     except Exception as e:
         logger.error(f"❌ Error initializing plugins: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
         plugin_manager = None
     
-    # ========== 初始化 Mods 系统 ==========
+    # 初始化 Mods 系统
     try:
-        from backend.src.loader.loader_engine import LoaderEngine
+        from src.loader.loader_engine import LoaderEngine
         
         mods_dir = PROJECT_ROOT / "mods"
         logger.info(f"Mods directory: {mods_dir}")
-        logger.info(f"Mods exists: {mods_dir.exists()}")
         
         if not mods_dir.exists():
-            logger.warning(f"Creating mods directory: {mods_dir}")
             mods_dir.mkdir(parents=True, exist_ok=True)
         
         loader_engine = LoaderEngine(mods_directory=str(mods_dir))
         logger.info(f"✅ Mods system initialized")
         
-        # 扫描模型
         try:
             models = loader_engine.scan_models()
             logger.info(f"   Found {len(models)} models")
             
-            # 显示前5个模型
             for i, name in enumerate(list(models.keys())[:5]):
                 logger.info(f"   - {name}")
             if len(models) > 5:
@@ -118,12 +125,9 @@ async def startup_event():
         
     except ImportError as e:
         logger.error(f"❌ Failed to import LoaderEngine: {e}")
-        logger.error(f"   sys.path: {sys.path[:3]}")
         loader_engine = None
     except Exception as e:
         logger.error(f"❌ Error initializing mods: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
         loader_engine = None
     
     logger.info("=" * 60)
@@ -131,24 +135,38 @@ async def startup_event():
     logger.info("=" * 60)
 
 
+# ========== 基础端点 ==========
 @app.get("/")
 async def root():
     """健康检查"""
     return {
         "status": "ok",
         "service": "LifeMatters API",
-        "version": "0.1.0"
+        "version": "0.3.0"
     }
 
 
+@app.get("/api/health")
+async def health_check():
+    """详细健康检查"""
+    return {
+        "status": "healthy",
+        "components": {
+            "plugin_manager": plugin_manager is not None,
+            "loader_engine": loader_engine is not None
+        },
+        "plugins_loaded": len(plugin_manager.plugins) if plugin_manager else 0,
+        "mods_directory": str(PROJECT_ROOT / "mods"),
+        "mods_exists": (PROJECT_ROOT / "mods").exists()
+    }
+
+
+# ========== Plugins 端点 ==========
 @app.get("/api/plugins")
 async def list_plugins():
     """获取所有插件列表"""
     if plugin_manager is None:
-        return {
-            "plugins": [],
-            "message": "Plugin system not initialized"
-        }
+        return {"plugins": [], "message": "Plugin system not initialized"}
     
     try:
         return {
@@ -157,20 +175,14 @@ async def list_plugins():
         }
     except Exception as e:
         logger.error(f"Error listing plugins: {e}")
-        return {
-            "plugins": [],
-            "error": str(e)
-        }
+        return {"plugins": [], "error": str(e)}
 
 
 @app.post("/api/plugins/{plugin_id}/run")
 async def run_plugin(plugin_id: str, payload: dict):
     """执行插件"""
     if plugin_manager is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Plugin system not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Plugin system not initialized")
     
     try:
         result = plugin_manager.run_plugin(
@@ -184,14 +196,12 @@ async def run_plugin(plugin_id: str, payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ========== Mods 端点 ==========
 @app.get("/api/mods")
 async def list_mods(folder: str = None):
     """获取所有模型列表"""
     if loader_engine is None:
-        return {
-            "models": [],
-            "message": "Mods system not initialized"
-        }
+        return {"models": [], "message": "Mods system not initialized"}
     
     try:
         folders = [folder] if folder else None
@@ -211,20 +221,14 @@ async def list_mods(folder: str = None):
         }
     except Exception as e:
         logger.error(f"Error listing mods: {e}")
-        return {
-            "models": [],
-            "error": str(e)
-        }
+        return {"models": [], "error": str(e)}
 
 
 @app.get("/api/mods/{model_name}")
 async def get_mod(model_name: str, folder: str = None):
     """获取单个模型详情"""
     if loader_engine is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Mods system not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Mods system not initialized")
     
     try:
         model = loader_engine.fetch(model_name, folder)
@@ -233,51 +237,385 @@ async def get_mod(model_name: str, folder: str = None):
         
         return {
             "metadata": {
-                "name": model.metadata.name,
-                "version": model.metadata.version,
-                "author": model.metadata.author,
-                "description": model.metadata.description
+                "name": model.metadata.name if model.metadata else "",
+                "version": model.metadata.version if model.metadata else "",
+                "author": model.metadata.author if model.metadata else "",
+                "description": model.metadata.description if model.metadata else ""
             },
-            "variables": model.variables,
-            "formulas": model.formulas,
-            "simulator": model.simulator
+            "variables": {
+                var_name: {
+                    "description": var.description,
+                    "value": var.value,
+                    "unit": var.unit,
+                    "type": var.type.value if hasattr(var.type, 'value') else str(var.type)
+                }
+                for var_name, var in model.variables.items()
+            },
+            "formulas": {
+                f_name: {
+                    "description": f.description,
+                    "dynamics": f.dynamics
+                }
+                for f_name, f in model.formulas.items()
+            }
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching mod {model_name}: {e}")
+        logger.error(f"Error getting mod: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/health")
-async def health_check():
-    """详细健康检查"""
-    plugins_loaded = len(plugin_manager.plugins) if plugin_manager else 0
-    
-    mods_loaded = 0
-    if loader_engine:
+# ========== Files 端点（文件树）==========
+@app.get("/api/files")
+async def list_files():
+    """获取文件树结构"""
+    def build_tree(directory, base_path=''):
+        items = []
+        if not os.path.exists(directory):
+            return items
+        
         try:
-            models = loader_engine.scan_models()
-            mods_loaded = len(models)
-        except:
-            pass
+            for item in sorted(os.listdir(directory)):
+                item_path = os.path.join(directory, item)
+                relative_path = os.path.join(base_path, item).replace('\\', '/')
+                
+                if os.path.isdir(item_path):
+                    # 跳过特殊文件夹
+                    if item in ['merged', 'splited', 'output', '__pycache__', '.git']:
+                        continue
+                    
+                    children = build_tree(item_path, relative_path)
+                    if children:
+                        items.append({
+                            'title': item,
+                            'key': relative_path,
+                            'type': 'folder',
+                            'children': children
+                        })
+                elif item.endswith('.yaml') or item.endswith('.yml'):
+                    items.append({
+                        'title': item,
+                        'key': relative_path,
+                        'type': 'file',
+                        'isLeaf': True
+                    })
+        except Exception as e:
+            logger.error(f"Error scanning {directory}: {e}")
+        
+        return items
     
-    return {
-        "status": "healthy",
-        "components": {
-            "plugin_manager": plugin_manager is not None,
-            "loader_engine": loader_engine is not None
-        },
-        "plugins_loaded": plugins_loaded,
-        "mods_loaded": mods_loaded,
-        "paths": {
-            "project_root": str(PROJECT_ROOT),
-            "backend_dir": str(BACKEND_DIR),
-            "src_dir": str(SRC_DIR),
-            "plugins": str(PROJECT_ROOT / "plugins"),
-            "mods": str(PROJECT_ROOT / "mods")
+    try:
+        mods_dir = PROJECT_ROOT / "mods"
+        tree = [{
+            'title': 'mods',
+            'key': 'mods',
+            'type': 'folder',
+            'children': build_tree(str(mods_dir))
+        }]
+        
+        return {'success': True, 'data': tree}
+    except Exception as e:
+        logger.error(f"Error getting file tree: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+@app.get("/api/file/{file_path:path}")
+async def get_file_content(file_path: str):
+    """读取单个 YAML 文件内容"""
+    try:
+        logger.info(f"读取文件: {file_path}")
+        
+        # 解析路径
+        parts = file_path.split('/')
+        if len(parts) > 1:
+            folder = parts[0]
+            model_name = '/'.join(parts[1:])
+        else:
+            folder = None
+            model_name = parts[0]
+        
+        # 移除 .yaml 扩展名
+        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+            model_name = os.path.splitext(model_name)[0]
+        
+        # 使用 LoaderEngine 加载
+        if loader_engine:
+            try:
+                model = loader_engine.fetch(model_name, folder)
+                if not model:
+                    raise HTTPException(status_code=404, detail=f"Model not found: {file_path}")
+                
+                content = {
+                    'metadata': {
+                        'name': model.metadata.name if model.metadata else '',
+                        'version': model.metadata.version if model.metadata else '',
+                        'author': model.metadata.author if model.metadata else '',
+                        'description': model.metadata.description if model.metadata else ''
+                    },
+                    'variables': {
+                        var_name: {
+                            'description': var.description,
+                            'value': var.value,
+                            'unit': var.unit,
+                            'type': var.type.value if hasattr(var.type, 'value') else str(var.type),
+                            'bounds': var.bounds
+                        }
+                        for var_name, var in model.variables.items()
+                    },
+                    'formulas': {
+                        formula_name: {
+                            'description': formula.description,
+                            'condition': formula.condition,
+                            'priority': formula.priority,
+                            'dynamics': formula.dynamics
+                        }
+                        for formula_name, formula in model.formulas.items()
+                    },
+                    'simulator': model.simulator,
+                    'optimizer': model.optimizer
+                }
+                
+                return {
+                    'success': True,
+                    'data': {
+                        'path': file_path,
+                        'content': content
+                    }
+                }
+            except Exception as e:
+                logger.error(f"LoaderEngine failed: {e}")
+                # 降级到直接读取
+        
+        # 降级方案：直接读取 YAML
+        yaml_file = PROJECT_ROOT / "mods" / file_path
+        if not yaml_file.suffix:
+            yaml_file = yaml_file.with_suffix('.yaml')
+        
+        if not yaml_file.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+        
+        with open(yaml_file, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        
+        return {
+            'success': True,
+            'data': {
+                'path': file_path,
+                'content': data
+            }
         }
-    }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reading file {file_path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Merge 端点 ==========
+@app.post("/api/merge")
+async def merge_models(request: MergeRequest):
+    """合并模型"""
+    if loader_engine is None:
+        raise HTTPException(status_code=503, detail="Mods system not initialized")
+    
+    try:
+        result = loader_engine.merge_models(
+            model_names=request.files,
+            folders=request.folders,
+            output_path=request.output_path
+        )
+        
+        if result['success']:
+            return {
+                'success': True,
+                'data': {
+                    'variables': result['variables'],
+                    'formulas': result['formulas'],
+                    'output_path': request.output_path
+                }
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Merge failed'))
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Merge error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Validate 端点 ==========
+@app.post("/api/validate")
+async def validate_model(request: ValidateRequest):
+    """验证模型"""
+    if loader_engine is None:
+        raise HTTPException(status_code=503, detail="Mods system not initialized")
+    
+    try:
+        file_path = request.file_path
+        
+        # 解析路径
+        if '/' in file_path:
+            parts = file_path.split('/')
+            folder = parts[0]
+            model_name = '/'.join(parts[1:])
+        else:
+            folder = None
+            model_name = file_path
+        
+        # 移除扩展名
+        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+            model_name = os.path.splitext(model_name)[0]
+        
+        # 加载模型
+        model = loader_engine.fetch(model_name, folder)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+        
+        # 验证模型
+        try:
+            model.validate_model()
+            return {
+                'success': True,
+                'data': {
+                    'valid': True,
+                    'variables': len(model.variables),
+                    'formulas': len(model.formulas)
+                }
+            }
+        except ValueError as e:
+            return {
+                'success': False,
+                'data': {
+                    'valid': False,
+                    'errors': [str(e)]
+                }
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Split 端点 ==========
+@app.post("/api/split")
+async def split_model(request: SplitRequest):
+    """拆分模型"""
+    if loader_engine is None:
+        raise HTTPException(status_code=503, detail="Mods system not initialized")
+    
+    try:
+        file_path = request.file_path
+        output_dir = request.output_dir
+        
+        # 解析路径
+        if '/' in file_path:
+            parts = file_path.split('/')
+            folder = parts[0]
+            model_name = '/'.join(parts[1:])
+        else:
+            folder = None
+            model_name = file_path
+        
+        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+            model_name = os.path.splitext(model_name)[0]
+        
+        # 调用 split_model
+        result = loader_engine.split_model(model_name, output_dir, folder)
+        
+        if result['success']:
+            return {
+                'success': True,
+                'data': {
+                    'output_dir': result.get('output_dir'),
+                    'files': result.get('files', [])
+                }
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Split failed'))
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Split error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Search 端点 ==========
+@app.get("/api/search")
+async def search_files(q: str = ""):
+    """搜索文件"""
+    if not q:
+        return {'success': True, 'data': []}
+    
+    keyword = q.lower()
+    results = []
+    
+    def search_in_dir(directory, base_path=''):
+        if not os.path.exists(directory):
+            return
+        
+        try:
+            for item in os.listdir(directory):
+                item_path = os.path.join(directory, item)
+                relative_path = os.path.join(base_path, item).replace('\\', '/')
+                
+                if os.path.isdir(item_path):
+                    search_in_dir(item_path, relative_path)
+                elif (item.endswith('.yaml') or item.endswith('.yml')) and keyword in item.lower():
+                    results.append({
+                        'title': item,
+                        'key': relative_path,
+                        'path': relative_path,
+                        'type': 'file'
+                    })
+        except Exception as e:
+            logger.error(f"Search error in {directory}: {e}")
+    
+    try:
+        mods_dir = PROJECT_ROOT / "mods"
+        search_in_dir(str(mods_dir))
+        return {'success': True, 'data': results}
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+# ========== Folders 端点 ==========
+@app.get("/api/folders")
+async def list_folders():
+    """获取文件夹列表"""
+    folders = []
+    
+    def collect_folders(directory, base_path=''):
+        if not os.path.exists(directory):
+            return
+        
+        try:
+            for item in os.listdir(directory):
+                item_path = os.path.join(directory, item)
+                
+                if os.path.isdir(item_path):
+                    if item in ['merged', 'splited', 'output', '__pycache__']:
+                        continue
+                    
+                    relative_path = os.path.join(base_path, item).replace('\\', '/')
+                    folders.append(relative_path)
+                    collect_folders(item_path, relative_path)
+        except Exception as e:
+            logger.error(f"Error collecting folders from {directory}: {e}")
+    
+    try:
+        mods_dir = PROJECT_ROOT / "mods"
+        collect_folders(str(mods_dir))
+        return {'success': True, 'data': folders}
+    except Exception as e:
+        logger.error(f"Error listing folders: {e}")
+        return {'success': False, 'error': str(e)}
 
 
 # 运行服务器

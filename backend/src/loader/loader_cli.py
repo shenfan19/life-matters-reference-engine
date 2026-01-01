@@ -20,9 +20,9 @@ import argparse
 import sys
 import logging
 from typing import Dict, Any, List, Optional
-from loader_engine import LoaderEngine
-from backend.src.mod_structure import ModStructure, ModelMetadata, merge_dicts
-from backend.src.babel_manager import BabelLanguageManager
+from src.loader.loader_engine import LoaderEngine
+from src.mod_structure import ModStructure, ModelMetadata, merge_dicts
+from src.babel_manager import BabelLanguageManager
 import os
 
 # 配置日志记录器，以便在运行时输出信息和错误。
