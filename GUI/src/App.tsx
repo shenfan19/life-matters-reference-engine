@@ -157,7 +157,7 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
           </div>
           <div>请启动 Backend:</div>
           <code style={{ fontSize: 10 }}>
-            python src/dynamics/main.py
+            python src/dynamics/api_server.py
           </code>
         </div>
       )}

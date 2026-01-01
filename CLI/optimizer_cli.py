@@ -9,8 +9,8 @@ import sys
 import logging
 import yaml
 from typing import Dict, Any, List, Optional
-from src.optimizer.optimizer_engine import OptimizerEngine
-from src.simulator.simulator_engine import SimulatorEngine
+from backend.src.optimizer_engine import OptimizerEngine
+from backend.src.simulator_engine import SimulatorEngine
 from src.babel_manager import BabelLanguageManager
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。

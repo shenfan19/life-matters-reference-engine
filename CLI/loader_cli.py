@@ -20,7 +20,7 @@ import argparse
 import sys
 import logging
 from typing import Dict, Any, List, Optional
-from src.loader.loader_engine import LoaderEngine
+from backend.src.loader_engine import LoaderEngine
 from src.mod_structure import ModStructure, ModelMetadata, merge_dicts
 from src.babel_manager import BabelLanguageManager
 import os

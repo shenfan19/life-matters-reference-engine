@@ -100,7 +100,7 @@ async def startup_event():
     
     # 初始化 Mods 系统
     try:
-        from src.loader.loader_engine import LoaderEngine
+        from backend.src.loader_engine import LoaderEngine
         
         mods_dir = PROJECT_ROOT / "mods"
         logger.info(f"Mods directory: {mods_dir}")
