@@ -11,8 +11,8 @@ import os
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
-from src.mod_structure import ModStructure
-from src.loader.loader_engine import LoaderEngine
+from backend.src.mod_structure import ModStructure
+from backend.src.loader.loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
 from .base import ModelMetadata, Variable, Formula
-from babel_manager import BabelLanguageManager
+from backend.src.babel_manager import BabelLanguageManager
 from typing import Dict, Any, Set
 from asteval import Interpreter
 import logging

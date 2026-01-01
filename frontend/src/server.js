@@ -7,7 +7,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 
 // 路径配置
-const MODS_DIR = path.resolve(__dirname, '../../../mods');
+const MODS_DIR = path.resolve(__dirname, '../../mods');
 const OUTPUT_FILE = path.resolve(__dirname, '../public/mods-list.json');
 
 // 颜色输出
