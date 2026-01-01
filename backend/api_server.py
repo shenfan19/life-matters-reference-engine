@@ -11,8 +11,8 @@ import csv
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.dynamics.loader.loader_engine import LoaderEngine
-from src.dynamics.simulator.simulator_engine import SimulatorEngine
+from src.loader.loader_engine import LoaderEngine
+from src.simulator.simulator_engine import SimulatorEngine
 import logging
 
 # 配置日志

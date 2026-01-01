@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import DynamicForm from './DynamicForm';
 import PluginLoader from '../core/PluginLoader';
-import { PluginManifest } from '../core/types';
+
+// 内联类型定义
+interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  category: string;
+  ui: {
+    type: 'none' | 'schema' | 'component';
+    schema?: any;
+    component_path?: string;
+  };
+}
 
 interface Props {
   pluginId: string | null;
@@ -17,17 +29,33 @@ export default function PluginPageContainer({ pluginId, plugins }: Props) {
     setManifest(plugin || null);
   }, [pluginId, plugins]);
 
-  if (!manifest) return <div>请选择插件</div>;
+  if (!manifest) {
+    return (
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        color: '#999' 
+      }}>
+        请选择插件
+      </div>
+    );
+  }
 
-  // 根据 UI 类型渲染不同组件
   switch (manifest.ui.type) {
     case 'none':
-      return <div>该插件无UI</div>;
+      return (
+        <div style={{ padding: 20 }}>
+          <h2>{manifest.name}</h2>
+          <p>该插件在后台运行，无需UI界面</p>
+        </div>
+      );
     case 'schema':
       return <DynamicForm schema={manifest.ui.schema!} pluginId={manifest.id} />;
     case 'component':
       return <PluginLoader componentPath={manifest.ui.component_path!} />;
     default:
-      return <div>未知UI类型</div>;
+      return <div style={{ padding: 20 }}>未知UI类型: {manifest.ui.type}</div>;
   }
 }

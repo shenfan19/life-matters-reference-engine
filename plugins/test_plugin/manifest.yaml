@@ -1,0 +1,25 @@
+id: test_plugin
+name: Test Plugin
+version: 1.0.0
+category: test
+author: LifeMatters Team
+description: 测试插件 - 验证系统是否正常工作
+
+backend:
+  entry: backend.py
+  class: TestPlugin
+
+ui:
+  type: schema
+  schema:
+    title: 测试插件
+    inputs:
+      - name: message
+        label: 测试消息
+        type: text
+        required: true
+        default: "Hello, LifeMatters!"
+    outputs:
+      - name: result
+        label: 返回结果
+        type: text

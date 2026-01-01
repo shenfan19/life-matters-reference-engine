@@ -93,32 +93,23 @@ function scanDirectory(dirPath: string, basePath = ''): any[] {
 
 // Vite 配置
 export default defineConfig({
-  plugins: [
-    react(), 
-    // modsPlugin()  // 【注释】暂时不使用，所有请求代理到 Flask
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+  plugins: [react()],
   server: {
-    port: 5173,  // 前端开发服务器端口
-    
-    // 【新增】代理配置: 将所有 /api/* 请求转发到 Flask 后端
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',  // Flask 后端地址
-        changeOrigin: true,                // 修改请求头中的 origin
-        secure: false,                     // 如果是 https，设置为 true
-        
-        // 【可选】请求日志
+        target: 'http://localhost:8000',  // FastAPI 默认端口
+        changeOrigin: true,
+        secure: false,
         configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('[Proxy] Error:', err);
+          });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('[Proxy]', req.method, req.url, '→', proxyReq.path);
           });
         }
       }
     }
-  },
+  }
 })
