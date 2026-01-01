@@ -10,7 +10,7 @@ export default function DynamicForm({ schema, pluginId }: Props) {
   const [result, setResult] = useState<any>(null);
 
   const handleSubmit = async () => {
-    const res = await fetch(\`/api/plugins/${pluginId}/run\`, {
+    const res = await fetch(`/api/plugins/${pluginId}/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs })
