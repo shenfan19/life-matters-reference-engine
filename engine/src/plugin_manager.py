@@ -10,18 +10,30 @@ class PluginManager:
         self.scan_plugins()
     
     def scan_plugins(self):
-        """扫描所有插件"""
-        for folder in self.plugin_dir.iterdir():
-            if not folder.is_dir():
-                continue
-            manifest_path = folder / "manifest.yaml"
-            if manifest_path.exists():
-                with open(manifest_path, 'r') as f:
-                    manifest = yaml.safe_load(f)
-                    self.plugins[manifest['id']] = {
-                        'manifest': manifest,
-                        'path': folder
-                    }
+        """递归扫描插件（最多2层深度）"""
+        def scan_recursive(directory, depth=0, max_depth=2):
+            if depth > max_depth:
+                return
+            
+            for item in directory.iterdir():
+                if not item.is_dir():
+                    continue
+                
+                manifest_path = item / "manifest.yaml"
+                if manifest_path.exists():
+                    # 找到插件
+                    with open(manifest_path, 'r') as f:
+                        manifest = yaml.safe_load(f)
+                        self.plugins[manifest['id']] = {
+                            'manifest': manifest,
+                            'path': item,
+                            'category': item.parent.name if depth > 0 else 'uncategorized'
+                        }
+                else:
+                    # 继续向下扫描
+                    scan_recursive(item, depth + 1, max_depth)
+        
+        scan_recursive(self.plugin_dir)
     
     def get_plugin_list(self) -> List[dict]:
         """获取插件清单"""

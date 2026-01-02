@@ -1,3 +1,4 @@
+// if delete? duplicated name with file in GUI
 import { lazy, Suspense } from 'react';
 
 interface Props {

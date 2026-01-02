@@ -76,7 +76,7 @@ async def startup_event():
     
     # 初始化插件系统
     try:
-        from src.core.plugin_manager import PluginManager
+        from engine.src.plugin_manager import PluginManager
         
         plugins_dir = PROJECT_ROOT / "plugins"
         logger.info(f"Plugins directory: {plugins_dir}")
@@ -100,7 +100,7 @@ async def startup_event():
     
     # 初始化 Mods 系统
     try:
-        from backend.src.loader_engine import LoaderEngine
+        from engine.src.loader_engine import LoaderEngine
         
         mods_dir = PROJECT_ROOT / "mods"
         logger.info(f"Mods directory: {mods_dir}")
