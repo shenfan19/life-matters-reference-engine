@@ -24,6 +24,10 @@ class ModStructure(Loader, Validator, Simulation):
         self.formulas = {}
         # 初始化变量历史记录
         self.variable_history = {}
+        # 初始化当前仿真步数
+        self.current_step = 0
+        # 初始化仿真时间（秒）
+        self.time = 0.0
         # 初始化 asteval 解释器
         self.asteval = Interpreter()
         # 初始化 asteval 符号表

@@ -68,6 +68,8 @@ class Loader:
             self.variable_history.clear()
             self.simulator.clear()
             self.optimizer.clear()
+            self.current_step = 0
+            self.time = 0.0
         
         # 应用变量
         for var_name, var_data in data.get('variables', {}).items():

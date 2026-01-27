@@ -42,33 +42,53 @@ class Simulation:
         # 执行每个公式
         for form_name, formula in sorted_formulas:
             try:
+                # 评估条件
                 condition = formula.condition
                 if isinstance(condition, str):
-                    condition = self.asteval.eval(formula.condition, raise_errors=False)
-                    if self.asteval.error:
-                        raise ValueError(f"Error evaluating condition for formula {form_name}: {self.asteval.error[0].get_error()[1]}")
+                    try:
+                        condition = self.asteval.eval(formula.condition, raise_errors=True)
+                    except Exception as cond_err:
+                        logger.error(f"Error evaluating condition for formula '{form_name}': {formula.condition} -> {cond_err}")
+                        continue # 跳过逻辑错误的公式
                 
                 if condition:
                     # 处理 dynamics
                     for var_name, expr in formula.dynamics.items():
-                        new_value = self.asteval.eval(expr)
-                        if var_name in self.variables:
-                            var = self.variables[var_name]
-                            # 应用边界约束
-                            var.value = max(min(new_value, var.bounds[1] if var.bounds else float('inf')), 
-                                        var.bounds[0] if var.bounds else float('-inf'))
-                            self.asteval.symtable[var_name] = var.value
-                            self.variable_history[var_name].append(var.value)
-                    
+                        try:
+                            new_value = self.asteval.eval(expr, raise_errors=True)
+                            if new_value is None:
+                                logger.warning(f"Formula '{form_name}' evaluated to None for variable '{var_name}' with expression: {expr}")
+                                continue
+
+                            if var_name in self.variables:
+                                var = self.variables[var_name]
+                                # 应用边界约束
+                                var.value = max(min(new_value, var.bounds[1] if var.bounds else float('inf')), 
+                                            var.bounds[0] if var.bounds else float('-inf'))
+                                self.asteval.symtable[var_name] = var.value
+                                
+                                # 确保 variable_history 已初始化
+                                if var_name not in self.variable_history:
+                                    self.variable_history[var_name] = []
+                                self.variable_history[var_name].append(var.value)
+                            else:
+                                # 临时变量更新到符号表
+                                self.asteval.symtable[var_name] = new_value
+                                
+                        except Exception as dyn_err:
+                            logger.error(f"Error evaluating dynamics for formula '{form_name}', variable '{var_name}': {expr} -> {dyn_err}")
+                            continue
+
                     # 处理 formula
                     if hasattr(formula, 'formula') and formula.formula:
-                        result = self.asteval.eval(formula.formula, raise_errors=False)
-                        if self.asteval.error:
-                            raise ValueError(f"Error evaluating formula for {form_name}: {self.asteval.error[0].get_error()[1]}")
-                        formula_results[form_name] = result
+                        try:
+                            result = self.asteval.eval(formula.formula, raise_errors=True)
+                            formula_results[form_name] = result
+                        except Exception as form_err:
+                            logger.error(f"Error evaluating formula result for '{form_name}': {formula.formula} -> {form_err}")
             except Exception as e:
-                logger.error(f"Error executing formula {form_name}: {e}")
-                raise
+                logger.error(f"Unexpected error executing formula '{form_name}': {e}")
+                # 不中断整个仿真，只记录错误
         
         # 新增：执行 post_step 钩子
         for hook in self.hooks.get('post_step', []):

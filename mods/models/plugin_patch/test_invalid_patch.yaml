@@ -1,0 +1,41 @@
+variables:
+  abc:
+    description: Placeholder for abc
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  blood_pressure:
+    description: Placeholder for blood_pressure
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  heart_rate:
+    description: Placeholder for heart_rate
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  stress_level:
+    description: Placeholder for stress_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  stress_levelaa:
+    description: Placeholder for stress_levelaa
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100

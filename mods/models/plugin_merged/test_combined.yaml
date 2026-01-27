@@ -1,0 +1,100 @@
+metadata:
+  name: test_module1
+  version: 1.0.0
+  author: LoaderEngine
+  description: 合并模型来自 文件 test\test_module1.yaml, test\test_module2.yaml
+  conflicts: []
+  tags: []
+imports: []
+variables:
+  heart_rate:
+    description: 心率
+    value: 0.0
+    type: input
+    unit: bpm
+    bounds: null
+  blood_pressure:
+    description: 血压
+    value: 0.0
+    type: input
+    unit: mmHg
+    bounds: null
+  cardiac_output_coefficient:
+    description: 心输出量系数
+    value: 0.0
+    type: parameter
+    unit: L/min/bpm
+    bounds: null
+  cardiac_output:
+    description: 心输出量
+    value: 0.0
+    type: state
+    unit: L/min
+    bounds: null
+  oxygen_delivery:
+    description: 氧气输送量
+    value: 0.0
+    type: state
+    unit: mL/min
+    bounds: null
+  breathing_rate:
+    description: 呼吸频率
+    value: 0.0
+    type: input
+    unit: breaths/min
+    bounds: null
+  tidal_volume:
+    description: 潮气量
+    value: 0.0
+    type: input
+    unit: mL
+    bounds: null
+  oxygen_extraction_ratio:
+    description: 氧气提取率
+    value: 0.0
+    type: parameter
+    unit: dimensionless
+    bounds: null
+  minute_ventilation:
+    description: 分钟通气量
+    value: 0.0
+    type: state
+    unit: L/min
+    bounds: null
+  oxygen_uptake:
+    description: 氧气摄取量
+    value: 0.0
+    type: state
+    unit: mL/min
+    bounds: null
+formulas:
+  cardiac_output:
+    description: 心输出量 = 心率 × 系数
+    condition: true
+    priority: 0
+    dynamics:
+      cardiac_output: heart_rate * cardiac_output_coefficient
+    formula: null
+  oxygen_delivery:
+    description: 氧气输送量 = 心输出量 × 200
+    condition: true
+    priority: 0
+    dynamics:
+      oxygen_delivery: cardiac_output * 200
+    formula: null
+  minute_ventilation:
+    description: 分钟通气量 = 呼吸频率 × 潮气量 / 1000
+    condition: true
+    priority: 0
+    dynamics:
+      minute_ventilation: (breathing_rate * tidal_volume) / 1000
+    formula: null
+  oxygen_uptake:
+    description: 氧气摄取量 = 分钟通气量 × 1000 × 提取率
+    condition: true
+    priority: 0
+    dynamics:
+      oxygen_uptake: minute_ventilation * 1000 * oxygen_extraction_ratio
+    formula: null
+simulator: {}
+optimizer: {}

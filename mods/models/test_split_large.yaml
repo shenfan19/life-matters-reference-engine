@@ -141,6 +141,3 @@ simulation:
     - stress_hormone
     - insulin_level
     - glucose_level
-
-optimization:
-  enabled: false

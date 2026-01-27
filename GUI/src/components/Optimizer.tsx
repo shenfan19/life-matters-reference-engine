@@ -3,47 +3,59 @@
 // frontend/src/components/Simulator.tsx
 // 优化版本 - 支持连续运行直到完成或暂停
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Button, Space, Progress, Statistic, Row, Col, InputNumber, message, Alert, Table, Slider } from 'antd';
-import { 
-  PlayCircleOutlined, 
-  PauseOutlined, 
+import React, { useEffect, useRef } from 'react';
+import {
+  Card, Button, Space, Progress, Statistic, Row, Col, InputNumber,
+  message, Alert, Select
+} from 'antd';
+import {
+  PlayCircleOutlined,
+  PauseOutlined,
   StopOutlined,
   DownloadOutlined,
   ClockCircleOutlined,
   SyncOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, ModelFile } from '../types';
+import type { OptimizerProps, OptimizerState, DurationUnit, StepUnit } from '../types';
 
 const API_BASE = '/api';
 
-const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
-  const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'completed'>('idle');
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [totalSteps, setTotalSteps] = useState(1440);
-  const [simulationData, setSimulationData] = useState<SimulationDataPoint[]>([]);
-  const [inputParams, setInputParams] = useState<Record<string, number>>({});
-  const [stateVariables, setStateVariables] = useState<Record<string, number>>({});
-  const [sessionId, setSessionId] = useState<string>('');
-  const [timeHours, setTimeHours] = useState(8760);
-  const [stepSize, setStepSize] = useState(3600);
-  
-  // 新增：批量执行参数
-  const [batchSize, setBatchSize] = useState(10); // 每次执行10步
-  const [updateInterval, setUpdateInterval] = useState(100); // 每100ms更新一次
-  
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isRunningRef = useRef(false); // 用于控制循环
+const Optimizer: React.FC<OptimizerProps> = ({ subPage, selectedModel, state, setState }) => {
+  const {
+    status, progress, currentStep, totalSteps, optimizationData,
+    inputParams, stateVariables, sessionId,
+    timeValue, timeUnit, stepValue, stepUnit, batchSize, updateInterval
+  } = state;
+
+  const setStatus = (val: OptimizerState['status']) => setState((prev: OptimizerState) => ({ ...prev, status: val }));
+  const setProgress = (val: number) => setState((prev: OptimizerState) => ({ ...prev, progress: val }));
+  const setCurrentStep = (val: number) => setState((prev: OptimizerState) => ({ ...prev, currentStep: val }));
+  const setTotalSteps = (val: number) => setState((prev: OptimizerState) => ({ ...prev, totalSteps: val }));
+  const setOptimizationData = (val: any[] | ((p: any[]) => any[])) =>
+    setState((prev: OptimizerState) => ({ ...prev, optimizationData: typeof val === 'function' ? val(prev.optimizationData) : val }));
+  const setInputParams = (val: Record<string, number>) => setState((prev: OptimizerState) => ({ ...prev, inputParams: val }));
+  const setStateVariables = (val: Record<string, number>) => setState((prev: OptimizerState) => ({ ...prev, stateVariables: val }));
+  const setSessionId = (val: string) => setState((prev: OptimizerState) => ({ ...prev, sessionId: val }));
+  const setTimeValue = (val: number) => setState((prev: OptimizerState) => ({ ...prev, timeValue: val }));
+  const setTimeUnit = (val: DurationUnit) => setState((prev: OptimizerState) => ({ ...prev, timeUnit: val }));
+  const setStepValue = (val: number) => setState((prev: OptimizerState) => ({ ...prev, stepValue: val }));
+  const setStepUnit = (val: StepUnit) => setState((prev: OptimizerState) => ({ ...prev, stepUnit: val }));
+  const setBatchSize = (val: number) => setState((prev: OptimizerState) => ({ ...prev, batchSize: val }));
+
+  const isRunningRef = useRef(false);
+  const intervalRef = useRef<any>(null);
+
+  // 单位换算常量
+  const TIME_UNITS: Record<string, number> = { year: 8760, month: 720, day: 24, hour: 1 };
+  const STEP_UNITS: Record<string, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
 
   // 初始化参数
   useEffect(() => {
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
-      
+
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
@@ -51,19 +63,38 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
           states[name] = data.value;
         }
       });
-      
+
       setInputParams(inputs);
       setStateVariables(states);
     }
-    
+
     if (selectedModel?.content?.simulator) {
       const sim = selectedModel.content.simulator;
-      setStepSize(sim.step_size || 3600);
-      const totalTime = sim.total_time || 31536000;
-      setTotalSteps(Math.floor(totalTime / (sim.step_size || 3600)));
-      setTimeHours(totalTime / 3600);
+      const defaultStep = sim.step_size || 3600;
+      const defaultTotal = sim.total_time || 86400;
+
+      // 如果尚未设置过值，则从模型同步
+      if (timeValue === 30 && stepValue === 3600) {
+        setStepValue(defaultStep);
+        setStepUnit('second');
+        setTimeValue(defaultTotal / 3600);
+        setTimeUnit('day');
+      }
     }
   }, [selectedModel]);
+
+  // 处理单位切换 - 自动换算数值
+  const handleTimeUnitChange = (newUnit: DurationUnit) => {
+    let hours = timeValue * (TIME_UNITS[timeUnit] || 1);
+    let newValue = hours / (TIME_UNITS[newUnit] || 1);
+    setState((prev: OptimizerState) => ({ ...prev, timeUnit: newUnit, timeValue: Number(newValue.toFixed(2)) }));
+  };
+
+  const handleStepUnitChange = (newUnit: StepUnit) => {
+    let seconds = stepValue * (STEP_UNITS[stepUnit] || 1);
+    let newValue = seconds / (STEP_UNITS[newUnit] || 1);
+    setState((prev: OptimizerState) => ({ ...prev, stepUnit: newUnit, stepValue: Number(newValue.toFixed(2)) }));
+  };
 
   // 启动仿真
   const startSimulation = async () => {
@@ -76,52 +107,78 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       setStatus('running');
       setProgress(0);
       setCurrentStep(0);
-      setSimulationData([]);
+      setOptimizationData([]);
       isRunningRef.current = true;
 
-      // 调用后端启动仿真
+      // 暂时调用 simulation/start 流程进行闭环优化演示
+      const finalTimeHours = timeValue * TIME_UNITS[timeUnit];
+      const finalStepSeconds = stepValue * STEP_UNITS[stepUnit];
+
       const response = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model_name: selectedModel.content!.metadata.name,
           folder: selectedModel.folder,
-          time_hours: timeHours,
-          step_size: stepSize,
+          time_hours: finalTimeHours,
+          step_size: finalStepSeconds,
           input_params: inputParams
         })
       });
-      
+
       const result = await response.json();
 
       if (result.success && result.data) {
         const data = result.data;
         setSessionId(data.session_id);
         setTotalSteps(data.total_steps);
-        
-        // 更新初始状态
-        const initialStates: Record<string, number> = {};
-        Object.entries(data.initial_state).forEach(([name, info]: [string, any]) => {
-          if (info.type === 'state') {
-            initialStates[name] = info.value;
-          }
-        });
-        setStateVariables(initialStates);
-        
-        message.success('仿真已启动');
-        
-        // ✅ 新方案：使用批量执行
-        runSimulationBatch(data.session_id);
+        message.success('优化进程已启动');
+        runOptimizationBatch(data.session_id);
       } else {
-        message.error(result.error || '启动仿真失败');
+        message.error(result.error || '启动优化失败');
         setStatus('idle');
         isRunningRef.current = false;
       }
     } catch (error: any) {
-      message.error(`启动仿真失败: ${error.message}`);
+      message.error(`启动优化失败: ${error.message}`);
       setStatus('idle');
       isRunningRef.current = false;
     }
+  };
+
+  const runOptimizationBatch = async (sid: string) => {
+    // 逻辑同 Simulation，但展示优化相关的中间结果
+    const loop = async () => {
+      if (!isRunningRef.current) return;
+      try {
+        const response = await fetch(`${API_BASE}/simulation/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid, steps: batchSize, input_changes: {} })
+        });
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          setCurrentStep(data.current_step);
+          setProgress(data.progress);
+          setOptimizationData(prev => [...prev, ...data.outputs]);
+          if (data.completed) {
+            setStatus('completed');
+            isRunningRef.current = false;
+            message.success('优化任务已完成');
+          } else {
+            setTimeout(loop, updateInterval);
+          }
+        } else {
+          setStatus('idle');
+          isRunningRef.current = false;
+        }
+      } catch (e) {
+        setStatus('idle');
+        isRunningRef.current = false;
+      }
+    };
+    loop();
   };
 
   // ✅ 新方案：批量执行仿真
@@ -147,10 +204,10 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
 
         if (result.success && result.data) {
           const data = result.data;
-          
+
           setCurrentStep(data.current_step);
           setProgress(data.progress);
-          
+
           // 更新状态变量（使用最后一步的状态）
           const newStates: Record<string, number> = {};
           Object.entries(data.final_state).forEach(([name, info]: [string, any]) => {
@@ -159,10 +216,10 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
             }
           });
           setStateVariables(newStates);
-          
+
           // 添加所有数据点
-          setSimulationData(prev => [...prev, ...data.outputs]);
-          
+          setOptimizationData(prev => [...prev, ...data.outputs]);
+
           // 检查是否完成
           if (data.completed) {
             stopSimulation();
@@ -170,7 +227,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
             message.success(`仿真完成！共执行 ${data.current_step} 步`);
             return;
           }
-          
+
           // 继续下一批
           if (isRunningRef.current) {
             setTimeout(executeBatch, updateInterval);
@@ -194,7 +251,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
   // 暂停仿真
   const pauseSimulation = async () => {
     isRunningRef.current = false;
-    
+
     try {
       await fetch(`${API_BASE}/simulation/pause`, {
         method: 'POST',
@@ -227,33 +284,17 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
     }
   };
 
-  // 重置仿真
-  const resetSimulation = async () => {
-    stopSimulation();
-    
-    if (sessionId) {
-      try {
-        await fetch(`${API_BASE}/simulation/reset`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId })
-        });
-        
-        setStatus('idle');
-        setProgress(0);
-        setCurrentStep(0);
-        setSimulationData([]);
-        message.success('仿真已重置');
-      } catch (error: any) {
-        message.error(`重置失败: ${error.message}`);
-      }
-    } else {
-      setStatus('idle');
-      setProgress(0);
-      setCurrentStep(0);
-      setSimulationData([]);
-    }
+  // 重置优化
+  const resetOptimization = async () => {
+    isRunningRef.current = false;
+    setStatus('idle');
+    setProgress(0);
+    setCurrentStep(0);
+    setOptimizationData([]);
+    message.success('优化状态已重置');
   };
+
+  // 导出数据
 
   // 导出数据
   const exportData = async () => {
@@ -268,12 +309,12 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId })
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         message.success(`数据已导出到: ${result.data.csv_path}`);
-        
+
         // 可选：触发下载
         // window.open(`${API_BASE}/download/${result.data.csv_path}`);
       } else {
@@ -296,72 +337,71 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       />
 
       {/* 参数设置 */}
-      <Card title="⚙️ 仿真参数" size="small">
-        <Row gutter={16}>
+      <Card title="⚙️ 优化配置" size="small">
+        <Row gutter={16} align="bottom">
           <Col span={8}>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>仿真时长（小时）</div>
+            <div style={{ marginBottom: 8, fontWeight: 'bold' }}>优化周期</div>
+            <Space.Compact style={{ width: '100%' }}>
               <InputNumber
+                value={timeValue}
+                onChange={(val) => setTimeValue(val || 1)}
                 min={1}
-                max={87600}
-                value={timeHours}
-                onChange={v => setTimeHours(v || 8760)}
+                style={{ width: '60%' }}
                 disabled={status === 'running'}
-                style={{ width: '100%' }}
               />
-            </div>
-          </Col>
-          <Col span={8}>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>时间步长（秒）</div>
-              <InputNumber
-                min={1}
-                max={86400}
-                value={stepSize}
-                onChange={v => setStepSize(v || 3600)}
+              <Select
+                value={timeUnit}
+                onChange={handleTimeUnitChange}
+                style={{ width: '40%' }}
                 disabled={status === 'running'}
-                style={{ width: '100%' }}
-              />
-            </div>
+              >
+                <Select.Option value="year">年</Select.Option>
+                <Select.Option value="month">月</Select.Option>
+                <Select.Option value="day">日</Select.Option>
+              </Select>
+            </Space.Compact>
           </Col>
-          <Col span={8}>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>总步数</div>
+          <Col span={6}>
+            <div style={{ marginBottom: 8, fontWeight: 'bold' }}>采样间隔</div>
+            <Space.Compact style={{ width: '100%' }}>
               <InputNumber
-                value={totalSteps}
-                disabled
-                style={{ width: '100%' }}
+                value={stepValue}
+                onChange={(val) => setStepValue(val || 1)}
+                min={0.001}
+                style={{ width: '60%' }}
+                disabled={status === 'running'}
               />
-            </div>
+              <Select
+                value={stepUnit}
+                onChange={handleStepUnitChange}
+                style={{ width: '40%' }}
+                disabled={status === 'running'}
+              >
+                <Select.Option value="day">日</Select.Option>
+                <Select.Option value="hour">时</Select.Option>
+                <Select.Option value="minute">分</Select.Option>
+                <Select.Option value="second">秒</Select.Option>
+              </Select>
+            </Space.Compact>
           </Col>
-        </Row>
-
-        <Row gutter={16}>
-          <Col span={12}>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>批量大小（每次执行步数）</div>
-              <Slider
-                min={1}
-                max={100}
+          <Col span={5}>
+            <div style={{ marginBottom: 8, fontWeight: 'bold' }}>迭代步数</div>
+            <InputNumber
+              value={totalSteps || Math.floor((timeValue * TIME_UNITS[timeUnit] * 3600) / (stepValue * STEP_UNITS[stepUnit]))}
+              disabled
+              style={{ width: '100%', background: '#f5f5f5' }}
+            />
+          </Col>
+          <Col span={5}>
+            <div style={{ marginBottom: 8, fontWeight: 'bold' }}>运行强度</div>
+            <Space wrap>
+              <InputNumber
                 value={batchSize}
-                onChange={setBatchSize}
+                onChange={v => setBatchSize(v || 1)}
+                min={1} max={100} size="small"
                 disabled={status === 'running'}
-                marks={{ 1: '1', 10: '10', 50: '50', 100: '100' }}
               />
-            </div>
-          </Col>
-          <Col span={12}>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>更新间隔（毫秒）</div>
-              <Slider
-                min={50}
-                max={1000}
-                value={updateInterval}
-                onChange={setUpdateInterval}
-                disabled={status === 'running'}
-                marks={{ 50: '50ms', 100: '100ms', 500: '500ms', 1000: '1s' }}
-              />
-            </div>
+            </Space>
           </Col>
         </Row>
       </Card>
@@ -375,7 +415,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
                 <div style={{ marginBottom: 8 }}>{name}</div>
                 <InputNumber
                   value={value}
-                  onChange={v => setInputParams({ ...inputParams, [name]: v || 0 })}
+                  onChange={v => setInputParams({ ...inputParams, [name]: Number(v) || 0 })}
                   disabled={status === 'running'}
                   style={{ width: '100%' }}
                 />
@@ -416,24 +456,24 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
               继续
             </Button>
           )}
-          
+
           <Button
             size="large"
             icon={<StopOutlined />}
-            onClick={resetSimulation}
+            onClick={resetOptimization}
             disabled={status === 'idle'}
             danger
           >
-            重置
+            停止
           </Button>
-          
+
           <Button
             size="large"
             icon={<DownloadOutlined />}
             onClick={exportData}
-            disabled={simulationData.length === 0}
+            disabled={optimizationData.length === 0}
           >
-            导出 CSV
+            优化报告
           </Button>
         </Space>
       </Card>
@@ -465,7 +505,7 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
               />
             </Col>
           </Row>
-          
+
           <div style={{ marginTop: 16 }}>
             <Progress
               percent={progress}
@@ -480,19 +520,16 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
       )}
 
       {/* 状态变量 */}
-      {Object.keys(stateVariables).length > 0 && (
-        <Card title="📈 状态变量（实时）" size="small">
+      {optimizationData.length > 0 && (
+        <Card title="🎯 优化迭代结果" size="small">
           <Row gutter={[16, 16]}>
-            {Object.entries(stateVariables).map(([name, value]) => (
-              <Col span={6} key={name}>
-                <Statistic
-                  title={name}
-                  value={value}
-                  precision={2}
-                  valueStyle={{ fontSize: 20 }}
-                />
-              </Col>
-            ))}
+            <Col span={24}>
+              <Statistic
+                title="已探索解空间"
+                value={optimizationData.length}
+                prefix={<ThunderboltOutlined />}
+              />
+            </Col>
           </Row>
         </Card>
       )}
@@ -512,4 +549,4 @@ const Simulator: React.FC<SimulatorProps> = ({ subPage, selectedModel }) => {
   }
 };
 
-export default Simulator;
+export default Optimizer;

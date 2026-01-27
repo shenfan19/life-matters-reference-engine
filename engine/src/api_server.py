@@ -45,6 +45,8 @@ app.add_middleware(
 # 全局实例
 plugin_manager = None
 loader_engine = None
+simulator_engine = None
+optimizer_engine = None
 
 
 # ========== Pydantic 模型（请求体定义）==========
@@ -63,11 +65,37 @@ class SplitRequest(BaseModel):
     output_dir: str = "default_split"
 
 
+class SimulationStartRequest(BaseModel):
+    model_name: str
+    folder: Optional[str] = None
+    time_hours: float = 24.0
+    step_size: Optional[float] = None
+    input_params: Optional[Dict[str, float]] = None
+
+
+class SimulationStepRequest(BaseModel):
+    session_id: str
+    steps: int = 1
+    input_changes: Optional[Dict[str, float]] = None
+
+
+class SessionRequest(BaseModel):
+    session_id: str
+
+
+class OptimizationRequest(BaseModel):
+    model_names: List[str]
+    folder: Optional[str] = None
+    mode: str = "full_params"
+    method: str = "grid"
+    time_hours: float = 720.0
+
+
 # ========== 启动事件 ==========
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化"""
-    global plugin_manager, loader_engine
+    global plugin_manager, loader_engine, simulator_engine, optimizer_engine
     
     logger.info("=" * 60)
     logger.info("Initializing LifeMatters Backend...")
@@ -129,6 +157,24 @@ async def startup_event():
     except Exception as e:
         logger.error(f"❌ Error initializing mods: {e}")
         loader_engine = None
+    
+    # 初始化仿真与优化引擎
+    try:
+        from engine.src.simulator_engine import SimulatorEngine
+        from engine.src.optimizer_engine import OptimizerEngine
+        
+        mods_dir = PROJECT_ROOT / "mods"
+        simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
+        optimizer_engine = OptimizerEngine(mods_directory=str(mods_dir))
+        
+        # 注入仿真器到优化器
+        optimizer_engine.set_simulator(simulator_engine)
+        
+        logger.info(f"✅ Simulation & Optimization systems initialized")
+    except Exception as e:
+        logger.error(f"❌ Error initializing simulation/optimization: {e}")
+        simulator_engine = None
+        optimizer_engine = None
     
     logger.info("=" * 60)
     logger.info("Backend initialization complete")
@@ -616,6 +662,138 @@ async def list_folders():
     except Exception as e:
         logger.error(f"Error listing folders: {e}")
         return {'success': False, 'error': str(e)}
+
+
+# ========== Simulation 端点 ==========
+@app.post("/api/simulation/start")
+async def start_simulation(request: SimulationStartRequest):
+    """启动仿真"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    try:
+        result = simulator_engine.start_session(
+            model_name=request.model_name,
+            folder=request.folder,
+            time_hours=request.time_hours,
+            step_size=request.step_size,
+            input_params=request.input_params
+        )
+        
+        if result['success']:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Failed to start simulation'))
+            
+    except Exception as e:
+        logger.error(f"Error starting simulation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/simulation/step")
+@app.post("/api/simulation/batch")
+async def simulation_step(request: SimulationStepRequest):
+    """单步或批量执行仿真"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    try:
+        result = simulator_engine.batch_steps(
+            session_id=request.session_id,
+            steps=request.steps,
+            input_changes=request.input_changes
+        )
+        
+        if result['success']:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Failed to execute simulation steps'))
+            
+    except Exception as e:
+        logger.error(f"Error in simulation step: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/simulation/pause")
+async def pause_simulation(request: SessionRequest):
+    """暂停仿真"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    result = simulator_engine.pause_session(request.session_id)
+    if result['success']:
+        return result
+    else:
+        raise HTTPException(status_code=500, detail=result.get('error', 'Failed to pause simulation'))
+
+
+@app.post("/api/simulation/resume")
+async def resume_simulation(request: SessionRequest):
+    """继续仿真"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    result = simulator_engine.resume_session(request.session_id)
+    if result['success']:
+        return result
+    else:
+        raise HTTPException(status_code=500, detail=result.get('error', 'Failed to resume simulation'))
+
+
+@app.post("/api/simulation/reset")
+async def reset_simulation(request: SessionRequest):
+    """重置仿真"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    result = simulator_engine.reset_session(request.session_id)
+    if result['success']:
+        return result
+    else:
+        raise HTTPException(status_code=500, detail=result.get('error', 'Failed to reset simulation'))
+
+
+@app.post("/api/simulation/export")
+async def export_simulation(request: SessionRequest):
+    """导出仿真数据"""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    
+    result = simulator_engine.export_session_csv(request.session_id)
+    if result['success']:
+        return result
+    else:
+        raise HTTPException(status_code=500, detail=result.get('error', 'Failed to export simulation data'))
+
+
+# ========== Optimizer 端点 ==========
+@app.post("/api/optimizer/run")
+async def run_optimization(request: OptimizationRequest):
+    """运行优化"""
+    if optimizer_engine is None:
+        raise HTTPException(status_code=503, detail="Optimizer engine not initialized")
+    
+    try:
+        # 加载模型
+        success = optimizer_engine.load_models(request.model_names, request.folder)
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to load models for optimization")
+        
+        # 执行优化
+        result = optimizer_engine.optimize(
+            mode=request.mode,
+            method=request.method,
+            time_hours=request.time_hours
+        )
+        
+        if result['success']:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Optimization failed'))
+            
+    except Exception as e:
+        logger.error(f"Error in optimization: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # 运行服务器

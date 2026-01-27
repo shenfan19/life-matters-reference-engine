@@ -3,10 +3,47 @@ import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
 import PluginView from './components/PluginView';
+import type { SimulationState, OptimizerState } from './types';
+
+const initialSimulationState: SimulationState = {
+  status: 'idle',
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 1440,
+  simulationData: [],
+  inputParams: {},
+  stateVariables: {},
+  sessionId: '',
+  timeValue: 24,
+  timeUnit: 'day',
+  stepValue: 3600,
+  stepUnit: 'second',
+  batchSize: 10,
+  updateInterval: 50
+};
+
+const initialOptimizerState: OptimizerState = {
+  status: 'idle',
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 1440,
+  optimizationData: [],
+  inputParams: {},
+  stateVariables: {},
+  sessionId: '',
+  timeValue: 30,
+  timeUnit: 'day',
+  stepValue: 3600,
+  stepUnit: 'second',
+  batchSize: 10,
+  updateInterval: 100
+};
 
 function App() {
   const [currentPage, setCurrentPage] = useState('loader');
   const [selectedModel, setSelectedModel] = useState<any>(null);
+  const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
+  const [optState, setOptState] = useState<OptimizerState>(initialOptimizerState);
 
   const corePages = [
     { id: 'loader', name: '模型加载', icon: '📁' },
@@ -17,11 +54,11 @@ function App() {
   const renderContent = () => {
     switch (currentPage) {
       case 'loader':
-        return <Loader onModelSelect={setSelectedModel} />;
+        return <Loader subPage={currentPage} onModelSelect={setSelectedModel} />;
       case 'simulator':
-        return <Simulator selectedModel={selectedModel} />;
+        return <Simulator selectedModel={selectedModel} state={simState} setState={setSimState} />;
       case 'optimizer':
-        return <Optimizer selectedModel={selectedModel} />;
+        return <Optimizer selectedModel={selectedModel} state={optState} setState={setOptState} />;
       default:
         // 如果是插件ID，显示插件视图
         if (currentPage.startsWith('plugin:')) {
@@ -35,16 +72,16 @@ function App() {
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
       {/* 左侧导航 */}
-      <div style={{ 
-        width: 250, 
+      <div style={{
+        width: 250,
         borderRight: '1px solid #e0e0e0',
         background: '#fafafa',
         display: 'flex',
         flexDirection: 'column'
       }}>
         {/* Logo/Title */}
-        <div style={{ 
-          padding: 20, 
+        <div style={{
+          padding: 20,
           borderBottom: '1px solid #e0e0e0',
           background: '#fff'
         }}>
@@ -56,9 +93,9 @@ function App() {
 
         {/* 核心功能组 */}
         <div style={{ padding: 15 }}>
-          <div style={{ 
-            fontSize: 12, 
-            color: '#999', 
+          <div style={{
+            fontSize: 12,
+            color: '#999',
             marginBottom: 10,
             fontWeight: 'bold',
             textTransform: 'uppercase'
@@ -88,7 +125,7 @@ function App() {
         </div>
 
         {/* 插件扩展组 */}
-        <PluginList 
+        <PluginList
           currentPage={currentPage}
           onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
         />
@@ -127,9 +164,9 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
 
   return (
     <div style={{ padding: 15, borderTop: '1px solid #e0e0e0' }}>
-      <div style={{ 
-        fontSize: 12, 
-        color: '#999', 
+      <div style={{
+        fontSize: 12,
+        color: '#999',
         marginBottom: 10,
         fontWeight: 'bold',
         textTransform: 'uppercase'
@@ -144,9 +181,9 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
       )}
 
       {error && (
-        <div style={{ 
-          padding: 10, 
-          fontSize: 11, 
+        <div style={{
+          padding: 10,
+          fontSize: 11,
           color: '#ff4d4f',
           background: '#fff1f0',
           borderRadius: 4,
@@ -188,8 +225,8 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
             }}
           >
             🔌 {plugin.name}
-            <div style={{ 
-              fontSize: 10, 
+            <div style={{
+              fontSize: 10,
               marginTop: 3,
               opacity: isActive ? 0.9 : 0.6
             }}>
