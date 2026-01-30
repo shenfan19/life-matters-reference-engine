@@ -159,9 +159,9 @@ class LoaderCLI:
                 if not output_path.endswith('.yaml'):
                     output_path = output_path + '.yaml'
                 
-                # 如果是相对路径，放到 mods/merged/ 下
+                # 如果是相对路径，放到 mods/_output/merged/ 下
                 if not os.path.isabs(output_path):
-                    final_output_path = os.path.join(self.engine.mods_directory, "merged", output_path)
+                    final_output_path = os.path.join(self.engine.mods_directory, "_output", "merged", output_path)
                 else:
                     final_output_path = output_path
             
@@ -188,8 +188,8 @@ class LoaderCLI:
         :return: 包含拆分结果的字典。
         """
         try:
-            # 构建完整的输出路径：mods/splited/output_dir/
-            full_output_dir = os.path.join(self.engine.mods_directory, "splited", output_dir)
+            # 构建完整的输出路径：mods/_output/splited/output_dir/
+            full_output_dir = os.path.join(self.engine.mods_directory, "_output", "splited", output_dir)
             
             result = self.engine.split_model(model_name, full_output_dir, folder)
             if result["success"]:
@@ -212,11 +212,10 @@ def create_parser() -> argparse.ArgumentParser:
         epilog='''
 Examples:
 %(prog)s --list
-%(prog)s --list --folder physiology cancer_models  # 支持多个文件夹
-%(prog)s --folder physiology --merge-to merged.yaml  # 以 physiology.yaml 为根合并
-%(prog)s --file physiology/obesity_diabetes physiology/obesity_diabetes_patch --merge-to combined.yaml
-%(prog)s --folder physiology --file cancer_models/cancer --merge-to mixed.yaml  # 混合文件夹和文件
-%(prog)s --file physiology/obesity_diabetes --split-to split_dir
+%(prog)s --list --folder medical/dynamics  # 列出指定文件夹的模型
+%(prog)s --folder models/medical/dynamics --merge-to merged.yaml  # 以同名文件为根合并
+%(prog)s --file models/medical/dynamics/obesity_diabetes --merge-to combined.yaml
+%(prog)s --file models/medical/dynamics/obesity_diabetes --split-to split_dir
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter  # 使用原始描述格式器
     )

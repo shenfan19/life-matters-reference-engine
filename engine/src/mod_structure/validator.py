@@ -319,7 +319,7 @@ class Validator:
             mod_name = self.current_filename or (self.metadata.name if self.metadata and hasattr(self.metadata, 'name') else 'unknown')
             # 修改：使用output_dir（由loader_engine.py传入）或mods目录，生成patch文件
             # 修改后
-            patch_dir = output_dir if output_dir else os.path.join(self.mods_directory, "patch")
+            patch_dir = output_dir if output_dir else os.path.join(self.mods_directory, "_output", "patch")
             os.makedirs(patch_dir, exist_ok=True)
             patch_file = os.path.join(patch_dir, f"{mod_name}_patch.yaml")
             patch_data = {

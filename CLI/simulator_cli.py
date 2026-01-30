@@ -156,10 +156,10 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Simulator CLI - 运行仿真和显示模型状态',
         epilog='''
 示例命令:
-  %(prog)s --file digestive --time 1000 --lang zhhans --interactive
-  %(prog)s --file physiology/obesity_diabetes --time 500 --folder physiology
-  %(prog)s --state digestive --format yaml --folder physiology
-  %(prog)s --file digestive --time 8760 --output results/simulation.csv
+  %(prog)s --file models/medical/dynamics/digestive --time 1000 --lang zhhans --interactive
+  %(prog)s --file models/medical/dynamics/obesity_diabetes --time 500
+  %(prog)s --state models/medical/dynamics/digestive --format yaml
+  %(prog)s --file models/medical/dynamics/digestive --time 8760 --output results/simulation.csv
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )

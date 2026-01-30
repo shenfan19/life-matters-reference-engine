@@ -121,9 +121,9 @@ def create_parser() -> argparse.ArgumentParser:
         description='LifeMatters Optimizer CLI - 优化模型参数',
         epilog='''
 示例命令:
-  %(prog)s --folder physiology --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zhhans
-  %(prog)s --file digestive --mode real_time --method grid --time 720
-  %(prog)s --file obesity_diabetes --mode full_inputs --method pymoo --time 8640 --output result.yaml
+  %(prog)s --folder models/medical/dynamics --file digestive,diabetes --mode full_params --method pymoo --time 12000 --lang zhhans
+  %(prog)s --file models/medical/dynamics/digestive --mode real_time --method grid --time 720
+  %(prog)s --file models/medical/dynamics/obesity_diabetes --mode full_inputs --method pymoo --time 8640 --output result.yaml
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
