@@ -1,0 +1,37 @@
+type: story
+category: education_story
+
+metadata:
+  name: "basic_nutrition_demo"
+  version: "1.0.0"
+  author: "Antigravity"
+  description: "一个基础的营养摄入与消化演示故事。主角摄入一根香蕉，观察其营养成分如何进入消化系统并转化为血糖。"
+  tags: [demo, nutrition, banana]
+
+story:
+  title: "香蕉的奇幻旅程"
+  premise: "观察香蕉摄入后的生理变化。"
+  protagonist:
+    name: "小明"
+    initial_status:
+      blood_glucose: 5.0
+      gastric_volume: 500
+
+imports:
+  - models/medical/dynamics/digestive_system
+  - models/interventions/diet/banana
+
+simulation:
+  duration: 43200 # 12 hours (in seconds, assuming engine uses seconds)
+  time_step: 60    # 1 minute steps
+  output_variables:
+    - blood_glucose
+    - gastric_carbohydrate
+    - food_carbohydrate
+    - banana_intake
+    - nutritional_status
+
+# 初始输入
+variables:
+  banana_intake:
+    value: 150 # 初始就吃 150g 香蕉

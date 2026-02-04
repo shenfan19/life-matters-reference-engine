@@ -1,105 +1,91 @@
+type: model
+category: dynamics
+
 metadata:
-  author: Minghui Wu
-  conflicts: []
-  description: 营养摄入变量和初始摄入公式
-  name: nutrition_intake
-  tags:
-  - nutrition
-  - intake
-  version: 2.1.0
+  name: "nutrition_intake"
+  version: "3.0.0"
+  author: "Minghui Wu, Antigravity"
+  description: "营养摄入基础模型，处理食物向胃部的初步转移。"
+  tags: [nutrition, intake]
+
 variables:
   exercise_intensity:
-    bounds:
-    - 0.0
-    - 3.0
-    description: 运动强度，0-无运动，1-轻度，2-中度，3-高强度
     type: input
-    unit: 强度级别
     value: 0.0
+    unit: "强度级别"
+    bounds: [0.0, 3.0]
+    io_role: input
+    description: "运动强度，0-无运动，1-轻度，2-中度，3-高强度"
+  
   food_carbohydrate:
-    bounds:
-    - 0
-    - 200
-    description: 食物碳水化合物含量，包括糖类和淀粉
     type: input
-    unit: 克
     value: 0
+    unit: "克"
+    bounds: [0, 500]
+    io_role: input
+    description: "当前摄入的碳水化合物"
+  
   food_fat:
-    bounds:
-    - 0
-    - 50
-    description: 食物脂肪含量
     type: input
-    unit: 克
     value: 0
+    unit: "克"
+    bounds: [0, 200]
+    io_role: input
+    description: "当前摄入的脂肪"
+  
   food_protein:
-    bounds:
-    - 0
-    - 100
-    description: 蛋白质摄入量，通过饮食摄入
     type: input
-    unit: 克
     value: 0
+    unit: "克"
+    bounds: [0, 300]
+    io_role: input
+    description: "当前摄入的蛋白质"
+  
   physical_activity:
-    bounds:
-    - 0
-    - 300
-    description: 体力活动水平
     type: input
-    unit: METs
     value: 0
+    unit: "METs"
+    bounds: [0, 300]
+    io_role: input
+    description: "体力活动水平"
+  
   water_intake:
-    bounds:
-    - 0
-    - 1000
-    description: 水分摄入量
     type: input
-    unit: 毫升
     value: 0
+    unit: "毫升"
+    bounds: [0, 2000]
+    io_role: input
+    description: "当前摄入的水分"
+
 formulas:
   carbohydrate_ingestion:
     condition: food_carbohydrate > 0
-    description: 碳水化合物摄入到胃
-    dynamics:
-      food_carbohydrate: 0
-      gastric_carbohydrate: gastric_carbohydrate + food_carbohydrate
+    description: "碳水化合物转移至胃"
     priority: 1
+    dynamics:
+      gastric_carbohydrate: "gastric_carbohydrate + food_carbohydrate"
+      food_carbohydrate: 0
+  
   fat_ingestion:
     condition: food_fat > 0
-    description: 脂肪摄入到胃
-    dynamics:
-      food_fat: 0
-      gastric_fat: gastric_fat + food_fat
+    description: "脂肪转移至胃"
     priority: 1
+    dynamics:
+      gastric_fat: "gastric_fat + food_fat"
+      food_fat: 0
+  
   protein_ingestion:
     condition: food_protein > 0
-    description: 蛋白质摄入到胃
-    dynamics:
-      food_protein: 0
-      gastric_protein: gastric_protein + food_protein
+    description: "蛋白质转移至胃"
     priority: 1
+    dynamics:
+      gastric_protein: "gastric_protein + food_protein"
+      food_protein: 0
+  
   water_ingestion:
     condition: water_intake > 0
-    description: 水分摄入
-    dynamics:
-      body_water: body_water + water_intake
-      water_intake: 0
+    description: "水分转移"
     priority: 1
-simulator:
-  step_size: 1
-  total_time: 1440
-  output_format: csv
-  output_variables:
-  - exercise_intensity
-  - food_carbohydrate
-  - food_fat
-  - food_protein
-  - physical_activity
-  - water_intake
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - body_water
-  variables_to_optimize:
-  - water_intake
+    dynamics:
+      body_water: "body_water + water_intake"
+      water_intake: 0
