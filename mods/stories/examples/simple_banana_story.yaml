@@ -1,0 +1,37 @@
+type: story
+category: demo_story
+
+metadata:
+  name: simple_banana_story
+  version: "1.0.0"
+  author: "Antigravity"
+  description: "简化的香蕉摄入演示故事。主角摄入150g香蕉，验证其营养成分正确转移至胃部。"
+  tags: [demo, simple, banana]
+
+story:
+  title: "简单吃个香蕉"
+  premise: "验证基础加载和动态转换流程。"
+  protagonist:
+    name: "测试员"
+    initial_status:
+      gastric_carbohydrate: 0
+      body_water: 42000
+
+imports:
+  - models/medical/dynamics/simple_nutrition
+  - models/interventions/diet/banana
+
+simulation:
+  duration: 3600 # 1 hour
+  time_step: 60   # 1 minute steps
+  output_variables:
+    - gastric_carbohydrate
+    - gastric_protein
+    - gastric_fat
+    - body_water
+    - banana_intake
+
+# 初始输入
+variables:
+  banana_intake:
+    value: 150 # 摄入 150g 香蕉

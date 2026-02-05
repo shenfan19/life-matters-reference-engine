@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, Tree, Row, Col, Descriptions, Tag, Button, Space, Input, message, Spin, Tabs, Empty, Modal, Select, Form, Alert } from 'antd';
-import { 
+import {
   FolderOutlined,
   FileOutlined,
   ReloadOutlined,
@@ -27,6 +27,8 @@ interface ModelFile {
   key: string;
   title: string;
   path: string;
+  type?: string;
+  category?: string;
   metadata?: any;
   variables?: Record<string, any>;
   formulas?: Record<string, any>;
@@ -60,18 +62,43 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     try {
       const response = await fetch(`${API_BASE}/files`);
       const result = await response.json();
-      
+
       if (result.success) {
         const convertToTreeData = (items: any[]): DataNode[] => {
-          return items.map(item => ({
-            title: item.title,
-            key: item.key,
-            icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
-            isLeaf: item.isLeaf || false,
-            children: item.children ? convertToTreeData(item.children) : undefined,
-          }));
+          return items.map(item => {
+            // Create title with type/category badges for files
+            const titleNode = item.type === 'file' && item.mod_type ? (
+              <span>
+                {item.title}
+                {item.mod_type && (
+                  <Tag
+                    color={item.mod_type === 'model' ? 'blue' : 'green'}
+                    style={{ marginLeft: 8, fontSize: '10px' }}
+                  >
+                    {item.mod_type}
+                  </Tag>
+                )}
+                {item.category && item.category !== 'unknown' && (
+                  <Tag
+                    color="default"
+                    style={{ marginLeft: 4, fontSize: '10px' }}
+                  >
+                    {item.category}
+                  </Tag>
+                )}
+              </span>
+            ) : item.title;
+
+            return {
+              title: titleNode,
+              key: item.key,
+              icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
+              isLeaf: item.isLeaf || false,
+              children: item.children ? convertToTreeData(item.children) : undefined,
+            };
+          });
         };
-        
+
         const tree = convertToTreeData(result.data);
         setTreeData(tree);
         message.success(`已加载 ${countFiles(tree)} 个文件`);
@@ -102,10 +129,10 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
       const cleanPath = filePath.replace(/^mods\//, '');
       const response = await fetch(`${API_BASE}/file/${cleanPath}`);
       const result = await response.json();
-      
+
       if (result.success) {
         const { content, path } = result.data;
-        
+
         const model: ModelFile = {
           key: filePath,
           title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
@@ -118,7 +145,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           imports: content.imports,
           validated: false,
         };
-        
+
         setSelectedModel(model);
         message.info(`已选择模型: ${model.title}，点击"确认并验证"按钮加载到系统`);
       } else {
@@ -132,40 +159,42 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     }
   };
 
-// 修复后的 loadFileContent 函数
-// 替换 Loader.tsx 第 98-133 行
+  // 修复后的 loadFileContent 函数
+  // 替换 Loader.tsx 第 98-133 行
   // 加载文件内容并自动验证(与 CLI 保持一致)
   const loadFileContent = async (filePath: string) => {
     setLoading(true);
     try {
       const cleanPath = filePath.replace(/^mods\//, '');
-      
+
       // 步骤1: 读取文件内容
       const fileResponse = await fetch(`${API_BASE}/file/${cleanPath}`);
       const fileResult = await fileResponse.json();
-      
+
       if (!fileResult.success) {
         message.error(`读取文件失败: ${fileResult.error}`);
         setLoading(false);
         return;
       }
-      
+
       const { content, path } = fileResult.data;
-      
+
       // 步骤2: 立即调用验证 API (与 CLI 保持一致)
       const validateResponse = await fetch(`${API_BASE}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_path: cleanPath }),
       });
-      
+
       const validateResult = await validateResponse.json();
-      
+
       // 步骤3: 构建模型对象 (无论验证成功与否)
       const model: ModelFile = {
         key: filePath,
         title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
         path: filePath,
+        type: content.type,
+        category: content.category,
         content: content,  // 📝 修复: 添加 content 属性供 Simulator 使用
         metadata: content.metadata,
         variables: content.variables,
@@ -178,20 +207,20 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
         validationErrors: validateResult.success ? [] : (validateResult.errors || [validateResult.error]),
         patchFile: validateResult.data?.patch_file,
       };
-      
+
       setSelectedModel(model);
       setConfirmedModel(model);  // 自动确认
-      
+
       // 步骤4: 显示验证结果
       if (validateResult.success) {
         if (onModelSelect) {
           onModelSelect(model);
         }
-        
+
         if (validateResult.data?.patch_file) {
           message.success(
             <span>
-              ✅ 模型验证通过!已生成补丁文件<br/>
+              ✅ 模型验证通过!已生成补丁文件<br />
               <code style={{ fontSize: 11 }}>{validateResult.data.patch_file}</code>
             </span>,
             5
@@ -256,9 +285,9 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           file_path: selectedModel.path.replace(/^mods\//, ''),
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         const validatedModel = {
           ...selectedModel,
@@ -266,16 +295,16 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           validationErrors: [],
           patchFile: result.data?.patch_file,
         };
-        
+
         setConfirmedModel(validatedModel);
         if (onModelSelect) {
           onModelSelect(validatedModel);
         }
-        
+
         if (result.data?.patch_file) {
           message.success(
             <span>
-              ✅ 模型验证通过！已生成补丁文件<br/>
+              ✅ 模型验证通过！已生成补丁文件<br />
               <code style={{ fontSize: 11 }}>{result.data.patch_file}</code>
             </span>,
             5
@@ -290,9 +319,9 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           validationErrors: result.errors || [result.error],
           patchFile: result.data?.patch_file,
         };
-        
+
         setConfirmedModel(validatedModel);
-        
+
         Modal.error({
           title: '模型验证失败',
           width: 600,
@@ -337,12 +366,12 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
       loadFileTree();
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(keyword)}`);
       const result = await response.json();
-      
+
       if (result.success) {
         const searchResults: DataNode[] = result.data.map((item: any) => ({
           title: item.title,
@@ -350,14 +379,14 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           icon: <FileOutlined />,
           isLeaf: true,
         }));
-        
+
         setTreeData([{
           title: `搜索结果 (${searchResults.length})`,
           key: 'search-results',
           icon: <SearchOutlined />,
           children: searchResults,
         }]);
-        
+
         setExpandedKeys(['search-results']);
       }
     } catch (error: any) {
@@ -392,10 +421,10 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
 
   // 合并模型
   const handleMerge = async () => {
-    const yamlFiles = checkedKeys.filter(key => 
+    const yamlFiles = checkedKeys.filter(key =>
       String(key).endsWith('.yaml') || String(key).endsWith('.yml')
     );
-    
+
     if (yamlFiles.length < 2) {
       message.warning('请至少选择 2 个模型文件进行合并');
       return;
@@ -427,7 +456,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
       if (result.success) {
         message.success(
           <span>
-            ✅ {result.data.message}<br/>
+            ✅ {result.data.message}<br />
             输出文件: <code style={{ fontSize: 11 }}>{result.data.output_path}</code>
           </span>,
           5
@@ -527,7 +556,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     if (!selectedModel?.variables) {
       return <Empty description="无变量数据" />;
     }
-    
+
     const varsByType = {
       input: [] as any[],
       parameters: [] as any[],
@@ -538,7 +567,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     Object.entries(selectedModel.variables).forEach(([name, data]: [string, any]) => {
       const type = (data.type || 'state').toLowerCase();
       const item = { name, ...data };
-      
+
       if (varsByType[type as keyof typeof varsByType]) {
         varsByType[type as keyof typeof varsByType].push(item);
       } else {
@@ -553,9 +582,9 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             <Card key={type} size="small" title={
               <span>
                 <Tag color={
-                  type === 'input' ? 'blue' : 
-                  type === 'parameters' ? 'green' : 
-                  type === 'state' ? 'orange' : 'default'
+                  type === 'input' ? 'blue' :
+                    type === 'parameters' ? 'green' :
+                      type === 'state' ? 'orange' : 'default'
                 }>
                   {type.toUpperCase()}
                 </Tag>
@@ -563,10 +592,10 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
               </span>
             }>
               {vars.map((v: any, idx: number) => (
-                <div key={idx} style={{ 
-                  marginBottom: 8, 
-                  padding: 8, 
-                  background: '#fafafa', 
+                <div key={idx} style={{
+                  marginBottom: 8,
+                  padding: 8,
+                  background: '#fafafa',
                   borderRadius: 4,
                   border: '1px solid #f0f0f0'
                 }}>
@@ -595,9 +624,9 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     if (!selectedModel?.formulas) {
       return <Empty description="无公式数据" />;
     }
-    
+
     const formulaEntries = Object.entries(selectedModel.formulas);
-    
+
     if (formulaEntries.length === 0) {
       return <Empty description="该模型没有定义公式" />;
     }
@@ -614,7 +643,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             </div>
             {formula.condition && formula.condition !== true && (
               <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <Tag color="orange">触发条件</Tag> 
+                <Tag color="orange">触发条件</Tag>
                 <code style={{ background: '#fff', padding: '2px 6px', borderRadius: 2 }}>
                   {String(formula.condition)}
                 </code>
@@ -629,12 +658,12 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
                   动力学方程:
                 </div>
                 {Object.entries(formula.dynamics).map(([varName, expr]: [string, any], i) => (
-                  <div key={i} style={{ 
-                    marginLeft: 16, 
-                    marginTop: 4, 
-                    fontFamily: 'Consolas, Monaco, monospace', 
-                    background: '#fff', 
-                    padding: '4px 8px', 
+                  <div key={i} style={{
+                    marginLeft: 16,
+                    marginTop: 4,
+                    fontFamily: 'Consolas, Monaco, monospace',
+                    background: '#fff',
+                    padding: '4px 8px',
                     borderRadius: 2,
                     border: '1px solid #e8e8e8',
                     fontSize: 12
@@ -657,8 +686,8 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
     <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 24 }} />}>
       <Row gutter={16} style={{ height: 'calc(100vh - 200px)' }}>
         <Col span={8}>
-          <Card 
-            title="模型文件树" 
+          <Card
+            title="模型文件树"
             extra={
               <Button size="small" icon={<ReloadOutlined />} onClick={refreshModels}>
                 刷新
@@ -666,7 +695,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             }
             style={{ height: '100%', overflow: 'auto' }}
           >
-            <Input 
+            <Input
               prefix={<SearchOutlined />}
               placeholder="搜索模型文件..."
               value={searchText}
@@ -691,15 +720,15 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             />
           </Card>
         </Col>
-        
+
         <Col span={16}>
           {selectedModel ? (
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               {/* 操作按钮区 */}
               <Card>
                 <Space wrap>
-                  <Button 
-                    type="primary" 
+                  <Button
+                    type="primary"
                     icon={<CheckCircleOutlined />}
                     onClick={confirmAndValidateModel}
                     loading={loading}
@@ -707,20 +736,20 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
                   >
                     确认并验证模型
                   </Button>
-                  
+
                   {confirmedModel && confirmedModel.validated && (
                     <Tag icon={<CheckCircleOutlined />} color="success" style={{ marginLeft: 8, fontSize: 14, padding: '4px 12px' }}>
                       ✅ 已验证，可进入 Simulator
                     </Tag>
                   )}
-                  
+
                   {confirmedModel && !confirmedModel.validated && (
                     <Tag icon={<ExclamationCircleOutlined />} color="error" style={{ marginLeft: 8, fontSize: 14, padding: '4px 12px' }}>
                       ❌ 验证失败
                     </Tag>
                   )}
-                  
-                  <Button 
+
+                  <Button
                     icon={<ScissorOutlined />}
                     onClick={handleSplit}
                     disabled={!confirmedModel}
@@ -728,7 +757,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
                     拆分模型
                   </Button>
                 </Space>
-                
+
                 {confirmedModel?.patchFile && (
                   <Alert
                     message="补丁文件"
@@ -744,6 +773,22 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
               {/* 元数据 */}
               <Card title="模型信息">
                 <Descriptions bordered column={2} size="small">
+                  <Descriptions.Item label="类型">
+                    {selectedModel.type ? (
+                      <Tag color={selectedModel.type === 'model' ? 'blue' : 'green'}>
+                        {selectedModel.type}
+                      </Tag>
+                    ) : (
+                      <Tag color="default">unknown</Tag>
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="分类">
+                    {selectedModel.category && selectedModel.category !== 'unknown' ? (
+                      <Tag color="cyan">{selectedModel.category}</Tag>
+                    ) : (
+                      <span style={{ color: '#999' }}>未指定</span>
+                    )}
+                  </Descriptions.Item>
                   <Descriptions.Item label="名称">{selectedModel.metadata?.name || '未命名'}</Descriptions.Item>
                   <Descriptions.Item label="版本">
                     <Tag color="blue">{selectedModel.metadata?.version || '未指定'}</Tag>
@@ -830,7 +875,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             </Space>
           ) : (
             <Card style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Empty 
+              <Empty
                 description={
                   <div>
                     <FileTextOutlined style={{ fontSize: 48, marginBottom: 16, color: '#d9d9d9' }} />
@@ -859,7 +904,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
           showIcon
           icon={<InfoCircleOutlined />}
         />
-        
+
         <div>
           <div style={{ marginBottom: 8, fontWeight: 'bold' }}>选择要合并的模型:</div>
           <Tree
@@ -872,16 +917,16 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             treeData={treeData}
           />
         </div>
-        
+
         <div>
           <Tag color="blue">
             {checkedKeys.filter(k => String(k).endsWith('.yaml') || String(k).endsWith('.yml')).length} 个模型已选中
           </Tag>
         </div>
-        
-        <Button 
-          type="primary" 
-          icon={<MergeOutlined />} 
+
+        <Button
+          type="primary"
+          icon={<MergeOutlined />}
           onClick={handleMerge}
           disabled={checkedKeys.filter(k => String(k).endsWith('.yaml') || String(k).endsWith('.yml')).length < 2}
           size="large"
@@ -935,7 +980,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
   return (
     <>
       {renderSubPage()}
-      
+
       {/* 合并模态框 */}
       <Modal
         title="合并模型"
@@ -953,20 +998,20 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             showIcon
             style={{ marginBottom: 16 }}
           />
-          
+
           <Form.Item
             label="输出文件名"
             name="output_name"
             rules={[{ required: true, message: '请输入输出文件名' }]}
             initialValue="merged_model"
           >
-            <Input 
-              placeholder="merged_model" 
+            <Input
+              placeholder="merged_model"
               addonBefore="mods/merged/"
               addonAfter=".yaml"
             />
           </Form.Item>
-          
+
           <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12 }}>
             <div style={{ marginBottom: 4 }}><strong>选中的模型:</strong></div>
             {checkedKeys
@@ -976,7 +1021,7 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
               ))
             }
           </div>
-          
+
           <Alert
             message="注意"
             description="合并过程会自动验证模型，如果发现缺失变量会生成补丁文件"
@@ -1004,23 +1049,23 @@ const Loader: React.FC<LoaderProps> = ({ subPage, onModelSelect }) => {
             showIcon
             style={{ marginBottom: 16 }}
           />
-          
+
           <Form.Item label="模型名称">
             <Input value={confirmedModel?.title} disabled />
           </Form.Item>
-          
+
           <Form.Item
             label="输出目录名"
             name="output_dir"
             rules={[{ required: true, message: '请输入输出目录名' }]}
             initialValue={confirmedModel?.title || 'split_output'}
           >
-            <Input 
-              placeholder="split_output" 
+            <Input
+              placeholder="split_output"
               addonBefore="mods/splited/"
             />
           </Form.Item>
-          
+
           <Alert
             message="拆分结果"
             description={

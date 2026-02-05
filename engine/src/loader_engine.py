@@ -38,12 +38,12 @@ class LoaderEngine:
     
     def find_model_file(self, model_name: str, folder: Optional[str] = None) -> Optional[str]:
         """
-        在指定目录中查找模型的 YAML 文件路径。不递归搜索，支持 model_name 带路径。
-        :param model_name: 模型名称（可带路径，不含或含扩展名）。
-        :param folder: 可选的子文件夹（如果 model_name 带路径则忽略）。
+        在指定目录中查找模型的 YAML 文件路径。支持新的 models/ 和 stories/ 结构。
+        :param model_name: 模型名称（可带路径，如 "models/interventions/diet/banana" 或 "banana"）。
+        :param folder: 可选的子文件夹（用于向后兼容，如果 model_name 带路径则忽略）。
         :return: 找到的文件绝对路径，如果没有找到则返回 None。
         """
-        # 如果 model_name 是绝对路径，直接检查是否存在（自动添加 .yaml 如果缺失）
+        # 如果 model_name 是绝对路径，直接检查是否存在
         if os.path.isabs(model_name):
             file_path = model_name if model_name.endswith('.yaml') else model_name + '.yaml'
             if os.path.exists(file_path) and os.path.isfile(file_path):
@@ -53,35 +53,69 @@ class LoaderEngine:
         # 确定基础目录
         base_dir = self.mods_directory
         
-        # 如果 model_name 包含路径分隔符，视作相对路径（相对于 mods_directory）
-        if os.sep in model_name:
-            # 分离路径和文件名
-            dir_path, base_name = os.path.split(model_name)
+        if '/' in model_name or os.sep in model_name:
+            # 标准化路径分隔符
+            model_name_norm = model_name.replace('/', os.sep)
+            
+            # 1. 尝试直接作为相对于 mods_directory 的路径 (适合 model_name 已包含 stories/ 或 models/ 的情况)
+            file_path = os.path.join(base_dir, model_name_norm)
+            if not file_path.endswith('.yaml'):
+                file_path += '.yaml'
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return os.path.abspath(file_path)
+            
+            # 2. 尝试拼上 folder (适合 api_server.py 拆分后的情况，如 folder='stories', model_name='examples/xxx')
+            if folder:
+                file_path = os.path.join(base_dir, folder.replace('/', os.sep), model_name_norm)
+                if not file_path.endswith('.yaml'):
+                    file_path += '.yaml'
+                if os.path.exists(file_path) and os.path.isfile(file_path):
+                    return os.path.abspath(file_path)
+            
+            # 3. 尝试提取文件名部分在指定目录中查找 (保持原有逻辑作为兜底)
+            dir_path, base_name = os.path.split(model_name_norm)
             search_dir = os.path.join(base_dir, dir_path)
-            # 自动添加 .yaml 如果 base_name 缺失
             file_name = base_name if base_name.endswith('.yaml') else base_name + '.yaml'
             file_path = os.path.join(search_dir, file_name)
             if os.path.exists(file_path) and os.path.isfile(file_path):
                 return os.path.abspath(file_path)
+            
             return None
         
-        # 如果指定 folder，则在 mods_directory/folder 中查找
+        # 简单名称（无路径分隔符）：需要搜索
+        target_file = model_name if model_name.endswith('.yaml') else model_name + '.yaml'
+        
+        # 如果指定了 folder，优先在该文件夹中查找（向后兼容）
         if folder:
             search_dir = os.path.join(base_dir, folder)
-        else:
-            search_dir = base_dir
+            if os.path.exists(search_dir):
+                file_path = os.path.join(search_dir, target_file)
+                if os.path.isfile(file_path):
+                    return os.path.abspath(file_path)
         
-        # 只检查当前目录的文件，不递归
-        if not os.path.exists(search_dir):
-            return None
-        files = os.listdir(search_dir)
-        # 自动添加 .yaml 如果 model_name 缺失
-        target_file = model_name if model_name.endswith('.yaml') else model_name + '.yaml'
-        if target_file in files:
-            file_path = os.path.join(search_dir, target_file)
-            if os.path.isfile(file_path):
-                return os.path.abspath(file_path)
+        # 在新结构中搜索：models/ 和 stories/ 目录
+        search_paths = [
+            base_dir,  # 根目录（向后兼容）
+            os.path.join(base_dir, 'models'),
+            os.path.join(base_dir, 'stories'),
+        ]
+        
+        for search_root in search_paths:
+            if not os.path.exists(search_root):
+                continue
+            
+            # 递归搜索该目录树
+            for root, dirs, files in os.walk(search_root):
+                # 跳过特殊目录
+                dirs[:] = [d for d in dirs if d not in ['merged', 'splited', 'output', '__pycache__', '.git', '_output']]
+                
+                if target_file in files:
+                    file_path = os.path.join(root, target_file)
+                    if os.path.isfile(file_path):
+                        return os.path.abspath(file_path)
+        
         return None
+
     
     def scan_models(self, folders: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """

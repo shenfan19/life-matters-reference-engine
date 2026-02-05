@@ -277,9 +277,18 @@ async def get_mod(model_name: str, folder: str = None):
         raise HTTPException(status_code=503, detail="Mods system not initialized")
     
     try:
+        # 解析路径：优先考虑全路径
+        if model_name.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
+            # 如果提供了 folder 且 model_name 不包含 folder 前缀，则可能需要保留 folder
+            # 但通常 GUI 会发送完整的相对路径
+            pass
+        else:
+            # 向后兼容：如果 folder 存在且 model_name 不包含分隔符
+            if folder and '/' not in model_name and '\\' not in model_name:
+                pass
+            # 否则 LoaderEngine 的 find_model_file 会处理
+            
         model = loader_engine.fetch(model_name, folder)
-        if not model:
-            raise HTTPException(status_code=404, detail="Model not found")
         
         return {
             "metadata": {
@@ -315,7 +324,7 @@ async def get_mod(model_name: str, folder: str = None):
 # ========== Files 端点（文件树）==========
 @app.get("/api/files")
 async def list_files():
-    """获取文件树结构"""
+    """获取文件树结构，包含 type 和 category 元数据"""
     def build_tree(directory, base_path=''):
         items = []
         if not os.path.exists(directory):
@@ -328,7 +337,7 @@ async def list_files():
                 
                 if os.path.isdir(item_path):
                     # 跳过特殊文件夹
-                    if item in ['merged', 'splited', 'output', '__pycache__', '.git']:
+                    if item in ['merged', 'splited', 'output', '__pycache__', '.git', '_output']:
                         continue
                     
                     children = build_tree(item_path, relative_path)
@@ -340,11 +349,23 @@ async def list_files():
                             'children': children
                         })
                 elif item.endswith('.yaml') or item.endswith('.yml'):
+                    # 读取文件以获取 type 和 category
+                    file_metadata = {}
+                    try:
+                        with open(item_path, 'r', encoding='utf-8') as f:
+                            data = yaml.safe_load(f)
+                            if isinstance(data, dict):
+                                file_metadata['mod_type'] = data.get('type', 'unknown')
+                                file_metadata['category'] = data.get('category', 'unknown')
+                    except Exception as e:
+                        logger.warning(f"Failed to read metadata from {item_path}: {e}")
+                    
                     items.append({
                         'title': item,
                         'key': relative_path,
                         'type': 'file',
-                        'isLeaf': True
+                        'isLeaf': True,
+                        **file_metadata
                     })
         except Exception as e:
             logger.error(f"Error scanning {directory}: {e}")
@@ -372,33 +393,56 @@ async def get_file_content(file_path: str):
     try:
         logger.info(f"读取文件: {file_path}")
         
-        # 解析路径
-        parts = file_path.split('/')
-        if len(parts) > 1:
-            folder = parts[0]
-            model_name = '/'.join(parts[1:])
-        else:
-            folder = None
-            model_name = parts[0]
-        
-        # 移除 .yaml 扩展名
-        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
-            model_name = os.path.splitext(model_name)[0]
-        
         # 使用 LoaderEngine 加载
         if loader_engine:
             try:
+                # 首先处理路径和模型名
+                # 如果是新结构路径 (如 stories/xxx.yaml)，直接作为 model_name，folder 传 None
+                if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
+                    folder = None
+                    # 移除 .yaml 扩展名
+                    model_name = file_path
+                    if model_name.endswith(('.yaml', '.yml')):
+                        model_name = os.path.splitext(model_name)[0]
+                else:
+                    # 向后兼容：旧的拆分逻辑
+                    parts = file_path.split('/')
+                    if len(parts) > 1:
+                        folder = parts[0]
+                        model_name = '/'.join(parts[1:])
+                    else:
+                        folder = None
+                        model_name = parts[0]
+                    # 移除 .yaml 扩展名
+                    if model_name.endswith(('.yaml', '.yml')):
+                        model_name = os.path.splitext(model_name)[0]
+                
+                # 首先读取原始 YAML 文件以获取 type 和 category
+                yaml_file = PROJECT_ROOT / "mods" / file_path
+                if not yaml_file.suffix:
+                    yaml_file = yaml_file.with_suffix('.yaml')
+                
+                raw_data = {}
+                if yaml_file.exists():
+                    with open(yaml_file, 'r', encoding='utf-8') as f:
+                        raw_data = yaml.safe_load(f) or {}
+                
+                # 然后使用 LoaderEngine 加载合并后的模型
                 model = loader_engine.fetch(model_name, folder)
                 if not model:
                     raise HTTPException(status_code=404, detail=f"Model not found: {file_path}")
                 
                 content = {
+                    'type': raw_data.get('type', 'unknown'),
+                    'category': raw_data.get('category', 'unknown'),
                     'metadata': {
                         'name': model.metadata.name if model.metadata else '',
                         'version': model.metadata.version if model.metadata else '',
                         'author': model.metadata.author if model.metadata else '',
-                        'description': model.metadata.description if model.metadata else ''
+                        'description': model.metadata.description if model.metadata else '',
+                        'tags': model.metadata.tags if model.metadata else []
                     },
+                    'imports': raw_data.get('imports', []),
                     'variables': {
                         var_name: {
                             'description': var.description,
@@ -412,7 +456,7 @@ async def get_file_content(file_path: str):
                     'formulas': {
                         formula_name: {
                             'description': formula.description,
-                            'condition': formula.condition,
+                            'condition': formula.description,
                             'priority': formula.priority,
                             'dynamics': formula.dynamics
                         }
@@ -502,17 +546,22 @@ async def validate_model(request: ValidateRequest):
     try:
         file_path = request.file_path
         
-        # 解析路径
-        if '/' in file_path:
-            parts = file_path.split('/')
-            folder = parts[0]
-            model_name = '/'.join(parts[1:])
-        else:
+        # 解析路径：优先考虑全路径
+        if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
             folder = None
             model_name = file_path
+        else:
+            # 向后兼容：旧的拆分逻辑
+            if '/' in file_path or os.sep in file_path:
+                parts = file_path.replace(os.sep, '/').split('/')
+                folder = parts[0]
+                model_name = '/'.join(parts[1:])
+            else:
+                folder = None
+                model_name = file_path
         
         # 移除扩展名
-        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+        if model_name.endswith(('.yaml', '.yml')):
             model_name = os.path.splitext(model_name)[0]
         
         # 加载模型
@@ -558,16 +607,21 @@ async def split_model(request: SplitRequest):
         file_path = request.file_path
         output_dir = request.output_dir
         
-        # 解析路径
-        if '/' in file_path:
-            parts = file_path.split('/')
-            folder = parts[0]
-            model_name = '/'.join(parts[1:])
-        else:
+        # 解析路径：优先考虑全路径
+        if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
             folder = None
             model_name = file_path
+        else:
+            # 向后兼容：旧的拆分逻辑
+            if '/' in file_path or os.sep in file_path:
+                parts = file_path.replace(os.sep, '/').split('/')
+                folder = parts[0]
+                model_name = '/'.join(parts[1:])
+            else:
+                folder = None
+                model_name = file_path
         
-        if model_name.endswith('.yaml') or model_name.endswith('.yml'):
+        if model_name.endswith(('.yaml', '.yml')):
             model_name = os.path.splitext(model_name)[0]
         
         # 调用 split_model

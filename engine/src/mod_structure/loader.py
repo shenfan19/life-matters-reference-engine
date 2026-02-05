@@ -13,6 +13,7 @@ class Loader:
     def _load_model_data(self, file_path: str, module_name: str) -> Dict[str, Any]:
         """
         纯数据加载函数：递归加载 YAML 文件及其 imports，返回合并后的数据字典。
+        支持新的导入路径格式（如 models/interventions/diet/banana）。
         不修改 self 状态。
         """
         # 避免循环依赖
@@ -26,21 +27,55 @@ class Loader:
                 data = yaml.safe_load(f) or {}
             
             if not isinstance(data, dict):
-                logger.error(self.lang_manager.get_translation("invalid_yaml_format", file_path=file_path))  # 用翻译替换
-                raise ValueError(self.lang_manager.get_translation("invalid_yaml_file", file_path=file_path))  # 用翻译替换
+                logger.error(self.lang_manager.get_translation("invalid_yaml_format", file_path=file_path))
+                raise ValueError(self.lang_manager.get_translation("invalid_yaml_file", file_path=file_path))
+            
             # 处理 imports
             merged_data = {}
             imports = data.get('imports', [])
             current_dir = os.path.dirname(file_path)
             
+            # 获取 mods 根目录（用于解析新格式的导入路径）
+            mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
+            if not mods_root:
+                # 尝试从文件路径推断 mods 根目录
+                # 假设文件在 mods/ 或 mods/models/ 或 mods/stories/ 下
+                path_parts = os.path.normpath(file_path).split(os.sep)
+                if 'mods' in path_parts:
+                    mods_idx = path_parts.index('mods')
+                    mods_root = os.sep.join(path_parts[:mods_idx + 1])
+            
             for imp_name in imports:
-                if os.sep in imp_name or os.path.isabs(imp_name):
-                    imp_path = imp_name if imp_name.endswith('.yaml') else imp_name + '.yaml'
+                imp_path = None
+                
+                # 新格式：models/xxx/yyy 或 stories/xxx/yyy（从 mods 根目录解析）
+                if ('models/' in imp_name or 'stories/' in imp_name or 
+                    imp_name.startswith('models\\') or imp_name.startswith('stories\\')):
+                    if mods_root:
+                        # 标准化路径分隔符
+                        imp_name_normalized = imp_name.replace('/', os.sep)
+                        imp_path = os.path.join(mods_root, imp_name_normalized)
+                        if not imp_path.endswith('.yaml'):
+                            imp_path += '.yaml'
+                
+                # 绝对路径或包含路径分隔符
+                elif os.sep in imp_name or '/' in imp_name or os.path.isabs(imp_name):
+                    # 如果是绝对路径，直接使用
+                    if os.path.isabs(imp_name):
+                        imp_path = imp_name
+                    else:
+                        # 相对于当前文件目录（向后兼容）
+                        imp_path = os.path.join(current_dir, imp_name.replace('/', os.sep))
+                    
+                    if not imp_path.endswith('.yaml'):
+                        imp_path += '.yaml'
+                
+                # 简单名称：相对于当前文件目录（向后兼容）
                 else:
                     imp_path = os.path.join(current_dir, imp_name + '.yaml' if not imp_name.endswith('.yaml') else imp_name)
                 
                 if not os.path.exists(imp_path):
-                    raise FileNotFoundError(f"导入模型 {imp_name} 未找到在 {current_dir}")
+                    raise FileNotFoundError(f"导入模型 {imp_name} 未找到。尝试路径: {imp_path}")
                 
                 imp_data = self._load_model_data(imp_path, imp_name)  # 递归加载
                 merged_data = merge_dicts(merged_data, imp_data)
@@ -76,9 +111,16 @@ class Loader:
             if not clear_existing and var_name in self.variables:
                 logger.warning(f"覆盖变量 (从 {module_name}): {var_name}")
             
+            value = var_data.get('value', var_data.get('default', 0.0))
+            if isinstance(value, str):
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+
             self.variables[var_name] = Variable(
                 description=var_data.get('description', ''),
-                value=var_data.get('value', 0.0),
+                value=value,
                 type=VariableType(var_data.get('type', 'state')),
                 unit=var_data.get('unit'),
                 bounds=var_data.get('bounds')
@@ -100,7 +142,9 @@ class Loader:
             )
         
         # 合并 simulator 和 optimizer
-        self.simulator = merge_dicts(self.simulator, data.get('simulator', {}))
+        # 支持新的 'simulation' 字段（向后兼容 'simulator'）
+        simulator_data = data.get('simulation', data.get('simulator', {}))
+        self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
         
         # 更新元数据（如果是清空模式）

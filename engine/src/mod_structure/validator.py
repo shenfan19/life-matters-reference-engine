@@ -44,18 +44,14 @@ class Validator:
             if 'variables_to_optimize' in self.optimizer:
                 for param in self.optimizer['variables_to_optimize']:
                     if param not in self.variables:
-                        all_missing_vars.append({'variable': param, 'context': 'optimizer.variables_to_optimize'})
-                    # 修改：移除类型检查，允许 input 或 state 类型
-                    # elif self.variables[param].type != VariableType.parameter:
-                    #     all_errors.append(f"optimizer.variables_to_optimize 中的 {param} 非 parameter 类型。")
+                        all_errors.append(f"optimizer.variables_to_optimize: {param} is missing.")
+                        unique_missing_vars.add(param)
             # 检查 parameters_to_optimize（类似修改：去除类型检查，仅验证存在）
             if 'parameters_to_optimize' in self.optimizer:
                 for param in self.optimizer['parameters_to_optimize']:
                     if param not in self.variables:
-                        all_missing_vars.append({'variable': param, 'context': 'optimizer.parameters_to_optimize'})
-                    # 修改：移除类型检查，允许 input 或 state 类型
-                    # elif self.variables[param].type != VariableType.parameter:
-                    #     all_errors.append(f"optimizer.parameters_to_optimize 中的 {param} 非 parameter 类型。")
+                        all_errors.append(f"optimizer.parameters_to_optimize: {param} is missing.")
+                        unique_missing_vars.add(param)
 
         def validate_metadata() -> tuple[bool, list[str], list[dict]]:
             errors = []
