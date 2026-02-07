@@ -513,7 +513,8 @@ async def merge_models(request: MergeRequest):
         result = loader_engine.merge_models(
             model_names=request.files,
             folders=request.folders,
-            output_path=request.output_path
+            # Ensure output path is relative to mods directory
+            output_path=str(PROJECT_ROOT / "mods" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
         )
         
         if result['success']:
@@ -564,13 +565,15 @@ async def validate_model(request: ValidateRequest):
             model_name = os.path.splitext(model_name)[0]
         
         # 加载模型
-        model = loader_engine.fetch(model_name, folder)
+        model = loader_engine.fetch(model_name, folder, validate=False) # Skip validation here, do it manually
         if not model:
             raise HTTPException(status_code=404, detail="Model not found")
         
         # 验证模型
         try:
-            model.validate_model()
+            # Determine output directory for patch
+            patch_dir = PROJECT_ROOT / "mods" / "models" / "_output" / "patch"
+            model.validate_model(output_dir=str(patch_dir))
             return {
                 'success': True,
                 'data': {
@@ -580,11 +583,17 @@ async def validate_model(request: ValidateRequest):
                 }
             }
         except ValueError as e:
+            # Check if patch was generated
+            patch_filename = f"{model.current_filename or model_name}_patch.yaml"
+            patch_path = PROJECT_ROOT / "mods" / "models" / "_output" / "patch" / patch_filename
+            relative_patch_path = f"models/_output/patch/{patch_filename}"
+            
             return {
                 'success': False,
                 'data': {
                     'valid': False,
-                    'errors': [str(e)]
+                    'errors': [str(e)],
+                    'patch_file': relative_patch_path if patch_path.exists() else None
                 }
             }
     
@@ -606,6 +615,12 @@ async def split_model(request: SplitRequest):
         file_path = request.file_path
         output_dir = request.output_dir
         
+        # Ensure output dir is relative to mods directory
+        if output_dir and not os.path.isabs(output_dir):
+            full_output_dir = str(PROJECT_ROOT / "mods" / output_dir)
+        else:
+            full_output_dir = output_dir
+
         # 解析路径：优先考虑全路径
         if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
             folder = None
@@ -624,7 +639,7 @@ async def split_model(request: SplitRequest):
             model_name = os.path.splitext(model_name)[0]
         
         # 调用 split_model
-        result = loader_engine.split_model(model_name, output_dir, folder)
+        result = loader_engine.split_model(model_name, full_output_dir, folder)
         
         if result['success']:
             return {

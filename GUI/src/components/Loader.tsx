@@ -1126,7 +1126,7 @@ const Loader: React.FC<LoaderProps> = ({
           >
             <Input
               placeholder="split_output"
-              addonBefore="models/splited/"
+              addonBefore="models/_output/splited/"
             />
           </Form.Item>
 
