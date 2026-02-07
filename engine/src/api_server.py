@@ -337,17 +337,16 @@ async def list_files():
                 
                 if os.path.isdir(item_path):
                     # 跳过特殊文件夹
-                    if item in ['merged', 'splited', 'output', '__pycache__', '.git', '_output']:
+                    if item in ['__pycache__', '.git']:
                         continue
                     
                     children = build_tree(item_path, relative_path)
-                    if children:
-                        items.append({
-                            'title': item,
-                            'key': relative_path,
-                            'type': 'folder',
-                            'children': children
-                        })
+                    items.append({
+                        'title': item,
+                        'key': relative_path,
+                        'type': 'folder',
+                        'children': children if children else []
+                    })
                 elif item.endswith('.yaml') or item.endswith('.yml'):
                     # 读取文件以获取 type 和 category
                     file_metadata = {}
@@ -700,7 +699,7 @@ async def list_folders():
                 item_path = os.path.join(directory, item)
                 
                 if os.path.isdir(item_path):
-                    if item in ['merged', 'splited', 'output', '__pycache__']:
+                    if item in ['__pycache__', '.git']:
                         continue
                     
                     relative_path = os.path.join(base_path, item).replace('\\', '/')

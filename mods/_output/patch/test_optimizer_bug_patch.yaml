@@ -1,9 +1,0 @@
-variables:
-  missing_var:
-    description: Placeholder for missing_var
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100

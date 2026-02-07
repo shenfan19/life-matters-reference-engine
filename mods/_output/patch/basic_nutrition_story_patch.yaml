@@ -1,9 +1,0 @@
-variables:
-  'true':
-    description: Placeholder for true
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100

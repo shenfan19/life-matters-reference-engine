@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { ConfigProvider, theme, Button, Space, Tooltip } from 'antd';
+import { SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
 import PluginView from './components/PluginView';
-import type { SimulationState, OptimizerState } from './types';
+import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 
 const initialSimulationState: SimulationState = {
   status: 'idle',
@@ -41,9 +43,29 @@ const initialOptimizerState: OptimizerState = {
 
 function App() {
   const [currentPage, setCurrentPage] = useState('loader');
-  const [selectedModel, setSelectedModel] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
+  const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
   const [optState, setOptState] = useState<OptimizerState>(initialOptimizerState);
+
+  // --- Lifted Loader States ---
+  const [modelTree, setModelTree] = useState<DataNode[]>([]);
+  const [storyTree, setStoryTree] = useState<DataNode[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'models', 'stories']);
+  const [modelViewMode, setModelViewMode] = useState<'tree' | 'list'>('tree');
+  const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
+  const [modelFilter, setModelFilter] = useState('');
+  const [storyFilter, setStoryFilter] = useState('');
+  const [modelSort, setModelSort] = useState<'name' | 'type'>('name');
+  const [storySort, setStorySort] = useState<'name' | 'type'>('name');
+  const [checkedModelKeys, setCheckedModelKeys] = useState<React.Key[]>([]);
+  const [manualCheckedModelKeys, setManualCheckedModelKeys] = useState<React.Key[]>([]);
+  const [checkedStoryKeys, setCheckedStoryKeys] = useState<React.Key[]>([]);
+  const [loadedMods, setLoadedMods] = useState<Record<string, ModelFile>>({});
+
+  const [isLocked, setIsLocked] = useState(false);
+  const isSimulating = simState.status === 'running' || optState.status === 'running';
 
   const corePages = [
     { id: 'loader', name: '模型加载', icon: '📁' },
@@ -54,11 +76,64 @@ function App() {
   const renderContent = () => {
     switch (currentPage) {
       case 'loader':
-        return <Loader subPage={currentPage} onModelSelect={setSelectedModel} />;
+        return (
+          <Loader
+            subPage={currentPage}
+            onModelSelect={setSelectedModel}
+            confirmedModel={confirmedModel}
+            setConfirmedModel={setConfirmedModel}
+            modelTree={modelTree}
+            setModelTree={setModelTree}
+            storyTree={storyTree}
+            setStoryTree={setStoryTree}
+            expandedKeys={expandedKeys}
+            setExpandedKeys={setExpandedKeys}
+            modelViewMode={modelViewMode}
+            setModelViewMode={setModelViewMode}
+            storyViewMode={storyViewMode}
+            setStoryViewMode={setStoryViewMode}
+            modelFilter={modelFilter}
+            setModelFilter={setModelFilter}
+            storyFilter={storyFilter}
+            setStoryFilter={setStoryFilter}
+            modelSort={modelSort}
+            setModelSort={setModelSort}
+            storySort={storySort}
+            setStorySort={setStorySort}
+            checkedModelKeys={checkedModelKeys}
+            setCheckedModelKeys={setCheckedModelKeys}
+            manualCheckedModelKeys={manualCheckedModelKeys}
+            setManualCheckedModelKeys={setManualCheckedModelKeys}
+            checkedStoryKeys={checkedStoryKeys}
+            setCheckedStoryKeys={setCheckedStoryKeys}
+            loadedMods={loadedMods}
+            setLoadedMods={setLoadedMods}
+            isSimulating={isSimulating}
+            isLocked={isLocked}
+            setIsLocked={setIsLocked}
+            isDarkMode={isDarkMode}
+          />
+        );
       case 'simulator':
-        return <Simulator selectedModel={selectedModel} state={simState} setState={setSimState} />;
+        return (
+          <Simulator
+            selectedModel={selectedModel}
+            state={simState}
+            setState={setSimState}
+            isLocked={isLocked}
+            isDarkMode={isDarkMode}
+          />
+        );
       case 'optimizer':
-        return <Optimizer selectedModel={selectedModel} state={optState} setState={setOptState} />;
+        return (
+          <Optimizer
+            selectedModel={confirmedModel}
+            state={optState}
+            setState={setOptState}
+            isLocked={isLocked}
+            isDarkMode={isDarkMode}
+          />
+        );
       default:
         // 如果是插件ID，显示插件视图
         if (currentPage.startsWith('plugin:')) {
@@ -69,78 +144,163 @@ function App() {
     }
   };
 
+  const academicTheme = {
+    algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    token: {
+      colorPrimary: isDarkMode ? '#177ddc' : '#0f172a', // 深色/冷淡的主色
+      borderRadius: 2, // 更学术的小圆角
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    },
+    components: {
+      Button: {
+        borderRadius: 2,
+        controlHeight: 32,
+      },
+      Card: {
+        borderRadiusLG: 2,
+      },
+      Menu: {
+        darkItemSelectedBg: '#334155',
+      }
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      {/* 左侧导航 */}
+    <ConfigProvider theme={academicTheme}>
       <div style={{
-        width: 250,
-        borderRight: '1px solid #e0e0e0',
-        background: '#fafafa',
         display: 'flex',
-        flexDirection: 'column'
+        height: '100vh',
+        backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+        color: isDarkMode ? '#f8fafc' : '#0f172a',
+        transition: 'all 0.3s'
       }}>
-        {/* Logo/Title */}
+        {/* 左侧导航 */}
         <div style={{
-          padding: 20,
-          borderBottom: '1px solid #e0e0e0',
-          background: '#fff'
+          width: 250,
+          borderRight: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+          background: isDarkMode ? '#1e293b' : '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
         }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>LifeMatters</h2>
-          <div style={{ fontSize: 12, color: '#999', marginTop: 5 }}>
-            健康轨迹仿真平台
-          </div>
-        </div>
-
-        {/* 核心功能组 */}
-        <div style={{ padding: 15 }}>
+          {/* Logo/Title */}
           <div style={{
-            fontSize: 12,
-            color: '#999',
-            marginBottom: 10,
-            fontWeight: 'bold',
-            textTransform: 'uppercase'
+            padding: '24px 20px',
+            borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`,
           }}>
-            核心功能
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  letterSpacing: '-0.025em',
+                  color: isDarkMode ? '#f8fafc' : '#0f172a'
+                }}>
+                  LifeMatters SDK
+                </h2>
+                <Tooltip title={isDarkMode ? '切换明亮模式' : '切换暗黑模式'}>
+                  <Button
+                    type="text"
+                    icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                  />
+                </Tooltip>
+              </div>
+              <div style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 500 }}>
+                生命体征轨迹仿真与优化平台
+              </div>
+            </Space>
           </div>
-          {corePages.map(page => (
-            <div
-              key={page.id}
-              onClick={() => setCurrentPage(page.id)}
-              style={{
-                padding: '10px 15px',
-                marginBottom: 5,
-                cursor: 'pointer',
-                borderRadius: 4,
-                background: currentPage === page.id ? '#1890ff' : '#fff',
-                color: currentPage === page.id ? '#fff' : '#333',
-                fontWeight: currentPage === page.id ? 'bold' : 'normal',
-                border: '1px solid',
-                borderColor: currentPage === page.id ? '#1890ff' : '#e0e0e0',
-                transition: 'all 0.2s'
-              }}
-            >
-              {page.icon} {page.name}
+
+          {/* 核心功能组 */}
+          <div style={{ padding: '20px 12px', flex: 1 }}>
+            <div style={{
+              fontSize: 11,
+              color: isDarkMode ? '#475569' : '#94a3b8',
+              marginBottom: 12,
+              paddingLeft: 8,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Core Modules
             </div>
-          ))}
+            {corePages.map(page => (
+              <div
+                key={page.id}
+                onClick={() => setCurrentPage(page.id)}
+                style={{
+                  padding: '10px 12px',
+                  marginBottom: 4,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  background: currentPage === page.id
+                    ? (isDarkMode ? '#334155' : '#f1f5f9')
+                    : 'transparent',
+                  color: currentPage === page.id
+                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
+                    : (isDarkMode ? '#94a3b8' : '#64748b'),
+                  fontWeight: currentPage === page.id ? 600 : 400,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  fontSize: '13px'
+                }}
+              >
+                <span style={{ opacity: currentPage === page.id ? 1 : 0.7 }}>{page.icon}</span>
+                {page.name}
+              </div>
+            ))}
+
+            <div style={{ marginTop: 24 }}>
+              <PluginList
+                currentPage={currentPage}
+                onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
+                isDarkMode={isDarkMode}
+              />
+            </div>
+          </div>
+
+          <div style={{
+            padding: 16,
+            borderTop: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`,
+            fontSize: 11,
+            color: isDarkMode ? '#475569' : '#94a3b8',
+            textAlign: 'center'
+          }}>
+            Academic Edition v0.3.5
+          </div>
         </div>
 
-        {/* 插件扩展组 */}
-        <PluginList
-          currentPage={currentPage}
-          onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
-        />
+        {/* 右侧内容区 */}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          background: isDarkMode ? '#0f172a' : '#f8fafc',
+          padding: '24px'
+        }}>
+          <div style={{
+            maxWidth: 1400,
+            margin: '0 auto',
+            height: '100%'
+          }}>
+            {renderContent()}
+          </div>
+        </div>
       </div>
-
-      {/* 右侧内容区 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {renderContent()}
-      </div>
-    </div>
+    </ConfigProvider>
   );
 }
 
 // 插件列表组件
-function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSelectPlugin: (id: string) => void }) {
+function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
+  currentPage: string,
+  onSelectPlugin: (id: string) => void,
+  isDarkMode: boolean
+}) {
   const [plugins, setPlugins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -163,20 +323,22 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
   });
 
   return (
-    <div style={{ padding: 15, borderTop: '1px solid #e0e0e0' }}>
+    <div>
       <div style={{
-        fontSize: 12,
-        color: '#999',
-        marginBottom: 10,
-        fontWeight: 'bold',
-        textTransform: 'uppercase'
+        fontSize: 11,
+        color: isDarkMode ? '#475569' : '#94a3b8',
+        marginBottom: 12,
+        paddingLeft: 8,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em'
       }}>
-        插件扩展
+        Extensions
       </div>
 
       {loading && (
-        <div style={{ padding: 10, fontSize: 12, color: '#999' }}>
-          加载中...
+        <div style={{ padding: 8, fontSize: 12, color: '#94a3b8' }}>
+          Loading...
         </div>
       )}
 
@@ -184,24 +346,16 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
         <div style={{
           padding: 10,
           fontSize: 11,
-          color: '#ff4d4f',
-          background: '#fff1f0',
-          borderRadius: 4,
-          border: '1px solid #ffccc7'
+          color: '#ef4444',
+          background: isDarkMode ? '#450a0a' : '#fef2f2',
+          borderRadius: 2,
+          border: `1px solid ${isDarkMode ? '#7f1d1d' : '#fee2e2'}`,
+          marginBottom: 8
         }}>
-          <div style={{ fontWeight: 'bold', marginBottom: 5 }}>
-            ⚠️ 后端未连接
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            ⚠️ Backend Disconnected
           </div>
-          <div>请启动 Backend:</div>
-          <code style={{ fontSize: 10 }}>
-            python src/dynamics/api_server.py
-          </code>
-        </div>
-      )}
-
-      {!loading && !error && plugins.length === 0 && (
-        <div style={{ padding: 10, fontSize: 12, color: '#999' }}>
-          暂无插件
+          <div style={{ opacity: 0.8 }}>Run: python api_server.py</div>
         </div>
       )}
 
@@ -212,25 +366,35 @@ function PluginList({ currentPage, onSelectPlugin }: { currentPage: string, onSe
             key={plugin.id}
             onClick={() => onSelectPlugin(plugin.id)}
             style={{
-              padding: '10px 15px',
-              marginBottom: 5,
+              padding: '10px 12px',
+              marginBottom: 4,
               cursor: 'pointer',
               borderRadius: 4,
-              background: isActive ? '#52c41a' : '#fff',
-              color: isActive ? '#fff' : '#333',
-              fontWeight: isActive ? 'bold' : 'normal',
-              border: '1px solid',
-              borderColor: isActive ? '#52c41a' : '#e0e0e0',
-              transition: 'all 0.2s'
+              background: isActive
+                ? (isDarkMode ? '#334155' : '#f1f5f9')
+                : 'transparent',
+              color: isActive
+                ? (isDarkMode ? '#f8fafc' : '#0f172a')
+                : (isDarkMode ? '#94a3b8' : '#64748b'),
+              fontWeight: isActive ? 600 : 400,
+              border: isActive ? `1px solid ${isDarkMode ? '#475569' : '#e2e8f0'}` : '1px solid transparent',
+              transition: 'all 0.2s',
+              fontSize: '13px'
             }}
           >
-            🔌 {plugin.name}
-            <div style={{
-              fontSize: 10,
-              marginTop: 3,
-              opacity: isActive ? 0.9 : 0.6
-            }}>
-              {plugin.category}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span>🔌</span>
+              <div>
+                <div style={{ lineHeight: 1 }}>{plugin.name}</div>
+                <div style={{
+                  fontSize: 10,
+                  marginTop: 4,
+                  opacity: 0.6,
+                  fontWeight: 400
+                }}>
+                  {plugin.category}
+                </div>
+              </div>
             </div>
           </div>
         );

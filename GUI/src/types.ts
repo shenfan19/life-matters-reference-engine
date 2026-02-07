@@ -1,19 +1,70 @@
 // GUI/src/types.ts
 import React from 'react';
 
+import type { DataNode as AntDataNode } from 'antd/es/tree';
+
+export interface DataNode extends AntDataNode {
+    titleStr?: string;
+    mod_type?: string;
+    path?: string;
+    isLeaf?: boolean;
+    displayTitle?: string;
+}
+
+export interface LoaderProps {
+    subPage: string;
+    onModelSelect: (model: ModelFile | null) => void;
+    confirmedModel: ModelFile | null;
+    setConfirmedModel: (model: ModelFile | null) => void;
+    modelTree: DataNode[];
+    setModelTree: (tree: DataNode[]) => void;
+    storyTree: DataNode[];
+    setStoryTree: (tree: DataNode[]) => void;
+    expandedKeys: React.Key[];
+    setExpandedKeys: (keys: React.Key[]) => void;
+    modelViewMode: 'tree' | 'list';
+    setModelViewMode: (mode: 'tree' | 'list') => void;
+    storyViewMode: 'tree' | 'list';
+    setStoryViewMode: (mode: 'tree' | 'list') => void;
+    modelFilter: string;
+    setModelFilter: (filter: string) => void;
+    storyFilter: string;
+    setStoryFilter: (filter: string) => void;
+    modelSort: 'name' | 'type';
+    setModelSort: (sort: 'name' | 'type') => void;
+    storySort: 'name' | 'type';
+    setStorySort: (sort: 'name' | 'type') => void;
+    checkedModelKeys: React.Key[];
+    setCheckedModelKeys: (keys: React.Key[]) => void;
+    manualCheckedModelKeys: React.Key[];
+    setManualCheckedModelKeys: (keys: React.Key[]) => void;
+    checkedStoryKeys: React.Key[];
+    setCheckedStoryKeys: (keys: React.Key[]) => void;
+    loadedMods: Record<string, ModelFile>;
+    setLoadedMods: (mods: Record<string, ModelFile>) => void;
+    isSimulating: boolean;
+    isLocked: boolean;
+    setIsLocked: (locked: boolean) => void;
+    isDarkMode: boolean;
+}
+
 export interface ModelFile {
     key: string;
     title: string;
-    name: string;
     path: string;
-    folder?: string;
-    content?: any;
+    type?: string;
+    category?: string;
     metadata?: any;
-    variables?: any;
-    formulas?: any;
+    variables?: Record<string, any>;
+    formulas?: Record<string, any>;
     simulator?: any;
     optimizer?: any;
+    imports?: string[];
     validated?: boolean;
+    validationErrors?: string[];
+    patchFile?: string;
+    content?: any;
+    folder?: string;
 }
 
 export type DurationUnit = 'year' | 'month' | 'day' | 'hour';
@@ -60,15 +111,17 @@ export interface OptimizerState {
 }
 
 export interface SimulatorProps {
-    subPage?: string;
-    selectedModel?: ModelFile | null;
+    selectedModel: ModelFile | null;
     state: SimulationState;
     setState: React.Dispatch<React.SetStateAction<SimulationState>>;
+    isLocked: boolean;
+    isDarkMode: boolean;
 }
 
 export interface OptimizerProps {
-    subPage?: string;
-    selectedModel?: ModelFile | null;
+    selectedModel: ModelFile | null;
     state: OptimizerState;
     setState: React.Dispatch<React.SetStateAction<OptimizerState>>;
+    isLocked: boolean;
+    isDarkMode: boolean;
 }
