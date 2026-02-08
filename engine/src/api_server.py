@@ -24,9 +24,17 @@ sys.path.insert(0, str(SRC_DIR))
 sys.path.insert(0, str(BACKEND_DIR))
 
 # 配置日志
+log_file = PROJECT_ROOT / "mods" / "models" / "_output" / "api_debug.log"
+# Ensure directory exists
+log_file.parent.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(levelname)s:%(name)s:%(message)s'
+    format='%(levelname)s:%(name)s:%(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(str(log_file), mode='w', encoding='utf-8')
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -57,7 +65,8 @@ class MergeRequest(BaseModel):
 
 
 class ValidateRequest(BaseModel):
-    file_path: str
+    file_path: Optional[str] = None
+    files: Optional[List[str]] = None
 
 
 class SplitRequest(BaseModel):
@@ -544,36 +553,42 @@ async def validate_model(request: ValidateRequest):
         raise HTTPException(status_code=503, detail="Mods system not initialized")
     
     try:
-        file_path = request.file_path
-        
-        # 解析路径：优先考虑全路径
-        if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
-            folder = None
-            model_name = file_path
+        # Determine files to validate
+        files_to_validate = []
+        if request.files:
+            files_to_validate = request.files
+        elif request.file_path:
+            files_to_validate = [request.file_path]
         else:
-            # 向后兼容：旧的拆分逻辑
-            if '/' in file_path or os.sep in file_path:
-                parts = file_path.replace(os.sep, '/').split('/')
-                folder = parts[0]
-                model_name = '/'.join(parts[1:])
-            else:
-                folder = None
-                model_name = file_path
+            raise HTTPException(status_code=400, detail="Either file_path or files must be provided")
+
+        if not files_to_validate:
+            raise HTTPException(status_code=400, detail="No files provided for validation")
         
-        # 移除扩展名
-        if model_name.endswith(('.yaml', '.yml')):
-            model_name = os.path.splitext(model_name)[0]
+        logger.info(f"Validating models: {files_to_validate}")
+
+        # Reuse merge logic to load multiple files into one model structure for validation
+        # If only one file, it behaves like a normal load
+        # Use merge_models to combine them in memory
+        merge_result = loader_engine.merge_models(
+            model_names=files_to_validate, 
+            folders=None,
+            output_path=None # In-memory merge
+        )
+
+        if not merge_result['success']:
+             logger.error(f"Merge failed: {merge_result.get('error')}")
+             raise ValueError(f"Failed to load/merge models for validation: {merge_result.get('error')}")
         
-        # 加载模型
-        model = loader_engine.fetch(model_name, folder, validate=False) # Skip validation here, do it manually
-        if not model:
-            raise HTTPException(status_code=404, detail="Model not found")
-        
+        model = merge_result['data']
+        logger.info(f"Merged model has {len(model.variables)} vars and {len(model.formulas)} formulas")
+
         # 验证模型
         try:
             # Determine output directory for patch
             patch_dir = PROJECT_ROOT / "mods" / "models" / "_output" / "patch"
             model.validate_model(output_dir=str(patch_dir))
+            logger.info("Validation successful")
             return {
                 'success': True,
                 'data': {
@@ -583,8 +598,11 @@ async def validate_model(request: ValidateRequest):
                 }
             }
         except ValueError as e:
+            logger.warning(f"Validation failed: {e}")
             # Check if patch was generated
-            patch_filename = f"{model.current_filename or model_name}_patch.yaml"
+            # Use the name of the first file as base for patch name if model name is generic
+            base_name = os.path.splitext(os.path.basename(files_to_validate[0]))[0]
+            patch_filename = f"{base_name}_patch.yaml"
             patch_path = PROJECT_ROOT / "mods" / "models" / "_output" / "patch" / patch_filename
             relative_patch_path = f"models/_output/patch/{patch_filename}"
             

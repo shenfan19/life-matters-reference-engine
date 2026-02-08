@@ -380,18 +380,22 @@ const Loader: React.FC<LoaderProps> = ({
     setHighlightPatch(false);
     try {
       // 这里的逻辑可以保留之前的核心校验逻辑，但改为“锁定”语义
-      const firstMod = selectedMods[0];
-      const cleanPath = firstMod.path.replace(/^mods\//, '');
+      // 收集所有选中的 YAML 文件路径
+      const filesToValidate = selectedMods
+        .map(m => m.path.replace(/^mods\//, ''))
+        .filter(p => p.endsWith('.yaml') || p.endsWith('.yml'));
 
-      // 为了演示，我们执行一次完整的验证
+      // 发送多文件验证请求
       const response = await fetch(`${API_BASE}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_path: cleanPath }),
+        body: JSON.stringify({ files: filesToValidate }),
       });
       const result = await response.json();
 
       if (result.success) {
+        // 成功时，依然以第一个模型为主要锁定对象（或者逻辑上锁定整个组合）
+        const firstMod = selectedMods[0];
         setConfirmedModel(firstMod);
         setIsLocked(true);
         message.success('✅ 验证成功，模型已锁定。现在可以进行仿真或优化。');
