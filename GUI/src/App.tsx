@@ -4,6 +4,8 @@ import { SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
+import CardGame from './components/CardGame';
+import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 
@@ -68,17 +70,23 @@ function App() {
   const isSimulating = simState.status === 'running' || optState.status === 'running';
 
   const corePages = [
-    { id: 'loader', name: '模型加载', icon: '📁' },
-    { id: 'simulator', name: '仿真器', icon: '▶️' },
-    { id: 'optimizer', name: '优化器', icon: '🎯' }
+    { id: 'loader', name: '模型加载' },
+    { id: 'simulator', name: '仿真器' },
+    { id: 'optimizer', name: '优化器' }
+  ];
+
+  const gamePages = [
+    { id: 'cg_loader', name: '故事读取' },
+    { id: 'cg_combat', name: '卡牌游戏' }
   ];
 
   const renderContent = () => {
     switch (currentPage) {
       case 'loader':
+      case 'cg_loader':
         return (
           <Loader
-            subPage={currentPage}
+            subPage={currentPage === 'cg_loader' ? 'loader' : currentPage}
             onModelSelect={setSelectedModel}
             confirmedModel={confirmedModel}
             setConfirmedModel={setConfirmedModel}
@@ -134,6 +142,10 @@ function App() {
             isDarkMode={isDarkMode}
           />
         );
+      case 'cg_combat':
+        return <CardGame isDarkMode={isDarkMode} />;
+      case 'converter':
+        return <Converter />;
       default:
         // 如果是插件ID，显示插件视图
         if (currentPage.startsWith('plugin:')) {
@@ -197,7 +209,7 @@ function App() {
                   letterSpacing: '-0.025em',
                   color: isDarkMode ? '#f8fafc' : '#0f172a'
                 }}>
-                  LifeMatters SDK
+                  Life Matters
                 </h2>
                 <Tooltip title={isDarkMode ? '切换明亮模式' : '切换暗黑模式'}>
                   <Button
@@ -225,7 +237,7 @@ function App() {
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}>
-              Core Modules
+              Calculator
             </div>
             {corePages.map(page => (
               <div
@@ -250,12 +262,84 @@ function App() {
                   fontSize: '13px'
                 }}
               >
-                <span style={{ opacity: currentPage === page.id ? 1 : 0.7 }}>{page.icon}</span>
+                {page.name}
+              </div>
+            ))}
+
+            <div style={{
+              fontSize: 11,
+              color: isDarkMode ? '#475569' : '#94a3b8',
+              marginTop: 24,
+              marginBottom: 12,
+              paddingLeft: 8,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Card Game
+            </div>
+            {gamePages.map(page => (
+              <div
+                key={page.id}
+                onClick={() => setCurrentPage(page.id)}
+                style={{
+                  padding: '10px 12px',
+                  marginBottom: 4,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  background: currentPage === page.id
+                    ? (isDarkMode ? '#334155' : '#f1f5f9')
+                    : 'transparent',
+                  color: currentPage === page.id
+                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
+                    : (isDarkMode ? '#94a3b8' : '#64748b'),
+                  fontWeight: currentPage === page.id ? 600 : 400,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  fontSize: '13px'
+                }}
+              >
                 {page.name}
               </div>
             ))}
 
             <div style={{ marginTop: 24 }}>
+              <div style={{
+                fontSize: 11,
+                color: isDarkMode ? '#475569' : '#94a3b8',
+                marginBottom: 12,
+                paddingLeft: 8,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                External Plugins
+              </div>
+              <div
+                onClick={() => setCurrentPage('converter')}
+                style={{
+                  padding: '10px 12px',
+                  marginBottom: 4,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  background: currentPage === 'converter'
+                    ? (isDarkMode ? '#334155' : '#f1f5f9')
+                    : 'transparent',
+                  color: currentPage === 'converter'
+                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
+                    : (isDarkMode ? '#94a3b8' : '#64748b'),
+                  fontWeight: currentPage === 'converter' ? 600 : 400,
+                  transition: 'all 0.2s',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                Converter
+              </div>
               <PluginList
                 currentPage={currentPage}
                 onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
@@ -324,18 +408,6 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
 
   return (
     <div>
-      <div style={{
-        fontSize: 11,
-        color: isDarkMode ? '#475569' : '#94a3b8',
-        marginBottom: 12,
-        paddingLeft: 8,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em'
-      }}>
-        Extensions
-      </div>
-
       {loading && (
         <div style={{ padding: 8, fontSize: 12, color: '#94a3b8' }}>
           Loading...
@@ -383,7 +455,6 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span>🔌</span>
               <div>
                 <div style={{ lineHeight: 1 }}>{plugin.name}</div>
                 <div style={{

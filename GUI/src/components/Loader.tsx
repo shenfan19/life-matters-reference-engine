@@ -639,10 +639,10 @@ const Loader: React.FC<LoaderProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {allItems.map((item, idx) => (
           <div key={`${item.source}-${item.name}-${idx}`} style={{
-            border: '1px solid #f0f0f0',
+            border: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`,
             borderRadius: 4,
             padding: '8px 12px',
-            background: '#fff'
+            background: isDarkMode ? '#0f172a' : '#fff'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4, gap: 8 }}>
               <strong style={{ fontSize: 14 }}>{item.name}</strong>
@@ -660,7 +660,7 @@ const Loader: React.FC<LoaderProps> = ({
                 </>
               ) : (
                 <>
-                  <div style={{ fontFamily: 'monospace', background: '#f9f9f9', padding: 8, borderRadius: 4, fontSize: 13, border: '1px solid #eee' }}>
+                  <div style={{ fontFamily: 'monospace', background: isDarkMode ? '#1e293b' : '#f9f9f9', padding: 8, borderRadius: 4, fontSize: 13, border: `1px solid ${isDarkMode ? '#334155' : '#eee'}` }}>
                     {typeof item.detail.dynamics === 'object' ? (
                       Object.entries(item.detail.dynamics).map(([v, expr]) => (
                         <div key={v} style={{ marginBottom: 2 }}>
@@ -782,10 +782,10 @@ const Loader: React.FC<LoaderProps> = ({
       <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 24 }} />}>
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 600 }}>
           {/* 上半部分: 选择器 (严格限制高度) */}
-          <div style={{ flex: '0 0 50%', height: '50%', minHeight: '300px', display: 'flex', borderBottom: '1px solid #f0f0f0' }}>
+          <div style={{ flex: '0 0 50%', height: '50%', minHeight: '300px', display: 'flex', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}` }}>
             {/* 左侧: 模型库 */}
-            <div style={{ flex: 1, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa' }}>
+            <div style={{ flex: 1, borderRight: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
                 <DatabaseOutlined style={{ color: '#1890ff' }} />
                 <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>模型库 ({modelCounts.checked}/{modelCounts.total})</strong>
                 {renderToolbar('model', modelFilter, setModelFilter, modelSort, setModelSort, modelViewMode, setModelViewMode, () => handleCheck([], 'model'))}
@@ -831,7 +831,7 @@ const Loader: React.FC<LoaderProps> = ({
 
             {/* 右侧: 故事库 */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
                 <BookOutlined style={{ color: '#52c41a' }} />
                 <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>故事库 ({storyCounts.checked}/{storyCounts.total})</strong>
                 {renderToolbar('story', storyFilter, setStoryFilter, storySort, setStorySort, storyViewMode, setStoryViewMode, () => handleCheck([], 'story'))}
@@ -1030,7 +1030,7 @@ const Loader: React.FC<LoaderProps> = ({
               ))}
             </div>
           </div>
-          <div style={{ marginTop: 16, padding: 12, background: '#f0f7ff', borderRadius: 4 }}>
+          <div style={{ marginTop: 16, padding: 12, background: isDarkMode ? '#1e293b' : '#f0f7ff', borderRadius: 4 }}>
             <strong>提示:</strong> imports 字段用于引入其他模型的变量和公式，支持递归加载。
           </div>
         </Space>
@@ -1080,7 +1080,7 @@ const Loader: React.FC<LoaderProps> = ({
             <Input addonBefore="models/_output/merged/" addonAfter=".yaml" placeholder="combined_model" />
           </Form.Item>
 
-          <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12 }}>
+          <div style={{ background: isDarkMode ? '#0f172a' : '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12 }}>
             <div style={{ marginBottom: 4 }}><strong>选中的模型:</strong></div>
             {checkedModelKeys
               .filter(k => String(k).endsWith('.yaml') || String(k).endsWith('.yml'))

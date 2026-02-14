@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Card, Button, Space, Progress, Statistic, Row, Col, InputNumber,
-  message, Alert, Table, Divider, Tabs
+  message, Alert, Table, Divider, Tabs, Select
 } from 'antd';
 import {
   PlayCircleOutlined,
@@ -206,15 +206,30 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
     return <Table columns={columns} dataSource={simulationData.slice(-50)} pagination={false} size="small" scroll={{ y: 200 }} rowKey="step" />;
   };
 
+  const durationSelector = (
+    <Select value={timeUnit} onChange={setTimeUnit} style={{ width: 80 }} options={[
+      { label: 'Hour', value: 'hour' }, { label: 'Day', value: 'day' }, { label: 'Month', value: 'month' }, { label: 'Year', value: 'year' }
+    ]} />
+  );
+
+  const stepSelector = (
+    <Select value={stepUnit} onChange={setStepUnit} style={{ width: 80 }} options={[
+      { label: 'Sec', value: 'second' }, { label: 'Min', value: 'minute' }, { label: 'Hour', value: 'hour' }, { label: 'Day', value: 'day' }
+    ]} />
+  );
+
   const renderRunSimulation = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>仿真控制中心</span>} size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {status === 'idle' && <Alert message="就绪" type="info" showIcon />}
-          {!isLocked && <Alert message="未锁定" type="warning" showIcon />}
+          {!isLocked ? (
+            <Alert message="模型未就绪：请先在 Loader 页面验证并锁定模型" type="warning" showIcon />
+          ) : (
+            <Alert message={status === 'running' ? "仿真运行中..." : "就绪 (Ready)"} type={status === 'running' ? "success" : "info"} showIcon />
+          )}
           <Row gutter={16}>
-            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>时长</div><InputNumber value={timeValue} onChange={v => setTimeValue(v || 1)} style={{ width: '100%' }} /></Col>
-            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>步长</div><InputNumber value={stepValue} onChange={v => setStepValue(v || 1)} style={{ width: '100%' }} /></Col>
+            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>时长</div><InputNumber value={timeValue} onChange={v => setTimeValue(v || 1)} addonAfter={durationSelector} style={{ width: '100%' }} /></Col>
+            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>步长</div><InputNumber value={stepValue} onChange={v => setStepValue(v || 1)} addonAfter={stepSelector} style={{ width: '100%' }} /></Col>
             <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>批次</div><InputNumber value={batchSize} onChange={v => setBatchSize(v || 1)} style={{ width: '100%' }} /></Col>
           </Row>
           <Space>
@@ -230,26 +245,45 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
           </Row>
         </Space>
       </Card>
-      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入/输出</span>} size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
-        <Tabs items={[{ key: 'in', label: '输入', children: renderInputPanel() }, { key: 'out', label: '实时', children: renderStatePanel() }]} />
+
+      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入 / 输出 实时监控</span>} size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+        <Row gutter={24}>
+          <Col span={12}>
+            <Divider orientation="left" style={{ marginTop: 0 }}><span style={{ fontSize: '12px' }}>输入参数</span></Divider>
+            {renderInputPanel()}
+          </Col>
+          <Col span={12}>
+            <Divider orientation="left" style={{ marginTop: 0 }}><span style={{ fontSize: '12px' }}>实时输出</span></Divider>
+            {renderStatePanel()}
+          </Col>
+        </Row>
+
+        <Divider style={{ margin: '24px 0' }} />
+
+        <div style={{ padding: '0 8px' }}>
+          <div style={{ marginBottom: 12, fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>趋势图表</div>
+          <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, borderRadius: 4 }} />
+
+          <div style={{ margin: '24px 0 12px 0', fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>数据详情 (最近50条)</div>
+          {renderDataTable()}
+        </div>
       </Card>
     </Space>
   );
 
   const renderRealTimeMonitor = () => (
-    <Card title="实时指标" size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
-      <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#0f172a' : '#fff' }} />
-      <Divider />
-      {renderDataTable()}
-    </Card>
+    <div style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>
+      <h3>备用板块</h3>
+      <p>此处内容已整合至"参数控制仿真"标签页下。</p>
+    </div>
   );
 
   return (
     <div style={{ height: '100%', overflow: 'auto' }}>
       <Space direction="vertical" style={{ width: '100%' }}>
         <Tabs activeKey={internalSubPage} onChange={setInternalSubPage} items={[
-          { key: '3-1', label: '参数控制', children: renderRunSimulation() },
-          { key: '3-2', label: '实时监控', children: renderRealTimeMonitor() }
+          { key: '3-1', label: '参数控制仿真', children: renderRunSimulation() },
+          { key: '3-2', label: '备用', children: renderRealTimeMonitor() }
         ]} />
       </Space>
     </div>
