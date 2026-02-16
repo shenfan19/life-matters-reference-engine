@@ -5,6 +5,7 @@ import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
 import CardGame from './components/CardGame';
+import MarieCurieGame from './components/MarieCurieGame';
 import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
@@ -143,7 +144,7 @@ function App() {
           />
         );
       case 'cg_combat':
-        return <CardGame isDarkMode={isDarkMode} />;
+        return <MarieCurieGame />;
       case 'converter':
         return <Converter />;
       default:
