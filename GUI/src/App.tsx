@@ -4,8 +4,6 @@ import { SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
-import CardGame from './components/CardGame';
-import MarieCurieGame from './components/MarieCurieGame';
 import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
@@ -77,8 +75,7 @@ function App() {
   ];
 
   const gamePages = [
-    { id: 'cg_loader', name: '故事读取' },
-    { id: 'cg_combat', name: '卡牌游戏' }
+    { id: 'cg_loader', name: '故事读取' }
   ];
 
   const renderContent = () => {
@@ -144,7 +141,7 @@ function App() {
           />
         );
       case 'cg_combat':
-        return <MarieCurieGame />;
+        return <div>游戏已移至独立前端</div>;
       case 'converter':
         return <Converter />;
       default:
@@ -346,6 +343,21 @@ function App() {
                 onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
                 isDarkMode={isDarkMode}
               />
+              <div style={{ marginTop: 24, padding: '0 12px' }}>
+                <Button
+                  type="primary"
+                  block
+                  onClick={() => window.open('http://localhost:5174', '_blank')}
+                  style={{
+                    background: 'linear-gradient(45deg, #b87333, #8b5a2b)',
+                    border: 'none',
+                    height: '40px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🎮 去玩游戏 (19th Lab)
+                </Button>
+              </div>
             </div>
           </div>
 
