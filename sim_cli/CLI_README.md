@@ -23,8 +23,8 @@ CLI工具仅用于：
 ## 📂 文件说明
 
 ```
-cli/
-├── README.md              # 本文件
+sim_cli/
+├── CLI_README.md              # 本文件
 ├── loader_cli.py          # 模型加载CLI（已废弃，仅存档）
 ├── simulator_cli.py       # 仿真CLI（备用）
 ├── optimizer_cli.py       # 优化CLI（备用）
@@ -48,11 +48,11 @@ cli/
 
 ```bash
 # 1. 确保Engine已安装
-cd ../engine
+cd ../sim_engine
 pip install -r requirements.txt
 
 # 2. 设置Python路径
-export PYTHONPATH="${PYTHONPATH}:$(pwd)/../engine"
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/../sim_engine"
 ```
 
 ### 仿真示例
@@ -165,7 +165,7 @@ done
 
 ### 架构文档
 - `../docs/architecture.md` - 了解CLI在整体架构中的位置
-- `../engine/README.md` - Engine API文档
+- `../sim_engine/README.md` - Engine API文档
 
 ### 历史决策
 - **2025-01-02**: 决定将CLI转为"保留备用"状态

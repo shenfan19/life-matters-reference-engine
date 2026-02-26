@@ -9,8 +9,8 @@ import sys
 import logging
 import yaml
 from typing import Dict, Any, Optional
-from engine.src.babel_manager import BabelLanguageManager
-from engine.src.simulator_engine import SimulatorEngine
+from sim_engine.src.babel_manager import BabelLanguageManager
+from sim_engine.src.simulator_engine import SimulatorEngine
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。
 logger = logging.getLogger(__name__)

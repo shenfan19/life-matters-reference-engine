@@ -11,7 +11,7 @@ echo patch folder wiped.
 rd mods\splited /S /Q && md mods\splited
 echo split folder wiped.
 
-set "CLI=python src\loader\loader_cli.py"
+set "CLI=python sim_cli\loader_cli.py"
 set "MODS_DIR=test"
 
 echo.

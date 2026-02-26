@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional
-from engine.src.mod_structure import ModStructure
-from engine.src.loader.loader_engine import LoaderEngine
+from sim_engine.src.mod_structure import ModStructure
+from sim_engine.src.loader.loader_engine import LoaderEngine
 
 logger = logging.getLogger(__name__)
 

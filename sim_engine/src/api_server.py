@@ -4,6 +4,8 @@ LifeMatters Backend - FastAPI (完整版)
 """
 
 from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
@@ -38,8 +40,109 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 全局实例
+plugin_manager = None
+loader_engine = None
+simulator_engine = None
+optimizer_engine = None
+
+
+# ========== 寿命周期事件 ==========
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用寿命周期管理：包含启动初始化逻辑"""
+    global plugin_manager, loader_engine, simulator_engine, optimizer_engine
+    
+    logger.info("=" * 60)
+    logger.info("Initializing LifeMatters Backend (via Lifespan Handler)...")
+    logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+    logger.info("=" * 60)
+    
+    # 初始化插件系统
+    try:
+        from sim_engine.src.plugin_manager import PluginManager
+        
+        plugins_dir = PROJECT_ROOT / "plugins"
+        logger.info(f"Plugins directory: {plugins_dir}")
+        
+        if not plugins_dir.exists():
+            plugins_dir.mkdir(parents=True, exist_ok=True)
+        
+        plugin_manager = PluginManager(plugin_dir=str(plugins_dir))
+        logger.info(f"✅ Plugin system initialized")
+        logger.info(f"   Loaded {len(plugin_manager.plugins)} plugins")
+        
+        for plugin_id, info in plugin_manager.plugins.items():
+            logger.info(f"   - {info['manifest']['name']} ({plugin_id})")
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import PluginManager: {e}")
+        plugin_manager = None
+    except Exception as e:
+        logger.error(f"❌ Error initializing plugins: {e}")
+        plugin_manager = None
+    
+    # 初始化 Mods 系统
+    try:
+        from sim_engine.src.loader_engine import LoaderEngine
+        
+        mods_dir = PROJECT_ROOT / "mods"
+        logger.info(f"Mods directory: {mods_dir}")
+        
+        if not mods_dir.exists():
+            mods_dir.mkdir(parents=True, exist_ok=True)
+        
+        loader_engine = LoaderEngine(mods_directory=str(mods_dir))
+        logger.info(f"✅ Mods system initialized")
+        
+        try:
+            models = loader_engine.scan_models()
+            logger.info(f"   Found {len(models)} models")
+            
+            for i, name in enumerate(list(models.keys())[:5]):
+                logger.info(f"   - {name}")
+            if len(models) > 5:
+                logger.info(f"   ... and {len(models) - 5} more")
+                
+        except Exception as e:
+            logger.warning(f"   Failed to scan models: {e}")
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import LoaderEngine: {e}")
+        loader_engine = None
+    except Exception as e:
+        logger.error(f"❌ Error initializing mods: {e}")
+        loader_engine = None
+    
+    # 初始化仿真与优化引擎
+    try:
+        from sim_engine.src.simulator_engine import SimulatorEngine
+        from sim_engine.src.optimizer_engine import OptimizerEngine
+        
+        mods_dir = PROJECT_ROOT / "mods"
+        simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
+        optimizer_engine = OptimizerEngine(mods_directory=str(mods_dir))
+        
+        # 注入仿真器到优化器
+        optimizer_engine.set_simulator(simulator_engine)
+        
+        logger.info(f"✅ Simulation & Optimization systems initialized")
+    except Exception as e:
+        logger.error(f"❌ Error initializing simulation/optimization: {e}")
+        simulator_engine = None
+        optimizer_engine = None
+    
+    logger.info("=" * 60)
+    logger.info("Backend initialization complete")
+    logger.info("=" * 60)
+    
+    yield
+    
+    logger.info("Shutting down LifeMatters Backend...")
+
+
 # 创建 FastAPI 应用
-app = FastAPI(title="LifeMatters API", version="0.3.0")
+app = FastAPI(title="LifeMatters API", version="0.3.0", lifespan=lifespan)
 
 # CORS 配置
 app.add_middleware(
@@ -50,11 +153,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局实例
-plugin_manager = None
-loader_engine = None
-simulator_engine = None
-optimizer_engine = None
 
 
 # ========== Pydantic 模型（请求体定义）==========
@@ -98,96 +196,6 @@ class OptimizationRequest(BaseModel):
     mode: str = "full_params"
     method: str = "grid"
     time_hours: float = 720.0
-
-
-# ========== 启动事件 ==========
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时初始化"""
-    global plugin_manager, loader_engine, simulator_engine, optimizer_engine
-    
-    logger.info("=" * 60)
-    logger.info("Initializing LifeMatters Backend...")
-    logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
-    logger.info("=" * 60)
-    
-    # 初始化插件系统
-    try:
-        from engine.src.plugin_manager import PluginManager
-        
-        plugins_dir = PROJECT_ROOT / "plugins"
-        logger.info(f"Plugins directory: {plugins_dir}")
-        
-        if not plugins_dir.exists():
-            plugins_dir.mkdir(parents=True, exist_ok=True)
-        
-        plugin_manager = PluginManager(plugin_dir=str(plugins_dir))
-        logger.info(f"✅ Plugin system initialized")
-        logger.info(f"   Loaded {len(plugin_manager.plugins)} plugins")
-        
-        for plugin_id, info in plugin_manager.plugins.items():
-            logger.info(f"   - {info['manifest']['name']} ({plugin_id})")
-        
-    except ImportError as e:
-        logger.error(f"❌ Failed to import PluginManager: {e}")
-        plugin_manager = None
-    except Exception as e:
-        logger.error(f"❌ Error initializing plugins: {e}")
-        plugin_manager = None
-    
-    # 初始化 Mods 系统
-    try:
-        from engine.src.loader_engine import LoaderEngine
-        
-        mods_dir = PROJECT_ROOT / "mods"
-        logger.info(f"Mods directory: {mods_dir}")
-        
-        if not mods_dir.exists():
-            mods_dir.mkdir(parents=True, exist_ok=True)
-        
-        loader_engine = LoaderEngine(mods_directory=str(mods_dir))
-        logger.info(f"✅ Mods system initialized")
-        
-        try:
-            models = loader_engine.scan_models()
-            logger.info(f"   Found {len(models)} models")
-            
-            for i, name in enumerate(list(models.keys())[:5]):
-                logger.info(f"   - {name}")
-            if len(models) > 5:
-                logger.info(f"   ... and {len(models) - 5} more")
-                
-        except Exception as e:
-            logger.warning(f"   Failed to scan models: {e}")
-        
-    except ImportError as e:
-        logger.error(f"❌ Failed to import LoaderEngine: {e}")
-        loader_engine = None
-    except Exception as e:
-        logger.error(f"❌ Error initializing mods: {e}")
-        loader_engine = None
-    
-    # 初始化仿真与优化引擎
-    try:
-        from engine.src.simulator_engine import SimulatorEngine
-        from engine.src.optimizer_engine import OptimizerEngine
-        
-        mods_dir = PROJECT_ROOT / "mods"
-        simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
-        optimizer_engine = OptimizerEngine(mods_directory=str(mods_dir))
-        
-        # 注入仿真器到优化器
-        optimizer_engine.set_simulator(simulator_engine)
-        
-        logger.info(f"✅ Simulation & Optimization systems initialized")
-    except Exception as e:
-        logger.error(f"❌ Error initializing simulation/optimization: {e}")
-        simulator_engine = None
-        optimizer_engine = None
-    
-    logger.info("=" * 60)
-    logger.info("Backend initialization complete")
-    logger.info("=" * 60)
 
 
 # ========== 基础端点 ==========

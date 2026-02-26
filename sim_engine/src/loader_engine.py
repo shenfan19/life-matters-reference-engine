@@ -15,7 +15,7 @@ import os
 import logging
 import yaml
 from typing import Dict, Any, List, Optional, Set
-from engine.src.mod_structure import ModStructure, ModelMetadata  # 注意：假设mod_structure.py是core.py的重命名或别名，根据您的文件结构调整
+from sim_engine.src.mod_structure import ModStructure, ModelMetadata  # 注意：假设mod_structure.py是core.py的重命名或别名，根据您的文件结构调整
 
 # 设置日志记录器，用于在程序运行时输出信息和错误。
 logger = logging.getLogger(__name__)

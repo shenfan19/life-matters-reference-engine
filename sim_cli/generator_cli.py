@@ -2,8 +2,8 @@ import argparse
 import sys
 import logging
 from typing import Dict, Any
-from generator_engine import GeneratorEngine
-from babel_manager import BabelLanguageManager
+from sim_engine.src.generator_engine import GeneratorEngine
+from sim_engine.src.babel_manager import BabelLanguageManager
 
 logger = logging.getLogger(__name__)
 

@@ -9,9 +9,9 @@ import sys
 import logging
 import yaml
 from typing import Dict, Any, List, Optional
-from engine.src.optimizer_engine import OptimizerEngine
-from engine.src.simulator_engine import SimulatorEngine
-from engine.src.babel_manager import BabelLanguageManager
+from sim_engine.src.optimizer_engine import OptimizerEngine
+from sim_engine.src.simulator_engine import SimulatorEngine
+from sim_engine.src.babel_manager import BabelLanguageManager
 
 # 初始化模块的日志记录器，用于记录信息、调试和错误消息。
 logger = logging.getLogger(__name__)
@@ -148,6 +148,10 @@ def create_parser() -> argparse.ArgumentParser:
                        help='优化方法（默认: grid）')
     parser.add_argument('--time', type=float, default=24*30*12, 
                        help='优化时长（小时，默认: 8640 = 1 年）')
+    parser.add_argument('--target', default='min_error',
+                       help='优化目标（如 min_error，默认: min_error）')
+    parser.add_argument('--output', 
+                       help='优化结果保存路径 (YAML 格式)')
     
     # 返回配置好的解析器。
     return parser
@@ -168,6 +172,8 @@ def main():
         mode = args.mode
         method = args.method
         time_hours = args.time
+        target = args.target
+        output_path = args.output
         folder = args.folder
         
         # 如果指定了 --file 参数，解析模型名称列表。

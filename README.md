@@ -49,13 +49,13 @@ pip install pymoo scipy    # 多目标优化和科学计算
 #### CLI 模式（推荐用于批处理）
 ```bash
 # 列出可用模型
-python loader_cli.py --list --folder physiology --lang zhhans
+python sim_cli/loader_cli.py --list --folder physiology --lang zhhans
 
 # 运行仿真
-python simulator_cli.py --file physiology/obesity_diabetes --time 8760 --output results/simulation.csv
+python sim_cli/simulator_cli.py --file physiology/obesity_diabetes --time 8760 --output results/simulation.csv
 
 # 参数优化
-python optimizer_cli.py --file physiology/physiology --mode input --target state --method grid
+python sim_cli/optimizer_cli.py --file physiology/physiology --mode input --target state --method grid
 ```
 
 #### Web 界面（推荐用于交互式操作）
@@ -134,14 +134,14 @@ engine.generate_from_template("risk_increase", "lung_cancer.yaml",
 **CLI 示例**：
 ```bash
 # 列出指定文件夹的模型
-python loader_cli.py --list --lang zhhans --folder physiology
+python sim_cli/loader_cli.py --list --lang zhhans --folder physiology
 
 # 合并多个模型
-python loader_cli.py --folder physiology --merge-to merged.yaml
-python loader_cli.py --file physiology/obesity_diabetes physiology/cancer --merge-to combined.yaml
+python sim_cli/loader_cli.py --folder physiology --merge-to merged.yaml
+python sim_cli/loader_cli.py --file physiology/obesity_diabetes physiology/cancer --merge-to combined.yaml
 
 # 拆分模型为独立模块
-python loader_cli.py --file physiology/obesity_diabetes --split-to split_dir
+python sim_cli/loader_cli.py --file physiology/obesity_diabetes --split-to split_dir
 ```
 
 **编程接口**：
@@ -169,17 +169,17 @@ result = engine.merge_models(
 **CLI 示例**：
 ```bash
 # 基本仿真
-python simulator_cli.py --file digestive --time 8760 --lang zhhans
+python sim_cli/simulator_cli.py --file digestive --time 8760 --lang zhhans
 
 # 指定输出路径
-python simulator_cli.py --file physiology/obesity_diabetes --time 4380 \
+python sim_cli/simulator_cli.py --file physiology/obesity_diabetes --time 4380 \
   --output results/my_simulation.csv
 
 # 交互式仿真（每100步暂停）
-python simulator_cli.py --file digestive --time 8760 --pause-every 100 --interactive
+python sim_cli/simulator_cli.py --file digestive --time 8760 --pause-every 100 --interactive
 
 # 使用CSV输入控制
-python simulator_cli.py --file digestive --time 8760 \
+python sim_cli/simulator_cli.py --file digestive --time 8760 \
   --input controls.csv --output result.csv
 ```
 
@@ -209,15 +209,15 @@ for step in range(100):
 **CLI 示例**：
 ```bash
 # 网格搜索优化
-python optimizer_cli.py --file physiology/physiology --mode input \
+python sim_cli/optimizer_cli.py --file physiology/physiology --mode input \
   --target state --method grid --time 12000
 
 # 使用pymoo多目标优化
-python optimizer_cli.py --optimize digestive diabetes --target min_error \
+python sim_cli/optimizer_cli.py --optimize digestive diabetes --target min_error \
   --duration 60 --method pymoo --lang zhhans --folder physiology
 
 # 带暂停的优化
-python optimizer_cli.py --file physiology/physiology --mode param \
+python sim_cli/optimizer_cli.py --file physiology/physiology --mode param \
   --target state --method grid --pause-every 100
 ```
 
@@ -238,31 +238,23 @@ result = engine.optimize(
 ## 项目结构
 ```
 life-matters/
-├── src/                        # 源代码目录
-│   ├── models/                 # 核心模型模块
-│   │   ├── __init__.py
-│   │   ├── base.py            # 基础数据类（Variable, Formula, Metadata）
-│   │   ├── core.py            # ModStructure 核心类
-│   │   ├── loader.py          # 模型加载功能
-│   │   ├── validator.py      # 模型验证功能
-│   │   ├── simulation.py     # 仿真运行功能
-│   │   └── utils.py           # 工具函数
-│   ├── engines/               # 引擎模块
-│   │   ├── loader_engine.py  # Loader 引擎
-│   │   ├── simulator_engine.py # Simulator 引擎
-│   │   ├── generator_engine.py # Generator 引擎
-│   │   └── optimizer_engine.py # Optimizer 引擎
-│   ├── cli/                   # CLI 工具
-│   │   ├── loader_cli.py     # Loader CLI
-│   │   ├── simulator_cli.py  # Simulator CLI
-│   │   ├── generator_cli.py  # Generator CLI
-│   │   └── optimizer_cli.py  # Optimizer CLI
-│   └── lang/                  # 多语言支持
-│       ├── babel_manager.py  # 语言管理器
-│       ├── en.yaml           # 英文翻译
-│       ├── zhhans.yaml       # 简体中文翻译
-│       └── zhhant.yaml       # 繁体中文翻译
-├── frontend/                  # React前端
+├── sim_engine/                # 仿真引擎（后端）
+│   ├── src/
+│   │   ├── loader_engine.py      # Loader 核心
+│   │   ├── simulator_engine.py   # Simulator 核心
+│   │   ├── generator_engine.py   # Generator 核心
+│   │   └── optimizer_engine.py   # Optimizer 核心
+│   ├── requirements.txt
+│   └── api_server.py             # FastAPI 服务
+├── sim_cli/                   # CLI 工具（批处理）
+│   ├── loader_cli.py         # Loader CLI
+│   ├── simulator_cli.py      # Simulator CLI
+│   ├── generator_cli.py      # Generator CLI
+│   ├── optimizer_cli.py      # Optimizer CLI
+│   └── CLI_README.md
+├── sim_gui/                   # GUI 界面（Web 前端）
+│   ├── src/
+│   └── package.json
 │   ├── src/
 │   │   ├── App.tsx          # 主应用组件
 │   │   ├── components/       # UI组件

@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.getcwd())
 import logging
-from engine.src.loader_engine import LoaderEngine
-from engine.src.mod_structure.core import ModStructure
+from sim_engine.src.loader_engine import LoaderEngine
+from sim_engine.src.mod_structure.core import ModStructure
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO)
