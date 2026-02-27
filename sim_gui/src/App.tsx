@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { ConfigProvider, theme, Button, Space, Tooltip } from 'antd';
-import { SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { TranslationOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
 import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
+import { useI18n } from './core/i18n';
 
 const initialSimulationState: SimulationState = {
   status: 'idle',
@@ -43,6 +44,7 @@ const initialOptimizerState: OptimizerState = {
 };
 
 function App() {
+  const { t, language, setLanguage } = useI18n();
   const [currentPage, setCurrentPage] = useState('loader');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
@@ -69,13 +71,13 @@ function App() {
   const isSimulating = simState.status === 'running' || optState.status === 'running';
 
   const corePages = [
-    { id: 'loader', name: '模型加载' },
-    { id: 'simulator', name: '仿真器' },
-    { id: 'optimizer', name: '优化器' }
+    { id: 'loader', name: t('menu.loader') },
+    { id: 'simulator', name: t('menu.simulator') },
+    { id: 'optimizer', name: t('menu.optimizer') }
   ];
 
   const gamePages = [
-    { id: 'cg_loader', name: '故事读取' }
+    { id: 'cg_loader', name: t('menu.storyloader') }
   ];
 
   const renderContent = () => {
@@ -207,19 +209,34 @@ function App() {
                   letterSpacing: '-0.025em',
                   color: isDarkMode ? '#f8fafc' : '#0f172a'
                 }}>
-                  Life Matters
+                  {t('app.title')}
                 </h2>
-                <Tooltip title={isDarkMode ? '切换明亮模式' : '切换暗黑模式'}>
-                  <Button
-                    type="text"
-                    icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
-                    onClick={() => setIsDarkMode(!isDarkMode)}
-                    style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
-                  />
-                </Tooltip>
+                <Space>
+                  <Tooltip title={t('common.language')}>
+                    <Button
+                      type="text"
+                      icon={<TranslationOutlined />}
+                      onClick={() => {
+                        const langs: Language[] = ['zh-CN', 'zh-TW', 'en', 'fr'];
+                        const currentIndex = langs.indexOf(language);
+                        const nextLang = langs[(currentIndex + 1) % langs.length];
+                        setLanguage(nextLang);
+                      }}
+                      style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                    />
+                  </Tooltip>
+                  <Tooltip title={isDarkMode ? t('common.dark_mode') : t('common.light_mode')}>
+                    <Button
+                      type="text"
+                      icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
+                      onClick={() => setIsDarkMode(!isDarkMode)}
+                      style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                    />
+                  </Tooltip>
+                </Space>
               </div>
               <div style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 500 }}>
-                生命体征轨迹仿真与优化平台
+                {t('app.subtitle')}
               </div>
             </Space>
           </div>
@@ -235,7 +252,7 @@ function App() {
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}>
-              Calculator
+              {t('menu.calculator')}
             </div>
             {corePages.map(page => (
               <div
@@ -274,7 +291,7 @@ function App() {
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}>
-              Card Game
+              {t('menu.cardgame')}
             </div>
             {gamePages.map(page => (
               <div
@@ -313,7 +330,7 @@ function App() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                External Plugins
+                {t('menu.plugins')}
               </div>
               <div
                 onClick={() => setCurrentPage('converter')}
@@ -336,7 +353,7 @@ function App() {
                   gap: '12px'
                 }}
               >
-                Converter
+                {t('menu.converter')}
               </div>
               <PluginList
                 currentPage={currentPage}
@@ -355,7 +372,7 @@ function App() {
                     fontWeight: 'bold'
                   }}
                 >
-                  🎮 去玩游戏 (19th Lab)
+                  {t('button.go_game')}
                 </Button>
               </div>
             </div>

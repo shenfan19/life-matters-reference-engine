@@ -103,6 +103,9 @@ msgstr "无效时间单位：{unit}"
 msgid "load_model_from"
 msgstr "读取模型: {file_path}"
 
+msgid "append_model_from"
+msgstr "追加模型: {file_path}"
+
 msgid "app.title"
 msgstr "Life Matters"
 

@@ -21,6 +21,7 @@ import {
   FilterOutlined
 } from '@ant-design/icons';
 import type { ModelFile, DataNode } from '../types';
+import { useI18n } from '../core/i18n';
 
 interface LoaderProps {
   subPage: string;
@@ -97,6 +98,7 @@ const Loader: React.FC<LoaderProps> = ({
   setIsLocked,
   isDarkMode
 }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [mergeModalVisible, setMergeModalVisible] = useState(false);
@@ -219,9 +221,9 @@ const Loader: React.FC<LoaderProps> = ({
           }
         }
 
-        message.success(`已加载数据`);
+        message.success(t('common.success'));
       } else {
-        message.error(`加载失败: ${result.error}`);
+        message.error(`${t('common.error')}: ${result.error}`);
       }
     } catch (error: any) {
       message.error(`网络错误: ${error.message}`);
@@ -713,11 +715,11 @@ const Loader: React.FC<LoaderProps> = ({
     };
 
     const getDetailTitle = () => {
-      if (selectedMods.length === 0) return '未选中项目';
+      if (selectedMods.length === 0) return t('loader.no_selection');
       if (selectedMods.length === 1) return selectedMods[0].title;
       const storiesCount = selectedMods.filter(m => m.type === 'story').length;
       const modelsCount = selectedMods.length - storiesCount;
-      return `已选中合集 (${modelsCount} 模型, ${storiesCount} 故事)`;
+      return `${t('loader.selected_collection')} (${modelsCount} ${t('table_variables')}, ${storiesCount} ${t('loader.story')})`;
     };
 
     const modelList = filterAndSortNodes(flattenTree(modelTree), modelFilter, modelSort);
@@ -787,7 +789,7 @@ const Loader: React.FC<LoaderProps> = ({
             <div style={{ flex: 1, borderRight: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
                 <DatabaseOutlined style={{ color: '#1890ff' }} />
-                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>模型库 ({modelCounts.checked}/{modelCounts.total})</strong>
+                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{t('loader.library')} ({modelCounts.checked}/{modelCounts.total})</strong>
                 {renderToolbar('model', modelFilter, setModelFilter, modelSort, setModelSort, modelViewMode, setModelViewMode, () => handleCheck([], 'model'))}
               </div>
               <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
@@ -833,7 +835,7 @@ const Loader: React.FC<LoaderProps> = ({
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
                 <BookOutlined style={{ color: '#52c41a' }} />
-                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>故事库 ({storyCounts.checked}/{storyCounts.total})</strong>
+                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{t('loader.story')} ({storyCounts.checked}/{storyCounts.total})</strong>
                 {renderToolbar('story', storyFilter, setStoryFilter, storySort, setStorySort, storyViewMode, setStoryViewMode, () => handleCheck([], 'story'))}
               </div>
               <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
@@ -869,7 +871,7 @@ const Loader: React.FC<LoaderProps> = ({
                         <Tag style={{ fontSize: 10, borderRadius: 2, background: isDarkMode ? '#1e293b' : '#f1f5f9', color: isDarkMode ? '#94a3b8' : '#64748b', border: 'none' }}>STORY</Tag>
                       </div>
                     ))}
-                    {storyList.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无故事" />}
+                    {storyList.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.no_data')} />}
                   </div>
                 )}
               </div>
@@ -899,7 +901,7 @@ const Loader: React.FC<LoaderProps> = ({
                     disabled={isSimulating}
                     style={isLocked ? { color: '#52c41a', borderColor: '#52c41a' } : {}}
                   >
-                    {isLocked ? '已锁定 (点击解锁)' : '验证并锁定'}
+                    {isLocked ? t('loader.unlock') : t('loader.lock')}
                   </Button>
                   <Button size="small" icon={<MergeOutlined />} onClick={handleMerge} disabled={isSimulating || isLocked}>合并</Button>
                   <Button

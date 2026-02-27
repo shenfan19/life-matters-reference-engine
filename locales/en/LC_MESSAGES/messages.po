@@ -103,5 +103,83 @@ msgstr "Invalid time unit: {unit}"
 msgid "load_model_from"
 msgstr "Load model from: {file_path}"
 
-msgid "append_model_from"
-msgstr "Append model from: {file_path}"
+msgid "app.title"
+msgstr "Life Matters"
+
+msgid "app.subtitle"
+msgstr "Vital Signs Simulation & Optimization Platform"
+
+msgid "menu.calculator"
+msgstr "Calculator"
+
+msgid "menu.loader"
+msgstr "Model Loader"
+
+msgid "menu.simulator"
+msgstr "Simulator"
+
+msgid "menu.optimizer"
+msgstr "Optimizer"
+
+msgid "menu.cardgame"
+msgstr "Card Game"
+
+msgid "menu.storyloader"
+msgstr "Story Loader"
+
+msgid "menu.plugins"
+msgstr "External Plugins"
+
+msgid "menu.converter"
+msgstr "Converter"
+
+msgid "button.go_game"
+msgstr "Go to Game (19th Lab)"
+
+msgid "common.loading"
+msgstr "Loading..."
+
+msgid "common.error"
+msgstr "Error"
+
+msgid "common.success"
+msgstr "Success"
+
+msgid "common.warning"
+msgstr "Warning"
+
+msgid "common.confirm"
+msgstr "Confirm"
+
+msgid "common.cancel"
+msgstr "Cancel"
+
+msgid "common.search"
+msgstr "Search..."
+
+msgid "common.refresh"
+msgstr "Refresh"
+
+msgid "common.dark_mode"
+msgstr "Switch to Dark Mode"
+
+msgid "common.light_mode"
+msgstr "Switch to Light Mode"
+
+msgid "common.language"
+msgstr "Switch Language"
+
+msgid "loader.library"
+msgstr "Model Library"
+
+msgid "loader.story"
+msgstr "Story Library"
+
+msgid "game.back"
+msgstr "Back to Levels"
+
+msgid "game.go_sim"
+msgstr "Go to Simulator"
+
+msgid "game.title"
+msgstr "Marie Curie Game"

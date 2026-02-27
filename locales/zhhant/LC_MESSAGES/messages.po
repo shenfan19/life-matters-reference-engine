@@ -97,5 +97,83 @@ msgstr "歡迎使用 LifeMatters"
 msgid "load_model_from"
 msgstr "Load model from: {file_path} [to translate]"
 
-msgid "append_model_from"
-msgstr "Append model from: {file_path} [to translate]"
+msgid "app.title"
+msgstr "Life Matters"
+
+msgid "app.subtitle"
+msgstr "生命體徵軌跡仿真與優化平台"
+
+msgid "menu.calculator"
+msgstr "計算工具"
+
+msgid "menu.loader"
+msgstr "模型加載"
+
+msgid "menu.simulator"
+msgstr "仿真器"
+
+msgid "menu.optimizer"
+msgstr "優化器"
+
+msgid "menu.cardgame"
+msgstr "卡牌遊戲"
+
+msgid "menu.storyloader"
+msgstr "故事讀取"
+
+msgid "menu.plugins"
+msgstr "外部插件"
+
+msgid "menu.converter"
+msgstr "轉換器"
+
+msgid "button.go_game"
+msgstr "🎮 去玩遊戲 (19th Lab)"
+
+msgid "common.loading"
+msgstr "加載中..."
+
+msgid "common.error"
+msgstr "錯誤"
+
+msgid "common.success"
+msgstr "成功"
+
+msgid "common.warning"
+msgstr "警告"
+
+msgid "common.confirm"
+msgstr "確認"
+
+msgid "common.cancel"
+msgstr "取消"
+
+msgid "common.search"
+msgstr "搜索..."
+
+msgid "common.refresh"
+msgstr "重置"
+
+msgid "common.dark_mode"
+msgstr "切換明亮模式"
+
+msgid "common.light_mode"
+msgstr "切換暗黑模式"
+
+msgid "common.language"
+msgstr "切換語言"
+
+msgid "loader.library"
+msgstr "模型庫"
+
+msgid "loader.story"
+msgstr "故事集"
+
+msgid "game.back"
+msgstr "回到關卡"
+
+msgid "game.go_sim"
+msgstr "回到仿真器"
+
+msgid "game.title"
+msgstr "居里夫人模擬遊戲"
