@@ -87,12 +87,8 @@ export const I18nProvider = ({ children, section }: { children: ReactNode; secti
     const t = (key: string) => {
         const val = translations[key];
         if (!val) {
-            // Emergency hardcoded defaults for critical UI
-            if (key === 'app.title') return 'Life Matters';
-            if (key === 'menu.loader') return language.startsWith('zh') ? '模型加载' : 'Model Loader';
-
             if (isLoaded) {
-                console.warn(`[i18n] Missing: "${key}"`);
+                console.warn(`[i18n] Missing key: "${key}" in ${language}`);
             }
             return key;
         }

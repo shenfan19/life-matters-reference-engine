@@ -11,26 +11,38 @@ class PluginManager:
     
     def scan_plugins(self):
         """递归扫描插件（最多2层深度）"""
+        self.plugins = {} # Clear existing
         def scan_recursive(directory, depth=0, max_depth=2):
             if depth > max_depth:
                 return
             
+            if not directory.exists():
+                return
+
             for item in directory.iterdir():
+                # Skip hidden directories and the specific test_plugin
+                if item.name.startswith('.') or item.name == 'test_plugin':
+                    continue
+                    
                 if not item.is_dir():
                     continue
                 
                 manifest_path = item / "manifest.yaml"
                 if manifest_path.exists():
-                    # 找到插件
-                    with open(manifest_path, 'r') as f:
-                        manifest = yaml.safe_load(f)
-                        self.plugins[manifest['id']] = {
-                            'manifest': manifest,
-                            'path': item,
-                            'category': item.parent.name if depth > 0 else 'uncategorized'
-                        }
+                    try:
+                        with open(manifest_path, 'r', encoding='utf-8') as f:
+                            manifest = yaml.safe_load(f)
+                            if manifest.get('id') == 'test_plugin':
+                                continue
+                            self.plugins[manifest['id']] = {
+                                'manifest': manifest,
+                                'path': item,
+                                'category': item.parent.name if depth > 0 else 'uncategorized'
+                            }
+                    except Exception as e:
+                        print(f"Error loading plugin at {item}: {e}")
                 else:
-                    # 继续向下扫描
+                    # Continue scanning subdirectories
                     scan_recursive(item, depth + 1, max_depth)
         
         scan_recursive(self.plugin_dir)

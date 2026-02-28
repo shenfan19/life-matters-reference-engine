@@ -23,7 +23,7 @@ export default function PluginPanel() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/plugins')
+    fetch(`/api/plugins?v=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         setPlugins(data.plugins || []);
@@ -47,11 +47,11 @@ export default function PluginPanel() {
   if (error) {
     return (
       <div style={{ padding: 40 }}>
-        <div style={{ 
-          padding: 20, 
-          background: '#fff1f0', 
+        <div style={{
+          padding: 20,
+          background: '#fff1f0',
           border: '1px solid #ffccc7',
-          borderRadius: 4 
+          borderRadius: 4
         }}>
           <strong>Error loading plugins:</strong> {error}
           <div style={{ marginTop: 10, fontSize: 12 }}>
@@ -64,12 +64,12 @@ export default function PluginPanel() {
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
-      <PluginSidebar 
-        plugins={plugins} 
+      <PluginSidebar
+        plugins={plugins}
         activePlugin={activePlugin}
         onSelectPlugin={setActivePlugin}
       />
-      <PluginPageContainer 
+      <PluginPageContainer
         pluginId={activePlugin}
         plugins={plugins}
       />

@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ConfigProvider, theme, Button, Space, Tooltip } from 'antd';
 import { TranslationOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
-import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
@@ -46,7 +45,7 @@ const initialOptimizerState: OptimizerState = {
 function App() {
   const { t, language, setLanguage } = useI18n();
   const [currentPage, setCurrentPage] = useState('loader');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
@@ -142,8 +141,6 @@ function App() {
             isDarkMode={isDarkMode}
           />
         );
-      case 'converter':
-        return <Converter />;
       default:
         // 如果是插件ID，显示插件视图
         if (currentPage.startsWith('plugin:')) {
@@ -330,29 +327,6 @@ function App() {
               }}>
                 {t('menu.plugins')}
               </div>
-              <div
-                onClick={() => setCurrentPage('converter')}
-                style={{
-                  padding: '10px 12px',
-                  marginBottom: 4,
-                  cursor: 'pointer',
-                  borderRadius: 4,
-                  background: currentPage === 'converter'
-                    ? (isDarkMode ? '#334155' : '#f1f5f9')
-                    : 'transparent',
-                  color: currentPage === 'converter'
-                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
-                    : (isDarkMode ? '#94a3b8' : '#64748b'),
-                  fontWeight: currentPage === 'converter' ? 600 : 400,
-                  transition: 'all 0.2s',
-                  fontSize: '13px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}
-              >
-                {t('menu.converter')}
-              </div>
               <PluginList
                 currentPage={currentPage}
                 onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
@@ -417,8 +391,8 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useState(() => {
-    fetch('/api/plugins')
+  useEffect(() => {
+    fetch(`/api/plugins?v=${Date.now()}`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -432,7 +406,7 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
         setError(err.message);
         setLoading(false);
       });
-  });
+  }, []);
 
   return (
     <div>
