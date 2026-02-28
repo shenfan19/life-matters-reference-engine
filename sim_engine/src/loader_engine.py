@@ -38,7 +38,7 @@ class LoaderEngine:
     
     def find_model_file(self, model_name: str, folder: Optional[str] = None) -> Optional[str]:
         """
-        在指定目录中查找模型的 YAML 文件路径。支持新的 models/ 和 stories/ 结构。
+        在指定目录中查找模型的 YAML 文件路径。支持新的 models/, scenarios/ 和 stories/ 结构。
         :param model_name: 模型名称（可带路径，如 "models/interventions/diet/banana" 或 "banana"）。
         :param folder: 可选的子文件夹（用于向后兼容，如果 model_name 带路径则忽略）。
         :return: 找到的文件绝对路径，如果没有找到则返回 None。
@@ -57,7 +57,7 @@ class LoaderEngine:
             # 标准化路径分隔符
             model_name_norm = model_name.replace('/', os.sep)
             
-            # 1. 尝试直接作为相对于 mods_directory 的路径 (适合 model_name 已包含 stories/ 或 models/ 的情况)
+            # 1. 尝试直接作为相对于 mods_directory 的路径 (适合 model_name 已包含 scenarios/, stories/ 或 models/ 的情况)
             file_path = os.path.join(base_dir, model_name_norm)
             if not file_path.endswith('.yaml'):
                 file_path += '.yaml'
@@ -93,10 +93,11 @@ class LoaderEngine:
                 if os.path.isfile(file_path):
                     return os.path.abspath(file_path)
         
-        # 在新结构中搜索：models/ 和 stories/ 目录
+        # 在新结构中搜索：models/, scenarios/ 和 stories/ 目录
         search_paths = [
             base_dir,  # 根目录（向后兼容）
             os.path.join(base_dir, 'models'),
+            os.path.join(base_dir, 'scenarios'),
             os.path.join(base_dir, 'stories'),
         ]
         

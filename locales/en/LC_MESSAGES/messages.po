@@ -125,7 +125,7 @@ msgid "menu.cardgame"
 msgstr "Card Game"
 
 msgid "menu.storyloader"
-msgstr "Story Loader"
+msgstr "Scenario Library"
 
 msgid "menu.plugins"
 msgstr "External Plugins"
@@ -173,7 +173,7 @@ msgid "loader.library"
 msgstr "Model Library"
 
 msgid "loader.story"
-msgstr "Story Library"
+msgstr "Scenario Library"
 
 msgid "game.back"
 msgstr "Back to Levels"

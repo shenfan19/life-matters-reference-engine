@@ -295,7 +295,7 @@ async def get_mod(model_name: str, folder: str = None):
     
     try:
         # 解析路径：优先考虑全路径
-        if model_name.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
+        if model_name.startswith(('models/', 'stories/', 'scenarios/', 'models\\', 'stories\\', 'scenarios\\')):
             # 如果提供了 folder 且 model_name 不包含 folder 前缀，则可能需要保留 folder
             # 但通常 GUI 会发送完整的相对路径
             pass
@@ -414,7 +414,7 @@ async def get_file_content(file_path: str):
             try:
                 # 首先处理路径和模型名
                 # 如果是新结构路径 (如 stories/xxx.yaml)，直接作为 model_name，folder 传 None
-                if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
+                if file_path.startswith(('models/', 'stories/', 'scenarios/', 'models\\', 'stories\\', 'scenarios\\')):
                     folder = None
                     # 移除 .yaml 扩展名
                     model_name = file_path
@@ -648,7 +648,7 @@ async def split_model(request: SplitRequest):
             full_output_dir = output_dir
 
         # 解析路径：优先考虑全路径
-        if file_path.startswith(('models/', 'stories/', 'models\\', 'stories\\')):
+        if file_path.startswith(('models/', 'stories/', 'scenarios/', 'models\\', 'stories\\', 'scenarios\\')):
             folder = None
             model_name = file_path
         else:

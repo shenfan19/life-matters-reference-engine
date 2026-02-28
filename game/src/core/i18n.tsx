@@ -11,7 +11,18 @@ interface I18nContextType {
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export const I18nProvider = ({ children, section }: { children: ReactNode; section: 'sim' | 'game' }) => {
-    const [language, setLanguageState] = useState<Language>((localStorage.getItem('language') as Language) || 'zh-CN');
+    const [language, setLanguageState] = useState<Language>(() => {
+        const saved = localStorage.getItem('language');
+        // Normalize legacy formats (zh_CN -> zh-CN)
+        if (saved === 'zh_CN') return 'zh-CN';
+        if (saved === 'zh_TW') return 'zh-TW';
+
+        const validLangs: Language[] = ['en', 'zh-CN', 'zh-TW'];
+        if (saved && validLangs.includes(saved as Language)) {
+            return saved as Language;
+        }
+        return 'zh-CN';
+    });
     const [translations, setTranslations] = useState<Record<string, string>>({});
 
     const setLanguage = (lang: Language) => {

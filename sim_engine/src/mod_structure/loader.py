@@ -48,9 +48,9 @@ class Loader:
             for imp_name in imports:
                 imp_path = None
                 
-                # 新格式：models/xxx/yyy 或 stories/xxx/yyy（从 mods 根目录解析）
-                if ('models/' in imp_name or 'stories/' in imp_name or 
-                    imp_name.startswith('models\\') or imp_name.startswith('stories\\')):
+                # 新格式：models/xxx/yyy, scenarios/xxx/yyy 或 stories/xxx/yyy（从 mods 根目录解析）
+                if ('models/' in imp_name or 'scenarios/' in imp_name or 'stories/' in imp_name or 
+                    imp_name.startswith('models\\') or imp_name.startswith('scenarios\\') or imp_name.startswith('stories\\')):
                     if mods_root:
                         # 标准化路径分隔符
                         imp_name_normalized = imp_name.replace('/', os.sep)

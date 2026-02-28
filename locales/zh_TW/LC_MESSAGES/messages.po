@@ -170,7 +170,7 @@ msgid "loader.library"
 msgstr "模型庫"
 
 msgid "loader.story"
-msgstr "故事集"
+msgstr "場景庫"
 
 msgid "game.back"
 msgstr "回到關卡"

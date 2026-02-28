@@ -7,7 +7,7 @@ import Optimizer from './components/Optimizer';
 import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
-import { useI18n } from './core/i18n';
+import { useI18n, type Language } from './core/i18n';
 
 const initialSimulationState: SimulationState = {
   status: 'idle',
@@ -55,7 +55,7 @@ function App() {
   // --- Lifted Loader States ---
   const [modelTree, setModelTree] = useState<DataNode[]>([]);
   const [storyTree, setStoryTree] = useState<DataNode[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'models', 'stories']);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'models', 'scenarios']);
   const [modelViewMode, setModelViewMode] = useState<'tree' | 'list'>('tree');
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
   const [modelFilter, setModelFilter] = useState('');
@@ -142,8 +142,6 @@ function App() {
             isDarkMode={isDarkMode}
           />
         );
-      case 'cg_combat':
-        return <div>游戏已移至独立前端</div>;
       case 'converter':
         return <Converter />;
       default:

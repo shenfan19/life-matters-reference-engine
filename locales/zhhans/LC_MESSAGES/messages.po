@@ -125,7 +125,7 @@ msgid "menu.cardgame"
 msgstr "卡牌游戏"
 
 msgid "menu.storyloader"
-msgstr "故事读取"
+msgstr "场景读取"
 
 msgid "menu.plugins"
 msgstr "外部插件"
@@ -173,7 +173,7 @@ msgid "loader.library"
 msgstr "模型库"
 
 msgid "loader.story"
-msgstr "故事集"
+msgstr "场景库"
 
 msgid "game.back"
 msgstr "回到关卡"

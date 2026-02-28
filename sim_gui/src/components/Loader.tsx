@@ -179,7 +179,7 @@ const Loader: React.FC<LoaderProps> = ({
                     </span>
                   ),
                   titleStr: item.title, // [Crucial] 文件夹名作为 mod 名
-                  mod_type: onlyChild.mod_type || (item.key === 'stories' || item.parent?.key === 'stories' ? 'story' : 'model')
+                  mod_type: onlyChild.mod_type || (item.key === 'scenarios' || item.parent?.key === 'scenarios' ? 'story' : 'model')
                 };
               }
             }
@@ -211,7 +211,7 @@ const Loader: React.FC<LoaderProps> = ({
         const modsNode = result.data.find((n: any) => n.key === 'mods');
         if (modsNode && modsNode.children) {
           const mNode = modsNode.children.find((n: any) => n.key === 'models');
-          const sNode = modsNode.children.find((n: any) => n.key === 'stories');
+          const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
 
           if (mNode) {
             setModelTree(convertToTreeData(mNode.children || []));
@@ -297,7 +297,7 @@ const Loader: React.FC<LoaderProps> = ({
           // 去掉 mods/ 前缀以匹配 Tree Key 和 loadedMods 索引标准
           const cleanKey = key.startsWith('mods/') ? key.replace(/^mods\//, '') : key;
           // 确保是 models/ 开头 (如果是相对路径模型)
-          return cleanKey.startsWith('models/') || cleanKey.startsWith('stories/') ? cleanKey : `models/${cleanKey}`;
+          return cleanKey.startsWith('models/') || cleanKey.startsWith('scenarios/') ? cleanKey : `models/${cleanKey}`;
         });
 
         // 递归加载导入的模型内容

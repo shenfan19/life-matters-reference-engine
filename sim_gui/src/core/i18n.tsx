@@ -1,44 +1,106 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from 'react';
 
-type Language = 'en' | 'zh-CN' | 'zh-TW' | 'fr';
+export type Language = 'en' | 'zh-CN' | 'zh-TW' | 'fr';
 
 interface I18nContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
     t: (key: string) => string;
+    version: number;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export const I18nProvider = ({ children, section }: { children: ReactNode; section: 'sim' | 'game' }) => {
-    const [language, setLanguageState] = useState<Language>((localStorage.getItem('language') as Language) || 'zh-CN');
+    // 1. Initial State with Legacy Support
+    const [language, setLanguageState] = useState<Language>(() => {
+        let saved = localStorage.getItem('language');
+
+        // Normalize legacy keys
+        if (saved === 'zh_CN') saved = 'zh-CN';
+        if (saved === 'zh_TW') saved = 'zh-TW';
+
+        const validLangs: Language[] = ['en', 'zh-CN', 'zh-TW', 'fr'];
+        const finalLang = (saved && validLangs.includes(saved as Language)) ? (saved as Language) : 'zh-CN';
+
+        // Ensure normalized value is stored
+        if (saved !== finalLang) {
+            localStorage.setItem('language', finalLang);
+        }
+        return finalLang;
+    });
+
     const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [version, setVersion] = useState(0); // Force re-render trigger
 
     const setLanguage = (lang: Language) => {
+        console.log(`[i18n] Switching to: ${lang}`);
         setLanguageState(lang);
         localStorage.setItem('language', lang);
+        setIsLoaded(false);
+        setVersion(v => v + 1);
     };
 
     useEffect(() => {
+        let isMounted = true;
         const loadTranslations = async () => {
+            const timestamp = Date.now();
+            const url = `/locales/${section}/${language}.json?v=${timestamp}`;
+            console.log(`[i18n] Fetching: ${url}`);
+
             try {
-                const response = await fetch(`/locales/${section}/${language}.json`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                setTranslations(data);
+
+                if (isMounted) {
+                    // EMERGENCY FALLBACK: If JSON is empty or broken, try fetching English
+                    if (Object.keys(data).length === 0 && language !== 'en') {
+                        console.warn(`[i18n] ${language} JSON is empty, falling back to English`);
+                        const enResponse = await fetch(`/locales/${section}/en.json`);
+                        if (enResponse.ok) {
+                            const enData = await enResponse.json();
+                            setTranslations(enData);
+                        }
+                    } else {
+                        setTranslations(data);
+                    }
+                    setIsLoaded(true);
+                    setVersion(v => v + 1);
+                }
             } catch (error) {
-                console.error('Failed to load translations:', error);
+                console.error(`[i18n] Load failed:`, error);
+                if (isMounted && language !== 'en') {
+                    // One last try with English on network error
+                    fetch(`/locales/${section}/en.json`).then(r => r.json()).then(d => {
+                        if (isMounted) setTranslations(d);
+                    }).catch(() => { });
+                }
             }
         };
+
         loadTranslations();
+        return () => { isMounted = false; };
     }, [language, section]);
 
     const t = (key: string) => {
-        return translations[key] || key;
+        const val = translations[key];
+        if (!val) {
+            // Emergency hardcoded defaults for critical UI
+            if (key === 'app.title') return 'Life Matters';
+            if (key === 'menu.loader') return language.startsWith('zh') ? '模型加载' : 'Model Loader';
+
+            if (isLoaded) {
+                console.warn(`[i18n] Missing: "${key}"`);
+            }
+            return key;
+        }
+        return val;
     };
 
     return (
-        <I18nContext.Provider value={{ language, setLanguage, t }}>
+        <I18nContext.Provider value={{ language, setLanguage, t, version }}>
             {children}
         </I18nContext.Provider>
     );
