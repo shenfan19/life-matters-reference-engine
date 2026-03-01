@@ -1,0 +1,13 @@
+id: story_converter
+name: Story to Game Converter
+version: 1.0.0
+category: preprocessors
+description: Convert story configurations into interactive game cases.
+
+backend:
+  entry: backend.py
+  class: StoryConverterPlugin
+
+ui:
+  type: component
+  component_path: frontend.tsx

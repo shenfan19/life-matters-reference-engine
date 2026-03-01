@@ -1,5 +1,8 @@
 {
-    "game.back": "返回關卡",
-    "game.go_sim": "去仿真器",
-    "game.title": "居里夫人遊戲"
+    "app.title": "生命之重：卡牌實驗室",
+    "menu.scenary_library": "故事庫",
+    "game.back": "返回",
+    "game.back_to_stories": "返回故事列表",
+    "game.go_sim": "返回仿真平台",
+    "game.title": "瑪麗·居里"
 }

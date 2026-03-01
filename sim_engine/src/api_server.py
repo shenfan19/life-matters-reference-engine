@@ -4,6 +4,7 @@ LifeMatters Backend - FastAPI (完整版)
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -147,7 +148,7 @@ app = FastAPI(title="LifeMatters API", version="0.3.0", lifespan=lifespan)
 # CORS 配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -232,30 +233,129 @@ async def list_plugins():
         return {"plugins": [], "message": "Plugin system not initialized"}
     
     try:
+        plugin_manager.scan_plugins()
         return {
+            "success": True,
             "plugins": plugin_manager.get_plugin_list(),
-            "total": len(plugin_manager.plugins)
+            "count": len(plugin_manager.plugins)
         }
     except Exception as e:
         logger.error(f"Error listing plugins: {e}")
         return {"plugins": [], "error": str(e)}
 
 
-@app.post("/api/plugins/{plugin_id}/run")
-async def run_plugin(plugin_id: str, payload: dict):
-    """执行插件"""
+@app.get("/api/plugins/{plugin_id}/ui-page", response_class=HTMLResponse)
+async def get_plugin_ui_page(plugin_id: str):
+    """返回渲染后的插件UI页面"""
     if plugin_manager is None:
         raise HTTPException(status_code=503, detail="Plugin system not initialized")
     
+    if plugin_id not in plugin_manager.plugins:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+        
+    plugin_info = plugin_manager.plugins[plugin_id]
+    manifest = plugin_info['manifest']
+    plugin_path = plugin_info['path']
+    
+    ui_config = manifest.get('ui', {})
+    if ui_config.get('type') != 'component':
+        raise HTTPException(status_code=400, detail="This plugin does not have a custom UI component")
+        
+    component_path = ui_config.get('component_path')
+    if not component_path:
+        raise HTTPException(status_code=400, detail="No component_path specified")
+        
+    component_file = plugin_path / component_path
+    if not component_file.exists():
+        raise HTTPException(status_code=404, detail="Component file not found")
+        
+    with open(component_file, 'r', encoding='utf-8') as f:
+        component_code = f.read()
+        
+    # HTML 模版
+    template = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{name}} UI</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/dayjs@1/dayjs.min.js"></script>
+    <script crossorigin src="https://unpkg.com/antd@5/dist/antd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/antd@5/dist/reset.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        // 外部注入的 React 和 antd
+        const { useState, useEffect, useRef, useMemo } = React;
+        
+        // 插件组件代码
+        {{component_code}}
+        
+        // 渲染逻辑
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PluginComponent />);
+        
+        // 通信 API
+        window.pluginAPI = {
+            sendMessage: (data) => {
+                window.parent.postMessage({
+                    type: 'plugin-message',
+                    pluginId: '{{plugin_id}}',
+                    data: data
+                }, '*');
+            },
+            callBackend: async (endpoint, data) => {
+                const url = endpoint === 'run' ? `/api/plugins/{{plugin_id}}/run` : `/api/plugins/{{plugin_id}}/${endpoint}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inputs: data })
+                });
+                return await response.json();
+            }
+        };
+    </script>
+</body>
+</html>
+"""
+    html_content = template.replace('{{name}}', manifest.get('name', 'Plugin')) \
+                           .replace('{{component_code}}', component_code) \
+                           .replace('{{plugin_id}}', plugin_id)
+                           
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/plugins/{plugin_id}/{endpoint}")
+async def call_plugin_backend(plugin_id: str, endpoint: str, payload: dict):
+    """通用插件后台调用转发器"""
+    if plugin_manager is None:
+        raise HTTPException(status_code=503, detail="Plugin system not initialized")
+        
     try:
-        result = plugin_manager.run_plugin(
-            plugin_id=plugin_id,
-            inputs=payload.get('inputs', {}),
-            context=None
-        )
-        return result
+        if endpoint == 'run':
+            result = plugin_manager.run_plugin(
+                plugin_id=plugin_id,
+                inputs=payload.get('inputs', {}),
+                context=None
+            )
+            return result
+        else:
+            # 未来可以扩展支持其他 endpoint
+            raise HTTPException(status_code=404, detail=f"Endpoint {endpoint} not supported")
     except Exception as e:
-        logger.error(f"Error running plugin {plugin_id}: {e}")
+        logger.error(f"Error calling plugin backend {plugin_id}/{endpoint}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -373,6 +473,9 @@ async def list_files():
                             if isinstance(data, dict):
                                 file_metadata['mod_type'] = data.get('type', 'unknown')
                                 file_metadata['category'] = data.get('category', 'unknown')
+                                file_metadata['description'] = data.get('description', '')
+                                file_metadata['difficulty'] = data.get('difficulty', '')
+                                file_metadata['levels'] = data.get('levels', [])
                     except Exception as e:
                         logger.warning(f"Failed to read metadata from {item_path}: {e}")
                     

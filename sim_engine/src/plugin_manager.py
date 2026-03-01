@@ -34,13 +34,15 @@ class PluginManager:
                             manifest = yaml.safe_load(f)
                             if manifest.get('id') == 'test_plugin':
                                 continue
-                            self.plugins[manifest['id']] = {
+                            plugin_id = manifest.get('id')
+                            print(f"[PluginManager] Found plugin: {plugin_id} at {item}")
+                            self.plugins[plugin_id] = {
                                 'manifest': manifest,
                                 'path': item,
                                 'category': item.parent.name if depth > 0 else 'uncategorized'
                             }
                     except Exception as e:
-                        print(f"Error loading plugin at {item}: {e}")
+                        print(f"[PluginManager] Error loading plugin at {item}: {e}")
                 else:
                     # Continue scanning subdirectories
                     scan_recursive(item, depth + 1, max_depth)
@@ -52,7 +54,10 @@ class PluginManager:
         return [p['manifest'] for p in self.plugins.values()]
     
     def load_plugin(self, plugin_id: str):
-        """动态加载插件"""
+        """动态加载插件并返回模块"""
+        import importlib.util
+        import sys
+        
         if plugin_id not in self.plugins:
             raise ValueError(f"Plugin {plugin_id} not found")
         
@@ -61,11 +66,24 @@ class PluginManager:
         
         # 动态导入 backend.py
         backend_path = plugin_info['path'] / manifest['backend']['entry']
-        # ... 动态加载逻辑
+        
+        module_name = f"plugin_{plugin_id}"
+        spec = importlib.util.spec_from_file_location(module_name, str(backend_path))
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load spec for {backend_path}")
+            
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        
+        return module
         
     def run_plugin(self, plugin_id: str, inputs: dict, context):
         """执行插件"""
-        plugin_module = self.load_plugin(plugin_id)
-        plugin_class = getattr(plugin_module, plugin_module.manifest['backend']['class'])
+        module = self.load_plugin(plugin_id)
+        plugin_info = self.plugins[plugin_id]
+        class_name = plugin_info['manifest']['backend']['class']
+        
+        plugin_class = getattr(module, class_name)
         instance = plugin_class(context)
         return instance.run(inputs)

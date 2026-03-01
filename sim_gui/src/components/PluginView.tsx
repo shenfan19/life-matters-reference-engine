@@ -49,8 +49,8 @@ export default function PluginView({ pluginId }: Props) {
   if (!manifest) {
     return (
       <div style={{ padding: 40 }}>
-        <div style={{ 
-          padding: 20, 
+        <div style={{
+          padding: 20,
           background: '#fff1f0',
           border: '1px solid #ffccc7',
           borderRadius: 4
@@ -69,32 +69,32 @@ export default function PluginView({ pluginId }: Props) {
         <div style={{ color: '#999', marginTop: 5 }}>
           {manifest.description || 'No description'}
         </div>
-        <div style={{ 
-          marginTop: 10, 
-          display: 'flex', 
+        <div style={{
+          marginTop: 10,
+          display: 'flex',
           gap: 10,
-          fontSize: 12 
+          fontSize: 12
         }}>
-          <span style={{ 
-            padding: '2px 8px', 
+          <span style={{
+            padding: '2px 8px',
             background: '#f0f0f0',
-            borderRadius: 3 
+            borderRadius: 3
           }}>
             v{manifest.version}
           </span>
-          <span style={{ 
-            padding: '2px 8px', 
+          <span style={{
+            padding: '2px 8px',
             background: '#e6f7ff',
             color: '#1890ff',
-            borderRadius: 3 
+            borderRadius: 3
           }}>
             {manifest.category}
           </span>
-          <span style={{ 
-            padding: '2px 8px', 
+          <span style={{
+            padding: '2px 8px',
             background: '#f6ffed',
             color: '#52c41a',
-            borderRadius: 3 
+            borderRadius: 3
           }}>
             {manifest.ui.type}
           </span>
@@ -104,8 +104,8 @@ export default function PluginView({ pluginId }: Props) {
       <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 20 }}>
         {/* 根据UI类型显示内容 */}
         {manifest.ui.type === 'none' && (
-          <div style={{ 
-            padding: 20, 
+          <div style={{
+            padding: 20,
             background: '#fafafa',
             borderRadius: 4,
             textAlign: 'center',
@@ -120,7 +120,7 @@ export default function PluginView({ pluginId }: Props) {
         )}
 
         {manifest.ui.type === 'component' && manifest.ui.component_path && (
-          <PluginLoader componentPath={manifest.ui.component_path} />
+          <PluginLoader pluginId={manifest.id} componentPath={manifest.ui.component_path} />
         )}
       </div>
     </div>

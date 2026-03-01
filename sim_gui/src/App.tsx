@@ -4,6 +4,7 @@ import { TranslationOutlined, SunOutlined, MoonOutlined } from '@ant-design/icon
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
+import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
@@ -75,17 +76,12 @@ function App() {
     { id: 'optimizer', name: t('menu.optimizer') }
   ];
 
-  const gamePages = [
-    { id: 'cg_loader', name: t('menu.storyloader') }
-  ];
-
   const renderContent = () => {
     switch (currentPage) {
       case 'loader':
-      case 'cg_loader':
         return (
           <Loader
-            subPage={currentPage === 'cg_loader' ? 'loader' : currentPage}
+            subPage="loader"
             onModelSelect={setSelectedModel}
             confirmedModel={confirmedModel}
             setConfirmedModel={setConfirmedModel}
@@ -142,7 +138,6 @@ function App() {
           />
         );
       default:
-        // 如果是插件ID，显示插件视图
         if (currentPage.startsWith('plugin:')) {
           const pluginId = currentPage.replace('plugin:', '');
           return <PluginView pluginId={pluginId} />;
@@ -154,21 +149,14 @@ function App() {
   const academicTheme = {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: isDarkMode ? '#177ddc' : '#0f172a', // 深色/冷淡的主色
-      borderRadius: 2, // 更学术的小圆角
+      colorPrimary: isDarkMode ? '#177ddc' : '#0f172a',
+      borderRadius: 2,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
     components: {
-      Button: {
-        borderRadius: 2,
-        controlHeight: 32,
-      },
-      Card: {
-        borderRadiusLG: 2,
-      },
-      Menu: {
-        darkItemSelectedBg: '#334155',
-      }
+      Button: { borderRadius: 2, controlHeight: 32 },
+      Card: { borderRadiusLG: 2 },
+      Menu: { darkItemSelectedBg: '#334155' }
     }
   };
 
@@ -181,7 +169,7 @@ function App() {
         color: isDarkMode ? '#f8fafc' : '#0f172a',
         transition: 'all 0.3s'
       }}>
-        {/* 左侧导航 */}
+        {/* Sidebar */}
         <div style={{
           width: 250,
           borderRight: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
@@ -236,8 +224,8 @@ function App() {
             </Space>
           </div>
 
-          {/* 核心功能组 */}
-          <div style={{ padding: '20px 12px', flex: 1 }}>
+          {/* Navigation Items */}
+          <div style={{ padding: '20px 12px', flex: 1, overflowY: 'auto' }}>
             <div style={{
               fontSize: 11,
               color: isDarkMode ? '#475569' : '#94a3b8',
@@ -258,51 +246,8 @@ function App() {
                   marginBottom: 4,
                   cursor: 'pointer',
                   borderRadius: 4,
-                  background: currentPage === page.id
-                    ? (isDarkMode ? '#334155' : '#f1f5f9')
-                    : 'transparent',
-                  color: currentPage === page.id
-                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
-                    : (isDarkMode ? '#94a3b8' : '#64748b'),
-                  fontWeight: currentPage === page.id ? 600 : 400,
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  fontSize: '13px'
-                }}
-              >
-                {page.name}
-              </div>
-            ))}
-
-            <div style={{
-              fontSize: 11,
-              color: isDarkMode ? '#475569' : '#94a3b8',
-              marginTop: 24,
-              marginBottom: 12,
-              paddingLeft: 8,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              {t('menu.cardgame')}
-            </div>
-            {gamePages.map(page => (
-              <div
-                key={page.id}
-                onClick={() => setCurrentPage(page.id)}
-                style={{
-                  padding: '10px 12px',
-                  marginBottom: 4,
-                  cursor: 'pointer',
-                  borderRadius: 4,
-                  background: currentPage === page.id
-                    ? (isDarkMode ? '#334155' : '#f1f5f9')
-                    : 'transparent',
-                  color: currentPage === page.id
-                    ? (isDarkMode ? '#f8fafc' : '#0f172a')
-                    : (isDarkMode ? '#94a3b8' : '#64748b'),
+                  background: currentPage === page.id ? (isDarkMode ? '#334155' : '#f1f5f9') : 'transparent',
+                  color: currentPage === page.id ? (isDarkMode ? '#f8fafc' : '#0f172a') : (isDarkMode ? '#94a3b8' : '#64748b'),
                   fontWeight: currentPage === page.id ? 600 : 400,
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   display: 'flex',
@@ -350,6 +295,7 @@ function App() {
             </div>
           </div>
 
+          {/* Footer */}
           <div style={{
             padding: 16,
             borderTop: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`,
@@ -361,18 +307,9 @@ function App() {
           </div>
         </div>
 
-        {/* 右侧内容区 */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          background: isDarkMode ? '#0f172a' : '#f8fafc',
-          padding: '24px'
-        }}>
-          <div style={{
-            maxWidth: 1400,
-            margin: '0 auto',
-            height: '100%'
-          }}>
+        {/* Content Area */}
+        <div style={{ flex: 1, overflow: 'auto', background: isDarkMode ? '#0f172a' : '#f8fafc', padding: '24px' }}>
+          <div style={{ maxWidth: 1400, margin: '0 auto', height: '100%' }}>
             {renderContent()}
           </div>
         </div>
@@ -381,7 +318,6 @@ function App() {
   );
 }
 
-// 插件列表组件
 function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
   currentPage: string,
   onSelectPlugin: (id: string) => void,
@@ -410,12 +346,7 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
 
   return (
     <div>
-      {loading && (
-        <div style={{ padding: 8, fontSize: 12, color: '#94a3b8' }}>
-          Loading...
-        </div>
-      )}
-
+      {loading && <div style={{ padding: 8, fontSize: 12, color: '#94a3b8' }}>Loading...</div>}
       {error && (
         <div style={{
           padding: 10,
@@ -426,13 +357,10 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
           border: `1px solid ${isDarkMode ? '#7f1d1d' : '#fee2e2'}`,
           marginBottom: 8
         }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>
-            ⚠️ Backend Disconnected
-          </div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ Backend Disconnected</div>
           <div style={{ opacity: 0.8 }}>Run: python api_server.py</div>
         </div>
       )}
-
       {plugins.map(plugin => {
         const isActive = currentPage === `plugin:${plugin.id}`;
         return (
@@ -444,12 +372,8 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
               marginBottom: 4,
               cursor: 'pointer',
               borderRadius: 4,
-              background: isActive
-                ? (isDarkMode ? '#334155' : '#f1f5f9')
-                : 'transparent',
-              color: isActive
-                ? (isDarkMode ? '#f8fafc' : '#0f172a')
-                : (isDarkMode ? '#94a3b8' : '#64748b'),
+              background: isActive ? (isDarkMode ? '#334155' : '#f1f5f9') : 'transparent',
+              color: isActive ? (isDarkMode ? '#f8fafc' : '#0f172a') : (isDarkMode ? '#94a3b8' : '#64748b'),
               fontWeight: isActive ? 600 : 400,
               border: isActive ? `1px solid ${isDarkMode ? '#475569' : '#e2e8f0'}` : '1px solid transparent',
               transition: 'all 0.2s',
@@ -459,14 +383,7 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div>
                 <div style={{ lineHeight: 1 }}>{plugin.name}</div>
-                <div style={{
-                  fontSize: 10,
-                  marginTop: 4,
-                  opacity: 0.6,
-                  fontWeight: 400
-                }}>
-                  {plugin.category}
-                </div>
+                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.6, fontWeight: 400 }}>{plugin.category}</div>
               </div>
             </div>
           </div>

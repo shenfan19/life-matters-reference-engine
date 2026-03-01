@@ -1,5 +1,14 @@
 import React from 'react';
 
+interface Story {
+    key: string;
+    title: string;
+    description?: string;
+    difficulty?: string;
+    category?: string;
+    levels?: any[];
+}
+
 interface Level {
     id: number;
     title: string;
@@ -8,18 +17,29 @@ interface Level {
     period: string;
 }
 
-const LEVELS: Level[] = [
+const DEFAULT_LEVELS: Level[] = [
     { id: 1, title: "1898: 镭的发现", description: "在简陋的棚屋实验室中提炼矿石，面对极高的辐射风险。", difficulty: "容易", period: "Sorbonne" },
     { id: 2, title: "1903: 诺贝尔荣誉", description: "在学术界的歧视与家庭压力中寻找平衡，争取研究经费。", difficulty: "中等", period: "Paris" },
     { id: 3, title: "1914: 战地X光机", description: "在一战战场建立流动医疗队，将科学转化为救人技术。", difficulty: "困难", period: "Mobile Labs" },
 ];
 
 interface LevelSelectProps {
-    onSelect: (level: Level) => void;
+    story: Story | null;
+    onSelect: (level: any) => void;
     onGoToSimulation: () => void;
 }
 
-const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onGoToSimulation }) => {
+const LevelSelect: React.FC<LevelSelectProps> = ({ story, onSelect, onGoToSimulation }) => {
+    const displayLevels = story?.levels && story.levels.length > 0
+        ? story.levels.map(l => ({
+            id: l.id,
+            title: l.title,
+            description: l.description || "探索这一历史阶段的挑战与机遇。",
+            difficulty: l.difficulty || story.difficulty || "中等",
+            period: l.period || story.title
+        }))
+        : DEFAULT_LEVELS;
+
     return (
         <div style={{
             height: '100vh',
@@ -32,11 +52,15 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onGoToSimulation })
             alignItems: 'center',
             padding: '40px'
         }}>
-            <h1 style={{ fontSize: '48px', marginBottom: '10px', fontFamily: '"Playfair Display", serif' }}>生命·玛丽·居里</h1>
-            <p style={{ fontSize: '18px', opacity: 0.8, marginBottom: '60px' }}>选择一个历史阶段开始你的研究之旅</p>
+            <h1 style={{ fontSize: '48px', marginBottom: '10px', fontFamily: '"Playfair Display", serif' }}>
+                {story?.title || "生命·玛丽·居里"}
+            </h1>
+            <p style={{ fontSize: '18px', opacity: 0.8, marginBottom: '60px' }}>
+                {story?.description || "选择一个历史阶段开始你的研究之旅"}
+            </p>
 
             <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {LEVELS.map(level => (
+                {displayLevels.map(level => (
                     <div
                         key={level.id}
                         onClick={() => onSelect(level)}
