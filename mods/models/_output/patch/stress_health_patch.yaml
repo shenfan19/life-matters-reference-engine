@@ -1,0 +1,17 @@
+variables:
+  energy_expenditure:
+    description: Placeholder for energy_expenditure
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  insulin_sensitivity:
+    description: Placeholder for insulin_sensitivity
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100

@@ -1,0 +1,89 @@
+variables:
+  carb_intake:
+    description: Placeholder for carb_intake
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  diabetes_risk:
+    description: Placeholder for diabetes_risk
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  diabetes_type:
+    description: Placeholder for diabetes_type
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  glucose_uptake:
+    description: Placeholder for glucose_uptake
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  glucose_utilization:
+    description: Placeholder for glucose_utilization
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  kidney_function:
+    description: Placeholder for kidney_function
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  liver_function:
+    description: Placeholder for liver_function
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  liver_glycogen:
+    description: Placeholder for liver_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  muscle_glycogen:
+    description: Placeholder for muscle_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  step_size:
+    description: Placeholder for step_size
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  'true':
+    description: Placeholder for true
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100

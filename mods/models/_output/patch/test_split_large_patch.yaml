@@ -1,0 +1,9 @@
+variables:
+  abc:
+    description: Placeholder for abc
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
