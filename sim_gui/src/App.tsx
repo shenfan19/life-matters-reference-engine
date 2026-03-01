@@ -4,7 +4,6 @@ import { TranslationOutlined, SunOutlined, MoonOutlined } from '@ant-design/icon
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
-import Converter from './components/Converter';
 import PluginView from './components/PluginView';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
@@ -334,7 +333,16 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
         return res.json();
       })
       .then(data => {
-        setPlugins(data.plugins || []);
+        const order = ['model_checker', 'mod_merger', 'story_converter'];
+        const sortedPlugins = (data.plugins || []).sort((a: any, b: any) => {
+          const indexA = order.indexOf(a.id);
+          const indexB = order.indexOf(b.id);
+          if (indexA === -1 && indexB === -1) return 0;
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+        setPlugins(sortedPlugins);
         setLoading(false);
       })
       .catch(err => {

@@ -1,16 +1,16 @@
-id: type_checker
-name: Type Checker
+id: model_checker
+name: Model Checker
 version: 1.0.0
 category: validators
 
 backend:
   entry: backend.py
-  class: TypeCheckerPlugin
+  class: ModelCheckerPlugin
 
 ui:
   type: schema
   schema:
-    title: Type Validation
+    title: Model Validation
     inputs:
       - name: model_name
         label: Model Name

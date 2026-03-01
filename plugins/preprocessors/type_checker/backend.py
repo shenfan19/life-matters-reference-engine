@@ -1,4 +1,4 @@
-class TypeCheckerPlugin:
+class ModelCheckerPlugin:
     def __init__(self, context):
         self.context = context
     

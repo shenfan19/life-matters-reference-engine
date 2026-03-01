@@ -1,36 +1,83 @@
-import React, { useState } from 'react';
-import { Card, Select, Button, Space, List, Tag, Typography, Progress, Alert } from 'antd';
-import { FileSearchOutlined, RocketOutlined } from '@ant-design/icons';
-
+import { useState, useEffect } from 'react';
+import { Card, Select, Button, Space, Typography, Progress, Alert, message, Tag } from 'antd';
 const { Title, Text } = Typography;
 
-const Converter: React.FC = () => {
+const Converter = () => {
     const [generating, setGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [stories, setStories] = useState<any[]>([]);
+    const [selectedStory, setSelectedStory] = useState<string | null>(null);
+    const [result, setResult] = useState<any>(null);
 
-    const mockStories = [
-        { id: '1', name: 'Basic Nutrition Story', type: 'story' },
-        { id: '2', name: 'Digestive Path Story', type: 'story' },
-        { id: '3', name: 'Metabolism Case', type: 'story' },
-    ];
+    useEffect(() => {
+        // Fetch stories from API
+        fetch('/api/files')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const foundStories: any[] = [];
+                    const scan = (items: any[]) => {
+                        items.forEach(item => {
+                            if (item.type === 'file' && item.key.includes('stories/')) {
+                                foundStories.push({ label: item.title, value: item.key });
+                            }
+                            if (item.children) scan(item.children);
+                        });
+                    };
+                    scan(data.data);
+                    setStories(foundStories);
+                }
+            })
+            .catch(err => console.error('Failed to load stories', err));
+    }, []);
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
+        if (!selectedStory) {
+            message.warning('请选择一个 Story');
+            return;
+        }
+
         setGenerating(true);
         setProgress(0);
+        setResult(null);
+
         const interval = setInterval(() => {
             setProgress(prev => {
-                if (prev >= 100) {
+                if (prev >= 90) {
                     clearInterval(interval);
-                    setGenerating(false);
-                    return 100;
+                    return 90;
                 }
                 return prev + 10;
             });
-        }, 200);
+        }, 100);
+
+        try {
+            const response = await fetch(`/api/plugins/story_converter/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inputs: { story_path: selectedStory.replace(/^mods\//, '') } })
+            });
+            const data = await response.json();
+
+            clearInterval(interval);
+            setProgress(100);
+            setGenerating(false);
+
+            if (data.success) {
+                setResult(data);
+                message.success('转换成功！');
+            } else {
+                message.error('转换失败: ' + (data.error || '未知错误'));
+            }
+        } catch (err) {
+            clearInterval(interval);
+            setGenerating(false);
+            message.error('网络错误');
+        }
     };
 
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', padding: '20px' }}>
             <Title level={4}>Game Case Converter (Story → Game)</Title>
             <Text type="secondary">选取现有的 Story 配置来生成可交互的卡牌游戏关卡 (Game Case)。</Text>
 
@@ -39,8 +86,8 @@ const Converter: React.FC = () => {
                     <Select
                         placeholder="请选择一个 Story..."
                         style={{ width: '100%' }}
-                        suffixIcon={<FileSearchOutlined />}
-                        options={mockStories.map(s => ({ label: s.name, value: s.id }))}
+                        options={stories}
+                        onChange={(val) => setSelectedStory(val)}
                     />
                     <div style={{ marginTop: 12 }}>
                         <Tag color="processing">JSON/YAML Support</Tag>
@@ -48,24 +95,13 @@ const Converter: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card title="2. 生成配置 (Generation Options)">
-                    <List size="small">
-                        <List.Item actions={[<Button type="link">配置</Button>]}>
-                            <List.Item.Meta title="难度等级" description="调整卡牌属性倍率" />
-                        </List.Item>
-                        <List.Item actions={[<Button type="link">配置</Button>]}>
-                            <List.Item.Meta title="奖励池" description="生成后的掉落配置" />
-                        </List.Item>
-                    </List>
-                </Card>
-
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                     <Button
                         type="primary"
                         size="large"
-                        icon={<RocketOutlined />}
                         onClick={handleGenerate}
                         loading={generating}
+                        disabled={!selectedStory}
                     >
                         开始转换 (Generate Game Case)
                     </Button>
@@ -77,13 +113,12 @@ const Converter: React.FC = () => {
                     )}
                 </div>
 
-                {progress === 100 && (
+                {result && (
                     <Alert
                         message="生成成功"
-                        description="Game Case 已保存至 /mods/games/basic_nutrition_game.yaml"
+                        description={result.message}
                         type="success"
                         showIcon
-                        action={<Button size="small" type="primary">查看文件</Button>}
                     />
                 )}
             </Space>
