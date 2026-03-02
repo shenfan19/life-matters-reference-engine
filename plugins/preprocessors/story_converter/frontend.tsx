@@ -1,126 +1,221 @@
-const { Card, Select, Button, Space, List, Tag, Typography, Progress, Alert, message } = antd;
+const { Row, Col, Card, Select, Button, Space, List, Tag, Typography, Progress, Alert, Checkbox, Divider, message } = antd;
 const { Title, Text } = Typography;
-const { useState, useEffect } = React;
 
 const PluginComponent = () => {
     const [generating, setGenerating] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [stories, setStories] = useState([]);
-    const [selectedStory, setSelectedStory] = useState(null);
+    const [files, setFiles] = useState({ scenarios: [], stories: [] });
+    const [selection, setSelection] = useState({ scenario: null, story: null });
+    const [scenarioData, setScenarioData] = useState(null);
+    const [mapping, setMapping] = useState({
+        cost: '',
+        atk: '',
+        def: '',
+        selectedDynamics: []
+    });
     const [result, setResult] = useState(null);
 
     useEffect(() => {
-        // Fetch stories from API
         fetch('/api/files')
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    // Extract stories from tree
-                    const foundStories = [];
+                    const scenarios = [];
+                    const stories = [];
                     const scan = (items) => {
                         items.forEach(item => {
-                            if (item.type === 'file' && item.key.includes('stories/')) {
-                                foundStories.push({ label: item.title, value: item.key });
+                            if (item.type === 'file') {
+                                if (item.key.includes('scenarios/')) scenarios.push({ label: item.title, value: item.key });
+                                if (item.key.includes('stories/')) stories.push({ label: item.title, value: item.key });
                             }
                             if (item.children) scan(item.children);
                         });
                     };
                     scan(data.data);
-                    setStories(foundStories);
+                    setFiles({ scenarios, stories });
                 }
-            })
-            .catch(err => console.error('Failed to load stories', err));
+            });
     }, []);
 
-    const handleGenerate = async () => {
-        if (!selectedStory) {
-            message.warning('请选择一个 Story');
-            return;
-        }
-
-        setGenerating(true);
-        setProgress(0);
-        setResult(null);
-
-        // Simulate progress
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 90) {
-                    clearInterval(interval);
-                    return 90;
-                }
-                return prev + 10;
-            });
-        }, 100);
-
+    const loadScenarioDetails = async (path) => {
         try {
-            const data = await window.pluginAPI.callBackend('run', {
-                story_path: selectedStory.replace(/^mods\//, '')
+            // The 'key' from /api/files already contains the relative path like 'scenarios/xxx.yaml'
+            // The /api/mods/:path endpoint expects that relative path.
+            const res = await fetch(`/api/mods/${encodeURIComponent(path)}`);
+            const data = await res.json();
+            setScenarioData(data);
+            const vars = Object.keys(data.variables || {});
+            setMapping({
+                cost: vars[0] || '',
+                atk: vars[1] || '',
+                def: vars[2] || '',
+                selectedDynamics: Object.keys(data.formulas || {})
             });
-
-            clearInterval(interval);
-            setProgress(100);
-            setGenerating(false);
-
-            if (data.success) {
-                setResult(data);
-                message.success('转换成功！');
-            } else {
-                message.error('转换失败: ' + data.error);
-            }
-        } catch (err) {
-            clearInterval(interval);
-            setGenerating(false);
-            message.error('网络错误');
+        } catch (e) {
+            message.error("Failed to load scenario details");
         }
     };
 
+    const handleScenarioChange = (val) => {
+        setSelection(prev => ({ ...prev, scenario: val }));
+        loadScenarioDetails(val);
+    };
+
+    const handleGenerate = async () => {
+        if (!selection.scenario || !selection.story) {
+            message.warning("Please select both a Scenario and a Target Story");
+            return;
+        }
+        setGenerating(true);
+        try {
+            const data = await window.pluginAPI.callBackend('run', {
+                scenario_path: selection.scenario.replace(/^mods\//, ''),
+                story_path: selection.story.replace(/^mods\//, ''),
+                mapping: mapping
+            });
+            if (data.success) {
+                setResult(data);
+                message.success('Conversion Successful!');
+            } else {
+                message.error('Failed: ' + data.error);
+            }
+        } catch (err) {
+            message.error('Network Error');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const variables = scenarioData ? Object.keys(scenarioData.variables || {}) : [];
+    const formulas = scenarioData ? Object.keys(scenarioData.formulas || {}) : [];
+
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
-            <Title level={4}>Game Case Converter (Story → Game)</Title>
-            <Text type="secondary">选取现有的 Story 配置来生成可交互的卡牌游戏关卡 (Game Case)。</Text>
+        <div style={{ padding: '20px' }}>
+            <Title level={3}>Scenario to Game Converter</Title>
+            <Text type="secondary">Map physics/economies from Scenarios to Card attributes in Stories.</Text>
+            <Divider />
 
-            <Space direction="vertical" style={{ width: '100%', marginTop: 24 }} size="large">
-                <Card title="1. 选择源故事 (Select Source Story)">
-                    <Select
-                        placeholder="请选择一个 Story..."
-                        style={{ width: '100%' }}
-                        options={stories}
-                        onChange={(val) => setSelectedStory(val)}
-                    />
-                    <div style={{ marginTop: 12 }}>
-                        <Tag color="processing">JSON/YAML Support</Tag>
-                        <Tag color="warning">Architecture V3 Compatible</Tag>
-                    </div>
-                </Card>
+            <Row gutter={24}>
+                {/* Left Column: Source Scenario */}
+                <Col span={11}>
+                    <Card title={<span><Tag color="blue">SOURCE</Tag> Scenario</span>} bordered={false} style={{ background: '#f8fafc' }}>
+                        <Select
+                            placeholder="Select Source Scenario..."
+                            style={{ width: '100%', marginBottom: 20 }}
+                            options={files.scenarios}
+                            onChange={handleScenarioChange}
+                        />
 
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleGenerate}
-                        loading={generating}
-                        disabled={!selectedStory}
-                    >
-                        开始转换 (Generate Game Case)
-                    </Button>
-                    {generating && (
-                        <div style={{ marginTop: 20 }}>
-                            <Progress percent={progress} status="active" />
-                            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>解析结构并生成卡牌数据...</div>
+                        {scenarioData && (
+                            <List
+                                header={<strong>Scenario Variables</strong>}
+                                bordered
+                                size="small"
+                                dataSource={variables}
+                                renderItem={item => (
+                                    <List.Item>
+                                        <Text code>{item}</Text>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>
+                                            ({scenarioData.variables[item].unit || 'unitless'})
+                                        </Text>
+                                    </List.Item>
+                                )}
+                                style={{ maxHeight: 250, overflow: 'auto', background: '#fff' }}
+                            />
+                        )}
+
+                        {scenarioData && formulas.length > 0 && (
+                            <div style={{ marginTop: 20 }}>
+                                <Text strong>Dynamics to Include:</Text>
+                                <Checkbox.Group
+                                    style={{ width: '100%', marginTop: 10 }}
+                                    value={mapping.selectedDynamics}
+                                    onChange={checked => setMapping({ ...mapping, selectedDynamics: checked })}
+                                >
+                                    <div style={{ maxHeight: 150, overflow: 'auto', padding: '8px', border: '1px solid #d9d9d9', borderRadius: '2px', background: '#fff' }}>
+                                        {formulas.map(f => (
+                                            <div key={f}><Checkbox value={f}>{f}</Checkbox></div>
+                                        ))}
+                                    </div>
+                                </Checkbox.Group>
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+
+                {/* Right Column: Target Story & Mapping */}
+                <Col span={13}>
+                    <Card title={<span><Tag color="green">TARGET</Tag> Story & Mapping</span>} bordered={false} style={{ background: '#f0fdf4' }}>
+                        <div style={{ marginBottom: 20 }}>
+                            <Text strong>Target Story:</Text>
+                            <Select
+                                placeholder="Select Target Story..."
+                                style={{ width: '100%', marginTop: 8 }}
+                                options={files.stories}
+                                onChange={val => setSelection(prev => ({ ...prev, story: val }))}
+                            />
                         </div>
-                    )}
-                </div>
 
-                {result && (
-                    <Alert
-                        message="生成成功"
-                        description={result.message}
-                        type="success"
-                        showIcon
-                    />
-                )}
-            </Space>
+                        <Divider orientation="left" plain>Attribute Mapping</Divider>
+
+                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Card Cost (Energy) maps to:</Text>
+                                <Select
+                                    style={{ width: '100%', marginTop: 4 }}
+                                    value={mapping.cost}
+                                    onChange={v => setMapping({ ...mapping, cost: v })}
+                                    options={variables.map(v => ({ label: v, value: v }))}
+                                    disabled={!scenarioData}
+                                />
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Attack (ATK) maps to:</Text>
+                                <Select
+                                    style={{ width: '100%', marginTop: 4 }}
+                                    value={mapping.atk}
+                                    onChange={v => setMapping({ ...mapping, atk: v })}
+                                    options={variables.map(v => ({ label: v, value: v }))}
+                                    disabled={!scenarioData}
+                                />
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Defense (DEF) maps to:</Text>
+                                <Select
+                                    style={{ width: '100%', marginTop: 4 }}
+                                    value={mapping.def}
+                                    onChange={v => setMapping({ ...mapping, def: v })}
+                                    options={variables.map(v => ({ label: v, value: v }))}
+                                    disabled={!scenarioData}
+                                />
+                            </div>
+                        </Space>
+
+                        <div style={{ marginTop: 32, textAlign: 'right' }}>
+                            <Button
+                                type="primary"
+                                size="large"
+                                onClick={handleGenerate}
+                                loading={generating}
+                                disabled={!selection.scenario || !selection.story}
+                            >
+                                Convert to Game Case
+                            </Button>
+                        </div>
+                    </Card>
+                </Col>
+            </Row>
+
+            {result && (
+                <Alert
+                    message="Conversion Success"
+                    description={result.message}
+                    type="success"
+                    showIcon
+                    closable
+                    onClose={() => setResult(null)}
+                    style={{ marginTop: 20 }}
+                />
+            )}
         </div>
     );
 };

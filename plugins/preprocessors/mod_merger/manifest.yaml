@@ -10,5 +10,6 @@ backend:
   class: ModMergerPlugin
 
 ui:
-  type: none  # 无UI，直接后台处理
+  type: component
+  component_path: frontend.tsx
   

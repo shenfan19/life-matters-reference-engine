@@ -18,9 +18,10 @@ interface PluginManifest {
 
 interface Props {
   pluginId: string;
+  isDarkMode?: boolean;
 }
 
-export default function PluginView({ pluginId }: Props) {
+export default function PluginView({ pluginId, isDarkMode }: Props) {
   const [manifest, setManifest] = useState<PluginManifest | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,9 +63,9 @@ export default function PluginView({ pluginId }: Props) {
   }
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
       {/* 插件头部信息 */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, flexShrink: 0 }}>
         <h1 style={{ margin: 0, fontSize: 24 }}>{manifest.name}</h1>
         <div style={{ color: '#999', marginTop: 5 }}>
           {manifest.description || 'No description'}
@@ -101,7 +102,7 @@ export default function PluginView({ pluginId }: Props) {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 20 }}>
+      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 20, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* 根据UI类型显示内容 */}
         {manifest.ui.type === 'none' && (
           <div style={{
@@ -120,7 +121,7 @@ export default function PluginView({ pluginId }: Props) {
         )}
 
         {manifest.ui.type === 'component' && manifest.ui.component_path && (
-          <PluginLoader pluginId={manifest.id} componentPath={manifest.ui.component_path} />
+          <PluginLoader pluginId={manifest.id} componentPath={manifest.ui.component_path} isDarkMode={isDarkMode} />
         )}
       </div>
     </div>

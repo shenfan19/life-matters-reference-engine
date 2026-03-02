@@ -1,12 +1,12 @@
-id: story_converter
-name: Story to Game Converter
+id: scenario_converter
+name: Scenario to Game Converter
 version: 1.0.0
 category: preprocessors
-description: Convert story configurations into interactive game cases.
+description: Convert scenarios into interactive game cases with attribute mapping.
 
 backend:
   entry: backend.py
-  class: StoryConverterPlugin
+  class: ScenarioConverterPlugin
 
 ui:
   type: component

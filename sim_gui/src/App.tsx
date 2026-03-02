@@ -139,7 +139,7 @@ function App() {
       default:
         if (currentPage.startsWith('plugin:')) {
           const pluginId = currentPage.replace('plugin:', '');
-          return <PluginView pluginId={pluginId} />;
+          return <PluginView pluginId={pluginId} isDarkMode={isDarkMode} />;
         }
         return <div>选择功能</div>;
     }

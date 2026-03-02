@@ -8,19 +8,5 @@ backend:
   class: ModelCheckerPlugin
 
 ui:
-  type: schema
-  schema:
-    title: Model Validation
-    inputs:
-      - name: model_name
-        label: Model Name
-        type: text
-        required: true
-      - name: strict_mode
-        label: Strict Mode
-        type: checkbox
-        default: false
-    outputs:
-      - name: errors
-        label: Validation Errors
-        type: list
+  type: component
+  component_path: frontend.tsx
