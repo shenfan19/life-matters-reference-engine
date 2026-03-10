@@ -1,0 +1,10 @@
+name: 基础授课
+type: work
+tags: [work]
+cost: 0
+effects:
+  "+money": 10
+  "-health": 2
+description: 在巴黎高等师范学校教授物理学，以维持生计。
+reference: Marie taught at École Normale Supérieure to support her research.
+icon: 📝

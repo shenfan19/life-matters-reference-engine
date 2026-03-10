@@ -2,7 +2,7 @@ import requests
 import json
 import time
 
-BASE_URL = "http://localhost:8000/api"
+BASE_URL = "http://localhost:8001/api"
 
 def test_simulation():
     print("Testing Simulation...")
@@ -75,4 +75,4 @@ if __name__ == "__main__":
         test_optimization()
     except Exception as e:
         print(f"Error: {e}")
-        print("Make sure the backend is running at http://localhost:8000")
+        print("Make sure the backend is running at http://localhost:8001")

@@ -1,0 +1,44 @@
+name: "玛丽·居里：放射平衡"
+goal_value: 100
+initial_state:
+  health: 100
+  money: 50
+  radiation: 0
+  research_progress: 0
+variable_labels:
+  health: "❤️ 生命值"
+  money: "💰 经费"
+  radiation: "☢️ 辐射量"
+  research_progress: "🔬 研究进度"
+params:
+  chronic_damage_rate: 0.1
+  critical_radiation: 50
+win_condition:
+  research_progress: ">= 100"
+loss_condition:
+  health: "<= 0"
+dynamics:
+  - id: chronic_damage
+    description: "受到的辐射持续损害生命值"
+    formula: "health -= radiation * params.chronic_damage_rate"
+    trigger: "turn_end"
+  - id: radiation_sickness
+    description: "高强度辐射引发急性疾病"
+    condition: "radiation >= params.critical_radiation"
+    effect: "health -= 20"
+    trigger: "turn_end"
+cards:
+  - cards/research.yaml
+  - cards/teaching.yaml
+  - cards/rest.yaml
+initial_deck:
+  Cards:
+    - id: research.yaml
+      count: 10
+    - id: teaching.yaml
+      count: 10
+    - id: rest.yaml
+      count: 5
+hand_size: 5
+draw_per_turn: 1
+ap_per_turn: 3

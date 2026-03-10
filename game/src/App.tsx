@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import MarieCurieGame from './components/MarieCurieGame';
-import LevelSelect from './components/LevelSelect';
+import Game from './components/Game';
 import StoryLoader from './components/StoryLoader';
 import { useI18n } from './core/i18n';
+import { Story } from './core/types';
 
 function App() {
     const { t, language, setLanguage } = useI18n();
-    const [view, setView] = useState<'stories' | 'levels' | 'game'>('stories');
-    const [selectedStory, setSelectedStory] = useState<any>(null);
-    const [selectedLevel, setSelectedLevel] = useState<any>(null);
+    const [view, setView] = useState<'stories' | 'game'>('stories');
+    const [selectedStory, setSelectedStory] = useState<Story | null>(null);
 
     const goToSimulation = () => {
         window.location.href = 'http://localhost:5173';
@@ -56,21 +55,6 @@ function App() {
                     {t('game.back_to_stories') || '返回故事列表'}
                 </button>
             )}
-            {view === 'game' && (
-                <button
-                    onClick={() => setView('levels')}
-                    style={{
-                        background: '#b87333',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        cursor: 'pointer',
-                        borderRadius: '4px'
-                    }}
-                >
-                    {t('game.back') || '返回关卡'}
-                </button>
-            )}
             <button
                 onClick={goToSimulation}
                 style={{
@@ -94,22 +78,6 @@ function App() {
                 <StoryLoader
                     onSelect={(story) => {
                         setSelectedStory(story);
-                        setView('levels');
-                    }}
-                    onGoToSimulation={goToSimulation}
-                />
-            </div>
-        );
-    }
-
-    if (view === 'levels') {
-        return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                {renderHeader(true)}
-                <LevelSelect
-                    story={selectedStory}
-                    onSelect={(level) => {
-                        setSelectedLevel(level);
                         setView('game');
                     }}
                     onGoToSimulation={goToSimulation}
@@ -119,11 +87,12 @@ function App() {
     }
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#121212' }}>
             {renderHeader(true)}
-            <MarieCurieGame />
+            {selectedStory && <Game story={selectedStory} />}
         </div>
     );
 }
 
 export default App;
+

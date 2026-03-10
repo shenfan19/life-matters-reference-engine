@@ -1,0 +1,61 @@
+id: "teaching"
+name: "授课"
+type: "work"
+description: "在巴黎大学兼职授课，获取微薄的薪水。"
+cost: 0
+effects:
+  - variable: "money"
+    value: "params.teaching_income"
+    op: "+"
+  - variable: "health"
+    value: 1
+    op: "-"
+reference: "Curie taught at École Normale Supérieure (1900-1906)"
+---
+id: "research"
+name: "镭提纯研究"
+type: "goal"
+description: "在高辐射的环境下进行镭的提纯实验。"
+cost: 0
+effects:
+  - variable: "research_progress"
+    value: 10
+    op: "+"
+  - variable: "money"
+    value: "params.research_cost"
+    op: "-"
+  - variable: "radiation"
+    value: "params.radiation_increment"
+    op: "+"
+reference: "Isolated radium in 1902, exposed to massive radiation"
+---
+id: "rest"
+name: "休息"
+type: "health"
+description: "短暂的休息以恢复体力。"
+cost: 0
+effects:
+  - variable: "health"
+    value: "params.recovery_amount"
+    op: "+"
+  - variable: "money"
+    value: "params.rest_cost"
+    op: "-"
+---
+id: "chronic_damage"
+name: "慢性辐射损伤"
+type: "environment"
+description: "由于长期暴露在放射性环境中，身体受到持续损伤。"
+is_passive: true
+dynamic_effect: "chronic_damage_dynamics" # 引用 dynamics/*.js
+---
+id: "radiation_sickness"
+name: "急性辐射病"
+type: "environment"
+description: "高剂量辐射引发的急性症状。"
+condition: "radiation > 50"
+probability: 0.3
+effects:
+  - variable: "health"
+    value: 30
+    op: "-"

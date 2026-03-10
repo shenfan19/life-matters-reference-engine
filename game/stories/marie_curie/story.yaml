@@ -1,0 +1,45 @@
+story_meta:
+  name: "居里夫人：发现镭之路"
+  id: "marie_curie"
+  description: "体验玛丽·居里在极度艰苦的条件下，通过数千次的实验，最终提炼出镭的过程。"
+  goal_value: 100
+  goal_variable: "research_progress"
+  variable_labels:
+    health: "❤️ 生命"
+    money: "💰 金币"
+    research_progress: "🔬 研究进度"
+    radiation: "☢️ 辐射值"
+
+
+initial_state:
+  health: 100
+  money: 20
+  radiation: 0
+  research_progress: 0
+  status: 1 # 1: 赤贫, 2: 平民, 3: 科学家
+
+params:
+  teaching_income: 5
+  research_cost: 10
+  radiation_increment: 5
+  chronic_damage_rate: 0.1
+  recovery_amount: 8
+  rest_cost: 5
+
+decks:
+  - id: "player_initial"
+    name: "初始手牌"
+    cards:
+      - id: "teaching"
+        count: 2
+      - id: "research"
+        count: 1
+      - id: "rest"
+        count: 1
+  - id: "environment_initial"
+    name: "环境牌堆"
+    cards:
+      - id: "chronic_damage"
+        count: 99 # 持续生效
+      - id: "radiation_sickness"
+        count: 5

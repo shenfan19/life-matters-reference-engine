@@ -199,93 +199,119 @@
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    padding-bottom: 20px;
+    padding: 0 40px 10px 40px;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
 }
 
 .hand-container {
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    width: 80%;
-    height: 100%;
-    position: relative;
-}
-
-.card-fan {
-    position: relative;
     width: 100%;
     height: 100%;
-    display: flex;
-    justify-content: center;
+    position: relative;
+    padding-top: 50px; /* Space for hover lift */
 }
 
 .hand-card {
-    width: 140px;
-    height: 200px;
+    width: 150px;
+    height: 220px;
     background: var(--paper-bg);
     background-image: url('https://www.transparenttextures.com/patterns/old-wall.png');
     border: 2px solid var(--copper-dark);
-    border-radius: 8px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-    position: absolute;
-    bottom: 0;
-    transition: transform 0.3s ease, z-index 0s;
+    border-radius: 10px;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.4);
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: pointer;
     color: var(--ink-black);
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    transform-origin: bottom center;
+    padding: 12px;
+    position: relative;
+    margin-right: -100px; /* Crucial: Overlap showing the left side */
+    transform-origin: bottom left;
+    user-select: none;
+}
+
+.hand-card:last-child {
+    margin-right: 0;
 }
 
 .hand-card:hover {
-    transform: translateY(-50px) scale(1.1) !important;
-    z-index: 100 !important;
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    transform: translateY(-40px) scale(1.05) rotate(0deg) !important;
+    z-index: 200 !important;
+    margin-right: 20px; /* Increase spacing on hover to reveal content */
+    margin-left: 20px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 15px var(--copper-light);
     border-color: var(--copper-light);
 }
 
-.card-disabled {
-    filter: grayscale(1) brightness(0.7);
-    cursor: not-allowed;
+.card-top-left {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 32px;
+    height: 32px;
+    background: var(--accent-blue);
+    border: 2px solid var(--copper);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+
+.card-bottom-left {
+    position: absolute;
+    bottom: 5px;
+    left: 8px;
+    font-size: 9px;
+    font-weight: bold;
+    color: var(--copper-dark);
+    opacity: 0.8;
 }
 
 .card-title {
     font-size: 16px;
     font-weight: bold;
     text-align: center;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
     padding-bottom: 5px;
-    margin-bottom: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 .card-emoji {
-    font-size: 32px;
+    font-size: 38px;
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
 }
 
 .card-effect {
     font-size: 12px;
     flex: 1;
     text-align: center;
-}
-
-.card-cost {
-    font-size: 14px;
-    font-weight: bold;
-    position: absolute;
-    top: 5px;
-    right: 8px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .card-footer {
     font-size: 9px;
     font-style: italic;
-    opacity: 0.7;
+    opacity: 0.6;
     text-align: center;
     margin-top: auto;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 5px;
 }
+
 
 /* Sidebar */
 .sidebar {

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ConfigProvider, theme, Button, Space, Tooltip } from 'antd';
+import { ConfigProvider, theme, Button, Space, Tooltip, Dropdown } from 'antd';
 import { TranslationOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import Loader from './components/Loader';
 import Simulator from './components/Simulator';
 import Optimizer from './components/Optimizer';
 import PluginView from './components/PluginView';
+import StoryEngine from './components/StoryEngine';
 import type { SimulationState, OptimizerState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
 
@@ -50,6 +51,7 @@ function App() {
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
   const [optState, setOptState] = useState<OptimizerState>(initialOptimizerState);
+  const [playingStoryId, setPlayingStoryId] = useState<string | null>(null);
 
   // --- Lifted Loader States ---
   const [modelTree, setModelTree] = useState<DataNode[]>([]);
@@ -78,6 +80,9 @@ function App() {
   const renderContent = () => {
     switch (currentPage) {
       case 'loader':
+        if (playingStoryId) {
+          return <StoryEngine storyId={playingStoryId} onExit={() => setPlayingStoryId(null)} />;
+        }
         return (
           <Loader
             subPage="loader"
@@ -114,6 +119,7 @@ function App() {
             isLocked={isLocked}
             setIsLocked={setIsLocked}
             isDarkMode={isDarkMode}
+            onPlayStory={setPlayingStoryId}
           />
         );
       case 'simulator':
@@ -194,19 +200,26 @@ function App() {
                   {t('app.title')}
                 </h2>
                 <Space>
-                  <Tooltip title={t('common.language')}>
+                  <Dropdown
+                    menu={{
+                      items: [
+                        { key: 'zh-CN', label: '简体中文' },
+                        { key: 'zh-TW', label: '繁体中文' },
+                        { key: 'en', label: 'English' },
+                        { key: 'fr', label: 'Français' },
+                      ],
+                      selectedKeys: [language],
+                      onClick: (e) => setLanguage(e.key as Language)
+                    }}
+                    placement="bottomRight"
+                  >
                     <Button
                       type="text"
                       icon={<TranslationOutlined />}
-                      onClick={() => {
-                        const langs: Language[] = ['zh-CN', 'zh-TW', 'en', 'fr'];
-                        const currentIndex = langs.indexOf(language);
-                        const nextLang = langs[(currentIndex + 1) % langs.length];
-                        setLanguage(nextLang);
-                      }}
                       style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                      title={t('common.language')}
                     />
-                  </Tooltip>
+                  </Dropdown>
                   <Tooltip title={isDarkMode ? t('common.dark_mode') : t('common.light_mode')}>
                     <Button
                       type="text"

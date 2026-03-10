@@ -25,6 +25,8 @@ PROJECT_ROOT = BACKEND_DIR.parent
 # 添加到 Python 路径
 sys.path.insert(0, str(SRC_DIR))
 sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(PROJECT_ROOT))
+
 
 # 配置日志
 log_file = PROJECT_ROOT / "mods" / "models" / "_output" / "api_debug.log"
@@ -61,7 +63,7 @@ async def lifespan(app: FastAPI):
     
     # 初始化插件系统
     try:
-        from sim_engine.src.plugin_manager import PluginManager
+        from src.plugin_manager import PluginManager
         
         plugins_dir = PROJECT_ROOT / "plugins"
         logger.info(f"Plugins directory: {plugins_dir}")
@@ -85,7 +87,7 @@ async def lifespan(app: FastAPI):
     
     # 初始化 Mods 系统
     try:
-        from sim_engine.src.loader_engine import LoaderEngine
+        from src.loader_engine import LoaderEngine
         
         mods_dir = PROJECT_ROOT / "mods"
         logger.info(f"Mods directory: {mods_dir}")
@@ -117,8 +119,8 @@ async def lifespan(app: FastAPI):
     
     # 初始化仿真与优化引擎
     try:
-        from sim_engine.src.simulator_engine import SimulatorEngine
-        from sim_engine.src.optimizer_engine import OptimizerEngine
+        from src.simulator_engine import SimulatorEngine
+        from src.optimizer_engine import OptimizerEngine
         
         mods_dir = PROJECT_ROOT / "mods"
         simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
@@ -167,6 +169,9 @@ class ValidateRequest(BaseModel):
     file_path: Optional[str] = None
     files: Optional[List[str]] = None
 
+
+class StoryRequest(BaseModel):
+    story_path: str
 
 class SplitRequest(BaseModel):
     file_path: str
@@ -842,6 +847,45 @@ async def search_files(q: str = ""):
         return {'success': False, 'error': str(e)}
 
 
+# ========== Story 端点 ==========
+@app.get("/api/story/{story_id:path}")
+async def get_story_data(story_id: str):
+    """加载完整的故事数据，包括卡牌和初始状态"""
+    try:
+        story_dir = PROJECT_ROOT / "mods" / "stories" / story_id
+        story_file = story_dir / "story.yaml"
+        
+        if not story_file.exists():
+            # 兼容单个文件的故事
+            story_file = PROJECT_ROOT / "mods" / "stories" / f"{story_id}.yaml"
+            if not story_file.exists():
+                raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
+            story_dir = story_file.parent
+
+        with open(story_file, 'r', encoding='utf-8') as f:
+            story_data = yaml.safe_load(f)
+
+        # 加载关联卡牌
+        cards_data = {}
+        if 'cards' in story_data:
+            for card_rel_path in story_data['cards']:
+                card_path = story_dir / card_rel_path
+                if card_path.exists():
+                    with open(card_path, 'r', encoding='utf-8') as f:
+                        card_content = yaml.safe_load(f)
+                        cards_data[card_rel_path] = card_content
+        
+        return {
+            'success': True,
+            'data': {
+                'config': story_data,
+                'cards': cards_data
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error loading story {story_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ========== Folders 端点 ==========
 @app.get("/api/folders")
 async def list_folders():
@@ -1010,4 +1054,4 @@ async def run_optimization(request: OptimizationRequest):
 # 运行服务器
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

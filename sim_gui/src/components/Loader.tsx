@@ -18,7 +18,8 @@ import {
   UnlockOutlined,
   FileProtectOutlined,
   ClearOutlined,
-  FilterOutlined
+  FilterOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { ModelFile, DataNode } from '../types';
 import { useI18n } from '../core/i18n';
@@ -58,6 +59,7 @@ interface LoaderProps {
   isLocked: boolean;
   setIsLocked: (locked: boolean) => void;
   isDarkMode: boolean;
+  onPlayStory?: (storyId: string) => void;
 }
 
 const API_BASE = '/api';
@@ -96,7 +98,8 @@ const Loader: React.FC<LoaderProps> = ({
   isSimulating = false,
   isLocked,
   setIsLocked,
-  isDarkMode
+  isDarkMode,
+  onPlayStory,
 }) => {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
@@ -736,6 +739,8 @@ const Loader: React.FC<LoaderProps> = ({
       total: countLeaves(storyTree)
     };
 
+    const isCurrentStory = selectedModel?.key ? String(selectedModel.key).includes('stories/') : false;
+
     const renderToolbar = (
       type: 'model' | 'story',
       filter: string,
@@ -866,6 +871,29 @@ const Loader: React.FC<LoaderProps> = ({
                           }}
                           style={{ marginRight: 8 }}
                         />
+                        {selectedModel && (
+                    <Space style={{ marginTop: 16 }}>
+                      {isCurrentStory && onPlayStory && (
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          size="large"
+                          onClick={() => onPlayStory(selectedModel.key.replace(/^mods\/stories\//, '').replace(/\.yaml$/, ''))}
+                          style={{ background: '#10b981', borderColor: '#10b981' }}
+                        >
+                          开始故事 (Play Story)
+                        </Button>
+                      )}
+                      <Button
+                        type={isLocked ? "default" : "primary"}
+                        onClick={confirmAndValidateModel}
+                        icon={isLocked ? <UnlockOutlined /> : <LockOutlined />}
+                        danger={isLocked}
+                      >
+                        {isLocked ? '解锁模型' : '校验并锁定模型'}
+                      </Button>
+                    </Space>
+                  )}
                         <BookOutlined style={{ marginRight: 8, color: isDarkMode ? '#94a3b8' : '#64748b' }} />
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>{mod.displayTitle}</span>
                         <Tag style={{ fontSize: 10, borderRadius: 2, background: isDarkMode ? '#1e293b' : '#f1f5f9', color: isDarkMode ? '#94a3b8' : '#64748b', border: 'none' }}>STORY</Tag>
