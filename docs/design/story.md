@@ -1,11 +1,11 @@
-# Scenario层设计指南
+# Story层设计指南
 
 **面向用户**: 科普设计者、游戏爱好者、历史爱好者  
-**前置阅读**: [Core层规范](core_mods.md)
+**前置阅读**: [建模设计手册](model.md)
 
 ---
 
-> **一句话总结**: Scenario是"一键运行"的预配置场景，组合Core层模型并调整参数，让用户无需手动设置即可体验。
+> **一句话总结**: Story是"一键运行"的预配置剧情，组合Core层模型并调整参数，让用户无需手动设置即可体验。
 
 ---
 
@@ -14,7 +14,7 @@
 ## 📋 核心决议总结
 
 ### 设计原则
-1. **双层YAML架构**: Core层（科研）+ Scenario层（科普/游戏）
+1. **双层YAML架构**: Core层（科研）+ Story层（科普/游戏）
 2. **职责分离**: 科学模型与历史配置解耦
 3. **渐进扩展**: 初期YAML为主，后期可选加入SQLite索引
 4. **保持简洁**: 避免过度抽象，优先配置而非代码
@@ -32,8 +32,8 @@ mods/
 │   ├── penicillin.yaml
 │   └── glucose_regulation.yaml
 │
-├── scenarios/               # 场景层（游戏设计者编辑）
-│   ├── london_1910_flu.yaml      # 历史场景
+├── stories/               # 剧情层（游戏设计者编辑）
+│   ├── london_1910_flu.yaml      # 历史剧情
 │   ├── elderly_patient.yaml      # 特定人群
 │   └── templates/
 │       └── european_city_1900s.yaml  # 可复用模板
@@ -44,12 +44,8 @@ mods/
 
 ---
 
-## 📄 Core层规范（科研模型）
-
-### 设计目标
-- **纯科学性**: 只包含药理/生理动力学
-- **可读性**: 医学研究者易于理解和修改
-- **无历史信息**: 不含时间、地点等非科学属性
+## 📄 模型层设计规范
+- **详细规范**: 见 [建模设计手册](model.md)
 
 ### 示例：aspirin.yaml
 
@@ -119,7 +115,7 @@ simulator:
 
 ---
 
-## 🎮 Scenario层规范（场景设计）
+## 🎮 Story层规范（剧情设计）
 
 ### 设计目标
 - **用户友好**: 一键运行，最少输入
@@ -136,8 +132,8 @@ metadata:
   description: Simulate flu outbreak in Edwardian London
   tags: [historical, pandemic, urban]
 
-# === 场景配置 ===
-scenario:
+# === 剧情配置 ===
+story:
   location: London, UK
   coordinates: [51.5074, -0.1278]
   year: 1910
@@ -185,7 +181,39 @@ simulator:
     - aspirin_usage
 ```
 
-### Scenario层关键特性
+
+## 🃏 卡牌与游戏化UI设计 (Card UI)
+
+在最新的 `sim_gui` 前端实现中，Story 引擎支持类似于《炉石传说》或《杀戮尖塔》的卡牌交互界面。
+
+### 卡牌数据定义
+
+卡牌配置被放置在 `mods/stories/<story_name>/cards/` 文件夹下游，并以 YAML 格式定义：
+
+```yaml
+# mods/stories/marie_curie/cards/research.yaml
+name: "实验室研究"
+type: "goal"             # 卡牌类型，决定视觉UI配色 (如 health, work, goal)
+tags: ["work", "goal"]
+cost: 5                  # 费用，显示在卡牌左上角
+effects:
+  +research_progress: 10
+  -health: 5
+  +radiation: 8
+description: "在实验室中进行艰苦的矿石提炼和放射性物质提取。"
+icon: "🧪"               # 卡牌图标
+```
+
+### UI 层叠架构
+
+`StoryEngine` 在前端加载这套 yaml 后会将其转换为交互式的 HTML 堆叠视图，左上角显示费用，中上部分展示立绘与名称，卡牌允许存在悬浮态变幻以提示详细 effects 变化。
+
+**游戏化设计限制**：
+- 卡牌仅能在玩家的回合 (`isPlayerTurn = true`) 或者满足其 cost 消耗时打出。
+- 卡牌造成的 `effects` 通过内部的 `applyEffects` 函数结合状态机的计算公式执行。
+
+
+### Story层关键特性
 
 #### 1. Patch机制（参数覆写）
 
@@ -268,20 +296,20 @@ def check_availability(drug: str, year: int, region: str) -> bool:
 
 ```python
 class LoaderEngine:
-    def load_scenario(self, scenario_file: str) -> ModStructure:
-        """加载场景，自动处理imports和patches"""
-        scenario = self.load_yaml(scenario_file)
+    def load_story(self, story_file: str) -> ModStructure:
+        """加载剧情，自动处理imports和patches"""
+        story = self.load_yaml(story_file)
         
         # 1. 加载所有imports
-        merged_model = self.fetch_with_imports(scenario['imports'])
+        merged_model = self.fetch_with_imports(story['imports'])
         
         # 2. 应用patches
-        if 'patches' in scenario:
-            self.apply_patches(merged_model, scenario['patches'])
+        if 'patches' in story:
+            self.apply_patches(merged_model, story['patches'])
         
-        # 3. 合并scenario的simulator配置
-        if 'simulator' in scenario:
-            merged_model.simulator.update(scenario['simulator'])
+        # 3. 合并story的simulator配置
+        if 'simulator' in story:
+            merged_model.simulator.update(story['simulator'])
         
         return merged_model
     
@@ -300,18 +328,18 @@ class LoaderEngine:
 **在 `validator.py` 中新增检查**:
 
 ```python
-def validate_scenario(self, scenario_data: dict) -> bool:
-    """验证场景文件完整性"""
+def validate_story(self, story_data: dict) -> bool:
+    """验证故事文件完整性"""
     errors = []
     
     # 检查必需字段
-    if 'imports' not in scenario_data:
-        errors.append("Scenario must have 'imports' field")
+    if 'imports' not in story_data:
+        errors.append("Story must have 'imports' field")
     
     # 检查patch目标存在
-    if 'patches' in scenario_data:
-        for mod_name in scenario_data['patches'].keys():
-            if mod_name not in scenario_data.get('imports', []):
+    if 'patches' in story_data:
+        for mod_name in story_data['patches'].keys():
+            if mod_name not in story_data.get('imports', []):
                 errors.append(f"Cannot patch non-imported mod: {mod_name}")
     
     return len(errors) == 0, errors
@@ -336,12 +364,12 @@ graph LR
 
 ---
 
-### 科普工作流（Scenario层）
+### 科普工作流（Story层）
 
 ```mermaid
 graph LR
     A[选择历史事件] --> B[查找可用模型]
-    B --> C[编写scenario YAML]
+    B --> C[编写story YAML]
     C --> D[调整参数patches]
     D --> E[一键运行]
     E --> F[分享体验]
@@ -358,8 +386,8 @@ graph LR
 | 层级 | 对标 | 特点 |
 |------|------|------|
 | **Core** | Jupyter Notebook | 科研级灵活性，但保持YAML简洁 |
-| **Scenario** | Desmos/PhET | 教育级易用性，一键体验 |
-| **整体** | 文明系列 | Scenario = 剧本，Core = 游戏引擎 |
+| **Story** | Desmos/PhET/Hearthstone | 教育/游戏级易用性，一键体验，卡牌交互 |
+| **整体** | 文明系列 | Story = 剧本，Core = 游戏引擎 |
 
 ### 与P社游戏的区别
 
@@ -408,9 +436,9 @@ graph LR
 
 ### Phase 1: MVP（0-3个月）
 - ✅ 支持Core层YAML（已完成80%）
-- 🔲 实现Scenario加载器
+- ✅ 实现Story引擎和卡牌加载器
 - 🔲 Patch机制验证
-- 🔲 3个示例场景（伦敦流感、老年患者、战争医疗）
+- 🔲 3个示例剧情（伦敦流感、老年患者、战斗或人生经历）
 
 ### Phase 2: 元数据层（3-6个月）
 - 🔲 建立drug_availability.yaml库（20-30个药物）
@@ -427,9 +455,9 @@ graph LR
 
 ## 📚 相关文档
 
-- **mod_structure.md**: Core层YAML详细规范
-- **architecture.md**: 系统整体架构
-- **Project_v2_LM.md**: 项目愿景和目标
+- **建模设计手册**: 统一的建模与技术规范文档
+- **架构文档**: [architecture.md](../Architecture.md)
+- **项目愿景**: [Project_v2_LM.md](../Project_v2_LM.md)
 
 ---
 
@@ -441,16 +469,11 @@ graph LR
 3. 运行 `lifematters-loader --validate`
 4. 提交Pull Request
 
-### 游戏设计者（Scenario层）
+### 游戏设计者（Story层）
 1. 浏览 `mods/core/` 可用模型
-2. 在 `mods/scenarios/` 创建场景YAML
-3. 测试运行 `lifematters-simulator --scenario your_scenario.yaml`
+2. 在 `mods/stories/` 创建剧情YAML和各类Card YAML
+3. 启动 `npm run dev` 在本地Web端测试卡牌流程与状态流转
 4. 分享到社区
-
-### 历史爱好者（Metadata贡献）
-1. 通过Web表单提交drug_availability数据
-2. 或直接编辑 `metadata/*.yaml`
-3. 附上参考文献链接
 
 ---
 
@@ -460,15 +483,12 @@ graph LR
 A: YAML支持注释，更适合人类编辑和文档化。
 
 **Q: Patch会导致Core层臃肿吗？**  
-A: 不会。Patch只存在Scenario层，Core保持简洁。
+A: 不会。Patch只存在Story层，Core保持简洁。
 
 **Q: 如何避免小狼毫式的字段丢失？**  
 A: 使用字段级merge而非整体替换，参见 `apply_patches()` 实现。
 
-**Q: SQLite会增加多少复杂度？**  
-A: Phase 1不需要数据库，仅Phase 3优化时引入，且对用户透明。
-
 ---
 
-**文档维护**: 每3个月审阅更新  
+**文档维护**: 按照业务变动实时修改  
 **反馈渠道**: GitHub Issues / 项目讨论组
