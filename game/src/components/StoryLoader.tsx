@@ -142,8 +142,8 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', color: '#e0e0e0' }}>
-      <Title level={1} style={{ color: '#fff', marginBottom: '40px', textAlign: 'center' }}>
+    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', color: '#f6ffed' }}>
+      <Title level={1} style={{ color: '#73d13d', marginBottom: '40px', textAlign: 'center' }}>
         选择你的生命轨迹 (Stories)
       </Title>
       
@@ -155,8 +155,8 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
             <AntCard
               hoverable
               style={{ 
-                background: '#1f1f1f', 
-                border: '1px solid #333',
+                background: '#092b1a', 
+                border: '1px solid #135200',
                 minHeight: '220px'
               }}
               styles={{ body: { padding: '24px' } }}
@@ -165,19 +165,19 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
               <div style={{ display: 'flex', gap: '20px' }}>
                 <div style={{ 
                   fontSize: '48px', 
-                  color: '#b87333', 
+                  color: '#52c41a', 
                   display: 'flex', 
                   alignItems: 'center' 
                 }}>
                   {item.icon}
                 </div>
                 <div>
-                  <Title level={3} style={{ color: '#fff', marginTop: 0 }}>{item.name}</Title>
+                  <Title level={3} style={{ color: '#f6ffed', marginTop: 0 }}>{item.name}</Title>
                   <Space style={{ marginBottom: '12px' }}>
-                    <Tag color="orange">难度: {item.difficulty}</Tag>
-                    {item.tags.map(tag => <Tag key={tag} color="blue">{tag}</Tag>)}
+                    <Tag color="lime">难度: {item.difficulty}</Tag>
+                    {item.tags.map(tag => <Tag key={tag} color="green">{tag}</Tag>)}
                   </Space>
-                  <Paragraph style={{ color: '#aaa' }}>{item.description}</Paragraph>
+                  <Paragraph style={{ color: '#b7eb8f' }}>{item.description}</Paragraph>
                 </div>
               </div>
             </AntCard>
@@ -186,7 +186,7 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
       />
 
       <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        <Paragraph style={{ color: '#666' }}>
+        <Paragraph style={{ color: '#52c41a' }}>
           * 每个故事都是一个独立的模块，拥有自己的卡牌、卡组和规则。
         </Paragraph>
         <Button 
@@ -194,7 +194,7 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
           size="large" 
           icon={<RocketOutlined />}
           onClick={onGoToSimulation}
-          style={{ background: '#2c3e50', borderColor: '#2c3e50' }}
+          style={{ background: '#135200', borderColor: '#135200' }}
         >
           返回 LifeMatters 研究平台
         </Button>

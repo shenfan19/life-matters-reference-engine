@@ -14,10 +14,10 @@
 ## 📋 核心决议总结
 
 ### 设计原则
-1. **双层YAML架构**: Core层（科研）+ Story层（科普/游戏）
-2. **职责分离**: 科学模型与历史配置解耦
-3. **渐进扩展**: 初期YAML为主，后期可选加入SQLite索引
-4. **保持简洁**: 避免过度抽象，优先配置而非代码
+1. **单包封装 (Single Package)**: 每个 Story 是一个独立文件夹，包含所有元数据、逻辑与资源。
+2. **Sim-Game 映射 (R-G Mapping)**: 仿真模型自动导出为游戏关卡，保持科学性。
+3. **极简变量**: 将复杂的科研数据简化为直观的数值卡牌（HP/SP/Money）。
+4. **离散化步进**: 将连续时间步 (`dt`) 映射为离散回合 (`Turn`)。
 
 ---
 
@@ -27,16 +27,15 @@
 
 ```
 mods/
-├── core/                    # 科研层（科学家编辑）
-│   ├── aspirin.yaml         # 纯药理模型
-│   ├── penicillin.yaml
+├── core/                    # 科研层（科学家编辑：纯药理/生理模型）
+│   ├── aspirin.yaml
 │   └── glucose_regulation.yaml
 │
-└── stories/               # 剧情层（每个剧情必须是一个独立的完全包文件夹）
-    └── marie_curie/       # 故事包：禁止在文件夹外部出现同名文件
-        ├── story.yaml     # 核心入口：包含元数据 (Category/Difficulty等) 和 逻辑配置
-        ├── cards/         # 卡牌包
-        └── dynamics/      # 动态规则
+└── stories/               # 剧情层（故事包：文件夹形式封装）
+    └── marie_curie/       # 禁止在目录外出现同名文件
+        ├── story.yaml     # 核心入口：合并 metadata (游戏) 与 dynamics (仿真)
+        ├── cards/         # 手牌定义 (Sim Inputs)
+        └── dynamics/      # 附加规则 (Sim Dynamics)
 ```
 
 > [!IMPORTANT]
@@ -239,18 +238,30 @@ def merge_patches(base_model, patches):
 
 #### 2. 时空适配（未来扩展）
 
-**Phase 1 (MVP)**: 手动标注
-```yaml
-# metadata/drug_availability.yaml
-drugs:
-  aspirin:
-    invention_year: 1899
-    regions:
-      - name: Western Europe
-        available_from: 1900
-      - name: North America
-        available_from: 1915
-```
+## 🔄 R-G 自动化转换逻辑 (Sim-Game Converter)
+
+`LoaderEngine` 通过识别 `story.yaml` 中的特定字段，自动生成游戏关卡：
+
+### 1. 变量映射 (Variable Mapping)
+- **Sim Input** → **Game 手牌**: 所有的 `inputs` 自动转化为玩家的可视化操作。
+- **Sim State** → **Game 指标**: `health_points` 映射为红条，`research_progress` 映射为蓝条。
+- **Sim Parameter** → **权重系数**: 影响环境牌抽取的频率 (Probability)。
+
+### 2. 公式模式识别 (Dynamics Mapping)
+引擎支持以下 **P1-P5** 模式的自动转化：
+
+| 模式 | 特征 | 游戏表现 |
+|------|------|---------|
+| **P1** | `hp -= C` | **恒定扣减**: 环境每回合固定造成的伤害。 |
+| **P2** | `x = x + C` | **累积效果**: 如辐射层数不断叠加。 |
+| **P3** | `hp -= x * k` | **变量关联**: 伤害随状态变量（如辐射）增加而变重。 |
+| **P4** | `if x > T` | **阈值触发**: 状态超过临界点触发特殊事件/死亡判定。 |
+| **P5** | `if random() < p` | **概率触发**: 基于科学概率 (P值) 的突发随机事件。 |
+
+### 3. 数值简化原则
+- **归一化**: 将大数（如 $10^6$ 人口）简化为百分比或 0-100 的数值。
+- **离散化**: 忽略微小的波动，只保留对游戏平衡有影响的截断值。
+- **感性化**: 将 $RR=14.0$ 转化为“极高风险”的视觉提示及卡牌权重提升。
 
 **Phase 2**: SQLite数据库
 ```sql

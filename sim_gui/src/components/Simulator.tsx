@@ -147,7 +147,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const outputVars = selectedModel?.content?.simulator?.output_variables || Object.keys(stateVariables).slice(0, 3);
-    const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1'];
+    const colors = ['#52c41a', '#73d13d', '#95de64', '#135200', '#237804'];
     outputVars.forEach((varName: string, idx: number) => {
       const values = simulationData.map(d => d[varName] || 0);
       const maxVal = Math.max(...values.map(Math.abs), 1);
@@ -191,8 +191,8 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
       <Row gutter={[8, 8]}>
         {outputVars.map((varName: string, idx: number) => (
           <Col span={8} key={idx}>
-            <div style={{ padding: '8px', background: isDarkMode ? '#0f172a' : '#f8fafc', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, borderRadius: 2 }}>
-              <div style={{ fontSize: '11px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>{varName}</div>
+            <div style={{ padding: '8px', background: isDarkMode ? '#04150d' : '#f6ffed', border: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, borderRadius: 4 }}>
+              <div style={{ fontSize: '11px', color: isDarkMode ? '#b7eb8f' : '#237804' }}>{varName}</div>
               <div style={{ fontSize: '16px', fontWeight: 600 }}>{(latestData[varName] || 0).toFixed(4)}</div>
             </div>
           </Col>
@@ -220,7 +220,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
 
   const renderRunSimulation = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>仿真控制中心</span>} size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>仿真控制中心</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, background: isDarkMode ? '#092b1a' : '#ffffff' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {!isLocked ? (
             <Alert message="模型未就绪：请先在 Loader 页面验证并锁定模型" type="warning" showIcon />
@@ -238,7 +238,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
             <Button danger onClick={resetSimulation}>重置</Button>
             <Button icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
           </Space>
-          <Progress percent={progress} strokeColor={isDarkMode ? '#38bdf8' : '#0f172a'} />
+          <Progress percent={progress} strokeColor={isDarkMode ? '#73d13d' : '#135200'} />
           <Row gutter={8}>
             <Col span={12}><Statistic title="当前步" value={currentStep} valueStyle={{ fontSize: '14px' }} /></Col>
             <Col span={12}><Statistic title="状态" value={status.toUpperCase()} valueStyle={{ fontSize: '14px' }} /></Col>
@@ -246,7 +246,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
         </Space>
       </Card>
 
-      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入 / 输出 实时监控</span>} size="small" style={{ borderRadius: 2, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入 / 输出 实时监控</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, background: isDarkMode ? '#092b1a' : '#ffffff' }}>
         <Row gutter={24}>
           <Col span={12}>
             <Divider orientation="left" style={{ marginTop: 0 }}><span style={{ fontSize: '12px' }}>输入参数</span></Divider>
@@ -261,10 +261,10 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
         <Divider style={{ margin: '24px 0' }} />
 
         <div style={{ padding: '0 8px' }}>
-          <div style={{ marginBottom: 12, fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>趋势图表</div>
-          <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, borderRadius: 4 }} />
+          <div style={{ marginBottom: 12, fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#b7eb8f' : '#237804' }}>趋势图表</div>
+          <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#04150d' : '#fff', border: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, borderRadius: 4 }} />
 
-          <div style={{ margin: '24px 0 12px 0', fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>数据详情 (最近50条)</div>
+          <div style={{ margin: '24px 0 12px 0', fontWeight: 600, fontSize: '12px', color: isDarkMode ? '#b7eb8f' : '#237804' }}>数据详情 (最近50条)</div>
           {renderDataTable()}
         </div>
       </Card>
