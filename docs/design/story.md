@@ -32,15 +32,15 @@ mods/
 │   ├── penicillin.yaml
 │   └── glucose_regulation.yaml
 │
-├── stories/               # 剧情层（游戏设计者编辑）
-│   ├── london_1910_flu.yaml      # 历史剧情
-│   ├── elderly_patient.yaml      # 特定人群
-│   └── templates/
-│       └── european_city_1900s.yaml  # 可复用模板
-│
-└── metadata/                # 可选：时空元数据（后期）
-    └── drug_availability.yaml
+└── stories/               # 剧情层（每个剧情必须是一个独立的完全包文件夹）
+    └── marie_curie/       # 故事包：禁止在文件夹外部出现同名文件
+        ├── story.yaml     # 核心入口：包含元数据 (Category/Difficulty等) 和 逻辑配置
+        ├── cards/         # 卡牌包
+        └── dynamics/      # 动态规则
 ```
+
+> [!IMPORTANT]
+> **单包原则 (Single Package Rule)**: 每个 Story 必须且仅能存在于一个独立的子目录中。不允许在 `mods/stories/` 根目录下放置外部 YAML 索引或元数据文件。所有信息必须封装在文件夹内的 `story.yaml` 中。这样确保了故事包可以“随便搬迁”，无索引依赖。
 
 ---
 
