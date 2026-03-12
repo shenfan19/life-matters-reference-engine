@@ -1,21 +1,21 @@
 import os
-import signal
-import psutil
+import subprocess
+import re
 
 def kill_port(port):
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            for conns in proc.connections(kind='inet'):
-                if conns.laddr.port == port:
-                    print(f"Killing process {proc.pid} ({proc.name()}) on port {port}")
-                    proc.send_signal(signal.SIGTERM)
-                    # if not dead, use SIGKILL
-                    try:
-                        proc.wait(timeout=3)
-                    except psutil.TimeoutExpired:
-                        proc.kill()
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
+    try:
+        output = subprocess.check_output(f'netstat -ano | findstr :{port}', shell=True).decode()
+        pids = set()
+        for line in output.strip().split('\n'):
+            match = re.search(r'\s+(\d+)$', line)
+            if match:
+                pids.add(match.group(1))
+        
+        for pid in pids:
+            print(f"Killing PID {pid} on port {port}")
+            subprocess.run(f'taskkill /F /PID {pid}', shell=True)
+    except Exception as e:
+        print(f"No process on port {port} or error: {e}")
 
 if __name__ == "__main__":
     kill_port(8000)
