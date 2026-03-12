@@ -30,7 +30,7 @@ function App() {
             <button
                 onClick={toggleLanguage}
                 style={{
-                    background: '#4b5563',
+                    background: '#135200',
                     color: 'white',
                     border: 'none',
                     padding: '8px 16px',
@@ -44,7 +44,7 @@ function App() {
                 <button
                     onClick={() => setView('stories')}
                     style={{
-                        background: '#b87333',
+                        background: '#52c41a',
                         color: 'white',
                         border: 'none',
                         padding: '8px 16px',
@@ -58,7 +58,7 @@ function App() {
             <button
                 onClick={goToSimulation}
                 style={{
-                    background: '#2c3e50',
+                    background: '#04150d',
                     color: 'white',
                     border: 'none',
                     padding: '8px 16px',
@@ -87,7 +87,7 @@ function App() {
     }
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#121212' }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#04150d' }}>
             {renderHeader(true)}
             {selectedStory && <Game story={selectedStory} />}
         </div>

@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
-    --lab-bg: #2b231d;
-    --paper-bg: #dcc8a4;
-    --paper-aged: #c4ae85;
-    --copper: #b87333;
-    --copper-dark: #8b5a2b;
-    --copper-light: #d4a76a;
-    --ink-black: #2c2c2c;
-    --accent-red: #8b0000;
-    --accent-blue: #004b8d;
-    --accent-green: #006400;
+    --lab-bg: #04150d;
+    --paper-bg: #e6f4ea;
+    --paper-aged: #b7db8f;
+    --copper: #52c41a;
+    --copper-dark: #237804;
+    --copper-light: #95de64;
+    --ink-black: #00230b;
+    --accent-red: #a8071a;
+    --accent-blue: #135200;
+    --accent-green: #389e0d;
     --radiation-green: #39ff14;
 }
 
@@ -164,11 +164,11 @@
 }
 
 .hp-fill {
-    background: linear-gradient(to right, #600, #c00);
+    background: linear-gradient(to right, #092b1a, #52c41a);
 }
 
 .sp-fill {
-    background: linear-gradient(to right, #003, #0076a3);
+    background: linear-gradient(to right, #135200, #95de64);
 }
 
 .hp-low {

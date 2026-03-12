@@ -154,14 +154,14 @@ function App() {
   const academicTheme = {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: isDarkMode ? '#177ddc' : '#0f172a',
+      colorPrimary: isDarkMode ? '#73d13d' : '#52c41a',
       borderRadius: 2,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
     components: {
-      Button: { borderRadius: 2, controlHeight: 32 },
-      Card: { borderRadiusLG: 2 },
-      Menu: { darkItemSelectedBg: '#334155' }
+      Button: { borderRadius: 4, controlHeight: 32 },
+      Card: { borderRadiusLG: 4 },
+      Menu: { darkItemSelectedBg: '#135200' }
     }
   };
 
@@ -170,23 +170,23 @@ function App() {
       <div style={{
         display: 'flex',
         height: '100vh',
-        backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
-        color: isDarkMode ? '#f8fafc' : '#0f172a',
+        backgroundColor: isDarkMode ? '#04150d' : '#f6ffed',
+        color: isDarkMode ? '#f6ffed' : '#04150d',
         transition: 'all 0.3s'
       }}>
         {/* Sidebar */}
         <div style={{
-          width: 250,
-          borderRight: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
-          background: isDarkMode ? '#1e293b' : '#ffffff',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
+        width: 250,
+        borderRight: `1px solid ${isDarkMode ? '#092b1a' : '#d9f7be'}`,
+        background: isDarkMode ? '#092b1a' : '#d9f7be',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
         }}>
           {/* Logo/Title */}
           <div style={{
             padding: '24px 20px',
-            borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`,
+            borderBottom: `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}`,
           }}>
             <Space direction="vertical" size={2} style={{ width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -195,7 +195,7 @@ function App() {
                   fontSize: 18,
                   fontWeight: 800,
                   letterSpacing: '-0.025em',
-                  color: isDarkMode ? '#f8fafc' : '#0f172a'
+                  color: isDarkMode ? '#73d13d' : '#135200'
                 }}>
                   {t('app.title')}
                 </h2>
@@ -216,7 +216,7 @@ function App() {
                     <Button
                       type="text"
                       icon={<TranslationOutlined />}
-                      style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                      style={{ color: isDarkMode ? '#73d13d' : '#135200' }}
                       title={t('common.language')}
                     />
                   </Dropdown>
@@ -225,12 +225,12 @@ function App() {
                       type="text"
                       icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
                       onClick={() => setIsDarkMode(!isDarkMode)}
-                      style={{ color: isDarkMode ? '#f8fafc' : '#475569' }}
+                      style={{ color: isDarkMode ? '#73d13d' : '#135200' }}
                     />
                   </Tooltip>
                 </Space>
               </div>
-              <div style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 500 }}>
+              <div style={{ fontSize: 11, color: isDarkMode ? '#b7eb8f' : '#237804', fontWeight: 500 }}>
                 {t('app.subtitle')}
               </div>
             </Space>
@@ -240,7 +240,7 @@ function App() {
           <div style={{ padding: '20px 12px', flex: 1, overflowY: 'auto' }}>
             <div style={{
               fontSize: 11,
-              color: isDarkMode ? '#475569' : '#94a3b8',
+              color: isDarkMode ? '#b7eb8f' : '#389e0d',
               marginBottom: 12,
               paddingLeft: 8,
               fontWeight: 700,
@@ -258,8 +258,8 @@ function App() {
                   marginBottom: 4,
                   cursor: 'pointer',
                   borderRadius: 4,
-                  background: currentPage === page.id ? (isDarkMode ? '#334155' : '#f1f5f9') : 'transparent',
-                  color: currentPage === page.id ? (isDarkMode ? '#f8fafc' : '#0f172a') : (isDarkMode ? '#94a3b8' : '#64748b'),
+                  background: currentPage === page.id ? (isDarkMode ? '#135200' : '#b7eb8f') : 'transparent',
+                  color: currentPage === page.id ? (isDarkMode ? '#ffffff' : '#135200') : (isDarkMode ? '#b7eb8f' : '#237804'),
                   fontWeight: currentPage === page.id ? 600 : 400,
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   display: 'flex',
@@ -275,7 +275,7 @@ function App() {
             <div style={{ marginTop: 24 }}>
               <div style={{
                 fontSize: 11,
-                color: isDarkMode ? '#475569' : '#94a3b8',
+                color: isDarkMode ? '#b7eb8f' : '#389e0d',
                 marginBottom: 12,
                 paddingLeft: 8,
                 fontWeight: 700,
@@ -295,7 +295,7 @@ function App() {
                   block
                   onClick={() => window.open('http://localhost:5174', '_blank')}
                   style={{
-                    background: 'linear-gradient(45deg, #b87333, #8b5a2b)',
+                    background: 'linear-gradient(45deg, #135200, #52c41a)',
                     border: 'none',
                     height: '40px',
                     fontWeight: 'bold'
@@ -310,9 +310,9 @@ function App() {
           {/* Footer */}
           <div style={{
             padding: 16,
-            borderTop: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`,
+            borderTop: `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}`,
             fontSize: 11,
-            color: isDarkMode ? '#475569' : '#94a3b8',
+            color: isDarkMode ? '#b7eb8f' : '#237804',
             textAlign: 'center'
           }}>
             Academic Edition v0.3.5
@@ -320,7 +320,7 @@ function App() {
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflow: 'auto', background: isDarkMode ? '#0f172a' : '#f8fafc', padding: '24px' }}>
+        <div style={{ flex: 1, overflow: 'auto', background: isDarkMode ? '#04150d' : '#f6ffed', padding: '24px' }}>
           <div style={{ maxWidth: 1400, margin: '0 auto', height: '100%' }}>
             {renderContent()}
           </div>
@@ -392,11 +392,11 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
               padding: '10px 12px',
               marginBottom: 4,
               cursor: 'pointer',
-              borderRadius: 4,
-              background: isActive ? (isDarkMode ? '#334155' : '#f1f5f9') : 'transparent',
-              color: isActive ? (isDarkMode ? '#f8fafc' : '#0f172a') : (isDarkMode ? '#94a3b8' : '#64748b'),
+               borderRadius: 4,
+              background: isActive ? (isDarkMode ? '#135200' : '#b7eb8f') : 'transparent',
+              color: isActive ? (isDarkMode ? '#ffffff' : '#135200') : (isDarkMode ? '#b7eb8f' : '#237804'),
               fontWeight: isActive ? 600 : 400,
-              border: isActive ? `1px solid ${isDarkMode ? '#475569' : '#e2e8f0'}` : '1px solid transparent',
+              border: isActive ? `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}` : '1px solid transparent',
               transition: 'all 0.2s',
               fontSize: '13px'
             }}
