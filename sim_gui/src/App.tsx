@@ -154,14 +154,30 @@ function App() {
   const academicTheme = {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: isDarkMode ? '#73d13d' : '#52c41a',
+      colorPrimary: '#52c41a',
       borderRadius: 2,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
     components: {
       Button: { borderRadius: 4, controlHeight: 32 },
       Card: { borderRadiusLG: 4 },
-      Menu: { darkItemSelectedBg: '#135200' }
+      Menu: { darkItemSelectedBg: '#003a8c' },
+      Layout: {
+        bodyBg: isDarkMode ? '#141414' : '#ffffff',
+        headerBg: isDarkMode ? '#1f1f1f' : '#ffffff'
+      },
+      Tabs: {
+        itemActiveColor: '#52c41a',
+        itemSelectedColor: '#52c41a',
+        inkBarColor: '#52c41a',
+        horizontalItemPadding: '12px 16px'
+      },
+      Divider: {
+        colorSplit: isDarkMode ? '#334155' : '#e2e8f0'
+      },
+      Tag: {
+        borderRadiusSM: 2
+      }
     }
   };
 
@@ -170,15 +186,15 @@ function App() {
       <div style={{
         display: 'flex',
         height: '100vh',
-        backgroundColor: isDarkMode ? '#04150d' : '#f6ffed',
-        color: isDarkMode ? '#f6ffed' : '#04150d',
+        backgroundColor: isDarkMode ? '#141414' : '#ffffff',
+        color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
         transition: 'all 0.3s'
       }}>
         {/* Sidebar */}
         <div style={{
         width: 250,
-        borderRight: `1px solid ${isDarkMode ? '#092b1a' : '#d9f7be'}`,
-        background: isDarkMode ? '#092b1a' : '#d9f7be',
+        borderRight: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+        background: isDarkMode ? '#1e293b' : '#f8fafc',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
@@ -186,7 +202,7 @@ function App() {
           {/* Logo/Title */}
           <div style={{
             padding: '24px 20px',
-            borderBottom: `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}`,
+            borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
           }}>
             <Space direction="vertical" size={2} style={{ width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -195,7 +211,7 @@ function App() {
                   fontSize: 18,
                   fontWeight: 800,
                   letterSpacing: '-0.025em',
-                  color: isDarkMode ? '#73d13d' : '#135200'
+                  color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : '#0f172a'
                 }}>
                   {t('app.title')}
                 </h2>
@@ -216,39 +232,28 @@ function App() {
                     <Button
                       type="text"
                       icon={<TranslationOutlined />}
-                      style={{ color: isDarkMode ? '#73d13d' : '#135200' }}
-                      title={t('common.language')}
-                    />
+                      style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : '#0f172a' }}
+                    >
+                      {language.split('-')[0].toUpperCase()}
+                    </Button>
                   </Dropdown>
+
                   <Tooltip title={isDarkMode ? t('common.dark_mode') : t('common.light_mode')}>
                     <Button
                       type="text"
                       icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
                       onClick={() => setIsDarkMode(!isDarkMode)}
-                      style={{ color: isDarkMode ? '#73d13d' : '#135200' }}
+                      style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : '#0f172a' }}
                     />
                   </Tooltip>
-                </Space>
-              </div>
-              <div style={{ fontSize: 11, color: isDarkMode ? '#b7eb8f' : '#237804', fontWeight: 500 }}>
-                {t('app.subtitle')}
+                  </Space>
               </div>
             </Space>
           </div>
 
           {/* Navigation Items */}
           <div style={{ padding: '20px 12px', flex: 1, overflowY: 'auto' }}>
-            <div style={{
-              fontSize: 11,
-              color: isDarkMode ? '#b7eb8f' : '#389e0d',
-              marginBottom: 12,
-              paddingLeft: 8,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              {t('menu.calculator')}
-            </div>
+            {/* Removed t('menu.calculator') label */}
             {corePages.map(page => (
               <div
                 key={page.id}
@@ -258,8 +263,8 @@ function App() {
                   marginBottom: 4,
                   cursor: 'pointer',
                   borderRadius: 4,
-                  background: currentPage === page.id ? (isDarkMode ? '#135200' : '#b7eb8f') : 'transparent',
-                  color: currentPage === page.id ? (isDarkMode ? '#ffffff' : '#135200') : (isDarkMode ? '#b7eb8f' : '#237804'),
+                   background: currentPage === page.id ? (isDarkMode ? '#52c41a' : '#f6ffed') : 'transparent',
+                   color: currentPage === page.id ? (isDarkMode ? '#ffffff' : '#52c41a') : (isDarkMode ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'),
                   fontWeight: currentPage === page.id ? 600 : 400,
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   display: 'flex',
@@ -273,17 +278,7 @@ function App() {
             ))}
 
             <div style={{ marginTop: 24 }}>
-              <div style={{
-                fontSize: 11,
-                color: isDarkMode ? '#b7eb8f' : '#389e0d',
-                marginBottom: 12,
-                paddingLeft: 8,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                {t('menu.plugins')}
-              </div>
+              {/* Removed t('menu.plugins') label */}
               <PluginList
                 currentPage={currentPage}
                 onSelectPlugin={(id) => setCurrentPage(`plugin:${id}`)}
@@ -295,7 +290,7 @@ function App() {
                   block
                   onClick={() => window.open('http://localhost:5174', '_blank')}
                   style={{
-                    background: 'linear-gradient(45deg, #135200, #52c41a)',
+                    background: 'linear-gradient(45deg, #003a8c, #1890ff)',
                     border: 'none',
                     height: '40px',
                     fontWeight: 'bold'
@@ -310,9 +305,9 @@ function App() {
           {/* Footer */}
           <div style={{
             padding: 16,
-            borderTop: `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}`,
+            borderTop: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
             fontSize: 11,
-            color: isDarkMode ? '#b7eb8f' : '#237804',
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)',
             textAlign: 'center'
           }}>
             Academic Edition v0.3.5
@@ -320,7 +315,7 @@ function App() {
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflow: 'auto', background: isDarkMode ? '#04150d' : '#f6ffed', padding: '24px' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
           <div style={{ maxWidth: 1400, margin: '0 auto', height: '100%' }}>
             {renderContent()}
           </div>
@@ -393,10 +388,10 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
               marginBottom: 4,
               cursor: 'pointer',
                borderRadius: 4,
-              background: isActive ? (isDarkMode ? '#135200' : '#b7eb8f') : 'transparent',
-              color: isActive ? (isDarkMode ? '#ffffff' : '#135200') : (isDarkMode ? '#b7eb8f' : '#237804'),
+              background: isActive ? (isDarkMode ? '#003a8c' : '#e6f7ff') : 'transparent',
+              color: isActive ? (isDarkMode ? '#ffffff' : '#52c41a') : (isDarkMode ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'),
               fontWeight: isActive ? 600 : 400,
-              border: isActive ? `1px solid ${isDarkMode ? '#135200' : '#b7eb8f'}` : '1px solid transparent',
+              border: isActive ? `1px solid ${isDarkMode ? '#003a8c' : '#91d5ff'}` : '1px solid transparent',
               transition: 'all 0.2s',
               fontSize: '13px'
             }}
@@ -404,7 +399,6 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div>
                 <div style={{ lineHeight: 1 }}>{plugin.name}</div>
-                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.6, fontWeight: 400 }}>{plugin.category}</div>
               </div>
             </div>
           </div>

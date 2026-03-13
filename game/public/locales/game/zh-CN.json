@@ -1,5 +1,7 @@
 {
     "game.back": "回到关卡",
     "game.go_sim": "回到仿真器",
-    "game.title": "居里夫人模拟游戏"
+    "game.title": "居里夫人模拟游戏",
+    "game.back_to_stories": "返回列表",
+    "stories.title": "选择你的生命轨迹 (Stories)"
 }

@@ -13,11 +13,53 @@ logger = logging.getLogger(__name__)
 
 class Simulation:
     # Simulation
+    def _apply_schedules(self):
+        """
+        应用计划表，根据当前仿真时间 self.time 更新变量值
+        """
+        # 获取手动覆盖列表 (如果有)
+        manual_overrides = getattr(self, 'manual_overrides', {})
+        
+        for var_name, schedule in getattr(self, 'schedules', {}).items():
+            # 如果变量被手动覆盖，则跳过计划表应用
+            if var_name in manual_overrides:
+                continue
+                
+            if not schedule.points:
+                continue
+            
+            # 找到当前时刻对应的点
+            points = schedule.points
+            if self.time <= points[0].time:
+                target_value = points[0].value
+            elif self.time >= points[-1].time:
+                target_value = points[-1].value
+            else:
+                # 在中间，查找对应区间
+                for i in range(len(points) - 1):
+                    p1 = points[i]
+                    p2 = points[i+1]
+                    if p1.time <= self.time < p2.time:
+                        if schedule.interpolation == 'linear':
+                            # 线性插值
+                            t_ratio = (self.time - p1.time) / (p2.time - p1.time)
+                            target_value = p1.value + t_ratio * (p2.value - p1.value)
+                        else:
+                            # 阶梯式 (Step)
+                            target_value = p1.value
+                        break
+            
+            # 设置变量值
+            self.set_variable_value(var_name, target_value)
+
     def step(self, step_size: float = 1.0):
         """
         执行单步仿真
         :param step_size: 时间步长(秒) - TODO: 未来支持动态 dt (自适应步长)
         """
+        # 新增：应用计划表
+        self._apply_schedules()
+
         # 新增：执行 pre_step 钩子
         for hook in self.hooks.get('pre_step', []):
             try:

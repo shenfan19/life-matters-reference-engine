@@ -262,7 +262,9 @@ class SimulatorEngine:
                 for var_name, value in input_changes.items():
                     if var_name in model.variables:
                         model.set_variable_value(var_name, value)
-                        logger.debug(f"动态修改输入: {var_name} = {value}")
+                        # 记录为手动覆盖，防止被计划表自动覆盖
+                        model.manual_overrides[var_name] = value
+                        logger.info(f"手动覆盖输入: {var_name} = {value}")
             
             # 批量执行
             outputs = []

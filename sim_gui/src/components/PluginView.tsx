@@ -85,16 +85,16 @@ export default function PluginView({ pluginId, isDarkMode }: Props) {
           </span>
           <span style={{
             padding: '2px 8px',
-            background: '#e6f7ff',
-            color: '#1890ff',
+            background: isDarkMode ? '#1e293b' : '#e6f7ff',
+            color: isDarkMode ? '#38bdf8' : '#1890ff',
             borderRadius: 3
           }}>
             {manifest.category}
           </span>
           <span style={{
             padding: '2px 8px',
-            background: '#f6ffed',
-            color: '#52c41a',
+            background: isDarkMode ? '#1e293b' : '#f5f5f5',
+            color: isDarkMode ? '#94a3b8' : '#64748b',
             borderRadius: 3
           }}>
             {manifest.ui.type}
@@ -102,7 +102,7 @@ export default function PluginView({ pluginId, isDarkMode }: Props) {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 20, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ borderTop: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, paddingTop: 20, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* 根据UI类型显示内容 */}
         {manifest.ui.type === 'none' && (
           <div style={{

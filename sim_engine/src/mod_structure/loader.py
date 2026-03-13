@@ -146,6 +146,20 @@ class Loader:
         simulator_data = data.get('simulation', data.get('simulator', {}))
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
+
+        # 应用计划表 (Schedules)
+        from .base import InputSchedule, SchedulePoint
+        schedules_raw = data.get('schedules', {})
+        for var_name, sched_data in schedules_raw.items():
+            points = []
+            for pt in sched_data.get('points', []):
+                points.append(SchedulePoint(time=float(pt['time']), value=float(pt['value'])))
+            
+            self.schedules[var_name] = InputSchedule(
+                variable=var_name,
+                points=sorted(points, key=lambda p: p.time),
+                interpolation=sched_data.get('interpolation', 'step')
+            )
         
         # 更新元数据（如果是清空模式）
         if clear_existing:

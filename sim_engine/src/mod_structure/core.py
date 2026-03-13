@@ -37,6 +37,10 @@ class ModStructure(Loader, Validator, Simulation):
         # 初始化 simulator 和 optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
+        # 初始化计划表
+        self.schedules: Dict[str, Any] = {}
+        # 初始化手动覆盖
+        self.manual_overrides: Dict[str, Any] = {}
         # 跟踪已访问模型，防止循环依赖
         self.visited: Set[str] = set()
         self.mods_directory = mods_directory

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Card as AntCard, List, Typography, Button, Space, Tag } from 'antd';
+import { Card, Card as AntCard, List, Typography, Button, Space, Tag, Spin } from 'antd';
 import { RocketOutlined, ExperimentOutlined, UserOutlined } from '@ant-design/icons';
-import { StoryLoader as CoreStoryLoader } from '../core/StoryLoader';
 import { Story } from '../core/types';
+import { AdaptiveConverter } from '../core/AdaptiveConverter';
+import { useI18n } from '../core/i18n';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -11,190 +12,124 @@ interface StoryLoaderProps {
   onGoToSimulation: () => void;
 }
 
-// Embedded Story Data (Since we don't have a backend to scan directories)
-const STORIES_INDEX = [
-  {
-    id: 'marie_curie',
-    name: '居里夫人：发现镭之路',
-    description: '通过提炼成吨的矿渣，发现极微量的放射性元素镭。',
-    icon: <ExperimentOutlined />,
-    difficulty: '高',
-    tags: ['科学', '历史', '1900s'],
-    storyYaml: `
-story_meta:
-  name: "居里夫人：发现镭之路"
-  id: "marie_curie"
-  description: "体验玛丽·居里在极度艰苦的条件下，通过数千次的实验，最终提炼出镭的过程。"
-  goal_value: 100
-  goal_variable: "research_progress"
-  variable_labels:
-    health: "❤️ 生命"
-    money: "💰 金币"
-    research_progress: "🔬 研究进度"
-    radiation: "☢️ 辐射值"
-
-
-initial_state:
-  health: 100
-  money: 20
-  radiation: 0
-  research_progress: 0
-  status: 1
-
-params:
-  teaching_income: 5
-  research_cost: 10
-  radiation_increment: 5
-  chronic_damage_rate: 0.1
-  recovery_amount: 8
-  rest_cost: 5
-
-decks:
-  - id: "player_initial"
-    name: "初始手牌"
-    cards:
-      - id: "teaching"
-        count: 2
-      - id: "research"
-        count: 2
-      - id: "rest"
-        count: 1
-  - id: "environment_initial"
-    name: "环境牌堆"
-    cards:
-      - id: "chronic_damage"
-        count: 99
-      - id: "radiation_sickness"
-        count: 5
-`,
-    cardsYaml: `
-id: "teaching"
-name: "授课"
-type: "work"
-description: "在巴黎大学兼职授课，获取微薄的薪水。"
-cost: 0
-effects:
-  - variable: "money"
-    value: "params.teaching_income"
-    op: "+"
-  - variable: "health"
-    value: 1
-    op: "-"
-reference: "Curie taught at École Normale Supérieure (1900-1906)"
----
-id: "research"
-name: "镭提纯研究"
-type: "goal"
-description: "在高辐射的环境下进行镭的提纯实验。"
-cost: 0
-effects:
-  - variable: "research_progress"
-    value: 10
-    op: "+"
-  - variable: "money"
-    value: "params.research_cost"
-    op: "-"
-  - variable: "radiation"
-    value: "params.radiation_increment"
-    op: "+"
-reference: "Isolated radium in 1902, exposed to massive radiation"
----
-id: "rest"
-name: "休息"
-type: "health"
-description: "短暂的休息以恢复体力。"
-cost: 0
-effects:
-  - variable: "health"
-    value: "params.recovery_amount"
-    op: "+"
-  - variable: "money"
-    value: "params.rest_cost"
-    op: "-"
----
-id: "chronic_damage"
-name: "慢性辐射损伤"
-type: "environment"
-description: "由于长期暴露在放射性环境中，身体受到持续损伤。"
-is_passive: true
-dynamic_effect: "chronic_damage_dynamics"
----
-id: "radiation_sickness"
-name: "急性辐射病"
-type: "environment"
-description: "高剂量辐射引发的急性症状。"
-condition: "radiation > 50"
-probability: 0.3
-effects:
-  - variable: "health"
-    value: 30
-    op: "-"
-`
-  }
-];
-
 const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimulation }) => {
-  const loader = new CoreStoryLoader();
+  const { t } = useI18n();
+  const [stories, setStories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStories();
+  }, []);
+
+  const fetchStories = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/files');
+      const result = await response.json();
+      if (result.success) {
+        const models: any[] = [];
+        const scan = (node: any) => {
+          if (node.type === 'file' && node.key.startsWith('models/')) {
+            models.push({
+              id: node.key,
+              name: (node.content?.metadata?.name || node.title).replace('.yaml', ''),
+              description: node.description || '自适应动力学场景',
+              category: node.category || 'physiological',
+              icon: getIconForCategory(node.category),
+              difficulty: node.difficulty || '中',
+              tags: [node.category || 'dynamics'],
+              filePath: node.key,
+            });
+          }
+          if (node.children) node.children.forEach(scan);
+        };
+        result.data.forEach(scan);
+        setStories(models);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stories:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getIconForCategory = (category: string) => {
+    switch (category) {
+      case 'physiological': return <ExperimentOutlined />;
+      case 'socio_economic': return <UserOutlined />;
+      case 'environmental': return <RocketOutlined />;
+      case 'risk': return <RocketOutlined />;
+      default: return <ExperimentOutlined />;
+    }
+  };
 
   const handleSelect = async (storyInfo: any) => {
-    const story = await loader.loadStory(storyInfo.storyYaml, storyInfo.cardsYaml);
-    onSelect(story);
+    try {
+      const response = await fetch(`/api/file/${storyInfo.filePath}`);
+      const result = await response.json();
+      if (result.success) {
+        const story = AdaptiveConverter.convertModelToStory(result.data.content);
+        onSelect(story);
+      }
+    } catch (error) {
+      console.error('Error loading story:', error);
+    }
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', color: '#f6ffed' }}>
-      <Title level={1} style={{ color: '#73d13d', marginBottom: '40px', textAlign: 'center' }}>
-        选择你的生命轨迹 (Stories)
+    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+      <Title level={1} style={{ marginBottom: '40px', textAlign: 'center' }}>
+        { t('stories.title') || '选择你的生命轨迹' }
       </Title>
       
-      <List
-        grid={{ gutter: 24, column: 2 }}
-        dataSource={STORIES_INDEX}
-        renderItem={(item) => (
-          <List.Item>
-            <AntCard
-              hoverable
-              style={{ 
-                background: '#092b1a', 
-                border: '1px solid #135200',
-                minHeight: '220px'
-              }}
-              styles={{ body: { padding: '24px' } }}
-              onClick={() => handleSelect(item)}
-            >
-              <div style={{ display: 'flex', gap: '20px' }}>
-                <div style={{ 
-                  fontSize: '48px', 
-                  color: '#52c41a', 
-                  display: 'flex', 
-                  alignItems: 'center' 
-                }}>
-                  {item.icon}
+      <Spin spinning={loading}>
+        <List
+          grid={{ gutter: 24, column: 2 }}
+          dataSource={stories}
+          renderItem={(item) => (
+            <List.Item>
+              <AntCard
+                hoverable
+                style={{ 
+                  borderRadius: '8px',
+                  minHeight: '220px'
+                }}
+                styles={{ body: { padding: '24px' } }}
+                onClick={() => handleSelect(item)}
+              >
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ 
+                    fontSize: '48px', 
+                    color: '#1890ff', 
+                    display: 'flex', 
+                    alignItems: 'center' 
+                  }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <Title level={3} style={{ marginTop: 0 }}>{item.name}</Title>
+                    <Space style={{ marginBottom: '12px' }}>
+                      <Tag color="processing">难度: {item.difficulty}</Tag>
+                      {item.tags.map((tag: string) => <Tag key={tag} color="default">{tag}</Tag>)}
+                    </Space>
+                    <Paragraph type="secondary">{item.description}</Paragraph>
+                  </div>
                 </div>
-                <div>
-                  <Title level={3} style={{ color: '#f6ffed', marginTop: 0 }}>{item.name}</Title>
-                  <Space style={{ marginBottom: '12px' }}>
-                    <Tag color="lime">难度: {item.difficulty}</Tag>
-                    {item.tags.map(tag => <Tag key={tag} color="green">{tag}</Tag>)}
-                  </Space>
-                  <Paragraph style={{ color: '#b7eb8f' }}>{item.description}</Paragraph>
-                </div>
-              </div>
-            </AntCard>
-          </List.Item>
-        )}
-      />
+              </AntCard>
+            </List.Item>
+          )}
+        />
+      </Spin>
 
       <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        <Paragraph style={{ color: '#52c41a' }}>
+        <Paragraph type="secondary">
           * 每个故事都是一个独立的模块，拥有自己的卡牌、卡组和规则。
         </Paragraph>
         <Button 
-          type="primary" 
+          type="default" 
           size="large" 
           icon={<RocketOutlined />}
           onClick={onGoToSimulation}
-          style={{ background: '#135200', borderColor: '#135200' }}
         >
           返回 LifeMatters 研究平台
         </Button>

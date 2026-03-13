@@ -248,17 +248,17 @@ def merge_patches(base_model, patches):
 - **Sim Parameter** → **权重系数**: 影响环境牌抽取的频率 (Probability)。
 
 ### 2. 公式模式识别 (Dynamics Mapping)
-引擎支持以下 **P1-P5** 模式的自动转化：
+引擎根据 `model.category` 自动识别转化模式：
 
-| 模式 | 特征 | 游戏表现 |
-|------|------|---------|
-| **P1** | `hp -= C` | **恒定扣减**: 环境每回合固定造成的伤害。 |
-| **P2** | `x = x + C` | **累积效果**: 如辐射层数不断叠加。 |
-| **P3** | `hp -= x * k` | **变量关联**: 伤害随状态变量（如辐射）增加而变重。 |
-| **P4** | `if x > T` | **阈值触发**: 状态超过临界点触发特殊事件/死亡判定。 |
-| **P5** | `if random() < p` | **概率触发**: 基于科学概率 (P值) 的突发随机事件。 |
+| 动力学大类 | 转化策略 (RG Strategy) | 游戏表现 |
+|-----------|----------------------|---------|
+| `physiological` | 生命指标映射 | **生存模式**: 关注 HP (Health) 与状态条 (Glucose/Fever)。 |
+| `socio_economic` | 循环流转映射 | **经营模式**: 关注 Money (Savings) 与 Efficiency (Productivity)。 |
+| `environmental` | 危机响应映射 | **策略模式**: 关注 Safety (Score) 与 Progress (Rescue)。 |
+| `risk` | 冲突博弈映射 | **对抗模式**: 关注 Stability (Gauge) 与 Conflict (War Intensity)。 |
+| `simple` | 线性增长映射 | **教学模式**: 关注 Mastery (Process) 与 Quality (Freshness)。 |
 
-### 3. 数值简化原则
+### 3. P1-P5 数值简化原则
 - **归一化**: 将大数（如 $10^6$ 人口）简化为百分比或 0-100 的数值。
 - **离散化**: 忽略微小的波动，只保留对游戏平衡有影响的截断值。
 - **感性化**: 将 $RR=14.0$ 转化为“极高风险”的视觉提示及卡牌权重提升。

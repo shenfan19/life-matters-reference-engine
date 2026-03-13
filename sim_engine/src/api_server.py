@@ -600,8 +600,18 @@ async def get_file_content(file_path: str):
                         }
                         for formula_name, formula in model.formulas.items()
                     },
-                    'simulator': model.simulator,
-                    'optimizer': model.optimizer
+                    'optimizer': model.optimizer,
+                    'schedules': {
+                        var_name: {
+                            'variable': schedule.variable,
+                            'interpolation': schedule.interpolation,
+                            'points': [
+                                {'time': pt.time, 'value': pt.value}
+                                for pt in schedule.points
+                            ]
+                        }
+                        for var_name, schedule in model.schedules.items()
+                    }
                 }
                 
                 return {

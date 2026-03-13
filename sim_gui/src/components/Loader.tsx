@@ -173,12 +173,12 @@ const Loader: React.FC<LoaderProps> = ({
               if (onlyChild.type === 'file' && (onlyChild.title === 'mod.yaml' || onlyChild.title === 'mod.yml')) {
                 return {
                   key: onlyChild.key, // 使用文件的 key 方便加载
-                  icon: <FolderOutlined style={{ color: '#52c41a' }} />,
+                  icon: <FolderOutlined style={{ color: '#1890ff' }} />,
                   isLeaf: true,
                   ...onlyChild,
                   title: (
                     <span>
-                      {item.title} <Tag color="lime" style={{ fontSize: '10px' }}>pkg</Tag>
+                      {item.title} <Tag color="blue" style={{ fontSize: '10px' }}>pkg</Tag>
                     </span>
                   ),
                   titleStr: item.title, // [Crucial] 文件夹名作为 mod 名
@@ -191,7 +191,7 @@ const Loader: React.FC<LoaderProps> = ({
               <span>
                 {titleStr}
                 {item.mod_type && (
-                  <Tag color={item.mod_type === 'model' ? 'cyan' : 'green'} style={{ marginLeft: 8, fontSize: '10px' }}>
+                  <Tag color={item.mod_type === 'model' ? 'cyan' : 'blue'} style={{ marginLeft: 8, fontSize: '10px' }}>
                     {item.mod_type}
                   </Tag>
                 )}
@@ -644,16 +644,16 @@ const Loader: React.FC<LoaderProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {allItems.map((item, idx) => (
           <div key={`${item.source}-${item.name}-${idx}`} style={{
-            border: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`,
+            border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
             borderRadius: 4,
             padding: '8px 12px',
-            background: isDarkMode ? '#04150d' : '#ffffff'
+            background: isDarkMode ? '#1e293b' : '#ffffff'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4, gap: 8 }}>
               <strong style={{ fontSize: 14 }}>{item.name}</strong>
               <Tag color="cyan" style={{ fontSize: 10 }}>{item.modTitle}</Tag>
               {type === 'variables' && item.detail.unit && (
-                <Tag color="lime" style={{ fontSize: 10 }}>{item.detail.unit}</Tag>
+                <Tag color="cyan" style={{ fontSize: 10 }}>{item.detail.unit}</Tag>
               )}
             </div>
             <div style={{ fontSize: 12, color: '#666' }}>
@@ -789,12 +789,12 @@ const Loader: React.FC<LoaderProps> = ({
       <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 24 }} />}>
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 600 }}>
           {/* 上半部分: 选择器 (严格限制高度) */}
-          <div style={{ flex: '0 0 50%', height: '50%', minHeight: '300px', display: 'flex', borderBottom: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}` }}>
+          <div style={{ flex: '0 0 50%', height: '50%', minHeight: '300px', display: 'flex', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}` }}>
             {/* 左侧: 模型库 */}
-            <div style={{ flex: 1, borderRight: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#135200' : '#d9f7be'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#092b1a' : '#f6ffed' }}>
-                <DatabaseOutlined style={{ color: '#52c41a' }} />
-                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f6ffed' : '#04150d' }}>{t('loader.library')} ({modelCounts.checked}/{modelCounts.total})</strong>
+            <div style={{ flex: 1, borderRight: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
+                <DatabaseOutlined style={{ color: '#1890ff' }} />
+                <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{t('loader.library')} ({modelCounts.checked}/{modelCounts.total})</strong>
                 {renderToolbar('model', modelFilter, setModelFilter, modelSort, setModelSort, modelViewMode, setModelViewMode, () => handleCheck([], 'model'))}
               </div>
               <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
@@ -838,8 +838,8 @@ const Loader: React.FC<LoaderProps> = ({
 
             {/* 右侧: 故事库 */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
-                <BookOutlined style={{ color: '#52c41a' }} />
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', gap: 8, background: isDarkMode ? '#1e293b' : '#fafafa' }}>
+                <BookOutlined style={{ color: '#1890ff' }} />
                 <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{t('loader.story')} ({storyCounts.checked}/{storyCounts.total})</strong>
                 {renderToolbar('story', storyFilter, setStoryFilter, storySort, setStorySort, storyViewMode, setStoryViewMode, () => handleCheck([], 'story'))}
               </div>
@@ -879,7 +879,7 @@ const Loader: React.FC<LoaderProps> = ({
                           icon={<ThunderboltOutlined />}
                           size="large"
                           onClick={() => onPlayStory(selectedModel.key.replace(/^mods\/stories\//, '').replace(/\.yaml$/, ''))}
-                          style={{ background: '#10b981', borderColor: '#10b981' }}
+                          style={{ background: '#3b82f6', borderColor: '#3b82f6' }}
                         >
                           开始故事 (Play Story)
                         </Button>
@@ -927,7 +927,7 @@ const Loader: React.FC<LoaderProps> = ({
                     icon={isLocked ? <UnlockOutlined /> : <LockOutlined />}
                     onClick={confirmAndValidateModel}
                     disabled={isSimulating}
-                    style={isLocked ? { color: '#52c41a', borderColor: '#52c41a' } : {}}
+                    style={isLocked ? { color: '#1890ff', borderColor: '#1890ff' } : {}}
                   >
                     {isLocked ? t('loader.unlock') : t('loader.lock')}
                   </Button>

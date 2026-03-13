@@ -57,7 +57,22 @@ formulas:
 
 ```yaml
 type: model | story              # 显式定义文件类型
-category: dynamics | statistical  # 二级分类
+category: physiological | socio_economic | environmental | risk | simple  # 通用动力学大类
+
+## 2.1.1 通用动力学大类详解 (Universal Categories)
+| 大类 | 描述 | 核心动力学示例 |
+|------|------|---------------|
+| `physiological` | 生理与医学动力学 | 血糖调节 (Diabetes), 病毒载量 (Flu) |
+| `socio_economic` | 社会经济动力学 | 劳动力生产率 (Labor), 分配与积累 |
+| `environmental` | 环境与自然动力学 | 灾害强度 (Disaster), 重建进度 |
+| `risk` | 风险与对抗动力学 | 战争压力 (War), 冲突烈度 |
+| `simple` | 简易教学/演示动力学 | 香蕉生长 (Banana), 面条烹饪 (Noodle) |
+
+### 2.2 单文件封装原则 (Single File Rule)
+为了确保模型的便携性和自适应转化，所有生命动力学模型（Models）应遵循**单文件化指标**：
+- **无外部依赖**：模型内除基础生理常数外，应尽量减少对其他 YAML 的 `import`。
+- **自足性**：`variables` 和 `formulas` 应包含该动力学过程完整的闭环逻辑。
+- **命名规范**：文件名即为场景名（如 `flu.yaml`, `banana.yaml`）。
 
 metadata:
   name: "唯一标识符"

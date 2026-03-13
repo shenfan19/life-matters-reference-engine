@@ -1,5 +1,7 @@
 {
     "game.back": "Back to Levels",
     "game.go_sim": "Go to Simulator",
-    "game.title": "Marie Curie Game"
+    "game.title": "Marie Curie Game",
+    "game.back_to_stories": "Back to List",
+    "stories.title": "Choose Your Life Path"
 }

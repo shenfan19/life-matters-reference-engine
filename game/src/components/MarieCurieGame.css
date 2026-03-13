@@ -1,17 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
-    --lab-bg: #04150d;
-    --paper-bg: #e6f4ea;
-    --paper-aged: #b7db8f;
-    --copper: #52c41a;
-    --copper-dark: #237804;
-    --copper-light: #95de64;
-    --ink-black: #00230b;
-    --accent-red: #a8071a;
-    --accent-blue: #135200;
-    --accent-green: #389e0d;
-    --radiation-green: #39ff14;
+    --sysu-green-dark: #00401b;
+    --sysu-green-light: #f6ffed;
+    --lab-bg: var(--sysu-green-dark);
+    --paper-bg: #ffffff; /* Cards should stay white/neutral for readability */
+    --paper-aged: #f1f5f9;
+    --copper: #1890ff; /* Standard blue for primary actions */
+    --copper-dark: #003a8c;
+    --copper-light: #69c0ff;
+    --ink-black: #0f172a;
+    --accent-red: #f5222d;
+    --accent-blue: #1890ff;
+    --accent-green: #1890ff; /* Replaced with blue for font neutrality */
+    --radiation-green: #faad14; /* Using orange for alerts instead of neon green */
 }
 
 .marie-curie-container {
@@ -164,11 +166,11 @@
 }
 
 .hp-fill {
-    background: linear-gradient(to right, #092b1a, #52c41a);
+    background: linear-gradient(to right, #cf1322, #f5222d);
 }
 
 .sp-fill {
-    background: linear-gradient(to right, #135200, #95de64);
+    background: linear-gradient(to right, #096dd9, #1890ff);
 }
 
 .hp-low {
@@ -349,8 +351,8 @@
 }
 
 .log-positive {
-    color: #8f8;
-    background: rgba(0, 255, 0, 0.05);
+    color: #1890ff;
+    background: rgba(24, 144, 255, 0.1);
 }
 
 .log-negative {

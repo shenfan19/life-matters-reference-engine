@@ -212,13 +212,13 @@ const MarieCurieGame: React.FC = () => {
                     <div className="card-cost">⚡{card.cost}</div>
                     <div className="card-title">{card.name}</div>
                     <div className="card-emoji">{card.emoji}</div>
-                    <div className="card-effect">
-                       {card.effect.split(',').map((eff, i) => (
-                         <div key={i} style={{ color: eff.includes('-') ? 'var(--accent-red)' : 'var(--accent-green)' }}>
-                           {eff.trim()}
-                         </div>
-                       ))}
-                    </div>
+                     <div className="card-effect">
+                        {card.effect.split(',').map((eff, i) => (
+                          <div key={i} style={{ color: eff.includes('-') ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                            {eff.trim()}
+                          </div>
+                        ))}
+                     </div>
                     <div style={{fontSize: '9px', fontWeight: 'bold', color: 'var(--copper-dark)', marginTop: '5px'}}>
                       [{card.type}]
                     </div>

@@ -229,7 +229,7 @@ const Game: React.FC<GameProps> = ({ story }) => {
                       const label = story.meta.variable_labels?.[eff.variable] || eff.variable;
                       const cleanLabel = label.split(' ').pop() || label;
                       return (
-                        <div key={i} style={{ color: eff.op === '-' ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                        <div key={i} style={{ color: eff.op === '-' ? 'var(--accent-red)' : 'var(--accent-blue)' }}>
                           {cleanLabel} {eff.op}{loader.resolveValue(eff.value)}
                         </div>
                       );

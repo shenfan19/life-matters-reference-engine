@@ -1,22 +1,36 @@
 import React, { useState } from 'react';
 import Game from './components/Game';
 import StoryLoader from './components/StoryLoader';
-import { useI18n } from './core/i18n';
+import { useI18n, type Language } from './core/i18n';
+import { ConfigProvider, theme, Button, Space, Dropdown, MenuProps } from 'antd';
+import { TranslationOutlined, SunOutlined, MoonOutlined, RocketOutlined, LeftOutlined } from '@ant-design/icons';
 import { Story } from './core/types';
 
 function App() {
     const { t, language, setLanguage } = useI18n();
     const [view, setView] = useState<'stories' | 'game'>('stories');
     const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
     const goToSimulation = () => {
         window.location.href = 'http://localhost:5173';
     };
 
-    const toggleLanguage = () => {
-        const nextLang = language === 'zh-CN' ? 'zh-TW' : (language === 'zh-TW' ? 'en' : 'zh-CN');
-        setLanguage(nextLang as any);
+    const gameTheme = {
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+            colorPrimary: '#1890ff', // Standard professional blue
+            colorBgBase: isDarkMode ? '#003d1b' : '#f6ffed', // SYSU Green backgrounds
+            colorTextBase: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
+            borderRadius: 4,
+        }
     };
+
+    const languageItems: MenuProps['items'] = [
+        { key: 'zh-CN', label: '简体中文' },
+        { key: 'zh-TW', label: '繁體中文' },
+        { key: 'en', label: 'English' },
+    ];
 
     const renderHeader = (showBackToStories = false) => (
         <div style={{
@@ -25,72 +39,71 @@ function App() {
             right: 20,
             zIndex: 2000,
             display: 'flex',
-            gap: '10px'
+            gap: '12px',
+            alignItems: 'center'
         }}>
-            <button
-                onClick={toggleLanguage}
-                style={{
-                    background: '#135200',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    borderRadius: '4px'
-                }}
-            >
-                {language === 'en' ? '中文' : (language === 'zh-CN' ? '繁體' : 'English')}
-            </button>
-            {showBackToStories && (
-                <button
-                    onClick={() => setView('stories')}
-                    style={{
-                        background: '#52c41a',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        cursor: 'pointer',
-                        borderRadius: '4px'
+            <Space>
+                <Dropdown
+                    menu={{
+                        items: languageItems,
+                        selectedKeys: [language],
+                        onClick: (e) => setLanguage(e.key as Language)
                     }}
                 >
-                    {t('game.back_to_stories') || '返回故事列表'}
-                </button>
-            )}
-            <button
-                onClick={goToSimulation}
-                style={{
-                    background: '#04150d',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    borderRadius: '4px'
-                }}
-            >
-                {t('game.go_sim') || '返回仿真'}
-            </button>
+                    <Button icon={<TranslationOutlined />}>
+                        {language.toUpperCase()}
+                    </Button>
+                </Dropdown>
+                
+                <Button 
+                    icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                />
+
+                {showBackToStories && (
+                    <Button
+                        type="primary"
+                        icon={<LeftOutlined />}
+                        onClick={() => setView('stories')}
+                    >
+                        {t('game.back_to_stories') || '返回'}
+                    </Button>
+                )}
+
+                <Button 
+                    icon={<RocketOutlined />}
+                    onClick={goToSimulation}
+                >
+                    {t('game.go_sim') || '仿真'}
+                </Button>
+            </Space>
         </div>
     );
 
-    if (view === 'stories') {
-        return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                {renderHeader()}
-                <StoryLoader
-                    onSelect={(story) => {
-                        setSelectedStory(story);
-                        setView('game');
-                    }}
-                    onGoToSimulation={goToSimulation}
-                />
-            </div>
-        );
-    }
-
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#04150d' }}>
-            {renderHeader(true)}
-            {selectedStory && <Game story={selectedStory} />}
-        </div>
+        <ConfigProvider theme={gameTheme}>
+            <div style={{ 
+                height: '100vh', 
+                display: 'flex', 
+                flexDirection: 'column',
+                backgroundColor: isDarkMode ? '#00401b' : '#f6ffed',
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
+                overflow: 'hidden'
+            }}>
+                {renderHeader(view === 'game')}
+                {view === 'stories' ? (
+                    <StoryLoader
+                        onSelect={(story) => {
+                            setSelectedStory(story);
+                            setView('game');
+                        }}
+                        onGoToSimulation={goToSimulation}
+                    />
+                ) : (
+                    selectedStory && <Game story={selectedStory} />
+                )}
+            </div>
+        </ConfigProvider>
     );
 }
 

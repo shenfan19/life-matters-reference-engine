@@ -54,9 +54,58 @@ export class Engine {
 
   private resolveValue(value: number | string): number {
     if (typeof value === 'number') return value;
-    if (typeof value === 'string' && value.startsWith('params.')) {
-      const paramName = value.split('.')[1];
-      return this.story.params[paramName] ?? 0;
+    if (typeof value === 'string') {
+      if (value.startsWith('params.')) {
+        const paramName = value.split('.')[1];
+        return this.story.params[paramName] ?? 0;
+      }
+      if (value.startsWith('state.')) {
+        const expression = value.split('.')[1];
+        return this.evaluateExpression(expression);
+      }
+      if (this.state[value] !== undefined) return this.state[value];
+      
+      // Try to evaluate as a generic expression if it contains operators
+      if (/[+\-*/]/.test(value)) {
+          return this.evaluateExpression(value);
+      }
+    }
+    return 0;
+  }
+
+  private evaluateExpression(expr: string): number {
+    try {
+      // Basic sanitization and prefixing
+      let sanitized = expr
+        .replace(/\b([a-zA-Z_]\w*)\b/g, (match) => {
+          // If it's a number, leave it
+          if (!isNaN(parseFloat(match))) return match;
+          // If it's a state variable, resolve it
+          return String(this.state[match] ?? 0);
+        });
+
+      // Use a safe evaluation approach for basic arithmetic
+      // Warning: simple Function constructor for arithmetic is safer than eval but still limited
+      // For this system, we'll use a basic token-based evaluator or a simplified math parser
+      // To keep it simple and robust without external deps:
+      return this.simpleEval(sanitized);
+    } catch (e) {
+      console.error('Expression evaluation failed:', expr, e);
+      return 0;
+    }
+  }
+
+  private simpleEval(tokens: string): number {
+    // Remove all whitespace
+    const clean = tokens.replace(/\s+/g, '');
+    // Very basic support for simple expressions
+    try {
+        // Fallback to a basic Function for complex arithmetic if safe enough (only numbers and ops left)
+        if (/^[0-9.+\-*/() ]+$/.test(clean)) {
+            return new Function(`return ${clean}`)();
+        }
+    } catch {
+        return 0;
     }
     return 0;
   }
