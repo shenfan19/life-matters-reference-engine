@@ -178,6 +178,11 @@ class SplitRequest(BaseModel):
     output_dir: str = "default_split"
 
 
+class SaveFileRequest(BaseModel):
+    path: str          # relative to mods/, e.g. "scenarios/examples/my_scene.yaml"
+    content: Dict[str, Any]
+
+
 class SimulationStartRequest(BaseModel):
     model_name: str
     folder: Optional[str] = None
@@ -649,6 +654,27 @@ async def get_file_content(file_path: str):
         raise
     except Exception as e:
         logger.error(f"Error reading file {file_path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Save File 端点 ==========
+@app.post("/api/save-file")
+async def save_file_endpoint(request: SaveFileRequest):
+    """保存文件到 mods 目录（用于构建新 scenario）"""
+    try:
+        target = PROJECT_ROOT / "mods" / request.path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
+            raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, 'w', encoding='utf-8') as f:
+            yaml.dump(request.content, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False, indent=2)
+        logger.info(f"File saved: {target}")
+        return {'success': True, 'data': {'path': str(target.relative_to(PROJECT_ROOT / "mods"))}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Save file error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
