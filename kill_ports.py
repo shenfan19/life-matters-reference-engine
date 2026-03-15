@@ -21,3 +21,6 @@ if __name__ == "__main__":
     kill_port(8000)
     kill_port(5173)
     kill_port(5174)
+    kill_port(8001)
+    kill_port(8080)
+    kill_port(18080)

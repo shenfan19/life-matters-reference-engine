@@ -98,7 +98,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',  // FastAPI 端口 (已更改)
+        target: 'http://localhost:18080',  // FastAPI 端口 (已更改为 18080)
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

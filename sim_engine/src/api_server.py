@@ -276,12 +276,12 @@ async def get_plugin_ui_page(plugin_id: str, theme: str = 'light'):
         
     with open(component_file, 'r', encoding='utf-8') as f:
         component_code = f.read()
-        
+
     # Set background and text color based on theme
     bg_color = '#141414' if theme == 'dark' else 'transparent'
     text_color = '#ffffff' if theme == 'dark' else '#000000'
     theme_algo = 'theme.darkAlgorithm' if theme == 'dark' else 'theme.defaultAlgorithm'
-        
+
     # HTML 模版
     template = """
 <!DOCTYPE html>
@@ -311,10 +311,10 @@ async def get_plugin_ui_page(plugin_id: str, theme: str = 'light'):
         // 外部注入的 React 和 antd
         const { useState, useEffect, useRef, useMemo } = React;
         const { ConfigProvider, theme } = antd;
-        
+
         // 插件组件代码
         {{component_code}}
-        
+
         // 渲染逻辑
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(
@@ -322,7 +322,7 @@ async def get_plugin_ui_page(plugin_id: str, theme: str = 'light'):
                 <PluginComponent />
             </ConfigProvider>
         );
-        
+
         // 通信 API
         window.pluginAPI = {
             sendMessage: (data) => {
@@ -346,13 +346,14 @@ async def get_plugin_ui_page(plugin_id: str, theme: str = 'light'):
 </body>
 </html>
 """
+
     html_content = template.replace('{{name}}', manifest.get('name', 'Plugin')) \
                            .replace('{{component_code}}', component_code) \
                            .replace('{{plugin_id}}', plugin_id) \
                            .replace('{{bg_color}}', bg_color) \
                            .replace('{{text_color}}', text_color) \
                            .replace('{{theme_algo}}', theme_algo)
-                           
+
     return HTMLResponse(content=html_content)
 
 
@@ -1064,4 +1065,7 @@ async def run_optimization(request: OptimizationRequest):
 # 运行服务器
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    print("\n" + "="*50)
+    print("Pre-startup check: Starting Uvicorn on 127.0.0.1:18080")
+    print("="*50 + "\n")
+    uvicorn.run(app, host="127.0.0.1", port=18080)

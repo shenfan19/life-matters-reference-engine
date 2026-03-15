@@ -1,15 +1,14 @@
-id: mod_merger
-name: Model Merger
+id: scenario_builder
+name: Scenario Builder
 version: 1.0.0
 category: preprocessors
 author: LifeMatters Team
-description: Merge multiple YAML models into one
+description: Build and manage model scenarios with validate, merge, patch, and split operations
 
 backend:
   entry: backend.py
-  class: ModMergerPlugin
+  class: ScenarioBuilderPlugin
 
 ui:
   type: component
   component_path: frontend.tsx
-  

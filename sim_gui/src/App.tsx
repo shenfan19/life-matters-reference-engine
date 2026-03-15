@@ -53,18 +53,12 @@ function App() {
   const [optState, setOptState] = useState<OptimizerState>(initialOptimizerState);
   const [playingStoryId, setPlayingStoryId] = useState<string | null>(null);
 
-  // --- Lifted Loader States ---
-  const [modelTree, setModelTree] = useState<DataNode[]>([]);
+  // --- Lifted Loader States (scenario only) ---
   const [storyTree, setStoryTree] = useState<DataNode[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'models', 'scenarios']);
-  const [modelViewMode, setModelViewMode] = useState<'tree' | 'list'>('tree');
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'scenarios']);
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
-  const [modelFilter, setModelFilter] = useState('');
   const [storyFilter, setStoryFilter] = useState('');
-  const [modelSort, setModelSort] = useState<'name' | 'type'>('name');
   const [storySort, setStorySort] = useState<'name' | 'type'>('name');
-  const [checkedModelKeys, setCheckedModelKeys] = useState<React.Key[]>([]);
-  const [manualCheckedModelKeys, setManualCheckedModelKeys] = useState<React.Key[]>([]);
   const [checkedStoryKeys, setCheckedStoryKeys] = useState<React.Key[]>([]);
   const [loadedMods, setLoadedMods] = useState<Record<string, ModelFile>>({});
 
@@ -89,28 +83,16 @@ function App() {
             onModelSelect={setSelectedModel}
             confirmedModel={confirmedModel}
             setConfirmedModel={setConfirmedModel}
-            modelTree={modelTree}
-            setModelTree={setModelTree}
             storyTree={storyTree}
             setStoryTree={setStoryTree}
             expandedKeys={expandedKeys}
             setExpandedKeys={setExpandedKeys}
-            modelViewMode={modelViewMode}
-            setModelViewMode={setModelViewMode}
             storyViewMode={storyViewMode}
             setStoryViewMode={setStoryViewMode}
-            modelFilter={modelFilter}
-            setModelFilter={setModelFilter}
             storyFilter={storyFilter}
             setStoryFilter={setStoryFilter}
-            modelSort={modelSort}
-            setModelSort={setModelSort}
             storySort={storySort}
             setStorySort={setStorySort}
-            checkedModelKeys={checkedModelKeys}
-            setCheckedModelKeys={setCheckedModelKeys}
-            manualCheckedModelKeys={manualCheckedModelKeys}
-            setManualCheckedModelKeys={setManualCheckedModelKeys}
             checkedStoryKeys={checkedStoryKeys}
             setCheckedStoryKeys={setCheckedStoryKeys}
             loadedMods={loadedMods}
@@ -341,7 +323,7 @@ function PluginList({ currentPage, onSelectPlugin, isDarkMode }: {
         return res.json();
       })
       .then(data => {
-        const order = ['model_checker', 'mod_merger', 'story_converter'];
+        const order = ['model_builder', 'scenario_builder', 'story_converter'];
         const sortedPlugins = (data.plugins || []).sort((a: any, b: any) => {
           const indexA = order.indexOf(a.id);
           const indexB = order.indexOf(b.id);

@@ -1,11 +1,11 @@
-id: model_checker
-name: Model Checker
+id: model_builder
+name: Model Builder
 version: 1.0.0
-category: validators
+category: preprocessors
 
 backend:
   entry: backend.py
-  class: ModelCheckerPlugin
+  class: ModelBuilderPlugin
 
 ui:
   type: component
