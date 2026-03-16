@@ -104,7 +104,7 @@ const Loader: React.FC<LoaderProps> = ({
             if (child.type === 'file' && (child.title === 'mod.yaml' || child.title === 'mod.yml')) {
               return {
                 key: child.key, isLeaf: true, ...child,
-                icon: <FolderOutlined style={{ color: '#1890ff' }} />,
+                icon: <FolderOutlined style={{ color: '#007A33' }} />,
                 title: <span>{item.title} <Tag color="blue" style={{ fontSize: '10px' }}>pkg</Tag></span>,
                 titleStr: item.title, mod_type: 'story',
               };
@@ -236,9 +236,9 @@ const Loader: React.FC<LoaderProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {entries.map(([name, detail]) => (
           <div key={name} style={{
-            border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+            border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
             borderRadius: 4, padding: '6px 10px',
-            background: isDarkMode ? '#1e293b' : '#fafafa',
+            background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
             <div style={{ display: 'flex', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
               <strong style={{ fontSize: 13 }}>{name}</strong>
@@ -263,9 +263,9 @@ const Loader: React.FC<LoaderProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {entries.map(([name, detail]) => (
           <div key={name} style={{
-            border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+            border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
             borderRadius: 4, padding: '6px 10px',
-            background: isDarkMode ? '#1e293b' : '#fafafa',
+            background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
             <div style={{ display: 'flex', gap: 6, marginBottom: 4, flexWrap: 'wrap', alignItems: 'center' }}>
               <strong style={{ fontSize: 13 }}>{name}</strong>
@@ -273,7 +273,7 @@ const Loader: React.FC<LoaderProps> = ({
                 <Tag color="orange" style={{ fontSize: 10 }}>when: {String(detail.condition)}</Tag>
               )}
             </div>
-            <code style={{ fontSize: 11, whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#7dd3fc' : '#0369a1' }}>
+            <code style={{ fontSize: 11, whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33' }}>
               {typeof detail.dynamics === 'object' && detail.dynamics
                 ? Object.entries(detail.dynamics).map(([v, e]) => `${v} = ${e}`).join('\n')
                 : String(detail.dynamics ?? '')}
@@ -294,7 +294,7 @@ const Loader: React.FC<LoaderProps> = ({
         <div style={{ padding: '12px 0' }}>
           <Descriptions bordered column={2} size="small">
             <Descriptions.Item label="路径" span={2}>
-              <code style={{ fontSize: 11, color: isDarkMode ? '#38bdf8' : '#0369a1' }}>{selectedStory.path}</code>
+              <code style={{ fontSize: 11, color: isDarkMode ? '#4ade80' : '#007A33' }}>{selectedStory.path}</code>
             </Descriptions.Item>
             <Descriptions.Item label="类型">
               <Tag>{(selectedStory.type || 'UNKNOWN').toUpperCase()}</Tag>
@@ -331,15 +331,15 @@ const Loader: React.FC<LoaderProps> = ({
         {/* 场景列表 */}
         <div style={{
           flex: '0 0 50%', minHeight: 260, display: 'flex', flexDirection: 'column',
-          borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+          borderBottom: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
         }}>
           {/* 标题栏 */}
           <div style={{
             padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
-            background: isDarkMode ? '#1e293b' : '#fafafa',
+            borderBottom: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
+            background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
-            <BookOutlined style={{ color: '#1890ff' }} />
+            <BookOutlined style={{ color: '#007A33' }} />
             <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
               {t('loader.story')} ({total})
             </strong>
@@ -387,7 +387,7 @@ const Loader: React.FC<LoaderProps> = ({
                         display: 'flex', alignItems: 'center', padding: '5px 8px',
                         borderRadius: 4, cursor: 'pointer',
                         background: selectedKey === mod.key
-                          ? (isDarkMode ? '#1d3a5c' : '#e6f7ff')
+                          ? (isDarkMode ? '#1a3a22' : '#e8f5e9')
                           : 'transparent',
                       }}
                     >

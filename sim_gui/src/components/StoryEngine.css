@@ -1,8 +1,13 @@
+/* =====================================================
+   StoryEngine — SYSU Green Theme
+   Dark atmospheric game UI with green accents
+   ===================================================== */
+
 .story-engine-container {
   height: 100vh;
   width: 100%;
-  background: #111827;
-  color: #f3f4f6;
+  background: #0d1a10;
+  color: rgba(255, 255, 255, 0.88);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -11,24 +16,25 @@
 
 .story-header {
   height: 60px;
-  background: #1f2937;
+  background: #111f16;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 40px;
-  border-bottom: 2px solid #374151;
+  border-bottom: 2px solid #1e3824;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .story-title {
   font-size: 20px;
   font-weight: 700;
-  color: #60a5fa;
+  color: #52c41a;
 }
 
 .turn-counter {
   font-size: 18px;
   font-weight: 600;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.50);
 }
 
 .game-layout {
@@ -52,19 +58,19 @@
 }
 
 .status-card {
-  background: #1f2937;
+  background: #111f16;
   padding: 15px;
-  border-radius: 12px;
-  border: 1px solid #374151;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  border: 1px solid #1e3824;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .status-label {
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .status-value-row {
@@ -90,23 +96,23 @@
 .ap-display {
   display: flex;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.35);
   padding: 15px 30px;
   border-radius: 40px;
-  border: 1px solid #3b82f6;
+  border: 1px solid #2d6a1e;
 }
 
 .ap-dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #374151;
+  background: #1e3824;
   transition: all 0.3s ease;
 }
 
 .ap-dot.active {
-  background: #3b82f6;
-  box-shadow: 0 0 10px #3b82f6;
+  background: #52c41a;
+  box-shadow: 0 0 10px rgba(82, 196, 26, 0.6);
 }
 
 .end-turn-btn {
@@ -115,7 +121,7 @@
   letter-spacing: 1px;
 }
 
-/* CARDS AREA */
+/* ── Cards area ─────────────────────────────────── */
 .hand-area {
   height: 300px;
   display: flex;
@@ -126,7 +132,7 @@
 
 .hand-wrapper {
   display: flex;
-  padding-left: 100px; /* Offset for overlap */
+  padding-left: 100px;
 }
 
 .game-card-hs {
@@ -134,20 +140,20 @@
   height: 230px;
   background: #fdf6e3;
   color: #1a202c;
-  border-radius: 12px;
-  border: 3px solid #718096;
+  border-radius: 10px;
+  border: 2px solid #a0aec0;
   position: relative;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+  box-shadow: 5px 0 15px rgba(0, 0, 0, 0.35);
   overflow: visible;
 }
 
 .game-card-hs:hover {
   transform: translateY(-40px) translateX(-20px) scale(1.1) !important;
   z-index: 1000 !important;
-  border-color: #3b82f6;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  border-color: #52c41a;
+  box-shadow: 0 20px 30px rgba(82, 196, 26, 0.25);
 }
 
 .game-card-hs:hover + .game-card-hs {
@@ -172,10 +178,11 @@
   font-weight: 800;
   font-size: 16px;
   border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.badge-blue { background: #3b82f6; color: white; }
+.badge-blue  { background: #007A33; color: white; }
+.badge-green { background: #52c41a; color: white; }
 
 .card-corner-bottom-left {
   position: absolute;
@@ -192,10 +199,10 @@
 }
 
 .card-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   padding-bottom: 8px;
   margin-bottom: 10px;
 }
@@ -217,11 +224,11 @@
 .eff-neg { color: #e53e3e; }
 .eff-pos { color: #38a169; }
 
-/* Sidebar */
+/* ── Sidebar ─────────────────────────────────────── */
 .game-sidebar {
   width: 300px;
-  background: #1f2937;
-  border-left: 2px solid #374151;
+  background: #111f16;
+  border-left: 1px solid #1e3824;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -239,18 +246,18 @@
   font-size: 12px;
   padding: 8px;
   border-radius: 6px;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .log-positive { color: #4ade80; }
 .log-negative { color: #f87171; }
-.log-neutral { color: #9ca3af; }
+.log-neutral  { color: rgba(255, 255, 255, 0.45); }
 
-/* Overlays */
+/* ── Overlays ────────────────────────────────────── */
 .game-over-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,12 +265,13 @@
 }
 
 .game-over-modal {
-  background: #1f2937;
+  background: #111f16;
   padding: 40px;
-  border-radius: 20px;
+  border-radius: 16px;
   text-align: center;
-  border: 2px solid #3b82f6;
-  max-width: 400px;
+  border: 2px solid #52c41a;
+  max-width: 420px;
+  box-shadow: 0 0 60px rgba(82, 196, 26, 0.2);
 }
 
 .loading-screen {
@@ -271,5 +279,5 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111827;
+  background: #0d1a10;
 }

@@ -1,26 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
-    --sysu-green-dark: #00401b;
+    --sysu-green-dark:  #00401b;
     --sysu-green-light: #f6ffed;
-    --lab-bg: var(--sysu-green-dark);
-    --paper-bg: #ffffff; /* Cards should stay white/neutral for readability */
-    --paper-aged: #f1f5f9;
-    --copper: #1890ff; /* Standard blue for primary actions */
-    --copper-dark: #003a8c;
-    --copper-light: #69c0ff;
-    --ink-black: #0f172a;
-    --accent-red: #f5222d;
-    --accent-blue: #1890ff;
-    --accent-green: #1890ff; /* Replaced with blue for font neutrality */
-    --radiation-green: #faad14; /* Using orange for alerts instead of neon green */
+
+    --lab-bg:       var(--sysu-green-dark);
+    --paper-bg:     #ffffff;
+    --paper-aged:   #f0f7f1;
+
+    /* Green replaces copper/blue */
+    --copper:       #007A33;
+    --copper-dark:  #005824;
+    --copper-light: #52c41a;
+
+    --ink-black:        #0f172a;
+    --accent-red:       #f5222d;
+    --accent-blue:      #007A33;   /* kept name for compatibility; now green */
+    --accent-green:     #007A33;
+    --radiation-green:  #faad14;   /* orange-yellow for radiation alerts */
 }
 
+/* ── Container ──────────────────────────────────── */
 .marie-curie-container {
     height: 100vh;
     width: 100%;
     background-color: var(--lab-bg);
-    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+    background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)),
         url('https://www.transparenttextures.com/patterns/dark-leather.png');
     font-family: 'Crimson Pro', serif;
     color: var(--paper-bg);
@@ -38,14 +43,14 @@
     box-sizing: border-box;
 }
 
-/* Layer Transitions */
+/* ── Layer shared ────────────────────────────────── */
 .layer {
     width: 100%;
     position: relative;
     transition: all 0.3s ease;
 }
 
-/* LAYER 1: Environment Area */
+/* ── LAYER 1: Environment ─────────────────────────── */
 .layer-environment {
     height: 30%;
     display: flex;
@@ -90,17 +95,9 @@
 }
 
 @keyframes pulse-red {
-    0% {
-        box-shadow: 0 0 0 rgba(139, 0, 0, 0);
-    }
-
-    50% {
-        box-shadow: 0 0 10px rgba(139, 0, 0, 0.8);
-    }
-
-    100% {
-        box-shadow: 0 0 0 rgba(139, 0, 0, 0);
-    }
+    0%   { box-shadow: 0 0 0 rgba(139, 0, 0, 0); }
+    50%  { box-shadow: 0 0 10px rgba(139, 0, 0, 0.8); }
+    100% { box-shadow: 0 0 0 rgba(139, 0, 0, 0); }
 }
 
 .destiny-machine {
@@ -126,7 +123,7 @@
     letter-spacing: 2px;
 }
 
-/* LAYER 2: Status Area */
+/* ── LAYER 2: Status ──────────────────────────────── */
 .layer-status {
     height: 20%;
     display: flex;
@@ -134,7 +131,7 @@
     justify-content: center;
     gap: 20px;
     padding: 0 20px;
-    border-bottom: 1px solid rgba(184, 115, 51, 0.3);
+    border-bottom: 1px solid rgba(0, 122, 51, 0.3);
 }
 
 .status-item {
@@ -169,8 +166,9 @@
     background: linear-gradient(to right, #cf1322, #f5222d);
 }
 
+/* SP / goal fill — green instead of blue */
 .sp-fill {
-    background: linear-gradient(to right, #096dd9, #1890ff);
+    background: linear-gradient(to right, #005824, #52c41a);
 }
 
 .hp-low {
@@ -178,13 +176,8 @@
 }
 
 @keyframes flash-red {
-    from {
-        opacity: 1;
-    }
-
-    to {
-        opacity: 0.4;
-    }
+    from { opacity: 1; }
+    to   { opacity: 0.4; }
 }
 
 .resource-value {
@@ -195,14 +188,14 @@
     font-weight: bold;
 }
 
-/* LAYER 3: Hand Area */
+/* ── LAYER 3: Hand ────────────────────────────────── */
 .layer-hand {
     height: 35%;
     display: flex;
     justify-content: center;
     align-items: flex-end;
     padding: 0 40px 10px 40px;
-    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
 }
 
 .hand-container {
@@ -212,7 +205,7 @@
     width: 100%;
     height: 100%;
     position: relative;
-    padding-top: 50px; /* Space for hover lift */
+    padding-top: 50px;
 }
 
 .hand-card {
@@ -230,31 +223,30 @@
     flex-direction: column;
     padding: 12px;
     position: relative;
-    margin-right: -100px; /* Crucial: Overlap showing the left side */
+    margin-right: -100px;
     transform-origin: bottom left;
     user-select: none;
 }
 
-.hand-card:last-child {
-    margin-right: 0;
-}
+.hand-card:last-child { margin-right: 0; }
 
 .hand-card:hover {
     transform: translateY(-40px) scale(1.05) rotate(0deg) !important;
     z-index: 200 !important;
-    margin-right: 20px; /* Increase spacing on hover to reveal content */
+    margin-right: 20px;
     margin-left: 20px;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 15px var(--copper-light);
     border-color: var(--copper-light);
 }
 
+/* Cost badge — green circle */
 .card-top-left {
     position: absolute;
     top: -8px;
     left: -8px;
     width: 32px;
     height: 32px;
-    background: var(--accent-blue);
+    background: var(--accent-green);
     border: 2px solid var(--copper);
     border-radius: 50%;
     display: flex;
@@ -263,7 +255,7 @@
     color: white;
     font-weight: bold;
     font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     z-index: 10;
 }
 
@@ -291,7 +283,7 @@
     font-size: 38px;
     text-align: center;
     margin-bottom: 15px;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
 }
 
 .card-effect {
@@ -314,8 +306,12 @@
     padding-top: 5px;
 }
 
+.card-disabled {
+    filter: grayscale(0.7) brightness(0.75);
+    cursor: not-allowed;
+}
 
-/* Sidebar */
+/* ── Sidebar ──────────────────────────────────────── */
 .sidebar {
     width: 300px;
     background: rgba(0, 0, 0, 0.4);
@@ -326,13 +322,11 @@
     transition: width 0.3s ease;
 }
 
-.sidebar-collapsed {
-    width: 40px;
-}
+.sidebar-collapsed { width: 40px; }
 
 .sidebar-header {
     padding: 15px;
-    border-bottom: 1px solid rgba(184, 115, 51, 0.3);
+    border-bottom: 1px solid rgba(0, 122, 51, 0.3);
     display: flex;
     justify-content: space-between;
 }
@@ -351,8 +345,8 @@
 }
 
 .log-positive {
-    color: #1890ff;
-    background: rgba(24, 144, 255, 0.1);
+    color: #52c41a;
+    background: rgba(82, 196, 26, 0.10);
 }
 
 .log-negative {
@@ -360,13 +354,11 @@
     background: rgba(255, 0, 0, 0.05);
 }
 
-/* Settlement Overlay */
+/* ── Settlement Overlay ───────────────────────────── */
 .settlement-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
@@ -376,13 +368,8 @@
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 .settlement-card {
@@ -413,8 +400,7 @@
     cursor: pointer;
     margin: 10px;
     transition: background 0.2s;
+    border-radius: 4px;
 }
 
-.btn-classic:hover {
-    background: var(--copper-dark);
-}
+.btn-classic:hover { background: var(--copper-dark); }

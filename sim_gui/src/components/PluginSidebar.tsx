@@ -50,8 +50,8 @@ export default function PluginSidebar({ plugins, activePlugin, onSelectPlugin }:
                   marginBottom: 5,
                   cursor: 'pointer',
                   borderRadius: 4,
-                  background: activePlugin === plugin.id ? '#e6f7ff' : '#fff',
-                  border: activePlugin === plugin.id ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                  background: activePlugin === plugin.id ? '#e8f5e9' : '#fff',
+                  border: activePlugin === plugin.id ? '2px solid #007A33' : '1px solid #c8e6c9'
                 }}
               >
                 <div style={{ fontWeight: activePlugin === plugin.id ? 'bold' : 'normal' }}>

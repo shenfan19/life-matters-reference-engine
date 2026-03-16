@@ -10,8 +10,8 @@ const CardGame: React.FC<CardGameProps> = ({ isDarkMode }) => {
     const cardStyle: React.CSSProperties = {
         width: 80,
         height: 110,
-        background: isDarkMode ? '#1e293b' : '#fff',
-        border: `2px solid ${isDarkMode ? '#334155' : '#cbd5e1'}`,
+        background: isDarkMode ? '#111f16' : '#ffffff',
+        border: `2px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
         borderRadius: 8,
         display: 'flex',
         flexDirection: 'column',
@@ -37,7 +37,7 @@ const CardGame: React.FC<CardGameProps> = ({ isDarkMode }) => {
     return (
         <div style={{ height: '100%', display: 'flex', gap: '20px' }}>
             {/* Game Board */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', background: isDarkMode ? '#0f172a' : '#f1f5f9', borderRadius: 12, padding: '20px', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}` }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', background: isDarkMode ? '#0d1a10' : '#f0f7f1', borderRadius: 12, padding: '20px', border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}` }}>
 
                 {/* Opponent Area */}
                 <div style={{ textAlign: 'center' }}>

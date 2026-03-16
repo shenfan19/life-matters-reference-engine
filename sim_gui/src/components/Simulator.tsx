@@ -182,7 +182,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const outputVars = selectedModel?.content?.simulator?.output_variables || Object.keys(stateVariables).slice(0, 3);
-    const colors = ['#1890ff', '#722ed1', '#2f54eb', '#13c2c2', '#1677ff'];
+    const colors = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047'];
     outputVars.forEach((varName: string, idx: number) => {
       const values = simulationData.map(d => d[varName] || 0);
       const maxVal = Math.max(...values.map(Math.abs), 1);
@@ -226,7 +226,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
       <Row gutter={[8, 8]}>
         {outputVars.map((varName: string, idx: number) => (
           <Col span={8} key={idx}>
-            <div style={{ padding: '8px', background: isDarkMode ? '#1e293b' : '#fafafa', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, borderRadius: 4 }}>
+            <div style={{ padding: '8px', background: isDarkMode ? '#111f16' : '#f0f7f1', border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, borderRadius: 4 }}>
               <div style={{ fontSize: '11px', color: isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)' }}>{varName}</div>
               <div style={{ fontSize: '16px', fontWeight: 600 }}>{(latestData[varName] || 0).toFixed(4)}</div>
             </div>
@@ -255,7 +255,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
 
   const renderRunSimulation = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>仿真控制中心</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>仿真控制中心</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {!isLocked ? (
             <Alert message="模型未就绪：请先在 Loader 页面验证并锁定模型" type="warning" showIcon />
@@ -274,7 +274,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
             <Button danger onClick={resetSimulation}>重置</Button>
             <Button icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
           </Space>
-          <Progress percent={progress} strokeColor="#1890ff" />
+          <Progress percent={progress} strokeColor={isDarkMode ? '#52c41a' : '#007A33'} />
           <Row gutter={8}>
             <Col span={12}><Statistic title="当前步" value={currentStep} valueStyle={{ fontSize: '14px' }} /></Col>
             <Col span={12}><Statistic title="状态" value={status.toUpperCase()} valueStyle={{ fontSize: '14px' }} /></Col>
@@ -282,7 +282,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
         </Space>
       </Card>
 
-      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入 / 输出 实时监控</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+      <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>输入 / 输出 实时监控</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
         <Row gutter={24}>
           <Col span={12}>
             <Divider orientation="left" style={{ marginTop: 0 }}><span style={{ fontSize: '12px' }}>输入参数</span></Divider>
@@ -298,7 +298,7 @@ const Simulator: React.FC<SimulatorProps> = ({ selectedModel, state, setState, i
 
         <div style={{ padding: '0 8px' }}>
           <div style={{ marginBottom: 12, fontWeight: 600, fontSize: '12px', color: isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)' }}>趋势图表</div>
-          <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, borderRadius: 4 }} />
+          <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%', height: 'auto', background: isDarkMode ? '#0d1a10' : '#ffffff', border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, borderRadius: 4 }} />
 
           <div style={{ margin: '24px 0 12px 0', fontWeight: 600, fontSize: '12px', color: isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)' }}>数据详情 (最近50条)</div>
           {renderDataTable()}

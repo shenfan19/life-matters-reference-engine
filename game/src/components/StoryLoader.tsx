@@ -1,25 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Card as AntCard, List, Typography, Button, Space, Tag, Spin } from 'antd';
+import { List, Typography, Button, Space, Tag, Spin } from 'antd';
 import { RocketOutlined, ExperimentOutlined, UserOutlined } from '@ant-design/icons';
 import { Story } from '../core/types';
 import { AdaptiveConverter } from '../core/AdaptiveConverter';
 import { useI18n } from '../core/i18n';
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Paragraph } = Typography;
 
 interface StoryLoaderProps {
   onSelect: (story: Story) => void;
   onGoToSimulation: () => void;
+  isDarkMode: boolean;
 }
 
-const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimulation }) => {
+const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimulation, isDarkMode }) => {
   const { t } = useI18n();
   const [stories, setStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStories();
-  }, []);
+  useEffect(() => { fetchStories(); }, []);
 
   const fetchStories = async () => {
     try {
@@ -57,8 +56,6 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
     switch (category) {
       case 'physiological': return <ExperimentOutlined />;
       case 'socio_economic': return <UserOutlined />;
-      case 'environmental': return <RocketOutlined />;
-      case 'risk': return <RocketOutlined />;
       default: return <ExperimentOutlined />;
     }
   };
@@ -76,60 +73,97 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
     }
   };
 
+  // Light: white cards on light-green bg / Dark: dark-gray cards on dark-green bg
+  const cardBg     = isDarkMode ? '#1a2e1e' : '#ffffff';
+  const cardText   = isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22';
+  const cardBorder = isDarkMode ? '#1e3824' : '#c8e6c9';
+  const accentIcon = isDarkMode ? '#52c41a' : '#007A33';
+  const tagStyle: React.CSSProperties = isDarkMode
+    ? { background: 'rgba(82,196,26,0.15)', border: '1px solid rgba(82,196,26,0.35)', color: '#86efac', fontSize: 11 }
+    : { background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#007A33', fontSize: 11 };
+
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
-      <Title level={1} style={{ marginBottom: '40px', textAlign: 'center' }}>
-        { t('stories.title') || '选择你的生命轨迹' }
+    <div style={{ padding: '40px 32px 32px', maxWidth: '880px', margin: '0 auto', width: '100%', overflowY: 'auto', flex: 1 }}>
+      <Title level={2} style={{ marginBottom: 6, textAlign: 'center', color: isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22' }}>
+        {t('stories.title') || '选择你的生命轨迹'}
       </Title>
-      
+      <Paragraph style={{ textAlign: 'center', marginBottom: 28, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#5a7a63' }}>
+        每个故事都是一个独立的模块，拥有自己的卡牌、卡组和规则。
+      </Paragraph>
+
       <Spin spinning={loading}>
         <List
-          grid={{ gutter: 24, column: 2 }}
+          grid={{ gutter: 14, column: 2 }}
           dataSource={stories}
           renderItem={(item) => (
-            <List.Item>
-              <AntCard
-                hoverable
-                style={{ 
-                  borderRadius: '8px',
-                  minHeight: '220px'
-                }}
-                styles={{ body: { padding: '24px' } }}
+            <List.Item style={{ marginBottom: 0 }}>
+              <div
                 onClick={() => handleSelect(item)}
+                style={{
+                  background: cardBg,
+                  border: `1px solid ${cardBorder}`,
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  cursor: 'pointer',
+                  color: cardText,
+                  minHeight: 96,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  boxShadow: isDarkMode
+                    ? '0 1px 6px rgba(0,0,0,0.3)'
+                    : '0 1px 6px rgba(0,80,30,0.10)',
+                  transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'translateY(-2px)';
+                  el.style.boxShadow = isDarkMode
+                    ? '0 6px 18px rgba(82,196,26,0.18)'
+                    : '0 6px 18px rgba(0,80,30,0.18)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'translateY(0)';
+                  el.style.boxShadow = isDarkMode
+                    ? '0 1px 6px rgba(0,0,0,0.3)'
+                    : '0 1px 6px rgba(0,80,30,0.10)';
+                }}
               >
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <div style={{ 
-                    fontSize: '48px', 
-                    color: '#1890ff', 
-                    display: 'flex', 
-                    alignItems: 'center' 
-                  }}>
+                {/* Icon + name row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 22, color: accentIcon, lineHeight: 1, flexShrink: 0 }}>
                     {item.icon}
-                  </div>
-                  <div>
-                    <Title level={3} style={{ marginTop: 0 }}>{item.name}</Title>
-                    <Space style={{ marginBottom: '12px' }}>
-                      <Tag color="processing">难度: {item.difficulty}</Tag>
-                      {item.tags.map((tag: string) => <Tag key={tag} color="default">{tag}</Tag>)}
-                    </Space>
-                    <Paragraph type="secondary">{item.description}</Paragraph>
-                  </div>
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>
+                    {item.name}
+                  </span>
                 </div>
-              </AntCard>
+
+                {/* Tags */}
+                <Space size={4} wrap>
+                  <Tag style={tagStyle}>难度: {item.difficulty}</Tag>
+                  {item.tags.map((tag: string) => (
+                    <Tag key={tag} style={tagStyle}>{tag}</Tag>
+                  ))}
+                </Space>
+
+                {/* Description */}
+                <div style={{ fontSize: 12, color: isDarkMode ? 'rgba(255,255,255,0.55)' : '#5a7a63', lineHeight: 1.45 }}>
+                  {item.description}
+                </div>
+              </div>
             </List.Item>
           )}
         />
       </Spin>
 
-      <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        <Paragraph type="secondary">
-          * 每个故事都是一个独立的模块，拥有自己的卡牌、卡组和规则。
-        </Paragraph>
-        <Button 
-          type="default" 
-          size="large" 
+      <div style={{ textAlign: 'center', marginTop: 28 }}>
+        <Button
+          size="large"
           icon={<RocketOutlined />}
           onClick={onGoToSimulation}
+          style={{ borderColor: isDarkMode ? '#1e3824' : '#007A33', color: isDarkMode ? 'rgba(255,255,255,0.65)' : '#007A33' }}
         >
           返回 LifeMatters 研究平台
         </Button>

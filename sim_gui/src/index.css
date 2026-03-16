@@ -1,17 +1,61 @@
+/* =====================================================
+   SYSU (中山大学) Design System
+   Light: #007A33 primary, #f5faf6 background
+   Dark:  #52c41a accent, #0d1a10 background
+   ===================================================== */
+
+:root {
+  /* SYSU Brand Colors */
+  --sysu-green:       #007A33;
+  --sysu-green-dark:  #005824;
+  --sysu-green-deep:  #004019;
+  --sysu-green-light: #52c41a;
+  --sysu-green-pale:  #e8f5e9;
+  --sysu-green-muted: #c8e6c9;
+
+  /* Light mode surfaces */
+  --lm-bg:        #f5faf6;
+  --lm-surface:   #ffffff;
+  --lm-elevated:  #f0f7f1;
+  --lm-border:    #c8e6c9;
+  --lm-text:      #1a2e22;
+  --lm-text-sec:  #5a7a63;
+  --lm-text-mute: rgba(0, 0, 0, 0.40);
+
+  /* Dark mode surfaces */
+  --dm-bg:        #0d1a10;
+  --dm-surface:   #111f16;
+  --dm-elevated:  #162a1b;
+  --dm-border:    #1e3824;
+  --dm-text:      rgba(255, 255, 255, 0.88);
+  --dm-text-sec:  rgba(255, 255, 255, 0.55);
+  --dm-text-mute: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Base Reset ──────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   height: 100vh;
 }
 
-/* Scrollbar styling for a premium feel */
+/* ── SYSU Green Scrollbar ────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -19,10 +63,27 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1890ff;
-  border-radius: 3px;
+  background: var(--sysu-green-muted);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #40a9ff;
+  background: var(--sysu-green);
+}
+
+/* ── Text Selection ──────────────────────────────── */
+::selection {
+  background: rgba(0, 122, 51, 0.18);
+}
+
+/* ── Smooth transitions for theme switching ──────── */
+body,
+#root,
+.ant-layout,
+.ant-card,
+.ant-btn,
+.ant-input,
+.ant-select-selector {
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+    color 0.25s ease;
 }

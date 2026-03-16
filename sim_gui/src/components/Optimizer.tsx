@@ -146,7 +146,7 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
 
   const renderRunOptimization = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>优化参数配置</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+      <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>优化参数配置</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {!isLocked && <Alert message="模型未锁定" type="warning" showIcon />}
           <Row gutter={16}>
@@ -159,12 +159,12 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
             <Button onClick={() => { isRunningRef.current = false; setStatus('paused'); }} disabled={status !== 'running'}>暂停</Button>
             <Button danger onClick={() => { isRunningRef.current = false; setStatus('idle'); setProgress(0); setOptimizationData([]); }}>重置</Button>
           </Space>
-          <Progress percent={progress} strokeColor="#1890ff" />
+          <Progress percent={progress} strokeColor={isDarkMode ? '#52c41a' : '#007A33'} />
         </Space>
       </Card>
 
       {Object.keys(inputParams).length > 0 && (
-        <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>控制变量</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+        <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>控制变量</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
           <Row gutter={[16, 16]}>
             {Object.entries(inputParams).map(([name, value]) => (
               <Col span={8} key={name}>
@@ -177,7 +177,7 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
       )}
 
       {optimizationData.length > 0 && (
-        <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>迭代动态</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, background: isDarkMode ? '#1e293b' : '#ffffff' }}>
+        <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>迭代动态</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
           <Statistic title="已探索解空间" value={optimizationData.length} prefix={<ThunderboltOutlined />} valueStyle={{ fontSize: '20px' }} />
         </Card>
       )}

@@ -19,10 +19,11 @@ function App() {
     const gameTheme = {
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-            colorPrimary: '#1890ff', // Standard professional blue
-            colorBgBase: isDarkMode ? '#003d1b' : '#f6ffed', // SYSU Green backgrounds
+            colorPrimary: isDarkMode ? '#52c41a' : '#007A33',
+            colorBgBase: isDarkMode ? '#0d1a10' : '#d4edda',
+            colorBgContainer: isDarkMode ? '#1a2e1e' : '#ffffff',
             colorTextBase: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
-            borderRadius: 4,
+            borderRadius: 6,
         }
     };
 
@@ -55,7 +56,7 @@ function App() {
                     </Button>
                 </Dropdown>
                 
-                <Button 
+                <Button
                     icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
                     onClick={() => setIsDarkMode(!isDarkMode)}
                 />
@@ -86,7 +87,7 @@ function App() {
                 height: '100vh', 
                 display: 'flex', 
                 flexDirection: 'column',
-                backgroundColor: isDarkMode ? '#00401b' : '#f6ffed',
+                backgroundColor: isDarkMode ? '#0d1a10' : '#d4edda',
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
                 overflow: 'hidden'
             }}>
@@ -98,6 +99,7 @@ function App() {
                             setView('game');
                         }}
                         onGoToSimulation={goToSimulation}
+                        isDarkMode={isDarkMode}
                     />
                 ) : (
                     selectedStory && <Game story={selectedStory} />
