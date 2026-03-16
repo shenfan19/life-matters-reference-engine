@@ -115,7 +115,21 @@ export interface SimulatorProps {
     state: SimulationState;
     setState: React.Dispatch<React.SetStateAction<SimulationState>>;
     isLocked: boolean;
+    setIsLocked: (locked: boolean) => void;
     isDarkMode: boolean;
+    // loader props (lifted from App)
+    storyTree: DataNode[];
+    setStoryTree: (tree: DataNode[]) => void;
+    expandedKeys: React.Key[];
+    setExpandedKeys: (keys: React.Key[]) => void;
+    storyViewMode: 'tree' | 'list';
+    setStoryViewMode: (mode: 'tree' | 'list') => void;
+    storyFilter: string;
+    setStoryFilter: (filter: string) => void;
+    loadedMods: Record<string, ModelFile>;
+    setLoadedMods: (mods: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
+    setConfirmedModel: (model: ModelFile | null) => void;
+    onModelSelect: (model: ModelFile | null) => void;
 }
 
 export interface OptimizerProps {
