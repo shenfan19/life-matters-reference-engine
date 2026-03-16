@@ -76,6 +76,20 @@ body {
   background: rgba(0, 122, 51, 0.18);
 }
 
+/* ── Tabular numbers for data/metrics ───────────── */
+.tabular,
+.ant-statistic-content-value,
+.ant-progress-text,
+.ant-table-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Monospace for paths and IDs ─────────────────── */
+code, kbd, .mono {
+  font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
 /* ── Smooth transitions for theme switching ──────── */
 body,
 #root,
