@@ -1,0 +1,62 @@
+/* CardGame.css — animations only, layout via inline styles */
+
+.player-card {
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              box-shadow 0.15s ease,
+              border-color 0.15s ease;
+}
+
+.player-card.card-playable:hover {
+  transform: translateY(-10px) scale(1.04);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+.player-card.card-disabled {
+  filter: grayscale(0.6) brightness(0.7);
+  cursor: not-allowed;
+}
+
+.env-card {
+  transition: border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.env-triggered {
+  animation: flash-trigger 0.5s ease;
+}
+
+@keyframes flash-trigger {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.05); box-shadow: 0 0 18px rgba(245, 34, 45, 0.5); }
+  100% { transform: scale(1); }
+}
+
+.bar-warn {
+  animation: pulse-warn 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-warn {
+  from { opacity: 1; }
+  to   { opacity: 0.45; }
+}
+
+.settlement-fade {
+  animation: fadeIn 0.45s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 3px;
+}

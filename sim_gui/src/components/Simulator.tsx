@@ -18,6 +18,7 @@ import {
   LoadingOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, DurationUnit, StepUnit, DataNode, ModelFile } from '../types';
+import { validateModFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
@@ -89,7 +90,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [treeLoading, setTreeLoading] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<{ success: boolean; errors?: string[] } | null>(null);
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
 
   // ── opt mode state ───────────────────────────────────────────────────────────
@@ -302,28 +303,15 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedKey) return;
     setValidating(true);
     setValidationResult(null);
-    try {
-      const cleanPath = selectedKey.replace(/^mods\//, '');
-      const result = await fetch(`${API_BASE}/validate`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: [cleanPath] }),
-      }).then(r => r.json());
-      if (result.success) {
-        setValidationResult({ success: true });
-        setIsLocked(true);
-        message.success('✅ 验证通过，场景已锁定');
-      } else {
-        const errList: string[] =
-          result.data?.errors || (result.data?.error ? [result.data.error] : null) ||
-          (result.error ? [result.error] : ['验证失败']);
-        setValidationResult({ success: false, errors: errList });
-        setIsLocked(false);
-      }
-    } catch (e: any) {
-      setValidationResult({ success: false, errors: [`网络错误: ${e.message}`] });
-    } finally {
-      setValidating(false);
+    const result = await validateModFile(selectedKey);
+    setValidationResult(result);
+    if (result.valid) {
+      setIsLocked(true);
+      message.success('✅ 验证通过，场景已锁定');
+    } else {
+      setIsLocked(false);
     }
+    setValidating(false);
   };
 
   // ── derived data ──────────────────────────────────────────────────────────────
@@ -1010,11 +998,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                 {/* Validation result */}
                 {validationResult && (
                   <Alert
-                    type={validationResult.success ? 'success' : 'error'}
-                    message={validationResult.success ? '验证通过' : '验证失败'}
-                    description={!validationResult.success && (
+                    type={validationResult.valid ? 'success' : 'error'}
+                    message={validationResult.valid ? '验证通过' : '验证失败'}
+                    description={!validationResult.valid && validationResult.errors.length > 0 && (
                       <div style={{ maxHeight: 80, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>
-                        {(validationResult.errors || []).map((err, i) => (
+                        {validationResult.errors.map((err, i) => (
                           <div key={i} style={{ marginBottom: 2 }}>• {err}</div>
                         ))}
                       </div>

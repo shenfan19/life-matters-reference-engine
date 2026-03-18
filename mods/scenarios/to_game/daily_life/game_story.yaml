@@ -1,0 +1,77 @@
+meta:
+  id: daily_life
+  name: daily_life
+  description: 日常生活仿真：展示每日规律饮食与水分补充对能量和健康的影响。利用计划表实现批处理自动化。
+  science_note: '日常生活仿真：展示每日规律饮食与水分补充对能量和健康的影响。利用计划表实现批处理自动化。
+
+    [Converter: decay→Type6; eating→Type4; drinking→Type4]'
+  tags:
+  - lifestyle
+  - daily
+  - simulation
+  difficulty: easy
+variables:
+  energy:
+    label: Energy(分)
+    value: 50.0
+    max: 100
+    color: '#52c41a'
+    description: 能量水平
+  hydration:
+    label: Hydration(分)
+    value: 70.0
+    max: 100
+    color: '#1677ff'
+    description: 水分储备
+game:
+  ap_per_turn: 3
+  max_turns: 12
+  hand_size: 4
+lose_conditions:
+- condition: energy <= 5
+  message: 状态恶化至无法恢复的程度。
+win_conditions:
+- condition: energy >= 80
+  message: 目标达成，优化成功。
+player_cards:
+- id: increase_meal_size
+  name: 增加Meal Size(kc
+  type: medical
+  cost: 2
+  emoji: 📈
+  flavor: 增加kcal摄入：进食量
+  science: 优化变量 meal_size（+20 kcal/回合）
+  effects:
+  - variable: energy
+    delta: 6
+- id: decrease_meal_size
+  name: 减少Meal Size(kc
+  type: medical
+  cost: 1
+  emoji: 📉
+  flavor: 减少kcal摄入：进食量
+  science: 优化变量 meal_size（-20 kcal/回合）
+  effects:
+  - variable: energy
+    delta: -6
+- id: increase_water_sip
+  name: 增加Water Sip(ml
+  type: medical
+  cost: 2
+  emoji: ⬆️
+  flavor: 增加ml摄入：饮水量
+  science: 优化变量 water_sip（+20 ml/回合）
+  effects:
+  - variable: energy
+    delta: 6
+- id: decrease_water_sip
+  name: 减少Water Sip(ml
+  type: medical
+  cost: 1
+  emoji: ⬇️
+  flavor: 减少ml摄入：饮水量
+  science: 优化变量 water_sip（-20 ml/回合）
+  effects:
+  - variable: energy
+    delta: -6
+environment_cards: []

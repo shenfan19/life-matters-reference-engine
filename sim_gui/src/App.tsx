@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { ConfigProvider, theme, Button, Dropdown, Select } from 'antd';
 import {
   TranslationOutlined, SunOutlined, MoonOutlined,
-  AppstoreOutlined, RocketOutlined,
-  LoadingOutlined, ApiOutlined, ExperimentOutlined, ToolOutlined,
-  GithubOutlined, MailOutlined, GlobalOutlined,
+  LoadingOutlined, ExperimentOutlined, ToolOutlined, SwapOutlined,
+  GithubOutlined, MailOutlined,
 } from '@ant-design/icons';
 import Simulator from './components/Simulator';
-import PluginView from './components/PluginView';
+import ModsManager from './components/ModsManager';
+import StoryEditor from './components/StoryEditor';
 import StoryEngine from './components/StoryEngine';
 import type { SimulationState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
@@ -48,7 +48,8 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
 }) {
   const tabs = [
     { id: 'simulator', label: t('menu.simulator'), icon: <ExperimentOutlined /> },
-    { id: 'tools',     label: 'Tools',             icon: <ToolOutlined /> },
+    { id: 'tools',     label: 'Mods',              icon: <ToolOutlined /> },
+    { id: 'story',     label: '转换器',             icon: <SwapOutlined /> },
   ];
 
   return (
@@ -133,19 +134,29 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
           suffixIcon={<span style={{ fontSize: 11, color: c.textMute }}>A</span>}
         />
 
-        <Button
-          type="primary" size="small" icon={<RocketOutlined />}
+        <button
           onClick={() => window.open('http://localhost:5174', '_blank')}
           style={{
-            background: isDarkMode
-              ? 'linear-gradient(135deg, #2d7a1f, #52c41a)'
-              : 'linear-gradient(135deg, #005824, #007A33)',
-            border: 'none', fontWeight: 600, fontSize: 12,
-            boxShadow: isDarkMode ? '0 1px 6px rgba(82,196,26,0.25)' : '0 1px 6px rgba(0,122,51,0.2)',
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '3px 11px', borderRadius: 20,
+            border: `1px solid ${isDarkMode ? '#d48806' : '#fa8c16'}`,
+            background: isDarkMode ? 'rgba(250,173,20,0.08)' : 'rgba(250,140,22,0.06)',
+            color: isDarkMode ? '#ffc53d' : '#d46b08',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.12s', outline: 'none',
+            letterSpacing: '0.02em',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(250,173,20,0.18)' : 'rgba(250,140,22,0.14)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(250,173,20,0.08)' : 'rgba(250,140,22,0.06)';
           }}
         >
-          {t('button.go_game')} ↗
-        </Button>
+          <span style={{ fontSize: 13 }}>🎮</span>
+          {t('button.go_game')}
+          <span style={{ fontSize: 10, opacity: 0.7 }}>↗</span>
+        </button>
 
         <Button type="text" size="small"
           icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
@@ -171,110 +182,9 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
   );
 }
 
-// ─── Tools page (internal sidebar + plugin content) ───────────────────────────
+// ─── Tools page → Mods Manager ────────────────────────────────────────────────
 function ToolsPage({ isDarkMode, c }: { isDarkMode: boolean; c: typeof C.light }) {
-  const [plugins, setPlugins] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedPlugin, setSelectedPlugin] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/plugins?v=${Date.now()}`)
-      .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-      .then(data => {
-        const order = ['model_builder', 'scenario_builder', 'story_converter'];
-        const sorted = (data.plugins || []).sort((a: any, b: any) => {
-          const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
-          if (ia === -1 && ib === -1) return 0;
-          if (ia === -1) return 1; if (ib === -1) return -1;
-          return ia - ib;
-        });
-        setPlugins(sorted);
-        if (sorted.length > 0 && !selectedPlugin) setSelectedPlugin(sorted[0].id);
-        setLoading(false);
-      })
-      .catch(err => { setError(err.message); setLoading(false); });
-  }, []);
-
-  if (error) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{
-        padding: '16px 20px', borderRadius: 8, fontSize: 12,
-        color: '#ef4444',
-        background: isDarkMode ? 'rgba(127,29,29,0.2)' : '#fef2f2',
-        border: `1px solid ${isDarkMode ? '#7f1d1d' : '#fee2e2'}`,
-      }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>
-          <ApiOutlined /> Backend offline
-        </div>
-        <div style={{ opacity: 0.75, fontFamily: 'monospace', fontSize: 11 }}>python api_server.py</div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      {/* Internal sidebar */}
-      <div style={{
-        width: 188, flexShrink: 0,
-        borderRight: `1px solid ${c.border}`,
-        background: c.panel,
-        display: 'flex', flexDirection: 'column',
-        padding: '10px 8px',
-        overflowY: 'auto',
-      }}>
-        <div style={{
-          fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-          letterSpacing: '0.12em', color: c.textMute,
-          padding: '2px 8px 8px',
-        }}>
-          Plugins
-        </div>
-
-        {loading ? (
-          <div style={{ padding: '8px 10px', fontSize: 11, color: c.textMute, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LoadingOutlined style={{ fontSize: 11 }} spin /> Loading…
-          </div>
-        ) : (
-          plugins.map(plugin => {
-            const active = selectedPlugin === plugin.id;
-            return (
-              <button
-                key={plugin.id}
-                onClick={() => setSelectedPlugin(plugin.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '7px 10px', marginBottom: 2,
-                  borderRadius: 6, border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
-                  borderLeft: `3px solid ${active ? c.primary : 'transparent'}`,
-                  background: active ? c.activeBg : 'transparent',
-                  color: active ? c.activeText : c.textSec,
-                  fontWeight: active ? 600 : 400, fontSize: 13,
-                  transition: 'all 0.12s', outline: 'none',
-                }}
-              >
-                <AppstoreOutlined style={{ fontSize: 13, opacity: active ? 1 : 0.55 }} />
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {plugin.name}
-                </span>
-              </button>
-            );
-          })
-        )}
-      </div>
-
-      {/* Plugin content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', background: c.bg }}>
-        {selectedPlugin ? (
-          <PluginView pluginId={selectedPlugin} isDarkMode={isDarkMode} />
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: c.textMute, fontSize: 13 }}>
-            从左侧选择一个工具
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <ModsManager isDarkMode={isDarkMode} c={c} />;
 }
 
 // ─── Contact info ─────────────────────────────────────────────────────────────
@@ -358,7 +268,7 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
   const { t, language, setLanguage } = useI18n();
-  const [page, setPage] = useState<'simulator' | 'tools'>('simulator');
+  const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [fontSize, setFontSize] = useState(15);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
@@ -461,6 +371,11 @@ function App() {
           {/* Tools: rendered when active */}
           {page === 'tools' && (
             <ToolsPage isDarkMode={isDarkMode} c={c} />
+          )}
+
+          {/* Story Editor: rendered when active */}
+          {page === 'story' && (
+            <StoryEditor isDarkMode={isDarkMode} c={c} />
           )}
         </div>
 

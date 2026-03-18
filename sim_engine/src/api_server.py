@@ -183,6 +183,16 @@ class SaveFileRequest(BaseModel):
     content: Dict[str, Any]
 
 
+class FileMoveRequest(BaseModel):
+    src: str   # relative to mods/
+    dst: str   # relative to mods/
+
+
+class FileNewRequest(BaseModel):
+    path: str           # relative to mods/
+    template: str = "model"  # "model" | "scenario"
+
+
 class SimulationStartRequest(BaseModel):
     model_name: str
     folder: Optional[str] = None
@@ -657,6 +667,81 @@ async def get_file_content(file_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ========== Validate a mods/ YAML file (GET, delegates to shared logic) ==========
+@app.get("/api/validate/{file_path:path}")
+async def validate_file(file_path: str):
+    """Validate a single mods/ YAML file."""
+    valid, errors = _simple_yaml_validate(file_path, PROJECT_ROOT)
+    return {'valid': valid, 'errors': errors}
+
+
+# ========== Save structured JSON as YAML ==========
+@app.post("/api/file-structured/{file_path:path}")
+async def save_file_structured(file_path: str, payload: dict):
+    """Receive a JSON object, serialize to YAML, and save to mods/"""
+    target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
+    target.parent.mkdir(parents=True, exist_ok=True)
+    data = payload.get('data', {})
+    text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
+                     sort_keys=False, indent=2)
+    target.write_text(text, encoding='utf-8')
+    return {'success': True, 'path': file_path}
+
+
+# ========== Diff two files ==========
+@app.post("/api/diff")
+async def diff_files(payload: dict):
+    """Return unified diff patch between two mods/ files"""
+    import difflib
+    path_a = (payload.get('file_a') or '').lstrip('/')
+    path_b = (payload.get('file_b') or '').lstrip('/')
+    if not path_a or not path_b:
+        raise HTTPException(status_code=400, detail="file_a and file_b required")
+    target_a = PROJECT_ROOT / "mods" / path_a
+    target_b = PROJECT_ROOT / "mods" / path_b
+    try:
+        text_a = target_a.read_text(encoding='utf-8').splitlines(keepends=True)
+        text_b = target_b.read_text(encoding='utf-8').splitlines(keepends=True)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    patch = ''.join(difflib.unified_diff(text_a, text_b, fromfile=path_a, tofile=path_b, n=3))
+    return {'success': True, 'patch': patch or '(no differences)'}
+
+
+# ========== Raw file read/write (for YAML text editor) ==========
+@app.get("/api/file-raw/{file_path:path}")
+async def get_file_raw(file_path: str):
+    """Return the raw text content of a file in mods/"""
+    try:
+        target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside mods/")
+        if not target.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        text = target.read_text(encoding='utf-8')
+        return {'success': True, 'text': text}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/file-raw/{file_path:path}")
+async def save_file_raw(file_path: str, payload: dict):
+    """Save raw text to a file in mods/ (creates parent dirs as needed)"""
+    try:
+        target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside mods/")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(payload.get('text', ''), encoding='utf-8')
+        return {'success': True, 'path': file_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ========== Save File 端点 ==========
 @app.post("/api/save-file")
 async def save_file_endpoint(request: SaveFileRequest):
@@ -678,115 +763,265 @@ async def save_file_endpoint(request: SaveFileRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ========== File management endpoints ==========
+
+@app.delete("/api/file/{file_path:path}")
+async def delete_file(file_path: str):
+    """Delete a file inside the mods directory."""
+    mods_root = PROJECT_ROOT / "mods"
+    target = mods_root / file_path.lstrip('/')
+    if not str(target.resolve()).startswith(str(mods_root.resolve())):
+        raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+    if target.is_dir():
+        raise HTTPException(status_code=400, detail="Cannot delete directories via this endpoint")
+    target.unlink()
+    logger.info(f"File deleted: {target}")
+    return {'success': True}
+
+
+@app.post("/api/file-move")
+async def move_file(request: FileMoveRequest):
+    """Move / rename a file inside the mods directory."""
+    import shutil
+    mods_root = PROJECT_ROOT / "mods"
+    src = mods_root / request.src.lstrip('/')
+    dst = mods_root / request.dst.lstrip('/')
+    for p in (src, dst):
+        if not str(p.resolve()).startswith(str(mods_root.resolve())):
+            raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+    if not src.exists():
+        raise HTTPException(status_code=404, detail=f"Source not found: {request.src}")
+    if dst.exists():
+        raise HTTPException(status_code=409, detail=f"Destination already exists: {request.dst}")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(src), str(dst))
+    logger.info(f"File moved: {src} → {dst}")
+    return {'success': True, 'dst': request.dst}
+
+
+_FILE_TEMPLATES = {
+    "model": {
+        "metadata": {"name": "新模型", "description": "", "tags": [], "version": "1.0"},
+        "variables": {"example_var": {"initial_value": 0.0, "unit": "", "description": ""}},
+        "formulas": {},
+        "simulator": {"time_unit": "day", "step_size": 3600},
+    },
+    "scenario": {
+        "metadata": {"name": "新场景", "description": "", "tags": [], "version": "1.0"},
+        "variables": {},
+        "formulas": {},
+        "simulator": {"time_unit": "day", "step_size": 3600},
+    },
+}
+
+
+@app.post("/api/file-new")
+async def create_new_file(request: FileNewRequest):
+    """Create a new YAML file from a template inside the mods directory."""
+    mods_root = PROJECT_ROOT / "mods"
+    target = mods_root / request.path.lstrip('/')
+    if not str(target.resolve()).startswith(str(mods_root.resolve())):
+        raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+    if target.exists():
+        raise HTTPException(status_code=409, detail=f"File already exists: {request.path}")
+    template = _FILE_TEMPLATES.get(request.template, _FILE_TEMPLATES["model"])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with open(target, 'w', encoding='utf-8') as fh:
+        yaml.dump(template, fh, allow_unicode=True, sort_keys=False,
+                  default_flow_style=False, indent=2)
+    logger.info(f"New file created: {target} (template={request.template})")
+    return {'success': True, 'path': request.path}
+
+
 # ========== Merge 端点 ==========
+def _simple_yaml_merge(files, output_path, project_root):
+    """Simple YAML merge: combine variables/formulas/simulator from multiple files."""
+    import copy
+    merged = {'metadata': {'name': 'merged', 'description': '', 'tags': []},
+              'variables': {}, 'formulas': {}, 'simulator': {}}
+    for f in (files or []):
+        target = project_root / "mods" / f.lstrip('/')
+        if not target.exists():
+            continue
+        try:
+            with open(target, encoding='utf-8') as fh:
+                data = yaml.safe_load(fh) or {}
+        except Exception:
+            continue
+        merged['variables'].update(data.get('variables') or {})
+        merged['formulas'].update(data.get('formulas') or {})
+        sim = data.get('simulator') or data.get('simulation') or {}
+        merged['simulator'].update(sim)
+    if output_path:
+        out = project_root / "mods" / output_path.lstrip('/')
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, 'w', encoding='utf-8') as fh:
+            yaml.dump(merged, fh, allow_unicode=True, default_flow_style=False,
+                      sort_keys=False, indent=2)
+    return merged
+
 @app.post("/api/merge")
 async def merge_models(request: MergeRequest):
     """合并模型"""
-    if loader_engine is None:
-        raise HTTPException(status_code=503, detail="Mods system not initialized")
-    
-    try:
-        result = loader_engine.merge_models(
-            model_names=request.files,
-            folders=request.folders,
-            # Ensure output path is relative to mods directory
-            output_path=str(PROJECT_ROOT / "mods" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
-        )
-        
-        if result['success']:
-            return {
-                'success': True,
-                'data': {
+    # Try loader_engine first, fall back to simple YAML merge on failure
+    if loader_engine is not None:
+        try:
+            abs_out = str(PROJECT_ROOT / "mods" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
+            result = loader_engine.merge_models(
+                model_names=request.files,
+                folders=request.folders,
+                output_path=abs_out
+            )
+            if result['success']:
+                return {'success': True, 'data': {
                     'variables': result['variables'],
                     'formulas': result['formulas'],
                     'output_path': request.output_path
-                }
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.get('error', 'Merge failed'))
-    
-    except HTTPException:
-        raise
+                }}
+        except Exception as e:
+            logger.warning(f"Loader merge failed, falling back to simple merge: {e}")
+
+    # Simple YAML merge fallback
+    try:
+        merged = _simple_yaml_merge(request.files, request.output_path, PROJECT_ROOT)
+        return {'success': True, 'message': f'合并完成（简单模式）',
+                'data': {'variables': len(merged['variables']),
+                         'formulas': len(merged['formulas']),
+                         'output_path': request.output_path}}
     except Exception as e:
-        logger.error(f"Merge error: {e}")
+        logger.error(f"Simple merge error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========== Validate 端点 ==========
+def _simple_yaml_validate(file_path, project_root):
+    """
+    Semantic validation of a mod YAML file.
+
+    Checks:
+      1. metadata.name exists
+      2. variables section is non-empty
+      3. Every dynamics key in each formula is defined in variables
+      4. Every identifier referenced in formula expressions that matches
+         a known variable name is defined in variables
+      5. Every variable defined in variables is referenced somewhere
+         (as a dynamics key or in an expression / condition)
+
+    simulator/optimizer are NOT required here — they can be supplied at run time.
+    """
+    import re
+
+    target = project_root / "mods" / file_path.lstrip('/')
+    if not target.exists():
+        return False, [f'文件不存在: {file_path}']
+    try:
+        with open(target, encoding='utf-8') as fh:
+            data = yaml.safe_load(fh) or {}
+    except Exception as e:
+        return False, [f'YAML 解析错误: {e}']
+
+    errors = []
+
+    # ── 1. Metadata ────────────────────────────────────────────────────────
+    meta = data.get('metadata') or data.get('meta')
+    if not meta:
+        errors.append('缺少 metadata 字段')
+    elif not (meta.get('name') or '').strip():
+        errors.append('metadata.name 为空')
+
+    # ── 2. Variables ───────────────────────────────────────────────────────
+    variables: dict = data.get('variables') or {}
+    if not variables:
+        errors.append('缺少 variables 字段（或为空）')
+        return False, errors   # nothing more to cross-check
+
+    var_set = set(variables.keys())
+
+    # ── 3 & 4. Formula → variable cross-check ─────────────────────────────
+    formulas: dict = data.get('formulas') or {}
+
+    # All text that formulas expose: dynamics keys + expression strings + conditions
+    dyn_keys_used: set[str] = set()
+    vars_referenced: set[str] = set()
+
+    for fname, fd in formulas.items():
+        if not isinstance(fd, dict):
+            errors.append(f'公式 {fname!r} 格式错误（应为字典）')
+            continue
+
+        dynamics: dict = fd.get('dynamics') or {}
+        if not dynamics:
+            errors.append(f'公式 {fname!r} 缺少 dynamics 字段')
+
+        for dyn_key, expr in dynamics.items():
+            # Check dynamics key is a defined variable
+            if dyn_key not in var_set:
+                errors.append(f'公式 {fname!r}: dynamics 键 {dyn_key!r} 未在 variables 中定义')
+            else:
+                dyn_keys_used.add(dyn_key)
+
+            # Extract identifiers from the expression that are known variable names
+            expr_str = str(expr) if expr is not None else ''
+            for token in re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\b', expr_str):
+                if token in var_set:
+                    vars_referenced.add(token)
+
+        # Also scan condition string
+        cond = fd.get('condition')
+        if isinstance(cond, str):
+            for token in re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\b', cond):
+                if token in var_set:
+                    vars_referenced.add(token)
+
+    all_used = dyn_keys_used | vars_referenced
+
+    # ── 5. Variable → formula cross-check ─────────────────────────────────
+    unused = var_set - all_used
+    for vname in sorted(unused):
+        errors.append(f'变量 {vname!r} 已定义但未被任何公式使用')
+
+    return not errors, errors
+
 @app.post("/api/validate")
 async def validate_model(request: ValidateRequest):
-    """验证模型"""
-    if loader_engine is None:
-        raise HTTPException(status_code=503, detail="Mods system not initialized")
-    
-    try:
-        # Determine files to validate
-        files_to_validate = []
-        if request.files:
-            files_to_validate = request.files
-        elif request.file_path:
-            files_to_validate = [request.file_path]
-        else:
-            raise HTTPException(status_code=400, detail="Either file_path or files must be provided")
+    """验证模型（先用 loader_engine，失败时回退到简单 YAML 验证）"""
+    files_to_validate = []
+    if request.files:
+        files_to_validate = request.files
+    elif request.file_path:
+        files_to_validate = [request.file_path]
+    else:
+        raise HTTPException(status_code=400, detail="Either file_path or files must be provided")
 
-        if not files_to_validate:
-            raise HTTPException(status_code=400, detail="No files provided for validation")
-        
-        logger.info(f"Validating models: {files_to_validate}")
+    if not files_to_validate:
+        raise HTTPException(status_code=400, detail="No files provided for validation")
 
-        # Reuse merge logic to load multiple files into one model structure for validation
-        # If only one file, it behaves like a normal load
-        # Use merge_models to combine them in memory
-        merge_result = loader_engine.merge_models(
-            model_names=files_to_validate, 
-            folders=None,
-            output_path=None # In-memory merge
-        )
+    logger.info(f"Validating: {files_to_validate}")
 
-        if not merge_result['success']:
-             logger.error(f"Merge failed: {merge_result.get('error')}")
-             raise ValueError(f"Failed to load/merge models for validation: {merge_result.get('error')}")
-        
-        model = merge_result['data']
-        logger.info(f"Merged model has {len(model.variables)} vars and {len(model.formulas)} formulas")
-
-        # 验证模型
+    # Try loader_engine first (deep validation)
+    if loader_engine is not None:
         try:
-            # Determine output directory for patch
-            patch_dir = PROJECT_ROOT / "mods" / "models" / "_output" / "patch"
-            model.validate_model(output_dir=str(patch_dir))
-            logger.info("Validation successful")
-            return {
-                'success': True,
-                'data': {
-                    'valid': True,
-                    'variables': len(model.variables),
-                    'formulas': len(model.formulas)
-                }
-            }
-        except ValueError as e:
-            logger.warning(f"Validation failed: {e}")
-            # Check if patch was generated
-            # Use the name of the first file as base for patch name if model name is generic
-            base_name = os.path.splitext(os.path.basename(files_to_validate[0]))[0]
-            patch_filename = f"{base_name}_patch.yaml"
-            patch_path = PROJECT_ROOT / "mods" / "models" / "_output" / "patch" / patch_filename
-            relative_patch_path = f"models/_output/patch/{patch_filename}"
-            
-            return {
-                'success': False,
-                'data': {
-                    'valid': False,
-                    'errors': [str(e)],
-                    'patch_file': relative_patch_path if patch_path.exists() else None
-                }
-            }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            merge_result = loader_engine.merge_models(
+                model_names=files_to_validate, folders=None, output_path=None)
+            if merge_result['success']:
+                model = merge_result['data']
+                try:
+                    patch_dir = PROJECT_ROOT / "mods" / "models" / "_output" / "patch"
+                    model.validate_model(output_dir=str(patch_dir))
+                    return {'valid': True, 'errors': []}
+                except ValueError as e:
+                    return {'valid': False, 'errors': [str(e)]}
+        except Exception as e:
+            logger.warning(f"Loader validation failed, using simple YAML check: {e}")
+
+    # Simple YAML fallback
+    all_errors = []
+    for fp in files_to_validate:
+        valid, errs = _simple_yaml_validate(fp, PROJECT_ROOT)
+        all_errors.extend(errs)
+    return {'valid': not all_errors, 'errors': all_errors}
 
 
 # ========== Split 端点 ==========

@@ -1,0 +1,277 @@
+meta:
+  id: somme_1916_britain
+  name: "索姆河：1916年英国步兵的抉择"
+  period: "1916-07-01 – 1916-11-18 CE"
+  location: "法国索姆河前线，皮卡第大区"
+  difficulty: hard
+  description: >
+    1916年7月1日，英国陆军在索姆河发起大规模攻势。
+    仅第一天，英军伤亡57,470人，19,240人战死——史上最惨烈的单日伤亡之一。
+    作为一名普通步兵，你每周领取1先令军饷，面对的选择从不只是进攻或防守：
+    是否参与突击？伤口如何处理？粮食不足时是否和当地人交换？
+    留在前线意味着生死相搏，申请调离意味着被视作懦夫。
+    这里没有安全选项，只有不同代价的权衡。
+  science_note: >
+    本场景以索姆河战役历史数据为参数来源。
+    每回合约代表1周时间（7月-10月间的战斗节奏）。
+    伤亡事件的概率来自实际战斗记录（英军日均伤亡率3-8%/前线单位/天）。
+    物资短缺基于英军后勤日志中的口粮分配记录（战时Archive, WO 95/…, PRO）。
+    来源：Keegan J (1998) The First World War. Hutchinson;
+           Prior R & Wilson T (2005) The Somme. Yale University Press;
+           Sheffield G (2001) Forgotten Victory. Headline Book Publishing.
+  tags:
+    - 历史
+    - 一战
+    - 生存决策
+    - 军事
+    - D1
+
+variables:
+  health:
+    label: 生存指数
+    value: 100
+    max: 100
+    color: "#52c41a"
+    description: "体能与伤势综合指标。跌至0则阵亡或重伤退出战斗。"
+
+  morale:
+    label: 士气
+    value: 65
+    max: 100
+    color: "#1677ff"
+    description: "个人与单位士气。极低时可能出现临阵脱逃判决风险。"
+
+  rations:
+    label: 口粮储备
+    value: 75
+    max: 100
+    color: "#faad14"
+    description: "食物与饮水储备。不足时健康与士气同时下滑。"
+
+  pay_savings:
+    label: 军饷积蓄
+    value: 15
+    max: 100
+    color: "#722ed1"
+    description: "积攒的先令（英军私兵每日1先令，每周约7先令）。可用于交换物资或疏通关系。"
+
+game:
+  ap_per_turn: 3
+  max_turns: 14     # 14周 = 7月初至10月中，索姆河战役最激烈阶段
+  hand_size: 4
+
+lose_conditions:
+  - condition: "health <= 0"
+    message: "你在索姆河的泥泞中倒下。数以万计的战友与你同一命运——历史不会记住每一个名字，但这片土地记得。"
+  - condition: "morale <= 0"
+    message: "精神彻底崩溃。军事法庭以懦夫罪将你处决——这在1916年的英国陆军并不罕见。"
+
+win_conditions:
+  - condition: "health > 30 and pay_savings >= 50"
+    message: "你活过了索姆河，带着积蓄和伤疤回到家乡。大多数人没有这样的运气。"
+
+player_cards:
+  - id: hold_position
+    name: 坚守战壕
+    type: tactical
+    cost: 1
+    emoji: "🪖"
+    flavor: "不冒进，守住阵地。消耗战的基础逻辑。"
+    science: "防守伤亡率约为进攻的1/3（WWII前历史平均值）"
+    effects:
+      - variable: health
+        delta: -3
+      - variable: morale
+        delta: -5
+      - variable: rations
+        delta: -8
+
+  - id: advance_attack
+    name: 冲锋突击
+    type: tactical
+    cost: 2
+    emoji: "⚔️"
+    flavor: "服从命令，越过无人区。也许能立功，也许再也回不来。"
+    science: "进攻时英军伤亡率7-15%/天（索姆河第一天实测，Prior & Wilson 2005）"
+    effects:
+      - variable: health
+        delta: -20
+      - variable: morale
+        delta: 15
+      - variable: pay_savings
+        delta: 5
+
+  - id: treat_wounds
+    name: 处理伤口
+    type: medical
+    cost: 1
+    emoji: "🩹"
+    flavor: "用急救包处理轻伤，防止感染。1916年无抗生素，感染致死率极高。"
+    science: "一战前线伤口感染（气性坏疽）死亡率约12%（Scott 1986）"
+    effects:
+      - variable: health
+        delta: 18
+      - variable: morale
+        delta: 5
+
+  - id: ration_conservation
+    name: 节省口粮
+    type: logistics
+    cost: 1
+    emoji: "🥫"
+    flavor: "严格限制摄入，把口粮留到补给中断时用。饥饿感袭来。"
+    effects:
+      - variable: rations
+        delta: 20
+      - variable: health
+        delta: -5
+      - variable: morale
+        delta: -8
+
+  - id: write_home
+    name: 写信回家
+    type: social
+    cost: 1
+    emoji: "✉️"
+    flavor: "给家人写信，说一切都好。谎言，但谎言让人撑下去。"
+    effects:
+      - variable: morale
+        delta: 20
+      - variable: health
+        delta: 3
+
+  - id: barter_locals
+    name: 与村民交换物资
+    type: logistics
+    cost: 2
+    emoji: "🤝"
+    flavor: "用军饷向法国农民换取额外口粮。违反军纪，但有时值得。"
+    science: "索姆河后方村庄（阿尔贝、波兹耶尔）有大量英军-民间非正式物资交换记录"
+    effects:
+      - variable: pay_savings
+        delta: -8
+      - variable: rations
+        delta: 22
+      - variable: morale
+        delta: 8
+
+  - id: seek_medical_transfer
+    name: 申请后送医疗
+    type: medical
+    cost: 2
+    emoji: "🏥"
+    flavor: "声称伤情无法继续作战，申请送往野战医院。可以暂时喘息，但可能被认为是懦弱。"
+    effects:
+      - variable: health
+        delta: 25
+      - variable: morale
+        delta: -15
+      - variable: pay_savings
+        delta: -3
+
+  - id: rum_ration_trade
+    name: 分享朗姆酒配给
+    type: social
+    cost: 1
+    emoji: "🥃"
+    flavor: "英军官方每日发放1/16英吉利品脱朗姆酒。与战友共享，凝聚人心。"
+    science: "英军朗姆酒配给制度（1914-1918，按QR&O第1516条）是士气维持的重要机制"
+    effects:
+      - variable: morale
+        delta: 18
+      - variable: health
+        delta: -2
+
+environment_cards:
+  - id: artillery_barrage
+    name: 炮击轰炸
+    emoji: "💥"
+    description: "德军炮兵对前线持续炮击。每回合必然发生——这是索姆河的常态。"
+    science: "索姆河战役中德军平均每天发射子弹/炮弹百万余发（Prior & Wilson 2005）"
+    always_active: true
+    effects:
+      - variable: health
+        delta: -8
+      - variable: morale
+        delta: -7
+
+  - id: gas_attack
+    name: 毒气袭击
+    emoji: "☠️"
+    description: "德军施放光气或芥子气。1916年防毒面具配发不足，后果严重。"
+    science: "一战毒气伤亡占总伤亡约5%，但恐惧效应放大士气损耗（Haber 1986）"
+    probability: 0.30
+    effects:
+      - variable: health
+        delta: -25
+      - variable: morale
+        delta: -20
+
+  - id: mud_conditions
+    name: 索姆河泥泞
+    emoji: "🟤"
+    description: "连续暴雨将索姆河谷变成泥泞地狱。推进无法，物资难以运送。"
+    science: "1916年8-11月索姆河降雨量超过历史平均40%（英国气象局历史记录）"
+    probability: 0.55
+    effects:
+      - variable: rations
+        delta: -12
+      - variable: morale
+        delta: -10
+
+  - id: supply_convoy_arrives
+    name: 补给车队抵达
+    emoji: "🚛"
+    description: "后方补给车队突破德军封锁，带来食物和弹药。"
+    probability: 0.35
+    effects:
+      - variable: rations
+        delta: 20
+      - variable: pay_savings
+        delta: 7
+
+  - id: officer_casualty
+    name: 军官阵亡
+    emoji: "🎖️"
+    description: "连队军官中弹阵亡。指挥混乱，士气大落。"
+    science: "索姆河战役中英军军官伤亡率（23%）高于士兵（17%），因军官需带头冲锋（Sheffield 2001）"
+    probability: 0.35
+    effects:
+      - variable: morale
+        delta: -18
+      - variable: health
+        delta: -5
+
+  - id: comrade_rescue
+    name: 战友相救
+    emoji: "🤲"
+    description: "战友冒险拖你离开炮击区，或在你负伤时照料你。战壕中的人性时刻。"
+    science: "一战战友互救是重要的士气维持机制（Holmes R, 2004, Tommy）"
+    probability: 0.25
+    effects:
+      - variable: health
+        delta: 15
+      - variable: morale
+        delta: 18
+
+  - id: propaganda_leaflet
+    name: 胜利宣传单
+    emoji: "📜"
+    description: "后方分发宣传材料，声称战局大好。前线士兵都知道这是谎言。"
+    probability: 0.30
+    effects:
+      - variable: morale
+        delta: 8
+
+  - id: autumn_cold
+    name: 秋季严寒来临
+    emoji: "🌧️"
+    description: "10月后气温骤降，战壕脚病蔓延，体力急剧下降。"
+    science: "战壕足（Trench foot）影响了约74,000名英军士兵（一战医疗记录，RAMC Archive）"
+    condition: "health < 70"
+    probability: 0.40
+    effects:
+      - variable: health
+        delta: -12
+      - variable: morale
+        delta: -8
