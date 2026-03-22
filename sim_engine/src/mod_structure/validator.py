@@ -3,14 +3,12 @@ from .base import VariableType, Variable
 from .utils import extract_vars_from_expr
 from typing import Dict, Set, List
 from asteval import Interpreter
-import os
-import yaml
 import logging
 
 logger = logging.getLogger(__name__)
 
 class Validator:
-    def validate_model(self, output_dir: str = None) -> bool:
+    def validate_model(self) -> bool:
         # 验证模型的完整性和一致性
         all_errors = []
         unique_missing_vars = set()  # 用set自动去重
@@ -312,36 +310,9 @@ class Validator:
                 all_errors.extend([f"{section}: {err}" for err in errors])
 
         if all_errors:
-            mod_name = self.current_filename or (self.metadata.name if self.metadata and hasattr(self.metadata, 'name') else 'unknown')
-            # 修改：使用output_dir（由loader_engine.py传入）或mods目录，生成patch文件
-            # 修改后
-            patch_dir = output_dir if output_dir else os.path.join(self.mods_directory, "models", "_output", "patch")
-            os.makedirs(patch_dir, exist_ok=True)
-            patch_file = os.path.join(patch_dir, f"{mod_name}_patch.yaml")
-            patch_data = {
-                'variables': {
-                    var_name: {
-                        'description': f'Placeholder for {var_name}',
-                        'value': 0.0,
-                        'type': 'state',
-                        'unit': 'unknown',
-                        'bounds': [0, 100]
-                    } for var_name in sorted(unique_missing_vars)
-                }
-            }
-            try:
-                with open(patch_file, 'w', encoding='utf-8') as f:
-                    yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
-                                default_flow_style=False, indent=2)  # 添加 indent=2
-                patch_message = f"Please define the missing variables in your YAML file or use the generated '{patch_file}' alongside your original model."
-            except Exception as e:
-                logger.warning(f"Failed to generate patch file {patch_file}: {e}")
-                patch_message = "Please define the missing variables in your YAML file."
-
             raise ValueError(
-                f"Model validation failed with {len(all_errors)} errors:\n- " + 
-                "\n- ".join(all_errors) + 
-                f"\n\nPatch file generated: {patch_file}"
+                f"Model validation failed with {len(all_errors)} errors:\n- " +
+                "\n- ".join(all_errors)
             )
         logger.info("Model validation passed")
         return True

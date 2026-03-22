@@ -14,19 +14,19 @@
   --sysu-green-muted: #c8e6c9;
 
   /* Light mode surfaces */
-  --lm-bg:        #f5faf6;
+  --lm-bg:        #f5f5f5;
   --lm-surface:   #ffffff;
-  --lm-elevated:  #f0f7f1;
-  --lm-border:    #c8e6c9;
+  --lm-elevated:  #efefef;
+  --lm-border:    #e0e0e0;
   --lm-text:      #1a2e22;
-  --lm-text-sec:  #5a7a63;
+  --lm-text-sec:  #6b7280;
   --lm-text-mute: rgba(0, 0, 0, 0.40);
 
   /* Dark mode surfaces */
-  --dm-bg:        #0d1a10;
-  --dm-surface:   #111f16;
-  --dm-elevated:  #162a1b;
-  --dm-border:    #1e3824;
+  --dm-bg:        #111111;
+  --dm-surface:   #1a1a1a;
+  --dm-elevated:  #222222;
+  --dm-border:    #2a2a2a;
   --dm-text:      rgba(255, 255, 255, 0.88);
   --dm-text-sec:  rgba(255, 255, 255, 0.55);
   --dm-text-mute: rgba(255, 255, 255, 0.35);

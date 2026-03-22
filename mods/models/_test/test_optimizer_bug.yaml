@@ -1,7 +1,0 @@
-type: model
-metadata:
-  name: test_optimizer_bug
-optimizer:
-  method: grid
-  variables_to_optimize:
-    - missing_var

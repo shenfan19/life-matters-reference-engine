@@ -1,9 +1,0 @@
-variables:
-  step_size:
-    description: Placeholder for step_size
-    value: 0.0
-    type: state
-    unit: unknown
-    bounds:
-    - 0
-    - 100

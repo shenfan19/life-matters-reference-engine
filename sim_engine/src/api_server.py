@@ -543,123 +543,19 @@ async def list_files():
 
 @app.get("/api/file/{file_path:path}")
 async def get_file_content(file_path: str):
-    """读取单个 YAML 文件内容"""
+    """读取单个 YAML 文件原始内容（用于编辑器，直接读文件，不经过 loader）"""
     try:
         logger.info(f"读取文件: {file_path}")
-        
-        # 使用 LoaderEngine 加载
-        if loader_engine:
-            try:
-                # 首先处理路径和模型名
-                # 如果是新结构路径 (如 stories/xxx.yaml)，直接作为 model_name，folder 传 None
-                if file_path.startswith(('models/', 'stories/', 'scenarios/', 'models\\', 'stories\\', 'scenarios\\')):
-                    folder = None
-                    # 移除 .yaml 扩展名
-                    model_name = file_path
-                    if model_name.endswith(('.yaml', '.yml')):
-                        model_name = os.path.splitext(model_name)[0]
-                else:
-                    # 向后兼容：旧的拆分逻辑
-                    parts = file_path.split('/')
-                    if len(parts) > 1:
-                        folder = parts[0]
-                        model_name = '/'.join(parts[1:])
-                    else:
-                        folder = None
-                        model_name = parts[0]
-                    # 移除 .yaml 扩展名
-                    if model_name.endswith(('.yaml', '.yml')):
-                        model_name = os.path.splitext(model_name)[0]
-                
-                # 首先读取原始 YAML 文件以获取 type 和 category
-                yaml_file = PROJECT_ROOT / "mods" / file_path
-                if not yaml_file.suffix:
-                    yaml_file = yaml_file.with_suffix('.yaml')
-                
-                raw_data = {}
-                if yaml_file.exists():
-                    with open(yaml_file, 'r', encoding='utf-8') as f:
-                        raw_data = yaml.safe_load(f) or {}
-                
-                # 然后使用 LoaderEngine 加载合并后的模型
-                model = loader_engine.fetch(model_name, folder)
-                if not model:
-                    raise HTTPException(status_code=404, detail=f"Model not found: {file_path}")
-                
-                content = {
-                    'type': raw_data.get('type', 'unknown'),
-                    'category': raw_data.get('category', 'unknown'),
-                    'metadata': {
-                        'name': model.metadata.name if model.metadata else '',
-                        'version': model.metadata.version if model.metadata else '',
-                        'author': model.metadata.author if model.metadata else '',
-                        'description': model.metadata.description if model.metadata else '',
-                        'tags': model.metadata.tags if model.metadata else []
-                    },
-                    'imports': raw_data.get('imports', []),
-                    'variables': {
-                        var_name: {
-                            'description': var.description,
-                            'value': var.value,
-                            'unit': var.unit,
-                            'type': var.type.value if hasattr(var.type, 'value') else str(var.type),
-                            'bounds': var.bounds
-                        }
-                        for var_name, var in model.variables.items()
-                    },
-                    'formulas': {
-                        formula_name: {
-                            'description': formula.description,
-                            'condition': formula.description,
-                            'priority': formula.priority,
-                            'dynamics': formula.dynamics
-                        }
-                        for formula_name, formula in model.formulas.items()
-                    },
-                    'optimizer': model.optimizer,
-                    'schedules': {
-                        var_name: {
-                            'variable': schedule.variable,
-                            'interpolation': schedule.interpolation,
-                            'points': [
-                                {'time': pt.time, 'value': pt.value}
-                                for pt in schedule.points
-                            ]
-                        }
-                        for var_name, schedule in model.schedules.items()
-                    }
-                }
-                
-                return {
-                    'success': True,
-                    'data': {
-                        'path': file_path,
-                        'content': content
-                    }
-                }
-            except Exception as e:
-                logger.error(f"LoaderEngine failed: {e}")
-                # 降级到直接读取
-        
-        # 降级方案：直接读取 YAML
-        yaml_file = PROJECT_ROOT / "mods" / file_path
+        yaml_file = PROJECT_ROOT / "mods" / file_path.lstrip('/')
         if not yaml_file.suffix:
             yaml_file = yaml_file.with_suffix('.yaml')
-        
+        if not str(yaml_file.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside mods/")
         if not yaml_file.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-        
         with open(yaml_file, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
-        
-        return {
-            'success': True,
-            'data': {
-                'path': file_path,
-                'content': data
-            }
-        }
-    
+            data = yaml.safe_load(f) or {}
+        return {'success': True, 'data': {'path': file_path, 'content': data}}
     except HTTPException:
         raise
     except Exception as e:
@@ -685,6 +581,8 @@ async def save_file_structured(file_path: str, payload: dict):
     text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
                      sort_keys=False, indent=2)
     target.write_text(text, encoding='utf-8')
+    if loader_engine:
+        loader_engine.models_cache.clear()
     return {'success': True, 'path': file_path}
 
 
@@ -735,6 +633,8 @@ async def save_file_raw(file_path: str, payload: dict):
             raise HTTPException(status_code=400, detail="Path outside mods/")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(payload.get('text', ''), encoding='utf-8')
+        if loader_engine:
+            loader_engine.models_cache.clear()
         return {'success': True, 'path': file_path}
     except HTTPException:
         raise
@@ -754,6 +654,9 @@ async def save_file_endpoint(request: SaveFileRequest):
         with open(target, 'w', encoding='utf-8') as f:
             yaml.dump(request.content, f, allow_unicode=True, sort_keys=False,
                       default_flow_style=False, indent=2)
+        # Invalidate loader engine cache so next read reflects the saved file
+        if loader_engine:
+            loader_engine.models_cache.clear()
         logger.info(f"File saved: {target}")
         return {'success': True, 'data': {'path': str(target.relative_to(PROJECT_ROOT / "mods"))}}
     except HTTPException:
@@ -777,6 +680,8 @@ async def delete_file(file_path: str):
     if target.is_dir():
         raise HTTPException(status_code=400, detail="Cannot delete directories via this endpoint")
     target.unlink()
+    if loader_engine:
+        loader_engine.models_cache.clear()
     logger.info(f"File deleted: {target}")
     return {'success': True}
 
@@ -1008,8 +913,7 @@ async def validate_model(request: ValidateRequest):
             if merge_result['success']:
                 model = merge_result['data']
                 try:
-                    patch_dir = PROJECT_ROOT / "mods" / "models" / "_output" / "patch"
-                    model.validate_model(output_dir=str(patch_dir))
+                    model.validate_model()
                     return {'valid': True, 'errors': []}
                 except ValueError as e:
                     return {'valid': False, 'errors': [str(e)]}

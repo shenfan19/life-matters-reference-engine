@@ -3,10 +3,31 @@
 // Click 编辑 on a card → all fields become inline inputs
 // Save button activates (green) when there are unsaved changes
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Input, message, Button, Modal } from 'antd';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+
+function useResize(initial: number, min = 150, max = 600, direction: 'right' | 'left' = 'right') {
+  const [width, setWidth] = useState(initial);
+  const ref = useRef(width);
+  ref.current = width;
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = ref.current;
+    const onMove = (ev: MouseEvent) => {
+      const delta = direction === 'right' ? ev.clientX - startX : startX - ev.clientX;
+      setWidth(Math.max(min, Math.min(max, startW + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+  return { width, startDrag };
+}
+import { App, Input, Button, Modal } from 'antd';
 import { SearchOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import jsYaml from 'js-yaml';
 import { validateModFile } from '../core/validate';
 
 // ─── File type registry ───────────────────────────────────────────────────────
@@ -117,6 +138,8 @@ const differ = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
 interface Props { isDarkMode: boolean; c: any; }
 
 export default function ModsManager({ isDarkMode, c }: Props) {
+  const { modal, message } = App.useApp();
+  const { width: leftW, startDrag: startLeftDrag } = useResize(230);
 
   const [allNodes, setAllNodes] = useState<FlatNode[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(['models', 'scenarios']));
@@ -210,29 +233,41 @@ export default function ModsManager({ isDarkMode, c }: Props) {
     setValidateSt(p => ({ ...p, [key]: { loading: false, valid: result.valid, errors: result.errors } }));
   }
 
-  // ── Export (download) a file ──────────────────────────────────────────────
-  async function handleExport(key: string) {
-    // Use already-loaded content if available, otherwise fetch
-    let content = metas[key];
-    if (!content) {
-      try {
-        const resp = await fetch(`/api/file/${key}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const d = await resp.json();
-        content = d.data?.content;
-      } catch (e: any) { message.error('导出失败: ' + String(e)); return; }
+  // ── Auto-fix: merge patch into file and enter edit mode ───────────────────
+  function handleAutoFix(key: string) {
+    const st = validateSt[key];
+    if (!st || st.valid !== false) return;
+    const base = clone(metas[key]);
+    if (!base) return;
+
+    const missingVars: string[] = [];
+    const unusedVars: string[] = [];
+    for (const err of st.errors) {
+      const m1 = err.match(/dynamics 键 '([^']+)' 未在 variables 中定义/);
+      if (m1) missingVars.push(m1[1]);
+      const m2 = err.match(/变量 '([^']+)' 已定义但未被任何公式使用/);
+      if (m2) unusedVars.push(m2[1]);
     }
-    if (!content) { message.error('导出失败: 文件内容未加载'); return; }
-    try {
-      const yamlText = jsYaml.dump(content, { indent: 2, lineWidth: -1, noCompatMode: true });
-      const blob = new Blob([yamlText], { type: 'text/yaml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = key.split('/').pop() || 'file.yaml';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e: any) { message.error('导出失败: ' + String(e)); }
+
+    // Add missing variables
+    if (!base.variables) base.variables = {};
+    for (const v of missingVars) {
+      if (!base.variables[v])
+        base.variables[v] = { type: 'state', unit: '', value: 0, bounds: [0, 100], description: '' };
+    }
+
+    // Add draft_patch formula for unused variables
+    if (unusedVars.length > 0) {
+      if (!base.formulas) base.formulas = {};
+      const patch = base.formulas['draft_patch'] || { condition: true, priority: 5, dynamics: {} };
+      if (!patch.dynamics) patch.dynamics = {};
+      for (const v of unusedVars) patch.dynamics[v] = 0;
+      base.formulas['draft_patch'] = patch;
+    }
+
+    setDrafts(p => ({ ...p, [key]: base }));
+    setEditSet(p => new Set([...p, key]));
+    setValidateSt(p => { const n = { ...p }; delete n[key]; return n; });
   }
 
   // ── Toggle all files in a folder ─────────────────────────────────────────
@@ -327,6 +362,12 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         message.success('已保存');
         setMetas(p => ({ ...p, [key]: clone(draft) }));
         cancelEdit(key);
+        // Re-fetch from disk to confirm sync
+        const clean = key.replace(/^mods\//, '');
+        fetch(`/api/file/${clean}`).then(r => r.json()).then(fresh => {
+          if (fresh.success && fresh.data?.content)
+            setMetas(p => ({ ...p, [key]: fresh.data.content }));
+        }).catch(() => {});
       } else message.error('保存失败: ' + (d.detail || d.error || ''));
     } catch (e: any) { message.error(String(e)); }
     finally { setSavingSet(p => { const s = new Set(p); s.delete(key); return s; }); }
@@ -351,13 +392,13 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   // ── Delete file ───────────────────────────────────────────────────────────
   function handleDelete(key: string) {
     const name = key.split('/').pop();
-    Modal.confirm({
+    modal.confirm({
       title: '删除文件',
       content: `确定要删除 "${name}" 吗？此操作不可撤销。`,
       okText: '删除', okType: 'danger', cancelText: '取消',
       onOk: async () => {
         try {
-          const r = await fetch(`/api/file/${key}`, { method: 'DELETE' });
+          const r = await fetch(`/api/file/${key.replace(/^mods\//, '')}`, { method: 'DELETE' });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           message.success('文件已删除');
           if (checked.has(key)) toggleFile(key);
@@ -411,7 +452,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: bg }}>
 
       {/* ── LEFT: file tree ── */}
-      <div style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${border}`,
+      <div style={{ width: leftW, flexShrink: 0,
         background: panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         <div style={{ padding: '10px 10px 6px' }}>
@@ -541,6 +582,14 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         </div>
       </div>
 
+      {/* ── Resize handle ── */}
+      <div onMouseDown={startLeftDrag}
+        style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+          borderRight: `1px solid ${border}`, transition: 'background 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+      />
+
       {/* ── RIGHT: card area ── */}
       {checkedFiles.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -570,7 +619,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
               onClose={() => toggleFile(key)}
               onPatch={fn => patch(key, fn)}
               onValidate={() => handleValidate(key)}
-              onExport={() => handleExport(key)}
+              onAutoFix={() => handleAutoFix(key)}
               onDelete={() => handleDelete(key)}
               c={c} isDarkMode={isDarkMode}
             />
@@ -633,12 +682,12 @@ interface CardProps {
   validateSt: { loading: boolean; valid?: boolean; errors: string[] } | null;
   onEdit(): void; onCancel(): void; onSave(): void; onClose(): void;
   onPatch(fn: (d: any) => void): void;
-  onValidate(): void; onExport(): void; onDelete(): void;
+  onValidate(): void; onAutoFix(): void; onDelete(): void;
   c: any; isDarkMode: boolean;
 }
 
 function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
-  validateSt, onEdit, onCancel, onSave, onClose, onPatch, onValidate, onExport, onDelete,
+  validateSt, onEdit, onCancel, onSave, onClose, onPatch, onValidate, onAutoFix, onDelete,
   c, isDarkMode }: CardProps) {
 
   const { border, panel, bg, text, textMute: mute, primary } = c;
@@ -661,15 +710,15 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
       border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
       boxShadow: shadow, background: isDarkMode ? '#1e2328' : '#fff' }}>
 
-      {/* ── Coloured top strip ── */}
-      <div style={{ height: 4, flexShrink: 0, background: ft.color }} />
+      {/* ── Top strip ── */}
+      <div style={{ height: 3, flexShrink: 0, background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }} />
 
       {/* ── Card header ── */}
       <div style={{ padding: '10px 14px 10px', flexShrink: 0,
-        background: isDarkMode ? ft.color + '1a' : ft.bg,
-        borderBottom: `1px solid ${isDarkMode ? ft.color + '33' : ft.color + '28'}`,
+        background: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fafafa',
+        borderBottom: `1px solid ${border}`,
         display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 22, flexShrink: 0 }}>{ft.icon}</span>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>{ft.icon}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: text,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -680,19 +729,21 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
             {fileKey}
           </div>
         </div>
-        <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10,
-          background: ft.color, color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4,
+          border: `1px solid ${border}`, color: mute, fontWeight: 600, flexShrink: 0 }}>
           {ft.label}
         </span>
 
         {!editing ? (
           <>
-            <Btn onClick={onValidate} color="#1677ff" outline loading={validateSt?.loading ?? false}>
+            <Btn onClick={onDelete} color={mute} outline danger>删除</Btn>
+            <Btn onClick={onEdit} color={primary} outline>编辑</Btn>
+            {validateSt?.valid === false && (
+              <Btn onClick={onAutoFix} color={primary} outline>自动修复</Btn>
+            )}
+            <Btn onClick={onValidate} color={mute} outline loading={validateSt?.loading ?? false}>
               {validateSt?.loading ? <><LoadingOutlined style={{ marginRight: 4 }} />验证中</> : '验证'}
             </Btn>
-            <Btn onClick={onExport} color={mute} outline>导出</Btn>
-            <Btn onClick={onEdit} color={primary}>✏️ 编辑</Btn>
-            <Btn onClick={onDelete} color="#ff4d4f" outline>删除</Btn>
           </>
         ) : (
           <>
@@ -791,7 +842,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
               <SmBtn onClick={() => onPatch(d => {
                 if (!d.variables) d.variables = {};
                 const k = `var_${Object.keys(d.variables).length + 1}`;
-                d.variables[k] = { type: 'state', unit: '', initial_value: 0, bounds: [0, 100], description: '' };
+                d.variables[k] = { type: 'state', unit: '', value: 0, bounds: [0, 100], description: '' };
               })} c={c}>+ 添加</SmBtn>
             ) : null} c={c}>
               <VarsTable
@@ -992,14 +1043,14 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                 {/* Initial value */}
                 <td style={tdSt}>
                   {editing ? (
-                    <input type="number" value={vv.initial_value ?? 0}
-                      onChange={e => onFieldChange(vk, 'initial_value', Number(e.target.value))}
+                    <input type="number" value={vv.value ?? 0}
+                      onChange={e => onFieldChange(vk, 'value', Number(e.target.value))}
                       style={{ width: 60, fontSize: 11, fontFamily: 'monospace',
                         border: `1px solid ${border}`, borderRadius: 3, padding: '2px 5px',
                         background: bg, color: text, outline: 'none' }} />
                   ) : (
                     <span style={{ fontSize: 11, fontFamily: 'monospace', color: text }}>
-                      {vv.initial_value ?? '—'}
+                      {vv.value ?? '—'}
                     </span>
                   )}
                 </td>
@@ -1067,12 +1118,40 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
         const dynEntries = Object.entries(fd.dynamics || {});
 
         if (!editing) {
+          const hasExtra = (fd.condition !== undefined && fd.condition !== true && fd.condition !== 'true')
+            || (fd.priority !== undefined && fd.priority !== 5);
           return (
-            <div key={fn} style={{ display: 'flex', alignItems: 'center', gap: 6,
-              padding: '4px 0', borderBottom: `1px solid ${border}` }}>
-              <TChip t={t} />
-              <span style={{ fontFamily: 'monospace', fontSize: 11, flex: 1, color: text }}>{fn}</span>
-              <span style={{ fontSize: 10, color: mute }}>→ {Object.keys(fd.dynamics || {}).join(', ')}</span>
+            <div key={fn} style={{ border: `1px solid ${border}`, borderRadius: 5, overflow: 'hidden',
+              background: isDarkBg(bg) ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
+              {/* Header */}
+              <div style={{ padding: '5px 10px',
+                borderBottom: dynEntries.length > 0 ? `1px solid ${border}` : 'none',
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: isDarkBg(bg) ? 'rgba(255,255,255,0.04)' : '#f0f0f0' }}>
+                <TChip t={t} />
+                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: text, flex: 1 }}>{fn}</span>
+                {hasExtra && (
+                  <span style={{ fontSize: 10, color: mute, fontFamily: 'monospace' }}>
+                    {fd.condition !== undefined && fd.condition !== true && fd.condition !== 'true'
+                      ? `if ${fd.condition}` : ''}
+                    {fd.priority !== undefined && fd.priority !== 5 ? ` pri:${fd.priority}` : ''}
+                  </span>
+                )}
+              </div>
+              {/* Dynamics */}
+              {dynEntries.length > 0 && (
+                <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {dynEntries.map(([dk, dv]: [string, any]) => (
+                    <div key={dk} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: text,
+                        whiteSpace: 'nowrap', minWidth: 60 }}>{dk}</span>
+                      <span style={{ color: mute, fontSize: 11, flexShrink: 0 }}>=</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: text,
+                        wordBreak: 'break-all', lineHeight: 1.5 }}>{String(dv ?? '—')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         }
@@ -1186,26 +1265,16 @@ function TagsField({ tags, editing, onChange, c }: {
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
-const SECT_COLORS: Record<string, { accent: string; bg: string }> = {
-  '基本信息': { accent: '#1677ff', bg: '#e6f4ff' },
-  '变量':     { accent: '#52c41a', bg: '#f6ffed' },
-  '公式':     { accent: '#fa8c16', bg: '#fff7e6' },
-  '仿真参数': { accent: '#722ed1', bg: '#f9f0ff' },
-  '优化器':   { accent: '#eb2f96', bg: '#fff0f6' },
-};
-
 function Sect({ title, action, children, c, isDarkMode }: {
   title: string; action?: React.ReactNode; children: React.ReactNode; c: any; isDarkMode?: boolean;
 }) {
-  const col = SECT_COLORS[title] ?? { accent: '#8c8c8c', bg: '#f5f5f5' };
   return (
     <div style={{ borderBottom: `1px solid ${c.border}`, padding: '12px 14px 14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-        <div style={{ width: 3, height: 14, borderRadius: 2, background: col.accent, flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 6 }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, color: col.accent,
-          background: isDarkMode ? col.accent + '22' : col.bg,
-          padding: '1px 8px', borderRadius: 8, letterSpacing: '0.04em',
+          fontSize: 10, fontWeight: 700,
+          color: isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
         }}>
           {title}
         </span>
@@ -1241,10 +1310,11 @@ function FV({ editing, value, onChange, c }: {
 }
 
 // ─── Btn: thin wrapper around antd Button for consistent app-wide style ──────
-function Btn({ onClick, color, disabled, loading, outline, children }: {
+function Btn({ onClick, color, disabled, loading, outline, danger, children }: {
   onClick(): void; color: string; disabled?: boolean; loading?: boolean;
-  outline?: boolean; children: React.ReactNode;
+  outline?: boolean; danger?: boolean; children: React.ReactNode;
 }) {
+  const dangerColor = '#cf1322';
   return (
     <Button
       size="small"
@@ -1252,9 +1322,9 @@ function Btn({ onClick, color, disabled, loading, outline, children }: {
       loading={loading}
       onClick={onClick}
       style={{
-        fontWeight: 600,
+        fontWeight: 500,
         ...(outline
-          ? { background: 'transparent', color, borderColor: color }
+          ? { background: 'transparent', color: danger ? dangerColor : color, borderColor: danger ? dangerColor + '66' : color }
           : { background: disabled || loading ? undefined : color,
               borderColor: disabled || loading ? undefined : color,
               color: disabled || loading ? undefined : '#fff' }),

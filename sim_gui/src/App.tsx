@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ConfigProvider, theme, Button, Dropdown, Select } from 'antd';
+import { ConfigProvider, App as AntdApp, theme, Button, Dropdown, Select } from 'antd';
 import {
   TranslationOutlined, SunOutlined, MoonOutlined,
   LoadingOutlined, ExperimentOutlined, ToolOutlined, SwapOutlined,
@@ -15,17 +15,17 @@ import { useI18n, type Language } from './core/i18n';
 // ─── Color tokens ─────────────────────────────────────────────────────────────
 const C = {
   light: {
-    bg: '#f5faf6', panel: '#ffffff', border: '#c8e6c9',
+    bg: '#f5f5f5', panel: '#ffffff', border: '#e0e0e0',
     primary: '#007A33', activeBg: '#e8f5e9', activeText: '#007A33',
-    text: '#1a2e22', textSec: '#3d5c47', textMute: 'rgba(0,0,0,0.55)',
-    navHover: '#f0faf2', statusBar: '#edf7f0',
+    text: '#1a2e22', textSec: '#6b7280', textMute: 'rgba(0,0,0,0.55)',
+    navHover: '#efefef', statusBar: '#efefef',
   },
   dark: {
-    bg: '#0d1a10', panel: '#111f16', border: '#1e3824',
+    bg: '#111111', panel: '#1a1a1a', border: '#2a2a2a',
     primary: '#52c41a', activeBg: '#1a3a22', activeText: '#52c41a',
     text: 'rgba(255,255,255,0.92)', textSec: 'rgba(255,255,255,0.75)',
     textMute: 'rgba(255,255,255,0.52)', navHover: 'rgba(82,196,26,0.08)',
-    statusBar: '#0a1409',
+    statusBar: '#111111',
   },
 };
 
@@ -118,6 +118,32 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
             </button>
           );
         })}
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 18, background: c.border, margin: '0 6px', flexShrink: 0 }} />
+
+        {/* Play button */}
+        <button
+          onClick={() => window.open('http://localhost:5174', '_blank')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 12px', borderRadius: 6,
+            border: `1px solid ${isDarkMode ? '#b45309' : '#d97706'}`,
+            background: isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)',
+            color: isDarkMode ? '#fbbf24' : '#b45309',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.12s', outline: 'none',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.28)' : 'rgba(217,119,6,0.16)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)';
+          }}
+        >
+          <span style={{ fontSize: 13 }}>🎮</span>
+          {t('button.go_game')}
+        </button>
       </div>
 
       <div style={{ flex: 1 }} />
@@ -133,30 +159,6 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
           style={{ width: 72 }}
           suffixIcon={<span style={{ fontSize: 11, color: c.textMute }}>A</span>}
         />
-
-        <button
-          onClick={() => window.open('http://localhost:5174', '_blank')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '3px 11px', borderRadius: 20,
-            border: `1px solid ${isDarkMode ? '#d48806' : '#fa8c16'}`,
-            background: isDarkMode ? 'rgba(250,173,20,0.08)' : 'rgba(250,140,22,0.06)',
-            color: isDarkMode ? '#ffc53d' : '#d46b08',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            transition: 'all 0.12s', outline: 'none',
-            letterSpacing: '0.02em',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(250,173,20,0.18)' : 'rgba(250,140,22,0.14)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(250,173,20,0.08)' : 'rgba(250,140,22,0.06)';
-          }}
-        >
-          <span style={{ fontSize: 13 }}>🎮</span>
-          {t('button.go_game')}
-          <span style={{ fontSize: 10, opacity: 0.7 }}>↗</span>
-        </button>
 
         <Button type="text" size="small"
           icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
@@ -306,15 +308,15 @@ function App() {
       colorPrimary: antPrimary, colorLink: antPrimary, colorSuccess: '#52c41a',
       borderRadius: 6, fontSize,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
-      colorBgBase: isDarkMode ? '#0d1a10' : '#f5faf6',
+      colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
-      colorBorder: isDarkMode ? '#1e3824' : '#c8e6c9',
+      colorBorder: isDarkMode ? '#2a2a2a' : '#e0e0e0',
     },
     components: {
       Button: { borderRadius: 6, controlHeight: 32 },
       Card: { borderRadiusLG: 6 },
       Tabs: { itemActiveColor: antPrimary, itemSelectedColor: antPrimary, inkBarColor: antPrimary, horizontalItemPadding: '10px 14px' },
-      Divider: { colorSplit: isDarkMode ? '#1e3824' : '#c8e6c9' },
+      Divider: { colorSplit: isDarkMode ? '#2a2a2a' : '#e0e0e0' },
       Tag: { borderRadiusSM: 4 },
       Input: { colorBgContainer: isDarkMode ? '#162a1b' : '#ffffff' },
       Select: { colorBgContainer: isDarkMode ? '#162a1b' : '#ffffff', colorBgElevated: isDarkMode ? '#1a3a22' : '#ffffff' },
@@ -333,6 +335,7 @@ function App() {
 
   return (
     <ConfigProvider theme={academicTheme}>
+    <AntdApp>
       <div style={{
         display: 'flex', flexDirection: 'column', height: '100vh',
         backgroundColor: c.bg, color: c.text,
@@ -368,15 +371,15 @@ function App() {
             />
           </div>
 
-          {/* Tools: rendered when active */}
-          {page === 'tools' && (
+          {/* Tools: always mounted, shown/hidden via CSS */}
+          <div style={{ display: page === 'tools' ? 'flex' : 'none', width: '100%', height: '100%' }}>
             <ToolsPage isDarkMode={isDarkMode} c={c} />
-          )}
+          </div>
 
-          {/* Story Editor: rendered when active */}
-          {page === 'story' && (
+          {/* Story Editor: always mounted, shown/hidden via CSS */}
+          <div style={{ display: page === 'story' ? 'flex' : 'none', width: '100%', height: '100%' }}>
             <StoryEditor isDarkMode={isDarkMode} c={c} />
-          )}
+          </div>
         </div>
 
         {/* ── Status bar ── */}
@@ -387,6 +390,7 @@ function App() {
           c={c}
         />
       </div>
+    </AntdApp>
     </ConfigProvider>
   );
 }

@@ -1,54 +1,85 @@
 metadata:
-  name: disaster
+  name: disaster111
   version: 1.0.0
   author: Universal Dynamics System
-  description: "自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。"
-  tags: [environmental, disaster, risk]
-
+  description: 自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。1111
+  tags:
+  - environmental
+  - disaster
+  - risk
 variables:
-  # R1: Threat Level
-  hazard_intensity: { description: "灾害强度", value: 0, unit: "级", type: state, bounds: [0, 10] }
-  
-  # R2: Infrastructure
-  damage_index: { description: "设施受损指数", value: 0, unit: "分", type: state, bounds: [0, 100] }
-  population_safety: { description: "人群安全评分", value: 100, unit: "分", type: state, bounds: [0, 100] }
-  
-  # R3: Recovery
-  rescue_progress: { description: "救援任务进度", value: 0, unit: "%", type: state, bounds: [0, 100] }
-  
-  # P1: Inputs (Card Inputs)
-  supplies_delivery: { description: "物资投送", value: 0, unit: "吨", type: input }
-  evacuation_order: { description: "撤离指令强度", value: 0, unit: "级", type: input }
-  infrastructure_repair: { description: "修缮投入", value: 0, unit: "万", type: input }
-
+  hazard_intensity:
+    description: 灾害强度
+    value: 0
+    unit: 级
+    type: state
+    bounds:
+    - 0
+    - 10
+  damage_index:
+    description: 设施受损指数
+    value: 0
+    unit: 分
+    type: state
+    bounds:
+    - 0
+    - 100
+  population_safety:
+    description: 人群安全评分
+    value: 100
+    unit: 分
+    type: state
+    bounds:
+    - 0
+    - 100
+  rescue_progress:
+    description: 救援任务进度
+    value: 0
+    unit: '%'
+    type: state
+    bounds:
+    - 0
+    - 100
+  supplies_delivery:
+    description: 物资投送
+    value: 0
+    unit: 吨
+    type: input
+  evacuation_order:
+    description: 撤离指令强度
+    value: 0
+    unit: 级
+    type: input
+  infrastructure_repair:
+    description: 修缮投入
+    value: 0
+    unit: 万
+    type: input
 formulas:
-  # F1: Hazard Impact
   damage_dynamics:
-    description: "灾害导致损毁"
+    description: 灾害导致损毁
     condition: hazard_intensity > 3
     dynamics:
-      damage_index: "min(100, damage_index + (hazard_intensity - 3) * 5 * step_size)"
-      population_safety: "max(0, population_safety - hazard_intensity * 2 * step_size)"
+      damage_index: min(100, damage_index + (hazard_intensity - 3) * 5 * step_size)
+      population_safety: max(0, population_safety - hazard_intensity * 2 * step_size)
     priority: 5
-
-  # F2: Rescue Operations
   rescue_dynamics:
-    description: "救援提升安全并修复设施"
+    description: 救援提升安全并修复设施
     condition: supplies_delivery > 0
     dynamics:
-      rescue_progress: "min(100, rescue_progress + supplies_delivery * 0.5 * step_size)"
-      population_safety: "min(100, population_safety + supplies_delivery * 0.2 * step_size)"
+      rescue_progress: min(100, rescue_progress + supplies_delivery * 0.5 * step_size)
+      population_safety: min(100, population_safety + supplies_delivery * 0.2 * step_size)
     priority: 5
-
-  # F3: Reparation
   repair_dynamics:
-    description: "灾后重建"
+    description: 灾后重建
     condition: infrastructure_repair > 0 and hazard_intensity < 5
     dynamics:
-      damage_index: "max(0, damage_index - infrastructure_repair * 0.1 * step_size)"
+      damage_index: max(0, damage_index - infrastructure_repair * 0.1 * step_size)
     priority: 3
-
 simulator:
   step_size: 1
   total_time: 48
-  output_variables: [damage_index, population_safety, rescue_progress]
+  output_variables:
+  - damage_index
+  - population_safety
+  - rescue_progress

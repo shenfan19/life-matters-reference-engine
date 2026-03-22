@@ -1,68 +1,57 @@
+type: unknown
+category: unknown
 metadata:
   name: test_module1
   version: 1.0.0
   author: Test User
   description: 测试模块1 - 心血管系统
-  date: 2024-10-27
-  language: en
   tags:
-    - test
-    - cardiovascular
-
+  - test
+  - cardiovascular
+imports: []
 variables:
-  # 输入变量
   heart_rate:
-    type: input
-    unit: bpm
-    default: 70
     description: 心率
-  
+    value: 70
+    unit: bpm
+    type: state
+    bounds: null
   blood_pressure:
-    type: input
-    unit: mmHg
-    default: 120
     description: 血压
-  
-  # 参数
-  cardiac_output_coefficient:
+    value: 120
+    unit: mmHg
     type: parameter
-    unit: L/min/bpm
-    default: 0.07
+    bounds: null
+  cardiac_output_coefficient:
     description: 心输出量系数
-  
-  # 状态变量
+    value: 0.07
+    unit: L/min/bpm
+    type: parameter
+    bounds: null
   cardiac_output:
-    type: state
-    unit: L/min
-    default: 5.0
     description: 心输出量
-  
-  oxygen_delivery:
+    value: 5
+    unit: L/min
     type: state
-    unit: mL/min
-    default: 1000
+    bounds: null
+  oxygen_delivery:
     description: 氧气输送量
-
+    value: 1000
+    unit: mL/min
+    type: state
+    bounds: null
 formulas:
-  # 心输出量计算
   cardiac_output:
     description: 心输出量 = 心率 × 系数
-    dynamics: 
+    condition: 心输出量 = 心率 × 系数
+    priority: 0
+    dynamics:
       cardiac_output: heart_rate * cardiac_output_coefficient
-  
-  # 氧气输送量
   oxygen_delivery:
     description: 氧气输送量 = 心输出量 × 200
-    dynamics: 
+    condition: 氧气输送量 = 心输出量 × 200
+    priority: 0
+    dynamics:
       oxygen_delivery: cardiac_output * 200
-
-simulation:
-  dt: 0.1
-  t_end: 10.0
-  method: euler
-  output_variables:
-    - cardiac_output
-    - oxygen_delivery
-
-optimization:
-  enabled: false
+optimizer: {}
+schedules: {}

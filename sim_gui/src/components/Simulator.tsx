@@ -2,6 +2,25 @@
 // Integrated Loader + 3-column Simulator layout
 
 import React, { useState, useEffect, useRef } from 'react';
+
+function useResize(initial: number, min = 150, max = 700, direction: 'right' | 'left' = 'right') {
+  const [width, setWidth] = useState(initial);
+  const wRef = useRef(width);
+  wRef.current = width;
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = wRef.current;
+    const onMove = (ev: MouseEvent) => {
+      const delta = direction === 'right' ? ev.clientX - startX : startX - ev.clientX;
+      setWidth(Math.max(min, Math.min(max, startW + delta)));
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+  return { width, startDrag };
+}
 import {
   Button, Switch, Select, InputNumber, Tooltip, Tag,
   message, Spin, Alert, Descriptions, Empty, Input, Tree,
@@ -25,15 +44,15 @@ const API_BASE = '/api';
 
 function getC(dark: boolean) {
   return dark ? {
-    bg: '#0d1a10', panel: '#111f16', border: '#1e3824',
+    bg: '#111111', panel: '#1a1a1a', border: '#2a2a2a',
     primary: '#52c41a', text: 'rgba(255,255,255,0.92)',
     textSec: 'rgba(255,255,255,0.75)', textMute: 'rgba(255,255,255,0.52)',
-    inputBg: '#162a1b', sectionHd: '#0a1409', rowHover: '#1a3a22',
+    inputBg: '#222222', sectionHd: '#111111', rowHover: 'rgba(82,196,26,0.1)',
   } : {
-    bg: '#f5faf6', panel: '#ffffff', border: '#c8e6c9',
+    bg: '#f5f5f5', panel: '#ffffff', border: '#e0e0e0',
     primary: '#007A33', text: '#1a2e22',
-    textSec: '#3d5c47', textMute: 'rgba(0,0,0,0.55)',
-    inputBg: '#ffffff', sectionHd: '#edf7f0', rowHover: '#e8f5e9',
+    textSec: '#6b7280', textMute: 'rgba(0,0,0,0.55)',
+    inputBg: '#ffffff', sectionHd: '#efefef', rowHover: 'rgba(0,122,51,0.07)',
   };
 }
 
@@ -76,6 +95,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 }) => {
   const c = getC(isDarkMode);
   const { t } = useI18n();
+  const { width: leftW, startDrag: startLeftDrag } = useResize(300);
+  const { width: rightW, startDrag: startRightDrag } = useResize(280, 150, 700, 'left');
 
   const {
     status, progress, currentStep, simulationData,
@@ -722,7 +743,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             ref={canvasRef}
             style={{
               width: '100%', height: '100%', display: 'block',
-              background: isDarkMode ? '#0a1409' : '#fafffe',
+              background: isDarkMode ? '#111111' : '#fafafa',
               border: `1px solid ${c.border}`, borderRadius: 6,
             }}
           />
@@ -746,7 +767,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           {(selectedVars.length > 0 ? selectedVars : outputVars).map(v => (
             <div key={v} style={{
               padding: '4px 8px',
-              background: isDarkMode ? '#111f16' : '#f0f7f1',
+              background: isDarkMode ? '#1a1a1a' : '#f5f5f5',
               border: `1px solid ${c.border}`, borderRadius: 6,
             }}>
               <div style={{ fontSize: 11, color: c.textMute }}>{v}</div>
@@ -765,8 +786,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
   const renderRightPanel = () => (
     <div style={{
-      width: 280, flexShrink: 0,
-      borderLeft: `1px solid ${c.border}`,
+      width: rightW, flexShrink: 0,
       background: c.panel, overflowY: 'auto',
     }}>
       {!selectedStory ? (
@@ -878,8 +898,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
         {/* LEFT: scenario browser + model detail */}
         <div style={{
-          width: 300, flexShrink: 0,
-          borderRight: `1px solid ${c.border}`,
+          width: leftW, flexShrink: 0,
           background: c.panel,
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
@@ -1051,8 +1070,24 @@ const Simulator: React.FC<SimulatorProps> = ({
           </div>
         </div>
 
+        {/* LEFT-CENTER resize handle */}
+        <div onMouseDown={startLeftDrag}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+            borderRight: `1px solid ${c.border}`, transition: 'background 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        />
+
         {/* CENTER */}
         {renderCenterPanel()}
+
+        {/* CENTER-RIGHT resize handle */}
+        <div onMouseDown={startRightDrag}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+            borderLeft: `1px solid ${c.border}`, transition: 'background 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        />
 
         {/* RIGHT */}
         {renderRightPanel()}
@@ -1077,7 +1112,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
         <div style={{ flex: 1, maxWidth: 260 }}>
           <div style={{
-            height: 6, background: isDarkMode ? '#1e3824' : '#e8f5e9',
+            height: 6, background: isDarkMode ? '#2a2a2a' : '#e0e0e0',
             borderRadius: 3, overflow: 'hidden',
           }}>
             <div style={{

@@ -3,58 +3,60 @@ metadata:
   version: 1.0.0
   author: Test User
   description: 一个无法通过验证的测试模型（缺少变量定义）
-  date: 2024-10-27
+  date: '2024-10-27'
   language: en
   tags:
-    - test
-    - invalid
-
+  - test
+  - invalid
 variables:
-  # 输入变量
   temperature:
     type: input
     unit: celsius
-    default: 37.0
+    default: 37
     description: 体温
-  
-  # 参数
   base_metabolic_rate:
     type: parameter
     unit: kcal/day
     default: 1500
     description: 基础代谢率
-  
-  # 状态变量
   energy_level:
     type: state
     unit: kcal
     default: 2000
     description: 能量水平
-  
-  # 注意：这里缺少 heart_rate 和 stress_level 的定义
-
+  abc:
+    type: state
+    unit: ''
+    value: 0
+    bounds:
+    - 0
+    - 100
+    description: ''
+  stress_levelaa:
+    type: state
+    unit: ''
+    value: 0
+    bounds:
+    - 0
+    - 100
+    description: ''
 formulas:
-  # 能量变化 - 使用了未定义的 heart_rate
   the_energy_level:
     description: 能量水平随时间变化
-    dynamics: 
+    dynamics:
       energy_level: energy_level + (base_metabolic_rate / 24) - (heart_rate * 0.1)
-  
-  # 压力变化 - 使用了未定义的 stress_level 和 blood_pressure
   the_stress_level:
-    condition: True
+    condition: true
     description: 压力水平受体温和血压影响
-    dynamics: 
-      stress_levelaa: stress_level + ((temperature - 37.0) * 0.01) + (blood_pressure / 100)
-      abc: abc + 123
-
+    dynamics:
+      stress_levelaa: stress_level + ((temperature - 37.0) * 0.01) + (blood_pressure
+        / 100)
 simulation:
   dt: 0.1
-  t_end: 10.0
+  t_end: 10
   method: euler
   output_variables:
-    - energy_level
-    - stress_level
-
+  - energy_level
+  - stress_level
 optimization:
   enabled: false

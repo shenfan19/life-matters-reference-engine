@@ -1,7 +1,23 @@
 // StoryEditor.tsx
 // Browse & edit game_story.yaml files under scenarios/to_game/
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+
+function useResize(initial: number, min = 150, max = 600) {
+  const [width, setWidth] = useState(initial);
+  const ref = useRef(width);
+  ref.current = width;
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = ref.current;
+    const onMove = (ev: MouseEvent) => setWidth(Math.max(min, Math.min(max, startW + ev.clientX - startX)));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+  return { width, startDrag };
+}
 import { Input, message, Button, Modal } from 'antd';
 import { SearchOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import jsYaml from 'js-yaml';
@@ -11,26 +27,15 @@ import jsYaml from 'js-yaml';
 const clone  = (o: any) => JSON.parse(JSON.stringify(o));
 const differ = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
 
-const SECT_COLORS: Record<string, { accent: string; bg: string }> = {
-  '基本信息':  { accent: '#1677ff', bg: '#e6f4ff' },
-  '游戏变量':  { accent: '#52c41a', bg: '#f6ffed' },
-  '游戏规则':  { accent: '#722ed1', bg: '#f9f0ff' },
-  '失败条件':  { accent: '#f5222d', bg: '#fff1f0' },
-  '玩家卡牌':  { accent: '#fa8c16', bg: '#fff7e6' },
-  '环境卡牌':  { accent: '#eb2f96', bg: '#fff0f6' },
-};
-
 function Sect({ title, action, children, c, isDarkMode }: {
   title: string; action?: React.ReactNode; children: React.ReactNode; c: any; isDarkMode: boolean;
 }) {
-  const col = SECT_COLORS[title] ?? { accent: '#8c8c8c', bg: '#f5f5f5' };
   return (
     <div style={{ borderBottom: `1px solid ${c.border}`, padding: '12px 14px 14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-        <div style={{ width: 3, height: 14, borderRadius: 2, background: col.accent, flexShrink: 0 }} />
-        <span style={{ fontSize: 10, fontWeight: 700, color: col.accent,
-          background: isDarkMode ? col.accent + '22' : col.bg,
-          padding: '1px 8px', borderRadius: 8, letterSpacing: '0.04em' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 6 }}>
+        <span style={{ fontSize: 10, fontWeight: 700,
+          color: isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)',
+          letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           {title}
         </span>
         {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
@@ -97,14 +102,16 @@ function TA({ editing, value, onChange, rows, c }: {
   );
 }
 
-function Btn({ onClick, color, disabled, loading, outline, children }: {
+function Btn({ onClick, color, disabled, loading, outline, danger, children }: {
   onClick(): void; color: string; disabled?: boolean; loading?: boolean;
-  outline?: boolean; children: React.ReactNode;
+  outline?: boolean; danger?: boolean; children: React.ReactNode;
 }) {
+  const dangerColor = '#cf1322';
   return (
     <Button size="small" disabled={disabled} loading={loading} onClick={onClick}
-      style={{ fontWeight: 600, ...(outline
-        ? { background: 'transparent', color, borderColor: color }
+      style={{ fontWeight: 500, ...(outline
+        ? { background: 'transparent', color: danger ? dangerColor : color,
+            borderColor: danger ? dangerColor + '66' : color }
         : { background: disabled||loading ? undefined : color,
             borderColor: disabled||loading ? undefined : color,
             color: disabled||loading ? undefined : '#fff' }) }}>
@@ -154,6 +161,7 @@ interface StoryEntry {
 
 export default function StoryEditor({ isDarkMode, c }: Props) {
   const { border, panel, bg, text, textMute: mute, primary } = c;
+  const { width: leftW, startDrag: startLeftDrag } = useResize(230);
 
   const [stories, setStories] = useState<StoryEntry[]>([]);
   const [search,  setSearch]  = useState('');
@@ -337,7 +345,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: bg }}>
 
       {/* ── LEFT: story list ── */}
-      <div style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${border}`,
+      <div style={{ width: leftW, flexShrink: 0,
         background: panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         <div style={{ padding: '10px 10px 6px' }}>
@@ -368,12 +376,12 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               <div key={s.key} onClick={() => loadStory(s.key)}
                 style={{ minHeight: 32, display: 'flex', alignItems: 'center', gap: 8,
                   padding: '4px 8px', cursor: 'pointer', borderRadius: 6,
-                  background: isSel ? (isDarkMode ? '#2a1f40' : '#f9f0ff') : 'transparent',
-                  border: `1px solid ${isSel ? '#722ed1' : 'transparent'}`,
-                  fontSize: 11, color: isSel ? (isDarkMode ? '#b37feb' : '#531dab') : text,
+                  background: isSel ? (isDarkMode ? 'rgba(82,196,26,0.1)' : '#e8f5e9') : 'transparent',
+                  border: `1px solid ${isSel ? primary : 'transparent'}`,
+                  fontSize: 11, color: isSel ? primary : text,
                   transition: 'background 0.1s', marginBottom: 2 }}
                 onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.04)' : '#f9fafb'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = isSel ? (isDarkMode ? '#2a1f40' : '#f9f0ff') : 'transparent'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isSel ? (isDarkMode ? 'rgba(82,196,26,0.1)' : '#e8f5e9') : 'transparent'; }}
               >
                 <span style={{ fontSize: 16, flexShrink: 0 }}>🎮</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -394,6 +402,14 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
         </div>
       </div>
 
+      {/* ── Resize handle ── */}
+      <div onMouseDown={startLeftDrag}
+        style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+          borderRight: `1px solid ${border}`, transition: 'background 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background = `${primary}55`; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+      />
+
       {/* ── RIGHT: editor ── */}
       {!active ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -410,13 +426,13 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
             background: isDarkMode ? '#1e2328' : '#fff',
             display: 'flex', flexDirection: 'column' }}>
 
-            {/* Coloured top strip */}
-            <div style={{ height: 4, flexShrink: 0, background: '#722ed1' }} />
+            {/* Top strip */}
+            <div style={{ height: 3, flexShrink: 0, background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }} />
 
             {/* Header */}
             <div style={{ padding: '10px 14px', flexShrink: 0,
-              background: isDarkMode ? '#722ed11a' : '#f9f0ff',
-              borderBottom: `1px solid ${isDarkMode ? '#722ed133' : '#722ed128'}`,
+              background: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fafafa',
+              borderBottom: `1px solid ${border}`,
               display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 22, flexShrink: 0 }}>🎮</span>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -430,17 +446,17 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                 </div>
               </div>
               {data?.meta?.difficulty && (
-                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, flexShrink: 0,
-                  background: DIFF[data.meta.difficulty]?.color || '#8c8c8c', color: '#fff', fontWeight: 700 }}>
+                <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                  border: `1px solid ${border}`, color: mute, fontWeight: 600 }}>
                   {DIFF[data.meta.difficulty]?.label || data.meta.difficulty}
                 </span>
               )}
 
               {!editing ? (
                 <>
+                  <Btn onClick={handleDelete} color={mute} outline danger>删除</Btn>
                   <Btn onClick={handleExport} color={mute} outline>导出</Btn>
-                  <Btn onClick={enterEdit} color={primary}>✏️ 编辑</Btn>
-                  <Btn onClick={handleDelete} color="#ff4d4f" outline>删除</Btn>
+                  <Btn onClick={enterEdit} color={primary} outline>编辑</Btn>
                 </>
               ) : (
                 <>
@@ -479,15 +495,15 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                         {(['easy', 'medium', 'hard'] as const).map(d => (
                           <button key={d} onClick={() => patch(p => { if (p.meta) p.meta.difficulty = d; })}
                             style={{ fontSize: 11, padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
-                              border: `1.5px solid ${data.meta?.difficulty === d ? DIFF[d].color : border}`,
-                              background: data.meta?.difficulty === d ? DIFF[d].color + '22' : 'transparent',
-                              color: data.meta?.difficulty === d ? DIFF[d].color : mute }}>
+                              border: `1.5px solid ${data.meta?.difficulty === d ? primary : border}`,
+                              background: data.meta?.difficulty === d ? (isDarkMode ? 'rgba(82,196,26,0.1)' : '#e8f5e9') : 'transparent',
+                              color: data.meta?.difficulty === d ? primary : mute }}>
                             {DIFF[d].label}
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: 12, color: DIFF[data.meta?.difficulty]?.color || text }}>
+                      <span style={{ fontSize: 12, color: text }}>
                         {DIFF[data.meta?.difficulty]?.label || data.meta?.difficulty || '—'}
                       </span>
                     )}
