@@ -318,9 +318,21 @@ function App() {
       Tabs: { itemActiveColor: antPrimary, itemSelectedColor: antPrimary, inkBarColor: antPrimary, horizontalItemPadding: '10px 14px' },
       Divider: { colorSplit: isDarkMode ? '#2a2a2a' : '#e0e0e0' },
       Tag: { borderRadiusSM: 4 },
-      Input: { colorBgContainer: isDarkMode ? '#162a1b' : '#ffffff' },
-      Select: { colorBgContainer: isDarkMode ? '#162a1b' : '#ffffff', colorBgElevated: isDarkMode ? '#1a3a22' : '#ffffff' },
-      Table: { colorBgContainer: isDarkMode ? '#111f16' : '#ffffff', headerBg: isDarkMode ? '#162a1b' : '#f0f7f1' },
+      Input: { colorBgContainer: isDarkMode ? '#222222' : '#ffffff' },
+      InputNumber: { colorBgContainer: isDarkMode ? '#222222' : '#ffffff' },
+      Select: {
+        colorBgContainer: isDarkMode ? '#222222' : '#ffffff',
+        colorBgElevated: isDarkMode ? '#252525' : '#ffffff',
+        optionSelectedBg: isDarkMode ? '#2a2a2a' : '#f0f0f0',
+        optionSelectedColor: isDarkMode ? 'rgba(255,255,255,0.92)' : '#1a2e22',
+      },
+      Table: { colorBgContainer: isDarkMode ? '#1a1a1a' : '#ffffff', headerBg: isDarkMode ? '#222222' : '#f5f5f5' },
+      Tree: {
+        colorBgContainer: 'transparent',
+        nodeSelectedBg: isDarkMode ? '#2a2a2a' : '#ebebeb',
+        nodeHoverBg: isDarkMode ? '#222222' : '#f0f0f0',
+        colorText: isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22',
+      },
     },
   };
 

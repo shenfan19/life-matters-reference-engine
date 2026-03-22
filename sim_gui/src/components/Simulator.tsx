@@ -21,6 +21,24 @@ function useResize(initial: number, min = 150, max = 700, direction: 'right' | '
   }
   return { width, startDrag };
 }
+
+function useResizeV(initial: number, min = 80, max = 600) {
+  const [height, setHeight] = useState(initial);
+  const hRef = useRef(height);
+  hRef.current = height;
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = hRef.current;
+    const onMove = (ev: MouseEvent) => {
+      setHeight(Math.max(min, Math.min(max, startH + ev.clientY - startY)));
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+  return { height, startDrag };
+}
 import {
   Button, Switch, Select, InputNumber, Tooltip, Tag,
   message, Spin, Alert, Descriptions, Empty, Input, Tree,
@@ -97,6 +115,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t } = useI18n();
   const { width: leftW, startDrag: startLeftDrag } = useResize(300);
   const { width: rightW, startDrag: startRightDrag } = useResize(280, 150, 700, 'left');
+  const { height: topH, startDrag: startTopDrag } = useResizeV(200, 80, 500);
 
   const {
     status, progress, currentStep, simulationData,
@@ -903,11 +922,10 @@ const Simulator: React.FC<SimulatorProps> = ({
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
         }}>
-          {/* Scenario browser (top ~38%) */}
+          {/* Scenario browser (resizable top) */}
           <div style={{
-            flex: '0 0 38%', display: 'flex', flexDirection: 'column',
-            borderBottom: `2px solid ${c.border}`,
-            minHeight: 120, overflow: 'hidden',
+            height: topH, flexShrink: 0, display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
           }}>
             {/* Header */}
             <div style={{
@@ -940,8 +958,8 @@ const Simulator: React.FC<SimulatorProps> = ({
             </div>
 
             {/* Tree / List */}
-            <Spin spinning={treeLoading} indicator={<LoadingOutlined />} style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ flex: 1, overflow: 'auto', padding: '4px 4px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '4px 4px', position: 'relative' }}>
+              <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
                 {storyViewMode === 'tree' ? (
                   <Tree
                     showIcon
@@ -976,11 +994,19 @@ const Simulator: React.FC<SimulatorProps> = ({
                     }
                   </div>
                 )}
-              </div>
-            </Spin>
+              </Spin>
+            </div>
           </div>
 
-          {/* Model detail (bottom ~62%) */}
+          {/* TOP-BOTTOM resize handle */}
+          <div onMouseDown={startTopDrag}
+            style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent',
+              borderBottom: `1px solid ${c.border}`, transition: 'background 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          />
+
+          {/* Model detail (bottom) */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {!selectedStory ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1106,7 +1132,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           {mode === 'opt' ? '运行优化' : status === 'running' ? '运行中' : '运行仿真'}
         </Button>
         <Button size="small" icon={<PauseOutlined />} onClick={pauseSimulation} disabled={status !== 'running'}>暂停</Button>
-        <Button size="small" icon={<StopOutlined />} danger onClick={resetSimulation}>停止</Button>
+        <Button size="small" icon={<StopOutlined />} danger onClick={resetSimulation} disabled={status === 'idle'}>停止</Button>
         <Button size="small" icon={<StepForwardOutlined />} onClick={runSingleStep} disabled={!sessionId || status === 'running'}>单步</Button>
         <Button size="small" icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
 

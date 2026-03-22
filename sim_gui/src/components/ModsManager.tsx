@@ -1211,7 +1211,7 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
 }
 
 // isDarkBg: simple heuristic to decide background tint for formula blocks
-function isDarkBg(bg: string) { return bg.startsWith('#0') || bg.startsWith('rgba(0'); }
+function isDarkBg(bg: string) { return bg.startsWith('#0') || bg.startsWith('#1') || bg.startsWith('rgba(0'); }
 
 // ─── Variable name input (local state to avoid focus loss on keystroke) ───────
 
