@@ -1,0 +1,20 @@
+id: player_fundraise
+type: player
+category: work
+display:
+  name: "争取经费"
+  description: "撰写申请书，游说科学委员会为研究提供资助。"
+  flavor: "科学需要金钱，这是她最不擅长却不得不做的事。"
+  icon: "💰"
+cost: 1
+effects:
+  - target: money
+    delta: 20
+    condition: null
+channel: social
+tags: [income, social]
+weight: 100
+source:
+  variable: money
+  formula: ""
+  pattern_detected: P1

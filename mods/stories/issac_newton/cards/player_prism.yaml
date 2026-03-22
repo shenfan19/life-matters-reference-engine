@@ -1,0 +1,23 @@
+id: player_prism
+type: player
+category: goal
+display:
+  name: "棱镜光学实验"
+  description: "用从集市买来的玻璃棱镜分解日光，揭示白光的秘密。"
+  flavor: "\"白色并非纯粹——它是所有颜色的叠加。\" 1666年。"
+  icon: "🌈"
+cost: 2
+effects:
+  - target: insight
+    delta: 20
+    condition: null
+  - target: health
+    delta: -5
+    condition: null
+channel: medical
+tags: [goal, experiment]
+weight: 100
+source:
+  variable: insight
+  formula: ""
+  pattern_detected: P1

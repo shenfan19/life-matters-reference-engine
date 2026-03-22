@@ -153,7 +153,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   const [savingSet, setSavingSet] = useState<Set<string>>(new Set());
 
   // ── Merge state ──
-  const [mergeOut, setMergeOut]   = useState('models/_output/merged/output.yaml');
+  const [mergeOut, setMergeOut]   = useState('scenarios/merged_output.yaml');
   const [showMerge, setShowMerge] = useState(false);
   const [merging, setMerging]     = useState(false);
 

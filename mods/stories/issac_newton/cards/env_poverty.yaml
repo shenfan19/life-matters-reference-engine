@@ -1,0 +1,23 @@
+id: env_poverty
+type: env
+category: economy
+display:
+  name: "拮据的生活"
+  description: "母亲的农场收入有限，书籍和器材都是奢侈品。"
+  flavor: "他用羽毛笔在空白账本上写下了改变世界的方程。"
+  icon: "🪙"
+pattern: P1
+effects:
+  - target: money
+    delta: -5
+    condition: null
+  - target: health
+    delta: -3
+    condition: null
+channel: social
+tags: [economy, stress]
+weight: 150
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

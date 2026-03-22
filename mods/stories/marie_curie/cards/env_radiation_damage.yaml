@@ -1,0 +1,23 @@
+id: env_radiation_damage
+type: env
+category: health
+display:
+  name: "辐射持续侵蚀"
+  description: "放射性物质无声无息地损耗着身体，每一天都是煎熬。"
+  flavor: "居里夫人的手因长期接触放射性物质而留下了永久性灼伤。"
+  icon: "☢️"
+pattern: P1
+effects:
+  - target: health
+    delta: -5
+    condition: null
+  - target: radiation
+    delta: 3
+    condition: null
+channel: medical
+tags: [radiation, chronic]
+weight: 300
+source:
+  variable: radiation
+  formula: "health -= radiation * 0.1"
+  pattern_detected: P1

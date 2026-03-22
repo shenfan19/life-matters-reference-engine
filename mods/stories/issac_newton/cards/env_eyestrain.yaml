@@ -1,0 +1,24 @@
+id: env_eyestrain
+type: env
+category: health
+display:
+  name: "视力损伤"
+  description: "长期凝视棱镜实验和烛光下的手稿，眼睛持续疼痛。"
+  flavor: "他曾用针刺入眼眶后方研究光——科学的热情有时超越了理智。"
+  icon: "👁️"
+pattern: P4
+effects:
+  - target: health
+    delta: -12
+    condition:
+      type: threshold
+      variable: insight
+      op: ">="
+      value: 40
+channel: medical
+tags: [health, chronic]
+weight: 120
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P4

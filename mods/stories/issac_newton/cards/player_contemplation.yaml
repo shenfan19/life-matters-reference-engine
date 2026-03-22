@@ -1,0 +1,20 @@
+id: player_contemplation
+type: player
+category: goal
+display:
+  name: "苹果树下沉思"
+  description: "在庄园的苹果树下漫步，任思绪驰骋于星辰与苹果之间。"
+  flavor: "\"苹果为何向下落，而非向上或斜向？\" 这一问，改变了物理学。"
+  icon: "🍎"
+cost: 1
+effects:
+  - target: insight
+    delta: 15
+    condition: null
+channel: social
+tags: [goal, inspiration]
+weight: 100
+source:
+  variable: insight
+  formula: ""
+  pattern_detected: P1

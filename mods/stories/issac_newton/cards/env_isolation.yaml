@@ -1,0 +1,20 @@
+id: env_isolation
+type: env
+category: social
+display:
+  name: "深度孤立"
+  description: "与剑桥断绝联系，无人交流新想法，思维有时会陷入死胡同。"
+  flavor: "孤独是双刃剑——它既是礼物，也是诅咒。"
+  icon: "🌫️"
+pattern: P1
+effects:
+  - target: insight
+    delta: -8
+    condition: null
+channel: social
+tags: [social, mental]
+weight: 100
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

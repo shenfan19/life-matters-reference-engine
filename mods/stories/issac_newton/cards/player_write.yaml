@@ -1,0 +1,26 @@
+id: player_write
+type: player
+category: goal
+display:
+  name: "撰写手稿"
+  description: "将脑中的理论整理成文字，为日后的《自然哲学的数学原理》积累素材。"
+  flavor: "《原理》用拉丁文写成，故意写得深奥，\"以免被数学蠢材纠缠\"。"
+  icon: "✍️"
+cost: 2
+effects:
+  - target: insight
+    delta: 18
+    condition: null
+  - target: money
+    delta: -5
+    condition: null
+  - target: health
+    delta: -5
+    condition: null
+channel: social
+tags: [goal, writing]
+weight: 100
+source:
+  variable: insight
+  formula: ""
+  pattern_detected: P1

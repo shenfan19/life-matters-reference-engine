@@ -1,0 +1,72 @@
+meta:
+  name: "艾萨克·牛顿：苹果树下的宇宙"
+  description: "1665年，鼠疫席卷英格兰，剑桥大学关闭，年轻的牛顿被迫回到乡间的伍尔斯索普庄园。与世隔绝的两年，他独自推导出了微积分、发现了万有引力、拆解了光的秘密。在困境中，一个人改变了人类对宇宙的认知。"
+  difficulty: medium
+  tags: [历史, 科学, 17世纪, 英国]
+  author: ""
+  version: "0.1"
+  source_scenario: ""
+
+initial_state:
+  health: 90
+  money: 20
+  insight: 0
+
+health_mapping:
+  source_variable: health
+  scale: [0, 100, 0, 100]
+  display: "生命值"
+
+turns:
+  total: 12
+  time_per_turn: "1 month"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 3
+
+win_condition:
+  type: reach_target
+  target_variable: insight
+  target_value: 100
+  description: "洞见积累到 100，完成《自然哲学的数学原理》的理论基础"
+
+lose_condition:
+  type: health_zero
+  description: "身体崩溃，天才的思维也随之熄灭"
+
+endings:
+  - grade: S
+    condition: "health >= 70 and insight >= 100"
+    title: "Annus Mirabilis"
+    description: "以最好的状态完成了奇迹之年，为日后的《原理》奠定了全部基础。"
+  - grade: A
+    condition: "health > 0 and insight >= 100"
+    title: "带着疲惫的天才"
+    description: "心力交瘁，但那些思想已经写进了人类历史。"
+  - grade: D
+    condition: "health <= 0"
+    title: "未完成的原理"
+    description: "苹果落下了，但没人记录下它的意义。"
+
+env_deck:
+  - path: cards/env_plague.yaml
+    weight: 200
+  - path: cards/env_poverty.yaml
+    weight: 150
+  - path: cards/env_isolation.yaml
+    weight: 100
+  - path: cards/env_eyestrain.yaml
+    weight: 120
+  - path: cards/env_academic_rivalry.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_contemplation.yaml
+  - path: cards/player_prism.yaml
+  - path: cards/player_calculus.yaml
+  - path: cards/player_write.yaml
+  - path: cards/player_rest.yaml
+  - path: cards/player_correspondence.yaml
+
+generic_cards:
+  inject: [rest, interrupt]

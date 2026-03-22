@@ -1,0 +1,23 @@
+id: player_rest
+type: player
+category: health
+display:
+  name: "休息与疗养"
+  description: "暂别实验室，去乡间呼吸新鲜空气，让身体从辐射中恢复。"
+  flavor: "偶尔的停歇，是为了走更远的路。"
+  icon: "🌿"
+cost: 2
+effects:
+  - target: health
+    delta: 15
+    condition: null
+  - target: radiation
+    delta: -5
+    condition: null
+channel: medical
+tags: [health, recovery]
+weight: 100
+source:
+  variable: health
+  formula: ""
+  pattern_detected: P1

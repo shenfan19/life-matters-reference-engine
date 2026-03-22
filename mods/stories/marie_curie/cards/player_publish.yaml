@@ -1,0 +1,23 @@
+id: player_publish
+type: player
+category: goal
+display:
+  name: "发表论文"
+  description: "将研究成果整理成论文，向学术界宣布放射性的新发现。"
+  flavor: "1898年，居里夫妇在《法国科学院报告》发表了钋和镭的发现。"
+  icon: "📜"
+cost: 3
+effects:
+  - target: research_progress
+    delta: 30
+    condition: null
+  - target: health
+    delta: -8
+    condition: null
+channel: social
+tags: [goal, academic]
+weight: 100
+source:
+  variable: research_progress
+  formula: ""
+  pattern_detected: P1

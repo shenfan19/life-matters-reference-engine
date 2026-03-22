@@ -1,0 +1,24 @@
+id: env_acute_radiation
+type: env
+category: health
+display:
+  name: "辐射急性发作"
+  description: "长期高剂量辐射引发急性症状，身体发出严重警告。"
+  flavor: "手指麻木，视线模糊——这是辐射病的前兆。"
+  icon: "🤢"
+pattern: P4
+effects:
+  - target: health
+    delta: -20
+    condition:
+      type: threshold
+      variable: radiation
+      op: ">="
+      value: 30
+channel: medical
+tags: [radiation, acute, critical]
+weight: 60
+source:
+  variable: radiation
+  formula: "if radiation >= 50: health -= 20"
+  pattern_detected: P4

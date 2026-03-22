@@ -1,0 +1,23 @@
+id: env_plague
+type: env
+category: disease
+display:
+  name: "鼠疫蔓延"
+  description: "1665年大瘟疫席卷英格兰，剑桥被迫关闭。牛顿孤身一人困守乡间。"
+  flavor: "那两年的孤独，成了他一生中最富饶的时光。"
+  icon: "☠️"
+pattern: P1
+effects:
+  - target: health
+    delta: -8
+    condition: null
+  - target: money
+    delta: -3
+    condition: null
+channel: medical
+tags: [disease, historical]
+weight: 200
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

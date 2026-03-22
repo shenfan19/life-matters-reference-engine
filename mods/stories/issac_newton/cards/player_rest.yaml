@@ -1,0 +1,23 @@
+id: player_rest
+type: player
+category: health
+display:
+  name: "在庄园休养"
+  description: "帮母亲打理农场，暂时放下繁重的思考，让身心得到恢复。"
+  flavor: "有时候，最好的思考发生在不思考的时候。"
+  icon: "🌾"
+cost: 1
+effects:
+  - target: health
+    delta: 18
+    condition: null
+  - target: money
+    delta: 5
+    condition: null
+channel: medical
+tags: [health, recovery]
+weight: 100
+source:
+  variable: health
+  formula: ""
+  pattern_detected: P1

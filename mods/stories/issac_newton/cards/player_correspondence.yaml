@@ -1,0 +1,23 @@
+id: player_correspondence
+type: player
+category: goal
+display:
+  name: "书信往来"
+  description: "与剑桥的巴罗教授通信，交流最新的数学发现，获得指点与认可。"
+  flavor: "巴罗后来主动让出了卢卡斯数学教席，给这个比他聪明的学生。"
+  icon: "✉️"
+cost: 2
+effects:
+  - target: insight
+    delta: 12
+    condition: null
+  - target: money
+    delta: 8
+    condition: null
+channel: social
+tags: [goal, social]
+weight: 100
+source:
+  variable: insight
+  formula: ""
+  pattern_detected: P1
