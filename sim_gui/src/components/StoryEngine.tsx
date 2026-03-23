@@ -40,6 +40,8 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
   const [state, setState] = useState<Record<string, number>>({});
   const [hand, setHand] = useState<CardData[]>([]);
   const [deck, setDeck] = useState<string[]>([]);
+  const [playedCards, setPlayedCards] = useState<CardData[]>([]);
+  const [stateSnapshot, setStateSnapshot] = useState<Record<string, number>>({});
   const [turn, setTurn] = useState(1);
   const [ap, setAp] = useState(3);
   const [logs, setLogs] = useState<{ text: string; type: 'positive' | 'negative' | 'neutral' }[]>([]);
@@ -68,6 +70,7 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
         
         // Initialize State
         setState(storyConfig.initial_state);
+        setStateSnapshot(storyConfig.initial_state);
         setAp(storyConfig.ap_per_turn || 3);
         
         // Initialize Deck
@@ -99,44 +102,58 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
     }
   };
 
+  // Apply a list of cards' effects onto a base state (pure, no side effects)
+  const applyCardEffects = (base: Record<string, number>, cards: CardData[]): Record<string, number> => {
+    const s = { ...base };
+    for (const card of cards) {
+      Object.entries(card.effects).forEach(([key, val]) => {
+        let value = 0;
+        if (typeof val === 'string' && val.startsWith('params.')) {
+          value = config?.params[val.split('.')[1]] || 0;
+        } else {
+          value = Number(val);
+        }
+        const varName = key.startsWith('+') || key.startsWith('-') ? key.substring(1) : key;
+        if (key.startsWith('-')) {
+          s[varName] = (s[varName] || 0) - value;
+        } else {
+          s[varName] = (s[varName] || 0) + value;
+        }
+      });
+    }
+    return s;
+  };
+
+  // Computed preview state (snapshot + all played cards, not committed yet)
+  const previewState = applyCardEffects(stateSnapshot, playedCards);
+
   const handlePlayCard = (card: CardData, index: number) => {
     if (ap < card.cost) {
       message.warning('行动点(AP)不足');
       return;
     }
-
     setAp(prev => prev - card.cost);
     setHand(prev => prev.filter((_, i) => i !== index));
-    
-    // Apply Effects
-    const newState = { ...state };
-    Object.entries(card.effects).forEach(([key, val]) => {
-      let value = 0;
-      if (typeof val === 'string' && val.startsWith('params.')) {
-        const paramKey = val.split('.')[1];
-        value = config?.params[paramKey] || 0;
-      } else {
-        value = Number(val);
-      }
+    setPlayedCards(prev => [...prev, card]);
+    setLogs(prev => [{ text: `打出 [${card.name}]，点击可撤回`, type: 'positive' }, ...prev]);
+  };
 
-      const varName = key.startsWith('+') || key.startsWith('-') ? key.substring(1) : key;
-      const isNegative = key.startsWith('-');
-      
-      if (isNegative) {
-        newState[varName] = (newState[varName] || 0) - value;
-      } else {
-        newState[varName] = (newState[varName] || 0) + value;
-      }
-    });
-
-    setState(newState);
-    setLogs(prev => [{ text: `使用了 [${card.name}]`, type: 'positive' }, ...prev]);
-    checkWinLoss(newState);
+  const handleRecallCard = (card: CardData, index: number) => {
+    setPlayedCards(prev => prev.filter((_, i) => i !== index));
+    setHand(prev => [...prev, card]);
+    setAp(prev => prev + card.cost);
+    setLogs(prev => [{ text: `撤回 [${card.name}]`, type: 'neutral' }, ...prev]);
   };
 
   const endTurn = () => {
-    // 1. Environment Phase
-    const newState = { ...state };
+    // 1. Lock in played cards
+    let newState = applyCardEffects(stateSnapshot, playedCards);
+    if (playedCards.length > 0) {
+      setLogs(prev => [{ text: `结算 ${playedCards.length} 张打出的牌`, type: 'positive' }, ...prev]);
+    }
+    setPlayedCards([]);
+
+    // 2. Environment Phase
     if (config?.dynamics) {
       config.dynamics.forEach(dyn => {
         // Simple condition check
@@ -173,11 +190,12 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
     }
 
     setState(newState);
-    
-    // 2. Settlement
+    setStateSnapshot(newState);
+
+    // 3. Settlement
     if (checkWinLoss(newState)) return;
 
-    // 3. New Turn Start
+    // 4. New Turn Start
     setTurn(prev => prev + 1);
     setAp(config?.ap_per_turn || 3);
     
@@ -237,87 +255,129 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
       </div>
 
       <main className="game-layout">
-        <div className="battlefield">
-          {/* Status Indicators */}
-          <div className="status-grid">
-            {Object.entries(state).map(([key, val]) => (
-              <div key={key} className="status-card">
-                <div className="status-label">{config.variable_labels[key] || key}</div>
-                <div className="status-value-row">
-                  <span className="value-num">{Math.round(val)}</span>
-                  <Progress 
-                    percent={key === 'health' ? val : (val / config.goal_value * 100)} 
-                    showInfo={false} 
-                    strokeColor={key === 'health' ? '#ef4444' : '#3b82f6'}
-                    trailColor="rgba(255,255,255,0.1)"
-                  />
-                </div>
-              </div>
-            ))}
+        <div className="center-column" style={{ flex: 1, display: 'grid', gridTemplateRows: '1fr 300px 300px', minHeight: 0, overflow: 'hidden' }}>
+          <div className="battlefield">
+            {/* Status Indicators */}
+            <div className="status-grid">
+              {Object.entries(previewState).map(([key, val]) => {
+                const base = stateSnapshot[key] ?? 0;
+                const delta = Math.round(val - base);
+                return (
+                  <div key={key} className="status-card">
+                    <div className="status-label">{config.variable_labels[key] || key}</div>
+                    <div className="status-value-row">
+                      <span className="value-num">{Math.round(val)}</span>
+                      {delta !== 0 && (
+                        <span style={{ fontSize: 11, marginLeft: 4, color: delta > 0 ? '#52c41a' : '#ef4444', fontWeight: 600 }}>
+                          {delta > 0 ? `+${delta}` : delta}
+                        </span>
+                      )}
+                      <Progress
+                        percent={key === 'health' ? Math.max(0, val) : Math.min(100, val / config.goal_value * 100)}
+                        showInfo={false}
+                        strokeColor={key === 'health' ? '#ef4444' : '#3b82f6'}
+                        trailColor="rgba(255,255,255,0.1)"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="middle-section">
+               <div className="ap-display">
+                  AP: {Array.from({ length: config.ap_per_turn }).map((_, i) => (
+                    <div key={i} className={`ap-dot ${i < ap ? 'active' : ''}`} />
+                  ))}
+               </div>
+               <Button type="primary" danger size="large" onClick={endTurn} className="end-turn-btn">
+                 结束回合
+               </Button>
+            </div>
           </div>
 
-          <div className="middle-section">
-             <div className="ap-display">
-                AP: {Array.from({ length: config.ap_per_turn }).map((_, i) => (
-                  <div key={i} className={`ap-dot ${i < ap ? 'active' : ''}`} />
-                ))}
-             </div>
-             <Button type="primary" danger size="large" onClick={endTurn} className="end-turn-btn">
-               结束回合
-             </Button>
-          </div>
-        </div>
-
-        {/* Hand Area (Hearthstone Overlap Style) */}
-        <div className="hand-area">
-          <div className="hand-wrapper">
-            {hand.map((card, i) => (
-              <div 
-                key={i} 
-                className="game-card-hs" 
-                style={{ 
-                  zIndex: i,
-                  transform: `translateX(${i * -40}px)` // Overlap effect
-                }}
-                onClick={() => handlePlayCard(card, i)}
-              >
-                {/* Hearthstone style corners */}
-                <div className="card-corner-top-left">
-                  <BadgeHS color="blue">{card.cost}</BadgeHS>
-                </div>
-                <div className="card-corner-bottom-left">
-                  <Tooltip title={card.type.toUpperCase()}>
-                    <div className="type-icon">{card.icon}</div>
-                  </Tooltip>
-                </div>
-                
-                <div className="card-content">
-                  <div className="card-name">{card.name}</div>
-                  <div className="card-desc">{card.description}</div>
-                  <div className="card-effects-short">
+          {/* Played Zone */}
+          <div className="played-zone" style={{ background: 'rgba(82,196,26,0.07)', borderTop: '1px solid rgba(82,196,26,0.3)', borderBottom: '1px solid rgba(82,196,26,0.3)', padding: '10px 20px', overflow: 'hidden' }}>
+            <div className="played-zone-label">
+              已打出 {playedCards.length > 0 ? `(${playedCards.length})` : ''} — 点击撤回
+            </div>
+            <div className="played-zone-cards">
+              {playedCards.length === 0 ? (
+                <div className="played-zone-empty">本回合尚未打出牌</div>
+              ) : playedCards.map((card, i) => (
+                <div
+                  key={i}
+                  className="played-card"
+                  onClick={() => handleRecallCard(card, i)}
+                  title="点击撤回此牌"
+                >
+                  <div className="played-card-cost">{card.cost}</div>
+                  <div className="played-card-icon">{card.icon}</div>
+                  <div className="played-card-name">{card.name}</div>
+                  <div className="played-card-effects">
                     {Object.entries(card.effects).map(([k, v]) => (
-                      <div key={k} className={k.startsWith('-') ? 'eff-neg' : 'eff-pos'}>
-                        {k}: {v}
-                      </div>
+                      <span key={k} className={k.startsWith('-') ? 'eff-neg' : 'eff-pos'}>
+                        {k.startsWith('+') || k.startsWith('-') ? k.substring(1) : k} {k.startsWith('-') ? '-' : '+'}{v}
+                      </span>
                     ))}
                   </div>
+                  <div className="played-card-recall">↩</div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </main>
 
-      <aside className="game-sidebar">
-        <div className="sidebar-section">
-          <h3>历史日志</h3>
-          <div className="log-list">
-            {logs.map((log, i) => (
-              <div key={i} className={`log-item log-${log.type}`}>{log.text}</div>
-            ))}
+          {/* Hand Area (Hearthstone Overlap Style) */}
+          <div className="hand-area">
+            <div className="hand-wrapper">
+              {hand.map((card, i) => (
+                <div
+                  key={i}
+                  className="game-card-hs"
+                  style={{
+                    zIndex: i,
+                    transform: `translateX(${i * -40}px)` // Overlap effect
+                  }}
+                  onClick={() => handlePlayCard(card, i)}
+                >
+                  {/* Hearthstone style corners */}
+                  <div className="card-corner-top-left">
+                    <BadgeHS color="blue">{card.cost}</BadgeHS>
+                  </div>
+                  <div className="card-corner-bottom-left">
+                    <Tooltip title={card.type.toUpperCase()}>
+                      <div className="type-icon">{card.icon}</div>
+                    </Tooltip>
+                  </div>
+
+                  <div className="card-content">
+                    <div className="card-name">{card.name}</div>
+                    <div className="card-desc">{card.description}</div>
+                    <div className="card-effects-short">
+                      {Object.entries(card.effects).map(([k, v]) => (
+                        <div key={k} className={k.startsWith('-') ? 'eff-neg' : 'eff-pos'}>
+                          {k}: {v}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </aside>
+
+        <aside className="game-sidebar">
+          <div className="sidebar-section">
+            <h3>历史日志</h3>
+            <div className="log-list">
+              {logs.map((log, i) => (
+                <div key={i} className={`log-item log-${log.type}`}>{log.text}</div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </main>
 
       {gameOver && (
         <div className="game-over-overlay">
