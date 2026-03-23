@@ -1,13 +1,27 @@
 // game/src/App.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ConfigProvider, theme } from 'antd';
 import StorySelect from './components/StorySelect';
 import CardGame from './components/CardGame';
 
+type ViewMode = 'card' | 'list';
+type SortKey = 'period' | 'location' | 'difficulty';
+
 function App() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [view, setView] = useState<'select' | 'game'>('select');
   const [storyPath, setStoryPath] = useState<string | null>(null);
+
+  // Lifted select-screen state — persists when returning from game
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [sortBy, setSortBy] = useState<SortKey>('period');
+  const [tagFilter, setTagFilter] = useState<Record<string, string[]>>({});
+
+  // Keep body background in sync — antd dark-algorithm injects body styles that persist after unmount
+  useEffect(() => {
+    document.body.style.background = isDarkMode ? '#0d1a10' : '#f5faf6';
+    document.body.style.margin = '0';
+  }, [isDarkMode]);
 
   const primary = isDarkMode ? '#52c41a' : '#007A33';
 
@@ -23,22 +37,31 @@ function App() {
     },
   };
 
+  // ConfigProvider only wraps CardGame — prevents antd dark-algorithm CSS bleeding into StorySelect
   return (
-    <ConfigProvider theme={antTheme}>
+    <>
       {view === 'select' ? (
         <StorySelect
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(d => !d)}
           onSelect={path => { setStoryPath(path); setView('game'); }}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          tagFilter={tagFilter}
+          setTagFilter={setTagFilter}
         />
       ) : (
-        <CardGame
-          storyPath={storyPath!}
-          isDarkMode={isDarkMode}
-          onBack={() => { setStoryPath(null); setView('select'); }}
-        />
+        <ConfigProvider theme={antTheme}>
+          <CardGame
+            storyPath={storyPath!}
+            isDarkMode={isDarkMode}
+            onBack={() => { setStoryPath(null); setView('select'); }}
+          />
+        </ConfigProvider>
       )}
-    </ConfigProvider>
+    </>
   );
 }
 

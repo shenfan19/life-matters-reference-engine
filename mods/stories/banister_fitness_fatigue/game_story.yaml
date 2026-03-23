@@ -15,13 +15,11 @@ meta:
 
     [Converter: fitness_dynamics→Type3; fatigue_dynamics→(disabled); performance_calc→(disabled)]'
   tags:
-  - sports_science
-  - training
-  - optimization
-  - physiological
-  - banister
-  - B3
+    - sports_science
+    - physiological
+    - banister
   difficulty: easy
+
 variables:
   fitness_component:
     label: 适应

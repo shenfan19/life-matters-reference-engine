@@ -6,9 +6,7 @@ meta:
 
     [Converter: decay→Type6; eating→Type4; drinking→Type4]'
   tags:
-  - lifestyle
-  - daily
-  - simulation
+    - lifestyle
   difficulty: easy
 variables:
   energy:

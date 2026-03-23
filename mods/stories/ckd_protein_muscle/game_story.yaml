@@ -14,14 +14,13 @@ meta:
 
     [Converter: gfr_decline→Type4; bun_calc→Type6; muscle_dynamics→Type6]'
   tags:
-  - nephrology
-  - ckd
-  - protein
-  - muscle
-  - sarcopenia
-  - optimization
-  - physiological
-  - A4
+    - nephrology
+    - ckd
+    - protein
+    - muscle
+    - sarcopenia
+    - physiological
+
   difficulty: medium
 variables:
   muscle_mass:

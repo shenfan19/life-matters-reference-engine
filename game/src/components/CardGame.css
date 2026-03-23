@@ -49,6 +49,16 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+.played-card-recall {
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.played-card-recall:hover {
+  transform: translateY(-5px);
+  opacity: 1 !important;
+  box-shadow: 0 8px 20px rgba(245, 34, 45, 0.22);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

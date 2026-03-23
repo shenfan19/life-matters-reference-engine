@@ -18,9 +18,8 @@ meta:
   - hypertension
   - gout
   - uric_acid
-  - optimization
   - physiological
-  - A5
+
   difficulty: easy
 variables:
   goal_score:

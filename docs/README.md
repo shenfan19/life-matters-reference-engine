@@ -1,110 +1,117 @@
 # LifeMatters: 医学与社会学仿真建模框架
 
-## 📝 项目简介
-LifeMatters 是一个模块化的仿真建模框架，面向医学与社会学研究，旨在从科研论文生成动力学模型，通过仿真验证和优化得出新结论，同时为普通用户提供交互式人生模拟体验。框架采用类游戏的 Modding 机制，支持通过 YAML 配置文件定义、优化和运行复杂模型，无需编程技能。
+## 项目简介
+
+LifeMatters 是一个模块化仿真建模框架，面向医学与社会学研究，同时提供交互式卡牌游戏体验。框架采用类游戏的 Modding 机制，通过 YAML 配置文件定义动力学模型；研究者可直接仿真和优化，普通用户则通过卡牌游戏理解历史与科学背景。
 
 ---
 
-## 🚀 快速开始 (5分钟运行第一个仿真)
+## 快速开始
 
-### 1️⃣ 安装依赖
-确保已安装 Python 3.8+ 和 Node.js 16+。
+### 依赖要求
+
+- Python 3.8+
+- Node.js 18+
+
+### 安装与启动
 
 ```bash
-# 克隆项目
-git clone https://github.com/shenfan19/life-matters.git
-cd life-matters
-
 # 安装 Python 后端依赖
 pip install -r sim_engine/requirements.txt
 
-# 安装前端依赖
-cd sim_gui
-npm install
-cd ..
+# 安装仿真前端依赖
+cd sim_gui && npm install && cd ..
+
+# 安装游戏前端依赖
+cd game && npm install && cd ..
 ```
 
-### 2️⃣ 启动服务
-你可以选择自动脚本或手动启动。
+**启动后端（所有前端共用）：**
+```bash
+cd sim_engine && python src/api_server.py
+# 默认监听 http://localhost:18080
+```
 
-**方式A：自动脚本（推荐）**
-- Windows: `start.bat`
-- Linux/macOS: `./start.sh`
+**启动仿真前端：**
+```bash
+cd sim_gui && npm run dev
+# http://localhost:5173
+```
 
-**方式B：手动启动 (开发推荐)**
-- **后端**: `cd sim_engine && python src/api_server.py`
-- **前端**: `cd sim_gui && npm run dev`
+**启动游戏前端：**
+```bash
+cd game && npm run dev
+# http://localhost:5174
+```
 
-### 3️⃣ 访问系统
-打开浏览器访问：[http://localhost:5173](http://localhost:5173)
-
-### 🎯 示例：吸烟对肺健康的影响
-1. **Loader**: 在左侧菜单点击 "Loader"，找到 `mods/core/smoking.yaml` 并查看详情。
-2. **Simulator**: 点击 "Simulator"，将 `cigarettes_per_day` 设为 20。
-3. **运行**: 点击 "开始仿真"，观察肺功能随时间衰减的动态曲线。
-
----
-
-## 🛠️ 核心模块详解
-
-### 1. Generator (模型构造器)
-- **功能**: 无需编程，通过图形化界面或模板将医学论文数据（如发病率增减、药效）转化为 YAML 模型。
-- **特色**: 支持从论文摘要自动提取参数。
-
-### 2. Loader (模型加载器)
-- **功能**: 浏览、解析和合并模型。
-- **机制**: 支持 `imports` 递归依赖加载，根模型可使用 `patches` 覆盖子模型参数。
-
-### 3. Simulator (仿真引擎)
-- **功能**: 驱动动力学模型迭代，支持实时交互和数据导出。
-- **特点**: 线程隔离设计，仿真运行不阻塞 UI；支持暂停、继续和实时调参。
-
-### 4. Optimizer (参数优化器)
-- **功能**: 自动寻找最佳参数组合（如最大化寿命、最小化成本）。
-- **算法**: 支持网格搜索、NSGA-II (遗传算法)、PSO 等。
+两个前端均通过 Vite proxy 将 `/api` 请求转发至后端 `:18080`。
 
 ---
 
-## 🎮 故事模式 (Story Mode)
-Story 层是基于 Core 层模型构建的交互式剧本。
-- **Marie Curie**: 体验居里夫人的科研之旅，包含卡牌交互系统。
-- **London 1910 Flu**: 模拟 1910 年伦敦流感爆发，包含历史真实背景下的药物可用性限制。
+## 核心模块
+
+### 1. Loader（模型加载器）
+浏览、解析和合并 YAML 模型。支持 `imports` 递归依赖加载，根模型可用 `patches` 覆盖子模型参数，支持 AST 预编译表达式加速求值。
+
+### 2. Simulator（仿真引擎）
+驱动动力学模型迭代，支持实时交互。线程隔离设计，仿真运行不阻塞 UI；支持暂停、继续和实时调参。
+
+### 3. Optimizer（参数优化器）
+自动寻找最优参数组合（如最大化寿命、最小化成本）。支持网格搜索、NSGA-II（遗传算法）、PSO 等多目标算法。
+
+### 4. Game（交互式卡牌游戏）
+独立前端（`game/`），基于 YAML story 文件运行回合制卡牌游戏。支持多场景浏览（卡片/列表视图、时代/类型/医学分类筛选），语言切换（EN / 中文 / 繁中），明暗主题。详见 [game 文档](../docs_game/)。
 
 ---
 
-## 📂 项目结构
+## 项目结构
+
 ```
 life-matters/
-├── sim_engine/          # 后端核心 (Python, FastAPI)
-├── sim_gui/             # 前端界面 (React, TypeScript)
-├── mods/                # 模型库
-│   ├── core/            # 纯科学/医学模型
-│   └── stories/         # 剧情与交互剧本
-├── docs/                # 详细文档
-└── users/               # 用户存档与存档模板
+├── sim_engine/          # 后端核心 (Python, FastAPI，端口 18080)
+├── sim_gui/             # 仿真前端 (React + TypeScript，端口 5173)
+├── game/                # 游戏前端 (React + TypeScript，端口 5174)
+│   ├── src/
+│   │   ├── App.tsx              # 路由：场景选择 ↔ 卡牌游戏
+│   │   ├── components/
+│   │   │   ├── StorySelect.tsx  # 场景浏览与筛选
+│   │   │   └── CardGame.tsx     # 回合制卡牌游戏引擎
+│   │   └── core/
+│   │       ├── i18n.tsx         # UI 语言系统（JSON locale 文件）
+│   │       └── storyI18n.ts     # 故事内容语言叠加层
+│   └── public/locales/game/     # UI 翻译文件 (en / zh-CN / zh-TW)
+├── mods/                # 模型与故事库
+│   ├── core/            # 核心科学/医学模型（纯 YAML）
+│   └── stories/         # 游戏故事（每个子目录一个 game_story.yaml）
+├── docs/                # 框架文档（本目录）
+├── docs_game/           # 游戏设计与 Schema 文档
+└── users/               # 用户存档与工作区模板
 ```
 
 ---
 
-## ❓ 常见问题 (FAQ)
+## 常见问题
 
-**Q: 启动后端时提示端口占用？**
-- 默认端口为 5000。你可以修改 `sim_engine/src/api_server.py` 中的端口，或运行 `python kill_ports.py` 清理。
+**Q: 后端端口占用？**
+默认端口 18080。修改 `sim_engine/src/api_server.py` 中的端口，并同步更新 `sim_gui/vite.config.ts` 和 `game/vite.config.ts` 中的 proxy 目标地址。
 
 **Q: 前端显示空白？**
-- 请检查后端是否已启动 (`/api/health`)。
-- 确保 `sim_gui` 目录下已成功运行 `npm install`。
+确认后端已启动，访问 `http://localhost:18080/api/health` 验证。再检查对应前端目录下已运行 `npm install`。
 
-**Q: 如何自定义我的模型？**
-- 参考 [建模设计手册](design/model.md) 的 YAML 规范。
-- 将你的 `.yaml` 文件放入 `mods/core/` 目录，点击 Loader 的刷新按钮。
+**Q: 如何添加新游戏场景？**
+在 `mods/stories/` 下新建子目录，放入 `game_story.yaml`。文件格式参见 [game_story Schema](../docs_game/converter_arch.md)。如需添加中文翻译，在同目录下放 `game_story.zh-CN.yaml`（只含文字字段，无需游戏逻辑）。
 
----
-
-## 📚 延伸阅读
-- [建模设计手册 (Model Design Guide)](design/model.md)
-- [Story层剧本设计指南](design/story.md)
-- [系统架构深度解析](Architecture.md)
+**Q: 如何自定义科学模型？**
+参考 [建模设计手册](design/model.md) 的 YAML 规范，将 `.yaml` 文件放入 `mods/core/`，在 Loader 界面点击刷新。
 
 ---
-*最后更新：2025年3月*
+
+## 延伸阅读
+
+- [建模设计手册](design/model.md)
+- [Story 层剧本设计](design/story.md)
+- [系统架构](Architecture.md)
+- [Game Story Schema & Converter](../docs_game/converter_arch.md)
+
+---
+*最后更新：2026-03-23*

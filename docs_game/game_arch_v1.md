@@ -1,9 +1,18 @@
 # Game Story 架构 & Converter 设计 v1.0
 
-**日期**: 2026-03-22
-**状态**: 设计定稿，待执行
+**日期**: 2026-03-23（更新）
+**状态**: 基础游戏引擎已实现；Converter、双通道、Status 机制待开发
 **上游文档**: c_game_v0.4_merged.md
 **覆盖范围**: 文件结构 / Schema / Converter UI / 自动转换逻辑
+
+> **当前实现状态速览**
+> - ✅ `game_story.yaml` 单文件 Schema（所有卡牌内联）
+> - ✅ 回合制卡牌游戏引擎（AP / 手牌 / 环境牌 / 胜负条件 / 撤回）
+> - ✅ 多语言叠加层（`game_story.zh-CN.yaml` 等）
+> - ✅ 场景选择界面（分类筛选 / 卡片+列表视图 / 语言切换）
+> - ⏳ 卡牌独立文件（`cards/*.yaml`）— 目前所有卡牌内联在 game_story.yaml
+> - ⏳ Converter UI（左右联动、自动生成骨架）
+> - ⏳ Status 阶层机制、双通道、通用牌体系
 
 ---
 
@@ -390,7 +399,70 @@ v0.4 定义的通用牌直接内置在引擎中，通过 `game_story.yaml` 的 `
 
 ---
 
-## 八、待实现模块清单
+## 八、多语言支持（已实现）
+
+### 设计原则
+
+- **系统默认英语**。`game_story.yaml` 用英文撰写，这是唯一必须存在的文件。
+- **翻译独立文件**。译者只需维护 `game_story.{lang}.yaml`，不修改原文件，两者永远不产生 git 冲突。
+- **只翻译文字，不复制逻辑**。翻译文件中不需要（也不应该）包含 variables、effects、conditions 等游戏逻辑字段。
+
+### 协作模型
+
+| 角色 | 文件 | 独立维护 |
+|------|------|---------|
+| 原作者 | `game_story.yaml` | 修改逻辑、修改英文 |
+| 中文译者 | `game_story.zh-CN.yaml` | 只改文字 |
+| 繁中译者 | `game_story.zh-TW.yaml` | 完全独立 |
+| 法文译者 | `game_story.fr.yaml` | 完全独立 |
+
+### 文件约定
+
+```
+mods/stories/cholera_1854/
+  game_story.yaml          ← 必须
+  game_story.zh-CN.yaml    ← 可选，只含文字字段
+  game_story.zh-TW.yaml    ← 可选
+  game_story.fr.yaml       ← 可选
+```
+
+### 翻译文件最小示例
+
+```yaml
+# game_story.zh-CN.yaml
+meta:
+  name: "霍乱 — 伦敦，1854"
+  description: "伦敦宽街。你是约翰·斯诺……"
+
+player_cards:
+  - id: close_pump
+    name: "关闭水泵"
+    flavor: "移除污染源。"
+
+environment_cards:
+  - id: outbreak
+    name: "疫情爆发"
+    description: "病菌通过受污染的水源扩散。"
+
+lose_conditions:
+  - condition: "health <= 0"    # condition 字段不翻译，逻辑保留
+    message: "疫情夺走了你的生命。"
+
+win_conditions:
+  - condition: "health >= 60 AND turn >= 12"
+    message: "你找到了污染源，拯救了数百条生命。"
+```
+
+### 支持的 UI 语言
+
+UI 文字（按钮、标签、提示）通过 `game/public/locales/game/{lang}.json` 管理，独立于故事内容。目前支持：
+- `en`（默认）
+- `zh-CN`（简体中文）
+- `zh-TW`（繁体中文）
+
+---
+
+## 九、待实现模块清单
 
 ### Converter（优先）
 - [ ] 左右文件树（scenario / to_game），文件夹名匹配联动
