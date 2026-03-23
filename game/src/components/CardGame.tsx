@@ -75,7 +75,7 @@ function getC(dark: boolean) {
         textMute: 'rgba(255,255,255,0.38)', primary: '#52c41a',
         sectionBg: '#0a1409', cardBg: '#162a1b', logBg: '#0a1409',
         fieldBg: '#0e1e13', barTrack: 'rgba(255,255,255,0.07)' }
-    : { bg: '#f5faf6', panel: '#ffffff', border: '#c8e6c9',
+    : { bg: '#f6ffed', panel: '#ffffff', border: '#c8e6c9',
         text: '#1a2e22', textSec: '#3d5c47', textMute: 'rgba(0,0,0,0.40)',
         primary: '#007A33', sectionBg: '#edf7f0', cardBg: '#f8fcf9', logBg: '#edf7f0',
         fieldBg: '#e8f5ea', barTrack: 'rgba(0,0,0,0.07)' };

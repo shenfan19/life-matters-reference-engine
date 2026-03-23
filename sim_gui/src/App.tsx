@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ConfigProvider, App as AntdApp, theme, Button, Dropdown, Select } from 'antd';
+import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
-  TranslationOutlined, SunOutlined, MoonOutlined,
+  SunOutlined, MoonOutlined,
   LoadingOutlined, ExperimentOutlined, ToolOutlined, SwapOutlined,
   GithubOutlined, MailOutlined,
 } from '@ant-design/icons';
@@ -151,34 +151,47 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {/* Font size selector */}
-        <Select
-          size="small"
+        <select
           value={fontSize}
-          onChange={onFontSize}
-          options={FONT_SIZES.map(n => ({ label: `${n}px`, value: n }))}
-          style={{ width: 72 }}
-          suffixIcon={<span style={{ fontSize: 11, color: c.textMute }}>A</span>}
-        />
-
-        <Button type="text" size="small"
-          icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />}
-          onClick={onToggleDark}
-          style={{ color: c.textSec }}
-        />
-
-        <Dropdown
-          menu={{
-            items: [
-              { key: 'zh-CN', label: '简体中文' }, { key: 'zh-TW', label: '繁體中文' },
-              { key: 'en', label: 'English' }, { key: 'fr', label: 'Français' },
-            ],
-            selectedKeys: [language],
-            onClick: (e) => onLanguage(e.key as Language),
+          onChange={e => onFontSize(Number(e.target.value))}
+          style={{
+            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            border: `1px solid ${c.border}`,
+            background: c.panel, color: c.textMute,
+            cursor: 'pointer', outline: 'none',
           }}
-          placement="bottomRight"
         >
-          <Button type="text" size="small" icon={<TranslationOutlined />} style={{ color: c.textSec }} />
-        </Dropdown>
+          {FONT_SIZES.map(n => <option key={n} value={n}>{n}px</option>)}
+        </select>
+
+        {/* Language selector */}
+        <select
+          value={language}
+          onChange={e => onLanguage(e.target.value as Language)}
+          style={{
+            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            border: `1px solid ${c.border}`,
+            background: c.panel, color: c.textMute,
+            cursor: 'pointer', outline: 'none',
+          }}
+        >
+          <option value="en">EN</option>
+          <option value="zh-CN">CHS</option>
+          <option value="zh-TW">CHT</option>
+          <option value="fr">FR</option>
+        </select>
+
+        {/* Dark mode toggle */}
+        <button
+          onClick={onToggleDark}
+          style={{
+            background: 'none', border: `1px solid ${c.border}`, borderRadius: 6,
+            padding: '4px 9px', cursor: 'pointer', color: c.textSec,
+            fontSize: 13, display: 'flex', alignItems: 'center',
+          }}
+        >
+          {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
+        </button>
       </div>
     </div>
   );

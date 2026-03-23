@@ -61,7 +61,7 @@ function getC(dark: boolean) {
     toolbarBg: '#0a1409', activeSort: '#52c41a',
     filterBg: '#0d1a10', filterDivider: '#1e3824',
   } : {
-    bg: '#f5faf6', panel: '#ffffff', border: '#c8e6c9',
+    bg: '#f6ffed', panel: '#ffffff', border: '#c8e6c9',
     text: '#1a2e22', textSec: '#3d5c47', textMute: 'rgba(0,0,0,0.40)',
     primary: '#007A33', cardHover: '#e8f5e9',
     tagBg: '#e8f5e9', tagActiveBg: '#007A33',
@@ -183,14 +183,6 @@ export default function StorySelect({
 
   const hasAnyFilter = Object.values(tagFilter).some(v => v.length > 0);
 
-  // ─── Language toggle ─────────────────────────────────────────────────────────
-
-  const LANGS: { code: Language; label: string }[] = [
-    { code: 'en',    label: 'EN' },
-    { code: 'zh-CN', label: '中文' },
-    { code: 'zh-TW', label: '繁中' },
-  ];
-
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -207,20 +199,9 @@ export default function StorySelect({
                 stroke={c.primary} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         <span style={{ fontSize: 15, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
-        <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.textMute, fontFamily: 'monospace' }}>Interactive</span>
-        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.textMute, fontFamily: 'monospace' }}>Card Game</span>
 
-        {/* Language toggle */}
-        <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-          {LANGS.map(({ code, label }) => (
-            <button key={code} onClick={() => setLanguage(code)} style={{
-              padding: '3px 9px', border: 'none', cursor: 'pointer', fontSize: 11,
-              background: language === code ? c.primary : 'transparent',
-              color: language === code ? '#fff' : c.textMute,
-              transition: 'all 0.15s',
-            }}>{label}</button>
-          ))}
-        </div>
+        <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         <button
           onClick={() => window.open('http://localhost:5173', '_blank')}
@@ -228,11 +209,30 @@ export default function StorySelect({
         >
           <RocketOutlined style={{ fontSize: 11 }} /> {t('app.simulator')}
         </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Language selector */}
+        <select
+          value={language}
+          onChange={e => setLanguage(e.target.value as Language)}
+          style={{
+            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            border: `1px solid ${c.border}`,
+            background: c.panel, color: c.textMute,
+            cursor: 'pointer', outline: 'none',
+          }}
+        >
+          <option value="en">EN</option>
+          <option value="zh-CN">CHS</option>
+          <option value="zh-TW">CHT</option>
+        </select>
+
         <button
           onClick={onToggleDark}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer', color: c.textSec, fontSize: 13, display: 'flex', alignItems: 'center' }}
         >
-          {isDarkMode ? <SunOutlined /> : <MoonOutlined />}
+          {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
       </div>
 

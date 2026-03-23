@@ -13,7 +13,7 @@
 }
 
 .player-card.card-disabled {
-  filter: grayscale(0.6) brightness(0.7);
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
