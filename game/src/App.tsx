@@ -27,6 +27,7 @@ function App() {
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
       colorBorder: isDarkMode ? '#1e3824' : '#c8e6c9',
       borderRadius: 6,
+      fontSize: 16,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif',
     },
   };

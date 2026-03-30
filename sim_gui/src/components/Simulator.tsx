@@ -40,7 +40,7 @@ function useResizeV(initial: number, min = 80, max = 600) {
   return { height, startDrag };
 }
 import {
-  Button, Switch, Select, InputNumber, Tooltip, Tag,
+  Button, Switch, Select, InputNumber, Tooltip, Tag, Tabs,
   message, Spin, Alert, Descriptions, Empty, Input, Tree,
   Segmented,
 } from 'antd';
@@ -59,6 +59,18 @@ import { validateModFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
+
+type InputFreq = 'hourly' | 'daily' | 'weekly' | 'monthly';
+interface InputEntry {
+  id: string;
+  variable: string;
+  value: number;
+  frequency: InputFreq;
+  time: string; // 'HH:mm', relevant for daily
+}
+const FREQ_LABELS: Record<InputFreq, string> = {
+  hourly: '每小时', daily: '每天', weekly: '每周', monthly: '每月',
+};
 
 function getC(dark: boolean) {
   return dark ? {
@@ -87,13 +99,12 @@ function PanelSection({ title, children, c, defaultOpen = true }: {
         style={{
           padding: '6px 12px', cursor: 'pointer', userSelect: 'none',
           background: c.sectionHd,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          fontSize: 12, fontWeight: 700, letterSpacing: '0.1em',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 700, letterSpacing: '0.1em',
           textTransform: 'uppercase', color: c.textMute,
         }}
       >
         {title}
-        <span style={{ fontSize: 11, opacity: 0.6 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ opacity: 0.6 }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && <div style={{ padding: '8px 12px' }}>{children}</div>}
     </div>
@@ -144,6 +155,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── chart selected vars ──────────────────────────────────────────────────────
   const [selectedVars, setSelectedVars] = useState<string[]>([]);
 
+  // ── scheduled input entries ──────────────────────────────────────────────────
+  const [inputEntries, setInputEntries] = useState<InputEntry[]>([]);
+
   const isRunningRef = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -161,12 +175,16 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
+      const entries: InputEntry[] = [];
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
-        if (data.type === 'input') inputs[name] = data.value;
-        else if (data.type === 'state') states[name] = data.value;
+        if (data.type === 'input') {
+          inputs[name] = data.value;
+          entries.push({ id: `${name}-0`, variable: name, value: data.value ?? 0, frequency: 'daily', time: '08:00' });
+        } else if (data.type === 'state') states[name] = data.value;
       });
       set('inputParams', inputs);
       set('stateVariables', states);
+      setInputEntries(entries);
       const ranges: typeof optRanges = {};
       Object.entries(inputs).forEach(([name, val]) => {
         ranges[name] = { min: 0, max: (val as number) * 2 || 1, locked: true };
@@ -182,6 +200,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (sim.output_variables?.length) setSelectedVars(sim.output_variables.slice(0, 3));
     }
   }, [selectedModel]);
+
+  // ── sync inputEntries → inputParams ─────────────────────────────────────────
+  useEffect(() => {
+    const params: Record<string, number> = {};
+    inputEntries.forEach(e => { params[e.variable] = e.value; }); // last value wins per variable
+    set('inputParams', params);
+  }, [inputEntries]);
 
   // ── load tree on mount ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -272,14 +297,14 @@ const Simulator: React.FC<SimulatorProps> = ({
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: c.primary }} />,
-                title: <span>{item.title} <Tag color="blue" style={{ fontSize: 11 }}>pkg</Tag></span>,
+                title: <span>{item.title} <Tag color="blue" style={{  }}>pkg</Tag></span>,
                 titleStr: item.title, mod_type: 'story',
               };
             }
           }
           return {
             title: item.type === 'file'
-              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 6, fontSize: 11 }}>{item.mod_type}</Tag>}</span>
+              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 6 }}>{item.mod_type}</Tag>}</span>
               : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
@@ -479,110 +504,103 @@ const Simulator: React.FC<SimulatorProps> = ({
   // LEFT PANEL
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // Section content: Parameters
-  const renderParamsContent = () => (
-    <div style={{ padding: '8px 0' }}>
-      {/* Input parameters */}
-      {inputVars.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
-            输入参数
-          </div>
-          {inputVars.map(v => (
-            <div key={v.name} style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <span style={{ fontSize: 11, color: c.textSec, flex: 1 }}>{v.name}</span>
-                {v.unit && <span style={{ fontSize: 12, color: c.textMute }}>{v.unit}</span>}
-                <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>{v.type || 'input'}</Tag>
-              </div>
-              {mode === 'opt' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Tooltip title={optRanges[v.name]?.locked ? '锁定' : '优化范围'}>
-                    <Button
-                      size="small" type="text"
-                      icon={optRanges[v.name]?.locked ? <LockOutlined /> : <SwapOutlined />}
-                      onClick={() => setOptRanges(r => ({ ...r, [v.name]: { ...r[v.name], locked: !r[v.name]?.locked } }))}
-                      style={{ color: optRanges[v.name]?.locked ? c.textMute : c.primary, padding: '0 4px' }}
-                    />
-                  </Tooltip>
-                  {optRanges[v.name]?.locked
-                    ? <InputNumber size="small" value={inputParams[v.name] ?? v.value}
-                        onChange={val => set('inputParams', { ...inputParams, [v.name]: val || 0 })}
-                        style={{ flex: 1 }} />
-                    : <>
-                        <InputNumber size="small" placeholder="min" value={optRanges[v.name]?.min ?? 0}
-                          onChange={val => setOptRanges(r => ({ ...r, [v.name]: { ...r[v.name], min: val || 0 } }))}
-                          style={{ flex: 1 }} />
-                        <span style={{ color: c.textMute, fontSize: 11 }}>~</span>
-                        <InputNumber size="small" placeholder="max" value={optRanges[v.name]?.max ?? 1}
-                          onChange={val => setOptRanges(r => ({ ...r, [v.name]: { ...r[v.name], max: val || 1 } }))}
-                          style={{ flex: 1 }} />
-                      </>
-                  }
-                </div>
-              ) : (
-                <InputNumber
-                  size="small" value={inputParams[v.name] ?? v.value}
-                  onChange={val => set('inputParams', { ...inputParams, [v.name]: val || 0 })}
-                  style={{ width: '100%' }}
+  // Section content: Inputs (scheduled)
+  const addInputEntry = () => {
+    const firstVar = inputVars[0]?.name ?? '';
+    setInputEntries(prev => [...prev, {
+      id: `${firstVar}-${Date.now()}`,
+      variable: firstVar,
+      value: inputVars[0]?.value ?? 0,
+      frequency: 'daily',
+      time: '08:00',
+    }]);
+  };
+
+  const updateEntry = (id: string, patch: Partial<InputEntry>) =>
+    setInputEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+
+  const removeEntry = (id: string) =>
+    setInputEntries(prev => prev.filter(e => e.id !== id));
+
+  const renderInputsContent = () => {
+    if (inputVars.length === 0) return (
+      <div style={{ padding: '8px 0' }}>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择场景" />
+      </div>
+    );
+    const varOptions = inputVars.map(v => ({ label: v.name, value: v.name }));
+    const freqOptions = (Object.keys(FREQ_LABELS) as InputFreq[]).map(k => ({ label: FREQ_LABELS[k], value: k }));
+    return (
+      <div style={{ padding: '8px 0' }}>
+        {inputEntries.map(entry => {
+          const varDef = inputVars.find(v => v.name === entry.variable);
+          return (
+            <div key={entry.id} style={{
+              display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8,
+              padding: '6px 8px', borderRadius: 6,
+              background: c.inputBg, border: `1px solid ${c.border}`,
+              flexWrap: 'wrap',
+            }}>
+              {/* Variable name dropdown */}
+              <Select
+                size="small"
+                value={entry.variable}
+                options={varOptions}
+                onChange={val => {
+                  const def = inputVars.find(v => v.name === val);
+                  updateEntry(entry.id, { variable: val, value: def?.value ?? 0 });
+                }}
+                style={{ minWidth: 100, flex: 1 }}
+              />
+              {/* Value */}
+              <InputNumber
+                size="small"
+                value={entry.value}
+                onChange={val => updateEntry(entry.id, { value: val ?? 0 })}
+                style={{ width: 72 }}
+              />
+              {/* Unit */}
+              {varDef?.unit && (
+                <span style={{ color: c.textMute, flexShrink: 0, minWidth: 20 }}>{varDef.unit}</span>
+              )}
+              {/* Frequency */}
+              <Select
+                size="small"
+                value={entry.frequency}
+                options={freqOptions}
+                onChange={val => updateEntry(entry.id, { frequency: val })}
+                style={{ width: 80 }}
+              />
+              {/* Time (only for daily) */}
+              {entry.frequency === 'daily' && (
+                <Input
+                  size="small"
+                  value={entry.time}
+                  placeholder="08:00"
+                  onChange={e => updateEntry(entry.id, { time: e.target.value })}
+                  style={{ width: 58 }}
                 />
               )}
-              {v.description && <div style={{ fontSize: 12, color: c.textMute, marginTop: 2 }}>{v.description}</div>}
+              {/* Delete */}
+              <Button
+                size="small" type="text" danger
+                icon={<MinusCircleOutlined />}
+                onClick={() => removeEntry(entry.id)}
+                style={{ padding: '0 2px', flexShrink: 0 }}
+              />
             </div>
-          ))}
-        </>
-      )}
-
-      {/* State variables */}
-      {stateVars.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>
-            状态变量
-          </div>
-          {stateVars.map(v => (
-            <div key={v.name} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, color: c.textSec }}>{v.name}</div>
-                {v.description && <div style={{ fontSize: 12, color: c.textMute }}>{v.description}</div>}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', color: c.primary }}>
-                  {(latestData[v.name] ?? v.value ?? 0).toFixed(4)}
-                </div>
-                {v.unit && <div style={{ fontSize: 11, color: c.textMute }}>{v.unit}</div>}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* Probability constants */}
-      {probConsts.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>
-            概率常数
-          </div>
-          {probConsts.map(v => (
-            <div key={v.name} style={{ marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, color: c.textSec }}>{v.name}</div>
-                {v.description && <div style={{ fontSize: 12, color: c.textMute }}>{v.description}</div>}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, fontFamily: 'monospace', color: c.textSec }}>{v.value}</span>
-                {v.unit && <span style={{ fontSize: 11, color: c.textMute }}>{v.unit}</span>}
-                <LockOutlined style={{ fontSize: 12, color: c.textMute }} />
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {inputVars.length === 0 && stateVars.length === 0 && probConsts.length === 0 && (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择场景" />
-      )}
-    </div>
-  );
+          );
+        })}
+        <Button
+          size="small" type="dashed" icon={<PlusOutlined />}
+          onClick={addInputEntry}
+          style={{ width: '100%', marginTop: 4 }}
+        >
+          新增输入
+        </Button>
+      </div>
+    );
+  };
 
   // Section content: Formulas
   const renderFormulasContent = () => {
@@ -599,12 +617,12 @@ const Simulator: React.FC<SimulatorProps> = ({
           }}>
             <div style={{ marginBottom: 4 }}>
               <Tooltip title={detail.condition != null && detail.condition !== true ? `条件: ${String(detail.condition)}` : undefined}>
-                <strong style={{ fontSize: 12, color: c.text, cursor: detail.condition != null && detail.condition !== true ? 'help' : 'default' }}>
+                <strong style={{ color: c.text, cursor: detail.condition != null && detail.condition !== true ? 'help' : 'default' }}>
                   {name}{detail.condition != null && detail.condition !== true ? ' *' : ''}
                 </strong>
               </Tooltip>
             </div>
-            <code style={{ fontSize: 11, whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33', lineHeight: 1.6 }}>
+            <code style={{ whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33', lineHeight: 1.6 }}>
               {typeof detail.dynamics === 'object' && detail.dynamics
                 ? Object.entries(detail.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('\n')
                 : String(detail.dynamics ?? '')}
@@ -626,16 +644,16 @@ const Simulator: React.FC<SimulatorProps> = ({
         {entries.map(([name, sched]: [string, any]) => (
           <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <strong style={{ fontSize: 12, color: c.text }}>{name}</strong>
-              <Tag style={{ fontSize: 11 }}>{sched.interpolation || 'step'}</Tag>
+              <strong style={{ color: c.text }}>{name}</strong>
+              <Tag style={{  }}>{sched.interpolation || 'step'}</Tag>
             </div>
             {sched.recurrence && (
-              <div style={{ fontSize: 12, color: c.textMute, marginBottom: 4 }}>
+              <div style={{ color: c.textMute, marginBottom: 4 }}>
                 {sched.recurrence}{sched.days_of_week ? ` · ${sched.days_of_week.join(' ')}` : ''}
               </div>
             )}
             {sched.points?.map((pt: any, i: number) => (
-              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: 'monospace', color: c.text, marginBottom: 2 }}>
+              <div key={i} style={{ display: 'flex', gap: 8, fontFamily: 'monospace', color: c.text, marginBottom: 2 }}>
                 <span style={{ color: c.textMute, width: 46 }}>
                   {typeof pt.time === 'number' ? `${(pt.time / 3600).toFixed(1)}h` : pt.time}
                 </span>
@@ -653,10 +671,10 @@ const Simulator: React.FC<SimulatorProps> = ({
   const renderOptContent = () => (
     <div style={{ padding: '8px 0' }}>
       {/* Objectives */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>优化目标</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>优化目标</div>
       {objectives.map((obj, i) => (
         <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: c.textMute, width: 14 }}>{i + 1}.</span>
+          <span style={{ color: c.textMute, width: 14 }}>{i + 1}.</span>
           <Select size="small" value={obj.variable} style={{ flex: 1 }}
             options={allVarNames.map(n => ({ label: n, value: n }))}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, variable: v } : o))} />
@@ -674,7 +692,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       </Button>
 
       {/* Constraints */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>约束条件</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>约束条件</div>
       {constraints.map((con, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
           <Select size="small" value={con.variable} style={{ flex: 1 }}
@@ -696,17 +714,17 @@ const Simulator: React.FC<SimulatorProps> = ({
       </Button>
 
       {/* Algorithm */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>算法配置</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>算法配置</div>
       <Select size="small" value={optAlgo}
         options={[{ label: 'NSGA-II', value: 'NSGA-II' }, { label: 'MOEA/D', value: 'MOEA/D' }]}
         onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 8 }} />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: c.textMute, marginBottom: 3 }}>种群</div>
+          <div style={{ color: c.textMute, marginBottom: 3 }}>种群</div>
           <InputNumber size="small" value={optPop} onChange={v => setOptPop(v || 100)} style={{ width: '100%' }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: c.textMute, marginBottom: 3 }}>代数</div>
+          <div style={{ color: c.textMute, marginBottom: 3 }}>代数</div>
           <InputNumber size="small" value={optGen} onChange={v => setOptGen(v || 200)} style={{ width: '100%' }} />
         </div>
       </div>
@@ -724,13 +742,13 @@ const Simulator: React.FC<SimulatorProps> = ({
         padding: '7px 0 5px', borderBottom: `1px solid ${c.border}`,
         display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: 12, color: c.textMute, flexShrink: 0 }}>显示</span>
+        <span style={{ color: c.textMute, flexShrink: 0 }}>显示</span>
         {outputVars.map(v => (
           <Tag
             key={v}
             onClick={() => setSelectedVars(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v])}
             style={{
-              cursor: 'pointer', userSelect: 'none', fontSize: 11, margin: 0,
+              cursor: 'pointer', userSelect: 'none', margin: 0,
               borderColor: selectedVars.includes(v) ? c.primary : c.border,
               background: selectedVars.includes(v) ? (isDarkMode ? 'rgba(82,196,26,0.15)' : 'rgba(0,122,51,0.08)') : 'transparent',
               color: selectedVars.includes(v) ? c.primary : c.textSec,
@@ -746,7 +764,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         {simulationData.length === 0 ? (
           <div style={{
             height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: c.textMute, fontSize: 12,
+            color: c.textMute,
             border: `1px dashed ${c.border}`, borderRadius: 6,
             flexDirection: 'column', gap: 8,
           }}>
@@ -774,7 +792,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         <div style={{
           marginTop: 8, padding: 12, flexShrink: 0,
           border: `1px dashed ${c.border}`, borderRadius: 6,
-          textAlign: 'center', color: c.textMute, fontSize: 11,
+          textAlign: 'center', color: c.textMute,
         }}>
           Pareto 前沿 – 多目标优化后显示
         </div>
@@ -789,8 +807,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               background: isDarkMode ? '#1a1a1a' : '#f5f5f5',
               border: `1px solid ${c.border}`, borderRadius: 6,
             }}>
-              <div style={{ fontSize: 11, color: c.textMute }}>{v}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: c.text, fontFamily: 'monospace' }}>
+              <div style={{ color: c.textMute }}>{v}</div>
+              <div style={{ fontWeight: 600, color: c.text, fontFamily: 'monospace' }}>
                 {(latestData[v] ?? 0).toFixed(4)}
               </div>
             </div>
@@ -801,51 +819,76 @@ const Simulator: React.FC<SimulatorProps> = ({
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RIGHT PANEL: metadata
+  // RIGHT PANEL: tabbed
   // ─────────────────────────────────────────────────────────────────────────────
+  const renderVarsContent = () => (
+    <div style={{ padding: '8px 0' }}>
+      {stateVars.length === 0 && probConsts.length === 0
+        ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无状态变量" style={{ marginTop: 20 }} />
+        : <>
+            {stateVars.length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>状态变量</div>
+                {stateVars.map(v => (
+                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
+                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ fontWeight: 600, fontFamily: 'monospace', color: c.primary, flexShrink: 0 }}>
+                        {(latestData[v.name] ?? v.value ?? 0).toFixed(4)}
+                      </span>
+                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
+                    </div>
+                  </Tooltip>
+                ))}
+              </>
+            )}
+            {probConsts.length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>概率常数</div>
+                {probConsts.map(v => (
+                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
+                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ fontFamily: 'monospace', color: c.textSec, flexShrink: 0 }}>{v.value}</span>
+                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
+                      <LockOutlined style={{ color: c.textMute, flexShrink: 0 }} />
+                    </div>
+                  </Tooltip>
+                ))}
+              </>
+            )}
+          </>
+      }
+    </div>
+  );
+
+  const rightTabs = [
+    { key: 'inputs', label: `输入${inputEntries.length > 0 ? ` (${inputEntries.length})` : ''}`, content: renderInputsContent() },
+    { key: 'vars',   label: `变量${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`, content: renderVarsContent() },
+    { key: 'formulas', label: `公式${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`, content: renderFormulasContent() },
+    { key: 'schedule', label: `计划${Object.keys(schedules).length > 0 ? ` (${Object.keys(schedules).length})` : ''}`, content: renderRegimensContent() },
+    ...(mode === 'opt' ? [{ key: 'opt', label: '优化', content: renderOptContent() }] : []),
+  ];
+
   const renderRightPanel = () => (
-    <div style={{
-      width: rightW, flexShrink: 0,
-      background: c.panel, overflowY: 'auto',
-    }}>
+    <div style={{ width: rightW, flexShrink: 0, background: c.panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {!selectedStory ? (
-        <div style={{ padding: 16, fontSize: 11, color: c.textMute }}>选择场景后显示参数</div>
+        <div style={{ padding: 16, color: c.textMute }}>选择场景后显示参数</div>
       ) : (
-        <>
-          <PanelSection
-            title={`参数${inputVars.length + stateVars.length > 0 ? ` (${inputVars.length + stateVars.length})` : ''}`}
-            c={c}
-          >
-            {renderParamsContent()}
-          </PanelSection>
-          <PanelSection
-            title={`计划表${Object.keys(schedules).length > 0 ? ` (${Object.keys(schedules).length})` : ''}`}
-            c={c} defaultOpen={false}
-          >
-            {renderRegimensContent()}
-          </PanelSection>
-          {mode === 'opt' && (
-            <PanelSection title="目标 / 约束 / 算法" c={c}>
-              {renderOptContent()}
-            </PanelSection>
-          )}
-          {simulationData.length > 0 && (
-            <PanelSection title="运行统计" c={c}>
-              <div style={{ fontSize: 11, color: c.textSec, marginBottom: 3 }}>
-                步数: <span style={{ color: c.text, fontFamily: 'monospace' }}>{currentStep}</span>
+        <Tabs
+          size="small"
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          tabBarStyle={{ paddingLeft: 8, paddingRight: 8, marginBottom: 0, flexShrink: 0 }}
+          items={rightTabs.map(t => ({
+            key: t.key,
+            label: t.label,
+            children: (
+              <div style={{ padding: '0 12px', overflowY: 'auto', height: '100%' }}>
+                {t.content}
               </div>
-              <div style={{ fontSize: 11, color: c.textSec, marginBottom: 3 }}>
-                数据点: <span style={{ color: c.text, fontFamily: 'monospace' }}>{simulationData.length}</span>
-              </div>
-              <div style={{ fontSize: 11, color: c.textSec }}>
-                状态: <Tag color={
-                  status === 'running' ? 'processing' : status === 'completed' ? 'success' :
-                  status === 'paused' ? 'warning' : 'default'
-                } style={{ fontSize: 11 }}>{status.toUpperCase()}</Tag>
-              </div>
-            </PanelSection>
-          )}
-        </>
+            ),
+          }))}
+        />
       )}
     </div>
   );
@@ -863,53 +906,80 @@ const Simulator: React.FC<SimulatorProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Top bar ── */}
+      {/* ── Top bar: Row 1 — model + mode ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '7px 12px', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 12px', flexShrink: 0,
         borderBottom: `1px solid ${c.border}`, background: c.panel,
-        flexWrap: 'wrap',
       }}>
-        {/* Model name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          {isLocked
-            ? <LockOutlined style={{ color: c.primary, fontSize: 12 }} />
-            : <UnlockOutlined style={{ color: c.textMute, fontSize: 12 }} />}
-          <span style={{
-            fontFamily: 'monospace', fontSize: 12,
-            color: isLocked ? c.text : c.textMute,
-            maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {selectedModel?.title || '— 未选择场景 —'}
-          </span>
-        </div>
-
-        {/* Mode segmented */}
+        {isLocked
+          ? <LockOutlined style={{ color: c.primary, flexShrink: 0 }} />
+          : <UnlockOutlined style={{ color: c.textMute, flexShrink: 0 }} />}
+        <span style={{
+          fontFamily: 'monospace', flex: 1, minWidth: 0,
+          color: isLocked ? c.text : c.textMute,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {selectedModel?.title || '— 未选择场景 —'}
+        </span>
+        {isLocked && <Tag color="success" style={{ flexShrink: 0, margin: 0 }}>已锁定</Tag>}
         <Segmented
           size="small"
           value={mode}
           onChange={v => setMode(v as 'sim' | 'opt')}
-          options={[{ label: '仿真模式', value: 'sim' }, { label: '优化模式', value: 'opt' }]}
+          options={[{ label: '仿真', value: 'sim' }, { label: '优化', value: 'opt' }]}
           style={{ flexShrink: 0 }}
         />
+      </div>
 
-        <div style={{ width: 1, height: 18, background: c.border, flexShrink: 0 }} />
+      {/* ── Top bar: Row 2 — controls + time settings ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '5px 12px', flexShrink: 0,
+        borderBottom: `1px solid ${c.border}`, background: c.panel,
+      }}>
+        {!isLocked && <span style={{ color: '#faad14', marginRight: 4 }}>⚠ 需先验证锁定</span>}
+        <Button type="primary" size="small" icon={<PlayCircleOutlined />}
+          onClick={startSimulation} disabled={!isLocked || status === 'running'}>
+          {mode === 'opt' ? '运行优化' : status === 'running' ? '运行中' : '运行'}
+        </Button>
+        <Button size="small" icon={<PauseOutlined />} onClick={pauseSimulation} disabled={status !== 'running'}>暂停</Button>
+        <Button size="small" icon={<StopOutlined />} danger onClick={resetSimulation} disabled={status === 'idle'}>停止</Button>
+        <Button size="small" icon={<StepForwardOutlined />} onClick={runSingleStep} disabled={!sessionId || status === 'running'}>单步</Button>
+        <Button size="small" icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
+
+        <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         {/* Duration */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 11, color: c.textMute }}>时长</span>
+          <span style={{ color: c.textSec }}>时长</span>
           <InputNumber size="small" value={timeValue} onChange={v => set('timeValue', v || 1)} style={{ width: 60 }} min={0} />
-          <Select size="small" value={timeUnit} onChange={v => set('timeUnit', v)} style={{ width: 72 }}
-            options={[{ label: 'Hour', value: 'hour' }, { label: 'Day', value: 'day' }, { label: 'Month', value: 'month' }, { label: 'Year', value: 'year' }]} />
+          <Select size="small" value={timeUnit} onChange={v => set('timeUnit', v)} style={{ width: 68 }}
+            options={[{ label: '小时', value: 'hour' }, { label: '天', value: 'day' }, { label: '月', value: 'month' }, { label: '年', value: 'year' }]} />
         </div>
 
         {/* Step */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 11, color: c.textMute }}>步长</span>
+          <span style={{ color: c.textSec }}>步长</span>
           <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: 60 }} min={0} />
-          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 68 }}
-            options={[{ label: 'Sec', value: 'second' }, { label: 'Min', value: 'minute' }, { label: 'Hour', value: 'hour' }, { label: 'Day', value: 'day' }]} />
+          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 64 }}
+            options={[{ label: '秒', value: 'second' }, { label: '分', value: 'minute' }, { label: '时', value: 'hour' }, { label: '天', value: 'day' }]} />
         </div>
+
+        {/* Progress */}
+        {progress > 0 && (
+          <>
+            <div style={{ flex: 1, maxWidth: 200 }}>
+              <div style={{ height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: c.primary, transition: 'width 0.3s', borderRadius: 3 }} />
+              </div>
+            </div>
+            <span style={{ color: c.textMute, fontFamily: 'monospace', flexShrink: 0 }}>{Math.round(progress)}%</span>
+          </>
+        )}
+        <span style={{ color: c.textMute, marginLeft: 'auto', fontFamily: 'monospace', flexShrink: 0 }}>
+          step {currentStep}
+        </span>
       </div>
 
       {/* ── Three-column body ── */}
@@ -932,14 +1002,14 @@ const Simulator: React.FC<SimulatorProps> = ({
               padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6,
               background: c.sectionHd, borderBottom: `1px solid ${c.border}`, flexShrink: 0,
             }}>
-              <BookOutlined style={{ color: c.primary, fontSize: 12 }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: c.text, flex: 1 }}>
+              <BookOutlined style={{ color: c.primary }} />
+              <span style={{ fontWeight: 600, color: c.text, flex: 1 }}>
                 场景 ({total})
               </span>
               <Input
                 size="small" placeholder="搜索" value={storyFilter}
                 onChange={e => setStoryFilter(e.target.value)}
-                prefix={<FilterOutlined style={{ color: c.textMute, fontSize: 12 }} />}
+                prefix={<FilterOutlined style={{ color: c.textMute }} />}
                 style={{ width: 90 }}
               />
               <Tooltip title={storyViewMode === 'tree' ? '切换列表' : '切换树形'}>
@@ -968,7 +1038,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     selectedKeys={selectedKey ? [selectedKey] : []}
                     onSelect={handleSelect}
                     treeData={storyTree}
-                    style={{ fontSize: 12 }}
+                    style={{  }}
                   />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -980,12 +1050,12 @@ const Simulator: React.FC<SimulatorProps> = ({
                             onClick={() => handleSelect([mod.key])}
                             style={{
                               display: 'flex', alignItems: 'center', padding: '4px 8px',
-                              borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                              borderRadius: 4, cursor: 'pointer',
                               background: selectedKey === mod.key ? c.rowHover : 'transparent',
                               color: c.text,
                             }}
                           >
-                            <BookOutlined style={{ marginRight: 6, color: c.textMute, fontSize: 11 }} />
+                            <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
                             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {mod.displayTitle}
                             </span>
@@ -1021,9 +1091,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                   borderBottom: `1px solid ${c.border}`,
                   background: c.sectionHd,
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: c.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontWeight: 600, color: c.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {selectedStory.title}
-                    {isLocked && <Tag color="success" icon={<LockOutlined />} style={{ marginLeft: 6, fontSize: 11 }}>已锁定</Tag>}
+                    {isLocked && <Tag color="success" icon={<LockOutlined />} style={{ marginLeft: 6 }}>已锁定</Tag>}
                   </span>
                   <Button
                     type={isLocked ? 'default' : 'primary'}
@@ -1046,50 +1116,32 @@ const Simulator: React.FC<SimulatorProps> = ({
                     type={validationResult.valid ? 'success' : 'error'}
                     message={validationResult.valid ? '验证通过' : '验证失败'}
                     description={!validationResult.valid && validationResult.errors.length > 0 && (
-                      <div style={{ maxHeight: 80, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>
+                      <div style={{ maxHeight: 80, overflow: 'auto', fontFamily: 'monospace' }}>
                         {validationResult.errors.map((err, i) => (
                           <div key={i} style={{ marginBottom: 2 }}>• {err}</div>
                         ))}
                       </div>
                     )}
                     showIcon closable onClose={() => setValidationResult(null)}
-                    style={{ margin: '4px 8px', fontSize: 11 }}
+                    style={{ margin: '4px 8px' }}
                   />
                 )}
 
-                {/* Basic info + Formulas as collapsible sections */}
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <PanelSection title="基本信息" c={c}>
-                    <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 11, color: c.textMute, marginBottom: 2 }}>路径</div>
-                      <code style={{ fontSize: 11, color: c.primary, wordBreak: 'break-all' }}>{selectedStory.path}</code>
+                {/* Compact model info */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {selectedStory.type && <Tag style={{ margin: 0 }}>{selectedStory.type.toUpperCase()}</Tag>}
+                    {selectedStory.category && <Tag color="blue" style={{ margin: 0 }}>{selectedStory.category}</Tag>}
+                    {selectedStory.imports?.map((imp: string, i: number) => (
+                      <Tag key={i} color="cyan" style={{ margin: 0 }}>{imp}</Tag>
+                    ))}
+                  </div>
+                  {modelMeta.description && (
+                    <div style={{ color: c.textSec, lineHeight: 1.5, marginBottom: 6 }}>
+                      {modelMeta.description}
                     </div>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                      {selectedStory.type && <Tag style={{ fontSize: 11 }}>{selectedStory.type.toUpperCase()}</Tag>}
-                      {selectedStory.category && <Tag color="blue" style={{ fontSize: 11 }}>{selectedStory.category}</Tag>}
-                    </div>
-                    {modelMeta.description && (
-                      <div style={{ fontSize: 11, color: c.textSec, lineHeight: 1.5, marginBottom: 6 }}>
-                        {modelMeta.description}
-                      </div>
-                    )}
-                    {selectedStory.imports && selectedStory.imports.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>导入模型</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                          {selectedStory.imports.map((imp: string, i: number) => (
-                            <Tag key={i} color="cyan" style={{ fontSize: 11, margin: 0 }}>{imp}</Tag>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </PanelSection>
-                  <PanelSection
-                    title={`公式${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`}
-                    c={c} defaultOpen={Object.keys(formulas).length > 0}
-                  >
-                    {renderFormulasContent()}
-                  </PanelSection>
+                  )}
+                  <code style={{ color: c.textMute, wordBreak: 'break-all', display: 'block' }}>{selectedStory.path}</code>
                 </div>
               </>
             )}
@@ -1119,41 +1171,6 @@ const Simulator: React.FC<SimulatorProps> = ({
         {renderRightPanel()}
       </div>
 
-      {/* ── Bottom bar ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 12px', flexShrink: 0,
-        borderTop: `1px solid ${c.border}`, background: c.panel,
-      }}>
-        {!isLocked && <span style={{ fontSize: 11, color: '#faad14' }}>⚠ 需先验证锁定场景</span>}
-
-        <Button type="primary" size="small" icon={<PlayCircleOutlined />}
-          onClick={startSimulation} disabled={!isLocked || status === 'running'}>
-          {mode === 'opt' ? '运行优化' : status === 'running' ? '运行中' : '运行仿真'}
-        </Button>
-        <Button size="small" icon={<PauseOutlined />} onClick={pauseSimulation} disabled={status !== 'running'}>暂停</Button>
-        <Button size="small" icon={<StopOutlined />} danger onClick={resetSimulation} disabled={status === 'idle'}>停止</Button>
-        <Button size="small" icon={<StepForwardOutlined />} onClick={runSingleStep} disabled={!sessionId || status === 'running'}>单步</Button>
-        <Button size="small" icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
-
-        <div style={{ flex: 1, maxWidth: 260 }}>
-          <div style={{
-            height: 6, background: isDarkMode ? '#2a2a2a' : '#e0e0e0',
-            borderRadius: 3, overflow: 'hidden',
-          }}>
-            <div style={{
-              width: `${progress}%`, height: '100%',
-              background: c.primary, transition: 'width 0.3s',
-              borderRadius: 3,
-            }} />
-          </div>
-        </div>
-        {progress > 0 && <span style={{ fontSize: 11, color: c.textMute, fontFamily: 'monospace' }}>{Math.round(progress)}%</span>}
-
-        <span style={{ fontSize: 11, color: c.textMute, marginLeft: 'auto', fontFamily: 'monospace' }}>
-          step {currentStep}
-        </span>
-      </div>
     </div>
   );
 };

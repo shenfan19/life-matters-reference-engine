@@ -3,7 +3,7 @@
 from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
-from .base import ModelMetadata, Variable, Formula
+from .base import ModelMetadata, Variable, Formula, Accumulator, TIME_UNIT_SECONDS
 from ..babel_manager import BabelLanguageManager
 from typing import Dict, Any, Set
 from asteval import Interpreter
@@ -39,8 +39,12 @@ class ModStructure(Loader, Validator, Simulation):
         self.optimizer: Dict[str, Any] = {}
         # 初始化计划表
         self.schedules: Dict[str, Any] = {}
+        # 初始化累积器
+        self.accumulators: Dict[str, Accumulator] = {}
         # 初始化手动覆盖
         self.manual_overrides: Dict[str, Any] = {}
+        # 时间单位（来自 YAML simulator.time_unit，默认秒）
+        self.time_unit: str = 'second'
         # 跟踪已访问模型，防止循环依赖
         self.visited: Set[str] = set()
         self.mods_directory = mods_directory

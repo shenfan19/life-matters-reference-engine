@@ -60,3 +60,35 @@ class InputSchedule:
     variable: str
     points: List[SchedulePoint]
     interpolation: str = 'step' # 'step' (阶梯) or 'linear' (线性插值)
+
+# 窗口类型 → 秒数映射
+WINDOW_SECONDS: Dict[str, float] = {
+    'day':   86400.0,
+    'week':  604800.0,
+    'month': 2592000.0,
+    'year':  31536000.0,
+}
+
+# time_unit 声明值 → 秒数映射（用于 YAML simulator.time_unit 字段）
+TIME_UNIT_SECONDS: Dict[str, float] = {
+    'second': 1.0,
+    'minute': 60.0,
+    'hour':   3600.0,
+    'day':    86400.0,
+    'week':   604800.0,
+    'month':  2592000.0,
+    'year':   31536000.0,
+}
+
+# 定义累积器数据类：按窗口（天/周/月）对来源变量进行积分/求均值
+@dataclass
+class Accumulator:
+    variable: str           # 输出变量名（写入此变量）
+    source: str             # 来源变量名
+    window: str             # 窗口类型: 'day', 'week', 'month'
+    operation: str = 'sum'  # 操作: 'sum' 或 'mean'
+    unit: Optional[str] = None
+    description: str = ''
+    # 运行时状态（由引擎管理，不来自 YAML）
+    running_sum: float = 0.0
+    window_start_time: float = 0.0

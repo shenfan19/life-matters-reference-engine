@@ -178,6 +178,7 @@ formulas:
 
 simulator:
   step_size: 1      # 1天/步
+  time_unit: day    # 90 步 = 3 个月
   total_time: 90    # 3个月仿真（临床复查周期）
   output_variables: [systolic_bp, uric_acid, body_weight, goal_score, diuretic_dose, purine_intake, weight_loss_rate]
 

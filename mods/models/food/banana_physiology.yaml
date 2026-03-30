@@ -27,5 +27,6 @@ formulas:
 
 simulator:
   step_size: 1
+  time_unit: day    # 14 步 = 14 天
   total_time: 14
   output_variables: [ripeness, freshness]

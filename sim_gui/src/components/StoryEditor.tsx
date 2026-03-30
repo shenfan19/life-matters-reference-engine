@@ -66,8 +66,7 @@ function TreeItem({
 
   const rowStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4,
-    padding: `6px 10px 6px ${10 + depth * 16}px`,
-    fontSize: 12, cursor: 'pointer',
+    padding: `6px 10px 6px ${10 + depth * 16}px`, cursor: 'pointer',
     background: isActive ? (c.isDark ? '#2a2a2a' : '#ebebeb') : 'transparent',
     color: isActive ? primary : text,
     borderLeft: `2px solid ${isActive ? primary : 'transparent'}`,
@@ -84,21 +83,21 @@ function TreeItem({
         onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
       >
         {!isFile && (
-          <span style={{ fontSize: 12, color: mute, flexShrink: 0, width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ color: mute, flexShrink: 0, width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isOpen ? <DownOutlined /> : <RightOutlined />}
           </span>
         )}
         {isFile
-          ? <FileTextOutlined style={{ fontSize: 11, color: isActive ? primary : mute, flexShrink: 0 }} />
+          ? <FileTextOutlined style={{ color: isActive ? primary : mute, flexShrink: 0 }} />
           : isOpen
-            ? <FolderOpenOutlined style={{ fontSize: 11, color: '#fa8c16', flexShrink: 0 }} />
-            : <FolderOutlined style={{ fontSize: 11, color: '#fa8c16', flexShrink: 0 }} />
+            ? <FolderOpenOutlined style={{ color: '#fa8c16', flexShrink: 0 }} />
+            : <FolderOutlined style={{ color: '#fa8c16', flexShrink: 0 }} />
         }
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {node.title}
         </span>
         {isPaired && (
-          <CheckCircleOutlined style={{ fontSize: 10, color: c.isDark ? '#52c41a' : '#389e0d', flexShrink: 0 }} />
+          <CheckCircleOutlined style={{ color: c.isDark ? '#52c41a' : '#389e0d', flexShrink: 0 }} />
         )}
       </div>
       {!isFile && isOpen && (node.children || []).map(child => (
@@ -354,7 +353,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
             <div style={{
-              fontSize: 10, fontWeight: 700, color: mute,
+              fontWeight: 700, color: mute,
               textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1,
             }}>Scenarios</div>
             <Tooltip title="刷新文件列表">
@@ -363,7 +362,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: mute, padding: '2px 4px', borderRadius: 4,
-                  display: 'flex', alignItems: 'center', fontSize: 12,
+                  display: 'flex', alignItems: 'center',
                   transition: 'color 0.15s',
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = primary; }}
@@ -374,10 +373,10 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
             </Tooltip>
           </div>
           <Input size="small"
-            prefix={<SearchOutlined style={{ color: mute, fontSize: 10 }} />}
+            prefix={<SearchOutlined style={{ color: mute }} />}
             placeholder="搜索场景…" value={scenSearch}
             onChange={e => setScenSearch(e.target.value)}
-            style={{ background: bg, borderColor: border, color: text, fontSize: 11 }}
+            style={{ background: bg, borderColor: border, color: text }}
           />
         </div>
 
@@ -387,7 +386,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               <Spin indicator={<LoadingOutlined />} />
             </div>
           ) : visibleTree.length === 0 ? (
-            <div style={{ padding: 16, fontSize: 11, color: mute, textAlign: 'center' }}>
+            <div style={{ padding: 16, color: mute, textAlign: 'center' }}>
               {scenSearch ? '无匹配结果' : '暂无模型'}
             </div>
           ) : visibleTree.map(node => (
@@ -415,7 +414,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
         {!selected ? (
           <div style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: mute, fontSize: 13,
+            color: mute,
           }}>
             ← 从左侧选择一个 Scenario 文件开始
           </div>
@@ -424,13 +423,13 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
 
             {/* Title row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: text }}>
+              <span style={{ fontWeight: 600, color: text }}>
                 {selected.matchKey}
               </span>
-              <span style={{ fontSize: 11, color: mute }}>{selected.filePath}</span>
+              <span style={{ color: mute }}>{selected.filePath}</span>
               {gameExists && (
                 <span style={{
-                  fontSize: 10, padding: '1px 7px', borderRadius: 10,
+                  padding: '1px 7px', borderRadius: 10,
                   background: isDarkMode ? '#1a3a22' : '#e8f5e9',
                   color: isDarkMode ? '#52c41a' : '#389e0d',
                   border: `1px solid ${isDarkMode ? '#52c41a44' : '#b7eb8f'}`,
@@ -454,14 +453,14 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                     background: cardBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
                   }}>
                     <CardHeader
-                      icon={<FileTextOutlined style={{ color: mute, fontSize: 11 }} />}
+                      icon={<FileTextOutlined style={{ color: mute }} />}
                       title="Scenario 摘要" badge="只读"
                       bg={sideHd} border={border} text={text} mute={mute}
                     />
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
                       {scenData
                         ? <ScenarioSummary data={scenData} c={c} codeBg={codeBg} border={border} />
-                        : <span style={{ fontSize: 11, color: mute }}>加载失败或无内容</span>
+                        : <span style={{ color: mute }}>加载失败或无内容</span>
                       }
                     </div>
                   </div>
@@ -475,28 +474,28 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                       padding: '10px 14px', borderBottom: `1px solid ${border}`,
                       background: sideHd, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                     }}>
-                      <SwapRightOutlined style={{ color: primary, fontSize: 11 }} />
-                      <span style={{ fontSize: 11, fontWeight: 600, color: text }}>Game Story</span>
+                      <SwapRightOutlined style={{ color: primary }} />
+                      <span style={{ fontWeight: 600, color: text }}>Game Story</span>
                       {gameData && !editing && (
                         <button onClick={() => setEditing(true)} style={{
                           marginLeft: 'auto', background: 'none', border: 'none',
-                          cursor: 'pointer', color: mute, fontSize: 11,
+                          cursor: 'pointer', color: mute,
                           display: 'flex', alignItems: 'center', gap: 3,
                         }}>
-                          <EditOutlined style={{ fontSize: 10 }} /> 编辑
+                          <EditOutlined style={{  }} /> 编辑
                         </button>
                       )}
                       {editing && (
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                           <button
                             onClick={() => { setGameDraft(clone(gameData)); setEditing(false); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute, fontSize: 11 }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute }}
                           >
                             <CloseOutlined /> 取消
                           </button>
                           <button onClick={handleSave} style={{
                             background: 'none', border: 'none', cursor: 'pointer',
-                            color: primary, fontSize: 11, fontWeight: 600,
+                            color: primary, fontWeight: 600,
                             display: 'flex', alignItems: 'center', gap: 3,
                           }}>
                             <SaveOutlined /> {saving ? '保存中…' : '保存'}
@@ -526,7 +525,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                 }}>
                   <div style={{
                     padding: '10px 14px', borderBottom: `1px solid ${border}`,
-                    background: sideHd, fontSize: 11, fontWeight: 600, color: text,
+                    background: sideHd, fontWeight: 600, color: text,
                   }}>
                     字段映射
                   </div>
@@ -535,7 +534,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
 
                     {/* Health mapping (required) */}
                     <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 11, color: mute, flexShrink: 0, width: 200 }}>
+                      <span style={{ color: mute, flexShrink: 0, width: 200 }}>
                         health ← 模型变量 <span style={{ color: '#f5222d' }}>*</span>
                       </span>
                       <Select
@@ -594,31 +593,31 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
           borderBottom: `1px solid ${border}`, flexShrink: 0,
         }}>
           <div style={{
-            fontSize: 10, fontWeight: 700, color: mute,
+            fontWeight: 700, color: mute,
             textTransform: 'uppercase', letterSpacing: '0.06em',
           }}>Stories</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {gameFolders.length === 0 ? (
-            <div style={{ padding: 16, fontSize: 11, color: mute, textAlign: 'center' }}>
+            <div style={{ padding: 16, color: mute, textAlign: 'center' }}>
               暂无 Game 文件夹
             </div>
           ) : gameFolders.map(g => {
             const isPaired = g.name === selected?.matchKey;
             return (
               <div key={g.name} style={{
-                padding: '7px 14px', fontSize: 12,
+                padding: '7px 14px',
                 background: isPaired ? (isDarkMode ? '#2a2a2a' : '#ebebeb') : 'transparent',
                 color: isPaired ? primary : text,
                 borderLeft: `2px solid ${isPaired ? primary : 'transparent'}`,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
-                <FolderOutlined style={{ fontSize: 11, color: isPaired ? primary : mute, flexShrink: 0 }} />
+                <FolderOutlined style={{ color: isPaired ? primary : mute, flexShrink: 0 }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {g.name}
                 </span>
                 {g.hasGameStory && (
-                  <FileTextOutlined style={{ fontSize: 10, color: mute, flexShrink: 0 }} />
+                  <FileTextOutlined style={{ color: mute, flexShrink: 0 }} />
                 )}
               </div>
             );
@@ -652,8 +651,8 @@ function CardHeader({ icon, title, badge, bg, border, text, mute }: {
       background: bg, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
     }}>
       {icon}
-      <span style={{ fontSize: 11, fontWeight: 600, color: text }}>{title}</span>
-      {badge && <span style={{ fontSize: 10, color: mute, marginLeft: 'auto' }}>{badge}</span>}
+      <span style={{ fontWeight: 600, color: text }}>{title}</span>
+      {badge && <span style={{ color: mute, marginLeft: 'auto' }}>{badge}</span>}
     </div>
   );
 }
@@ -666,8 +665,8 @@ function EmptyState({ mute }: { mute: string }) {
       justifyContent: 'center', height: '100%', gap: 8, minHeight: 160,
     }}>
       <span style={{ fontSize: 28, opacity: 0.25 }}>📋</span>
-      <span style={{ fontSize: 12, color: mute }}>待生成</span>
-      <span style={{ fontSize: 11, color: mute }}>配置映射后点击「→ 自动生成」</span>
+      <span style={{ color: mute }}>待生成</span>
+      <span style={{ color: mute }}>配置映射后点击「→ 自动生成」</span>
     </div>
   );
 }
@@ -684,11 +683,11 @@ function ScenarioSummary({ data, c, codeBg, border }: {
   const fmlCount = Object.keys(formulas).length;
 
   return (
-    <div style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
         <div style={{ fontWeight: 600, color: text, marginBottom: 3 }}>{meta.name || '—'}</div>
         {meta.description && (
-          <div style={{ color: mute, lineHeight: 1.55, fontSize: 10 }}>{meta.description}</div>
+          <div style={{ color: mute, lineHeight: 1.55 }}>{meta.description}</div>
         )}
         {meta.tags?.length > 0 && (
           <div style={{ marginTop: 5, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -708,7 +707,7 @@ function ScenarioSummary({ data, c, codeBg, border }: {
           {Object.entries(vars).slice(0, 10).map(([k, v]: [string, any]) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{
-                fontFamily: 'monospace', fontSize: 10, color: primary,
+                fontFamily: 'monospace', color: primary,
                 background: codeBg, padding: '1px 5px', borderRadius: 3,
                 border: `1px solid ${border}`, flexShrink: 0,
               }}>{k}</span>
@@ -718,13 +717,13 @@ function ScenarioSummary({ data, c, codeBg, border }: {
               }}>{v.type || '?'}</span>
               <span style={{
                 color: mute, flex: 1, overflow: 'hidden',
-                textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10,
+                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {v.description || v.unit || ''}
               </span>
             </div>
           ))}
-          {varCount > 10 && <div style={{ color: mute, fontSize: 10 }}>…还有 {varCount - 10} 个</div>}
+          {varCount > 10 && <div style={{ color: mute }}>…还有 {varCount - 10} 个</div>}
         </div>
       </div>
 
@@ -737,15 +736,15 @@ function ScenarioSummary({ data, c, codeBg, border }: {
                 background: codeBg, border: `1px solid ${border}`,
                 borderRadius: 4, padding: '4px 8px',
               }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: text, marginBottom: 2 }}>{k}</div>
+                <div style={{ fontWeight: 600, color: text, marginBottom: 2 }}>{k}</div>
                 {Object.entries(v.dynamics || {}).slice(0, 3).map(([vk, expr]: [string, any]) => (
-                  <div key={vk} style={{ fontFamily: 'monospace', fontSize: 10, color: mute }}>
+                  <div key={vk} style={{ fontFamily: 'monospace', color: mute }}>
                     {vk}: {String(expr)}
                   </div>
                 ))}
               </div>
             ))}
-            {fmlCount > 5 && <div style={{ color: mute, fontSize: 10 }}>…还有 {fmlCount - 5} 个</div>}
+            {fmlCount > 5 && <div style={{ color: mute }}>…还有 {fmlCount - 5} 个</div>}
           </div>
         </div>
       )}
@@ -767,12 +766,12 @@ function GameStorySummary({ data, editing, onChange, c, codeBg, border, isDarkMo
   const playerDeck = data.player_deck || [];
 
   const inputSt: React.CSSProperties = {
-    fontSize: 11, padding: '2px 6px', border: `1px solid ${border}`, borderRadius: 4,
+    padding: '2px 6px', border: `1px solid ${border}`, borderRadius: 4,
     background: isDarkMode ? '#222222' : '#ffffff', color: text, outline: 'none', width: '100%',
   };
 
   return (
-    <div style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
         <SectionLabel label="元信息" mute={mute} />
         <LabelRow label="名称" mute={mute}>
@@ -793,7 +792,7 @@ function GameStorySummary({ data, editing, onChange, c, codeBg, border, isDarkMo
           <span style={{ fontFamily: 'monospace', color: primary }}>{hm.source_variable || '—'}</span>
         </LabelRow>
         <LabelRow label="缩放" mute={mute}>
-          <span style={{ color: mute, fontFamily: 'monospace', fontSize: 10 }}>
+          <span style={{ color: mute, fontFamily: 'monospace' }}>
             {hm.scale ? `[${hm.scale.join(', ')}]` : '—'}
           </span>
         </LabelRow>
@@ -829,7 +828,7 @@ function GameStorySummary({ data, editing, onChange, c, codeBg, border, isDarkMo
 function LabelRow({ label, mute, children }: { label: string; mute: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-      <span style={{ fontSize: 10, color: mute, width: 56, flexShrink: 0, paddingTop: 2 }}>{label}</span>
+      <span style={{ color: mute, width: 56, flexShrink: 0, paddingTop: 2 }}>{label}</span>
       <div style={{ flex: 1 }}>{children}</div>
     </div>
   );
@@ -838,7 +837,7 @@ function LabelRow({ label, mute, children }: { label: string; mute: string; chil
 function SectionLabel({ label, mute }: { label: string; mute: string }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: 700, color: mute,
+      fontWeight: 700, color: mute,
       textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
     }}>{label}</div>
   );
@@ -858,10 +857,10 @@ function FixedMappings({ c }: { c: any }) {
       <SectionLabel label="固定映射（自动）" mute={mute} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {rows.map(r => (
-          <div key={r.from} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 10, color: text, flex: 1 }}>{r.from}</span>
+          <div key={r.from} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'monospace', color: text, flex: 1 }}>{r.from}</span>
             <span style={{ color: mute }}>→</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 10, color: text, flex: 1 }}>{r.to}</span>
+            <span style={{ fontFamily: 'monospace', color: text, flex: 1 }}>{r.to}</span>
             <span style={{
               fontSize: 9, padding: '1px 5px', borderRadius: 8,
               background: 'rgba(82,196,26,0.1)', color: '#52c41a', flexShrink: 0,
@@ -892,11 +891,11 @@ function VariableMappingRows({ variables, healthVar, mapping, c, border }: {
           const cardPath = varToCard[k];
           return (
             <div key={k} style={{
-              display: 'flex', alignItems: 'center', gap: 8, fontSize: 11,
+              display: 'flex', alignItems: 'center', gap: 8,
               opacity: isHealth ? 0.5 : 1,
             }}>
               <span style={{
-                fontFamily: 'monospace', fontSize: 10, color: primary,
+                fontFamily: 'monospace', color: primary,
                 width: 160, overflow: 'hidden', textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap', flexShrink: 0,
               }}>{k}</span>
@@ -906,7 +905,7 @@ function VariableMappingRows({ variables, healthVar, mapping, c, border }: {
               }}>{v.type || '?'}</span>
               <span style={{ color: mute }}>→</span>
               <span style={{
-                flex: 1, fontSize: 10, color: mute,
+                flex: 1, color: mute,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {isHealth ? '→ health（已选）' : cardPath || '待生成卡牌'}

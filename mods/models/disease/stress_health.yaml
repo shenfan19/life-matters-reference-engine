@@ -10,8 +10,9 @@ python_envs:
   - scipy: ">=1.10.0"  # 可选：单目标优化
 
 simulator:
-  total_time: 8640000  # 仿真步数
-  step_size: 1.0  # 时间步长
+  total_time: 8640000  # 8640000秒 ≈ 100天
+  step_size: 1.0
+  time_unit: second
   pause_every: 5  # 每 5 步暂停，触发钩子
   hooks:
     - post_step: interactive_input  # 用户输入压力水平

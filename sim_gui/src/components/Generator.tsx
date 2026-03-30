@@ -409,7 +409,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
                   />
                 </Col>
               </Row>
-              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+              <div style={{ marginTop: 8, color: '#666' }}>
                 动力学方程 (dynamics): 在此处添加变量更新规则
               </div>
             </Card>

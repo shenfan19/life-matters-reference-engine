@@ -134,7 +134,7 @@ const Game: React.FC<GameProps> = ({ story }) => {
           <div className="sidebar-content">
             <section className="character-bio" style={{ marginBottom: '20px', borderBottom: '1px solid rgba(184,115,51,0.2)', paddingBottom: '10px' }}>
               <h4 style={{ margin: '0 0 10px 0' }}>{story.meta.name}</h4>
-              <p style={{ fontSize: '11px', opacity: 0.8 }}>{story.meta.description}</p>
+              <p style={{ opacity: 0.8 }}>{story.meta.description}</p>
             </section>
             <section className="game-logs">
               {logs.map((log, i) => (
@@ -152,18 +152,18 @@ const Game: React.FC<GameProps> = ({ story }) => {
                     {/* Placeholder for active threats */}
                     <div className="slot">
                         <div className="threat-card" style={{ opacity: 0.5 }}>
-                            <div style={{ fontSize: '10px' }}>环境监控中...</div>
+                            <div style={{  }}>环境监控中...</div>
                         </div>
                     </div>
                 </div>
             </div>
             <div className="destiny-machine">
-                <div style={{ fontSize: '10px', color: 'var(--copper-light)', marginBottom: '5px' }}>
+                <div style={{ color: 'var(--copper-light)', marginBottom: '5px' }}>
                     {isPlayerTurn ? '你的回合' : '环境阶段'}
                 </div>
                 <div style={{ width: '90px', height: '120px', border: '1px solid var(--copper)', borderRadius: '4px', background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <div style={{ fontSize: '24px' }}>📦</div>
-                    <div style={{ fontSize: '10px', opacity: 0.5 }}>牌堆</div>
+                    <div style={{ opacity: 0.5 }}>牌堆</div>
                 </div>
             </div>
         </section>
@@ -204,7 +204,7 @@ const Game: React.FC<GameProps> = ({ story }) => {
                         }}></div>
                     ))}
                 </div>
-                <button className="btn-classic" onClick={endTurn} disabled={!isPlayerTurn} style={{ marginTop: '10px', padding: '5px 15px', fontSize: '12px' }}>
+                <button className="btn-classic" onClick={endTurn} disabled={!isPlayerTurn} style={{ marginTop: '10px', padding: '5px 15px' }}>
                     结束回合
                 </button>
             </div>
@@ -238,7 +238,7 @@ const Game: React.FC<GameProps> = ({ story }) => {
                   <div className="card-bottom-left">
                     [{card.type.toUpperCase()}]
                   </div>
-                  {card.reference && <div className="card-footer" style={{ fontSize: '8px', opacity: 0.6 }}>{card.reference}</div>}
+                  {card.reference && <div className="card-footer" style={{ opacity: 0.6 }}>{card.reference}</div>}
                 </div>
               ))}
           </div>

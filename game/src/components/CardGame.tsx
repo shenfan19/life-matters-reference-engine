@@ -86,13 +86,12 @@ function getC(dark: boolean) {
 function SectionLabel({ label, sub, c }: { label: string; sub?: string; c: ReturnType<typeof getC> }) {
   return (
     <div style={{
-      padding: '6px 12px 5px', borderBottom: `1px solid ${c.border}`,
-      fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+      padding: '6px 12px 5px', borderBottom: `1px solid ${c.border}`, fontWeight: 700, letterSpacing: '0.14em',
       textTransform: 'uppercase', color: c.textMute, flexShrink: 0,
       display: 'flex', alignItems: 'center', gap: 6,
     }}>
       {label}
-      {sub && <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 9.5 }}>{sub}</span>}
+      {sub && <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>{sub}</span>}
     </div>
   );
 }
@@ -123,6 +122,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
   const [playedCards, setPlayedCards] = useState<PlayerCard[]>([]);
   const [turnInitGs, setTurnInitGs]   = useState<Record<string, number>>({});
   const [turnInitAp, setTurnInitAp]   = useState(3);
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
   useEffect(() => {
     langAtLoad.current = language;
@@ -237,16 +237,16 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
   // ── Loading / error ───────────────────────────────────────────────────────
 
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, color: c.textMute, fontSize: 13 }}>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, color: c.textMute }}>
       {t('game.loading')}
     </div>
   );
 
   if (error || !story) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: c.bg, gap: 10 }}>
-      <div style={{ color: '#f5222d', fontSize: 13 }}>{t('game.load_failed')}: {error}</div>
-      <div style={{ fontSize: 11, color: c.textMute, fontFamily: 'monospace' }}>{storyPath}</div>
-      <button onClick={onBack} style={{ marginTop: 4, background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '5px 14px', cursor: 'pointer', color: c.textSec, fontSize: 12 }}>{t('game.back')}</button>
+      <div style={{ color: '#f5222d' }}>{t('game.load_failed')}: {error}</div>
+      <div style={{ color: c.textMute, fontFamily: 'monospace' }}>{storyPath}</div>
+      <button onClick={onBack} style={{ marginTop: 4, background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '5px 14px', cursor: 'pointer', color: c.textSec }}>{t('game.back')}</button>
     </div>
   );
 
@@ -257,7 +257,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, overflow: 'hidden', fontSize: 13, position: 'relative' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, overflow: 'hidden', position: 'relative' }}>
 
       {/* ── Top bar ── */}
       <div style={{
@@ -269,12 +269,12 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
           <path d="M2 14 Q7 2 12 14 Q17 26 22 14 Q27 2 32 14 Q37 26 42 14"
                 stroke={c.primary} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        <span style={{ fontSize: 13, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>{story.meta.name}</span>
+        <span style={{ fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>{story.meta.name}</span>
         {story.meta.period && (
-          <span style={{ fontSize: 10, color: c.textMute, fontFamily: 'monospace' }}>{story.meta.period}</span>
+          <span style={{ color: c.textMute, fontFamily: 'monospace' }}>{story.meta.period}</span>
         )}
         <div style={{ flex: 1 }} />
-        <button onClick={onBack} style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 5, padding: '3px 9px', cursor: 'pointer', color: c.textMute, fontSize: 11 }}>
+        <button onClick={onBack} style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 5, padding: '3px 9px', cursor: 'pointer', color: c.textMute }}>
           {t('game.back')}
         </button>
       </div>
@@ -303,7 +303,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
               return (
                 <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
                   <span style={{
-                    fontSize: 11, fontFamily: 'monospace', fontWeight: 700,
+                    fontFamily: 'monospace', fontWeight: 700,
                     color: isLow ? '#f5222d' : c.text,
                     minHeight: 16, display: 'flex', alignItems: 'flex-end',
                   }}>{val}</span>
@@ -323,7 +323,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                       }}
                     />
                   </div>
-                  <span style={{ fontSize: 9, color: c.textMute, textAlign: 'center', lineHeight: 1.25, maxWidth: 28 }}>
+                  <span style={{ color: c.textMute, textAlign: 'center', lineHeight: 1.25, maxWidth: 28 }}>
                     {vdef.label.length > 4 ? vdef.label.slice(0, 4) : vdef.label}
                   </span>
                 </div>
@@ -361,16 +361,16 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                      <span style={{ fontSize: 13 }}>{ec.emoji}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: c.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ec.name}</span>
+                      <span style={{  }}>{ec.emoji}</span>
+                      <span style={{ fontWeight: 600, color: c.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ec.name}</span>
                     </div>
-                    <div style={{ fontSize: 9.5, color: typeColor, marginBottom: 3, fontWeight: 600 }}>
+                    <div style={{ color: typeColor, marginBottom: 3, fontWeight: 600 }}>
                       {isPassive ? t('game.every_turn') : ec.probability !== undefined ? `${Math.round(ec.probability * 100)}%` : t('game.conditional')}
                     </div>
                     {ec.effects.map((e, i) => {
                       const label = story.variables[e.variable]?.label ?? e.variable;
                       return (
-                        <div key={i} style={{ fontSize: 9.5, fontFamily: 'monospace', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
+                        <div key={i} style={{ fontFamily: 'monospace', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
                           {label} {e.delta > 0 ? '+' : ''}{e.delta}
                         </div>
                       );
@@ -394,7 +394,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
             />
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexWrap: 'wrap', gap: 9, padding: '8px 12px', alignContent: 'flex-start' }}>
               {playedCards.length === 0 ? (
-                <div style={{ color: c.textMute, fontSize: 11, opacity: 0.4, alignSelf: 'center', marginLeft: 6 }}>{t('game.no_cards_played')}</div>
+                <div style={{ color: c.textMute, opacity: 0.4, alignSelf: 'center', marginLeft: 6 }}>{t('game.no_cards_played')}</div>
               ) : playedCards.map((card, idx) => {
                 const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
                 const canRecall = phase === 'player' && !outcome;
@@ -419,16 +419,15 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                         position: 'absolute', top: -6, right: -6,
                         width: 16, height: 16, borderRadius: '50%',
                         background: c.sectionBg, border: `1px solid ${c.border}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, color: c.textMute,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute,
                       }}>↩</div>
                     )}
                     <div style={{ fontSize: 20, textAlign: 'center', marginBottom: 3 }}>{card.emoji}</div>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: c.text, textAlign: 'center', marginBottom: 4, lineHeight: 1.25 }}>{card.name}</div>
+                    <div style={{ fontWeight: 700, color: c.text, textAlign: 'center', marginBottom: 4, lineHeight: 1.25 }}>{card.name}</div>
                     {card.effects.map((e, i) => {
                       const label = story.variables[e.variable]?.label ?? e.variable;
                       return (
-                        <div key={i} style={{ fontSize: 9.5, fontFamily: 'monospace', textAlign: 'center', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
+                        <div key={i} style={{ fontFamily: 'monospace', textAlign: 'center', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
                           {label} {e.delta > 0 ? '+' : ''}{e.delta}
                         </div>
                       );
@@ -447,8 +446,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
           }}>
             {/* Hand row header — turn / AP / end-turn inline */}
             <div style={{
-              padding: '5px 10px 5px 12px', borderBottom: `1px solid ${c.border}`,
-              fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em',
+              padding: '5px 10px 5px 12px', borderBottom: `1px solid ${c.border}`, fontWeight: 700, letterSpacing: '0.12em',
               textTransform: 'uppercase', color: c.textMute, flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
@@ -463,14 +461,14 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                       transition: 'background 0.2s',
                     }} />
                   ))}
-                  <span style={{ fontSize: 9.5, color: c.textMute, marginLeft: 2, fontFamily: 'monospace', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>{ap}/{apTotal} AP</span>
+                  <span style={{ color: c.textMute, marginLeft: 2, fontFamily: 'monospace', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>{ap}/{apTotal} AP</span>
                 </div>
-                <span style={{ fontSize: 9.5, color: c.textMute, fontFamily: 'monospace', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>{t('game.turn')} {turn}/{maxTurns}</span>
+                <span style={{ color: c.textMute, fontFamily: 'monospace', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>{t('game.turn')} {turn}/{maxTurns}</span>
                 <button
                   onClick={endTurn}
                   disabled={phase !== 'player' || !!outcome}
                   style={{
-                    padding: '3px 12px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+                    padding: '3px 12px', borderRadius: 5, fontWeight: 600,
                     letterSpacing: 0, textTransform: 'none',
                     background: phase === 'player' && !outcome ? c.primary : 'transparent',
                     border: `1px solid ${phase === 'player' && !outcome ? c.primary : c.border}`,
@@ -491,6 +489,8 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                   <div
                     key={card.id}
                     onClick={() => canPlay && playCard(card)}
+                    onMouseEnter={() => setHoveredCardId(card.id)}
+                    onMouseLeave={() => setHoveredCardId(null)}
                     className={`player-card ${canPlay ? 'card-playable' : 'card-disabled'}`}
                     style={{
                       width: 112, flexShrink: 0,
@@ -500,37 +500,47 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
                       borderRadius: 8, padding: '9px 9px 7px',
                       cursor: canPlay ? 'pointer' : 'not-allowed',
                       display: 'flex', flexDirection: 'column',
-                      position: 'relative', minHeight: 160,
+                      position: 'relative', minHeight: 140,
                     }}
                   >
+                    {/* Hover tooltip above card */}
+                    {hoveredCardId === card.id && card.flavor && (
+                      <div style={{
+                        position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: c.panel, border: `1px solid ${c.border}`,
+                        borderRadius: 7, padding: '8px 11px',
+                        color: c.textSec, fontStyle: 'italic', lineHeight: 1.5,
+                        width: 190, zIndex: 100, pointerEvents: 'none',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.22)',
+                        whiteSpace: 'normal',
+                      }}>
+                        {card.flavor}
+                      </div>
+                    )}
                     <div style={{
                       position: 'absolute', top: -8, right: -8,
                       width: 20, height: 20, borderRadius: '50%',
                       background: typeColor, border: `2px solid ${c.panel}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, fontWeight: 700, color: '#fff', zIndex: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', zIndex: 1,
                     }}>{card.cost}</div>
                     <div style={{ fontSize: 24, textAlign: 'center', marginBottom: 5 }}>{card.emoji}</div>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: c.text, textAlign: 'center', marginBottom: 6, lineHeight: 1.3 }}>{card.name}</div>
+                    <div style={{ fontWeight: 700, color: c.text, textAlign: 'center', marginBottom: 6, lineHeight: 1.3 }}>{card.name}</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {card.effects.map((e, i) => {
                         const label = story.variables[e.variable]?.label ?? e.variable;
                         return (
-                          <div key={i} style={{ fontSize: 9.5, fontFamily: 'monospace', textAlign: 'center', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
+                          <div key={i} style={{ fontFamily: 'monospace', textAlign: 'center', color: e.delta > 0 ? '#52c41a' : '#ff7875' }}>
                             {label} {e.delta > 0 ? '+' : ''}{e.delta}
                           </div>
                         );
                       })}
                     </div>
-                    {card.flavor && (
-                      <div style={{ fontSize: 8.5, color: c.textMute, textAlign: 'center', fontStyle: 'italic', marginTop: 4, lineHeight: 1.3 }}>{card.flavor}</div>
-                    )}
-                    <div style={{ fontSize: 8.5, color: typeColor, textAlign: 'center', marginTop: 3, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{card.type}</div>
                   </div>
                 );
               })}
               {hand.length === 0 && phase === 'player' && !outcome && (
-                <div style={{ color: c.textMute, fontSize: 11, alignSelf: 'center', marginLeft: 6, opacity: 0.6 }}>{t('game.hand.empty')}</div>
+                <div style={{ color: c.textMute, alignSelf: 'center', marginLeft: 6, opacity: 0.6 }}>{t('game.hand.empty')}</div>
               )}
             </div>
           </div>
@@ -548,7 +558,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
           <div style={{ flex: 1, overflowY: 'auto', padding: '7px 11px', display: 'flex', flexDirection: 'column', gap: 3 }}>
             {logs.map((log, i) => (
               <div key={i} style={{
-                fontSize: 10.5, lineHeight: 1.45,
+                lineHeight: 1.45,
                 color: log.type === 'pos' ? (isDarkMode ? '#86efac' : '#005c20')
                      : log.type === 'neg' ? '#ff7875' : c.textMute,
                 paddingBottom: log.text.startsWith('──') ? 4 : 0,
@@ -560,8 +570,7 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
           </div>
           {story.meta.science_note && (
             <div style={{
-              padding: '7px 11px', borderTop: `1px solid ${c.border}`,
-              fontSize: 9, color: c.textMute, lineHeight: 1.5,
+              padding: '7px 11px', borderTop: `1px solid ${c.border}`, color: c.textMute, lineHeight: 1.5,
               fontStyle: 'italic', flexShrink: 0,
             }}>
               {story.meta.science_note}
@@ -586,30 +595,30 @@ export default function CardGame({ storyPath, isDarkMode, onBack }: Props) {
             <div style={{ fontSize: 19, fontWeight: 700, color: c.text, marginBottom: 8, fontFamily: 'Georgia, serif' }}>
               {outcome.win ? t('game.win_title') : t('game.lose_title')}
             </div>
-            <div style={{ fontSize: 12.5, color: c.textSec, lineHeight: 1.65, margin: '0 auto 20px', maxWidth: 340 }}>
+            <div style={{ color: c.textSec, lineHeight: 1.65, margin: '0 auto 20px', maxWidth: 340 }}>
               {outcome.message}
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
               {varEntries.map(([key, vdef]) => (
                 <div key={key} style={{ textAlign: 'center', minWidth: 52 }}>
-                  <div style={{ fontSize: 9.5, color: c.textMute, marginBottom: 2 }}>{vdef.label}</div>
+                  <div style={{ color: c.textMute, marginBottom: 2 }}>{vdef.label}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: vdef.color, fontFamily: 'monospace' }}>
                     {Math.round(gs[key] ?? 0)}
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 10.5, color: c.textMute, marginBottom: 18 }}>
+            <div style={{ color: c.textMute, marginBottom: 18 }}>
               {t('game.turn')} {Math.min(turn, maxTurns)} / {maxTurns}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={() => window.location.reload()}
-                style={{ padding: '7px 20px', borderRadius: 6, background: c.primary, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}
+                style={{ padding: '7px 20px', borderRadius: 6, background: c.primary, border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
               >{t('game.retry')}</button>
               <button
                 onClick={onBack}
-                style={{ padding: '7px 20px', borderRadius: 6, background: 'none', border: `1px solid ${c.border}`, color: c.textSec, cursor: 'pointer', fontSize: 12.5 }}
+                style={{ padding: '7px 20px', borderRadius: 6, background: 'none', border: `1px solid ${c.border}`, color: c.textSec, cursor: 'pointer' }}
               >{t('game.back_select')}</button>
             </div>
           </div>

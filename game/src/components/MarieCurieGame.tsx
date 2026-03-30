@@ -98,7 +98,7 @@ const MarieCurieGame: React.FC = () => {
                     <div className="sidebar-content">
                         <section className="character-bio" style={{ marginBottom: '20px', borderBottom: '1px solid rgba(184,115,51,0.2)', paddingBottom: '10px' }}>
                             <h4 style={{ margin: '0 0 10px 0' }}>玛丽·居里</h4>
-                            <p style={{ fontSize: '11px', opacity: 0.8 }}>“在科学上，我们应该注意事，而不应该注意人。”</p>
+                            <p style={{ opacity: 0.8 }}>“在科学上，我们应该注意事，而不应该注意人。”</p>
                         </section>
 
                         <section className="game-logs">
@@ -116,7 +116,7 @@ const MarieCurieGame: React.FC = () => {
                 {/* Layer 1: Environment Area */}
                 <section className="layer layer-environment">
                     <div className="channel-section">
-                        <span style={{ fontSize: '10px', color: 'var(--accent-red)' }}>医疗通道 - 社会通道</span>
+                        <span style={{ color: 'var(--accent-red)' }}>医疗通道 - 社会通道</span>
                         <div className="card-slots">
                             {envCards.map(card => (
                                 <div key={card.id} className="slot">
@@ -131,16 +131,16 @@ const MarieCurieGame: React.FC = () => {
                     </div>
 
                     <div className="destiny-machine">
-                        <div style={{ fontSize: '10px', color: 'var(--copper-light)', marginBottom: '5px' }}>
+                        <div style={{ color: 'var(--copper-light)', marginBottom: '5px' }}>
                             {isPlayerTurn ? '你的回合' : '环境阶段'}
                         </div>
                         <div style={{ width: '90px', height: '120px', border: '1px solid var(--copper)', borderRadius: '4px', background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ opacity: 0.3, fontSize: '10px' }}>牌堆: 18</span>
+                            <span style={{ opacity: 0.3 }}>牌堆: 18</span>
                         </div>
                     </div>
 
                     <div className="channel-section" style={{ alignItems: 'flex-end' }}>
-                        <span style={{ fontSize: '10px', color: 'var(--copper-light)' }}>命运展示台</span>
+                        <span style={{ color: 'var(--copper-light)' }}>命运展示台</span>
                         <div className="card-slots" style={{ justifyContent: 'flex-end' }}>
                             <div className="slot"></div>
                         </div>
@@ -189,7 +189,7 @@ const MarieCurieGame: React.FC = () => {
                                 }}></div>
                             ))}
                         </div>
-                        <button className="btn-classic" onClick={endTurn} style={{ marginTop: '10px', padding: '5px 15px', fontSize: '12px' }}>
+                        <button className="btn-classic" onClick={endTurn} style={{ marginTop: '10px', padding: '5px 15px' }}>
                             结束回合
                         </button>
                     </div>
@@ -219,7 +219,7 @@ const MarieCurieGame: React.FC = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    <div style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--copper-dark)', marginTop: '5px' }}>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--copper-dark)', marginTop: '5px' }}>
                                         [{card.type}]
                                     </div>
                                     <div className="card-footer">{card.source}</div>

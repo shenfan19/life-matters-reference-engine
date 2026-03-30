@@ -72,18 +72,11 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
         {/* Wordmark */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: 15, fontWeight: 700, letterSpacing: '0.04em',
+            fontSize: 20, fontWeight: 700, letterSpacing: '0.04em',
             color: c.text,
             fontFamily: '"Georgia", "Times New Roman", serif',
           }}>
             Life Matters
-          </span>
-          <span style={{
-            fontSize: 9.5, fontWeight: 400, letterSpacing: '0.18em',
-            color: c.textMute, textTransform: 'uppercase',
-            fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
-          }}>
-            Simulation Platform
           </span>
         </div>
       </div>
@@ -102,12 +95,12 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
                 border: 'none', cursor: 'pointer',
                 background: active ? c.activeBg : 'transparent',
                 color: active ? c.activeText : c.textSec,
-                fontWeight: active ? 600 : 400, fontSize: 13,
+                fontWeight: active ? 600 : 400,
                 transition: 'all 0.12s',
                 outline: 'none',
               }}
             >
-              <span style={{ fontSize: 13, opacity: active ? 1 : 0.6 }}>{tab.icon}</span>
+              <span style={{ opacity: active ? 1 : 0.6 }}>{tab.icon}</span>
               {tab.label}
               {active && (
                 <span style={{
@@ -130,8 +123,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
             padding: '4px 12px', borderRadius: 6,
             border: `1px solid ${isDarkMode ? '#b45309' : '#d97706'}`,
             background: isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)',
-            color: isDarkMode ? '#fbbf24' : '#b45309',
-            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            color: isDarkMode ? '#fbbf24' : '#b45309', fontWeight: 600, cursor: 'pointer',
             transition: 'all 0.12s', outline: 'none',
           }}
           onMouseEnter={e => {
@@ -141,7 +133,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
             (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)';
           }}
         >
-          <span style={{ fontSize: 13 }}>🎮</span>
+          <span style={{  }}>🎮</span>
           {t('button.go_game')}
         </button>
       </div>
@@ -155,7 +147,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
           value={fontSize}
           onChange={e => onFontSize(Number(e.target.value))}
           style={{
-            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${c.border}`,
             background: c.panel, color: c.textMute,
             cursor: 'pointer', outline: 'none',
@@ -169,7 +161,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
           value={language}
           onChange={e => onLanguage(e.target.value as Language)}
           style={{
-            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${c.border}`,
             background: c.panel, color: c.textMute,
             cursor: 'pointer', outline: 'none',
@@ -186,8 +178,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
           onClick={onToggleDark}
           style={{
             background: 'none', border: `1px solid ${c.border}`, borderRadius: 6,
-            padding: '4px 9px', cursor: 'pointer', color: c.textSec,
-            fontSize: 13, display: 'flex', alignItems: 'center',
+            padding: '4px 9px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center',
           }}
         >
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
@@ -231,8 +222,7 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
       height: 28, flexShrink: 0,
       background: c.statusBar, borderTop: `1px solid ${c.border}`,
       display: 'flex', alignItems: 'center',
-      padding: '0 14px', gap: 12,
-      fontSize: 11, color: c.textMute,
+      padding: '0 14px', gap: 12, color: c.textMute,
       fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
       userSelect: 'none',
     }}>
@@ -253,7 +243,7 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
         <>
           <span style={{ opacity: 0.25 }}>│</span>
           <span style={{ color: c.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <LoadingOutlined style={{ fontSize: 11 }} spin />
+            <LoadingOutlined style={{  }} spin />
             Simulating {simProgress}%
           </span>
         </>
@@ -266,10 +256,10 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
         </span>
         <span style={{ opacity: 0.2 }}>│</span>
         <a href={`mailto:${AUTHOR.email}`} style={linkStyle} title={AUTHOR.email}>
-          <MailOutlined style={{ fontSize: 11 }} />
+          <MailOutlined style={{  }} />
         </a>
         <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={linkStyle} title="Homepage">
-          <GithubOutlined style={{ fontSize: 11 }} />
+          <GithubOutlined style={{  }} />
         </a>
         <span style={{ opacity: 0.2 }}>│</span>
         <span style={{ color: c.textMute }}>MIT License</span>
@@ -285,7 +275,7 @@ function App() {
   const { t, language, setLanguage } = useI18n();
   const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [fontSize, setFontSize] = useState(15);
+  const [fontSize, setFontSize] = useState(16);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
@@ -377,7 +367,7 @@ function App() {
         />
 
         {/* ── Content (zoom wrapper scales all inline sizes) ── */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg, zoom: fontSize / 15 }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg, zoom: fontSize / 16 }}>
 
           {/* Simulator: always mounted, shown/hidden via CSS */}
           <div style={{

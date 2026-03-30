@@ -73,8 +73,7 @@ export default function PluginView({ pluginId, isDarkMode }: Props) {
         <div style={{
           marginTop: 10,
           display: 'flex',
-          gap: 10,
-          fontSize: 12
+          gap: 10
         }}>
           <span style={{
             padding: '2px 8px',

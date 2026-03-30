@@ -241,11 +241,11 @@ const Loader: React.FC<LoaderProps> = ({
             background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
             <div style={{ display: 'flex', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: 13 }}>{name}</strong>
-              {detail.unit && <Tag style={{ fontSize: 10 }}>{detail.unit}</Tag>}
-              {detail.type && <Tag color="cyan" style={{ fontSize: 10 }}>{detail.type}</Tag>}
+              <strong style={{  }}>{name}</strong>
+              {detail.unit && <Tag style={{  }}>{detail.unit}</Tag>}
+              {detail.type && <Tag color="cyan" style={{  }}>{detail.type}</Tag>}
             </div>
-            <div style={{ fontSize: 12, color: isDarkMode ? '#94a3b8' : '#666' }}>
+            <div style={{ color: isDarkMode ? '#94a3b8' : '#666' }}>
               初值: {String(detail.value ?? 'N/A')}
               {detail.description ? `  |  ${detail.description}` : ''}
               {detail.bounds ? `  |  范围: [${detail.bounds[0]}, ${detail.bounds[1]}]` : ''}
@@ -268,12 +268,12 @@ const Loader: React.FC<LoaderProps> = ({
             background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
             <div style={{ display: 'flex', gap: 6, marginBottom: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-              <strong style={{ fontSize: 13 }}>{name}</strong>
+              <strong style={{  }}>{name}</strong>
               {detail.condition != null && detail.condition !== true && (
-                <Tag color="orange" style={{ fontSize: 10 }}>when: {String(detail.condition)}</Tag>
+                <Tag color="orange" style={{  }}>when: {String(detail.condition)}</Tag>
               )}
             </div>
-            <code style={{ fontSize: 11, whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33' }}>
+            <code style={{ whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33' }}>
               {typeof detail.dynamics === 'object' && detail.dynamics
                 ? Object.entries(detail.dynamics).map(([v, e]) => `${v} = ${e}`).join('\n')
                 : String(detail.dynamics ?? '')}
@@ -294,7 +294,7 @@ const Loader: React.FC<LoaderProps> = ({
         <div style={{ padding: '12px 0' }}>
           <Descriptions bordered column={2} size="small">
             <Descriptions.Item label="路径" span={2}>
-              <code style={{ fontSize: 11, color: isDarkMode ? '#4ade80' : '#007A33' }}>{selectedStory.path}</code>
+              <code style={{ color: isDarkMode ? '#4ade80' : '#007A33' }}>{selectedStory.path}</code>
             </Descriptions.Item>
             <Descriptions.Item label="类型">
               <Tag>{(selectedStory.type || 'UNKNOWN').toUpperCase()}</Tag>
@@ -395,7 +395,7 @@ const Loader: React.FC<LoaderProps> = ({
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>
                         {mod.displayTitle}
                       </span>
-                      <Tag style={{ fontSize: 10 }}>STORY</Tag>
+                      <Tag style={{  }}>STORY</Tag>
                     </div>
                   ))
                 }
@@ -412,7 +412,7 @@ const Loader: React.FC<LoaderProps> = ({
             <>
               {/* 标题行 + 验证锁定按钮 */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 14, color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
+                <span style={{ fontWeight: 600, color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
                   {selectedStory.title}
                   {isLocked && <Tag color="green" style={{ marginLeft: 8 }} icon={<LockOutlined />}>已锁定</Tag>}
                 </span>
@@ -438,7 +438,7 @@ const Loader: React.FC<LoaderProps> = ({
                     validationResult.success ? '场景结构完整，已锁定可供模拟使用。' : (
                       <div style={{ maxHeight: 160, overflow: 'auto' }}>
                         {(validationResult.errors || []).map((err, i) => (
-                          <div key={i} style={{ fontSize: 12, fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
+                          <div key={i} style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
                             • {err}
                           </div>
                         ))}

@@ -36,7 +36,7 @@ export default function PluginSidebar({ plugins, activePlugin, onSelectPlugin }:
       
       {categories.map(category => (
         <div key={category} style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 14, color: '#666', marginBottom: 10 }}>
+          <h3 style={{ color: '#666', marginBottom: 10 }}>
             {category}
           </h3>
           {plugins
@@ -58,7 +58,7 @@ export default function PluginSidebar({ plugins, activePlugin, onSelectPlugin }:
                   {plugin.name}
                 </div>
                 {plugin.description && (
-                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  <div style={{ color: '#666', marginTop: 4 }}>
                     {plugin.description}
                   </div>
                 )}

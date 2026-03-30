@@ -80,7 +80,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ story, onSelect, onGoToSimula
                         }}
                         className="level-card"
                     >
-                        <div style={{ fontSize: '12px', color: '#8b0000', fontWeight: 'bold', marginBottom: '10px' }}>{level.period}</div>
+                        <div style={{ color: '#8b0000', fontWeight: 'bold', marginBottom: '10px' }}>{level.period}</div>
                         <h2 style={{ fontSize: '24px', margin: '0 0 15px 0' }}>{level.title}</h2>
                         <p style={{ fontSize: '14px', flex: 1, lineHeight: '1.6' }}>{level.description}</p>
                         <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '15px', color: '#8b5a2b' }}>

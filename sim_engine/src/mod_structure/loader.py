@@ -1,5 +1,5 @@
 # src/models/loader.py
-from .base import ModelMetadata, Variable, Formula, VariableType
+from .base import ModelMetadata, Variable, Formula, VariableType, InputSchedule, SchedulePoint, Accumulator, WINDOW_SECONDS, TIME_UNIT_SECONDS
 from .utils import merge_dicts
 from typing import Dict, Set, Any
 from asteval import Interpreter
@@ -103,6 +103,7 @@ class Loader:
             self.variable_history.clear()
             self.simulator.clear()
             self.optimizer.clear()
+            self.accumulators.clear()
             self.current_step = 0
             self.time = 0.0
         
@@ -147,20 +148,73 @@ class Loader:
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 
+        # 解析 time_unit（默认 second，保持向后兼容）
+        time_unit_raw = str(simulator_data.get('time_unit', 'second')).lower()
+        if time_unit_raw not in TIME_UNIT_SECONDS:
+            logger.warning(f"未知 time_unit '{time_unit_raw}'，回退为 'second'")
+            time_unit_raw = 'second'
+        self.time_unit = time_unit_raw
+
         # 应用计划表 (Schedules)
-        from .base import InputSchedule, SchedulePoint
         schedules_raw = data.get('schedules', {})
         for var_name, sched_data in schedules_raw.items():
             points = []
             for pt in sched_data.get('points', []):
                 points.append(SchedulePoint(time=float(pt['time']), value=float(pt['value'])))
-            
+
             self.schedules[var_name] = InputSchedule(
                 variable=var_name,
                 points=sorted(points, key=lambda p: p.time),
                 interpolation=sched_data.get('interpolation', 'step')
             )
-        
+
+        # 应用每日输入 (daily_inputs) — 转换为 schedules，day 从 1 开始
+        daily_inputs_raw = data.get('daily_inputs', {})
+        for var_name, di_data in daily_inputs_raw.items():
+            points = []
+            for pt in di_data.get('values', []):
+                time_sec = (float(pt['day']) - 1.0) * 86400.0
+                points.append(SchedulePoint(time=time_sec, value=float(pt['value'])))
+            if points:
+                self.schedules[var_name] = InputSchedule(
+                    variable=var_name,
+                    points=sorted(points, key=lambda p: p.time),
+                    interpolation=di_data.get('interpolation', 'step')
+                )
+
+        # 应用累积器 (accumulators)
+        accumulators_raw = data.get('accumulators', {})
+        for acc_name, acc_data in accumulators_raw.items():
+            window_str = acc_data.get('window', 'day').lower()
+            if window_str not in WINDOW_SECONDS:
+                logger.warning(f"未知累积窗口 '{window_str}'，跳过累积器 '{acc_name}'")
+                continue
+            operation = acc_data.get('operation', 'sum').lower()
+            if operation not in ('sum', 'mean'):
+                logger.warning(f"未知累积操作 '{operation}'，跳过累积器 '{acc_name}'")
+                continue
+            self.accumulators[acc_name] = Accumulator(
+                variable=acc_name,
+                source=acc_data['source'],
+                window=window_str,
+                operation=operation,
+                unit=acc_data.get('unit'),
+                description=acc_data.get('description', ''),
+                running_sum=0.0,
+                window_start_time=0.0
+            )
+            # 如果输出变量不存在，自动创建为 state 类型
+            if acc_name not in self.variables:
+                self.variables[acc_name] = Variable(
+                    description=acc_data.get('description',
+                        f"Accumulated {acc_data['source']} per {window_str}"),
+                    value=0.0,
+                    type=VariableType.state,
+                    unit=acc_data.get('unit'),
+                    bounds=None
+                )
+                self.variable_history[acc_name] = [0.0]
+
         # 更新元数据（如果是清空模式）
         if clear_existing:
             self.metadata = ModelMetadata(

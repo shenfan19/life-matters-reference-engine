@@ -108,7 +108,7 @@ const Converter = () => {
                     {generating && (
                         <div style={{ marginTop: 20 }}>
                             <Progress percent={progress} status="active" />
-                            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>解析结构并生成卡牌数据...</div>
+                            <div style={{ marginTop: 8, opacity: 0.6 }}>解析结构并生成卡牌数据...</div>
                         </div>
                     )}
                 </div>

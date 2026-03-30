@@ -457,34 +457,34 @@ export default function ModsManager({ isDarkMode, c }: Props) {
 
         <div style={{ padding: '10px 10px 6px' }}>
           <Input size="small"
-            prefix={<SearchOutlined style={{ fontSize: 11, color: mute }} />}
+            prefix={<SearchOutlined style={{ color: mute }} />}
             placeholder="搜索…" value={search} onChange={e => setSearch(e.target.value)}
-            style={{ fontSize: 11 }}
+            style={{  }}
           />
         </div>
 
         <div style={{ padding: '4px 10px 4px 12px', borderBottom: `1px solid ${border}`,
           display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, color: mute, fontFamily: 'monospace' }}>
+          <span style={{ color: mute, fontFamily: 'monospace' }}>
             {checked.size > 0 ? `${checked.size}/5 已选` : '0 已选'}
           </span>
           <Button size="small" onClick={expandAll}
-            style={{ fontSize: 10, color: mute, borderColor: border, padding: '0 5px' }}>
+            style={{ color: mute, borderColor: border, padding: '0 5px' }}>
             展开
           </Button>
           <Button size="small" onClick={collapseAll}
-            style={{ fontSize: 10, color: mute, borderColor: border, padding: '0 5px' }}>
+            style={{ color: mute, borderColor: border, padding: '0 5px' }}>
             折叠
           </Button>
           {checked.size > 0 && (
             <Button size="small" onClick={deselectAll}
-              style={{ fontSize: 10, color: mute, borderColor: border }}>
+              style={{ color: mute, borderColor: border }}>
               全取消
             </Button>
           )}
-          <Button size="small" icon={<PlusOutlined style={{ fontSize: 10 }} />}
+          <Button size="small" icon={<PlusOutlined style={{  }} />}
             onClick={() => { setNewFilePath(''); setNewFileTemplate('model'); setNewFileModal(true); }}
-            style={{ fontSize: 10, color: primary, borderColor: primary, padding: '0 5px' }}>
+            style={{ color: primary, borderColor: primary, padding: '0 5px' }}>
             新建
           </Button>
           {checkedFiles.length >= 2 && (
@@ -499,9 +499,9 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         {showMerge && (
           <div style={{ padding: '6px 10px 8px', background: isDarkMode ? 'rgba(82,196,26,0.06)' : '#f6ffed',
             borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: mute, marginBottom: 4 }}>输出路径（相对 mods/）</div>
+            <div style={{ color: mute, marginBottom: 4 }}>输出路径（相对 mods/）</div>
             <input value={mergeOut} onChange={e => setMergeOut(e.target.value)}
-              style={{ width: '100%', fontSize: 11, fontFamily: 'monospace', padding: '3px 7px',
+              style={{ width: '100%', fontFamily: 'monospace', padding: '3px 7px',
                 border: `1px solid ${border}`, borderRadius: 4,
                 background: isDarkMode ? '#162a1b' : '#fff', color: text, outline: 'none', marginBottom: 6 }} />
             <div style={{ display: 'flex', gap: 6 }}>
@@ -531,14 +531,14 @@ export default function ModsManager({ isDarkMode, c }: Props) {
                   onDrop={e => { e.preventDefault(); handleDrop(n.key); }}
                   style={{ minHeight: 28, display: 'flex', alignItems: 'center', gap: 5,
                     paddingLeft: 6 + n.depth * 14, cursor: 'pointer', borderRadius: 4,
-                    color: fss !== 'none' ? text : mute, userSelect: 'none', fontSize: 11,
+                    color: fss !== 'none' ? text : mute, userSelect: 'none',
                     background: isDrop ? (isDarkMode ? 'rgba(82,196,26,0.15)' : '#d9f7be') : 'transparent',
                     outline: isDrop ? `2px dashed ${primary}` : 'none',
                     transition: 'background 0.1s' }}
                   onMouseEnter={e => { if (!isDrop) e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.04)' : '#f5f5f5'; }}
                   onMouseLeave={e => { if (!isDrop) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <span style={{ fontSize: 10, width: 10, textAlign: 'center' }}>{open ? '▾' : '▸'}</span>
+                  <span style={{ width: 10, textAlign: 'center' }}>{open ? '▾' : '▸'}</span>
                   <TriChk state={fss} onClick={e => toggleFolderFiles(n.key, e)} primary={primary} />
                   <span style={{ fontFamily: 'monospace', fontWeight: fss !== 'none' ? 600 : 400 }}>{n.name}/</span>
                   <span style={{ marginLeft: 'auto', fontSize: 9, color: mute }}>{n.fileCount}</span>
@@ -557,8 +557,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
                 style={{ minHeight: 28, display: 'flex', alignItems: 'center', gap: 6,
                   paddingLeft: 6 + n.depth * 14,
                   cursor: isGs ? 'default' : 'pointer', borderRadius: 4,
-                  background: sel ? (isDarkMode ? '#1a3a22' : '#e8f5e9') : 'transparent',
-                  fontSize: 11, color: text, transition: 'background 0.1s',
+                  background: sel ? (isDarkMode ? '#1a3a22' : '#e8f5e9') : 'transparent', color: text, transition: 'background 0.1s',
                   opacity: isGs ? 0.4 : dragKey === n.key ? 0.4 : 1 }}
                 onMouseEnter={e => { if (!sel && !isGs) e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.04)' : '#f9fafb'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = sel ? (isDarkMode ? '#1a3a22' : '#e8f5e9') : 'transparent'; }}
@@ -567,7 +566,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
                   onClick={e => { e.stopPropagation(); if (!isGs) toggleFile(n.key); }}
                   style={{ width: 12, height: 12, cursor: isGs ? 'default' : 'pointer',
                     accentColor: primary, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, flexShrink: 0 }}>{ft.icon}</span>
+                <span style={{ flexShrink: 0 }}>{ft.icon}</span>
                 <span style={{ flex: 1, fontFamily: 'monospace', overflow: 'hidden',
                   textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {n.name}
@@ -595,8 +594,8 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 10, color: mute }}>
           <div style={{ fontSize: 32 }}>📂</div>
-          <div style={{ fontSize: 13 }}>点击左侧文件查看</div>
-          <div style={{ fontSize: 11, fontFamily: 'monospace' }}>可同时查看最多 5 个文件</div>
+          <div style={{  }}>点击左侧文件查看</div>
+          <div style={{ fontFamily: 'monospace' }}>可同时查看最多 5 个文件</div>
         </div>
       ) : (
         <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden',
@@ -639,29 +638,28 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
           <div>
-            <div style={{ fontSize: 12, marginBottom: 6, fontWeight: 500 }}>模板类型</div>
+            <div style={{ marginBottom: 6, fontWeight: 500 }}>模板类型</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['model', 'scenario'] as const).map(t => (
                 <button key={t} onClick={() => setNewFileTemplate(t)}
                   style={{ flex: 1, padding: '6px 0', borderRadius: 6, cursor: 'pointer',
                     border: `1.5px solid ${newFileTemplate === t ? primary : border}`,
                     background: newFileTemplate === t ? (isDarkMode ? 'rgba(0,122,51,0.12)' : '#f0faf2') : 'transparent',
-                    color: newFileTemplate === t ? primary : mute, fontWeight: newFileTemplate === t ? 600 : 400,
-                    fontSize: 12 }}>
+                    color: newFileTemplate === t ? primary : mute, fontWeight: newFileTemplate === t ? 600 : 400 }}>
                   {t === 'model' ? '📊 Model' : '📋 Scenario'}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 12, marginBottom: 6, fontWeight: 500 }}>
+            <div style={{ marginBottom: 6, fontWeight: 500 }}>
               文件路径 <span style={{ color: mute, fontWeight: 400 }}>（相对 mods/）</span>
             </div>
             <input
               value={newFilePath}
               onChange={e => setNewFilePath(e.target.value)}
               placeholder={newFileTemplate === 'model' ? 'models/my_module/my_model.yaml' : 'scenarios/my_scene.yaml'}
-              style={{ width: '100%', fontSize: 12, fontFamily: 'monospace', padding: '6px 10px',
+              style={{ width: '100%', fontFamily: 'monospace', padding: '6px 10px',
                 border: `1px solid ${border}`, borderRadius: 6,
                 background: isDarkMode ? '#162a1b' : '#fff', color: text, outline: 'none', boxSizing: 'border-box' }}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateFile(); }}
@@ -720,7 +718,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
         display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>{ft.icon}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: text,
+          <div style={{ fontWeight: 700, color: text,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {mt.name || fileKey.split('/').pop()}
           </div>
@@ -760,7 +758,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
         )}
         <button onClick={onClose}
           style={{ background: 'none', border: 'none', cursor: 'pointer',
-            color: mute, fontSize: 15, padding: '0 4px', lineHeight: 1, borderRadius: 3 }}>
+            color: mute, padding: '0 4px', lineHeight: 1, borderRadius: 3 }}>
           ×
         </button>
       </div>
@@ -768,7 +766,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
       {/* ── Validate status bar ── */}
       {validateSt && !validateSt.loading && validateSt.valid !== undefined && (
         <div style={{
-          padding: '6px 16px', flexShrink: 0, fontSize: 11,
+          padding: '6px 16px', flexShrink: 0,
           background: validateSt.valid
             ? (isDarkMode ? 'rgba(82,196,26,0.1)' : '#f6ffed')
             : (isDarkMode ? 'rgba(255,77,79,0.1)' : '#fff1f0'),
@@ -791,7 +789,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
 
       {/* ── Scrollable body ── */}
       {!meta ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mute, fontSize: 12 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mute }}>
           加载中…
         </div>
       ) : (
@@ -808,11 +806,11 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
               {editing ? (
                 <textarea value={mt.description || ''} rows={2}
                   onChange={e => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.description = e.target.value; })}
-                  style={{ width: '100%', fontSize: 11, resize: 'vertical', border: `1px solid ${border}`,
+                  style={{ width: '100%', resize: 'vertical', border: `1px solid ${border}`,
                     borderRadius: 4, padding: '4px 8px', background: bg, color: text,
                     outline: 'none', fontFamily: 'inherit', lineHeight: 1.55 }} />
               ) : (
-                <span style={{ fontSize: 11, color: mute, lineHeight: 1.6 }}>
+                <span style={{ color: mute, lineHeight: 1.6 }}>
                   {mt.description || <span style={{ opacity: 0.4 }}>—</span>}
                 </span>
               )}
@@ -826,10 +824,10 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                 />
               </Row>
             )}
-            {mt.author && <Row label="作者" c={c}><span style={{ fontSize: 11, color: mute }}>{mt.author}</span></Row>}
+            {mt.author && <Row label="作者" c={c}><span style={{ color: mute }}>{mt.author}</span></Row>}
             {mt.reference && (
               <Row label="参考" c={c}>
-                <span style={{ fontSize: 10, color: mute, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                <span style={{ color: mute, fontFamily: 'monospace', wordBreak: 'break-all' }}>
                   {mt.reference}
                 </span>
               </Row>
@@ -923,12 +921,12 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                         onChange={e => onPatch(d => {
                           if (d[simK]) d[simK][k] = typeof sim[k] === 'number' ? Number(e.target.value) : e.target.value;
                         })}
-                        style={{ fontSize: 11, fontFamily: 'monospace', padding: '2px 6px',
+                        style={{ fontFamily: 'monospace', padding: '2px 6px',
                           border: `1px solid ${border}`, borderRadius: 3,
                           background: bg, color: text, outline: 'none', width: '100%' }}
                       />
                     ) : (
-                      <span style={{ fontSize: 11, fontFamily: 'monospace', color: text }}>{String(sim[k])}</span>
+                      <span style={{ fontFamily: 'monospace', color: text }}>{String(sim[k])}</span>
                     )}
                   </Row>
                 ))}
@@ -949,12 +947,12 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                           if (!d.optimizer) return;
                           d.optimizer[k] = e.target.value;
                         })}
-                        style={{ fontSize: 11, fontFamily: 'monospace', padding: '2px 6px',
+                        style={{ fontFamily: 'monospace', padding: '2px 6px',
                           border: `1px solid ${border}`, borderRadius: 3,
                           background: bg, color: text, outline: 'none', width: '100%' }}
                       />
                     ) : (
-                      <span style={{ fontSize: 11, fontFamily: 'monospace', color: text }}>
+                      <span style={{ fontFamily: 'monospace', color: text }}>
                         {Array.isArray(data.optimizer[k]) ? data.optimizer[k].join(', ') : String(data.optimizer[k])}
                       </span>
                     )}
@@ -980,7 +978,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
 }) {
   const { border, text, textMute: mute, bg, panel } = c;
   const entries = Object.entries(vars);
-  if (entries.length === 0) return <span style={{ fontSize: 11, color: mute }}>—</span>;
+  if (entries.length === 0) return <span style={{ color: mute }}>—</span>;
 
   const thSt = { fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase' as const, color: mute, padding: '0 6px 6px 0', textAlign: 'left' as const };
@@ -988,7 +986,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             {['变量名','类型','单位','初始值','范围'].map(h => <th key={h} style={thSt}>{h}</th>)}
@@ -1007,7 +1005,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                       onCommit={v => onFieldChange(vk, '_rename', v)}
                       c={c} />
                   ) : (
-                    <span style={{ fontFamily: 'monospace', color: text, fontSize: 11 }}>{vk}</span>
+                    <span style={{ fontFamily: 'monospace', color: text }}>{vk}</span>
                   )}
                 </td>
                 {/* Type */}
@@ -1015,7 +1013,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                   {editing ? (
                     <select value={vv.type || 'state'}
                       onChange={e => onFieldChange(vk, 'type', e.target.value)}
-                      style={{ fontSize: 10, border: `1px solid ${border}`, borderRadius: 3,
+                      style={{ border: `1px solid ${border}`, borderRadius: 3,
                         padding: '1px 4px', background: panel, color: text }}>
                       <option value="state">state</option>
                       <option value="input">input</option>
@@ -1033,11 +1031,11 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                   {editing ? (
                     <input value={vv.unit || ''} placeholder="—"
                       onChange={e => onFieldChange(vk, 'unit', e.target.value)}
-                      style={{ width: 50, fontSize: 11, fontFamily: 'monospace',
+                      style={{ width: 50, fontFamily: 'monospace',
                         border: `1px solid ${border}`, borderRadius: 3, padding: '2px 5px',
                         background: bg, color: text, outline: 'none' }} />
                   ) : (
-                    <span style={{ fontSize: 11, color: mute, fontFamily: 'monospace' }}>{vv.unit || '—'}</span>
+                    <span style={{ color: mute, fontFamily: 'monospace' }}>{vv.unit || '—'}</span>
                   )}
                 </td>
                 {/* Initial value */}
@@ -1045,11 +1043,11 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                   {editing ? (
                     <input type="number" value={vv.value ?? 0}
                       onChange={e => onFieldChange(vk, 'value', Number(e.target.value))}
-                      style={{ width: 60, fontSize: 11, fontFamily: 'monospace',
+                      style={{ width: 60, fontFamily: 'monospace',
                         border: `1px solid ${border}`, borderRadius: 3, padding: '2px 5px',
                         background: bg, color: text, outline: 'none' }} />
                   ) : (
-                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: text }}>
+                    <span style={{ fontFamily: 'monospace', color: text }}>
                       {vv.value ?? '—'}
                     </span>
                   )}
@@ -1060,18 +1058,18 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <input type="number" value={vv.bounds?.[0] ?? 0}
                         onChange={e => onFieldChange(vk, 'bounds', [Number(e.target.value), vv.bounds?.[1] ?? 100])}
-                        style={{ width: 45, fontSize: 10, fontFamily: 'monospace',
+                        style={{ width: 45, fontFamily: 'monospace',
                           border: `1px solid ${border}`, borderRadius: 3, padding: '2px 4px',
                           background: bg, color: text, outline: 'none' }} />
-                      <span style={{ color: mute, fontSize: 10 }}>–</span>
+                      <span style={{ color: mute }}>–</span>
                       <input type="number" value={vv.bounds?.[1] ?? 100}
                         onChange={e => onFieldChange(vk, 'bounds', [vv.bounds?.[0] ?? 0, Number(e.target.value)])}
-                        style={{ width: 45, fontSize: 10, fontFamily: 'monospace',
+                        style={{ width: 45, fontFamily: 'monospace',
                           border: `1px solid ${border}`, borderRadius: 3, padding: '2px 4px',
                           background: bg, color: text, outline: 'none' }} />
                     </div>
                   ) : (
-                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: mute }}>
+                    <span style={{ fontFamily: 'monospace', color: mute }}>
                       {vv.bounds ? `[${vv.bounds[0]}, ${vv.bounds[1]}]` : '—'}
                     </span>
                   )}
@@ -1081,7 +1079,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                   <td style={{ ...tdSt, padding: '3px 0' }}>
                     <button onClick={() => onDelete(vk)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer',
-                        color: mute, fontSize: 14, padding: '0 3px', lineHeight: 1 }}>×</button>
+                        color: mute, padding: '0 3px', lineHeight: 1 }}>×</button>
                   </td>
                 )}
               </tr>
@@ -1109,7 +1107,7 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
 }) {
   const { border, text, textMute: mute, bg, panel, primary } = c;
   const entries = Object.entries(fmls);
-  if (!entries.length) return <span style={{ fontSize: 11, color: mute }}>—</span>;
+  if (!entries.length) return <span style={{ color: mute }}>—</span>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: editing ? 10 : 3 }}>
@@ -1129,9 +1127,9 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: isDarkBg(bg) ? 'rgba(255,255,255,0.04)' : '#f0f0f0' }}>
                 <TChip t={t} />
-                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: text, flex: 1 }}>{fn}</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: text, flex: 1 }}>{fn}</span>
                 {hasExtra && (
-                  <span style={{ fontSize: 10, color: mute, fontFamily: 'monospace' }}>
+                  <span style={{ color: mute, fontFamily: 'monospace' }}>
                     {fd.condition !== undefined && fd.condition !== true && fd.condition !== 'true'
                       ? `if ${fd.condition}` : ''}
                     {fd.priority !== undefined && fd.priority !== 5 ? ` pri:${fd.priority}` : ''}
@@ -1143,10 +1141,10 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
                 <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {dynEntries.map(([dk, dv]: [string, any]) => (
                     <div key={dk} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: text,
+                      <span style={{ fontFamily: 'monospace', color: text,
                         whiteSpace: 'nowrap', minWidth: 60 }}>{dk}</span>
-                      <span style={{ color: mute, fontSize: 11, flexShrink: 0 }}>=</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: text,
+                      <span style={{ color: mute, flexShrink: 0 }}>=</span>
+                      <span style={{ fontFamily: 'monospace', color: text,
                         wordBreak: 'break-all', lineHeight: 1.5 }}>{String(dv ?? '—')}</span>
                     </div>
                   ))}
@@ -1165,19 +1163,19 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
               display: 'flex', alignItems: 'center', gap: 6, background: isDarkBg(bg) ? 'rgba(255,255,255,0.04)' : '#f0f7f1' }}>
               <TChip t={t} />
               <VarNameInput value={fn} onCommit={nk => onRename(fn, nk)} c={c} />
-              <span style={{ fontSize: 10, color: mute, marginLeft: 4 }}>cond:</span>
+              <span style={{ color: mute, marginLeft: 4 }}>cond:</span>
               <input value={String(fd.condition ?? 'true')}
                 onChange={e => onField(fn, 'condition', e.target.value)}
-                style={{ width: 80, fontSize: 10, fontFamily: 'monospace', padding: '1px 5px',
+                style={{ width: 80, fontFamily: 'monospace', padding: '1px 5px',
                   border: `1px solid ${border}`, borderRadius: 3, background: bg, color: text, outline: 'none' }} />
-              <span style={{ fontSize: 10, color: mute }}>pri:</span>
+              <span style={{ color: mute }}>pri:</span>
               <input type="number" value={fd.priority ?? 5}
                 onChange={e => onField(fn, 'priority', Number(e.target.value))}
-                style={{ width: 40, fontSize: 10, fontFamily: 'monospace', padding: '1px 5px',
+                style={{ width: 40, fontFamily: 'monospace', padding: '1px 5px',
                   border: `1px solid ${border}`, borderRadius: 3, background: bg, color: text, outline: 'none' }} />
               <button onClick={() => onDelete(fn)}
                 style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
-                  color: mute, fontSize: 14, padding: '0 3px', lineHeight: 1 }}>×</button>
+                  color: mute, padding: '0 3px', lineHeight: 1 }}>×</button>
             </div>
             {/* Dynamics rows */}
             <div style={{ padding: '6px 10px' }}>
@@ -1186,18 +1184,18 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
               {dynEntries.map(([dk, dv]: [string, any]) => (
                 <div key={dk} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                   <VarNameInput value={dk} onCommit={nk => onDynRename(fn, dk, nk)} c={c} />
-                  <span style={{ color: mute, fontSize: 11 }}>=</span>
+                  <span style={{ color: mute }}>=</span>
                   <input value={String(dv ?? '')}
                     onChange={e => onDynChange(fn, dk, e.target.value)}
-                    style={{ flex: 1, fontSize: 11, fontFamily: 'monospace', padding: '2px 6px',
+                    style={{ flex: 1, fontFamily: 'monospace', padding: '2px 6px',
                       border: `1px solid ${border}`, borderRadius: 3, background: bg, color: text, outline: 'none' }} />
                   <button onClick={() => onDynDelete(fn, dk)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer',
-                      color: mute, fontSize: 13, padding: '0 2px', lineHeight: 1 }}>×</button>
+                      color: mute, padding: '0 2px', lineHeight: 1 }}>×</button>
                 </div>
               ))}
               <button onClick={() => onDynAdd(fn)}
-                style={{ fontSize: 10, padding: '2px 8px', borderRadius: 3, marginTop: 2,
+                style={{ padding: '2px 8px', borderRadius: 3, marginTop: 2,
                   background: 'transparent', color: primary, border: `1px dashed ${primary}`,
                   cursor: 'pointer' }}>
                 + 动态项
@@ -1222,7 +1220,7 @@ function VarNameInput({ value, onCommit, c }: { value: string; onCommit(v: strin
     <input value={local}
       onChange={e => setLocal(e.target.value)}
       onBlur={() => { if (local !== value) onCommit(local); }}
-      style={{ width: 100, fontSize: 11, fontFamily: 'monospace',
+      style={{ width: 100, fontFamily: 'monospace',
         border: `1px solid ${c.border}`, borderRadius: 3, padding: '2px 5px',
         background: c.bg, color: c.text, outline: 'none' }} />
   );
@@ -1240,13 +1238,13 @@ function TagsField({ tags, editing, onChange, c }: {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
       {tags.map((t, i) => (
-        <span key={i} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10,
+        <span key={i} style={{ padding: '2px 8px', borderRadius: 10,
           border: `1px solid ${border}`, color: text, display: 'flex', alignItems: 'center', gap: 4 }}>
           {t}
           {editing && (
             <button onClick={() => onChange(tags.filter((_, j) => j !== i))}
               style={{ background: 'none', border: 'none', cursor: 'pointer',
-                color: mute, fontSize: 11, padding: 0, lineHeight: 1 }}>×</button>
+                color: mute, padding: 0, lineHeight: 1 }}>×</button>
           )}
         </span>
       ))}
@@ -1255,7 +1253,7 @@ function TagsField({ tags, editing, onChange, c }: {
           onKeyDown={e => { if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
             e.preventDefault(); onChange([...tags, input.trim()]); setInput('');
           }}}
-          placeholder="+ 标签" style={{ fontSize: 10, padding: '2px 8px',
+          placeholder="+ 标签" style={{ padding: '2px 8px',
             border: `1px dashed ${border}`, borderRadius: 10,
             background: 'transparent', color: text, outline: 'none', width: 70 }} />
       )}
@@ -1272,7 +1270,7 @@ function Sect({ title, action, children, c, isDarkMode }: {
     <div style={{ borderBottom: `1px solid ${c.border}`, padding: '12px 14px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 6 }}>
         <span style={{
-          fontSize: 10, fontWeight: 700,
+          fontWeight: 700,
           color: isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)',
           letterSpacing: '0.06em', textTransform: 'uppercase',
         }}>
@@ -1291,7 +1289,7 @@ function Row({ label, children, c, inline }: {
   return (
     <div style={{ display: 'flex', flexDirection: inline ? 'row' : 'column',
       alignItems: inline ? 'center' : 'flex-start', gap: inline ? 8 : 3, marginBottom: 8 }}>
-      <span style={{ fontSize: 10, color: c.textMute, whiteSpace: 'nowrap',
+      <span style={{ color: c.textMute, whiteSpace: 'nowrap',
         minWidth: inline ? 80 : undefined }}>{label}</span>
       <div style={{ flex: 1, width: '100%' }}>{children}</div>
     </div>
@@ -1301,10 +1299,10 @@ function Row({ label, children, c, inline }: {
 function FV({ editing, value, onChange, c }: {
   editing: boolean; value: string; onChange(v: string): void; c: any;
 }) {
-  if (!editing) return <span style={{ fontSize: 12, color: c.text }}>{value || '—'}</span>;
+  if (!editing) return <span style={{ color: c.text }}>{value || '—'}</span>;
   return (
     <input value={value} onChange={e => onChange(e.target.value)}
-      style={{ fontSize: 12, padding: '3px 8px', border: `1px solid ${c.border}`,
+      style={{ padding: '3px 8px', border: `1px solid ${c.border}`,
         borderRadius: 4, background: c.bg, color: c.text, outline: 'none', width: '100%' }} />
   );
 }

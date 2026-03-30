@@ -131,6 +131,7 @@ formulas:
 
 simulator:
   step_size: 1      # 1天/步
+  time_unit: day    # 180 步 = 6 个月
   total_time: 180   # 6个月仿真
   output_variables: [fitness_component, fatigue_component, performance, training_load]
 

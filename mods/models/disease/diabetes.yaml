@@ -65,6 +65,7 @@ formulas:
 
 simulator:
   step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
   total_time: 1440
   output_variables: [blood_glucose, plasma_insulin, health_score, complication_score]
 

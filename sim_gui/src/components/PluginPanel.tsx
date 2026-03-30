@@ -54,7 +54,7 @@ export default function PluginPanel() {
           borderRadius: 4
         }}>
           <strong>Error loading plugins:</strong> {error}
-          <div style={{ marginTop: 10, fontSize: 12 }}>
+          <div style={{ marginTop: 10 }}>
             请确保 Backend 已启动在 http://localhost:8001
           </div>
         </div>

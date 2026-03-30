@@ -198,16 +198,15 @@ export default function StorySelect({
           <path d="M2 14 Q7 2 12 14 Q17 26 22 14 Q27 2 32 14 Q37 26 42 14"
                 stroke={c.primary} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        <span style={{ fontSize: 15, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
-        <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.textMute, fontFamily: 'monospace' }}>Card Game</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
 
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         <button
           onClick={() => window.open('http://localhost:5173', '_blank')}
-          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: c.textSec, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
+          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center', gap: 5 }}
         >
-          <RocketOutlined style={{ fontSize: 11 }} /> {t('app.simulator')}
+          <RocketOutlined style={{  }} /> {t('app.simulator')}
         </button>
 
         <div style={{ flex: 1 }} />
@@ -217,7 +216,7 @@ export default function StorySelect({
           value={language}
           onChange={e => setLanguage(e.target.value as Language)}
           style={{
-            padding: '3px 6px', borderRadius: 6, fontSize: 11,
+            padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${c.border}`,
             background: c.panel, color: c.textMute,
             cursor: 'pointer', outline: 'none',
@@ -230,7 +229,7 @@ export default function StorySelect({
 
         <button
           onClick={onToggleDark}
-          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer', color: c.textSec, fontSize: 13, display: 'flex', alignItems: 'center' }}
+          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}
         >
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
@@ -242,7 +241,7 @@ export default function StorySelect({
         <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
           {(['card', 'list'] as ViewMode[]).map(mode => (
             <button key={mode} onClick={() => setViewMode(mode)} style={{
-              padding: '4px 10px', border: 'none', cursor: 'pointer', fontSize: 13,
+              padding: '4px 10px', border: 'none', cursor: 'pointer',
               background: viewMode === mode ? c.primary : 'transparent',
               color: viewMode === mode ? '#fff' : c.textMute,
               transition: 'all 0.15s',
@@ -256,14 +255,14 @@ export default function StorySelect({
 
         {/* Sort */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11, color: c.textMute }}>{t('select.sort')}</span>
+          <span style={{ color: c.textMute }}>{t('select.sort')}</span>
           {([['period', 'select.sort.time'], ['location', 'select.sort.region'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
             <button key={key} onClick={() => setSortBy(key)} style={{
               padding: '3px 10px', borderRadius: 5,
               border: `1px solid ${sortBy === key ? c.activeSort : c.border}`,
               background: sortBy === key ? (isDarkMode ? 'rgba(82,196,26,0.15)' : '#e8f5e9') : 'transparent',
               color: sortBy === key ? c.activeSort : c.textMute,
-              cursor: 'pointer', fontSize: 11.5, fontWeight: sortBy === key ? 600 : 400, transition: 'all 0.12s',
+              cursor: 'pointer', fontWeight: sortBy === key ? 600 : 400, transition: 'all 0.12s',
             }}>{t(tkey)}</button>
           ))}
         </div>
@@ -281,12 +280,12 @@ export default function StorySelect({
                 padding: '5px 20px', minHeight: 34,
                 borderBottom: isLast ? 'none' : `1px solid ${c.filterDivider}`,
               }}>
-                <span style={{ fontSize: 11, color: c.textMute, width: 34, flexShrink: 0, fontWeight: 600 }}>{t(group.labelKey)}</span>
+                <span style={{ color: c.textMute, width: 34, flexShrink: 0, fontWeight: 600 }}>{t(group.labelKey)}</span>
 
                 <button
                   onClick={() => clearGroup(group.key)}
                   style={{
-                    padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', fontSize: 11, marginRight: 4,
+                    padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 4,
                     background: selected.length === 0 ? c.primary : 'transparent',
                     color: selected.length === 0 ? '#fff' : c.textMute,
                     fontWeight: selected.length === 0 ? 600 : 400,
@@ -297,7 +296,7 @@ export default function StorySelect({
                   const active = selected.includes(tag);
                   return (
                     <button key={tag} onClick={() => toggleTag(group.key, tag)} style={{
-                      padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', fontSize: 11, marginRight: 3,
+                      padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 3,
                       background: active ? c.tagActiveBg : 'transparent',
                       color: active ? '#fff' : c.text,
                       fontWeight: active ? 600 : 400,
@@ -312,7 +311,7 @@ export default function StorySelect({
       )}
 
       {/* ── Count line ── */}
-      <div style={{ flexShrink: 0, padding: '5px 20px 2px', fontSize: 11, color: c.textMute }}>
+      <div style={{ flexShrink: 0, padding: '5px 20px 2px', color: c.textMute }}>
         {loading ? t('select.loading') : `${displayed.length} ${t('select.scenarios_unit')}${hasAnyFilter ? ' ' + t('select.filtered') : ''}`}
       </div>
 
@@ -320,11 +319,11 @@ export default function StorySelect({
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 20px 32px' }}>
 
         {loading && (
-          <div style={{ textAlign: 'center', paddingTop: 60, color: c.textMute, fontSize: 13 }}>{t('select.loading_stories')}</div>
+          <div style={{ textAlign: 'center', paddingTop: 60, color: c.textMute }}>{t('select.loading_stories')}</div>
         )}
 
         {!loading && displayed.length === 0 && (
-          <div style={{ textAlign: 'center', paddingTop: 60, color: c.textMute, fontSize: 13, lineHeight: 1.7 }}>
+          <div style={{ textAlign: 'center', paddingTop: 60, color: c.textMute, lineHeight: 1.7 }}>
             {hasAnyFilter ? t('select.empty_filter') : t('select.empty')}
           </div>
         )}
@@ -374,28 +373,28 @@ function CardItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
         <div style={{ fontSize: 14, fontWeight: 700, color: c.text, lineHeight: 1.35, flex: 1, fontFamily: 'Georgia, serif' }}>
           {story.title}
         </div>
-        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
+        <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
           {diff.label}
         </span>
       </div>
 
       {(story.period || story.location) && (
-        <div style={{ fontSize: 10.5, color: c.textMute, marginBottom: 7, fontFamily: 'monospace' }}>
+        <div style={{ color: c.textMute, marginBottom: 7, fontFamily: 'monospace' }}>
           {[story.period, story.location].filter(Boolean).join(' · ')}
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: c.textSec, lineHeight: 1.6, marginBottom: 10 }}>
+      <div style={{ color: c.textSec, lineHeight: 1.6, marginBottom: 10 }}>
         {story.description.length > 110 ? story.description.slice(0, 110) + '…' : story.description}
       </div>
 
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
         {story.tags.slice(0, 4).map(tag => (
-          <span key={tag} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute }}>
+          <span key={tag} style={{ padding: '1px 7px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute }}>
             {tag}
           </span>
         ))}
-        <span style={{ marginLeft: 'auto', fontSize: 10.5, color: c.textMute, fontFamily: 'monospace' }}>
+        <span style={{ marginLeft: 'auto', color: c.textMute, fontFamily: 'monospace' }}>
           {story.turns} {turnsLabel}
         </span>
       </div>
@@ -426,25 +425,25 @@ function ListItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
     >
       {/* Col 1: title + meta stacked */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {story.title}
         </div>
         {(story.period || story.location) && (
-          <div style={{ fontSize: 10, color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+          <div style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
             {[story.period, story.location].filter(Boolean).join(' · ')}
           </div>
         )}
       </div>
 
       {/* Col 2: description — single line, truncated */}
-      <div style={{ fontSize: 11.5, color: c.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ color: c.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {story.description}
       </div>
 
       {/* Col 3: tags */}
       <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
         {story.tags.slice(0, 3).map(tag => (
-          <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 5, border: `1px solid ${c.border}`, color: c.textMute, whiteSpace: 'nowrap' }}>
+          <span key={tag} style={{ padding: '1px 6px', borderRadius: 5, border: `1px solid ${c.border}`, color: c.textMute, whiteSpace: 'nowrap' }}>
             {tag}
           </span>
         ))}
@@ -452,10 +451,10 @@ function ListItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
 
       {/* Col 4: difficulty + turns */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: diff.color + '22', color: diff.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
+        <span style={{ padding: '1px 7px', borderRadius: 5, background: diff.color + '22', color: diff.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
           {diff.label}
         </span>
-        <span style={{ fontSize: 10, color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+        <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {story.turns} {turnsLabel}
         </span>
       </div>

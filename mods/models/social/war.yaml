@@ -49,5 +49,6 @@ formulas:
 
 simulator:
   step_size: 1
+  time_unit: month  # 12 步 = 12 个月 = 1 年
   total_time: 12
   output_variables: [geopolitical_tension, conflict_intensity, social_stability]

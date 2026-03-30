@@ -79,8 +79,8 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
   const cardBorder = isDarkMode ? '#1e3824' : '#c8e6c9';
   const accentIcon = isDarkMode ? '#52c41a' : '#007A33';
   const tagStyle: React.CSSProperties = isDarkMode
-    ? { background: 'rgba(82,196,26,0.15)', border: '1px solid rgba(82,196,26,0.35)', color: '#86efac', fontSize: 11 }
-    : { background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#007A33', fontSize: 11 };
+    ? { background: 'rgba(82,196,26,0.15)', border: '1px solid rgba(82,196,26,0.35)', color: '#86efac' }
+    : { background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#007A33' };
 
   return (
     <div style={{ padding: '40px 32px 32px', maxWidth: '880px', margin: '0 auto', width: '100%', overflowY: 'auto', flex: 1 }}>
@@ -149,7 +149,7 @@ const StoryLoaderComponent: React.FC<StoryLoaderProps> = ({ onSelect, onGoToSimu
                 </Space>
 
                 {/* Description */}
-                <div style={{ fontSize: 12, color: isDarkMode ? 'rgba(255,255,255,0.55)' : '#5a7a63', lineHeight: 1.45 }}>
+                <div style={{ color: isDarkMode ? 'rgba(255,255,255,0.55)' : '#5a7a63', lineHeight: 1.45 }}>
                   {item.description}
                 </div>
               </div>

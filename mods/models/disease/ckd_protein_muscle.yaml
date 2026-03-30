@@ -143,6 +143,7 @@ formulas:
 
 simulator:
   step_size: 1      # 1天/步
+  time_unit: day    # 365 步 = 1 年
   total_time: 365   # 1年仿真（CKD进展需年尺度观察）
   output_variables: [gfr, muscle_mass, bun, protein_intake, muscle_synthesis_rate]
 

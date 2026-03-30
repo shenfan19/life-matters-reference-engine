@@ -268,7 +268,7 @@ const StoryEngine: React.FC<StoryEngineProps> = ({ storyId, onExit }) => {
                     <div className="status-value-row">
                       <span className="value-num">{Math.round(val)}</span>
                       {delta !== 0 && (
-                        <span style={{ fontSize: 11, marginLeft: 4, color: delta > 0 ? '#52c41a' : '#ef4444', fontWeight: 600 }}>
+                        <span style={{ marginLeft: 4, color: delta > 0 ? '#52c41a' : '#ef4444', fontWeight: 600 }}>
                           {delta > 0 ? `+${delta}` : delta}
                         </span>
                       )}
