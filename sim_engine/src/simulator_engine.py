@@ -198,6 +198,11 @@ class SimulatorEngine:
             total_time = time_hours * 3600.0
             total_steps = int(total_time / step_size)
             output_variables = self.current_model.simulator.get('output_variables', [])
+            input_variables = [
+                name for name, var in self.current_model.variables.items()
+                if var.type.value == 'input'
+            ]
+            capture_variables = output_variables + [v for v in input_variables if v not in output_variables]
             
             # 创建会话
             self.sessions[session_id] = {
@@ -210,7 +215,7 @@ class SimulatorEngine:
                 'current_step': 0,
                 'time': 0.0,
                 'running': True,
-                'output_variables': output_variables,
+                'output_variables': capture_variables,
                 'data': []  # 存储仿真数据
             }
             

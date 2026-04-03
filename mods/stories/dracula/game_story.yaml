@@ -1,0 +1,57 @@
+endings:
+- condition: health >= 50
+  grade: S
+  title: 优秀
+- condition: health > 0
+  grade: A
+  title: 幸存
+- condition: health <= 0
+  grade: D
+  title: 失败
+env_deck:
+- path: cards/env_thirst_level.yaml
+  weight: 100
+generic_cards:
+  inject:
+  - rest
+  - labor
+  - interrupt
+health_mapping:
+  display: 生命值
+  scale:
+  - 0
+  - 100
+  - 0
+  - 100
+  source_variable: blood_reserve
+initial_state:
+  health: 100
+  money: 10
+  status: 1
+lose_condition:
+  description: 生命值归零
+  type: health_zero
+meta:
+  author: Universal Dynamics System
+  description: 德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。
+  difficulty: medium
+  name: dracula
+  source_path: scenarios/examples/dracula.yaml
+  source_scenario: dracula
+  tags:
+  - mythical
+  - physiological
+  - dracula
+  version: '0.1'
+player_deck:
+- path: cards/player_sun_exposure.yaml
+- path: cards/player_hunt_intensity.yaml
+turns:
+  action_points: 3
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  time_per_turn: 1 month
+  total: 12
+win_condition:
+  description: 撑过 12 个回合
+  type: survive

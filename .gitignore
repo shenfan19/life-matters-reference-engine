@@ -4,13 +4,10 @@ __pycache__/
 *$py.class
 
 # Personal archived
-_workspace_/
+b_matter/
 _saved_/
 _temp_/
 messages.mo
-mods/patch/
-mods/splited/
-mods/merged/
 users/test/
 
 # Build artifacts

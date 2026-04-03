@@ -231,11 +231,11 @@ class Validator:
                     vars_found = set(re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', expr))
                 
                 # 排除常见的函数和关键字
-                exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs', 
+                exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs',
                         'max', 'min', 'sum', 'pow', 'round',
                         'True', 'False', 'None', 'and', 'or', 'not',
                         'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
-                        'dt', 'time', 'pi', 'e'}
+                        'dt', 'step_size', 't', 'time', 'pi', 'e'}
                 
                 return vars_found - exclude
             

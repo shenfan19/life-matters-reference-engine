@@ -49,5 +49,5 @@ schedules:
 
 simulation:
   step_size: 600
-  total_time: 24
+  total_time: 86400
   output_variables: [blood_reserve, thirst_level, sun_exposure]

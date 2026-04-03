@@ -1,0 +1,20 @@
+category: action
+channel: social
+cost: 2
+display:
+  description: ''
+  flavor: ''
+  icon: ''
+  name: 日照暴露
+effects:
+- condition: null
+  delta: 5
+  target: health
+id: player_sun_exposure
+source:
+  formula: ''
+  pattern_detected: P1
+  variable: sun_exposure
+tags: []
+type: player
+weight: 100

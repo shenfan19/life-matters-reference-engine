@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import './MarieCurieGame.css';
 import { Story, Card as GameCard, GameState } from '../core/types';
 import { Engine } from '../core/Engine';
 import { StoryLoader } from '../core/StoryLoader';
