@@ -28,7 +28,6 @@
   "exclude": [
     "src/components/Game.tsx",
     "src/components/LevelSelect.tsx",
-    "src/components/MarieCurieGame.tsx",
     "src/components/StoryLoader.tsx",
     "src/core/Engine.ts",
     "src/core/StoryLoader.ts",

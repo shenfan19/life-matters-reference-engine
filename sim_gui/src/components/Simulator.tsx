@@ -1,5 +1,5 @@
 // sim_gui/src/components/Simulator.tsx
-// Integrated Loader + 3-column Simulator layout
+// Integrated Loader + 2-column Simulator layout (left tree+tabs / center stacked charts)
 
 import React, { useState, useEffect, useRef } from 'react';
 
@@ -22,36 +22,20 @@ function useResize(initial: number, min = 150, max = 700, direction: 'right' | '
   return { width, startDrag };
 }
 
-function useResizeV(initial: number, min = 80, max = 600) {
-  const [height, setHeight] = useState(initial);
-  const hRef = useRef(height);
-  hRef.current = height;
-  function startDrag(e: React.MouseEvent) {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = hRef.current;
-    const onMove = (ev: MouseEvent) => {
-      setHeight(Math.max(min, Math.min(max, startH + ev.clientY - startY)));
-    };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
-  return { height, startDrag };
-}
+
 import {
-  Button, Switch, Select, InputNumber, Tooltip, Tag, Tabs,
-  message, Spin, Alert, Descriptions, Empty, Input, Tree,
-  Segmented,
+  Button, Select, InputNumber, Tooltip, Tag,
+  message, Spin, Alert, Empty, Input, Tree,
+  Segmented, Collapse, Popover,
 } from 'antd';
 import {
-  PlayCircleOutlined, PauseOutlined, StopOutlined,
-  DownloadOutlined, StepForwardOutlined,
-  LockOutlined, UnlockOutlined, SwapOutlined,
+  PlayCircleOutlined, PauseOutlined, StopOutlined, StepForwardOutlined,
+  DownloadOutlined,
+  LockOutlined, UnlockOutlined,
   BookOutlined, CheckCircleOutlined,
   PlusOutlined, MinusCircleOutlined,
   FileOutlined, FolderOutlined, FilterOutlined,
-  SortAscendingOutlined, UnorderedListOutlined, ClusterOutlined,
+  UnorderedListOutlined, ClusterOutlined,
   LoadingOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, DurationUnit, StepUnit, DataNode, ModelFile } from '../types';
@@ -68,9 +52,6 @@ interface InputEntry {
   frequency: InputFreq;
   time: string; // 'HH:mm', relevant for daily
 }
-const FREQ_LABELS: Record<InputFreq, string> = {
-  hourly: '每小时', daily: '每天', weekly: '每周', monthly: '每月',
-};
 
 function getC(dark: boolean) {
   return dark ? {
@@ -86,30 +67,233 @@ function getC(dark: boolean) {
   };
 }
 
-// ─── Collapsible section ──────────────────────────────────────────────────────
-function PanelSection({ title, children, c, defaultOpen = true }: {
-  title: string; children: React.ReactNode;
-  c: ReturnType<typeof getC>; defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+// ─── Nice tick step helper ────────────────────────────────────────────────────
+function niceTickStep(range: number, targetTicks: number): number {
+  const rough = range / targetTicks;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const normalized = rough / mag;
+  let nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return nice * mag;
+}
+
+// ─── SimChart component ───────────────────────────────────────────────────────
+const VAR_COLORS = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
+
+const SimChart: React.FC<{
+  varName: string;
+  unit?: string;
+  data: SimulationDataPoint[];
+  isDarkMode: boolean;
+  c: ReturnType<typeof getC>;
+  colorIndex?: number;
+  hideTitleBar?: boolean;
+}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<{ x: number; time: number; value: number } | null>(null);
+
+  const lineColor = VAR_COLORS[colorIndex % VAR_COLORS.length];
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+
+    const W = canvas.offsetWidth;
+    const H = canvas.offsetHeight;
+    ctx.clearRect(0, 0, W, H);
+
+    const PAD = { l: 58, r: 12, t: 8, b: 28 };
+    const plotW = W - PAD.l - PAD.r;
+    const plotH = H - PAD.t - PAD.b;
+
+    if (data.length === 0) return;
+
+    // Y-axis range
+    const values = data.map(d => (d[varName] as number) ?? 0);
+    let minV = Math.min(...values);
+    let maxV = Math.max(...values);
+    if (minV === maxV) { minV -= 1; maxV += 1; }
+    const yRange = maxV - minV;
+    const step = niceTickStep(yRange, 5);
+    const yMin = Math.floor(minV / step) * step;
+    const yMax = yMin + step * Math.ceil((maxV - yMin) / step || 1);
+    const yActualRange = yMax - yMin || 1;
+
+    // X-axis range (seconds → hours)
+    const tMin = data[0].time ?? 0;
+    const tMax = data[data.length - 1].time ?? 0;
+    const tRange = tMax - tMin || 1;
+
+    const toX = (t: number) => PAD.l + ((t - tMin) / tRange) * plotW;
+    const toY = (v: number) => PAD.t + plotH - ((v - yMin) / yActualRange) * plotH;
+
+    // Grid lines
+    ctx.lineWidth = 1;
+
+    // Horizontal gridlines (5 ticks)
+    const tickCount = Math.round((yMax - yMin) / step);
+    for (let i = 0; i <= tickCount; i++) {
+      const val = yMin + i * step;
+      const y = toY(val);
+      if (y < PAD.t - 1 || y > PAD.t + plotH + 1) continue;
+      ctx.strokeStyle = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+      // Y label
+      ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+      ctx.font = '9px system-ui';
+      ctx.textAlign = 'right';
+      const label = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
+      ctx.fillText(label, PAD.l - 4, y + 3);
+    }
+
+    // Vertical gridlines (6)
+    for (let i = 0; i <= 6; i++) {
+      const x = PAD.l + (plotW / 6) * i;
+      ctx.strokeStyle = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
+      // X label (hours)
+      const t = tMin + (tRange / 6) * i;
+      ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+      ctx.font = '9px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
+    }
+
+    // Data line
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = toX(d.time ?? 0);
+      const y = toY((d[varName] as number) ?? 0);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Crosshair (drawn from hover state during mousemove — handled separately)
+  }, [data, varName, isDarkMode, lineColor]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || data.length === 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const PAD = { l: 58, r: 12, t: 8, b: 28 };
+    const plotW = rect.width - PAD.l - PAD.r;
+    const mouseX = e.clientX - rect.left;
+    if (mouseX < PAD.l || mouseX > rect.width - PAD.r) { setHover(null); return; }
+
+    const tMin = data[0].time ?? 0;
+    const tMax = data[data.length - 1].time ?? 0;
+    const tRange = tMax - tMin || 1;
+    const frac = (mouseX - PAD.l) / plotW;
+    const tTarget = tMin + frac * tRange;
+
+    // Find nearest data point
+    let nearest = data[0];
+    let minDist = Math.abs((data[0].time ?? 0) - tTarget);
+    for (const d of data) {
+      const dist = Math.abs((d.time ?? 0) - tTarget);
+      if (dist < minDist) { minDist = dist; nearest = d; }
+    }
+
+    setHover({ x: mouseX, time: nearest.time ?? 0, value: (nearest[varName] as number) ?? 0 });
+  };
+
+  const exportCSV = () => {
+    const rows = ['time_s,time_h,' + varName,
+      ...data.map(d => `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${((d[varName] as number) ?? 0)}`)];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${varName}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const CANVAS_H = 160;
+
   return (
-    <div style={{ borderBottom: `1px solid ${c.border}` }}>
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{
-          padding: '6px 12px', cursor: 'pointer', userSelect: 'none',
-          background: c.sectionHd,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 700, letterSpacing: '0.1em',
-          textTransform: 'uppercase', color: c.textMute,
-        }}
-      >
-        {title}
-        <span style={{ opacity: 0.6 }}>{open ? '▲' : '▼'}</span>
-      </div>
-      {open && <div style={{ padding: '8px 12px' }}>{children}</div>}
+    <div
+      ref={containerRef}
+      style={{ marginBottom: 8, flexShrink: 0, position: 'relative', background: isDarkMode ? '#111111' : '#fafafa', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setHover(null)}
+    >
+      {/* Title bar */}
+      {!hideTitleBar && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '3px 10px', borderBottom: `1px solid ${c.border}`,
+          background: isDarkMode ? '#1a1a1a' : '#f0f0f0',
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{varName}</span>
+            {unit && <span style={{ color: c.textMute, fontSize: 11 }}>({unit})</span>}
+          </div>
+          <Button
+            size="small" type="text" icon={<DownloadOutlined />}
+            onClick={exportCSV}
+            style={{ color: c.textMute, padding: '0 4px', fontSize: 11 }}
+          >
+            CSV
+          </Button>
+        </div>
+      )}
+
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{ width: '100%', height: CANVAS_H, display: 'block' }}
+      />
+
+      {/* Hover crosshair + tooltip */}
+      {hover && (
+        <>
+          {/* Vertical line */}
+          <div style={{
+            position: 'absolute',
+            left: hover.x,
+            top: 28 + 8, // title bar height + canvas pad top
+            bottom: 28,  // canvas pad bottom
+            width: 1,
+            background: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)',
+            pointerEvents: 'none',
+          }} />
+          {/* Tooltip */}
+          <div style={{
+            position: 'absolute',
+            left: hover.x + 8,
+            top: 36,
+            background: isDarkMode ? '#222' : '#fff',
+            border: `1px solid ${c.border}`,
+            borderRadius: 4,
+            padding: '3px 7px',
+            fontSize: 11,
+            color: c.text,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 10,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+          }}>
+            <div style={{ color: c.textMute }}>{(hover.time / 3600).toFixed(2)} h</div>
+            <div style={{ fontWeight: 600, color: lineColor }}>{hover.value.toFixed(4)}</div>
+          </div>
+        </>
+      )}
     </div>
   );
-}
+};
+
+// ─── localStorage persistence helpers ────────────────────────────────────────
+const SIM_PERSIST_KEY = 'sim_persist';
+const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
+const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const Simulator: React.FC<SimulatorProps> = ({
@@ -122,11 +306,13 @@ const Simulator: React.FC<SimulatorProps> = ({
   loadedMods, setLoadedMods,
   setConfirmedModel, onModelSelect,
 }) => {
-  const c = getC(isDarkMode);
   const { t } = useI18n();
-  const { width: leftW, startDrag: startLeftDrag } = useResize(300);
-  const { width: rightW, startDrag: startRightDrag } = useResize(280, 150, 700, 'left');
-  const { height: topH, startDrag: startTopDrag } = useResizeV(200, 80, 500);
+  const c = getC(isDarkMode);
+  const { width: leftW, startDrag: startLeftDrag } = useResize(380, 200, 520);
+  const freqLabels: Record<InputFreq, string> = {
+    hourly: t('sim.freq.hourly'), daily: t('sim.freq.daily'),
+    weekly: t('sim.freq.weekly'), monthly: t('sim.freq.monthly'),
+  };
 
   const {
     status, progress, currentStep, simulationData,
@@ -135,14 +321,20 @@ const Simulator: React.FC<SimulatorProps> = ({
   } = state;
 
   // ── mode toggle ──────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<'sim' | 'opt'>('sim');
+  const [mode, setMode] = useState<'sim' | 'opt'>(() => readSP()?.mode || 'sim');
 
   // ── loader state ─────────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
+
+  // ── left panel sections ───────────────────────────────────────────────────────
+  const SECTION_H = 26; // header height px
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['scene', 'inputs']));
+  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, schedule: 1, opt: 1 });
+  const leftPanelRef = useRef<HTMLDivElement>(null);
 
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
@@ -152,14 +344,14 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optPop, setOptPop] = useState(100);
   const [optGen, setOptGen] = useState(200);
 
-  // ── chart selected vars ──────────────────────────────────────────────────────
-  const [selectedVars, setSelectedVars] = useState<string[]>([]);
-
   // ── scheduled input entries ──────────────────────────────────────────────────
-  const [inputEntries, setInputEntries] = useState<InputEntry[]>([]);
+  const [inputEntries, setInputEntries] = useState<InputEntry[]>(() => readSP()?.inputEntries || []);
 
   const isRunningRef = useRef(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // refs for restore flow
+  const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
+  const skipInputInitRef = useRef<boolean>(!!(readSP()?.inputEntries?.length));
+  const isInitialMount = useRef(true);
 
   const TIME_UNITS: Record<DurationUnit, number> = { year: 8760, month: 720, day: 24, hour: 1 };
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
@@ -184,20 +376,23 @@ const Simulator: React.FC<SimulatorProps> = ({
       });
       set('inputParams', inputs);
       set('stateVariables', states);
-      setInputEntries(entries);
+      if (skipInputInitRef.current) {
+        skipInputInitRef.current = false; // use saved entries once, then allow model defaults on next load
+      } else {
+        setInputEntries(entries);
+      }
       const ranges: typeof optRanges = {};
       Object.entries(inputs).forEach(([name, val]) => {
         ranges[name] = { min: 0, max: (val as number) * 2 || 1, locked: true };
       });
       setOptRanges(ranges);
     }
-    if (selectedModel?.content?.simulator) {
-      const sim = selectedModel.content.simulator;
+    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
+    if (sim) {
       set('stepValue', sim.step_size || 3600);
       set('stepUnit', 'second');
       set('timeValue', (sim.total_time || 86400) / 3600);
-      set('timeUnit', 'day');
-      if (sim.output_variables?.length) setSelectedVars(sim.output_variables.slice(0, 3));
+      set('timeUnit', 'hour');
     }
   }, [selectedModel]);
 
@@ -208,80 +403,60 @@ const Simulator: React.FC<SimulatorProps> = ({
     set('inputParams', params);
   }, [inputEntries]);
 
-  // ── load tree on mount ───────────────────────────────────────────────────────
+  // ── load tree on mount + restore selected model ──────────────────────────────
   useEffect(() => {
     if (storyTree.length === 0) loadFileTree();
   }, []);
 
-  // ── reset validation on selection change ─────────────────────────────────────
   useEffect(() => {
+    const key = pendingRestoreKey.current;
+    if (!key || storyTree.length === 0) return;
+    pendingRestoreKey.current = null;
+    if (loadedMods[key]) {
+      setConfirmedModel(loadedMods[key]);
+      onModelSelect(loadedMods[key]);
+    } else {
+      loadFileContent(key);
+    }
+  }, [storyTree]);
+
+  // ── restore SimulationState from localStorage on mount ───────────────────────
+  useEffect(() => {
+    const saved = readSP();
+    if (!saved) return;
+    setState(prev => ({
+      ...prev,
+      simulationData: saved.simulationData || [],
+      status: saved.status === 'paused' ? 'completed' : (saved.status || 'idle'),
+      currentStep: saved.currentStep ?? 0,
+      progress: saved.progress ?? 0,
+      ...(saved.timeValue != null && { timeValue: saved.timeValue }),
+      ...(saved.timeUnit && { timeUnit: saved.timeUnit }),
+      ...(saved.stepValue != null && { stepValue: saved.stepValue }),
+      ...(saved.stepUnit && { stepUnit: saved.stepUnit }),
+    }));
+    if (saved.isLocked) setIsLocked(true);
+  }, []);
+
+  // ── reset validation on selection change (skip on initial mount) ──────────────
+  useEffect(() => {
+    if (isInitialMount.current) { isInitialMount.current = false; return; }
     setValidationResult(null);
     setIsLocked(false);
   }, [selectedKey]);
 
-  // ── chart drawing ────────────────────────────────────────────────────────────
+  // ── persist config to localStorage ───────────────────────────────────────────
   useEffect(() => {
-    if (!canvasRef.current || simulationData.length === 0) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvas.offsetWidth * dpr;
-    canvas.height = canvas.offsetHeight * dpr;
-    ctx.scale(dpr, dpr);
-    const W = canvas.offsetWidth, H = canvas.offsetHeight;
-    ctx.clearRect(0, 0, W, H);
+    const current = readSP() || {};
+    writeSP({ ...current, selectedKey, mode, inputEntries, isLocked, openSections: [...openSections], sectionWeights, timeValue, timeUnit, stepValue, stepUnit });
+  }, [selectedKey, mode, inputEntries, isLocked, openSections, sectionWeights, timeValue, timeUnit, stepValue, stepUnit]);
 
-    const vars = selectedVars.length > 0
-      ? selectedVars
-      : (selectedModel?.content?.simulator?.output_variables || Object.keys(stateVariables).slice(0, 3));
-    const colors = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
-    const PAD = { l: 44, r: 16, t: 18, b: 28 };
-    const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
-
-    ctx.strokeStyle = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = PAD.t + (plotH / 4) * i;
-      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    }
-    for (let i = 0; i <= 6; i++) {
-      const x = PAD.l + (plotW / 6) * i;
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
-    }
-
-    vars.forEach((varName: string, idx: number) => {
-      const values = simulationData.map(d => d[varName] ?? 0);
-      const minV = Math.min(...values), maxV = Math.max(...values);
-      const range = maxV - minV || 1;
-      ctx.strokeStyle = colors[idx % colors.length];
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      simulationData.forEach((d, i) => {
-        const x = PAD.l + (i / Math.max(simulationData.length - 1, 1)) * plotW;
-        const y = PAD.t + plotH - ((d[varName] ?? 0) - minV) / range * plotH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-      // legend dot + label
-      const lx = PAD.l + idx * 110;
-      ctx.fillStyle = colors[idx % colors.length];
-      ctx.fillRect(lx, 4, 12, 5);
-      ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)';
-      ctx.font = '10px system-ui';
-      ctx.fillText(varName, lx + 15, 10);
-    });
-
-    ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
-    ctx.font = '9px system-ui';
-    const n = simulationData.length;
-    [0, 0.25, 0.5, 0.75, 1].forEach(frac => {
-      const idx2 = Math.round(frac * (n - 1));
-      const x = PAD.l + frac * plotW;
-      const t2 = simulationData[idx2]?.time ?? 0;
-      ctx.fillText(`${(t2 / 3600).toFixed(0)}h`, x - 8, H - 6);
-    });
-  }, [simulationData, selectedVars, selectedModel, stateVariables, isDarkMode]);
+  // ── persist simulation results on status settle ───────────────────────────────
+  useEffect(() => {
+    if (status === 'running') return; // skip during active run to avoid constant writes
+    const current = readSP() || {};
+    writeSP({ ...current, simulationData, status, currentStep, progress });
+  }, [status]); // captures simulationData snapshot at the moment status changes
 
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
@@ -297,7 +472,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: c.primary }} />,
-                title: <span>{item.title} <Tag color="blue" style={{  }}>pkg</Tag></span>,
+                title: <span>{item.title} <Tag color="blue" style={{}}>pkg</Tag></span>,
                 titleStr: item.title, mod_type: 'story',
               };
             }
@@ -320,7 +495,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         }
       }
     } catch (e: any) {
-      message.error(`加载失败: ${e.message}`);
+      message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
     } finally {
       setTreeLoading(false);
     }
@@ -331,7 +506,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     try {
       const cleanPath = filePath.replace(/^mods\//, '');
       const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
-      if (!fileResult.success) { message.error(`读取失败: ${fileResult.error}`); return; }
+      if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return; }
       const { content, path } = fileResult.data;
       const model: ModelFile = {
         key: filePath, title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
@@ -346,7 +521,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       setConfirmedModel(model);
       onModelSelect(model);
     } catch (e: any) {
-      message.error(`加载失败: ${e.message}`);
+      message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
     } finally {
       setTreeLoading(false);
     }
@@ -357,6 +532,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const key = keys[0] as string;
     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
     setSelectedKey(key);
+    setValidationResult(null);
     if (!loadedMods[key]) loadFileContent(key);
     else {
       setConfirmedModel(loadedMods[key]);
@@ -369,11 +545,12 @@ const Simulator: React.FC<SimulatorProps> = ({
     setValidating(true);
     setValidationResult(null);
     const result = await validateModFile(selectedKey);
-    setValidationResult(result);
     if (result.valid) {
+      setValidationResult(null);
       setIsLocked(true);
-      message.success('✅ 验证通过，场景已锁定');
+      message.success(t('sim.msg.validation_ok'));
     } else {
+      setValidationResult(result);
       setIsLocked(false);
     }
     setValidating(false);
@@ -398,8 +575,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     : [];
   const schedules = selectedModel?.content?.schedules || {};
   const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
-  const modelMeta = selectedModel?.content?.metadata || {};
-  const references: string[] = modelMeta.references || modelMeta.citations || [];
   const outputVars: string[] = selectedModel?.content?.simulator?.output_variables
     || Object.keys(stateVariables).slice(0, 5);
   const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
@@ -438,7 +613,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('totalSteps', result.data.total_steps);
         runBatch(result.data.session_id);
       } else {
-        message.error(result.error || '启动失败');
+        message.error(result.error || t('sim.msg.start_failed'));
         set('status', 'idle'); isRunningRef.current = false;
       }
     } catch (e: any) { message.error(e.message); set('status', 'idle'); isRunningRef.current = false; }
@@ -457,7 +632,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           set('currentStep', res.data.current_step);
           set('progress', res.data.progress);
           setSimData(prev => [...prev, ...res.data.outputs]);
-          if (res.data.completed) { set('status', 'completed'); isRunningRef.current = false; message.success('仿真完成'); }
+          if (res.data.completed) { set('status', 'completed'); isRunningRef.current = false; message.success(t('sim.msg.sim_complete')); }
           else setTimeout(loop, updateInterval);
         }
       } catch { set('status', 'idle'); isRunningRef.current = false; }
@@ -478,33 +653,22 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('progress', res.data.progress);
         setSimData(prev => [...prev, ...res.data.outputs]);
         set('status', res.data.completed ? 'completed' : 'paused');
-        if (res.data.completed) message.success('仿真完成');
+        if (res.data.completed) message.success(t('sim.msg.sim_complete'));
       }
     } catch (e: any) { message.error(e.message); }
   };
 
   const pauseSimulation = () => { isRunningRef.current = false; set('status', 'paused'); };
+  const resumeSimulation = () => { if (!sessionId) return; isRunningRef.current = true; set('status', 'running'); runBatch(sessionId); };
   const resetSimulation = () => {
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
   };
-  const exportCSV = async () => {
-    if (!sessionId) return;
-    try {
-      const r = await fetch(`${API_BASE}/simulation/export`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-      const res = await r.json();
-      if (res.success) message.success('已导出');
-    } catch (e: any) { message.error(e.message); }
-  };
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // LEFT PANEL
+  // LEFT PANEL TAB CONTENT RENDERERS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // Section content: Inputs (scheduled)
   const addInputEntry = () => {
     const firstVar = inputVars[0]?.name ?? '';
     setInputEntries(prev => [...prev, {
@@ -525,11 +689,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   const renderInputsContent = () => {
     if (inputVars.length === 0) return (
       <div style={{ padding: '8px 0' }}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择场景" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} />
       </div>
     );
     const varOptions = inputVars.map(v => ({ label: v.name, value: v.name }));
-    const freqOptions = (Object.keys(FREQ_LABELS) as InputFreq[]).map(k => ({ label: FREQ_LABELS[k], value: k }));
+    const freqOptions = (Object.keys(freqLabels) as InputFreq[]).map(k => ({ label: freqLabels[k], value: k }));
     return (
       <div style={{ padding: '8px 0' }}>
         {inputEntries.map(entry => {
@@ -596,17 +760,57 @@ const Simulator: React.FC<SimulatorProps> = ({
           onClick={addInputEntry}
           style={{ width: '100%', marginTop: 4 }}
         >
-          新增输入
+          {t('sim.inputs.add')}
         </Button>
       </div>
     );
   };
 
-  // Section content: Formulas
+  const renderVarsContent = () => (
+    <div style={{ padding: '8px 0' }}>
+      {stateVars.length === 0 && probConsts.length === 0
+        ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.vars.empty')} style={{ marginTop: 20 }} />
+        : <>
+            {stateVars.length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.vars.state_header')}</div>
+                {stateVars.map(v => (
+                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
+                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ fontWeight: 600, fontFamily: 'monospace', color: c.primary, flexShrink: 0 }}>
+                        {(latestData[v.name] ?? v.value ?? 0).toFixed(4)}
+                      </span>
+                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
+                    </div>
+                  </Tooltip>
+                ))}
+              </>
+            )}
+            {probConsts.length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>{t('sim.vars.params_header')}</div>
+                {probConsts.map(v => (
+                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
+                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ fontFamily: 'monospace', color: c.textSec, flexShrink: 0 }}>{v.value}</span>
+                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
+                      <LockOutlined style={{ color: c.textMute, flexShrink: 0 }} />
+                    </div>
+                  </Tooltip>
+                ))}
+              </>
+            )}
+          </>
+      }
+    </div>
+  );
+
   const renderFormulasContent = () => {
     const entries = Object.entries(formulas);
     if (entries.length === 0) return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无公式" style={{ marginTop: 20 }} />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.formulas.empty')} style={{ marginTop: 20 }} />
     );
     return (
       <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -616,7 +820,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             background: c.sectionHd,
           }}>
             <div style={{ marginBottom: 4 }}>
-              <Tooltip title={detail.condition != null && detail.condition !== true ? `条件: ${String(detail.condition)}` : undefined}>
+              <Tooltip title={detail.condition != null && detail.condition !== true ? `${t('sim.formulas.condition')}: ${String(detail.condition)}` : undefined}>
                 <strong style={{ color: c.text, cursor: detail.condition != null && detail.condition !== true ? 'help' : 'default' }}>
                   {name}{detail.condition != null && detail.condition !== true ? ' *' : ''}
                 </strong>
@@ -633,11 +837,10 @@ const Simulator: React.FC<SimulatorProps> = ({
     );
   };
 
-  // Section content: Regimens/Schedules
   const renderRegimensContent = () => {
     const entries = Object.entries(schedules);
     if (entries.length === 0) return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无计划表" style={{ marginTop: 20 }} />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.schedules.empty')} style={{ marginTop: 20 }} />
     );
     return (
       <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -645,7 +848,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <strong style={{ color: c.text }}>{name}</strong>
-              <Tag style={{  }}>{sched.interpolation || 'step'}</Tag>
+              <Tag style={{}}>{sched.interpolation || 'step'}</Tag>
             </div>
             {sched.recurrence && (
               <div style={{ color: c.textMute, marginBottom: 4 }}>
@@ -667,11 +870,10 @@ const Simulator: React.FC<SimulatorProps> = ({
     );
   };
 
-  // Section content: Objectives + Constraints + Algorithm (opt mode)
   const renderOptContent = () => (
     <div style={{ padding: '8px 0' }}>
       {/* Objectives */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>优化目标</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.objectives')}</div>
       {objectives.map((obj, i) => (
         <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
           <span style={{ color: c.textMute, width: 14 }}>{i + 1}.</span>
@@ -679,7 +881,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             options={allVarNames.map(n => ({ label: n, value: n }))}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, variable: v } : o))} />
           <Select size="small" value={obj.direction} style={{ width: 80 }}
-            options={[{ label: '最小化', value: 'minimize' }, { label: '最大化', value: 'maximize' }]}
+            options={[{ label: t('sim.opt.minimize'), value: 'minimize' }, { label: t('sim.opt.maximize'), value: 'maximize' }]}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, direction: v } : o))} />
           <Button size="small" danger icon={<MinusCircleOutlined />}
             onClick={() => setObjectives(p => p.filter((_, j) => j !== i))} />
@@ -688,11 +890,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       <Button size="small" icon={<PlusOutlined />} block
         onClick={() => setObjectives(p => [...p, { variable: allVarNames[0] || '', direction: 'minimize' }])}
         style={{ borderColor: c.border, color: c.textSec, marginBottom: 14 }}>
-        添加目标
+        {t('sim.opt.add_objective')}
       </Button>
 
       {/* Constraints */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>约束条件</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.constraints')}</div>
       {constraints.map((con, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
           <Select size="small" value={con.variable} style={{ flex: 1 }}
@@ -710,188 +912,183 @@ const Simulator: React.FC<SimulatorProps> = ({
       <Button size="small" icon={<PlusOutlined />} block
         onClick={() => setConstraints(p => [...p, { variable: allVarNames[0] || '', op: '≤', value: 100 }])}
         style={{ borderColor: c.border, color: c.textSec, marginBottom: 14 }}>
-        添加约束
+        {t('sim.opt.add_constraint')}
       </Button>
 
       {/* Algorithm */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>算法配置</div>
+      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.algorithm')}</div>
       <Select size="small" value={optAlgo}
         options={[{ label: 'NSGA-II', value: 'NSGA-II' }, { label: 'MOEA/D', value: 'MOEA/D' }]}
         onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 8 }} />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>种群</div>
+          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.population')}</div>
           <InputNumber size="small" value={optPop} onChange={v => setOptPop(v || 100)} style={{ width: '100%' }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>代数</div>
+          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.generations')}</div>
           <InputNumber size="small" value={optGen} onChange={v => setOptGen(v || 200)} style={{ width: '100%' }} />
         </div>
       </div>
     </div>
   );
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LEFT PANEL SECTION RESIZE
+  // ─────────────────────────────────────────────────────────────────────────────
+  const startSectionResize = (keyA: string, keyB: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const container = leftPanelRef.current;
+    if (!container) return;
+    const allKeys = ['scene', 'inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
+    const availableH = container.clientHeight - SECTION_H * allKeys.length;
+    const openArr = allKeys.filter(k => openSections.has(k));
+    const totalW = openArr.reduce((s, k) => s + (sectionWeights[k] || 1), 0);
+    const pxPerW = availableH / totalW;
+    const wA = sectionWeights[keyA] || 1;
+    const wB = sectionWeights[keyB] || 1;
+    const combined = wA + wB;
+    const onMove = (ev: MouseEvent) => {
+      const dw = (ev.clientY - startY) / pxPerW;
+      const nA = Math.max(0.15, wA + dw);
+      const nB = Math.max(0.15, combined - nA);
+      setSectionWeights(p => ({ ...p, [keyA]: nA, [keyB]: nB }));
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CENTER PANEL
   // ─────────────────────────────────────────────────────────────────────────────
-  const renderCenterPanel = () => (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '0 10px' }}>
-      {/* Variable selector */}
-      <div style={{
-        padding: '7px 0 5px', borderBottom: `1px solid ${c.border}`,
-        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap',
-      }}>
-        <span style={{ color: c.textMute, flexShrink: 0 }}>显示</span>
-        {outputVars.map(v => (
-          <Tag
-            key={v}
-            onClick={() => setSelectedVars(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v])}
-            style={{
-              cursor: 'pointer', userSelect: 'none', margin: 0,
-              borderColor: selectedVars.includes(v) ? c.primary : c.border,
-              background: selectedVars.includes(v) ? (isDarkMode ? 'rgba(82,196,26,0.15)' : 'rgba(0,122,51,0.08)') : 'transparent',
-              color: selectedVars.includes(v) ? c.primary : c.textSec,
-            }}
-          >
-            {v}
-          </Tag>
-        ))}
-      </div>
+  const exportVarCSV = (varName: string) => {
+    const rows = ['time_s,time_h,' + varName,
+      ...simulationData.map(d => `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${((d[varName] as number) ?? 0)}`)];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${varName}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
-      {/* Chart */}
-      <div style={{ flex: 1, position: 'relative', minHeight: 0, paddingTop: 8 }}>
+  const renderCenterPanel = () => {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {simulationData.length === 0 ? (
           <div style={{
-            height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: c.textMute,
-            border: `1px dashed ${c.border}`, borderRadius: 6,
-            flexDirection: 'column', gap: 8,
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: c.textMute, flexDirection: 'column', gap: 8,
           }}>
-            {!isLocked
-              ? <><span style={{ fontSize: 18 }}>📂</span><span>在左侧选择场景并锁定后运行</span></>
-              : status === 'idle'
-                ? <><span style={{ fontSize: 18 }}>▶</span><span>点击"运行仿真"开始</span></>
-                : <span>正在计算…</span>
+            {!selectedKey
+              ? <><span style={{ fontSize: 18 }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
+              : !isLocked
+                ? <><span style={{ fontSize: 18 }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
+                : status === 'idle'
+                  ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
+                  : <span>{t('sim.scene.calculating')}</span>
             }
           </div>
         ) : (
-          <canvas
-            ref={canvasRef}
-            style={{
-              width: '100%', height: '100%', display: 'block',
-              background: isDarkMode ? '#111111' : '#fafafa',
-              border: `1px solid ${c.border}`, borderRadius: 6,
-            }}
-          />
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+            <Collapse
+              defaultActiveKey={outputVars}
+              size="small"
+              items={outputVars.map((varName, idx) => {
+                const varInfo = selectedModel?.content?.variables?.[varName];
+                const lineColor = VAR_COLORS[idx % VAR_COLORS.length];
+                return {
+                  key: varName,
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600 }}>{varName}</span>
+                      {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
+                    </span>
+                  ),
+                  extra: (
+                    <Button
+                      size="small" type="text" icon={<DownloadOutlined />}
+                      onClick={e => { e.stopPropagation(); exportVarCSV(varName); }}
+                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}
+                    />
+                  ),
+                  children: (
+                    <SimChart
+                      varName={varName}
+                      unit={varInfo?.unit}
+                      data={simulationData}
+                      isDarkMode={isDarkMode}
+                      c={c}
+                      colorIndex={idx}
+                      hideTitleBar
+                    />
+                  ),
+                  styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
+                };
+              })}
+            />
+            {inputVars.length > 0 && (
+              <>
+                <div style={{
+                  margin: '6px 0 2px', padding: '2px 8px',
+                  fontSize: 11, color: c.textMute, letterSpacing: '0.05em',
+                  borderLeft: `2px solid ${c.border}`,
+                }}>
+                  {t('sim.tabs.inputs')}
+                </div>
+                <Collapse
+                  defaultActiveKey={inputVars.map(v => v.name)}
+                  size="small"
+                  items={inputVars.map((v, idx) => {
+                    const lineColor = VAR_COLORS[(outputVars.length + idx) % VAR_COLORS.length];
+                    return {
+                      key: v.name,
+                      label: (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600 }}>{v.name}</span>
+                          {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
+                        </span>
+                      ),
+                      extra: (
+                        <Button
+                          size="small" type="text" icon={<DownloadOutlined />}
+                          onClick={e => { e.stopPropagation(); exportVarCSV(v.name); }}
+                          style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}
+                        />
+                      ),
+                      children: (
+                        <SimChart
+                          varName={v.name}
+                          unit={v.unit}
+                          data={simulationData}
+                          isDarkMode={isDarkMode}
+                          c={c}
+                          colorIndex={outputVars.length + idx}
+                          hideTitleBar
+                        />
+                      ),
+                      styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
+                    };
+                  })}
+                />
+              </>
+            )}
+            {mode === 'opt' && (
+              <div style={{
+                marginTop: 8, padding: 12,
+                border: `1px dashed ${c.border}`, borderRadius: 6,
+                textAlign: 'center', color: c.textMute,
+              }}>
+                {t('sim.opt.pareto')}
+              </div>
+            )}
+          </div>
         )}
       </div>
-
-      {/* Opt mode Pareto placeholder */}
-      {mode === 'opt' && (
-        <div style={{
-          marginTop: 8, padding: 12, flexShrink: 0,
-          border: `1px dashed ${c.border}`, borderRadius: 6,
-          textAlign: 'center', color: c.textMute,
-        }}>
-          Pareto 前沿 – 多目标优化后显示
-        </div>
-      )}
-
-      {/* Latest values */}
-      {simulationData.length > 0 && (
-        <div style={{ paddingTop: 8, flexShrink: 0, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {(selectedVars.length > 0 ? selectedVars : outputVars).map(v => (
-            <div key={v} style={{
-              padding: '4px 8px',
-              background: isDarkMode ? '#1a1a1a' : '#f5f5f5',
-              border: `1px solid ${c.border}`, borderRadius: 6,
-            }}>
-              <div style={{ color: c.textMute }}>{v}</div>
-              <div style={{ fontWeight: 600, color: c.text, fontFamily: 'monospace' }}>
-                {(latestData[v] ?? 0).toFixed(4)}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RIGHT PANEL: tabbed
-  // ─────────────────────────────────────────────────────────────────────────────
-  const renderVarsContent = () => (
-    <div style={{ padding: '8px 0' }}>
-      {stateVars.length === 0 && probConsts.length === 0
-        ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无状态变量" style={{ marginTop: 20 }} />
-        : <>
-            {stateVars.length > 0 && (
-              <>
-                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>状态变量</div>
-                {stateVars.map(v => (
-                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
-                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                      <span style={{ fontWeight: 600, fontFamily: 'monospace', color: c.primary, flexShrink: 0 }}>
-                        {(latestData[v.name] ?? v.value ?? 0).toFixed(4)}
-                      </span>
-                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
-                    </div>
-                  </Tooltip>
-                ))}
-              </>
-            )}
-            {probConsts.length > 0 && (
-              <>
-                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>概率常数</div>
-                {probConsts.map(v => (
-                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
-                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                      <span style={{ fontFamily: 'monospace', color: c.textSec, flexShrink: 0 }}>{v.value}</span>
-                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
-                      <LockOutlined style={{ color: c.textMute, flexShrink: 0 }} />
-                    </div>
-                  </Tooltip>
-                ))}
-              </>
-            )}
-          </>
-      }
-    </div>
-  );
-
-  const rightTabs = [
-    { key: 'inputs', label: `输入${inputEntries.length > 0 ? ` (${inputEntries.length})` : ''}`, content: renderInputsContent() },
-    { key: 'vars',   label: `变量${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`, content: renderVarsContent() },
-    { key: 'formulas', label: `公式${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`, content: renderFormulasContent() },
-    { key: 'schedule', label: `计划${Object.keys(schedules).length > 0 ? ` (${Object.keys(schedules).length})` : ''}`, content: renderRegimensContent() },
-    ...(mode === 'opt' ? [{ key: 'opt', label: '优化', content: renderOptContent() }] : []),
-  ];
-
-  const renderRightPanel = () => (
-    <div style={{ width: rightW, flexShrink: 0, background: c.panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {!selectedStory ? (
-        <div style={{ padding: 16, color: c.textMute }}>选择场景后显示参数</div>
-      ) : (
-        <Tabs
-          size="small"
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-          tabBarStyle={{ paddingLeft: 8, paddingRight: 8, marginBottom: 0, flexShrink: 0 }}
-          items={rightTabs.map(t => ({
-            key: t.key,
-            label: t.label,
-            children: (
-              <div style={{ padding: '0 12px', overflowY: 'auto', height: '100%' }}>
-                {t.content}
-              </div>
-            ),
-          }))}
-        />
-      )}
-    </div>
-  );
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -903,73 +1100,77 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
+  const leftTabs = [
+    { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputEntries.length > 0 ? ` (${inputEntries.length})` : ''}`,           content: renderInputsContent() },
+    { key: 'vars',     label: `${t('sim.tabs.variables')}${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`,              content: renderVarsContent() },
+    { key: 'formulas', label: `${t('sim.tabs.formulas')}${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`, content: renderFormulasContent() },
+    { key: 'schedule', label: `${t('sim.tabs.schedules')}${Object.keys(schedules).length > 0 ? ` (${Object.keys(schedules).length})` : ''}`, content: renderRegimensContent() },
+    ...(mode === 'opt' ? [{ key: 'opt', label: t('sim.tabs.optimizer'), content: renderOptContent() }] : []),
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Top bar: Row 1 — model + mode ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '6px 12px', flexShrink: 0,
-        borderBottom: `1px solid ${c.border}`, background: c.panel,
-      }}>
-        {isLocked
-          ? <LockOutlined style={{ color: c.primary, flexShrink: 0 }} />
-          : <UnlockOutlined style={{ color: c.textMute, flexShrink: 0 }} />}
-        <span style={{
-          fontFamily: 'monospace', flex: 1, minWidth: 0,
-          color: isLocked ? c.text : c.textMute,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {selectedModel?.title || '— 未选择场景 —'}
-        </span>
-        {isLocked && <Tag color="success" style={{ flexShrink: 0, margin: 0 }}>已锁定</Tag>}
-        <Segmented
-          size="small"
-          value={mode}
-          onChange={v => setMode(v as 'sim' | 'opt')}
-          options={[{ label: '仿真', value: 'sim' }, { label: '优化', value: 'opt' }]}
-          style={{ flexShrink: 0 }}
-        />
-      </div>
-
-      {/* ── Top bar: Row 2 — controls + time settings ── */}
+      {/* ── Top bar — controls + time settings ── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '5px 12px', flexShrink: 0,
         borderBottom: `1px solid ${c.border}`, background: c.panel,
       }}>
-        {!isLocked && <span style={{ color: '#faad14', marginRight: 4 }}>⚠ 需先验证锁定</span>}
-        <Button type="primary" size="small" icon={<PlayCircleOutlined />}
-          onClick={startSimulation} disabled={!isLocked || status === 'running'}>
-          {mode === 'opt' ? '运行优化' : status === 'running' ? '运行中' : '运行'}
+        <Segmented
+          size="small" value={mode}
+          onChange={v => setMode(v as 'sim' | 'opt')}
+          options={[{ label: t('sim.mode.simulation'), value: 'sim' }, { label: t('sim.mode.optimization'), value: 'opt' }]}
+          disabled={status === 'running' || status === 'paused' || status === 'completed'}
+          style={{ flexShrink: 0 }}
+        />
+        <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
+        <Button
+          type="primary" size="small"
+          icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
+          onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation}
+          disabled={!isLocked || status === 'completed'}
+          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+        >
+          {status === 'running'
+            ? t('sim.control.pause')
+            : status === 'paused'
+              ? t('sim.control.continue')
+              : t('sim.control.run')}
         </Button>
-        <Button size="small" icon={<PauseOutlined />} onClick={pauseSimulation} disabled={status !== 'running'}>暂停</Button>
-        <Button size="small" icon={<StopOutlined />} danger onClick={resetSimulation} disabled={status === 'idle'}>停止</Button>
-        <Button size="small" icon={<StepForwardOutlined />} onClick={runSingleStep} disabled={!sessionId || status === 'running'}>单步</Button>
-        <Button size="small" icon={<DownloadOutlined />} onClick={exportCSV} disabled={simulationData.length === 0}>导出</Button>
+        <Button size="small" icon={<StepForwardOutlined />}
+          onClick={runSingleStep}
+          disabled={!sessionId || status === 'running' || status === 'completed'}
+          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+        >{t('sim.control.step')}</Button>
+        <Button size="small" icon={<StopOutlined />}
+          onClick={resetSimulation}
+          disabled={status === 'idle'}
+          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+        >{t('sim.control.reset')}</Button>
 
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         {/* Duration */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: c.textSec }}>时长</span>
-          <InputNumber size="small" value={timeValue} onChange={v => set('timeValue', v || 1)} style={{ width: 60 }} min={0} />
-          <Select size="small" value={timeUnit} onChange={v => set('timeUnit', v)} style={{ width: 68 }}
-            options={[{ label: '小时', value: 'hour' }, { label: '天', value: 'day' }, { label: '月', value: 'month' }, { label: '年', value: 'year' }]} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.duration.label')}</span>
+          <InputNumber size="small" value={timeValue} onChange={v => set('timeValue', v || 1)} style={{ width: 58 }} min={0} />
+          <Select size="small" value={timeUnit} onChange={v => set('timeUnit', v)} style={{ width: 76, flexShrink: 0 }}
+            options={[{ label: t('sim.duration.hour'), value: 'hour' }, { label: t('sim.duration.day'), value: 'day' }, { label: t('sim.duration.month'), value: 'month' }, { label: t('sim.duration.year'), value: 'year' }]} />
         </div>
 
-        {/* Step */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: c.textSec }}>步长</span>
-          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: 60 }} min={0} />
-          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 64 }}
-            options={[{ label: '秒', value: 'second' }, { label: '分', value: 'minute' }, { label: '时', value: 'hour' }, { label: '天', value: 'day' }]} />
+        {/* Step size */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
+          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: 58 }} min={0} />
+          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 62, flexShrink: 0 }}
+            options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
         </div>
 
-        {/* Progress */}
+        {/* Progress — only flexible element */}
         {progress > 0 && (
           <>
-            <div style={{ flex: 1, maxWidth: 200 }}>
+            <div style={{ flex: 1, minWidth: 60, maxWidth: 160 }}>
               <div style={{ height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', background: c.primary, transition: 'width 0.3s', borderRadius: 3 }} />
               </div>
@@ -977,198 +1178,163 @@ const Simulator: React.FC<SimulatorProps> = ({
             <span style={{ color: c.textMute, fontFamily: 'monospace', flexShrink: 0 }}>{Math.round(progress)}%</span>
           </>
         )}
-        <span style={{ color: c.textMute, marginLeft: 'auto', fontFamily: 'monospace', flexShrink: 0 }}>
+        <span style={{ color: c.textMute, fontFamily: 'monospace', flexShrink: 0, whiteSpace: 'nowrap' }}>
           step {currentStep}
         </span>
+
       </div>
 
-      {/* ── Three-column body ── */}
+      {/* ── Two-column body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* LEFT: scenario browser + model detail */}
+        {/* LEFT PANEL */}
         <div style={{
           width: leftW, flexShrink: 0,
           background: c.panel,
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
         }}>
-          {/* Scenario browser (resizable top) */}
-          <div style={{
-            height: topH, flexShrink: 0, display: 'flex', flexDirection: 'column',
-            overflow: 'hidden',
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6,
-              background: c.sectionHd, borderBottom: `1px solid ${c.border}`, flexShrink: 0,
-            }}>
-              <BookOutlined style={{ color: c.primary }} />
-              <span style={{ fontWeight: 600, color: c.text, flex: 1 }}>
-                场景 ({total})
-              </span>
-              <Input
-                size="small" placeholder="搜索" value={storyFilter}
-                onChange={e => setStoryFilter(e.target.value)}
-                prefix={<FilterOutlined style={{ color: c.textMute }} />}
-                style={{ width: 90 }}
-              />
-              <Tooltip title={storyViewMode === 'tree' ? '切换列表' : '切换树形'}>
-                <Button size="small" type="text"
-                  icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
-                  onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
-                  style={{ color: c.textMute, padding: '0 3px' }}
-                />
-              </Tooltip>
-              <Tooltip title="刷新">
-                <Button size="small" type="text" icon={<ReloadOutlined />}
-                  onClick={() => { setSelectedKey(null); setConfirmedModel(null); setValidationResult(null); setIsLocked(false); loadFileTree(); }}
-                  style={{ color: c.textMute, padding: '0 3px' }}
-                />
-              </Tooltip>
-            </div>
-
-            {/* Tree / List */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '4px 4px', position: 'relative' }}>
-              <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-                {storyViewMode === 'tree' ? (
-                  <Tree
-                    showIcon
-                    expandedKeys={expandedKeys}
-                    onExpand={setExpandedKeys}
-                    selectedKeys={selectedKey ? [selectedKey] : []}
-                    onSelect={handleSelect}
-                    treeData={storyTree}
-                    style={{  }}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {storyList.length === 0
-                      ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无场景" style={{ marginTop: 16 }} />
-                      : storyList.map((mod: any) => (
-                          <div
-                            key={mod.key}
-                            onClick={() => handleSelect([mod.key])}
-                            style={{
-                              display: 'flex', alignItems: 'center', padding: '4px 8px',
-                              borderRadius: 4, cursor: 'pointer',
-                              background: selectedKey === mod.key ? c.rowHover : 'transparent',
-                              color: c.text,
-                            }}
-                          >
-                            <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {mod.displayTitle}
-                            </span>
-                          </div>
-                        ))
-                    }
-                  </div>
-                )}
-              </Spin>
-            </div>
-          </div>
-
-          {/* TOP-BOTTOM resize handle */}
-          <div onMouseDown={startTopDrag}
-            style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent',
-              borderBottom: `1px solid ${c.border}`, transition: 'background 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-          />
-
-          {/* Model detail (bottom) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {!selectedStory ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选择场景后显示详情" />
-              </div>
-            ) : (
-              <>
-                {/* Title + validate button */}
-                <div style={{
-                  padding: '6px 10px', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  borderBottom: `1px solid ${c.border}`,
-                  background: c.sectionHd,
-                }}>
-                  <span style={{ fontWeight: 600, color: c.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedStory.title}
-                    {isLocked && <Tag color="success" icon={<LockOutlined />} style={{ marginLeft: 6 }}>已锁定</Tag>}
-                  </span>
-                  <Button
-                    type={isLocked ? 'default' : 'primary'}
-                    danger={isLocked}
-                    size="small"
-                    icon={isLocked ? <UnlockOutlined /> : <CheckCircleOutlined />}
-                    loading={validating}
-                    onClick={isLocked
-                      ? () => { setIsLocked(false); setValidationResult(null); }
-                      : handleValidateAndLock}
-                    style={{ flexShrink: 0, marginLeft: 6 }}
-                  >
-                    {isLocked ? '解锁' : '验证锁定'}
-                  </Button>
-                </div>
-
-                {/* Validation result */}
-                {validationResult && (
-                  <Alert
-                    type={validationResult.valid ? 'success' : 'error'}
-                    message={validationResult.valid ? '验证通过' : '验证失败'}
-                    description={!validationResult.valid && validationResult.errors.length > 0 && (
-                      <div style={{ maxHeight: 80, overflow: 'auto', fontFamily: 'monospace' }}>
-                        {validationResult.errors.map((err, i) => (
-                          <div key={i} style={{ marginBottom: 2 }}>• {err}</div>
-                        ))}
-                      </div>
-                    )}
-                    showIcon closable onClose={() => setValidationResult(null)}
-                    style={{ margin: '4px 8px' }}
-                  />
-                )}
-
-                {/* Compact model info */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                    {selectedStory.type && <Tag style={{ margin: 0 }}>{selectedStory.type.toUpperCase()}</Tag>}
-                    {selectedStory.category && <Tag color="blue" style={{ margin: 0 }}>{selectedStory.category}</Tag>}
-                    {selectedStory.imports?.map((imp: string, i: number) => (
-                      <Tag key={i} color="cyan" style={{ margin: 0 }}>{imp}</Tag>
+          {(() => {
+            const allKeys = ['scene', 'inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
+            const sceneExtra = selectedKey ? (
+              <Popover
+                open={validationResult !== null && !validationResult.valid}
+                placement="rightTop"
+                onOpenChange={open => { if (!open) setValidationResult(null); }}
+                content={
+                  <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
+                    <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
+                    {validationResult?.errors.map((err, i) => (
+                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, marginBottom: 3 }}>• {err}</div>
                     ))}
                   </div>
-                  {modelMeta.description && (
-                    <div style={{ color: c.textSec, lineHeight: 1.5, marginBottom: 6 }}>
-                      {modelMeta.description}
-                    </div>
-                  )}
-                  <code style={{ color: c.textMute, wordBreak: 'break-all', display: 'block' }}>{selectedStory.path}</code>
+                }
+              >
+                <Button
+                  size="small"
+                  type={isLocked ? 'default' : 'dashed'}
+                  icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
+                  loading={validating}
+                  style={isLocked
+                    ? { color: '#52c41a', borderColor: '#52c41a' }
+                    : { color: '#faad14', borderColor: '#faad14' }}
+                  onClick={e => { e.stopPropagation(); if (isLocked) { setIsLocked(false); setValidationResult(null); } else handleValidateAndLock(); }}
+                >
+                  {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
+                </Button>
+              </Popover>
+            ) : null;
+
+            const sceneChildren = (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                  <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
+                    onChange={e => setStoryFilter(e.target.value)}
+                    prefix={<FilterOutlined style={{ color: c.textMute }} />}
+                    style={{ flex: 1 }} disabled={isLocked} />
+                  <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
+                    <Button size="small" type="text"
+                      icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
+                      onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
+                      style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
+                  </Tooltip>
                 </div>
-              </>
-            )}
-          </div>
+                <div style={{ opacity: isLocked ? 0.4 : 1, pointerEvents: isLocked ? 'none' : 'auto' }}>
+                  <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
+                    {storyViewMode === 'tree' ? (
+                      <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
+                        selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect} treeData={storyTree} />
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {storyList.length === 0
+                          ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
+                          : storyList.map((mod: any) => (
+                              <div key={mod.key} onClick={() => handleSelect([mod.key])}
+                                style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === mod.key ? c.rowHover : 'transparent', color: c.text }}>
+                                <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.displayTitle}</span>
+                              </div>
+                            ))
+                        }
+                      </div>
+                    )}
+                  </Spin>
+                </div>
+              </div>
+            );
+
+            const panels: { key: string; label: React.ReactNode; extra?: React.ReactNode; children: React.ReactNode }[] = [
+              { key: 'scene', label: <>{t('sim.scene.header')} ({total})</>, extra: sceneExtra, children: sceneChildren },
+              ...leftTabs.map(tab => ({ key: tab.key, label: tab.label, children: tab.content })),
+            ];
+
+            return (
+              <div ref={leftPanelRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {panels.map((panel, idx) => {
+                  const isOpen = openSections.has(panel.key);
+                  const openArr = allKeys.filter(k => openSections.has(k));
+                  // find the next open panel key for the drag handle
+                  const nextOpenKey = allKeys.slice(allKeys.indexOf(panel.key) + 1).find(k => openSections.has(k));
+                  const showDragHandle = isOpen && nextOpenKey !== undefined;
+                  return (
+                    <React.Fragment key={panel.key}>
+                      <div style={{
+                        flex: isOpen ? String(sectionWeights[panel.key] || 1) : '0 0 auto',
+                        minHeight: SECTION_H,
+                        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                        borderBottom: `1px solid ${c.border}`,
+                      }}>
+                        {/* Section header */}
+                        <div
+                          onClick={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(panel.key)) n.delete(panel.key); else n.add(panel.key); return n; })}
+                          style={{
+                            height: SECTION_H, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '0 10px', cursor: 'pointer',
+                            background: c.sectionHd, userSelect: 'none',
+                          }}
+                        >
+                          <span style={{ color: c.textMute, fontSize: 9, transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+                          <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{panel.label}</span>
+                          {panel.extra && <span onClick={e => e.stopPropagation()}>{panel.extra}</span>}
+                        </div>
+                        {/* Section content */}
+                        {isOpen && (
+                          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+                            {panel.children}
+                          </div>
+                        )}
+                      </div>
+                      {/* Drag handle between two adjacent open sections */}
+                      {showDragHandle && (
+                        <div
+                          onMouseDown={startSectionResize(panel.key, nextOpenKey!)}
+                          style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent', transition: 'background 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {/* LEFT-CENTER resize handle */}
-        <div onMouseDown={startLeftDrag}
-          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
-            borderRight: `1px solid ${c.border}`, transition: 'background 0.15s' }}
+        <div
+          onMouseDown={startLeftDrag}
+          style={{
+            width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+            borderRight: `1px solid ${c.border}`, transition: 'background 0.15s',
+          }}
           onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         />
 
         {/* CENTER */}
         {renderCenterPanel()}
-
-        {/* CENTER-RIGHT resize handle */}
-        <div onMouseDown={startRightDrag}
-          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
-            borderLeft: `1px solid ${c.border}`, transition: 'background 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        />
-
-        {/* RIGHT */}
-        {renderRightPanel()}
       </div>
 
     </div>
