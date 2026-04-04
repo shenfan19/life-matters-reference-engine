@@ -20,6 +20,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(saved.isDarkMode ?? true);
   const [view, setView]             = useState<'select' | 'game'>(saved.view ?? 'select');
   const [storyPath, setStoryPath]   = useState<string | null>(saved.storyPath ?? null);
+  const [fontSize,  setFontSize]    = useState<number>(saved.fontSize ?? 16);
 
   // Lifted select-screen state — persists when returning from game
   const [viewMode,   setViewMode]   = useState<ViewMode>(saved.viewMode ?? 'card');
@@ -31,10 +32,10 @@ function App() {
     try {
       const prev = readAppPersist();
       localStorage.setItem(APP_PERSIST_KEY, JSON.stringify({
-        ...prev, isDarkMode, view, storyPath, viewMode, sortBy, tagFilter,
+        ...prev, isDarkMode, view, storyPath, viewMode, sortBy, tagFilter, fontSize,
       }));
     } catch {}
-  }, [isDarkMode, view, storyPath, viewMode, sortBy, tagFilter]);
+  }, [isDarkMode, view, storyPath, viewMode, sortBy, tagFilter, fontSize]);
 
   const primary = isDarkMode ? '#52c41a' : '#007A33';
 
@@ -42,12 +43,12 @@ function App() {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: primary,
-      colorBgBase: isDarkMode ? '#0d1a10' : '#f6ffed',
-      colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
-      colorBorder: isDarkMode ? '#1e3824' : '#c8e6c9',
+      colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
+      colorBgContainer: isDarkMode ? '#1a1a1a' : '#ffffff',
+      colorBorder: isDarkMode ? '#2a2a2a' : '#e0e0e0',
       borderRadius: 6,
-      fontSize: 16,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif',
+      fontSize,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
     },
   };
 
@@ -64,6 +65,8 @@ function App() {
           setSortBy={setSortBy}
           tagFilter={tagFilter}
           setTagFilter={setTagFilter}
+          fontSize={fontSize}
+          onFontSize={setFontSize}
         />
       ) : (
         <CardGame
@@ -71,6 +74,8 @@ function App() {
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(d => !d)}
           onBack={() => { setStoryPath(null); setView('select'); }}
+          fontSize={fontSize}
+          onFontSize={setFontSize}
         />
       )}
     </ConfigProvider>

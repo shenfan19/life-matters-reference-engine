@@ -1,7 +1,28 @@
 // game/src/components/StorySelect.tsx
 import { useState, useEffect, useMemo } from 'react';
-import { SunOutlined, MoonOutlined, RocketOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useI18n, type Language } from '../core/i18n';
+
+// HeartPulseIcon: heart (left) + QRS trace (right) — sim identity
+const HeartPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
+  <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    <path d="M11,22 C6,17.5 2,14.5 2,12 A6,6 0,0,1 11,7 A6,6 0,0,1 20,12 C20,14.5 16,17.5 11,22 Z"
+          strokeWidth="2.2" />
+    <path d="M20,15 L22,15 L22.5,17 L23.5,9 L24.5,19 L25.5,15 L30,15"
+          strokeWidth="2" />
+  </svg>
+);
+
+// CardPulseIcon: card outline + heart suit + QRS trace — game identity
+const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    <rect x="4" y="2" width="16" height="20" rx="2.5" strokeWidth="1.8" />
+    <path d="M12,12.5 C9.5,10.5 7.5,9 7.5,7.5 A3,3 0,0,1 12,5 A3,3 0,0,1 16.5,7.5 C16.5,9 14.5,10.5 12,12.5 Z"
+          strokeWidth="1.6" />
+    <path d="M5.5,17 L8,17 L8.5,18.5 L9.5,13.5 L10.5,19.5 L11.5,17 L18.5,17"
+          strokeWidth="1.8" />
+  </svg>
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,30 +70,59 @@ const DIFF: Record<string, { label: string; color: string; order: number }> = {
   hard:   { label: '困难', color: '#f5222d', order: 2 },
 };
 
-// ─── Color scheme ─────────────────────────────────────────────────────────────
+// ─── Color scheme — mirrors sim_gui's C tokens exactly ────────────────────────
 
 function getC(dark: boolean) {
   return dark ? {
-    bg: '#0d1a10', panel: '#111f16', border: '#1e3824',
-    text: 'rgba(255,255,255,0.92)', textSec: 'rgba(255,255,255,0.72)',
-    textMute: 'rgba(255,255,255,0.40)', primary: '#52c41a',
-    cardHover: 'rgba(82,196,26,0.07)',
+    bg: '#111111', panel: '#1a1a1a', border: '#2a2a2a',
+    text: 'rgba(255,255,255,0.92)', textSec: 'rgba(255,255,255,0.75)',
+    textMute: 'rgba(255,255,255,0.52)', primary: '#52c41a',
+    cardHover: 'rgba(82,196,26,0.08)',
     tagBg: 'rgba(82,196,26,0.12)', tagActiveBg: '#52c41a',
-    toolbarBg: '#0a1409', activeSort: '#52c41a',
-    filterBg: '#0d1a10', filterDivider: '#1e3824',
+    toolbarBg: '#111111', activeSort: '#52c41a',
+    filterBg: '#111111', filterDivider: '#2a2a2a',
   } : {
-    bg: '#f6ffed', panel: '#ffffff', border: '#c8e6c9',
-    text: '#1a2e22', textSec: '#3d5c47', textMute: 'rgba(0,0,0,0.40)',
+    bg: '#f5f5f5', panel: '#ffffff', border: '#e0e0e0',
+    text: '#1a2e22', textSec: '#6b7280', textMute: 'rgba(0,0,0,0.55)',
     primary: '#007A33', cardHover: '#e8f5e9',
-    tagBg: '#e8f5e9', tagActiveBg: '#007A33',
-    toolbarBg: '#edf7f0', activeSort: '#007A33',
-    filterBg: '#f9fcfa', filterDivider: '#d9eedf',
+    tagBg: '#efefef', tagActiveBg: '#007A33',
+    toolbarBg: '#efefef', activeSort: '#007A33',
+    filterBg: '#f5f5f5', filterDivider: '#e0e0e0',
+  };
+}
+
+// ─── Font scale — offset from base, so one number controls everything ─────────
+
+function makeFontScale(base: number) {
+  return {
+    xs:   base - 5,   // tiny labels, metadata, mono counts
+    sm:   base - 3,   // secondary text, buttons, tags
+    md:   base,       // body
+    lg:   base + 2,   // subheadings
+    xl:   base + 4,   // page title
   };
 }
 
 function extractYear(period: string): number {
   const m = period?.match(/\d{3,4}/);
   return m ? parseInt(m[0]) : 9999;
+}
+
+// ─── Font size selector ───────────────────────────────────────────────────────
+
+function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: ReturnType<typeof getC> }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+      {([14, 16, 18] as const).map((size, i) => (
+        <button key={size} onClick={() => onFontSize(size)} style={{
+          padding: '3px 7px', border: 'none', cursor: 'pointer',
+          background: fontSize === size ? c.primary : 'transparent',
+          color: fontSize === size ? '#fff' : c.textMute,
+          fontSize: 10 + i * 2, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+        }}>A</button>
+      ))}
+    </div>
+  );
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -87,6 +137,8 @@ interface Props {
   setSortBy: (s: SortKey) => void;
   tagFilter: Record<string, string[]>;
   setTagFilter: (f: Record<string, string[]>) => void;
+  fontSize: number;
+  onFontSize: (n: number) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -94,8 +146,10 @@ interface Props {
 export default function StorySelect({
   isDarkMode, onToggleDark, onSelect,
   viewMode, setViewMode, sortBy, setSortBy, tagFilter, setTagFilter,
+  fontSize, onFontSize,
 }: Props) {
   const c = getC(isDarkMode);
+  const fs = makeFontScale(fontSize);
   const { language, setLanguage, t } = useI18n();
 
   const [stories, setStories] = useState<StoryCard[]>([]);
@@ -191,27 +245,27 @@ export default function StorySelect({
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column',
       background: c.bg, color: c.text, overflow: 'hidden',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif',
+      fontSize: fs.md,
     }}>
 
       {/* ── Header ── */}
       <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10 }}>
-        <svg viewBox="0 0 44 28" width="40" height="26" fill="none">
-          <path d="M2 14 Q7 2 12 14 Q17 26 22 14 Q27 2 32 14 Q37 26 42 14"
-                stroke={c.primary} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        <span style={{ fontSize: 20, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
+        <CardPulseIcon size={32} color={c.primary} />
+        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
 
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         <button
           onClick={() => window.open('http://localhost:5173', '_blank')}
-          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center', gap: 5 }}
+          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: c.textSec, fontSize: fs.sm, display: 'flex', alignItems: 'center', gap: 5 }}
         >
-          <RocketOutlined style={{  }} /> {t('app.simulator')}
+          <HeartPulseIcon /> {t('app.simulator')}
         </button>
 
         <div style={{ flex: 1 }} />
+
+        {/* Font size selector */}
+        <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />
 
         {/* Language selector */}
         <select
@@ -221,6 +275,7 @@ export default function StorySelect({
             padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${c.border}`,
             background: c.panel, color: c.textMute,
+            fontSize: fs.sm,
             cursor: 'pointer', outline: 'none',
           }}
         >
@@ -257,10 +312,10 @@ export default function StorySelect({
 
         {/* Sort */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ color: c.textMute }}>{t('select.sort')}</span>
+          <span style={{ color: c.textMute, fontSize: fs.sm }}>{t('select.sort')}</span>
           {([['period', 'select.sort.time'], ['location', 'select.sort.region'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
             <button key={key} onClick={() => setSortBy(key)} style={{
-              padding: '3px 10px', borderRadius: 5,
+              padding: '3px 10px', borderRadius: 5, fontSize: fs.sm,
               border: `1px solid ${sortBy === key ? c.activeSort : c.border}`,
               background: sortBy === key ? (isDarkMode ? 'rgba(82,196,26,0.15)' : '#e8f5e9') : 'transparent',
               color: sortBy === key ? c.activeSort : c.textMute,
@@ -281,13 +336,14 @@ export default function StorySelect({
                 display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 3,
                 padding: '5px 20px', minHeight: 34,
                 borderBottom: isLast ? 'none' : `1px solid ${c.filterDivider}`,
+                fontSize: fs.sm,
               }}>
                 <span style={{ color: c.textMute, width: 34, flexShrink: 0, fontWeight: 600 }}>{t(group.labelKey)}</span>
 
                 <button
                   onClick={() => clearGroup(group.key)}
                   style={{
-                    padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 4,
+                    padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 4, fontSize: 'inherit',
                     background: selected.length === 0 ? c.primary : 'transparent',
                     color: selected.length === 0 ? '#fff' : c.textMute,
                     fontWeight: selected.length === 0 ? 600 : 400,
@@ -298,7 +354,7 @@ export default function StorySelect({
                   const active = selected.includes(tag);
                   return (
                     <button key={tag} onClick={() => toggleTag(group.key, tag)} style={{
-                      padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 3,
+                      padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 3, fontSize: 'inherit',
                       background: active ? c.tagActiveBg : 'transparent',
                       color: active ? '#fff' : c.text,
                       fontWeight: active ? 600 : 400,
@@ -313,7 +369,7 @@ export default function StorySelect({
       )}
 
       {/* ── Count line ── */}
-      <div style={{ flexShrink: 0, padding: '5px 20px 2px', color: c.textMute }}>
+      <div style={{ flexShrink: 0, padding: '5px 20px 2px', color: c.textMute, fontSize: fs.sm }}>
         {loading ? t('select.loading') : `${displayed.length} ${t('select.scenarios_unit')}${hasAnyFilter ? ' ' + t('select.filtered') : ''}`}
       </div>
 
@@ -333,14 +389,14 @@ export default function StorySelect({
         {/* Card grid */}
         {!loading && viewMode === 'card' && displayed.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {displayed.map(s => <CardItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
+            {displayed.map(s => <CardItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
           </div>
         )}
 
         {/* List */}
         {!loading && viewMode === 'list' && displayed.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {displayed.map(s => <ListItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
+            {displayed.map(s => <ListItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
           </div>
         )}
 
@@ -351,7 +407,9 @@ export default function StorySelect({
 
 // ─── Card item ────────────────────────────────────────────────────────────────
 
-function CardItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; onSelect: () => void; turnsLabel: string }) {
+type FS = ReturnType<typeof makeFontScale>;
+
+function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
   const [hov, setHov] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
 
@@ -372,25 +430,25 @@ function CardItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: c.text, lineHeight: 1.35, flex: 1, fontFamily: 'Georgia, serif' }}>
+        <div style={{ fontSize: fs.md, fontWeight: 700, color: c.text, lineHeight: 1.35, flex: 1, fontFamily: 'Georgia, serif' }}>
           {story.title}
         </div>
-        <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
+        <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, fontSize: fs.sm, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
           {diff.label}
         </span>
       </div>
 
       {(story.period || story.location) && (
-        <div style={{ color: c.textMute, marginBottom: 7, fontFamily: 'monospace' }}>
+        <div style={{ color: c.textMute, marginBottom: 7, fontFamily: 'monospace', fontSize: fs.sm }}>
           {[story.period, story.location].filter(Boolean).join(' · ')}
         </div>
       )}
 
-      <div style={{ color: c.textSec, lineHeight: 1.6, marginBottom: 10 }}>
+      <div style={{ color: c.textSec, lineHeight: 1.6, marginBottom: 10, fontSize: fs.sm }}>
         {story.description.length > 110 ? story.description.slice(0, 110) + '…' : story.description}
       </div>
 
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', fontSize: fs.sm }}>
         {story.tags.slice(0, 4).map(tag => (
           <span key={tag} style={{ padding: '1px 7px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute }}>
             {tag}
@@ -406,7 +464,7 @@ function CardItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
 
 // ─── List item (single-row grid layout) ───────────────────────────────────────
 
-function ListItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; onSelect: () => void; turnsLabel: string }) {
+function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
   const [hov, setHov] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
 
@@ -423,11 +481,12 @@ function ListItem({ story, c, isDarkMode, onSelect, turnsLabel }: { story: Story
         display: 'grid',
         gridTemplateColumns: '190px 1fr auto auto',
         alignItems: 'center', gap: 16,
+        fontSize: fs.sm,
       }}
     >
       {/* Col 1: title + meta stacked */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: fs.md }}>
           {story.title}
         </div>
         {(story.period || story.location) && (

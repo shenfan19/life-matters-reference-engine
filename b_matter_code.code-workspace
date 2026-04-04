@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Dropbox/b_matter"
+		}
+	],
+	"settings": {
+		"python-envs.defaultEnvManager": "ms-python.python:system",
+		"terminal.integrated.env.windows": {
+			"PYTHONPATH": "${workspaceFolder}",
+			"PATH": "${env:PATH};${workspaceFolder}/script"
+		},
+		"terminal.integrated.defaultProfile.windows": "Command Prompt"
+	}
+}

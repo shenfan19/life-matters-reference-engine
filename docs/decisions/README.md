@@ -17,3 +17,7 @@
 | [0009](0009-migrate-stories-to-folder-format.md) | 旧格式 Story 迁移 + 删除旧解析逻辑 | ✅ 已实施 | 2026-04-04 |
 | [0010](0010-game-hearthstone-layout.md) | Game 界面 Hearthstone 式布局重构 | ✅ 已实施 | 2026-04-04 |
 | [0011](0011-game-6row-unified-cards.md) | Game 6行对称布局 + 统一卡牌尺寸 + 对方手牌机制 | ✅ 已实施 | 2026-04-04 |
+| [0012](0012-neutral-theme-unified-colors.md) | Game 中性主题 + 双应用色彩 Token 统一 | ✅ 已实施 | 2026-04-05 |
+| [0013](0013-relative-font-scale-selector.md) | 相对字号系统 + 字号选择器 | ✅ 已实施 | 2026-04-05 |
+| [0014](0014-app-icons-favicon-unification.md) | 应用图标重设计 + 浏览器标签图标统一 | ✅ 已实施 | 2026-04-05 |
+| [0015](0015-card-hand-mechanics.md) | 卡牌手牌机制：无回收 + 双重惩罚 + 永久牌 | ✅ 已实施 | 2026-04-05 |

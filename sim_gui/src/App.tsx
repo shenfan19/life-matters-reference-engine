@@ -2,9 +2,37 @@ import { useState, useEffect } from 'react';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
-  LoadingOutlined, ExperimentOutlined, ToolOutlined, SwapOutlined,
+  LoadingOutlined, ToolOutlined, SwapOutlined,
   GithubOutlined, MailOutlined,
 } from '@ant-design/icons';
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+// HeartPulseIcon: heart (left) + QRS trace (right) — sim identity
+// CardPulseIcon:  card outline + heart suit + QRS trace — game identity
+
+const HeartPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
+  <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    {/* Heart — tip at (11,22), two lobes peak at y=7 */}
+    <path d="M11,22 C6,17.5 2,14.5 2,12 A6,6 0,0,1 11,7 A6,6 0,0,1 20,12 C20,14.5 16,17.5 11,22 Z"
+          strokeWidth="2.2" />
+    {/* QRS trace exiting right side of heart at midline */}
+    <path d="M20,15 L22,15 L22.5,17 L23.5,9 L24.5,19 L25.5,15 L30,15"
+          strokeWidth="2" />
+  </svg>
+);
+
+const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    {/* Card outline */}
+    <rect x="4" y="2" width="16" height="20" rx="2.5" strokeWidth="1.8" />
+    {/* Heart suit — upper portion of card */}
+    <path d="M12,12.5 C9.5,10.5 7.5,9 7.5,7.5 A3,3 0,0,1 12,5 A3,3 0,0,1 16.5,7.5 C16.5,9 14.5,10.5 12,12.5 Z"
+          strokeWidth="1.6" />
+    {/* QRS trace — lower portion of card */}
+    <path d="M5.5,17 L8,17 L8.5,18.5 L9.5,13.5 L10.5,19.5 L11.5,17 L18.5,17"
+          strokeWidth="1.8" />
+  </svg>
+);
 import Simulator from './components/Simulator';
 import ModsManager from './components/ModsManager';
 import StoryEditor from './components/StoryEditor';
@@ -29,6 +57,23 @@ const C = {
   },
 };
 
+// ─── Font size selector ───────────────────────────────────────────────────────
+
+function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: typeof C.light }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+      {([14, 16, 18] as const).map((size, i) => (
+        <button key={size} onClick={() => onFontSize(size)} style={{
+          padding: '3px 7px', border: 'none', cursor: 'pointer',
+          background: fontSize === size ? c.primary : 'transparent',
+          color: fontSize === size ? '#fff' : c.textMute,
+          fontSize: 10 + i * 2, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+        }}>A</button>
+      ))}
+    </div>
+  );
+}
+
 const initialSimulationState: SimulationState = {
   status: 'idle', progress: 0, currentStep: 0, totalSteps: 1440,
   simulationData: [], inputParams: {}, stateVariables: {}, sessionId: '',
@@ -37,14 +82,15 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t }: {
+function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t, fontSize, onFontSize }: {
   page: string; onPage: (p: string) => void;
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
   c: typeof C.light; t: (k: string) => string;
+  fontSize: number; onFontSize: (n: number) => void;
 }) {
   const tabs = [
-    { id: 'simulator', label: t('menu.simulator'), icon: <ExperimentOutlined /> },
+    { id: 'simulator', label: t('menu.simulator'), icon: <HeartPulseIcon /> },
     { id: 'tools',     label: 'Mods',              icon: <ToolOutlined /> },
     { id: 'story',     label: '转换器',             icon: <SwapOutlined /> },
   ];
@@ -61,11 +107,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
       {/* Logo wordmark */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
         {/* Wave mark */}
-        <svg viewBox="0 0 44 28" width="44" height="28" fill="none" style={{ flexShrink: 0 }}>
-          <path d="M2 14 Q7 2 12 14 Q17 26 22 14 Q27 2 32 14 Q37 26 42 14"
-                stroke={isDarkMode ? '#52c41a' : '#007A33'} strokeWidth="2.4"
-                strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        <HeartPulseIcon size={28} color={isDarkMode ? '#52c41a' : '#007A33'} />
         {/* Wordmark */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
@@ -130,7 +172,7 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
             (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)';
           }}
         >
-          <span style={{  }}>🎮</span>
+          <CardPulseIcon />
           {t('button.go_game')}
         </button>
       </div>
@@ -139,6 +181,9 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
 
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Font size selector */}
+        <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />
+
         {/* Language selector */}
         <select
           value={language}
@@ -254,10 +299,16 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
+const SIM_PREFS_KEY = 'sim_prefs';
+function readPrefs(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(SIM_PREFS_KEY) ?? '{}'); } catch { return {}; }
+}
+
 function App() {
   const { t, language, setLanguage } = useI18n();
   const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
+  const [fontSize,   setFontSize]   = useState<number>(() => readPrefs().fontSize ?? 16);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
@@ -275,6 +326,11 @@ function App() {
   const c = isDarkMode ? C.dark : C.light;
   const isSimulating = simState.status === 'running';
 
+  // Persist prefs
+  useEffect(() => {
+    try { localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize })); } catch {}
+  }, [isDarkMode, fontSize]);
+
   useEffect(() => {
     const check = () => {
       fetch(`/api/plugins?v=${Date.now()}`, { signal: AbortSignal.timeout(2500) })
@@ -291,7 +347,7 @@ function App() {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: antPrimary, colorLink: antPrimary, colorSuccess: '#52c41a',
-      borderRadius: 6, fontSize: 16,
+      borderRadius: 6, fontSize,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
       colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
@@ -345,6 +401,7 @@ function App() {
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode(d => !d)}
           language={language} onLanguage={setLanguage}
           c={c} t={t}
+          fontSize={fontSize} onFontSize={setFontSize}
         />
 
         {/* ── Content (zoom wrapper scales all inline sizes) ── */}
