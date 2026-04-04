@@ -1,0 +1,28 @@
+id: decrease_protein_intake
+type: player
+category: action
+display:
+  name: 减少Protein Inta
+  description: 减少g/kg/day摄入：每日蛋白质摄入量（g/kg/day）。 KDIGO 2020建议（非透析CKD 3-5期）：0.6-0.8
+    g/kg/d
+  flavor: 优化变量 protein_intake（-0.34 g/kg/day/回合）
+  icon: 📉
+cost: 1
+effects:
+- target: muscle_mass
+  delta: -10
+  condition: null
+- target: gfr
+  delta: 8
+  condition: null
+- target: bun
+  delta: 6
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: 优化变量 protein_intake（-0.34 g/kg/day/回合）
+  pattern_detected: P1

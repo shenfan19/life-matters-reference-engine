@@ -37,13 +37,10 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-const FONT_SIZES = [13, 14, 15, 16, 17, 18];
-
-function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t }: {
+function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t }: {
   page: string; onPage: (p: string) => void;
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
-  fontSize: number; onFontSize: (n: number) => void;
   c: typeof C.light; t: (k: string) => string;
 }) {
   const tabs = [
@@ -142,20 +139,6 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
 
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Font size selector */}
-        <select
-          value={fontSize}
-          onChange={e => onFontSize(Number(e.target.value))}
-          style={{
-            padding: '3px 6px', borderRadius: 6,
-            border: `1px solid ${c.border}`,
-            background: c.panel, color: c.textMute,
-            cursor: 'pointer', outline: 'none',
-          }}
-        >
-          {FONT_SIZES.map(n => <option key={n} value={n}>{n}px</option>)}
-        </select>
-
         {/* Language selector */}
         <select
           value={language}
@@ -275,7 +258,6 @@ function App() {
   const { t, language, setLanguage } = useI18n();
   const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [fontSize, setFontSize] = useState(16);
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
@@ -309,7 +291,7 @@ function App() {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: antPrimary, colorLink: antPrimary, colorSuccess: '#52c41a',
-      borderRadius: 6, fontSize,
+      borderRadius: 6, fontSize: 16,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
       colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
@@ -362,12 +344,11 @@ function App() {
           page={page} onPage={p => setPage(p as any)}
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode(d => !d)}
           language={language} onLanguage={setLanguage}
-          fontSize={fontSize} onFontSize={setFontSize}
           c={c} t={t}
         />
 
         {/* ── Content (zoom wrapper scales all inline sizes) ── */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg, zoom: fontSize / 16 }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg }}>
 
           {/* Simulator: always mounted, shown/hidden via CSS */}
           <div style={{

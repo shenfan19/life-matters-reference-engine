@@ -1,0 +1,21 @@
+id: decrease_water_sip
+type: player
+category: action
+display:
+  name: 减少Water Sip(ml
+  description: 减少ml摄入：饮水量
+  flavor: 优化变量 water_sip（-20 ml/回合）
+  icon: ⬇️
+cost: 1
+effects:
+- target: energy
+  delta: -6
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: 优化变量 water_sip（-20 ml/回合）
+  pattern_detected: P1

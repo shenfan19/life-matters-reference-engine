@@ -1,9 +1,16 @@
 meta:
-  id: hypertension_gout
   name: hypertension_gout
   description: 高血压合并痛风联合动力学模型（场景A5）。 核心学术案例：ESC降压指南与ACR痛风指南是两套独立存在、互相矛盾的临床指南。 噻嗪类利尿剂（一线降压药）会显著升高尿酸；
     减肥可同时改善两者，但减肥过快（酮体竞争排泄）反而升高尿酸； 部分低嘌呤食物（乳制品）可降尿酸但可能升血压。 没有医生能用"经验"给出精确的数值权衡答案。
     抗质疑强度：⭐⭐⭐⭐（两套指南互相矛盾是事实，不可否认）
+  difficulty: easy
+  tags:
+  - cardiology
+  - rheumatology
+  - hypertension
+  - gout
+  - uric_acid
+  - physiological
   science_note: '高血压合并痛风联合动力学模型（场景A5）。 核心学术案例：ESC降压指南与ACR痛风指南是两套独立存在、互相矛盾的临床指南。 噻嗪类利尿剂（一线降压药）会显著升高尿酸；
     减肥可同时改善两者，但减肥过快（酮体竞争排泄）反而升高尿酸； 部分低嘌呤食物（乳制品）可降尿酸但可能升血压。 没有医生能用"经验"给出精确的数值权衡答案。
     抗质疑强度：⭐⭐⭐⭐（两套指南互相矛盾是事实，不可否认）
@@ -12,172 +19,89 @@ meta:
     of blood pressure lowering drugs in the prevention of cardiovascular disease
 
     [Converter: bp_dynamics→Type6; ua_dynamics→Type6; weight_dynamics→Type4; goal_score_calc→derived]'
-  tags:
-  - cardiology
-  - rheumatology
-  - hypertension
-  - gout
-  - uric_acid
-  - physiological
-
-  difficulty: easy
-variables:
+  version: '0.1'
+initial_state:
+  goal_score: 0.0
+  systolic_bp: 61.8
+  uric_acid: 47.5
+  body_weight: 45.5
+variable_display:
   goal_score:
     label: 综合评分
-    value: 0.0
-    max: 100
     color: '#52c41a'
-    description: 双目标达标综合评分（0-100）。 BP得分：systolic_bp从158→120线性映射到0→50分； UA得分：uric_acid从480→250线性映射到0→50分；
-      满分100 = 两个指南
+    max: 100
   systolic_bp:
     label: 收缩压
-    value: 61.8
-    max: 100
     color: '#1677ff'
-    description: 收缩压（mmHg）。基线158mmHg（高血压2级合并痛风患者典型值）。 目标：ESC 2018指南 <130 mmHg。 干预：噻嗪类利尿剂（降压）、减肥（降压）。
+    max: 100
   uric_acid:
     label: 尿酸
-    value: 47.5
-    max: 100
     color: '#faad14'
-    description: 血尿酸（μmol/L）。基线480μmol/L（痛风患者，正常上限420男性/360女性）。 目标：ACR 2020指南 <360
-      μmol/L（预防痛风发作）。 干预矛盾：噻嗪类升高尿酸；减肥降低尿
+    max: 100
   body_weight:
     label: 体重
-    value: 45.5
-    max: 100
     color: '#722ed1'
-    description: 体重（kg）。基线90kg（超重，BMI约29）。减重对BP和UA均有正面效应，但速度受限。
-game:
-  ap_per_turn: 3
-  max_turns: 12
-  hand_size: 5
-lose_conditions:
-- condition: goal_score <= 15
-  message: 综合评分过低，无法继续——治疗失败。
-- condition: systolic_bp >= 88
-  message: 收缩压过高，出现严重并发症。
-- condition: uric_acid >= 88
-  message: 尿酸过高，出现严重并发症。
-win_conditions:
-- condition: goal_score >= 75
-  message: 综合评分达到目标水平，优化成功。
-- condition: systolic_bp <= 25
-  message: 收缩压控制达标，临床目标实现。
-- condition: uric_acid <= 25
-  message: 尿酸控制达标，临床目标实现。
-player_cards:
-- id: increase_diuretic_dose
-  name: 增加Diuretic Dos
-  type: medical
-  cost: 2
-  emoji: 📈
-  flavor: 增加mg/day摄入：氢氯噻嗪（HCTZ）日剂量（mg/day）。 降压效果：25mg → 收缩压降低约10 mmHg（Law 2003）；剂
-  science: 优化变量 diuretic_dose（+5 mg/day/回合）
-  effects:
-  - variable: goal_score
-    delta: 4
-  - variable: systolic_bp
-    delta: 12
-  - variable: uric_acid
-    delta: -10
-- id: decrease_diuretic_dose
-  name: 减少Diuretic Dos
-  type: medical
-  cost: 1
-  emoji: 📉
-  flavor: 减少mg/day摄入：氢氯噻嗪（HCTZ）日剂量（mg/day）。 降压效果：25mg → 收缩压降低约10 mmHg（Law 2003）；剂
-  science: 优化变量 diuretic_dose（-5 mg/day/回合）
-  effects:
-  - variable: goal_score
-    delta: -4
-  - variable: systolic_bp
-    delta: -12
-  - variable: uric_acid
-    delta: 10
-- id: increase_purine_intake
-  name: 增加Purine Intak
-  type: medical
-  cost: 2
-  emoji: ⬆️
-  flavor: 增加mg/day摄入：每日嘌呤摄入量（mg/day）。 高嘌呤食物：内脏（肝/肾/脑），贝类，红肉 → 每100g约150-1000mg嘌呤。
-  science: 优化变量 purine_intake（+6e+02 mg/day/回合）
-  effects:
-  - variable: goal_score
-    delta: 2
-  - variable: uric_acid
-    delta: -8
-- id: decrease_purine_intake
-  name: 减少Purine Intak
-  type: medical
-  cost: 1
-  emoji: ⬇️
-  flavor: 减少mg/day摄入：每日嘌呤摄入量（mg/day）。 高嘌呤食物：内脏（肝/肾/脑），贝类，红肉 → 每100g约150-1000mg嘌呤。
-  science: 优化变量 purine_intake（-6e+02 mg/day/回合）
-  effects:
-  - variable: goal_score
-    delta: -2
-  - variable: uric_acid
-    delta: 8
-- id: increase_weight_loss_rate
-  name: '增加Weight Loss '
-  type: medical
-  cost: 2
-  emoji: 💊
-  flavor: 增加kg/week摄入：目标减重速率（kg/week）。 正面效应：减重1kg → 收缩压降低约1 mmHg（Neter 2003）；同时降低尿
-  science: 优化变量 weight_loss_rate（+0.2 kg/week/回合）
-  effects:
-  - variable: goal_score
-    delta: 5
-  - variable: systolic_bp
-    delta: 8
-  - variable: uric_acid
-    delta: -4
-  - variable: body_weight
-    delta: 6
-- id: decrease_weight_loss_rate
-  name: '减少Weight Loss '
-  type: medical
-  cost: 1
-  emoji: 🚫
-  flavor: 减少kg/week摄入：目标减重速率（kg/week）。 正面效应：减重1kg → 收缩压降低约1 mmHg（Neter 2003）；同时降低尿
-  science: 优化变量 weight_loss_rate（-0.2 kg/week/回合）
-  effects:
-  - variable: goal_score
-    delta: -5
-  - variable: systolic_bp
-    delta: -8
-  - variable: uric_acid
-    delta: 4
-  - variable: body_weight
-    delta: -6
-environment_cards:
-- id: bp_dynamics
-  name: 血压动力学
-  emoji: 💊
-  description: '[Type6] 收缩压向目标值的一阶动力学趋近（τ=14天）。 target_SBP = 基线 - HCTZ效应(10mmHg/25mg)
-    - 减重效应(1mmHg/kg)。 来源：Law 2003 (HCTZ); Neter 2003 (减重)。'
-  science: '[Type6] ODE离散化（每回合）'
-  effects:
-  - variable: systolic_bp
-    delta: -2
-  always_active: true
-- id: ua_dynamics
-  name: 尿酸动力学
-  emoji: 🔬
-  description: '[Type6] 血尿酸向目标值的一阶动力学趋近（τ=14天）。 target_UA = 基线 + HCTZ效应(+70μmol/L
-    per 25mg) + 饮食效应((purine-1000)×0.06) + 快速减重惩罚。 快速减重惩罚：max(0, w'
-  science: '[Type6] ODE离散化（每回合）'
-  effects:
-  - variable: uric_acid
-    delta: -1
-  always_active: true
-- id: weight_dynamics
-  name: 体重变化
-  emoji: ⚖️
-  description: '[Type4] 体重按目标减重速率线性下降（安全约束：0-1.0 kg/week）。'
-  science: '[Type4] 阈值条件触发'
-  effects:
-  - variable: body_weight
-    delta: 30
-  condition: goal_score < 40
+    max: 100
+health_mapping:
+  source_variable: goal_score
+  scale:
+  - 0
+  - 100
+  - 0
+  - 100
+  display: 综合评分
+turns:
+  total: 12
+  time_per_turn: 1 month
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 3
+win_condition:
+  type: custom
+  description: 综合评分达到目标水平，优化成功。
+lose_condition:
+  type: custom
+  description: 综合评分过低，无法继续——治疗失败。
+endings:
+- grade: A
+  condition: goal_score >= 75
+  title: 目标达成
+  description: 综合评分达到目标水平，优化成功。
+- grade: A
+  condition: systolic_bp <= 25
+  title: 目标达成
+  description: 收缩压控制达标，临床目标实现。
+- grade: A
+  condition: uric_acid <= 25
+  title: 目标达成
+  description: 尿酸控制达标，临床目标实现。
+- grade: D
+  condition: goal_score <= 15
+  title: 失败
+  description: 综合评分过低，无法继续——治疗失败。
+- grade: D
+  condition: systolic_bp >= 88
+  title: 失败
+  description: 收缩压过高，出现严重并发症。
+- grade: D
+  condition: uric_acid >= 88
+  title: 失败
+  description: 尿酸过高，出现严重并发症。
+env_deck:
+- path: cards/env_bp_dynamics.yaml
+  weight: 200
+- path: cards/env_ua_dynamics.yaml
+  weight: 200
+- path: cards/env_weight_dynamics.yaml
+  weight: 120
+player_deck:
+- path: cards/player_increase_diuretic_dose.yaml
+- path: cards/player_decrease_diuretic_dose.yaml
+- path: cards/player_increase_purine_intake.yaml
+- path: cards/player_decrease_purine_intake.yaml
+- path: cards/player_increase_weight_loss_rate.yaml
+- path: cards/player_decrease_weight_loss_rate.yaml
+generic_cards:
+  inject:
+  - rest
+  - interrupt

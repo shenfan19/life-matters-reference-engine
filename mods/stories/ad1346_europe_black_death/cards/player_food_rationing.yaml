@@ -1,0 +1,24 @@
+id: food_rationing
+type: player
+category: action
+display:
+  name: 统一配粮
+  description: 公平分配减少内部矛盾。
+  flavor: ''
+  icon: 🌾
+cost: 1
+effects:
+- target: food
+  delta: 18
+  condition: null
+- target: faith
+  delta: 12
+  condition: null
+channel: social
+tags:
+- player
+- social
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

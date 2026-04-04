@@ -1,0 +1,27 @@
+id: increase_diuretic_dose
+type: player
+category: action
+display:
+  name: 增加Diuretic Dos
+  description: 增加mg/day摄入：氢氯噻嗪（HCTZ）日剂量（mg/day）。 降压效果：25mg → 收缩压降低约10 mmHg（Law 2003）；剂
+  flavor: 优化变量 diuretic_dose（+5 mg/day/回合）
+  icon: 📈
+cost: 2
+effects:
+- target: goal_score
+  delta: 4
+  condition: null
+- target: systolic_bp
+  delta: 12
+  condition: null
+- target: uric_acid
+  delta: -10
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: 优化变量 diuretic_dose（+5 mg/day/回合）
+  pattern_detected: P1

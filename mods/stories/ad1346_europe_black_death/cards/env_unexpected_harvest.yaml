@@ -1,0 +1,23 @@
+id: unexpected_harvest
+type: env
+category: state
+display:
+  name: 意外丰收
+  description: 偶尔的好消息振奋人心。
+  flavor: ''
+  icon: 🌻
+effects:
+- target: food
+  delta: 22
+  condition: null
+- target: faith
+  delta: 10
+  condition: null
+channel: medical
+tags:
+- env
+weight: 80
+source:
+  formula: ''
+  pattern_detected: P1
+probability: 0.25

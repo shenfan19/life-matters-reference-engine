@@ -1,0 +1,27 @@
+id: ration_conservation
+type: player
+category: action
+display:
+  name: 节省口粮
+  description: 严格限制摄入，把口粮留到补给中断时用。饥饿感袭来。
+  flavor: ''
+  icon: 🥫
+cost: 1
+effects:
+- target: rations
+  delta: 20
+  condition: null
+- target: health
+  delta: -5
+  condition: null
+- target: morale
+  delta: -8
+  condition: null
+channel: logistics
+tags:
+- player
+- logistics
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

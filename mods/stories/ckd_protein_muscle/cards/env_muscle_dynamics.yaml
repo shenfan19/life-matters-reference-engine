@@ -1,0 +1,24 @@
+id: muscle_dynamics
+type: env
+category: state
+display:
+  name: 肌肉变化
+  description: '[Type6] 骨骼肌净合成动力学。 net_rate = (protein_intake - 0.8) × 0.05 - CKD晚期额外分解因子。
+    晚期CKD（GFR<30）因代谢性酸中毒额外增加分解：+0.003 kg/day。 来源：Carrero '
+  flavor: '[Type6] ODE离散化（每回合）'
+  icon: 🦾
+effects:
+- target: muscle_mass
+  delta: -4
+  condition: null
+- target: muscle_synthesis_rate
+  delta: -4
+  condition: null
+channel: medical
+tags:
+- env
+weight: 200
+source:
+  formula: '[Type6] ODE离散化（每回合）'
+  pattern_detected: P1
+always_active: true

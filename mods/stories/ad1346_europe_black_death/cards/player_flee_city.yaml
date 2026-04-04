@@ -1,0 +1,27 @@
+id: flee_city
+type: player
+category: action
+display:
+  name: 疏散人口
+  description: 分散人群降低传播，但失去凝聚力。
+  flavor: ''
+  icon: 🏃
+cost: 2
+effects:
+- target: epidemic
+  delta: -25
+  condition: null
+- target: food
+  delta: -15
+  condition: null
+- target: faith
+  delta: -10
+  condition: null
+channel: social
+tags:
+- player
+- social
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

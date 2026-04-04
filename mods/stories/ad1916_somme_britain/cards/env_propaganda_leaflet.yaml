@@ -1,0 +1,20 @@
+id: propaganda_leaflet
+type: env
+category: state
+display:
+  name: 胜利宣传单
+  description: 后方分发宣传材料，声称战局大好。前线士兵都知道这是谎言。
+  flavor: ''
+  icon: 📜
+effects:
+- target: morale
+  delta: 8
+  condition: null
+channel: medical
+tags:
+- env
+weight: 80
+source:
+  formula: ''
+  pattern_detected: P1
+probability: 0.3

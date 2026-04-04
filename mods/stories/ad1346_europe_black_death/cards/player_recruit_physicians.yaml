@@ -1,0 +1,24 @@
+id: recruit_physicians
+type: player
+category: action
+display:
+  name: 召集医者
+  description: 从远方召来懂医术的人。
+  flavor: ''
+  icon: ⚕️
+cost: 2
+effects:
+- target: health
+  delta: 20
+  condition: null
+- target: epidemic
+  delta: -10
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

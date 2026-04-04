@@ -1,0 +1,23 @@
+id: rat_infestation
+type: env
+category: state
+display:
+  name: 鼠群侵扰
+  description: 鼠群随机侵扰，加速传播并消耗粮食。
+  flavor: 随机接触事件（泊松过程）
+  icon: 🐭
+effects:
+- target: epidemic
+  delta: 15
+  condition: null
+- target: food
+  delta: -10
+  condition: null
+channel: medical
+tags:
+- env
+weight: 120
+source:
+  formula: 随机接触事件（泊松过程）
+  pattern_detected: P1
+probability: 0.45

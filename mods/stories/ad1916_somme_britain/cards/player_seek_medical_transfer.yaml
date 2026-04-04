@@ -1,0 +1,27 @@
+id: seek_medical_transfer
+type: player
+category: action
+display:
+  name: 申请后送医疗
+  description: 声称伤情无法继续作战，申请送往野战医院。可以暂时喘息，但可能被认为是懦弱。
+  flavor: ''
+  icon: 🏥
+cost: 2
+effects:
+- target: health
+  delta: 25
+  condition: null
+- target: morale
+  delta: -15
+  condition: null
+- target: pay_savings
+  delta: -3
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

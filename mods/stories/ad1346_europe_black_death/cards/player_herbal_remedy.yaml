@@ -1,0 +1,24 @@
+id: herbal_remedy
+type: player
+category: action
+display:
+  name: 草药处方
+  description: 芥末籽、大蒜与没药，有一定效果。
+  flavor: ''
+  icon: 🌿
+cost: 1
+effects:
+- target: health
+  delta: 12
+  condition: null
+- target: epidemic
+  delta: -6
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: ''
+  pattern_detected: P1

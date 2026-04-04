@@ -1,0 +1,24 @@
+id: decrease_purine_intake
+type: player
+category: action
+display:
+  name: 减少Purine Intak
+  description: 减少mg/day摄入：每日嘌呤摄入量（mg/day）。 高嘌呤食物：内脏（肝/肾/脑），贝类，红肉 → 每100g约150-1000mg嘌呤。
+  flavor: 优化变量 purine_intake（-6e+02 mg/day/回合）
+  icon: ⬇️
+cost: 1
+effects:
+- target: goal_score
+  delta: -2
+  condition: null
+- target: uric_acid
+  delta: 8
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+weight: 100
+source:
+  formula: 优化变量 purine_intake（-6e+02 mg/day/回合）
+  pattern_detected: P1

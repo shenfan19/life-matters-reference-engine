@@ -1,0 +1,24 @@
+id: rum_ration_trade
+type: player
+category: action
+display:
+  name: 分享朗姆酒配给
+  description: 英军官方每日发放1/16英吉利品脱朗姆酒。与战友共享，凝聚人心。
+  flavor: 英军朗姆酒配给制度（1914-1918，按QR&O第1516条）是士气维持的重要机制
+  icon: 🥃
+cost: 1
+effects:
+- target: morale
+  delta: 18
+  condition: null
+- target: health
+  delta: -2
+  condition: null
+channel: social
+tags:
+- player
+- social
+weight: 100
+source:
+  formula: 英军朗姆酒配给制度（1914-1918，按QR&O第1516条）是士气维持的重要机制
+  pattern_detected: P1

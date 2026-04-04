@@ -1,0 +1,27 @@
+id: advance_attack
+type: player
+category: action
+display:
+  name: 冲锋突击
+  description: 服从命令，越过无人区。也许能立功，也许再也回不来。
+  flavor: 进攻时英军伤亡率7-15%/天（索姆河第一天实测，Prior & Wilson 2005）
+  icon: ⚔️
+cost: 2
+effects:
+- target: health
+  delta: -20
+  condition: null
+- target: morale
+  delta: 15
+  condition: null
+- target: pay_savings
+  delta: 5
+  condition: null
+channel: tactical
+tags:
+- player
+- tactical
+weight: 100
+source:
+  formula: 进攻时英军伤亡率7-15%/天（索姆河第一天实测，Prior & Wilson 2005）
+  pattern_detected: P1

@@ -1,0 +1,23 @@
+id: supply_convoy_arrives
+type: env
+category: state
+display:
+  name: 补给车队抵达
+  description: 后方补给车队突破德军封锁，带来食物和弹药。
+  flavor: ''
+  icon: 🚛
+effects:
+- target: rations
+  delta: 20
+  condition: null
+- target: pay_savings
+  delta: 7
+  condition: null
+channel: medical
+tags:
+- env
+weight: 80
+source:
+  formula: ''
+  pattern_detected: P1
+probability: 0.35

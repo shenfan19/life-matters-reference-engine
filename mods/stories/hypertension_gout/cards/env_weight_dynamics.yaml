@@ -1,0 +1,20 @@
+id: weight_dynamics
+type: env
+category: state
+display:
+  name: 体重变化
+  description: '[Type4] 体重按目标减重速率线性下降（安全约束：0-1.0 kg/week）。'
+  flavor: '[Type4] 阈值条件触发'
+  icon: ⚖️
+effects:
+- target: body_weight
+  delta: 30
+  condition: null
+channel: medical
+tags:
+- env
+weight: 120
+source:
+  formula: '[Type4] 阈值条件触发'
+  pattern_detected: P1
+condition: goal_score < 40

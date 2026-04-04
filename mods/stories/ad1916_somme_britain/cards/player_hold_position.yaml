@@ -1,0 +1,27 @@
+id: hold_position
+type: player
+category: action
+display:
+  name: 坚守战壕
+  description: 不冒进，守住阵地。消耗战的基础逻辑。
+  flavor: 防守伤亡率约为进攻的1/3（WWII前历史平均值）
+  icon: 🪖
+cost: 1
+effects:
+- target: health
+  delta: -3
+  condition: null
+- target: morale
+  delta: -5
+  condition: null
+- target: rations
+  delta: -8
+  condition: null
+channel: tactical
+tags:
+- player
+- tactical
+weight: 100
+source:
+  formula: 防守伤亡率约为进攻的1/3（WWII前历史平均值）
+  pattern_detected: P1

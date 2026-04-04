@@ -67,20 +67,17 @@ class ScenarioConverterPlugin:
         model_name = meta.get("name", Path(model_path).stem)
         scenario_id = inputs.get("scenario_id") or _slug(model_name)
 
-        out_dir = self.mods_dir / "scenarios" / "to_game" / scenario_id
+        out_dir = self.mods_dir / "stories" / "to_game" / scenario_id
         out_dir.mkdir(parents=True, exist_ok=True)
-        out_file = out_dir / "game_story.yaml"
 
-        with open(out_file, "w", encoding="utf-8") as f:
-            yaml.dump(story, f, allow_unicode=True, sort_keys=False,
-                      default_flow_style=False)
+        files_written = _save_new_format(story, out_dir, model_path, meta)
 
         return {
             "success": True,
-            "output_path": str(out_file),
-            "message": f"Converted → {out_file}",
+            "output_path": str(out_dir / "game_story.yaml"),
+            "message": f"Converted → {out_dir} ({len(files_written)} files)",
             "converter_notes": notes,
-            "story": story,
+            "files": files_written,
         }
 
 
@@ -759,3 +756,216 @@ def _slug(name: str) -> str:
     s = re.sub(r"[^\w\s\-]", "", name.lower())
     s = re.sub(r"[\s_\-]+", "_", s)
     return s[:40] or "converted"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# New-format multi-file serialization
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _save_new_format(story: dict, out_dir: Path, source_path: str, source_meta: dict) -> list[str]:
+    """
+    Write the converted story as a folder-based new format:
+      out_dir/
+        game_story.yaml
+        _mapping.json
+        cards/
+          player_<id>.yaml
+          env_<id>.yaml
+    Returns list of relative file paths written.
+    """
+    import json
+    from datetime import date
+
+    cards_dir = out_dir / "cards"
+    cards_dir.mkdir(exist_ok=True)
+    files: list[str] = []
+
+    # ── Write card files ──────────────────────────────────────────────────────
+    env_deck: list[dict] = []
+    player_deck: list[dict] = []
+    mapping_vars: dict[str, str] = {}
+
+    for card in story.get("environment_cards", []):
+        card_data = _to_new_card(card, "env")
+        fname = f"env_{card['id']}.yaml"
+        _write_yaml(cards_dir / fname, card_data)
+        files.append(f"cards/{fname}")
+        weight = _card_weight(card)
+        env_deck.append({"path": f"cards/{fname}", "weight": weight})
+        mapping_vars[card["id"]] = f"cards/{fname}"
+
+    for card in story.get("player_cards", []):
+        card_data = _to_new_card(card, "player")
+        fname = f"player_{card['id']}.yaml"
+        _write_yaml(cards_dir / fname, card_data)
+        files.append(f"cards/{fname}")
+        player_deck.append({"path": f"cards/{fname}"})
+        mapping_vars[card["id"]] = f"cards/{fname}"
+
+    # ── Build initial_state from variables ────────────────────────────────────
+    initial_state: dict[str, float] = {}
+    health_var = None
+    for k, v in story.get("variables", {}).items():
+        initial_state[k] = v.get("value", 0)
+        if k == "health" or (health_var is None and k not in ("money", "status")):
+            health_var = k
+
+    # ── Win / lose → condition + endings ─────────────────────────────────────
+    lose_conds = story.get("lose_conditions", [])
+    win_conds  = story.get("win_conditions",  [])
+
+    lose_condition = {
+        "type": "custom",
+        "description": lose_conds[0]["message"] if lose_conds else "状态恶化至无法恢复。",
+    }
+    win_condition = {
+        "type": "custom",
+        "description": win_conds[0]["message"] if win_conds else "目标达成。",
+    }
+
+    endings = []
+    for wc in win_conds:
+        endings.append({
+            "grade": "A",
+            "condition": wc["condition"],
+            "title": "目标达成",
+            "description": wc["message"],
+        })
+    for lc in lose_conds:
+        endings.append({
+            "grade": "D",
+            "condition": lc["condition"],
+            "title": "失败",
+            "description": lc["message"],
+        })
+
+    # ── Assemble game_story.yaml ──────────────────────────────────────────────
+    game = story.get("game", {})
+    game_story = {
+        "meta": {
+            "name":            story["meta"].get("name", ""),
+            "description":     story["meta"].get("description", ""),
+            "difficulty":      story["meta"].get("difficulty", "medium"),
+            "tags":            story["meta"].get("tags", []),
+            "author":          "Universal Dynamics Converter",
+            "version":         "0.1",
+            "source_scenario": source_meta.get("name", ""),
+        },
+        "initial_state": initial_state,
+        "health_mapping": {
+            "source_variable": health_var or "health",
+            "scale": [0, 100, 0, 100],
+            "display": "生命值",
+        },
+        "turns": {
+            "total":             game.get("max_turns", 15),
+            "time_per_turn":     "1 month",
+            "env_cards_per_turn": 2,
+            "player_hand_size":  game.get("hand_size", 5),
+            "action_points":     game.get("ap_per_turn", 3),
+        },
+        "win_condition":  win_condition,
+        "lose_condition": lose_condition,
+        "endings":        endings,
+        "env_deck":    env_deck,
+        "player_deck": player_deck,
+        "generic_cards": {"inject": ["rest", "interrupt"]},
+    }
+
+    main_file = out_dir / "game_story.yaml"
+    _write_yaml(main_file, game_story)
+    files.insert(0, "game_story.yaml")
+
+    # ── Write _mapping.json ───────────────────────────────────────────────────
+    mapping = {
+        "version": "1.0",
+        "source_path": source_path,
+        "generated_at": str(date.today()),
+        "variable_to_card": mapping_vars,
+    }
+    mapping_file = out_dir / "_mapping.json"
+    with open(mapping_file, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, ensure_ascii=False, indent=2)
+    files.append("_mapping.json")
+
+    return files
+
+
+def _to_new_card(card: dict, card_type: str) -> dict:
+    """Convert internal card dict → new-format card YAML structure."""
+    effects = [
+        {"target": e["variable"], "delta": e["delta"], "condition": None}
+        for e in card.get("effects", [])
+    ]
+    data: dict = {
+        "id":   card["id"],
+        "type": card_type,
+        "category": _card_category(card, card_type),
+        "display": {
+            "name":        card.get("name", card["id"]),
+            "description": card.get("description", ""),
+            "flavor":      card.get("science", card.get("flavor", "")),
+            "icon":        card.get("emoji", "🃏"),
+        },
+        "effects": effects,
+        "channel": card.get("type", "medical"),
+        "tags":    _card_tags(card, card_type),
+        "weight":  _card_weight(card),
+        "source": {
+            "formula": card.get("science", ""),
+            "pattern_detected": _ftype_to_pattern(card),
+        },
+    }
+    if card_type == "player":
+        data["cost"] = card.get("cost", 1)
+    if card.get("always_active"):
+        data["always_active"] = True
+    if card.get("condition"):
+        data["condition"] = card["condition"]
+    if card.get("probability") is not None:
+        data["probability"] = card["probability"]
+    return data
+
+
+def _card_category(card: dict, card_type: str) -> str:
+    t = card.get("type", "")
+    if t in ("medical", "tactical"):
+        return "health" if card_type == "env" else "action"
+    return "state" if card_type == "env" else "action"
+
+
+def _card_tags(card: dict, card_type: str) -> list[str]:
+    tags = [card_type]
+    t = card.get("type", "")
+    if t:
+        tags.append(t)
+    science = card.get("science", "")
+    if "Type1" in science or "always" in str(card.get("always_active", "")):
+        tags.append("chronic")
+    if "Type4" in science or card.get("condition"):
+        tags.append("conditional")
+    if "Type5" in science or card.get("probability") is not None:
+        tags.append("random")
+    return tags
+
+
+def _card_weight(card: dict) -> int:
+    # Heavier weight for passive/always-active cards
+    if card.get("always_active"):
+        return 200
+    if card.get("probability", 1.0) < 0.4:
+        return 80
+    return 120
+
+
+def _ftype_to_pattern(card: dict) -> str:
+    science = card.get("science", "")
+    for ptype in ("Type1", "Type2", "Type3", "Type4", "Type5", "Type6", "D1", "D2", "D3"):
+        if ptype in science:
+            return ptype
+    return "P1"
+
+
+def _write_yaml(path: Path, data: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)

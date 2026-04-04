@@ -1,0 +1,24 @@
+id: social_panic
+type: env
+category: state
+display:
+  name: 社会恐慌
+  description: 疫情严重时，谣言引发社会动荡。
+  flavor: ''
+  icon: 😱
+effects:
+- target: faith
+  delta: -20
+  condition: null
+- target: food
+  delta: -8
+  condition: null
+channel: medical
+tags:
+- env
+weight: 80
+source:
+  formula: ''
+  pattern_detected: P1
+condition: epidemic > 55
+probability: 0.35

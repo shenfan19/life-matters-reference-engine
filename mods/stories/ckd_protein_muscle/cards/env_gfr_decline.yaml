@@ -1,0 +1,21 @@
+id: gfr_decline
+type: env
+category: state
+display:
+  name: GFR下降
+  description: '[Type4] GFR日下降动力学。 protein_modifier范围：0.6g/kg/d→0.65（35%减缓），1.2g/kg/d→1.0（无减缓），线性插值。
+    来源：MDRD Study (Klahr 1994)。'
+  flavor: '[Type4] 阈值条件触发'
+  icon: 🔻
+effects:
+- target: gfr
+  delta: -4
+  condition: null
+channel: medical
+tags:
+- env
+weight: 120
+source:
+  formula: '[Type4] 阈值条件触发'
+  pattern_detected: P1
+condition: gfr > 2.0

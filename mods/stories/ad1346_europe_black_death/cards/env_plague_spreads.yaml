@@ -1,0 +1,23 @@
+id: plague_spreads
+type: env
+category: state
+display:
+  name: 鼠疫蔓延
+  description: 每回合，病原体沿贸易路线自然扩散。
+  flavor: 对应SIR模型中的β·S·I项
+  icon: 🐀
+effects:
+- target: epidemic
+  delta: 10
+  condition: null
+- target: health
+  delta: -6
+  condition: null
+channel: medical
+tags:
+- env
+weight: 200
+source:
+  formula: 对应SIR模型中的β·S·I项
+  pattern_detected: P1
+always_active: true

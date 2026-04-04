@@ -1,215 +1,89 @@
 meta:
-  id: black_death_1346
-  name: "黑死病：1346年的欧洲"
-  period: "1346–1353 CE"
-  location: "欧洲中部小镇"
+  name: 黑死病：1346年的欧洲
+  description: 1346年，鼠疫沿丝绸之路抵达欧洲。三年内，三分之一的欧洲人口消亡。作为一个中世纪小镇的领导者，你面临的每一个决策都有代价——隔离还是保持贸易？祈祷还是疏散？这里没有正确答案，只有权衡。
   difficulty: medium
-  description: "1346年，鼠疫沿丝绸之路抵达欧洲。三年内，三分之一的欧洲人口消亡。作为一个中世纪小镇的领导者，你面临的每一个决策都有代价——隔离还是保持贸易？祈祷还是疏散？这里没有正确答案，只有权衡。"
-  science_note: "本场景基于历史流行病学SIR模型（R₀≈2.5）的回合制离散化简化。每回合约代表两周时间，疫情烈度对应感染率，保留了传播–死亡–社会应激的核心动力学，舍弃了空间扩散维度。"
   tags:
-    - 历史
-    - 流行病
-    - 中世纪
-
-variables:
+  - 历史
+  - 流行病
+  - 中世纪
+  period: 1346–1353 CE
+  location: 欧洲中部小镇
+  science_note: 本场景基于历史流行病学SIR模型（R₀≈2.5）的回合制离散化简化。每回合约代表两周时间，疫情烈度对应感染率，保留了传播–死亡–社会应激的核心动力学，舍弃了空间扩散维度。
+  version: '0.1'
+initial_state:
+  health: 100
+  epidemic: 8
+  food: 80
+  faith: 55
+variable_display:
   health:
     label: 生存指数
-    value: 100
+    color: '#52c41a'
     max: 100
-    color: "#52c41a"
   epidemic:
     label: 疫情烈度
-    value: 8
+    color: '#f5222d'
     max: 100
-    color: "#f5222d"
   food:
     label: 食物储备
-    value: 80
+    color: '#faad14'
     max: 100
-    color: "#faad14"
   faith:
     label: 社会凝聚
-    value: 55
+    color: '#1677ff'
     max: 100
-    color: "#1677ff"
-
-game:
-  ap_per_turn: 3
-  max_turns: 15
-  hand_size: 4
-
-lose_conditions:
-  - condition: "health <= 0"
-    message: "最后一位幸存者倒下了。疫情彻底夺走了你的社区，这片土地从此沉寂。"
-  - condition: "epidemic >= 100"
-    message: "黑死病完全失控，医者束手无策，无一人幸免。"
-
-player_cards:
-  - id: quarantine
-    name: 封锁隔离
-    type: medical
-    cost: 2
-    emoji: "🔒"
-    flavor: "切断传播路径，但物资流通受阻。"
-    effects:
-      - variable: epidemic
-        delta: -18
-      - variable: food
-        delta: -5
-
-  - id: herbal_remedy
-    name: 草药处方
-    type: medical
-    cost: 1
-    emoji: "🌿"
-    flavor: "芥末籽、大蒜与没药，有一定效果。"
-    effects:
-      - variable: health
-        delta: 12
-      - variable: epidemic
-        delta: -6
-
-  - id: prayer_gathering
-    name: 集体祈祷
-    type: social
-    cost: 1
-    emoji: "⛪"
-    flavor: "信仰凝聚社区，但聚集有传播风险。"
-    effects:
-      - variable: faith
-        delta: 22
-      - variable: health
-        delta: 5
-
-  - id: food_rationing
-    name: 统一配粮
-    type: social
-    cost: 1
-    emoji: "🌾"
-    flavor: "公平分配减少内部矛盾。"
-    effects:
-      - variable: food
-        delta: 18
-      - variable: faith
-        delta: 12
-
-  - id: trade_embargo
-    name: 封锁商路
-    type: social
-    cost: 2
-    emoji: "🚫"
-    flavor: "阻断贸易遏制传播，代价高昂。"
-    effects:
-      - variable: epidemic
-        delta: -22
-      - variable: food
-        delta: -12
-
-  - id: recruit_physicians
-    name: 召集医者
-    type: medical
-    cost: 2
-    emoji: "⚕️"
-    flavor: "从远方召来懂医术的人。"
-    effects:
-      - variable: health
-        delta: 20
-      - variable: epidemic
-        delta: -10
-
-  - id: flee_city
-    name: 疏散人口
-    type: social
-    cost: 2
-    emoji: "🏃"
-    flavor: "分散人群降低传播，但失去凝聚力。"
-    effects:
-      - variable: epidemic
-        delta: -25
-      - variable: food
-        delta: -15
-      - variable: faith
-        delta: -10
-
-  - id: community_defense
-    name: 自卫巡逻
-    type: social
-    cost: 1
-    emoji: "🗡️"
-    flavor: "维护秩序，防止哄抢。"
-    effects:
-      - variable: faith
-        delta: 15
-      - variable: food
-        delta: 8
-
-environment_cards:
-  - id: plague_spreads
-    name: 鼠疫蔓延
-    emoji: "🐀"
-    description: "每回合，病原体沿贸易路线自然扩散。"
-    science: "对应SIR模型中的β·S·I项"
-    always_active: true
-    effects:
-      - variable: epidemic
-        delta: 10
-      - variable: health
-        delta: -6
-
-  - id: famine_strikes
-    name: 饥荒降临
-    emoji: "💀"
-    description: "食物耗尽时，健康与社会稳定同时崩溃。"
-    condition: "food < 25"
-    effects:
-      - variable: health
-        delta: -12
-      - variable: faith
-        delta: -15
-
-  - id: rat_infestation
-    name: 鼠群侵扰
-    emoji: "🐭"
-    description: "鼠群随机侵扰，加速传播并消耗粮食。"
-    science: "随机接触事件（泊松过程）"
-    probability: 0.45
-    effects:
-      - variable: epidemic
-        delta: 15
-      - variable: food
-        delta: -10
-
-  - id: social_panic
-    name: 社会恐慌
-    emoji: "😱"
-    description: "疫情严重时，谣言引发社会动荡。"
-    condition: "epidemic > 55"
-    probability: 0.35
-    effects:
-      - variable: faith
-        delta: -20
-      - variable: food
-        delta: -8
-
-  - id: unexpected_harvest
-    name: 意外丰收
-    emoji: "🌻"
-    description: "偶尔的好消息振奋人心。"
-    probability: 0.25
-    effects:
-      - variable: food
-        delta: 22
-      - variable: faith
-        delta: 10
-
-  - id: community_resilience
-    name: 社区韧性
-    emoji: "🤝"
-    description: "高度凝聚的社区更有效地应对危机。"
-    science: "社会资本作为健康保护因子（流行病学文献支持）"
-    condition: "faith > 70"
-    effects:
-      - variable: health
-        delta: 8
-      - variable: epidemic
-        delta: -5
+health_mapping:
+  source_variable: health
+  scale:
+  - 0
+  - 100
+  - 0
+  - 100
+  display: 生存指数
+turns:
+  total: 15
+  time_per_turn: 1 month
+  env_cards_per_turn: 2
+  player_hand_size: 4
+  action_points: 3
+win_condition:
+  type: custom
+  description: 目标达成。
+lose_condition:
+  type: custom
+  description: 最后一位幸存者倒下了。疫情彻底夺走了你的社区，这片土地从此沉寂。
+endings:
+- grade: D
+  condition: health <= 0
+  title: 失败
+  description: 最后一位幸存者倒下了。疫情彻底夺走了你的社区，这片土地从此沉寂。
+- grade: D
+  condition: epidemic >= 100
+  title: 失败
+  description: 黑死病完全失控，医者束手无策，无一人幸免。
+env_deck:
+- path: cards/env_plague_spreads.yaml
+  weight: 200
+- path: cards/env_famine_strikes.yaml
+  weight: 120
+- path: cards/env_rat_infestation.yaml
+  weight: 120
+- path: cards/env_social_panic.yaml
+  weight: 80
+- path: cards/env_unexpected_harvest.yaml
+  weight: 80
+- path: cards/env_community_resilience.yaml
+  weight: 120
+player_deck:
+- path: cards/player_quarantine.yaml
+- path: cards/player_herbal_remedy.yaml
+- path: cards/player_prayer_gathering.yaml
+- path: cards/player_food_rationing.yaml
+- path: cards/player_trade_embargo.yaml
+- path: cards/player_recruit_physicians.yaml
+- path: cards/player_flee_city.yaml
+- path: cards/player_community_defense.yaml
+generic_cards:
+  inject:
+  - rest
+  - interrupt

@@ -129,7 +129,9 @@ export default function StorySelect({
             if (d.success && d.data?.content?.meta) {
               const m = d.data.content.meta;
               const g = d.data.content.game ?? {};
-              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: g.max_turns ?? 15 };
+              const t2 = d.data.content.turns ?? {};
+              const maxTurns = g.max_turns ?? t2.total ?? 15;
+              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns };
             }
           } catch {}
           return base;
