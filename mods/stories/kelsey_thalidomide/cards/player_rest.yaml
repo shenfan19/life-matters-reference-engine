@@ -1,0 +1,20 @@
+id: player_rest
+type: player
+category: recovery
+display:
+  name: "回归家庭"
+  description: "暂时从繁重的工作中抽身，与丈夫弗雷迪和孩子们共度周末，让家庭温暖修复疲惫的精神。"
+  flavor: "凯尔西的丈夫弗雷迪·凯尔西也是一名医生，他始终是她最坚定的支持者。"
+  icon: "🏠"
+cost: 1
+effects:
+  - target: health
+    delta: 25
+    condition: null
+channel: recovery
+tags: [rest, recovery]
+weight: 100
+source:
+  variable: health
+  formula: ""
+  pattern_detected: P1

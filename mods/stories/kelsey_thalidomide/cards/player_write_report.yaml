@@ -1,0 +1,26 @@
+id: player_write_report
+type: player
+category: goal
+display:
+  name: "撰写驳回报告"
+  description: "起草正式的审查意见，系统梳理申请材料的缺陷、现有证据的不足以及潜在的公共健康风险，构建完整的驳回理由。"
+  flavor: "一份严谨的报告，比任何言辞都更难被忽视。"
+  icon: "✍️"
+cost: 2
+effects:
+  - target: evidence
+    delta: 12
+    condition: null
+  - target: credibility
+    delta: 12
+    condition: null
+  - target: health
+    delta: -5
+    condition: null
+channel: medical
+tags: [work, goal, writing]
+weight: 100
+source:
+  variable: evidence
+  formula: ""
+  pattern_detected: P1

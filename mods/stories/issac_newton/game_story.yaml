@@ -5,6 +5,7 @@ meta:
   tags: [科学, 17世纪, 英国]
   author: ""
   version: "0.1"
+  created_on: 2026-03-23
   source_scenario: ""
   card_back_fate:   assets/card_back_fate.jpg
   card_back_player: assets/card_back_player.jpg

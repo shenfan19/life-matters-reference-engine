@@ -1,0 +1,23 @@
+id: env_bombing_threat
+type: env
+category: political
+display:
+  name: "炸弹威胁与暗杀阴谋"
+  description: "家门口被人放置炸弹，电话里传来死亡威胁，针对金博士的暗杀图谋让他和家人终日生活在恐惧之中。"
+  flavor: "\"如果你不停下来，你的家人会付出代价。\""
+  icon: "💣"
+pattern: P1
+effects:
+  - target: health
+    delta: -25
+    condition: null
+  - target: support
+    delta: -5
+    condition: null
+channel: political
+tags: [violence, mental]
+weight: 80
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

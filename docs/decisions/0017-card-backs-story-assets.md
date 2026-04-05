@@ -52,9 +52,29 @@ const toAssetUrl = (rel: string | undefined) =>
 
 生产构建中，`prepare-stories.mjs` 的递归复制已覆盖全部文件类型，无需额外修改。
 
+### 5. StorySelect 卡背预览修正（2026-04-06）
+
+`StorySelect` 的 `CardItem` 在卡片右侧区域同时渲染 `cardBackPlayer` 和 `cardBackFate`。原始顺序中 Fate 在下、Player 在上，导致默认显示为 Fate，hover 时才显示 Player，与预期相反。
+
+修正后的层叠逻辑：
+
+```tsx
+{/* 底层：Player 卡背，默认可见；有 Fate 时 hover 后淡出 */}
+{story.cardBackPlayer && (
+  <img ... opacity: hov && story.cardBackFate ? 0 : 1 />
+)}
+{/* 顶层：Fate 卡背，hover 时淡入 */}
+{story.cardBackFate && (
+  <img ... opacity: hov ? 1 : 0 />
+)}
+```
+
+即：静止状态显示 Player 卡背，鼠标悬停后切换为 Fate 卡背，通过 `opacity` + CSS `transition` 实现平滑翻转效果。
+
 ## 后果
 
 - ✅ 每个 story 可用自己的美术风格的卡背，增强代入感
 - ✅ 不提供卡背时自动降级为原有占位符，向后兼容
 - ✅ 修复了图片/音频资产在 dev 模式下因 MIME 错误导致无法加载的问题
+- ✅ StorySelect 预览中卡背 hover 翻转方向正确（Player → Fate）
 - ⚠️ 卡背图片文件需 story 作者自行准备并放入 story 文件夹

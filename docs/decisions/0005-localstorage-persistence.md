@@ -30,6 +30,18 @@
 
 存储 key：`sim_persist`，单 JSON 对象，无版本控制。
 
+**2026-04-06 补充：** `sim_prefs` key 扩展了持久化字段。
+
+原先 `sim_prefs` 只保存 `isDarkMode` 和 `fontSize`；`simMode` 从 `sim_persist` 单独读取，`page`（当前标签页）不持久化（每次刷新重置为 `simulator`）。
+
+现在统一写入 `sim_prefs`：
+
+```typescript
+localStorage.setItem('sim_prefs', JSON.stringify({ isDarkMode, fontSize, page, simMode }));
+```
+
+恢复时通过 `readPrefs()` 读取，各字段带 `?? 默认值` 兜底。`sim_persist` 中的 `mode` 字段保留兼容（Simulator 组件内部仍使用），两套 key 并存。
+
 ## 后果
 
 - ✅ F5 刷新、意外关闭后状态完全恢复

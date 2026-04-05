@@ -19,6 +19,7 @@ meta:
 
     [Converter: fitness_dynamics→Type3; fatigue_dynamics→(disabled); performance_calc→(disabled)]'
   version: '0.1'
+  created_on: 2026-03-23
 initial_state:
   fitness_component: 0.0
   performance: 50.0

@@ -1,0 +1,23 @@
+id: env_media_scrutiny
+type: env
+category: social
+display:
+  name: "媒体质疑"
+  description: "制药公司向媒体透露风声，报道称FDA'官僚主义阻碍创新药物上市，让孕妇无法获得有效的止吐药物'。"
+  flavor: "公众舆论是把双刃剑，在真相大白之前，它可能站在错误的一方。"
+  icon: "📰"
+pattern: P1
+effects:
+  - target: health
+    delta: -8
+    condition: null
+  - target: credibility
+    delta: -10
+    condition: null
+channel: social
+tags: [media, mental]
+weight: 120
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

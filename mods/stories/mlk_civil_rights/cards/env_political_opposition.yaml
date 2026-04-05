@@ -1,0 +1,20 @@
+id: env_political_opposition
+type: env
+category: political
+display:
+  name: "政治阻挠"
+  description: "南方各州议员在国会联合抵制民权立法，动员地方政府封锁抗议活动，民权运动在立法层面遭遇强大阻力。"
+  flavor: "\"隔离不是歧视，这是南方的传统。\""
+  icon: "🏛️"
+pattern: P1
+effects:
+  - target: influence
+    delta: -10
+    condition: null
+channel: political
+tags: [political, social]
+weight: 180
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

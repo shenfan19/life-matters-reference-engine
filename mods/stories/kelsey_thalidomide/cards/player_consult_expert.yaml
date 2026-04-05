@@ -1,0 +1,23 @@
+id: player_consult_expert
+type: player
+category: goal
+display:
+  name: "咨询外部专家"
+  description: "联系学术界的药理学家和妇产科专家，就沙利度胺的作用机制和孕期风险进行独立评估，引入外部科学权威。"
+  flavor: "独立的科学评估是抵御利益压力最有力的盾牌。"
+  icon: "🔬"
+cost: 2
+effects:
+  - target: evidence
+    delta: 14
+    condition: null
+  - target: credibility
+    delta: 10
+    condition: null
+channel: medical
+tags: [work, goal, science]
+weight: 100
+source:
+  variable: evidence
+  formula: ""
+  pattern_detected: P1

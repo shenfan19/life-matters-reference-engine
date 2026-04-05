@@ -1,0 +1,23 @@
+id: env_nerve_damage_report
+type: env
+category: medical
+display:
+  name: "周围神经病变报告"
+  description: "英国《英国医学杂志》发表了关于沙利度胺引发周围神经损伤的临床报告，患者出现手脚麻木和刺痛感。"
+  flavor: "科学证据不会说谎，只是它需要时间才能被听见。"
+  icon: "📋"
+pattern: P1
+effects:
+  - target: evidence
+    delta: 18
+    condition: null
+  - target: credibility
+    delta: 8
+    condition: null
+channel: medical
+tags: [medical, science]
+weight: 110
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

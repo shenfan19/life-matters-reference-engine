@@ -309,10 +309,8 @@ function readPrefs(): Record<string, any> {
 
 function App() {
   const { t, language, setLanguage } = useI18n();
-  const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
-  const [simMode, setSimMode] = useState<'sim' | 'opt'>(() => {
-    try { return JSON.parse(localStorage.getItem('sim_persist') || 'null')?.mode || 'sim'; } catch { return 'sim'; }
-  });
+  const [page,     setPage]     = useState<'simulator' | 'tools' | 'story'>(() => readPrefs().page     ?? 'simulator');
+  const [simMode,  setSimMode]  = useState<'sim' | 'opt'>(() => readPrefs().simMode  ?? 'sim');
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
   const [aboutOpen,  setAboutOpen]  = useState(false);
   const [fontSize,   setFontSize]   = useState<number>(
@@ -338,10 +336,10 @@ function App() {
   // Persist prefs
   useEffect(() => {
     try {
-      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize }));
+      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize, page, simMode }));
       localStorage.setItem(LM_FONT_KEY, String(fontSize));
     } catch {}
-  }, [isDarkMode, fontSize]);
+  }, [isDarkMode, fontSize, page, simMode]);
 
   useEffect(() => {
     const check = () => {

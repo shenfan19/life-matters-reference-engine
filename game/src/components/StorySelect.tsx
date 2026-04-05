@@ -509,11 +509,11 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
       {/* Right: card back image (≈40% width) */}
       {(story.cardBackFate || story.cardBackPlayer) && (
         <div style={{ position: 'relative', width: '38%', flexShrink: 0, background: isDarkMode ? '#0a0a0a' : '#e0e0e0', overflow: 'hidden' }}>
-          {story.cardBackFate && (
-            <img src={story.cardBackFate} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov && story.cardBackPlayer ? 0 : 1, transition: 'opacity 0.3s ease' }} />
-          )}
           {story.cardBackPlayer && (
-            <img src={story.cardBackPlayer} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov ? 1 : 0, transition: 'opacity 0.3s ease' }} />
+            <img src={story.cardBackPlayer} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov && story.cardBackFate ? 0 : 1, transition: 'opacity 0.3s ease' }} />
+          )}
+          {story.cardBackFate && (
+            <img src={story.cardBackFate} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov ? 1 : 0, transition: 'opacity 0.3s ease' }} />
           )}
         </div>
       )}

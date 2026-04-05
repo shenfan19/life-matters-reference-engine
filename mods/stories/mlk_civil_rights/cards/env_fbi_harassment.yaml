@@ -1,0 +1,23 @@
+id: env_fbi_harassment
+type: env
+category: political
+display:
+  name: "FBI 监控骚扰"
+  description: "胡佛局长授权对金博士展开全面监控，电话被窃听，信件被拦截，特工散布谣言企图破坏其名誉。"
+  flavor: "\"他是美国最危险的黑人。\"——J·埃德加·胡佛"
+  icon: "🕵️"
+pattern: P1
+effects:
+  - target: support
+    delta: -8
+    condition: null
+  - target: health
+    delta: -5
+    condition: null
+channel: political
+tags: [political, mental]
+weight: 200
+source:
+  variable: ""
+  formula: ""
+  pattern_detected: P1

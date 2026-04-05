@@ -8,6 +8,7 @@ meta:
 
     [Converter: decay→Type6; eating→Type4; drinking→Type4]'
   version: '0.1'
+  created_on: 2026-03-23
 initial_state:
   energy: 50.0
   hydration: 70.0

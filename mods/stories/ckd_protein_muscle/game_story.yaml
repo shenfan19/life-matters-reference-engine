@@ -21,6 +21,7 @@ meta:
 
     [Converter: gfr_decline→Type4; bun_calc→Type6; muscle_dynamics→Type6]'
   version: '0.1'
+  created_on: 2026-03-23
 initial_state:
   muscle_mass: 41.8
   gfr: 37.0

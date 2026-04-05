@@ -43,6 +43,7 @@ meta:
   - physiological
   - dracula
   version: '0.1'
+  created_on: 2026-04-03
 player_deck:
 - path: cards/player_sun_exposure.yaml
 - path: cards/player_hunt_intensity.yaml

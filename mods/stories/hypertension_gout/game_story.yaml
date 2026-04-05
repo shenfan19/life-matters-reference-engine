@@ -20,6 +20,7 @@ meta:
 
     [Converter: bp_dynamics→Type6; ua_dynamics→Type6; weight_dynamics→Type4; goal_score_calc→derived]'
   version: '0.1'
+  created_on: 2026-03-23
 initial_state:
   goal_score: 0.0
   systolic_bp: 61.8
