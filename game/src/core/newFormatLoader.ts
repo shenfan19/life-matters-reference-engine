@@ -15,15 +15,9 @@ const VAR_COLORS: Record<string, string> = {
 
 const COLOR_POOL = ['#52c41a', '#1677ff', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96'];
 
-// ── API helper ────────────────────────────────────────────────────────────────
+// ── Fetch helper ──────────────────────────────────────────────────────────────
 
-async function fetchParsed(relPath: string): Promise<any> {
-  const r = await fetch(`/api/file/${relPath}`);
-  if (!r.ok) throw new Error(`Failed to fetch ${relPath}: HTTP ${r.status}`);
-  const d = await r.json();
-  if (!d.success) throw new Error(`API error for ${relPath}: ${d.error}`);
-  return d.data?.content;
-}
+import { fetchYaml } from './fetchYaml';
 
 // ── Card converters ───────────────────────────────────────────────────────────
 
@@ -48,7 +42,7 @@ function toPlayerCard(raw: any) {
   };
 }
 
-function toEnvCard(raw: any, probability: number) {
+function toEnvCard(raw: any) {
   return {
     id: raw.id,
     name: raw.display?.name ?? raw.name ?? raw.id,
@@ -57,7 +51,8 @@ function toEnvCard(raw: any, probability: number) {
     science: raw.display?.flavor,
     always_active: raw.always_active ?? false,
     condition: raw.condition && raw.condition !== 'null' ? raw.condition : undefined,
-    probability: raw.always_active ? undefined : probability,
+    // probability only from explicit YAML field — weight affects draw frequency, not trigger chance
+    probability: raw.always_active ? undefined : (raw.probability ?? undefined),
     effects: convertEffects(raw.effects),
   };
 }
@@ -114,7 +109,7 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
   const playerCards: any[] = [];
   for (const entry of rawStory.player_deck ?? []) {
     const cardRelPath = `${storyDir}/${entry.path ?? entry}`;
-    const card = await fetchParsed(cardRelPath);
+    const card = await fetchYaml(cardRelPath);
     playerCards.push(toPlayerCard(card));
   }
 
@@ -122,15 +117,14 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
   const envEntries: Array<{ raw: any; weight: number }> = [];
   for (const entry of rawStory.env_deck ?? []) {
     const cardRelPath = `${storyDir}/${entry.path ?? entry}`;
-    const card = await fetchParsed(cardRelPath);
+    const card = await fetchYaml(cardRelPath);
     envEntries.push({ raw: card, weight: entry.weight ?? 100 });
   }
 
   const totalWeight = envEntries.reduce((s, e) => s + e.weight, 0);
   const perTurn = rawStory.turns?.env_cards_per_turn ?? 2;
   const envCards = envEntries.map(({ raw, weight }) => {
-    const prob = totalWeight > 0 ? Math.min(1, (weight / totalWeight) * perTurn) : 0.5;
-    return toEnvCard(raw, Math.round(prob * 100) / 100);
+    return toEnvCard(raw);
   });
 
   // ── Build variables from initial_state ─────────────────────────────────────
@@ -142,10 +136,11 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
   for (const [key, value] of Object.entries(initState)) {
     const disp = varDisplay[key] ?? {};
     variables[key] = {
-      label: disp.label ?? VAR_LABELS[key] ?? key,
-      value: Number(value),
-      max:   disp.max   ?? 100,
-      color: disp.color ?? VAR_COLORS[key] ?? COLOR_POOL[colorIdx++ % COLOR_POOL.length],
+      label:           disp.label ?? VAR_LABELS[key] ?? key,
+      value:           Number(value),
+      max:             disp.max   ?? 100,
+      color:           disp.color ?? VAR_COLORS[key] ?? COLOR_POOL[colorIdx++ % COLOR_POOL.length],
+      higherIsBetter:  disp.higher_is_better !== false,   // default true; set false for stress/radiation/etc.
     };
   }
   // Apply health_mapping display override (takes priority over variable_display)
@@ -162,6 +157,21 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     goalVariables.push(rawStory.win_condition.target_variable);
   }
 
+  // ── Card backs — accept at top level OR nested under meta: ──────────────
+  const toAssetUrl = (rel: string | undefined) =>
+    rel ? `/${storyDir}/${rel}` : undefined;
+  const cardBackFateRaw   = rawStory.card_back_fate   ?? rawStory.meta?.card_back_fate;
+  const cardBackPlayerRaw = rawStory.card_back_player ?? rawStory.meta?.card_back_player;
+
+  // ── Music tracks — accept string or array, at top level OR under meta: ───
+  const rawMusic = rawStory.music ?? rawStory.meta?.music;
+  const musicList: string[] = rawMusic == null ? []
+    : Array.isArray(rawMusic) ? rawMusic
+    : [String(rawMusic)];
+  const music: string[] | undefined = musicList.length > 0
+    ? musicList.map((p: string) => `/${storyDir}/${p}`)
+    : undefined;
+
   // ── Assemble GameStory ──────────────────────────────────────────────────────
   return {
     meta: {
@@ -176,7 +186,7 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     variables,
     goalVariables,
     game: {
-      ap_per_turn: rawStory.turns?.action_points ?? 3,
+      plays_per_turn: rawStory.turns?.plays_per_turn ?? rawStory.turns?.action_points ?? 3,
       max_turns: rawStory.turns?.total ?? 15,
       hand_size: rawStory.turns?.player_hand_size ?? 5,
       env_per_turn: rawStory.turns?.env_cards_per_turn ?? 2,
@@ -185,6 +195,9 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     win_conditions: wins,
     player_cards: playerCards,
     environment_cards: envCards,
+    cardBackFate: toAssetUrl(cardBackFateRaw),
+    cardBackPlayer: toAssetUrl(cardBackPlayerRaw),
+    music,
   };
 }
 

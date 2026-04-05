@@ -17,6 +17,11 @@ meta:
     \ 物资短缺基于英军后勤日志中的口粮分配记录（战时Archive, WO 95/…, PRO）。 来源：Keegan J (1998) The First\
     \ World War. Hutchinson;\n       Prior R & Wilson T (2005) The Somme. Yale University\
     \ Press;\n       Sheffield G (2001) Forgotten Victory. Headline Book Publishing.\n"
+  card_back_fate:   assets/card_back_fate.jpg
+  card_back_player: assets/card_back_player.jpg
+  music:
+    - assets/sonatas_k-005_(c)sankey.mid
+    - assets/sonatas_k-006_(c)sankey.mid
   version: '0.1'
 initial_state:
   health: 100

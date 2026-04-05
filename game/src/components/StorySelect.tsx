@@ -1,15 +1,18 @@
 // game/src/components/StorySelect.tsx
 import { useState, useEffect, useMemo } from 'react';
-import { SunOutlined, MoonOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, AppstoreOutlined, UnorderedListOutlined, LinkOutlined, CheckOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import MusicBar from './MusicBar';
+import AboutModal, { AUTHOR } from './AboutModal';
 import { useI18n, type Language } from '../core/i18n';
+import { fetchYaml } from '../core/fetchYaml';
 
-// HeartPulseIcon: heart (left) + QRS trace (right) — sim identity
+// HeartPulseIcon: closed heart outline with QRS trace through the middle — sim identity
 const HeartPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
-  <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-    <path d="M11,22 C6,17.5 2,14.5 2,12 A6,6 0,0,1 11,7 A6,6 0,0,1 20,12 C20,14.5 16,17.5 11,22 Z"
-          strokeWidth="2.2" />
-    <path d="M20,15 L22,15 L22.5,17 L23.5,9 L24.5,19 L25.5,15 L30,15"
-          strokeWidth="2" />
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    <path d="M12,21 C6,16 2,12 2,8 A6,6,0,0,1,12,5 A6,6,0,0,1,22,8 C22,12 18,16 12,21 Z"
+          strokeWidth="1.8" />
+    <path d="M2.5,10 L5.5,10 L6,12 L7,4 L8,14 L9,10 L11,10 L11.5,8 L12.5,10 L21.5,10"
+          strokeWidth="1.6" />
   </svg>
 );
 
@@ -24,6 +27,7 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
   </svg>
 );
 
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StoryCard {
@@ -35,6 +39,8 @@ interface StoryCard {
   description: string;
   tags: string[];
   turns: number;
+  cardBackFate?: string;
+  cardBackPlayer?: string;
 }
 
 type SortKey = 'period' | 'location' | 'difficulty';
@@ -113,13 +119,13 @@ function extractYear(period: string): number {
 function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: ReturnType<typeof getC> }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-      {([14, 16, 18] as const).map((size, i) => (
+      {([14, 16, 18] as const).map(size => (
         <button key={size} onClick={() => onFontSize(size)} style={{
           padding: '3px 7px', border: 'none', cursor: 'pointer',
           background: fontSize === size ? c.primary : 'transparent',
           color: fontSize === size ? '#fff' : c.textMute,
-          fontSize: 10 + i * 2, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
-        }}>A</button>
+          fontSize: 11, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+        }}>{size}</button>
       ))}
     </div>
   );
@@ -154,6 +160,7 @@ export default function StorySelect({
 
   const [stories, setStories] = useState<StoryCard[]>([]);
   const [loading, setLoading]  = useState(true);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // ── Load stories ────────────────────────────────────────────────────────────
 
@@ -161,31 +168,23 @@ export default function StorySelect({
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/files');
-        const result = await res.json();
-        if (!result.success) return;
+        const res = await fetch('/stories/index.json');
+        const cleanPaths: string[] = await res.json();
 
-        const paths: string[] = [];
-        const scan = (nodes: any[]) => {
-          nodes.forEach(node => {
-            if (node.type === 'file' && (node.key?.endsWith('game_story.yaml') || node.key?.endsWith('game_story.yml')))
-              paths.push(node.key);
-            if (node.children) scan(node.children);
-          });
-        };
-        result.data.forEach((n: any) => scan(n.children ?? [n]));
-
-        const loaded = await Promise.all(paths.map(async path => {
+        const loaded = await Promise.all(cleanPaths.map(async cleanPath => {
+          // storyPath keeps the mods/ prefix convention expected by CardGame
+          const path = `mods/${cleanPath}`;
           const base: StoryCard = { path, title: path, period: '', location: '', difficulty: 'medium', description: '', tags: [], turns: 15 };
           try {
-            const r = await fetch(`/api/file/${path.replace(/^mods\//, '')}`);
-            const d = await r.json();
-            if (d.success && d.data?.content?.meta) {
-              const m = d.data.content.meta;
-              const g = d.data.content.game ?? {};
-              const t2 = d.data.content.turns ?? {};
-              const maxTurns = g.max_turns ?? t2.total ?? 15;
-              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns };
+            const d = await fetchYaml(cleanPath);
+            if (d?.meta) {
+              const m = d.meta;
+              const maxTurns = d.game?.max_turns ?? d.turns?.total ?? 15;
+              const storyDir = cleanPath.includes('/') ? cleanPath.split('/').slice(0, -1).join('/') : cleanPath;
+              const toAssetUrl = (rel?: string) => rel ? `/${storyDir}/${rel}` : undefined;
+              const cardBackFate   = toAssetUrl(d.card_back_fate   ?? m.card_back_fate);
+              const cardBackPlayer = toAssetUrl(d.card_back_player ?? m.card_back_player);
+              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns, cardBackFate, cardBackPlayer };
             }
           } catch {}
           return base;
@@ -251,18 +250,23 @@ export default function StorySelect({
       {/* ── Header ── */}
       <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10 }}>
         <CardPulseIcon size={32} color={c.primary} />
-        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>Life Matters</span>
+        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif' }}>{t('app.title')}</span>
+        <span style={{ color: c.textMute, fontSize: fs.sm }}>· {t('about.subtitle')}</span>
 
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
         <button
           onClick={() => window.open('http://localhost:5173', '_blank')}
+          title={t('app.simulator.tip')}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: c.textSec, fontSize: fs.sm, display: 'flex', alignItems: 'center', gap: 5 }}
         >
           <HeartPulseIcon /> {t('app.simulator')}
         </button>
 
         <div style={{ flex: 1 }} />
+
+        {/* Title music */}
+        <MusicBar tracks={['/stories/title.mid']} c={c} fs={fs} />
 
         {/* Font size selector */}
         <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />
@@ -290,42 +294,18 @@ export default function StorySelect({
         >
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
+        <button
+          onClick={() => setAboutOpen(true)}
+          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}
+          title="About"
+        >
+          <InfoCircleOutlined />
+        </button>
       </div>
 
-      {/* ── Toolbar: view toggle + sort ── */}
-      <div style={{ flexShrink: 0, background: c.toolbarBg, borderBottom: `1px solid ${c.border}`, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* View toggle */}
-        <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-          {(['card', 'list'] as ViewMode[]).map(mode => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
-              padding: '4px 10px', border: 'none', cursor: 'pointer',
-              background: viewMode === mode ? c.primary : 'transparent',
-              color: viewMode === mode ? '#fff' : c.textMute,
-              transition: 'all 0.15s',
-            }}>
-              {mode === 'card' ? <AppstoreOutlined /> : <UnorderedListOutlined />}
-            </button>
-          ))}
-        </div>
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} c={c} fs={fs} />
 
-        <div style={{ width: 1, height: 18, background: c.border }} />
-
-        {/* Sort */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ color: c.textMute, fontSize: fs.sm }}>{t('select.sort')}</span>
-          {([['period', 'select.sort.time'], ['location', 'select.sort.region'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
-            <button key={key} onClick={() => setSortBy(key)} style={{
-              padding: '3px 10px', borderRadius: 5, fontSize: fs.sm,
-              border: `1px solid ${sortBy === key ? c.activeSort : c.border}`,
-              background: sortBy === key ? (isDarkMode ? 'rgba(82,196,26,0.15)' : '#e8f5e9') : 'transparent',
-              color: sortBy === key ? c.activeSort : c.textMute,
-              cursor: 'pointer', fontWeight: sortBy === key ? 600 : 400, transition: 'all 0.12s',
-            }}>{t(tkey)}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Taobao-style tag filter rows ── */}
+      {/* ── Tag filter rows ── */}
       {!loading && allTags.length > 0 && (
         <div style={{ flexShrink: 0, background: c.filterBg, borderBottom: `1px solid ${c.border}` }}>
           {[...activeGroups, ...(ungroupedTags.length > 0 ? [{ labelKey: 'select.tag.other', key: '_other', available: ungroupedTags }] : [])].map((group, gi, arr) => {
@@ -339,7 +319,6 @@ export default function StorySelect({
                 fontSize: fs.sm,
               }}>
                 <span style={{ color: c.textMute, width: 34, flexShrink: 0, fontWeight: 600 }}>{t(group.labelKey)}</span>
-
                 <button
                   onClick={() => clearGroup(group.key)}
                   style={{
@@ -349,7 +328,6 @@ export default function StorySelect({
                     fontWeight: selected.length === 0 ? 600 : 400,
                   }}
                 >{t('select.tag.all')}</button>
-
                 {group.available.map(tag => {
                   const active = selected.includes(tag);
                   return (
@@ -368,9 +346,42 @@ export default function StorySelect({
         </div>
       )}
 
-      {/* ── Count line ── */}
-      <div style={{ flexShrink: 0, padding: '5px 20px 2px', color: c.textMute, fontSize: fs.sm }}>
-        {loading ? t('select.loading') : `${displayed.length} ${t('select.scenarios_unit')}${hasAnyFilter ? ' ' + t('select.filtered') : ''}`}
+      {/* ── Sort + view toggle + count (one bar, below filter) ── */}
+      <div style={{ flexShrink: 0, background: c.toolbarBg, borderBottom: `1px solid ${c.border}`, padding: '5px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Sort */}
+        <span style={{ color: c.textMute, fontSize: fs.sm, flexShrink: 0 }}>{t('select.sort')}</span>
+        {([['period', 'select.sort.time'], ['location', 'select.sort.region'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
+          <button key={key} onClick={() => setSortBy(key)} style={{
+            padding: '2px 9px', borderRadius: 5, fontSize: fs.sm,
+            border: `1px solid ${sortBy === key ? c.activeSort : c.border}`,
+            background: sortBy === key ? (isDarkMode ? 'rgba(82,196,26,0.15)' : '#e8f5e9') : 'transparent',
+            color: sortBy === key ? c.activeSort : c.textMute,
+            cursor: 'pointer', fontWeight: sortBy === key ? 600 : 400, transition: 'all 0.12s',
+          }}>{t(tkey)}</button>
+        ))}
+
+        <div style={{ flex: 1 }} />
+
+        {/* Count */}
+        <span style={{ color: c.textMute, fontSize: fs.sm }}>
+          {loading ? t('select.loading') : `${displayed.length} ${t('select.scenarios_unit')}${hasAnyFilter ? ' ' + t('select.filtered') : ''}`}
+        </span>
+
+        <div style={{ width: 1, height: 16, background: c.border }} />
+
+        {/* View toggle */}
+        <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+          {(['card', 'list'] as ViewMode[]).map(mode => (
+            <button key={mode} onClick={() => setViewMode(mode)} style={{
+              padding: '3px 9px', border: 'none', cursor: 'pointer',
+              background: viewMode === mode ? c.primary : 'transparent',
+              color: viewMode === mode ? '#fff' : c.textMute,
+              transition: 'all 0.15s',
+            }}>
+              {mode === 'card' ? <AppstoreOutlined /> : <UnorderedListOutlined />}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Content ── */}
@@ -401,6 +412,23 @@ export default function StorySelect({
         )}
 
       </div>
+
+      {/* ── Status bar ── */}
+      <div style={{
+        height: 28, flexShrink: 0,
+        background: c.toolbarBg, borderTop: `1px solid ${c.border}`,
+        display: 'flex', alignItems: 'center',
+        padding: '0 14px', gap: 12, color: c.textMute,
+        fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
+        fontSize: fs.xs, userSelect: 'none',
+      }}>
+        <span>{displayed.length} {t('select.scenarios_unit')}</span>
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>MIT License</span>
+          <span style={{ opacity: 0.2 }}>│</span>
+          <span>{AUTHOR.version}</span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -409,8 +437,15 @@ export default function StorySelect({
 
 type FS = ReturnType<typeof makeFontScale>;
 
+function shareStory(storyPath: string) {
+  const clean = storyPath.replace(/^mods\//, '');
+  const url = `${window.location.origin}${window.location.pathname}?story=${clean}`;
+  navigator.clipboard.writeText(url).catch(() => {});
+}
+
 function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
   const [hov, setHov] = useState(false);
+  const [copied, setCopied] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
 
   return (
@@ -421,43 +456,67 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
       style={{
         background: hov ? c.cardHover : c.panel,
         border: `1px solid ${hov ? c.primary : c.border}`,
-        borderRadius: 10, padding: '16px 18px',
+        borderRadius: 10, overflow: 'hidden',
         cursor: 'pointer', transition: 'all 0.15s',
         transform: hov ? 'translateY(-2px)' : 'none',
         boxShadow: hov
           ? `0 6px 20px ${isDarkMode ? 'rgba(82,196,26,0.12)' : 'rgba(0,80,30,0.10)'}`
           : '0 1px 4px rgba(0,0,0,0.06)',
+        display: 'flex', flexDirection: 'row',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-        <div style={{ fontSize: fs.md, fontWeight: 700, color: c.text, lineHeight: 1.35, flex: 1, fontFamily: 'Georgia, serif' }}>
-          {story.title}
+      {/* Left: text content */}
+      <div style={{ flex: 1, minWidth: 0, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
+          <div style={{ fontSize: fs.md, fontWeight: 700, color: c.text, lineHeight: 1.3, fontFamily: 'Georgia, serif', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {story.title}
+          </div>
+          <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, fontSize: fs.sm, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
+            {diff.label}
+          </span>
         </div>
-        <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, fontSize: fs.sm, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
-          {diff.label}
-        </span>
+
+        {(story.period || story.location) && (
+          <div style={{ color: c.textMute, marginBottom: 5, fontFamily: 'monospace', fontSize: fs.xs, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {[story.period, story.location].filter(Boolean).join(' · ')}
+          </div>
+        )}
+
+        <div style={{ color: c.textSec, lineHeight: 1.5, marginBottom: 8, fontSize: fs.sm, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          {story.description}
+        </div>
+
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', fontSize: fs.sm, marginTop: 'auto' }}>
+          {story.tags.slice(0, 3).map(tag => (
+            <span key={tag} style={{ padding: '1px 6px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute, fontSize: fs.xs }}>
+              {tag}
+            </span>
+          ))}
+          <span style={{ marginLeft: 'auto', color: c.textMute, fontFamily: 'monospace', fontSize: fs.xs }}>
+            {story.turns} {turnsLabel}
+          </span>
+          <button
+            onClick={e => { e.stopPropagation(); shareStory(story.path); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
+            title="复制分享链接"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: copied ? c.primary : c.textMute, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+          >
+            {copied ? <CheckOutlined /> : <LinkOutlined />}
+          </button>
+        </div>
       </div>
 
-      {(story.period || story.location) && (
-        <div style={{ color: c.textMute, marginBottom: 7, fontFamily: 'monospace', fontSize: fs.sm }}>
-          {[story.period, story.location].filter(Boolean).join(' · ')}
+      {/* Right: card back image (≈40% width) */}
+      {(story.cardBackFate || story.cardBackPlayer) && (
+        <div style={{ position: 'relative', width: '38%', flexShrink: 0, background: isDarkMode ? '#0a0a0a' : '#e0e0e0', overflow: 'hidden' }}>
+          {story.cardBackFate && (
+            <img src={story.cardBackFate} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov && story.cardBackPlayer ? 0 : 1, transition: 'opacity 0.3s ease' }} />
+          )}
+          {story.cardBackPlayer && (
+            <img src={story.cardBackPlayer} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: hov ? 1 : 0, transition: 'opacity 0.3s ease' }} />
+          )}
         </div>
       )}
-
-      <div style={{ color: c.textSec, lineHeight: 1.6, marginBottom: 10, fontSize: fs.sm }}>
-        {story.description.length > 110 ? story.description.slice(0, 110) + '…' : story.description}
-      </div>
-
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', fontSize: fs.sm }}>
-        {story.tags.slice(0, 4).map(tag => (
-          <span key={tag} style={{ padding: '1px 7px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute }}>
-            {tag}
-          </span>
-        ))}
-        <span style={{ marginLeft: 'auto', color: c.textMute, fontFamily: 'monospace' }}>
-          {story.turns} {turnsLabel}
-        </span>
-      </div>
     </div>
   );
 }
@@ -466,6 +525,7 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
 
 function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
   const [hov, setHov] = useState(false);
+  const [copied, setCopied] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
 
   return (
@@ -510,7 +570,7 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
         ))}
       </div>
 
-      {/* Col 4: difficulty + turns */}
+      {/* Col 4: difficulty + turns + share */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ padding: '1px 7px', borderRadius: 5, background: diff.color + '22', color: diff.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
           {diff.label}
@@ -518,6 +578,13 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
         <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {story.turns} {turnsLabel}
         </span>
+        <button
+          onClick={e => { e.stopPropagation(); shareStory(story.path); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
+          title="复制分享链接"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: copied ? c.primary : c.textMute, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+        >
+          {copied ? <CheckOutlined /> : <LinkOutlined />}
+        </button>
       </div>
     </div>
   );

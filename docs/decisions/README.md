@@ -21,3 +21,6 @@
 | [0013](0013-relative-font-scale-selector.md) | 相对字号系统 + 字号选择器 | ✅ 已实施 | 2026-04-05 |
 | [0014](0014-app-icons-favicon-unification.md) | 应用图标重设计 + 浏览器标签图标统一 | ✅ 已实施 | 2026-04-05 |
 | [0015](0015-card-hand-mechanics.md) | 卡牌手牌机制：无回收 + 双重惩罚 + 永久牌 | ✅ 已实施 | 2026-04-05 |
+| [0016](0016-game-terminology-and-fate-rule.md) | 游戏术语统一 + 命运机制规则 | ✅ 术语已实施；命运 AI 待定 | 2026-04-05 |
+| [0017](0017-card-backs-story-assets.md) | 卡背图片 + Story 静态资产加载 | ✅ 已实施 | 2026-04-05 |
+| [0018](0018-background-music-player.md) | 背景音乐 + MusicBar 播放控制条 | ✅ 已实施 | 2026-04-05 |

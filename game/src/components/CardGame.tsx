@@ -4,7 +4,10 @@ import './CardGame.css';
 import { useI18n } from '../core/i18n';
 import { loadStoryOverlay, mergeStringOverlay } from '../core/storyI18n';
 import { loadNewFormatStory } from '../core/newFormatLoader';
-import { SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { fetchYaml } from '../core/fetchYaml';
+import { SunOutlined, MoonOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import MusicBar from './MusicBar';
+import AboutModal, { AUTHOR } from './AboutModal';
 import type { Language } from '../core/i18n';
 
 // ─── CardPulseIcon — card outline + heart suit + QRS trace ───────────────────
@@ -46,7 +49,7 @@ function clearGameState() {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface VarDef { label: string; value: number; max: number; color: string; }
+interface VarDef { label: string; value: number; max: number; color: string; higherIsBetter?: boolean; }
 interface EffectDef { variable: string; delta: number; }
 
 interface PlayerCard {
@@ -75,18 +78,21 @@ interface GameStory {
           description: string; science_note?: string; tags?: string[]; };
   variables: Record<string, VarDef>;
   goalVariables: string[];
-  game: { ap_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; };
+  game: { plays_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; };
   lose_conditions: Array<{ condition: string; message: string }>;
   win_conditions?: Array<{ condition: string; message: string }>;
   player_cards: PlayerCard[];
   environment_cards: EnvCard[];
+  cardBackFate?: string;
+  cardBackPlayer?: string;
+  music?: string[];
 }
 interface LogEntry { text: string; type: 'pos' | 'neg' | 'neutral'; turn: number; }
 
 // ─── Layout constants (all cards share the same dimensions) ───────────────────
 //
 // Row heights:
-//   ROW_HP   = top/bottom HP bar strips
+//   ROW_GAUGE   = top/bottom HP bar strips
 //   ROW_CARD = 4 card rows (env-hand / env-board / ply-board / ply-hand)
 //   ROW_CTRL = controls strip between hand and HP bar
 //
@@ -96,7 +102,7 @@ interface LogEntry { text: string; type: 'pos' | 'neg' | 'neutral'; turn: number
 const CARD_W   = 132;   // px
 const CARD_H   = 154;   // px
 const ROW_CARD = 190;   // px
-const ROW_HP   = 54;    // px
+const ROW_GAUGE = 84;   // px — gauge row (replaces flat HP bars)
 const ROW_CTRL = 40;    // px
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -193,41 +199,116 @@ function makeFontScale(base: number) {
 function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: ReturnType<typeof getC> }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-      {([14, 16, 18] as const).map((size, i) => (
+      {([14, 16, 18] as const).map(size => (
         <button key={size} onClick={() => onFontSize(size)} style={{
           padding: '3px 7px', border: 'none', cursor: 'pointer',
           background: fontSize === size ? c.primary : 'transparent',
           color: fontSize === size ? '#fff' : c.textMute,
-          fontSize: 10 + i * 2, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
-        }}>A</button>
+          fontSize: 11, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+        }}>{size}</button>
       ))}
     </div>
   );
 }
 
-// ─── HpBar ────────────────────────────────────────────────────────────────────
+// ─── Gauge ────────────────────────────────────────────────────────────────────
 
 type FS = ReturnType<typeof makeFontScale>;
 
-function HpBar({ label, value, max, color, barTrack, textColor, warn, fs }: {
-  label: string; value: number; max: number; color: string;
-  barTrack: string; textColor: string; warn?: boolean; fs: FS;
+const G_SIZE = 62;
+const G_R    = 23;
+const G_CX   = G_SIZE / 2;
+const G_CY   = G_SIZE / 2;
+const G_CIRC = 2 * Math.PI * G_R;
+const G_ARC  = G_CIRC * 0.75;   // 270° visible arc
+const G_GAP  = G_CIRC * 0.25;   // 90° gap at bottom
+const G_SW   = 5.5;              // stroke width
+
+// Convert arc-length position to SVG path string (no transform needed)
+// Arc starts at 135° from 3-o'clock (= 7:30 position) and goes clockwise
+function gaugeArcPath(startLen: number, endLen: number): string {
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const a1 = toRad(135 + (startLen / G_CIRC) * 360);
+  const a2 = toRad(135 + (endLen   / G_CIRC) * 360);
+  const x1 = G_CX + G_R * Math.cos(a1), y1 = G_CY + G_R * Math.sin(a1);
+  const x2 = G_CX + G_R * Math.cos(a2), y2 = G_CY + G_R * Math.sin(a2);
+  const large = ((endLen - startLen) / G_CIRC * 360) > 180 ? 1 : 0;
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${G_R} ${G_R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+function Gauge({ varKey, label, value, baseValue, max, higherIsBetter = true, primary, c, fs, hoverEffects }: {
+  varKey: string; label: string; value: number; baseValue: number; max: number;
+  higherIsBetter?: boolean; primary: string;
+  c: ReturnType<typeof getC>; fs: FS;
+  hoverEffects: EffectDef[];
 }) {
-  const pct = Math.max(0, Math.min(1, value / max));
+  // Solid arc uses baseValue (= gs normally, = preEnvGs in cumulative mode)
+  const rawPct     = Math.max(0, Math.min(1, baseValue / max));
+  // Normalize: goodness 1.0 = best, 0.0 = danger
+  const goodness   = higherIsBetter ? rawPct : 1 - rawPct;
+  const fillLen    = G_ARC * goodness;
+  const stateColor = goodness > 0.55 ? primary : goodness > 0.28 ? '#faad14' : '#f5222d';
+  // Center label always shows actual gs value
+  const displayValue = value;
+
+  // Hover delta → goodness change
+  const hoverEff = hoverEffects.find(e => e.variable === varKey);
+  let previewLen = 0, previewStart = 0, previewPositive = true;
+  if (hoverEff) {
+    const rawDelta      = hoverEff.delta / max;
+    const goodnessDelta = higherIsBetter ? rawDelta : -rawDelta;
+    previewPositive     = goodnessDelta >= 0;
+    if (goodnessDelta > 0) {
+      previewStart = fillLen;
+      previewLen   = Math.min(G_ARC * goodnessDelta, G_ARC - fillLen);
+    } else {
+      previewLen   = Math.min(G_ARC * Math.abs(goodnessDelta), fillLen);
+      previewStart = fillLen - previewLen;
+    }
+  }
+  const previewColor = previewPositive ? '#52c41a' : '#f5222d';
+
   return (
-    <div style={{ flex: '1 1 150px', minWidth: 120 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-        <span style={{ color: textColor, fontWeight: 600, fontSize: fs.sm }}>{label}</span>
-        <span style={{ color: warn ? '#f5222d' : textColor, fontFamily: 'monospace', fontWeight: 700, fontSize: fs.sm }}>
-          {Math.round(value)}<span style={{ fontWeight: 400, opacity: 0.5 }}>/{max}</span>
-        </span>
-      </div>
-      <div style={{ height: 7, background: barTrack, borderRadius: 4, overflow: 'hidden' }}>
-        <div
-          className={warn ? 'bar-warn' : ''}
-          style={{ width: `${pct * 100}%`, height: '100%', background: warn ? '#f5222d' : color,
-                   borderRadius: 4, transition: 'width 0.4s ease' }}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+      <svg width={G_SIZE} height={G_SIZE} viewBox={`0 0 ${G_SIZE} ${G_SIZE}`}>
+        {/* Track arc */}
+        <circle cx={G_CX} cy={G_CY} r={G_R}
+          fill="none" stroke={c.barTrack} strokeWidth={G_SW}
+          strokeDasharray={`${G_ARC} ${G_GAP}`} strokeLinecap="round"
+          transform={`rotate(135 ${G_CX} ${G_CY})`}
         />
+        {/* Main fill arc */}
+        <circle cx={G_CX} cy={G_CY} r={G_R}
+          fill="none" stroke={stateColor} strokeWidth={G_SW}
+          strokeDasharray={`${fillLen} ${G_CIRC - fillLen}`} strokeLinecap="round"
+          transform={`rotate(135 ${G_CX} ${G_CY})`}
+          style={{ transition: 'stroke-dasharray 0.35s ease, stroke 0.25s' }}
+        />
+        {/* Hollow preview arc — path-based so we can use dasharray for the dotted pattern */}
+        {hoverEff && previewLen > 1 && (
+          <path
+            d={gaugeArcPath(previewStart, previewStart + previewLen)}
+            fill="none"
+            stroke={previewColor}
+            strokeWidth={G_SW}
+            strokeLinecap="round"
+            strokeDasharray="3.5 2.5"
+            opacity={0.85}
+          />
+        )}
+        {/* Value — always shows actual gs value */}
+        <text x={G_CX} y={G_CY + 1} textAnchor="middle" dominantBaseline="middle"
+          fontSize={fs.sm} fontWeight="700" fill={hoverEff ? previewColor : stateColor} fontFamily="monospace">
+          {displayValue}
+        </text>
+        {/* Lower-is-better indicator */}
+        {!higherIsBetter && (
+          <text x={G_CX} y={G_SIZE - 5} textAnchor="middle" dominantBaseline="auto"
+            fontSize={fs.xs - 2} fill={c.textMute} fontFamily="sans-serif">↓好</text>
+        )}
+      </svg>
+      <div style={{ fontSize: fs.xs - 1, color: c.textMute, textAlign: 'center', marginTop: -2, lineHeight: 1.2, maxWidth: G_SIZE }}>
+        {label}
       </div>
     </div>
   );
@@ -235,12 +316,17 @@ function HpBar({ label, value, max, color, barTrack, textColor, warn, fs }: {
 
 // ─── DeckPile — same CARD_W × CARD_H as hand/board cards ─────────────────────
 
-function DeckPile({ label, count, total, faceUp, accentColor, c, fs }: {
+function DeckPile({ label, count, total, faceUp, accentColor, c, fs, cards, vars, cardBack }: {
   label: string; count: number; total: number;
   faceUp?: boolean; accentColor?: string; c: ReturnType<typeof getC>; fs: FS;
+  cards?: (PlayerCard | EnvCard)[]; vars?: Record<string, VarDef>;
+  cardBack?: string;
 }) {
+  const [hov, setHov] = useState(false);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
       <span style={{ color: c.textMute, fontSize: fs.xs, fontWeight: 700,
                      letterSpacing: '0.08em', textTransform: 'uppercase', textAlign: 'center' }}>
         {label}
@@ -256,16 +342,18 @@ function DeckPile({ label, count, total, faceUp, accentColor, c, fs }: {
           <div key={i} style={{
             position: 'absolute', left: i * 2, top: -i * 2,
             width: CARD_W, height: CARD_H, borderRadius: 8,
-            background: faceUp ? (accentColor ? accentColor + '18' : c.sectionBg) : c.cardBg,
-            border: `1px solid ${faceUp ? (accentColor ?? c.border) : c.border}`,
+            background: (faceUp && cardBack) ? 'transparent' : faceUp ? (accentColor ? accentColor + '18' : c.sectionBg) : c.cardBg,
+            border: (faceUp && cardBack) ? 'none' : `1px solid ${faceUp ? (accentColor ?? c.border) : c.border}`,
             display: i === 0 ? 'flex' : 'block',
             alignItems: 'center', justifyContent: 'center',
           }}>
-            {i === 0 && faceUp && (
-              <span style={{ color: accentColor ?? c.textMute, fontSize: fs.sm, fontWeight: 700 }}>弃牌</span>
+            {i === 0 && faceUp && (cardBack
+              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7, filter: 'grayscale(1)', opacity: 0.55 }} />
+              : <span style={{ color: accentColor ?? c.textMute, fontSize: fs.sm, fontWeight: 700 }}>弃牌</span>
             )}
-            {i === 0 && !faceUp && (
-              <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.18 }}>?</span>
+            {i === 0 && !faceUp && (cardBack
+              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }} />
+              : <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.18 }}>?</span>
             )}
           </div>
         ))}
@@ -273,20 +361,91 @@ function DeckPile({ label, count, total, faceUp, accentColor, c, fs }: {
       <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: fs.xs, fontWeight: 600 }}>
         {count}/{total}
       </span>
+
+      {/* Hover tooltip — card list summary */}
+      {hov && cards && cards.length > 0 && (
+        <div style={{
+          position: 'absolute', right: CARD_W + 14, top: 0, zIndex: 200,
+          width: 220, maxHeight: 320, overflowY: 'auto',
+          background: c.panel, border: `1px solid ${c.border}`, borderRadius: 8,
+          padding: '8px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+        }}>
+          <div style={{ padding: '0 12px 6px', color: c.textMute, fontSize: fs.xs, fontWeight: 700,
+                        letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: `1px solid ${c.border}`, marginBottom: 4 }}>
+            {label} ({cards.length})
+          </div>
+          {cards.map((card, i) => {
+            const isPlayer = 'cost' in card;
+            const typeColor = isPlayer ? (TYPE_COLORS[(card as PlayerCard).type] ?? '#8c8c8c') : '#fa8c16';
+            return (
+              <div key={i} style={{ padding: '5px 12px', borderBottom: i < cards.length - 1 ? `1px solid ${c.border}` : undefined }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontWeight: 600, color: c.text, fontSize: fs.sm }}>{card.name}</span>
+                  {isPlayer && (
+                    <span style={{ fontSize: fs.xs, color: typeColor, fontWeight: 700,
+                                   background: typeColor + '22', padding: '0 5px', borderRadius: 4 }}>
+                      {(card as PlayerCard).cost} AP
+                    </span>
+                  )}
+                  {'probability' in card && (card as EnvCard).probability !== undefined && (
+                    <span style={{ fontSize: fs.xs, color: '#fa8c16' }}>
+                      {Math.round(((card as EnvCard).probability ?? 0) * 100)}%
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {card.effects.map((e, j) => {
+                    const vLabel = vars?.[e.variable]?.label ?? e.variable;
+                    return (
+                      <span key={j} style={{ fontFamily: 'monospace', fontSize: fs.xs,
+                                             color: e.delta > 0 ? '#52c41a' : '#f5222d', fontWeight: 600 }}>
+                        {vLabel} {e.delta > 0 ? '+' : ''}{e.delta}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DashedSlot — empty card slot placeholder ─────────────────────────────────
+
+function DashedSlot({ c, variant = 'keep' }: { c: ReturnType<typeof getC>; variant?: 'play' | 'keep' }) {
+  const bg     = variant === 'play' ? 'rgba(250,173,20,0.07)' : 'rgba(22,119,255,0.06)';
+  const border = variant === 'play' ? 'rgba(250,173,20,0.35)'  : 'rgba(22,119,255,0.28)';
+  return (
+    <div style={{
+      width: CARD_W, height: CARD_H, flexShrink: 0, borderRadius: 8,
+      border: `1.5px dashed ${border}`,
+      background: bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{ color: variant === 'play' ? 'rgba(250,173,20,0.4)' : 'rgba(22,119,255,0.35)', fontSize: 11, fontFamily: 'monospace' }}>
+        {variant === 'play' ? '打出' : '保留'}
+      </span>
     </div>
   );
 }
 
 // ─── FaceDownCard — uniform card-back for opponent hand ───────────────────────
 
-function FaceDownCard({ c, fs }: { c: ReturnType<typeof getC>; fs: FS }) {
+function FaceDownCard({ c, fs, cardBack }: { c: ReturnType<typeof getC>; fs: FS; cardBack?: string }) {
   return (
     <div style={{
       width: CARD_W, height: CARD_H, flexShrink: 0, borderRadius: 8,
       background: c.envBg, border: `1px solid ${c.border}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
     }}>
-      <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.2 }}>?</span>
+      {cardBack
+        ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }} />
+        : <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.2 }}>?</span>
+      }
     </div>
   );
 }
@@ -327,6 +486,10 @@ interface GameCardProps {
   showMissed?: boolean;
   // permanent card — stays in hand, always usable
   permanent?: boolean;
+  // force "hovered" visual even without mouse (cumulative mode float)
+  floated?: boolean;
+  // extra inline style (e.g. excess-card highlight)
+  style?: React.CSSProperties;
 }
 
 function GameCard({
@@ -334,7 +497,7 @@ function GameCard({
   cost, duration, remaining,
   onClick, canPlay = true, className = '',
   showRecall, flavor, hovered, onMouseEnter, onMouseLeave,
-  triggered, showMissed, permanent,
+  triggered, showMissed, permanent, floated, style: extraStyle,
 }: GameCardProps) {
   const dur = duration ?? 0;
   const rem = remaining;
@@ -354,16 +517,17 @@ function GameCard({
       className={`${className} ${triggered !== undefined ? (triggered ? 'env-card env-triggered' : 'env-card') : ''}`}
       style={{
         width: CARD_W, height: CARD_H, flexShrink: 0,
-        background: permanent ? (c.cardBg) : c.cardBg,
-        border: triggered !== undefined
-          ? `1px solid ${triggered ? typeColor : c.border}`
-          : `1px solid ${permanent ? c.primary : c.border}`,
-        borderLeft: `5px solid ${permanent ? c.primary : typeColor}`,
+        background: c.cardBg,
+        border: `1px solid ${permanent ? c.primary : c.border}`,
         borderRadius: 10,
         padding: '12px 10px 10px',
         cursor: onClick ? (canPlay ? 'pointer' : 'not-allowed') : 'default',
         display: 'flex', flexDirection: 'column', gap: 6,
         position: 'relative',
+        transform: (hovered || floated) ? 'translateY(-4px)' : undefined,
+        boxShadow: (hovered || floated) ? `0 6px 18px rgba(0,0,0,0.22)` : undefined,
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        ...extraStyle,
       }}
     >
       {/* Tooltip */}
@@ -470,7 +634,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
 
   // ── Core game state ──────────────────────────────────────────────────────────
   const [gs, setGs]               = useState<Record<string, number>>({});
-  const [ap, setAp]               = useState(3);
+  const [playsLeft, setPlaysLeft] = useState(3);
   const [turn, setTurn]           = useState(1);
   const [hand, setHand]           = useState<PlayerCard[]>([]);
   const [playerDeck, setPlayerDeck]       = useState<PlayerCard[]>([]);
@@ -480,7 +644,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [board, setBoard]             = useState<BoardCard[]>([]);
   const [playedCards, setPlayedCards] = useState<PlayerCard[]>([]);
   const [turnInitGs, setTurnInitGs]   = useState<Record<string, number>>({});
-  const [turnInitAp, setTurnInitAp]   = useState(3);
+  // Snapshot of gs at the moment the player clicks End Turn (before any env resolution)
+  const [preEnvGs, setPreEnvGs]       = useState<Record<string, number>>({});
 
   // Env state
   // envHand: drawn this turn (face-down), will be revealed next env phase
@@ -492,22 +657,58 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [envEventTotal, setEnvEventTotal]     = useState(0);
   const [envRevealed, setEnvRevealed]         = useState<RevealedEnvCard[]>([]);
 
-  const [phase, setPhase]     = useState<'player' | 'env'>('player');
+  const [phase, setPhase]     = useState<'player' | 'env' | 'discard'>('player');
   const [logs, setLogs]       = useState<LogEntry[]>([]);
   const [outcome, setOutcome] = useState<{ win: boolean; message: string } | null>(null);
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [hoveredCardId, setHoveredCardId]             = useState<string | null>(null);
+  const [boardHoveredEffects, setBoardHoveredEffects] = useState<EffectDef[]>([]);
+  const [totalDeltaMode, setTotalDeltaMode]           = useState(false);
+  const [aboutOpen, setAboutOpen]                     = useState(false);
+
+  // Helper: negate all deltas
+  const negate = (effs: EffectDef[]): EffectDef[] => effs.map(e => ({ ...e, delta: -e.delta }));
+
+  // Merge arrays of effects by variable (sum deltas)
+  const mergeEffects = (...groups: EffectDef[][]): EffectDef[] => {
+    const map = new Map<string, number>();
+    for (const group of groups)
+      for (const e of group)
+        map.set(e.variable, (map.get(e.variable) ?? 0) + e.delta);
+    return Array.from(map.entries()).map(([variable, delta]) => ({ variable, delta }));
+  };
+
+  const handHoverEffects = hoveredCardId
+    ? (hand.find(hc => hc.id === hoveredCardId)?.effects ?? [])
+    : [];
+
+  // Cumulative delta = all this turn's effects: triggered env cards + board cards + staged played cards
+  const triggeredEnvEffects = envRevealed.filter(r => r.triggered).flatMap(r => r.card.effects);
+  const boardEffects        = board.flatMap(bc => bc.card.effects);
+  const stagedEffects       = playedCards.flatMap(c => c.effects);
+  const cumulativeTurnDelta = mergeEffects(triggeredEnvEffects, boardEffects, stagedEffects);
+
+  // hoverEffects fed to gauges:
+  // Non-cumulative: hand card hover (add) OR board/env card hover (negate = counterfactual)
+  // Cumulative:     all this turn's effects always shown + optional hand card hover on top
+  const hoverEffects: EffectDef[] = totalDeltaMode
+    ? mergeEffects(cumulativeTurnDelta, handHoverEffects)
+    : handHoverEffects.length > 0 ? handHoverEffects : boardHoveredEffects;
+
+  // In cumulative mode, gauge solid arc shows preEnvGs (start-of-turn base)
+  // The dashed arc then shows the full turn delta
+  const gaugeBase: Record<string, number> = totalDeltaMode ? preEnvGs : gs;
 
   // ── Persist ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!story) return;
     writeGameState(storyPath, {
-      gs, ap, turn, hand, playerDeck, playerDiscard, playerDeckTotal,
-      board, playedCards, turnInitGs, turnInitAp,
+      gs, playsLeft, turn, hand, playerDeck, playerDiscard, playerDeckTotal,
+      board, playedCards, turnInitGs,
       envHand, envEventDeck, envEventDiscard, envEventTotal, envRevealed,
       phase, logs, outcome,
     });
-  }, [gs, ap, turn, hand, playerDeck, playerDiscard, playerDeckTotal,
-      board, playedCards, turnInitGs, turnInitAp,
+  }, [gs, playsLeft, turn, hand, playerDeck, playerDiscard, playerDeckTotal,
+      board, playedCards, turnInitGs,
       envHand, envEventDeck, envEventDiscard, envEventTotal, envRevealed,
       phase, logs, outcome]);
 
@@ -518,11 +719,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       setLoading(true); setError(null);
       try {
         const clean = storyPath.replace(/^mods\//, '');
-        const res   = await fetch(`/api/file/${clean}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data  = await res.json();
-        if (!data.success) throw new Error(data.error || t('game.load_failed'));
-        let s: GameStory = await loadNewFormatStory(clean, data.data?.content);
+        const content = await fetchYaml(clean);
+        let s: GameStory = await loadNewFormatStory(clean, content);
         if (!s?.meta || !s?.variables || !s?.player_cards) throw new Error(t('game.load_failed'));
         const overlay = await loadStoryOverlay(clean, langAtLoad.current);
         if (overlay) s = mergeStringOverlay(s, overlay);
@@ -531,7 +729,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         const saved = readGameState(storyPath);
         if (saved) {
           setGs(saved.gs ?? {});
-          setAp(saved.ap ?? s.game.ap_per_turn);
+          setPlaysLeft(saved.playsLeft ?? s.game.plays_per_turn);
           setTurn(saved.turn ?? 1);
           setHand(saved.hand ?? []);
           setPlayerDeck(saved.playerDeck ?? []);
@@ -540,7 +738,6 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           setBoard(saved.board ?? []);
           setPlayedCards(saved.playedCards ?? []);
           setTurnInitGs(saved.turnInitGs ?? saved.gs ?? {});
-          setTurnInitAp(saved.turnInitAp ?? s.game.ap_per_turn);
           setEnvHand(saved.envHand ?? []);
           setEnvEventDeck(saved.envEventDeck ?? []);
           setEnvEventDiscard(saved.envEventDiscard ?? []);
@@ -562,7 +759,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           const total        = shuffledPly.length; // permanent cards not counted in deck total
 
           setGs(initGs); setTurnInitGs(initGs);
-          setAp(s.game.ap_per_turn); setTurnInitAp(s.game.ap_per_turn);
+          setPlaysLeft(s.game.plays_per_turn);
           setTurn(1);
           setHand([...permCards, ...shuffledPly.slice(0, initHandSize)]);
           setPlayerDeck(shuffledPly.slice(initHandSize));
@@ -591,13 +788,14 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
 
   // ── Play card ─────────────────────────────────────────────────────────────────
   const playCard = (card: PlayerCard) => {
-    if (phase !== 'player' || ap < card.cost || !story || outcome) return;
+    if (phase !== 'player' || !story || outcome) return;
+    if (!card.permanent && playsLeft <= 0) return;
     const newGs = applyEffects(card.effects, gs, story.variables);
     setGs(newGs);
-    setAp(p => p - card.cost);
     if (card.permanent) {
-      // Permanent cards: effects apply, AP consumed, card stays in hand — not staged
+      // Permanent cards: effects apply, no play slot consumed, card stays in hand
     } else {
+      setPlaysLeft(p => p - 1);
       setHand(p => p.filter(c => c.id !== card.id));
       setPlayedCards(prev => [...prev, card]);
     }
@@ -616,14 +814,28 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     for (const pc of remaining) newGs = applyEffects(pc.effects, newGs, story.variables);
     setPlayedCards(remaining);
     setGs(newGs);
-    setAp(turnInitAp - remaining.reduce((s, pc) => s + pc.cost, 0));
+    setPlaysLeft(prev => prev + 1);
     setHand(prev => [...prev, card]);
     // setLogs removed — silent during turn
+  };
+
+  // ── Discard one card (discard phase) ─────────────────────────────────────────
+  const discardCard = (cardId: string) => {
+    if (phase !== 'discard' || !story || outcome) return;
+    const card = hand.find(c => c.id === cardId);
+    if (!card || card.permanent) return;
+    const nextHand = hand.filter(c => c.id !== cardId);
+    setHand(nextHand);
+    setPlayerDiscard(prev => [...prev, card]);
+    setLogs(prev => [{ text: `弃牌 [${card.name}]`, type: 'neg', turn }, ...prev]);
+    const regCount = nextHand.filter(c => !c.permanent).length;
+    if (regCount <= story.game.hand_size) setPhase('player');
   };
 
   // ── End turn ──────────────────────────────────────────────────────────────────
   const endTurn = () => {
     if (phase !== 'player' || !story || outcome) return;
+    setPreEnvGs({ ...gs });   // snapshot before any resolution
     setPhase('env');
 
     const curGs         = gs;
@@ -718,14 +930,16 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       const newEnvHand = evtDeck.splice(0, drawEnvN);
 
       // 6. Player draw (no reshuffle — deck is finite by design)
-      const nextTurn = curTurn + 1;
-      let plyDeck    = [...curDeck];
-      let plyDiscard = [...newPlyDiscard];
-      const regularHandCount = curHand.filter(c => !c.permanent).length;
-      const space    = story.game.hand_size - regularHandCount;
-      const drawCard = Math.max(0, Math.min(DRAW_PER_TURN, space, plyDeck.length));
-      const newCards = plyDeck.slice(0, drawCard);
-      plyDeck        = plyDeck.slice(drawCard);
+      const nextTurn   = curTurn + 1;
+      let plyDeck      = [...curDeck];
+      let plyDiscard   = [...newPlyDiscard];
+      const permHand   = curHand.filter(c => c.permanent);
+      const regHand    = curHand.filter(c => !c.permanent);
+      // Draw up to hand_size (discard phase handles excess separately)
+      const space      = story.game.hand_size - regHand.length;
+      const drawCard   = Math.max(0, Math.min(DRAW_PER_TURN, space, plyDeck.length));
+      const newCards   = plyDeck.slice(0, drawCard);
+      plyDeck          = plyDeck.slice(drawCard);
 
       // Commit
       setBoard(nextBoard);
@@ -750,13 +964,14 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         setPhase('player'); return;
       }
 
-      const newAp = story.game.ap_per_turn;
+      const newPlays   = story.game.plays_per_turn;
+      const nextHand   = [...permHand, ...regHand, ...newCards];
+      const needDiscard = regHand.length + newCards.length > story.game.hand_size;
       setTurn(nextTurn);
-      setAp(newAp);
-      setTurnInitAp(newAp);
+      setPlaysLeft(newPlays);
       setTurnInitGs(state);
-      if (drawCard > 0) setHand(prev => [...prev, ...newCards]);
-      setPhase('player');
+      setHand(nextHand);
+      setPhase(needDiscard ? 'discard' : 'player');
       setLogs(prev => [{ text: `── 第 ${nextTurn} 回合 ──`, type: 'neutral', turn: nextTurn }, ...prev]);
     }, 800);
   };
@@ -775,13 +990,17 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     </div>
   );
 
-  const maxTurns  = story.game.max_turns;
-  const apTotal   = story.game.ap_per_turn;
+  const maxTurns    = story.game.max_turns;
+  const playsTotal  = story.game.plays_per_turn;
   const goalSet   = new Set(story.goalVariables ?? []);
   const goalPairs = Object.entries(story.variables).filter(([k]) => goalSet.has(k));
   const defPairs  = Object.entries(story.variables).filter(([k]) => !goalSet.has(k));
   const allPairs  = Object.entries(story.variables);
-  const canAct    = phase === 'player' && !outcome;
+  const canAct     = phase === 'player' && !outcome;
+  const discarding = phase === 'discard' && !outcome;
+  const mustDiscard = discarding
+    ? hand.filter(c => !c.permanent).length - story.game.hand_size
+    : 0;
 
   // Right column deck sections share the same height as each card row
   const deckSectionStyle = (borderColor?: string): React.CSSProperties => ({
@@ -798,13 +1017,13 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   //  [Left log | Main 6-row | Right deck col]
   //
   //  Main rows (top → bottom):
-  //   1. HP row (goals)         ROW_HP
+  //   1. HP row (goals)         ROW_GAUGE
   //   2. Env hand (face-down)   ROW_CARD
   //   3. Env board (revealed)   ROW_CARD
   //   4. Player board           ROW_CARD
   //   5. Player hand            ROW_CARD
   //   6. Controls               ROW_CTRL
-  //   7. HP row (status)        ROW_HP
+  //   7. HP row (status)        ROW_GAUGE
   //
   //  Right col sections 1-4 align with main rows 2-5.
 
@@ -814,11 +1033,15 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       {/* ── Top bar ── */}
       <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10 }}>
         <CardPulseIcon size={28} color={c.primary} />
-        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', flexShrink: 0 }}>Life Matters</span>
+        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', flexShrink: 0 }}>{t('app.title')}</span>
+        <span style={{ color: c.textMute, fontSize: fs.sm, flexShrink: 0 }}>· {t('about.subtitle')}</span>
         <div style={{ width: 1, height: 14, background: c.border, flexShrink: 0 }} />
         <span style={{ fontWeight: 600, color: c.textSec, fontSize: fs.sm, flexShrink: 0 }}>{story.meta.name}</span>
-        {story.meta.period && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: fs.sm, flexShrink: 0 }}>{story.meta.period}</span>}
         <div style={{ flex: 1 }} />
+        {/* ── Inline music controls ── */}
+        {story.music && story.music.length > 0 && (
+          <MusicBar tracks={story.music} c={c} fs={fs} />
+        )}
         <button onClick={() => { clearGameState(); window.location.reload(); }}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: c.textMute, fontSize: fs.sm }}>
           {t('game.retry')}
@@ -838,10 +1061,15 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}>
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
+        <button onClick={() => setAboutOpen(true)}
+          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}
+          title="About">
+          <InfoCircleOutlined />
+        </button>
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', overflowY: 'auto', minHeight: 0 }}>
 
         {/* ════ Left sidebar: log ════ */}
         <div style={{
@@ -850,21 +1078,20 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           borderRight: `1px solid ${c.border}`,
           background: c.logBg,
         }}>
-          {/* Turn + AP info */}
+          {/* Turn + plays info */}
           <div style={{ flexShrink: 0, padding: '10px 12px 8px', borderBottom: `1px solid ${c.border}` }}>
             <div style={{ color: c.primary, fontWeight: 700, fontSize: fs.lg, fontFamily: 'monospace', marginBottom: 6 }}>
               回合 {turn}<span style={{ color: c.textMute, fontWeight: 400, fontSize: fs.sm }}>/{maxTurns}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-              {Array.from({ length: apTotal }).map((_, i) => (
-                <div key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: i < ap ? c.primary : c.barTrack, transition: 'background 0.2s' }} />
+              {Array.from({ length: playsTotal }).map((_, i) => (
+                <div key={i} style={{ width: 9, height: 9, borderRadius: 2, background: i < playsLeft ? c.primary : c.barTrack, transition: 'background 0.2s' }} />
               ))}
-              <span style={{ color: c.textMute, marginLeft: 3, fontFamily: 'monospace', fontSize: fs.xs }}>{ap}/{apTotal} AP</span>
             </div>
           </div>
 
           {/* Event log */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ flex: 1, padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
             {logs.map((log, i) => (
               <div key={i} style={{
                 lineHeight: 1.35, fontSize: fs.xs, wordBreak: 'break-all',
@@ -880,22 +1107,26 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         </div>
 
         {/* ════ Main game area ════ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
-          {/* ─ Row 1: Env HP bars (goals) ─ */}
+          {/* ─ Row 1: Goal gauges ─ */}
           <div style={{
-            height: ROW_HP, flexShrink: 0,
+            height: ROW_GAUGE, flexShrink: 0,
             background: c.panel,
             borderBottom: `1px solid ${c.border}`,
-            padding: '6px 14px',
-            display: 'flex', flexWrap: 'wrap', gap: '4px 20px', alignItems: 'center',
+            padding: '0 14px',
+            display: 'flex', alignItems: 'center', gap: 10, overflowX: 'auto',
           }}>
             <span style={{ color: c.textMute, fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>目标</span>
             {goalPairs.length === 0
               ? <span style={{ color: c.textMute, opacity: 0.35 }}>—</span>
               : goalPairs.map(([key, vdef]) => (
-                <HpBar key={key} label={vdef.label} value={Math.round(gs[key] ?? 0)} max={vdef.max}
-                  color={vdef.color} barTrack={c.barTrack} textColor={c.textSec} fs={fs} />
+                <Gauge key={key} varKey={key} label={vdef.label}
+                  value={Math.round(gs[key] ?? 0)}
+                  baseValue={Math.round(gaugeBase[key] ?? gs[key] ?? 0)}
+                  max={vdef.max}
+                  higherIsBetter={vdef.higherIsBetter !== false}
+                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
               ))}
           </div>
 
@@ -908,10 +1139,10 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', transform: 'rotate(180deg)', userSelect: 'none' }}>手牌</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>命运</span>
             {envHand.length === 0
               ? <span style={{ color: c.textMute, opacity: 0.2 }}>—</span>
-              : envHand.map((_, i) => <FaceDownCard key={i} c={c} fs={fs} />)
+              : envHand.map((_, i) => <FaceDownCard key={i} c={c} fs={fs} cardBack={story.cardBackFate} />)
             }
           </div>
 
@@ -924,12 +1155,15 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', transform: 'rotate(180deg)', userSelect: 'none' }}>环境</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>事件</span>
             {envRevealed.length === 0
               ? <span style={{ color: c.textMute, opacity: 0.2 }}>—</span>
               : envRevealed.map(({ card: ec, triggered, isPassive }, idx) => {
                 const typeColor = isPassive ? '#f5222d'
                                 : ec.probability !== undefined ? '#722ed1' : '#fa8c16';
+                // Triggered cards: effects already in gs → show reverse (counterfactual)
+                // Untriggered cards: effects NOT in gs → show positive (what could have been)
+                const hoverEffs = triggered ? negate(ec.effects) : ec.effects;
                 return (
                   <GameCard
                     key={`${ec.id}-${idx}`}
@@ -941,6 +1175,9 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                     duration={isPassive ? -1 : 1}
                     triggered={triggered}
                     showMissed={!isPassive}
+                    floated={totalDeltaMode}
+                    onMouseEnter={() => setBoardHoveredEffects(hoverEffs)}
+                    onMouseLeave={() => setBoardHoveredEffects([])}
                   />
                 );
               })}
@@ -955,9 +1192,9 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', transform: 'rotate(180deg)', userSelect: 'none' }}>场地</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>应对</span>
 
-            {/* Confirmed board cards */}
+            {/* Confirmed board cards (from previous turns) */}
             {board.map(bc => {
               const typeColor = TYPE_COLORS[bc.card.type] ?? '#8c8c8c';
               return (
@@ -969,36 +1206,38 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   vars={story.variables}
                   c={c} fs={fs}
                   remaining={bc.remaining}
+                  floated={totalDeltaMode}
+                  onMouseEnter={() => !totalDeltaMode && setBoardHoveredEffects(negate(bc.card.effects))}
+                  onMouseLeave={() => setBoardHoveredEffects([])}
                 />
               );
             })}
 
-            {board.length > 0 && playedCards.length > 0 && (
-              <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0 }} />
-            )}
+            {board.length > 0 && <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0 }} />}
 
-            {/* Staged cards (playable this turn, can recall) */}
-            {playedCards.map((card, idx) => {
-              const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
-              return (
-                <GameCard
-                  key={`staged-${card.id}-${idx}`}
-                  name={card.name}
-                  effects={card.effects}
-                  typeColor={typeColor}
-                  vars={story.variables}
-                  c={c} fs={fs}
-                  duration={card.duration}
-                  onClick={() => canAct && recallCard(idx)}
-                  canPlay={canAct}
-                  showRecall={canAct}
-                />
-              );
+            {/* Play slots — dashed boxes for this turn's plays */}
+            {Array.from({ length: playsTotal }).map((_, i) => {
+              const card = playedCards[i];
+              if (card) {
+                const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
+                return (
+                  <GameCard
+                    key={`staged-${card.id}-${i}`}
+                    name={card.name}
+                    effects={card.effects}
+                    typeColor={typeColor}
+                    vars={story.variables}
+                    c={c} fs={fs}
+                    duration={card.duration}
+                    floated={totalDeltaMode}
+                    onClick={() => canAct && recallCard(i)}
+                    canPlay={canAct}
+                    showRecall={canAct}
+                  />
+                );
+              }
+              return <DashedSlot key={`play-slot-${i}`} c={c} variant="play" />;
             })}
-
-            {board.length === 0 && playedCards.length === 0 && (
-              <span style={{ color: c.textMute, opacity: 0.18 }}>— 无驻场卡 —</span>
-            )}
           </div>
 
           {/* ─ Row 5: Player hand ─ */}
@@ -1010,13 +1249,17 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', transform: 'rotate(180deg)', userSelect: 'none' }}>手牌</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>手牌</span>
 
-            {hand.length === 0 && canAct
-              ? <span style={{ color: c.textMute, opacity: 0.4 }}>{t('game.hand.empty')}</span>
-              : hand.map(card => {
-                const canPlay   = ap >= card.cost && canAct;
-                const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
+            {(() => {
+              const permCards = hand.filter(c => c.permanent);
+              const regCards  = hand.filter(c => !c.permanent);
+              const handSize  = story.game.hand_size;
+
+              const renderCard = (card: PlayerCard, excess = false) => {
+                const canPlay     = (card.permanent || playsLeft > 0) && canAct;
+                const canDiscard  = discarding && !card.permanent;
+                const typeColor   = TYPE_COLORS[card.type] ?? '#8c8c8c';
                 return (
                   <GameCard
                     key={card.id}
@@ -1025,19 +1268,41 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                     typeColor={typeColor}
                     vars={story.variables}
                     c={c} fs={fs}
-                    cost={card.cost}
                     duration={card.duration}
                     permanent={card.permanent}
-                    onClick={() => canPlay && playCard(card)}
-                    canPlay={canPlay}
-                    className={`player-card ${canPlay ? 'card-playable' : 'card-disabled'}`}
+                    onClick={() => {
+                      if (canDiscard) discardCard(card.id);
+                      else if (canPlay) playCard(card);
+                    }}
+                    canPlay={canPlay || canDiscard}
+                    className={`player-card ${(canPlay || canDiscard) ? 'card-playable' : 'card-disabled'}`}
                     flavor={card.flavor}
                     hovered={hoveredCardId === card.id}
                     onMouseEnter={() => setHoveredCardId(card.id)}
                     onMouseLeave={() => setHoveredCardId(null)}
+                    style={excess || (discarding && !card.permanent)
+                      ? { outline: `2px solid #f5222d`, outlineOffset: -2 }
+                      : undefined}
                   />
                 );
-              })}
+              };
+
+              if (hand.length === 0 && canAct)
+                return <span style={{ color: c.textMute, opacity: 0.4 }}>{t('game.hand.empty')}</span>;
+
+              return <>
+                {/* Keep slots for regular cards */}
+                {Array.from({ length: handSize }).map((_, i) => {
+                  const card = regCards[i];
+                  if (card) return renderCard(card);
+                  return <DashedSlot key={`keep-slot-${i}`} c={c} />;
+                })}
+                {/* Excess regular cards — highlighted red, will discard at end of turn */}
+                {regCards.slice(handSize).map(card => renderCard(card, true))}
+                {/* Permanent cards — always appended after slots, no limit */}
+                {permCards.map(card => renderCard(card))}
+              </>;
+            })()}
           </div>
 
           {/* ─ Controls strip ─ */}
@@ -1047,10 +1312,29 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             borderBottom: `1px solid ${c.border}`,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            {hand.filter(c => !c.permanent).length >= story.game.hand_size && (
-              <span style={{ color: '#fa8c16', fontFamily: 'monospace', fontWeight: 600, fontSize: fs.xs }}>手牌已满</span>
+            {discarding && (
+              <span style={{ color: '#f5222d', fontFamily: 'monospace', fontWeight: 700, fontSize: fs.sm, animation: 'pulse 1s infinite' }}>
+                请弃掉 {mustDiscard} 张牌（点击卡牌）
+              </span>
+            )}
+            {!discarding && hand.filter(c => !c.permanent).length > story.game.hand_size && (
+              <span style={{ color: '#fa8c16', fontFamily: 'monospace', fontWeight: 600, fontSize: fs.xs }}>回合结束将弃牌</span>
             )}
             <div style={{ flex: 1 }} />
+            {/* Total-delta mode toggle */}
+            <button
+              onClick={() => setTotalDeltaMode(m => !m)}
+              title={totalDeltaMode ? '切换：仅显示单卡增量' : '切换：显示应对累计增量'}
+              style={{
+                padding: '2px 9px', borderRadius: 5, fontSize: fs.xs, fontWeight: 600, cursor: 'pointer',
+                background: totalDeltaMode ? c.primary + '22' : 'none',
+                border: `1px solid ${totalDeltaMode ? c.primary : c.border}`,
+                color: totalDeltaMode ? c.primary : c.textMute,
+                transition: 'all 0.15s',
+              }}
+            >
+              {totalDeltaMode ? '∑ 累计' : '∑'}
+            </button>
             <button
               onClick={endTurn}
               disabled={!canAct}
@@ -1063,28 +1347,28 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                 transition: 'all 0.15s',
               }}
             >
-              {phase === 'env' ? '结算中…' : t('game.end_turn')}
+              {phase === 'env' ? '结算中…' : phase === 'discard' ? '弃牌中…' : t('game.end_turn')}
             </button>
           </div>
 
-          {/* ─ Row 6: Player HP bars (status) ─ */}
+          {/* ─ Row 7: Status gauges ─ */}
           <div style={{
-            height: ROW_HP, flexShrink: 0,
+            height: ROW_GAUGE, flexShrink: 0,
             background: c.sectionBg,
-            padding: '6px 14px',
-            display: 'flex', flexWrap: 'wrap', gap: '4px 20px', alignItems: 'center',
+            padding: '0 14px',
+            display: 'flex', alignItems: 'center', gap: 10, overflowX: 'auto',
           }}>
             <span style={{ color: c.textMute, fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>状态</span>
             {defPairs.length === 0
               ? <span style={{ color: c.textMute, opacity: 0.35 }}>—</span>
-              : defPairs.map(([key, vdef]) => {
-                const val    = Math.round(gs[key] ?? 0);
-                const isWarn = val <= 20 && key !== 'epidemic' && key !== 'radiation';
-                return (
-                  <HpBar key={key} label={vdef.label} value={val} max={vdef.max}
-                    color={vdef.color} barTrack={c.barTrack} textColor={c.textSec} warn={isWarn} fs={fs} />
-                );
-              })}
+              : defPairs.map(([key, vdef]) => (
+                <Gauge key={key} varKey={key} label={vdef.label}
+                  value={Math.round(gs[key] ?? 0)}
+                  baseValue={Math.round(gaugeBase[key] ?? gs[key] ?? 0)}
+                  max={vdef.max}
+                  higherIsBetter={vdef.higherIsBetter !== false}
+                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
+              ))}
           </div>
 
         </div>{/* end main */}
@@ -1097,26 +1381,30 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           background: c.deckBg, borderLeft: `1px solid ${c.border}`,
         }}>
           {/* Row 1 placeholder (HP height) */}
-          <div style={{ height: ROW_HP, flexShrink: 0, borderBottom: `1px solid ${c.border}` }} />
+          <div style={{ height: ROW_GAUGE, flexShrink: 0, borderBottom: `1px solid ${c.border}` }} />
 
           {/* Row 2: Env deck (aligns with env hand) */}
           <div style={deckSectionStyle()}>
-            <DeckPile label="事件" count={envEventDeck.length} total={envEventTotal} c={c} fs={fs} />
+            <DeckPile label="事件" count={envEventDeck.length} total={envEventTotal}
+              cards={envEventDeck} vars={story.variables} c={c} fs={fs} cardBack={story.cardBackFate} />
           </div>
 
           {/* Row 3: Env discard (aligns with env board) */}
           <div style={deckSectionStyle(c.border + ' 2px')}>
-            <DeckPile label="事件弃" count={envEventDiscard.length} total={envEventTotal} faceUp accentColor="#fa8c16" c={c} fs={fs} />
+            <DeckPile label="事件弃" count={envEventDiscard.length} total={envEventTotal} faceUp accentColor="#fa8c16"
+              cards={envEventDiscard} vars={story.variables} c={c} fs={fs} cardBack={story.cardBackFate} />
           </div>
 
           {/* Row 4: Player discard (aligns with player board) */}
           <div style={deckSectionStyle()}>
-            <DeckPile label="我方弃" count={playerDiscard.length} total={playerDeckTotal} faceUp accentColor="#722ed1" c={c} fs={fs} />
+            <DeckPile label="我方弃" count={playerDiscard.length} total={playerDeckTotal} faceUp accentColor="#722ed1"
+              cards={playerDiscard} vars={story.variables} c={c} fs={fs} cardBack={story.cardBackPlayer} />
           </div>
 
           {/* Row 5: Player deck (aligns with player hand) */}
           <div style={{ ...deckSectionStyle(), borderBottom: `1px solid ${c.border}` }}>
-            <DeckPile label="我方" count={playerDeck.length} total={playerDeckTotal} c={c} fs={fs} />
+            <DeckPile label="我方" count={playerDeck.length} total={playerDeckTotal}
+              cards={playerDeck} vars={story.variables} c={c} fs={fs} cardBack={story.cardBackPlayer} />
           </div>
 
           {/* Rows 6-7 placeholder */}
@@ -1124,6 +1412,33 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         </div>
 
       </div>{/* end body */}
+
+      {/* ── Status bar ── */}
+      <div style={{
+        height: 28, flexShrink: 0,
+        background: c.sectionBg, borderTop: `1px solid ${c.border}`,
+        display: 'flex', alignItems: 'center',
+        padding: '0 14px', gap: 12, color: c.textMute,
+        fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
+        fontSize: fs.xs, userSelect: 'none',
+      }}>
+        <span>{story.meta.name}</span>
+        {story.meta.period && <>
+          <span style={{ opacity: 0.25 }}>│</span>
+          <span>{story.meta.period}</span>
+        </>}
+        {story.meta.location && <>
+          <span style={{ opacity: 0.25 }}>│</span>
+          <span>{story.meta.location}</span>
+        </>}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>MIT License</span>
+          <span style={{ opacity: 0.2 }}>│</span>
+          <span>{AUTHOR.version}</span>
+        </span>
+      </div>
+
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} c={c} fs={fs} />
 
       {/* ── Outcome overlay ── */}
       {outcome && (

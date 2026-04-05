@@ -6,6 +6,11 @@ meta:
   author: ""
   version: "0.1"
   source_scenario: ""
+  card_back_fate:   assets/card_back_fate.jpg
+  card_back_player: assets/card_back_player.jpg
+  music:
+    - assets/sonatas_k-005_(c)sankey.mid
+    - assets/sonatas_k-006_(c)sankey.mid
 
 initial_state:
   health: 90

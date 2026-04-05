@@ -1,5 +1,7 @@
 {
-    "app.simulator": "Simulator",
+    "app.title": "Life Matters",
+    "app.simulator": "Simulator ↗",
+    "app.simulator.tip": "Open the medical simulator in a new tab",
 
     "select.sort": "Sort",
     "select.sort.time": "Time",
@@ -41,5 +43,10 @@
     "game.back_to_stories": "Back to List",
     "game.go_sim": "Go to Simulator",
     "game.title": "Marie Curie Game",
-    "stories.title": "Choose Your Life Path"
+    "stories.title": "Choose Your Life Path",
+
+    "about.subtitle": "Medical & Social Card Game",
+    "about.affiliation": "Sun Yat-Sen University",
+    "about.homepage": "Homepage",
+    "about.close": "Close"
 }

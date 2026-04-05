@@ -3,6 +3,7 @@
 // Numbers, boolean fields, and game-logic arrays are preserved from the base; only string leaves are replaced.
 
 import type { Language } from './i18n';
+import { fetchYaml } from './fetchYaml';
 
 /**
  * Deep-merge: replaces string leaf values from `overlay` into `base`.
@@ -31,11 +32,7 @@ export async function loadStoryOverlay(cleanPath: string, lang: Language): Promi
   if (lang === 'en') return null;
   const overlayPath = cleanPath.replace(/\.(yaml|yml)$/, `.${lang}.yaml`);
   try {
-    const res = await fetch(`/api/file/${overlayPath}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.success) return null;
-    return data.data?.content ?? null;
+    return await fetchYaml(overlayPath);
   } catch {
     return null;
   }

@@ -3,7 +3,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined, ToolOutlined, SwapOutlined,
-  GithubOutlined, MailOutlined,
+  GithubOutlined, MailOutlined, InfoCircleOutlined, HomeOutlined,
 } from '@ant-design/icons';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -11,13 +11,13 @@ import {
 // CardPulseIcon:  card outline + heart suit + QRS trace — game identity
 
 const HeartPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
-  <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-    {/* Heart — tip at (11,22), two lobes peak at y=7 */}
-    <path d="M11,22 C6,17.5 2,14.5 2,12 A6,6 0,0,1 11,7 A6,6 0,0,1 20,12 C20,14.5 16,17.5 11,22 Z"
-          strokeWidth="2.2" />
-    {/* QRS trace exiting right side of heart at midline */}
-    <path d="M20,15 L22,15 L22.5,17 L23.5,9 L24.5,19 L25.5,15 L30,15"
-          strokeWidth="2" />
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+    {/* Heart outline — tip at bottom, two lobes at top, QRS passes through middle */}
+    <path d="M12,21 C6,16 2,12 2,8 A6,6,0,0,1,12,5 A6,6,0,0,1,22,8 C22,12 18,16 12,21 Z"
+          strokeWidth="1.8" />
+    {/* QRS trace through the heart's equator */}
+    <path d="M2.5,10 L5.5,10 L6,12 L7,4 L8,14 L9,10 L11,10 L11.5,8 L12.5,10 L21.5,10"
+          strokeWidth="1.6" />
   </svg>
 );
 
@@ -62,13 +62,13 @@ const C = {
 function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: typeof C.light }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-      {([14, 16, 18] as const).map((size, i) => (
+      {([14, 16, 18] as const).map(size => (
         <button key={size} onClick={() => onFontSize(size)} style={{
           padding: '3px 7px', border: 'none', cursor: 'pointer',
           background: fontSize === size ? c.primary : 'transparent',
           color: fontSize === size ? '#fff' : c.textMute,
-          fontSize: 10 + i * 2, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
-        }}>A</button>
+          fontSize: 11, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+        }}>{size}</button>
       ))}
     </div>
   );
@@ -82,18 +82,21 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t, fontSize, onFontSize }: {
-  page: string; onPage: (p: string) => void;
+function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t, fontSize, onFontSize, onAbout }: {
+  page: string; simMode: 'sim' | 'opt'; onPage: (p: string) => void;
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
   c: typeof C.light; t: (k: string) => string;
   fontSize: number; onFontSize: (n: number) => void;
+  onAbout: () => void;
 }) {
   const tabs = [
-    { id: 'simulator', label: t('menu.simulator'), icon: <HeartPulseIcon /> },
-    { id: 'tools',     label: 'Mods',              icon: <ToolOutlined /> },
-    { id: 'story',     label: '转换器',             icon: <SwapOutlined /> },
+    { id: 'simulator', label: page === 'simulator' && simMode === 'opt' ? t('menu.simulator.opt') : t('menu.simulator'), icon: <HeartPulseIcon /> },
+    { id: 'tools',     label: t('menu.tools'),     icon: <ToolOutlined /> },
+    { id: 'story',     label: t('menu.story'),     icon: <SwapOutlined /> },
   ];
+
+  const subtitle = t(simMode === 'opt' ? 'menu.sub.simulator.opt' : 'menu.sub.simulator.sim');
 
   return (
     <div style={{
@@ -108,14 +111,17 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
         {/* Wave mark */}
         <HeartPulseIcon size={28} color={isDarkMode ? '#52c41a' : '#007A33'} />
-        {/* Wordmark */}
+        {/* Wordmark + inline subtitle */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
             fontSize: 20, fontWeight: 700, letterSpacing: '0.04em',
             color: c.text,
             fontFamily: '"Georgia", "Times New Roman", serif',
           }}>
-            Life Matters
+            {t('app.title')}
+          </span>
+          <span style={{ color: c.textMute, fontSize: 13 }}>
+            · {subtitle}
           </span>
         </div>
       </div>
@@ -154,30 +160,25 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
         {/* Divider */}
         <div style={{ width: 1, height: 18, background: c.border, margin: '0 6px', flexShrink: 0 }} />
 
-        {/* Play button */}
+        {/* Game button */}
         <button
           onClick={() => window.open('http://localhost:5174', '_blank')}
+          title={t('button.go_game.tip')}
           style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 12px', borderRadius: 6,
-            border: `1px solid ${isDarkMode ? '#b45309' : '#d97706'}`,
-            background: isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)',
-            color: isDarkMode ? '#fbbf24' : '#b45309', fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 6,
+            border: 'none', cursor: 'pointer',
+            background: 'transparent',
+            color: c.textSec, fontWeight: 400,
             transition: 'all 0.12s', outline: 'none',
           }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.28)' : 'rgba(217,119,6,0.16)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = isDarkMode ? 'rgba(180,83,9,0.15)' : 'rgba(217,119,6,0.08)';
-          }}
         >
-          <CardPulseIcon />
+          <span style={{ opacity: 0.6 }}><CardPulseIcon /></span>
           {t('button.go_game')}
         </button>
       </div>
 
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: 1 }} />{/* pushes right actions to edge */}
 
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -211,6 +212,18 @@ function TitleBar({ page, onPage, isDarkMode, onToggleDark, language, onLanguage
         >
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
+
+        {/* About */}
+        <button
+          onClick={onAbout}
+          style={{
+            background: 'none', border: `1px solid ${c.border}`, borderRadius: 6,
+            padding: '4px 9px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center',
+          }}
+          title="About"
+        >
+          <InfoCircleOutlined />
+        </button>
       </div>
     </div>
   );
@@ -224,9 +237,9 @@ function ToolsPage({ isDarkMode, c }: { isDarkMode: boolean; c: typeof C.light }
 // ─── Contact info ─────────────────────────────────────────────────────────────
 const AUTHOR = {
   name: 'Fan Shen',
-  affiliation: 'Sun Yat-Sen University',
   email: 'shenfan@mail.sysu.edu.cn',
-  homepage: 'https://github.com/shenfan19',
+  github: 'https://github.com/shenfan19',
+  homepage: '',   // not ready yet
   version: 'v0.4.0',
 };
 
@@ -277,19 +290,8 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
         </>
       )}
 
-      {/* Right: author + links + license + version */}
+      {/* Right: license + version */}
       <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ color: c.textMute }}>
-          {AUTHOR.name} @ {AUTHOR.affiliation}
-        </span>
-        <span style={{ opacity: 0.2 }}>│</span>
-        <a href={`mailto:${AUTHOR.email}`} style={linkStyle} title={AUTHOR.email}>
-          <MailOutlined style={{  }} />
-        </a>
-        <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={linkStyle} title="Homepage">
-          <GithubOutlined style={{  }} />
-        </a>
-        <span style={{ opacity: 0.2 }}>│</span>
         <span style={{ color: c.textMute }}>MIT License</span>
         <span style={{ opacity: 0.2 }}>│</span>
         <span style={{ color: c.textMute }}>{AUTHOR.version}</span>
@@ -300,6 +302,7 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 const SIM_PREFS_KEY = 'sim_prefs';
+const LM_FONT_KEY   = 'lm_font_size';   // shared with game
 function readPrefs(): Record<string, any> {
   try { return JSON.parse(localStorage.getItem(SIM_PREFS_KEY) ?? '{}'); } catch { return {}; }
 }
@@ -307,8 +310,14 @@ function readPrefs(): Record<string, any> {
 function App() {
   const { t, language, setLanguage } = useI18n();
   const [page, setPage] = useState<'simulator' | 'tools' | 'story'>('simulator');
+  const [simMode, setSimMode] = useState<'sim' | 'opt'>(() => {
+    try { return JSON.parse(localStorage.getItem('sim_persist') || 'null')?.mode || 'sim'; } catch { return 'sim'; }
+  });
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
-  const [fontSize,   setFontSize]   = useState<number>(() => readPrefs().fontSize ?? 16);
+  const [aboutOpen,  setAboutOpen]  = useState(false);
+  const [fontSize,   setFontSize]   = useState<number>(
+    () => Number(localStorage.getItem(LM_FONT_KEY)) || readPrefs().fontSize || 16
+  );
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
@@ -328,7 +337,10 @@ function App() {
 
   // Persist prefs
   useEffect(() => {
-    try { localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize })); } catch {}
+    try {
+      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize }));
+      localStorage.setItem(LM_FONT_KEY, String(fontSize));
+    } catch {}
   }, [isDarkMode, fontSize]);
 
   useEffect(() => {
@@ -397,11 +409,12 @@ function App() {
 
         {/* ── Title bar ── */}
         <TitleBar
-          page={page} onPage={p => setPage(p as any)}
+          page={page} simMode={simMode} onPage={p => setPage(p as any)}
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode(d => !d)}
           language={language} onLanguage={setLanguage}
           c={c} t={t}
           fontSize={fontSize} onFontSize={setFontSize}
+          onAbout={() => setAboutOpen(true)}
         />
 
         {/* ── Content (zoom wrapper scales all inline sizes) ── */}
@@ -421,6 +434,7 @@ function App() {
               storyFilter={storyFilter} setStoryFilter={setStoryFilter}
               loadedMods={loadedMods} setLoadedMods={setLoadedMods}
               setConfirmedModel={setConfirmedModel} onModelSelect={setSelectedModel}
+              simMode={simMode} onSimModeChange={setSimMode}
             />
           </div>
 
@@ -443,6 +457,83 @@ function App() {
           c={c}
         />
       </div>
+
+      {/* ── About modal ── */}
+      {aboutOpen && (
+        <div
+          onClick={() => setAboutOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: c.panel, border: `1px solid ${c.border}`,
+              borderRadius: 12, padding: '32px 40px',
+              maxWidth: 380, width: '90%',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              textAlign: 'center',
+            }}
+          >
+            {/* App title */}
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
+              {t('app.title')}
+            </div>
+
+            {/* Subtitles */}
+            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.7 }}>
+              {t('about.subtitle')}
+            </div>
+            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.7 }}>
+              {t('about.subtitle2')}
+            </div>
+
+            {/* Version + license */}
+            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 10, marginBottom: 18 }}>
+              {AUTHOR.version} · MIT License
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: `1px solid ${c.border}`, marginBottom: 16 }} />
+
+            {/* Author */}
+            <div style={{ color: c.text, fontWeight: 600, marginBottom: 2 }}>{AUTHOR.name}</div>
+            <div style={{ color: c.textMute, fontSize: 13, marginBottom: 14 }}>{t('about.affiliation')}</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, color: c.textSec, fontSize: 13 }}>
+              <a href={`mailto:${AUTHOR.email}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <MailOutlined /> {AUTHOR.email}
+              </a>
+              <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <GithubOutlined /> github.com/shenfan19
+              </a>
+              {AUTHOR.homepage ? (
+                <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <HomeOutlined /> {AUTHOR.homepage}
+                </a>
+              ) : (
+                <span style={{ color: c.textMute, opacity: 0.35, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <HomeOutlined /> {t('about.homepage')} —
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setAboutOpen(false)}
+              style={{
+                marginTop: 22, padding: '5px 22px', borderRadius: 6,
+                border: `1px solid ${c.border}`, background: 'none',
+                color: c.textMute, cursor: 'pointer', fontSize: 13,
+              }}
+            >
+              {t('about.close')}
+            </button>
+          </div>
+        </div>
+      )}
     </AntdApp>
     </ConfigProvider>
   );

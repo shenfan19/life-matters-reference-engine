@@ -305,6 +305,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   storyFilter, setStoryFilter,
   loadedMods, setLoadedMods,
   setConfirmedModel, onModelSelect,
+  simMode: mode, onSimModeChange: setMode,
 }) => {
   const { t } = useI18n();
   const c = getC(isDarkMode);
@@ -319,9 +320,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     inputParams, stateVariables, sessionId,
     timeValue, timeUnit, stepValue, stepUnit, batchSize, updateInterval,
   } = state;
-
-  // ── mode toggle ──────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<'sim' | 'opt'>(() => readSP()?.mode || 'sim');
 
   // ── loader state ─────────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading] = useState(false);

@@ -1,5 +1,7 @@
 {
-    "app.simulator": "仿真平台",
+    "app.title": "Life Matters·立民",
+    "app.simulator": "仿真平台 ↗",
+    "app.simulator.tip": "在新标签页中打开仿真平台",
 
     "select.sort": "排序",
     "select.sort.time": "时间",
@@ -42,5 +44,10 @@
 
     "game.go_sim": "回到仿真器",
     "game.title": "居里夫人模拟游戏",
-    "stories.title": "选择你的生命轨迹"
+    "stories.title": "选择你的生命轨迹",
+
+    "about.subtitle": "医学与社会学卡牌游戏",
+    "about.affiliation": "中山大学",
+    "about.homepage": "主页",
+    "about.close": "关闭"
 }

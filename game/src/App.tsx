@@ -7,20 +7,32 @@ import CardGame from './components/CardGame';
 type ViewMode = 'card' | 'list';
 type SortKey = 'period' | 'location' | 'difficulty';
 
-const APP_PERSIST_KEY = 'game_persist';
+const APP_PERSIST_KEY  = 'game_persist';
+const LM_FONT_KEY      = 'lm_font_size';   // shared with sim
 
 function readAppPersist(): Record<string, any> {
   try { return JSON.parse(localStorage.getItem(APP_PERSIST_KEY) ?? '{}'); }
   catch { return {}; }
 }
 
+// Read ?story= URL param (cleanPath without mods/ prefix)
+function readStoryParam(): string | null {
+  const p = new URLSearchParams(window.location.search).get('story');
+  return p ? `mods/${p}` : null;
+}
+
 function App() {
   const saved = readAppPersist();
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(saved.isDarkMode ?? true);
-  const [view, setView]             = useState<'select' | 'game'>(saved.view ?? 'select');
-  const [storyPath, setStoryPath]   = useState<string | null>(saved.storyPath ?? null);
-  const [fontSize,  setFontSize]    = useState<number>(saved.fontSize ?? 16);
+
+  // If URL has ?story=, open game directly — overrides saved view
+  const urlStory = readStoryParam();
+  const [view, setView]           = useState<'select' | 'game'>(urlStory ? 'game' : (saved.view ?? 'select'));
+  const [storyPath, setStoryPath] = useState<string | null>(urlStory ?? saved.storyPath ?? null);
+  const [fontSize,  setFontSize]    = useState<number>(
+    Number(localStorage.getItem(LM_FONT_KEY)) || saved.fontSize || 16
+  );
 
   // Lifted select-screen state — persists when returning from game
   const [viewMode,   setViewMode]   = useState<ViewMode>(saved.viewMode ?? 'card');
@@ -34,6 +46,7 @@ function App() {
       localStorage.setItem(APP_PERSIST_KEY, JSON.stringify({
         ...prev, isDarkMode, view, storyPath, viewMode, sortBy, tagFilter, fontSize,
       }));
+      localStorage.setItem(LM_FONT_KEY, String(fontSize));
     } catch {}
   }, [isDarkMode, view, storyPath, viewMode, sortBy, tagFilter, fontSize]);
 
@@ -58,7 +71,12 @@ function App() {
         <StorySelect
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(d => !d)}
-          onSelect={path => { setStoryPath(path); setView('game'); }}
+          onSelect={path => {
+            setStoryPath(path);
+            setView('game');
+            const clean = path.replace(/^mods\//, '');
+            history.pushState({}, '', `?story=${clean}`);
+          }}
           viewMode={viewMode}
           setViewMode={setViewMode}
           sortBy={sortBy}
@@ -73,7 +91,11 @@ function App() {
           storyPath={storyPath!}
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(d => !d)}
-          onBack={() => { setStoryPath(null); setView('select'); }}
+          onBack={() => {
+            setStoryPath(null);
+            setView('select');
+            history.replaceState({}, '', window.location.pathname);
+          }}
           fontSize={fontSize}
           onFontSize={setFontSize}
         />

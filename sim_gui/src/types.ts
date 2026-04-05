@@ -130,6 +130,8 @@ export interface SimulatorProps {
     setLoadedMods: (mods: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
     setConfirmedModel: (model: ModelFile | null) => void;
     onModelSelect: (model: ModelFile | null) => void;
+    simMode: 'sim' | 'opt';
+    onSimModeChange: (mode: 'sim' | 'opt') => void;
 }
 
 export interface OptimizerProps {

@@ -1,15 +1,23 @@
 {
-    "app.title": "Life Matters",
+    "app.title": "Life Matters·立民",
     "app.subtitle": "生命体征轨迹仿真与优化平台",
     "menu.calculator": "计算工具",
     "menu.loader": "模型加载",
     "menu.simulator": "仿真器",
+    "menu.simulator.opt": "优化器",
+    "menu.tools": "模组构建",
+    "menu.story": "卡牌构建",
+    "menu.sub.simulator.sim": "医学与社会仿真系统",
+    "menu.sub.simulator.opt": "医学与社会优化系统",
+    "menu.sub.tools": "模型构建",
+    "menu.sub.story": "卡牌游戏构建",
     "menu.optimizer": "优化器",
     "menu.cardgame": "卡牌游戏",
     "menu.storyloader": "故事读取",
     "menu.plugins": "外部插件",
     "menu.converter": "转换器",
-    "button.go_game": "游戏",
+    "button.go_game": "卡牌游戏 ↗",
+    "button.go_game.tip": "在新标签页中打开卡牌游戏",
     "common.loading": "加载中...",
     "common.error": "错误",
     "common.success": "成功",
@@ -89,5 +97,11 @@
     "sim.msg.exported": "已导出",
     "sim.msg.load_failed": "加载失败",
     "sim.msg.read_failed": "读取失败",
-    "sim.msg.start_failed": "启动失败"
+    "sim.msg.start_failed": "启动失败",
+
+    "about.subtitle": "医学与社会学模拟器",
+    "about.subtitle2": "参数优化平台",
+    "about.affiliation": "中山大学",
+    "about.homepage": "主页",
+    "about.close": "关闭"
 }

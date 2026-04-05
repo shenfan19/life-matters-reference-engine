@@ -49,6 +49,12 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* Music bar filename scroll */
+@keyframes music-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
