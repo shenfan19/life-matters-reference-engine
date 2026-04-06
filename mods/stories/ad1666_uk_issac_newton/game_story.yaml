@@ -2,7 +2,8 @@ meta:
   name: "艾萨克·牛顿：苹果树下的宇宙"
   description: "1665年，鼠疫席卷英格兰，剑桥大学关闭，年轻的牛顿被迫回到乡间的伍尔斯索普庄园。与世隔绝的两年，他独自推导出了微积分、发现了万有引力、拆解了光的秘密。在困境中，一个人改变了人类对宇宙的认知。"
   difficulty: medium
-  tags: [科学, 17世纪, 英国]
+  tags: [Science, 17th Century]
+  country: UK
   author: ""
   version: "0.1"
   created_on: 2026-03-23

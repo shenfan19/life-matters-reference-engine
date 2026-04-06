@@ -12,6 +12,7 @@
     "select.tag.era": "Era",
     "select.tag.type": "Type",
     "select.tag.medical": "Medical",
+    "select.tag.country": "Region",
     "select.loading": "Loading…",
     "select.loading_stories": "Loading stories…",
     "select.filtered": "(filtered)",

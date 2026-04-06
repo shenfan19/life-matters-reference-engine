@@ -35,6 +35,7 @@ interface StoryCard {
   title: string;
   period: string;
   location: string;
+  country: string;
   difficulty: string;
   description: string;
   tags: string[];
@@ -47,33 +48,91 @@ type SortKey = 'period' | 'location' | 'difficulty';
 type ViewMode = 'card' | 'list';
 
 // ─── Tag group definitions ────────────────────────────────────────────────────
-// labelKey maps to locale JSON; candidates must match tag values in story YAML files.
-// Tags only appear when present in loaded stories.
+// All candidates are canonical English keys — display is handled by TAG_LABELS below.
+// Tags only appear in filter UI when present in at least one loaded story.
 
 const TAG_GROUPS: { labelKey: string; key: string; candidates: string[] }[] = [
   {
     labelKey: 'select.tag.era', key: 'era',
-    candidates: ['古代', '中世纪', '文艺复兴', '17世纪', '18世纪', '19世纪', '20世纪初', '二战', '现代', '当代',
-                 'Ancient', 'Medieval', 'Renaissance', '17th century', '18th century', '19th century', '20th century', 'WWII', 'Modern', 'Contemporary'],
+    candidates: ['Ancient', 'Medieval', 'Renaissance', '17th Century', '18th Century', '19th Century', 'Early 20th Century', '20th Century', 'WWII', 'Modern', 'Contemporary'],
   },
   {
     labelKey: 'select.tag.type', key: 'type',
-    candidates: ['科学', '医学', '女性', '政治', '战争', '体育', '经济', '文化', '探险', '宗教', '艺术', '社会',
-                 'Science', 'Medicine', 'Women', 'Politics', 'War', 'Sports', 'Economics', 'Culture', 'Exploration', 'Religion', 'Art', 'Society'],
+    candidates: ['Science', 'Medicine', 'Women', 'Politics', 'War', 'History', 'Society', 'Sports', 'Economics', 'Culture', 'Exploration', 'Religion', 'Art', 'Lifestyle'],
   },
   {
     labelKey: 'select.tag.medical', key: 'medical',
-    candidates: ['CKD', '肾病', '内分泌', '蛋白质', '肌肉', '心血管', '消化系统', '传染病', '流行病', '公共卫生', '营养', '外科', '精神科', '肿瘤', '儿科',
-                 'Kidney Disease', 'Endocrine', 'Protein', 'Muscle', 'Cardiovascular', 'Digestive', 'Infectious Disease', 'Epidemic', 'Public Health', 'Nutrition', 'Surgery', 'Psychiatry', 'Oncology', 'Pediatrics'],
+    candidates: ['CKD', 'Kidney Disease', 'Endocrine', 'Protein', 'Muscle', 'Cardiovascular', 'Digestive', 'Infectious Disease', 'Epidemic', 'Public Health', 'Nutrition', 'Surgery', 'Psychiatry', 'Oncology', 'Pediatrics'],
   },
 ];
 
+// ─── Tag display labels ───────────────────────────────────────────────────────
+// Single source of truth for all tag/country translations.
+// Fallback chain: requested lang → en → raw key.
+
+const TAG_LABELS: Record<string, Record<string, string>> = {
+  // Era
+  'Ancient':           { en: 'Ancient',           'zh-CN': '古代',      'zh-TW': '古代'      },
+  'Medieval':          { en: 'Medieval',           'zh-CN': '中世纪',    'zh-TW': '中世紀'    },
+  'Renaissance':       { en: 'Renaissance',        'zh-CN': '文艺复兴',  'zh-TW': '文藝復興'  },
+  '17th Century':      { en: '17th C.',            'zh-CN': '17世纪',    'zh-TW': '17世紀'    },
+  '18th Century':      { en: '18th C.',            'zh-CN': '18世纪',    'zh-TW': '18世紀'    },
+  '19th Century':      { en: '19th C.',            'zh-CN': '19世纪',    'zh-TW': '19世紀'    },
+  'Early 20th Century':{ en: 'Early 20th C.',      'zh-CN': '20世纪初',  'zh-TW': '20世紀初'  },
+  '20th Century':      { en: '20th C.',            'zh-CN': '20世纪',    'zh-TW': '20世紀'    },
+  'WWII':              { en: 'WWII',               'zh-CN': '二战',      'zh-TW': '二戰'      },
+  'Modern':            { en: 'Modern',             'zh-CN': '现代',      'zh-TW': '現代'      },
+  'Contemporary':      { en: 'Contemporary',       'zh-CN': '当代',      'zh-TW': '當代'      },
+  // Type
+  'Science':           { en: 'Science',            'zh-CN': '科学',      'zh-TW': '科學'      },
+  'Medicine':          { en: 'Medicine',           'zh-CN': '医学',      'zh-TW': '醫學'      },
+  'Women':             { en: 'Women',              'zh-CN': '女性',      'zh-TW': '女性'      },
+  'Politics':          { en: 'Politics',           'zh-CN': '政治',      'zh-TW': '政治'      },
+  'War':               { en: 'War',                'zh-CN': '战争',      'zh-TW': '戰爭'      },
+  'History':           { en: 'History',            'zh-CN': '历史',      'zh-TW': '歷史'      },
+  'Society':           { en: 'Society',            'zh-CN': '社会',      'zh-TW': '社會'      },
+  'Sports':            { en: 'Sports',             'zh-CN': '体育',      'zh-TW': '體育'      },
+  'Economics':         { en: 'Economics',          'zh-CN': '经济',      'zh-TW': '經濟'      },
+  'Culture':           { en: 'Culture',            'zh-CN': '文化',      'zh-TW': '文化'      },
+  'Exploration':       { en: 'Exploration',        'zh-CN': '探险',      'zh-TW': '探險'      },
+  'Religion':          { en: 'Religion',           'zh-CN': '宗教',      'zh-TW': '宗教'      },
+  'Art':               { en: 'Art',                'zh-CN': '艺术',      'zh-TW': '藝術'      },
+  'Lifestyle':         { en: 'Lifestyle',          'zh-CN': '生活',      'zh-TW': '生活'      },
+  // Medical
+  'CKD':               { en: 'CKD',               'zh-CN': 'CKD',       'zh-TW': 'CKD'       },
+  'Kidney Disease':    { en: 'Kidney Disease',     'zh-CN': '肾病',      'zh-TW': '腎病'      },
+  'Endocrine':         { en: 'Endocrine',          'zh-CN': '内分泌',    'zh-TW': '內分泌'    },
+  'Protein':           { en: 'Protein',            'zh-CN': '蛋白质',    'zh-TW': '蛋白質'    },
+  'Muscle':            { en: 'Muscle',             'zh-CN': '肌肉',      'zh-TW': '肌肉'      },
+  'Cardiovascular':    { en: 'Cardiovascular',     'zh-CN': '心血管',    'zh-TW': '心血管'    },
+  'Digestive':         { en: 'Digestive',          'zh-CN': '消化系统',  'zh-TW': '消化系統'  },
+  'Infectious Disease':{ en: 'Infectious Disease', 'zh-CN': '传染病',    'zh-TW': '傳染病'    },
+  'Epidemic':          { en: 'Epidemic',           'zh-CN': '流行病',    'zh-TW': '流行病'    },
+  'Public Health':     { en: 'Public Health',      'zh-CN': '公共卫生',  'zh-TW': '公共衛生'  },
+  'Nutrition':         { en: 'Nutrition',          'zh-CN': '营养',      'zh-TW': '營養'      },
+  'Surgery':           { en: 'Surgery',            'zh-CN': '外科',      'zh-TW': '外科'      },
+  'Psychiatry':        { en: 'Psychiatry',         'zh-CN': '精神科',    'zh-TW': '精神科'    },
+  'Oncology':          { en: 'Oncology',           'zh-CN': '肿瘤',      'zh-TW': '腫瘤'      },
+  'Pediatrics':        { en: 'Pediatrics',         'zh-CN': '儿科',      'zh-TW': '兒科'      },
+  // Country
+  'France':            { en: 'France',             'zh-CN': '法国',      'zh-TW': '法國'      },
+  'UK':                { en: 'UK',                 'zh-CN': '英国',      'zh-TW': '英國'      },
+  'US':                { en: 'US',                 'zh-CN': '美国',      'zh-TW': '美國'      },
+  'Europe':            { en: 'Europe',             'zh-CN': '欧洲',      'zh-TW': '歐洲'      },
+  'China':             { en: 'China',              'zh-CN': '中国',      'zh-TW': '中國'      },
+};
+
+function labelTag(key: string, lang: string): string {
+  const entry = TAG_LABELS[key];
+  return entry?.[lang] ?? entry?.['en'] ?? key;
+}
+
 // ─── Difficulty map ───────────────────────────────────────────────────────────
 
-const DIFF: Record<string, { label: string; color: string; order: number }> = {
-  easy:   { label: '容易', color: '#52c41a', order: 0 },
-  medium: { label: '中等', color: '#faad14', order: 1 },
-  hard:   { label: '困难', color: '#f5222d', order: 2 },
+const DIFF: Record<string, { label: Record<string, string>; color: string; order: number }> = {
+  easy:   { label: { en: 'Easy',   'zh-CN': '容易', 'zh-TW': '容易' }, color: '#52c41a', order: 0 },
+  medium: { label: { en: 'Medium', 'zh-CN': '中等', 'zh-TW': '中等' }, color: '#faad14', order: 1 },
+  hard:   { label: { en: 'Hard',   'zh-CN': '困难', 'zh-TW': '困難' }, color: '#f5222d', order: 2 },
 };
 
 // ─── Color scheme — mirrors sim_gui's C tokens exactly ────────────────────────
@@ -174,7 +233,7 @@ export default function StorySelect({
         const loaded = await Promise.all(cleanPaths.map(async cleanPath => {
           // storyPath keeps the mods/ prefix convention expected by CardGame
           const path = `mods/${cleanPath}`;
-          const base: StoryCard = { path, title: path, period: '', location: '', difficulty: 'medium', description: '', tags: [], turns: 15 };
+          const base: StoryCard = { path, title: path, period: '', location: '', country: '', difficulty: 'medium', description: '', tags: [], turns: 15 };
           try {
             const d = await fetchYaml(cleanPath);
             if (d?.meta) {
@@ -184,7 +243,7 @@ export default function StorySelect({
               const toAssetUrl = (rel?: string) => rel ? `/${storyDir}/${rel}` : undefined;
               const cardBackFate   = toAssetUrl(d.card_back_fate   ?? m.card_back_fate);
               const cardBackPlayer = toAssetUrl(d.card_back_player ?? m.card_back_player);
-              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns, cardBackFate, cardBackPlayer };
+              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', country: m.country ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns, cardBackFate, cardBackPlayer };
             }
           } catch {}
           return base;
@@ -200,6 +259,7 @@ export default function StorySelect({
   // ── Derived data ────────────────────────────────────────────────────────────
 
   const allTags = useMemo(() => [...new Set(stories.flatMap(s => s.tags))], [stories]);
+  const allCountries = useMemo(() => [...new Set(stories.map(s => s.country).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh')), [stories]);
 
   const activeGroups = useMemo(() =>
     TAG_GROUPS
@@ -213,11 +273,55 @@ export default function StorySelect({
     return allTags.filter(t => !knownSet.has(t));
   }, [allTags]);
 
+  // ── Tag availability (count stories if this tag were selected, other filters fixed) ──
+  const tagAvail = useMemo(() => {
+    const result: Record<string, Record<string, number>> = {};
+
+    // Helper: filters from all groups EXCEPT excludeKey, skipping stale values
+    const othersExcept = (excludeKey: string) =>
+      Object.entries(tagFilter).filter(([k, tags]) => {
+        if (k === excludeKey || tags.length === 0) return false;
+        if (k === '_country') return tags.some(t => allCountries.includes(t));
+        return tags.some(t => allTags.includes(t));
+      });
+
+    const matchOthers = (s: StoryCard, others: [string, string[]][]) =>
+      others.every(([k, tags]) => k === '_country' ? tags.includes(s.country) : tags.some(t => s.tags.includes(t)));
+
+    // Tag groups (active + ungrouped)
+    const groups = [
+      ...activeGroups,
+      ...(ungroupedTags.length > 0 ? [{ key: '_other', available: ungroupedTags }] : []),
+    ];
+    for (const group of groups) {
+      const others = othersExcept(group.key);
+      result[group.key] = {};
+      for (const tag of group.available) {
+        result[group.key][tag] = stories.filter(s => s.tags.includes(tag) && matchOthers(s, others)).length;
+      }
+    }
+
+    // Country group
+    const othersForCountry = othersExcept('_country');
+    result['_country'] = {};
+    for (const country of allCountries) {
+      result['_country'][country] = stories.filter(s => s.country === country && matchOthers(s, othersForCountry)).length;
+    }
+
+    return result;
+  }, [stories, tagFilter, activeGroups, ungroupedTags, allCountries]);
+
   const displayed = useMemo(() => {
     let list = [...stories];
-    const activeFilters = Object.entries(tagFilter).filter(([, tags]) => tags.length > 0);
+    const activeFilters = Object.entries(tagFilter).filter(([k, tags]) => {
+      if (tags.length === 0) return false;
+      if (k === '_country') return tags.some(t => allCountries.includes(t));
+      return tags.some(t => allTags.includes(t)); // skip stale saved values
+    });
     if (activeFilters.length > 0)
-      list = list.filter(s => activeFilters.every(([, tags]) => tags.some(t => s.tags.includes(t))));
+      list = list.filter(s => activeFilters.every(([key, tags]) =>
+        key === '_country' ? tags.includes(s.country) : tags.some(t => s.tags.includes(t))
+      ));
     list.sort((a, b) => {
       if (sortBy === 'period')     return extractYear(a.period) - extractYear(b.period);
       if (sortBy === 'location')   return (a.location || '').localeCompare(b.location || '', 'zh');
@@ -225,13 +329,14 @@ export default function StorySelect({
       return 0;
     });
     return list;
-  }, [stories, sortBy, tagFilter]);
+  }, [stories, sortBy, tagFilter, allTags, allCountries]);
 
   // ── Filter helpers ──────────────────────────────────────────────────────────
 
   const toggleTag = (groupKey: string, tag: string) => {
     const cur = tagFilter[groupKey] ?? [];
-    setTagFilter({ ...tagFilter, [groupKey]: cur.includes(tag) ? cur.filter(tt => tt !== tag) : [...cur, tag] });
+    // Single-select per row: selecting an already-active tag clears it, otherwise replace
+    setTagFilter({ ...tagFilter, [groupKey]: cur.includes(tag) ? [] : [tag] });
   };
 
   const clearGroup = (groupKey: string) => setTagFilter({ ...tagFilter, [groupKey]: [] });
@@ -306,8 +411,47 @@ export default function StorySelect({
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} c={c} fs={fs} />
 
       {/* ── Tag filter rows ── */}
-      {!loading && allTags.length > 0 && (
+      {!loading && (allTags.length > 0 || allCountries.length > 0) && (
         <div style={{ flexShrink: 0, background: c.filterBg, borderBottom: `1px solid ${c.border}` }}>
+          {/* Country filter row */}
+          {allCountries.length > 0 && (() => {
+            const selected = tagFilter['_country'] ?? [];
+            const hasMore = allTags.length > 0 || ungroupedTags.length > 0;
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 3,
+                padding: '5px 20px', minHeight: 34,
+                borderBottom: hasMore || activeGroups.length > 0 ? `1px solid ${c.filterDivider}` : 'none',
+                fontSize: fs.sm,
+              }}>
+                <span style={{ color: c.textMute, width: 34, flexShrink: 0, fontWeight: 600 }}>{t('select.tag.country')}</span>
+                <button
+                  onClick={() => clearGroup('_country')}
+                  style={{
+                    padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 4, fontSize: 'inherit',
+                    background: selected.length === 0 ? c.primary : 'transparent',
+                    color: selected.length === 0 ? '#fff' : c.textMute,
+                    fontWeight: selected.length === 0 ? 600 : 400,
+                  }}
+                >{t('select.tag.all')}</button>
+                {allCountries.map(country => {
+                  const active = selected.includes(country);
+                  const zero = !active && (tagAvail['_country']?.[country] ?? 1) === 0;
+                  return (
+                    <button key={country} onClick={() => !zero && toggleTag('_country', country)} style={{
+                      padding: '2px 10px', borderRadius: 4, border: 'none', marginRight: 3, fontSize: 'inherit',
+                      cursor: zero ? 'default' : 'pointer',
+                      background: active ? c.tagActiveBg : 'transparent',
+                      color: active ? '#fff' : zero ? c.textMute : c.text,
+                      fontWeight: active ? 600 : 400,
+                      opacity: zero ? 0.38 : 1,
+                      transition: 'background 0.12s, color 0.12s, opacity 0.12s',
+                    }}>{labelTag(country, language)}</button>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {[...activeGroups, ...(ungroupedTags.length > 0 ? [{ labelKey: 'select.tag.other', key: '_other', available: ungroupedTags }] : [])].map((group, gi, arr) => {
             const selected = tagFilter[group.key] ?? [];
             const isLast = gi === arr.length - 1;
@@ -330,14 +474,17 @@ export default function StorySelect({
                 >{t('select.tag.all')}</button>
                 {group.available.map(tag => {
                   const active = selected.includes(tag);
+                  const zero = !active && (tagAvail[group.key]?.[tag] ?? 1) === 0;
                   return (
-                    <button key={tag} onClick={() => toggleTag(group.key, tag)} style={{
-                      padding: '2px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', marginRight: 3, fontSize: 'inherit',
+                    <button key={tag} onClick={() => !zero && toggleTag(group.key, tag)} style={{
+                      padding: '2px 10px', borderRadius: 4, border: 'none', marginRight: 3, fontSize: 'inherit',
+                      cursor: zero ? 'default' : 'pointer',
                       background: active ? c.tagActiveBg : 'transparent',
-                      color: active ? '#fff' : c.text,
+                      color: active ? '#fff' : zero ? c.textMute : c.text,
                       fontWeight: active ? 600 : 400,
-                      transition: 'background 0.12s, color 0.12s',
-                    }}>{tag}</button>
+                      opacity: zero ? 0.38 : 1,
+                      transition: 'background 0.12s, color 0.12s, opacity 0.12s',
+                    }}>{labelTag(tag, language)}</button>
                   );
                 })}
               </div>
@@ -400,14 +547,14 @@ export default function StorySelect({
         {/* Card grid */}
         {!loading && viewMode === 'card' && displayed.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {displayed.map(s => <CardItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
+            {displayed.map(s => <CardItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} language={language} />)}
           </div>
         )}
 
         {/* List */}
         {!loading && viewMode === 'list' && displayed.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {displayed.map(s => <ListItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} />)}
+            {displayed.map(s => <ListItem key={s.path} story={s} c={c} isDarkMode={isDarkMode} fs={fs} onSelect={() => onSelect(s.path)} turnsLabel={t('select.turns_unit')} language={language} />)}
           </div>
         )}
 
@@ -443,10 +590,10 @@ function shareStory(storyPath: string) {
   navigator.clipboard.writeText(url).catch(() => {});
 }
 
-function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
+function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string; language: string }) {
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
-  const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
+  const diff = DIFF[story.difficulty] ?? { label: { en: story.difficulty }, color: '#8c8c8c', order: 1 };
 
   return (
     <div
@@ -473,7 +620,7 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
             {story.title}
           </div>
           <span style={{ padding: '2px 7px', borderRadius: 8, flexShrink: 0, marginLeft: 8, fontSize: fs.sm, background: diff.color + '22', color: diff.color, fontWeight: 700 }}>
-            {diff.label}
+            {diff.label[language] ?? diff.label['en']}
           </span>
         </div>
 
@@ -490,7 +637,7 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', fontSize: fs.sm, marginTop: 'auto' }}>
           {story.tags.slice(0, 3).map(tag => (
             <span key={tag} style={{ padding: '1px 6px', borderRadius: 8, border: `1px solid ${c.border}`, color: c.textMute, fontSize: fs.xs }}>
-              {tag}
+              {labelTag(tag, language)}
             </span>
           ))}
           <span style={{ marginLeft: 'auto', color: c.textMute, fontFamily: 'monospace', fontSize: fs.xs }}>
@@ -523,10 +670,10 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
 
 // ─── List item (single-row grid layout) ───────────────────────────────────────
 
-function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string }) {
+function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string; language: string }) {
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
-  const diff = DIFF[story.difficulty] ?? { label: story.difficulty, color: '#8c8c8c', order: 1 };
+  const diff = DIFF[story.difficulty] ?? { label: { en: story.difficulty }, color: '#8c8c8c', order: 1 };
 
   return (
     <div
@@ -565,7 +712,7 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
       <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
         {story.tags.slice(0, 3).map(tag => (
           <span key={tag} style={{ padding: '1px 6px', borderRadius: 5, border: `1px solid ${c.border}`, color: c.textMute, whiteSpace: 'nowrap' }}>
-            {tag}
+            {labelTag(tag, language)}
           </span>
         ))}
       </div>
@@ -573,7 +720,7 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel }: { story: S
       {/* Col 4: difficulty + turns + share */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ padding: '1px 7px', borderRadius: 5, background: diff.color + '22', color: diff.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          {diff.label}
+          {diff.label[language] ?? diff.label['en']}
         </span>
         <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {story.turns} {turnsLabel}

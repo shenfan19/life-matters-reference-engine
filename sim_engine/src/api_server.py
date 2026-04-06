@@ -28,18 +28,11 @@ sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
-# 配置日志
-log_file = PROJECT_ROOT / "mods" / "models" / "_output" / "api_debug.log"
-# Ensure directory exists
-log_file.parent.mkdir(parents=True, exist_ok=True)
-
+# 配置日志（仅控制台，不写文件）
 logging.basicConfig(
     level=logging.INFO,
     format='%(levelname)s:%(name)s:%(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(str(log_file), mode='w', encoding='utf-8')
-    ]
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -175,7 +168,6 @@ class StoryRequest(BaseModel):
 
 class SplitRequest(BaseModel):
     file_path: str
-    output_dir: str = "scenarios"
 
 
 class SaveFileRequest(BaseModel):
@@ -937,13 +929,6 @@ async def split_model(request: SplitRequest):
     
     try:
         file_path = request.file_path
-        output_dir = request.output_dir
-        
-        # Ensure output dir is relative to mods directory
-        if output_dir and not os.path.isabs(output_dir):
-            full_output_dir = str(PROJECT_ROOT / "mods" / output_dir)
-        else:
-            full_output_dir = output_dir
 
         # 解析路径：优先考虑全路径
         if file_path.startswith(('models/', 'stories/', 'scenarios/', 'models\\', 'stories\\', 'scenarios\\')):
@@ -958,10 +943,14 @@ async def split_model(request: SplitRequest):
             else:
                 folder = None
                 model_name = file_path
-        
+
         if model_name.endswith(('.yaml', '.yml')):
             model_name = os.path.splitext(model_name)[0]
-        
+
+        # Output dir: models/mods/splitted_{clean_name}
+        clean_name = os.path.basename(model_name.replace('\\', '/'))
+        full_output_dir = str(PROJECT_ROOT / "mods" / "models" / "mods" / f"splitted_{clean_name}")
+
         # 调用 split_model
         result = loader_engine.split_model(model_name, full_output_dir, folder)
         

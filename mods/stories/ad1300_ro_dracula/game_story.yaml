@@ -38,10 +38,7 @@ meta:
   name: dracula
   source_path: scenarios/examples/dracula.yaml
   source_scenario: dracula
-  tags:
-  - mythical
-  - physiological
-  - dracula
+  tags: [Culture]
   version: '0.1'
   created_on: 2026-04-03
 player_deck:

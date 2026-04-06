@@ -12,6 +12,7 @@
     "select.tag.era": "时代",
     "select.tag.type": "类型",
     "select.tag.medical": "医学",
+    "select.tag.country": "地区",
     "select.loading": "加载中…",
     "select.loading_stories": "加载场景…",
     "select.filtered": "（已筛选）",

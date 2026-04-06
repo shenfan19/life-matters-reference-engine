@@ -153,7 +153,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   const [savingSet, setSavingSet] = useState<Set<string>>(new Set());
 
   // ── Merge state ──
-  const [mergeOut, setMergeOut]   = useState('scenarios/merged_output.yaml');
+  const [mergeOut, setMergeOut]   = useState('models/scenarios/merged_output.yaml');
   const [showMerge, setShowMerge] = useState(false);
   const [merging, setMerging]     = useState(false);
 
@@ -275,8 +275,8 @@ export default function ModsManager({ isDarkMode, c }: Props) {
     e.stopPropagation();
     const files = allNodes.filter(n => n.kind === 'file' && n.key.startsWith(folderKey + '/'));
     const state = folderSelState(folderKey, allNodes, checked);
-    if (state === 'all') {
-      // deselect all
+    if (state !== 'none') {
+      // deselect all (partial or all → clear everything under this folder)
       const next = new Set(checked);
       files.forEach(f => {
         next.delete(f.key);

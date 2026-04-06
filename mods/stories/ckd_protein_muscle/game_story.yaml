@@ -4,13 +4,7 @@ meta:
     而肌少症反过来加速肾功能恶化——形成恶性循环。 KDIGO 2020年指南原文明确写道："低蛋白饮食与肌少症风险之间的权衡目前证据不足， 无法给出统一建议"（Kidney
     Int Suppl 2021, Section 3.1.3）。 这是指南委员会自承的
   difficulty: medium
-  tags:
-  - nephrology
-  - ckd
-  - protein
-  - muscle
-  - sarcopenia
-  - physiological
+  tags: [Medicine, CKD, Protein, Muscle]
   science_note: '慢性肾病（CKD）蛋白质摄入 vs 肌肉保持动态模型（场景A4）。 核心学术案例：低蛋白饮食减缓GFR下降（保护肾功能），但同时导致肌肉萎缩，
     而肌少症反过来加速肾功能恶化——形成恶性循环。 KDIGO 2020年指南原文明确写道："低蛋白饮食与肌少症风险之间的权衡目前证据不足， 无法给出统一建议"（Kidney
     Int Suppl 2021, Section 3.1.3）。 这是指南委员会自承的学术空白，不可用"临床经验"一句话反驳。 最优蛋白质摄入时序（分期策略）是真实的未解问题。

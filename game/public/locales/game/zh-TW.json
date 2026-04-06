@@ -12,6 +12,7 @@
     "select.tag.era": "時代",
     "select.tag.type": "類型",
     "select.tag.medical": "醫學",
+    "select.tag.country": "地區",
     "select.loading": "載入中…",
     "select.loading_stories": "載入場景…",
     "select.filtered": "（已篩選）",

@@ -2,7 +2,8 @@ meta:
   name: "玛丽·居里：科学之光"
   description: "1898年巴黎，居里夫人在简陋的棚屋里提炼放射性物质。辐射正在侵蚀她的身体，学术界的偏见阻碍着她的研究。用智慧和意志，完成放射性研究的历史性突破。"
   difficulty: hard
-  tags: [科学, 女性, 19世纪]
+  tags: [Science, Women, 19th Century]
+  country: France
   author: ""
   version: "0.1"
   created_on: 2026-03-23

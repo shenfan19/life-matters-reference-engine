@@ -39,6 +39,22 @@ function App() {
   const [sortBy,     setSortBy]     = useState<SortKey>(saved.sortBy ?? 'period');
   const [tagFilter,  setTagFilter]  = useState<Record<string, string[]>>(saved.tagFilter ?? {});
 
+  // Sync view state with browser back/forward navigation
+  useEffect(() => {
+    const handlePop = () => {
+      const p = new URLSearchParams(window.location.search).get('story');
+      if (p) {
+        setStoryPath(`mods/${p}`);
+        setView('game');
+      } else {
+        setStoryPath(null);
+        setView('select');
+      }
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
+
   // Persist app-level state on every change
   useEffect(() => {
     try {

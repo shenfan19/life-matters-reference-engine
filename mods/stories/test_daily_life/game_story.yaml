@@ -2,8 +2,7 @@ meta:
   name: daily_life
   description: 日常生活仿真：展示每日规律饮食与水分补充对能量和健康的影响。利用计划表实现批处理自动化。
   difficulty: easy
-  tags:
-  - lifestyle
+  tags: [Lifestyle]
   science_note: '日常生活仿真：展示每日规律饮食与水分补充对能量和健康的影响。利用计划表实现批处理自动化。
 
     [Converter: decay→Type6; eating→Type4; drinking→Type4]'
