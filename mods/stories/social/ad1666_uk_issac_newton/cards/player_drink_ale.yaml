@@ -1,0 +1,22 @@
+id: player_drink_ale
+type: player
+category: food
+display:
+  name: "饮小啤酒"
+  description: "低酒精度的淡啤酒。鼠疫年间，这比生水安全——发酵过程杀灭了病菌。"
+  flavor: "1665年喝生水有极大风险。\"小啤酒\"是儿童和成人的日常饮料。"
+  icon: "🍺"
+cost: 0
+effects:
+  - target: nutrition
+    delta: 5
+  - target: health
+    delta: 3
+  - target: money
+    delta: -1
+channel: medical
+tags: [food, hydration, plague-era]
+source:
+  formula: "ale_drunk: 250ml×0.6=150kcal, hydration+20"
+  pattern_detected: P1
+  sim_notes: "对应sim中ale_intake=250ml。主要作用是hydration，鼠疫时期的卫生保障"

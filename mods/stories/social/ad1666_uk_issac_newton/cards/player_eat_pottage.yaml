@@ -1,0 +1,22 @@
+id: player_eat_pottage
+type: player
+category: food
+display:
+  name: "喝浓粥汤"
+  description: "谷物与根茎蔬菜炖煮的浓汤，17世纪英国最营养的日常食物。恢复健康同时补充营养。"
+  flavor: "伍尔斯索普庄园的厨房每天炖这个。牛顿的母亲汉娜为他准备。"
+  icon: "🥣"
+cost: 0
+effects:
+  - target: nutrition
+    delta: 22
+  - target: health
+    delta: 5
+  - target: money
+    delta: -2
+channel: medical
+tags: [food, nutritious, warm]
+source:
+  formula: "pottage_eaten: 300g×1.0=300kcal, protein 8g, vitamin_score+15"
+  pattern_detected: P1
+  sim_notes: "对应sim中pottage_intake=300g。nutrition+vitamin_score双提升，最优性价比食物"

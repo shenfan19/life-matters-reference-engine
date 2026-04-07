@@ -3,21 +3,34 @@ type: player
 category: goal
 display:
   name: "推导流数法"
-  description: "独自发展出一套处理无穷小量的数学工具，后世称之为微积分。"
+  description: "独自发展出处理无穷小量的数学工具，后世称之为微积分。高度专注，对身心消耗极大。"
   flavor: "莱布尼茨后来独立发现了同样的东西——但牛顿先到了。"
   icon: "∫"
 cost: 3
 effects:
   - target: insight
     delta: 25
-    condition: null
+  - target: fatigue
+    delta: 20
   - target: health
     delta: -8
-    condition: null
+  - target: insight
+    delta: -12
+    condition:
+      type: threshold
+      variable: fatigue
+      op: ">="
+      value: 70
+  - target: insight
+    delta: -8
+    condition:
+      type: threshold
+      variable: nutrition
+      op: "<"
+      value: 30
 channel: social
-tags: [goal, mathematics]
-weight: 100
+tags: [goal, mathematics, high-cost]
 source:
-  variable: insight
-  formula: ""
-  pattern_detected: P1
+  formula: "insight_gain = study_intensity(3) × max(0.2, 1-fatigue/120) × max(0.4, nutrition/80)"
+  pattern_detected: P4
+  sim_notes: "最高强度研究(study_intensity=3)，fatigue>70或nutrition<30时效率显著下降"

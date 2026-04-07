@@ -1,0 +1,20 @@
+id: env_trinity_stipend
+type: env
+category: economy
+always_active: true
+display:
+  name: "剑桥三一学院奖学金"
+  description: "即便剑桥因鼠疫关闭，三一学院仍按月向学者发放奖学金。牛顿每年约可领到13英镑。"
+  flavor: "1665年，剑桥大学虽关门，薪资没有停。这笔钱让牛顿得以在庄园安心研究。"
+  icon: "🎓"
+effects:
+  - target: money
+    delta: 2
+channel: social
+tags: [income, historical, passive]
+source:
+  sim_notes: >
+    历史依据：牛顿1661年入读三一学院，1664年获得奖学金（Scholar），年薪约£13。
+    剑桥1665年6月关闭（瘟疫），但奖学金持续发放至1667年复校。
+    £13/年 ≈ 22先令/月 ≈ game中money +2/回合（0-30量程）。
+    来源：Westfall RS (1980) Never at Rest, Ch.3; Trinity College accounts 1665-1667.

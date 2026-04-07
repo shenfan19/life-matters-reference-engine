@@ -10,14 +10,13 @@ cost: 2
 effects:
   - target: insight
     delta: 12
-    condition: null
   - target: money
     delta: 8
-    condition: null
+  - target: fatigue
+    delta: 5
 channel: social
-tags: [goal, social]
-weight: 100
+tags: [goal, social, correspondence]
 source:
-  variable: insight
-  formula: ""
+  formula: "social interaction → insight + income"
   pattern_detected: P1
+  sim_notes: "通信不在sim日模型中直接体现，但对应月尺度的学术网络价值"

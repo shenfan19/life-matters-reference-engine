@@ -1,0 +1,22 @@
+id: player_eat_meat
+type: player
+category: food
+display:
+  name: "吃咸猪肉"
+  description: "盐腌保存的猪肉，高蛋白高脂肪，显著补充体力。价格较贵，不常有。"
+  flavor: "腌猪肉是17世纪乡间储存肉类的主要方式，一头猪能吃半年。"
+  icon: "🥩"
+cost: 0
+effects:
+  - target: nutrition
+    delta: 18
+  - target: health
+    delta: 8
+  - target: money
+    delta: -4
+channel: medical
+tags: [food, expensive, protein]
+source:
+  formula: "meat_eaten: 80g×2.5=200kcal, protein 18g"
+  pattern_detected: P1
+  sim_notes: "对应sim中meat_intake=80g，蛋白质最高来源，但sim中budget约束限制频率"

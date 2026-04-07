@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "description": "牛顿奇迹年：Sim场景 → Game卡牌故事 变量映射与转换规则",
+  "source_scenario": "ad1666_uk_issac_newton",
+  "source_path": "scenarios/social/ad1666_uk_issac_newton.yaml",
+  "note_sim_opt": "sim和opt合并为同一文件；optimizer块存在时为opt模式，否则为sim模式",
+  "generated_at": "2026-04-07",
+
+  "design_notes": {
+    "time_scale": "Sim模拟一天(86400s)，代表Game中一个回合(1个月的典型日)",
+    "abstraction": "Sim中的连续生理量映射为Game中的离散回合变量",
+    "shared_variables": "health, insight, nutrition, fatigue, money 在Sim和Game中语义一致",
+    "money_unit": "Sim中budget单位为便士(pence)，Game中money为0-30的抽象财务评分"
+  },
+
+  "variable_mappings": {
+    "health": {
+      "sim_variable": "health",
+      "game_variable": "health",
+      "sim_range": [0, 100],
+      "game_range": [0, 100],
+      "transform": "linear_1to1",
+      "notes": "直接对应，语义相同"
+    },
+    "insight": {
+      "sim_variable": "insight",
+      "game_variable": "insight",
+      "sim_range": [0, 100],
+      "game_range": [0, 100],
+      "transform": "linear_1to1",
+      "notes": "直接对应。Sim中日增量约5-15分；Game中每回合（月）增量通过卡牌决定"
+    },
+    "nutrition": {
+      "sim_variable": "nutrition",
+      "game_variable": "nutrition",
+      "sim_range": [0, 100],
+      "game_range": [0, 100],
+      "transform": "linear_1to1",
+      "notes": "Sim中nutrition由饮食公式驱动；Game中由饮食卡牌直接增减"
+    },
+    "fatigue": {
+      "sim_variable": "fatigue",
+      "game_variable": "fatigue",
+      "sim_range": [0, 100],
+      "game_range": [0, 100],
+      "transform": "linear_1to1",
+      "notes": "高fatigue减少insight增益（Sim公式与Game条件卡效果一致）"
+    },
+    "money": {
+      "sim_variable": "budget.remaining_pence",
+      "game_variable": "money",
+      "sim_range": [0, 240],
+      "game_range": [0, 30],
+      "transform": "linear_scale",
+      "scale_factor": 0.125,
+      "notes": "Sim中约8便士/天×30天=240便士/月；Game中缩放为0-30分"
+    }
+  },
+
+  "health_mapping": {
+    "source_variable": "health",
+    "scale": [0, 100, 0, 100],
+    "display": "生命值"
+  },
+
+  "card_variable_links": {
+    "player_eat_bread":    { "nutrition": "+12", "money": "-1" },
+    "player_eat_pottage":  { "nutrition": "+22", "health": "+5", "money": "-2" },
+    "player_drink_ale":    { "nutrition": "+5",  "health": "+3", "money": "-1" },
+    "player_eat_meat":     { "nutrition": "+18", "health": "+8", "money": "-4" },
+    "player_contemplation":{ "insight":   "+15", "fatigue": "+8" },
+    "player_calculus":     { "insight":   "+25", "fatigue": "+20", "health": "-8" },
+    "player_prism":        { "insight":   "+20", "fatigue": "+15", "health": "-5" },
+    "player_write":        { "insight":   "+18", "fatigue": "+12", "money": "-2" },
+    "player_rest":         { "health":    "+18", "fatigue": "-25" },
+    "player_correspondence": { "insight": "+12", "money": "+8"  }
+  },
+
+  "formula_patterns": {
+    "insight gain with fatigue modifier":
+      "insight + study_intensity * max(0.2, (1 - fatigue/120)) * max(0.4, nutrition/80) * 0.08 * step_size",
+    "game card equivalent":
+      "if fatigue > 70: insight_gain * 0.5; if nutrition < 30: insight_gain * 0.7",
+    "pattern_type": "P4 (conditional threshold)"
+  },
+
+  "env_card_links": {
+    "env_plague":          { "sim_formula": "plague_pressure", "health": "-8",  "money": "-3" },
+    "env_eyestrain":       { "sim_formula": "eye_strain_accumulate", "fatigue": "+15", "health": "-5" },
+    "env_isolation":       { "sim_formula": "none (social)", "fatigue": "+8",   "insight": "-5" },
+    "env_poverty":         { "sim_formula": "budget constraint", "money": "-5", "health": "-3" },
+    "env_forgot_to_eat":   { "sim_formula": "nutrition_decay spike", "nutrition": "-20", "fatigue": "+10" },
+    "env_academic_rivalry":{ "sim_formula": "none (social)", "insight": "-10",  "health": "-5" }
+  },
+
+  "auto_mappings": {
+    "metadata.name":        "meta.name",
+    "metadata.description": "meta.description",
+    "metadata.tags":        "meta.tags",
+    "variables.health.value":    "initial_state.health",
+    "variables.insight.value":   "initial_state.insight",
+    "variables.nutrition.value": "initial_state.nutrition",
+    "variables.fatigue.value":   "initial_state.fatigue"
+  },
+
+  "manual_overrides": {
+    "turns.total": 12,
+    "turns.time_per_turn": "1 month",
+    "note": "Sim运行1天代表1个月，Game共12回合（1665.9–1667.3）"
+  }
+}
