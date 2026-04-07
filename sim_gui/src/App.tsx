@@ -244,19 +244,15 @@ const AUTHOR = {
 };
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
-function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
+function StatusBar({ backendStatus, model, isSimulating, simProgress, c, t }: {
   backendStatus: 'checking' | 'online' | 'offline';
   model: ModelFile | null;
   isSimulating: boolean; simProgress: number;
   c: typeof C.light;
+  t: (k: string) => string;
 }) {
   const dotColor = backendStatus === 'online' ? '#52c41a'
     : backendStatus === 'offline' ? '#f5222d' : '#faad14';
-
-  const linkStyle: React.CSSProperties = {
-    color: c.textMute, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3,
-    transition: 'color 0.15s',
-  };
 
   return (
     <div style={{
@@ -274,25 +270,30 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c }: {
           background: dotColor,
           boxShadow: backendStatus === 'online' ? `0 0 5px ${dotColor}` : 'none',
         }} />
-        {backendStatus === 'online' ? 'Backend' : backendStatus === 'offline' ? 'Offline' : 'Connecting…'}
+        {backendStatus === 'online' ? t('statusBar.backend') : backendStatus === 'offline' ? t('statusBar.offline') : t('statusBar.connecting')}
       </span>
       <span style={{ opacity: 0.25 }}>│</span>
       <span style={{ color: model ? c.text : c.textMute, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {model ? model.title : '— no model —'}
+        {model ? model.title : t('statusBar.noModel')}
       </span>
       {isSimulating && (
         <>
           <span style={{ opacity: 0.25 }}>│</span>
           <span style={{ color: c.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <LoadingOutlined style={{  }} spin />
-            Simulating {simProgress}%
+            <LoadingOutlined spin />
+            {t('common.loading')} {simProgress}%
           </span>
         </>
       )}
 
+      {/* Center: Disclaimer */}
+      <span style={{ flex: 1, textAlign: 'center', opacity: 0.8, fontSize: 11, fontStyle: 'italic' }}>
+        {t('statusBar.disclaimer')}
+      </span>
+
       {/* Right: license + version */}
-      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ color: c.textMute }}>MIT License</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ color: c.textMute }}>{t('statusBar.license')}</span>
         <span style={{ opacity: 0.2 }}>│</span>
         <span style={{ color: c.textMute }}>{AUTHOR.version}</span>
       </span>
@@ -362,6 +363,7 @@ function App() {
       colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
       colorBorder: isDarkMode ? '#2a2a2a' : '#e0e0e0',
+      fontSizeSM: Math.max(11, fontSize - 3),
     },
     components: {
       Button: { borderRadius: 6, controlHeight: 32 },
@@ -408,7 +410,7 @@ function App() {
         {/* ── Title bar ── */}
         <TitleBar
           page={page} simMode={simMode} onPage={p => setPage(p as any)}
-          isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode(d => !d)}
+          isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode((d: boolean) => !d)}
           language={language} onLanguage={setLanguage}
           c={c} t={t}
           fontSize={fontSize} onFontSize={setFontSize}
@@ -453,6 +455,7 @@ function App() {
           model={confirmedModel}
           isSimulating={isSimulating} simProgress={Math.round(simState.progress)}
           c={c}
+          t={t}
         />
       </div>
 
@@ -469,60 +472,77 @@ function App() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: c.panel, border: `1px solid ${c.border}`,
-              borderRadius: 12, padding: '32px 40px',
-              maxWidth: 380, width: '90%',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              background: c.panel,
+              borderRadius: 14, padding: '32px 40px',
+              maxWidth: 420, width: '90%', maxHeight: '90vh', overflowY: 'auto',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.55)',
               textAlign: 'center',
             }}
           >
             {/* App title */}
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
-              {t('app.title')}
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
+              {t('about.name')}
             </div>
 
             {/* Subtitles */}
-            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.6 }}>
               {t('about.subtitle')}
             </div>
-            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.6 }}>
               {t('about.subtitle2')}
             </div>
 
             {/* Version + license */}
-            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 10, marginBottom: 18 }}>
+            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 8, marginBottom: 24 }}>
               {AUTHOR.version} · MIT License
             </div>
 
-            {/* Divider */}
-            <div style={{ borderTop: `1px solid ${c.border}`, marginBottom: 16 }} />
+            {/* Author block */}
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginBottom: 20 }}>
+              <div style={{ color: c.text, fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{AUTHOR.name}</div>
+              <div style={{ color: c.textMute, fontSize: 13, marginBottom: 16 }}>{t('about.affiliation')}</div>
 
-            {/* Author */}
-            <div style={{ color: c.text, fontWeight: 600, marginBottom: 2 }}>{AUTHOR.name}</div>
-            <div style={{ color: c.textMute, fontSize: 13, marginBottom: 14 }}>{t('about.affiliation')}</div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, color: c.textSec, fontSize: 13 }}>
-              <a href={`mailto:${AUTHOR.email}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <MailOutlined /> {AUTHOR.email}
-              </a>
-              <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <GithubOutlined /> github.com/shenfan19
-              </a>
-              {AUTHOR.homepage ? (
-                <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <HomeOutlined /> {AUTHOR.homepage}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: c.textSec, fontSize: 13 }}>
+                <a href={`mailto:${AUTHOR.email}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MailOutlined /> {AUTHOR.email}
                 </a>
-              ) : (
-                <span style={{ color: c.textMute, opacity: 0.35, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <HomeOutlined /> {t('about.homepage')} —
-                </span>
-              )}
+                <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <GithubOutlined /> github.com/shenfan19
+                </a>
+                {AUTHOR.homepage ? (
+                  <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <HomeOutlined /> {AUTHOR.homepage}
+                  </a>
+                ) : (
+                  <span style={{ color: c.textMute, opacity: 0.3, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <HomeOutlined /> {t('about.homepage')} —
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Disclaimer block */}
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, textAlign: 'left' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: c.textSec, marginBottom: 12 }}>
+                {t('disclaimer.title')}
+              </div>
+              <div style={{ fontSize: 13, color: c.textSec, lineHeight: 1.65, marginBottom: 12 }}>
+                {t('disclaimer.intro')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {Array.isArray(t('disclaimer.points')) && (t('disclaimer.points') as string[]).map((p, i) => (
+                  <div key={i} style={{ fontSize: 13, color: c.textSec, display: 'flex', gap: 10, lineHeight: 1.5 }}>
+                    <span style={{ color: c.primary, flexShrink: 0, marginTop: 1 }}>·</span>
+                    <span>{p}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <button
               onClick={() => setAboutOpen(false)}
               style={{
-                marginTop: 22, padding: '5px 22px', borderRadius: 6,
+                marginTop: 28, padding: '7px 28px', borderRadius: 8,
                 border: `1px solid ${c.border}`, background: 'none',
                 color: c.textMute, cursor: 'pointer', fontSize: 13,
               }}

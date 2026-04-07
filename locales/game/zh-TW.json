@@ -4,5 +4,23 @@
     "game.back": "返回",
     "game.back_to_stories": "返回故事列表",
     "game.go_sim": "返回仿真平台",
-    "game.title": "瑪麗·居里"
+    "game.title": "瑪麗·居里",
+    "about.subtitle": "歷史健康決策模擬 · 卡牌實驗室",
+    "about.affiliation": "中山大學",
+    "about.homepage": "主頁",
+    "about.close": "關閉",
+    "statusBar.disclaimer": "歷史場景僅供教育用途，不構成醫學建議",
+    "disclaimer.title": "Life Matters · 立民 — 歷史場景免責聲明",
+    "disclaimer.intro": "本遊戲中的歷史場景及人物模擬，基於公開學術文獻與歷史記錄，僅用於健康決策教育目的。",
+    "disclaimer.points": [
+        "所有模擬內容不代表對歷史人物的道德評判",
+        "歷史數據經簡化處理，不構成醫學建議",
+        "涉及真實人物的場景均以教育為目的，符合學術合理使用（Fair Use）原則",
+        "遊戲結果為模型推演，非歷史事實重現"
+    ],
+    "disclaimer.academic": "Life Matters is an academic simulation tool for educational purposes only. Historical scenarios are based on publicly available literature and do not represent moral judgments of historical figures.",
+    "disclaimer.confirm": "我已閱讀並同意 / I have read and agree",
+    "disclaimer.skip": "跳過 / Skip",
+    "disclaimer.start": "開始場景 / Start Scenario",
+    "statusBar.license": "MIT 協議"
 }

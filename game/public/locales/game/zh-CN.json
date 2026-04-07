@@ -1,11 +1,12 @@
 {
-    "app.title": "Life Matters·立民",
+    "app.title": "Life Matters",
+    "about.name": "Life Matters (立民)",
     "app.simulator": "仿真平台 ↗",
     "app.simulator.tip": "在新标签页中打开仿真平台",
 
     "select.sort": "排序",
-    "select.sort.time": "时间",
-    "select.sort.region": "地区",
+    "select.sort.time": "历史时期",
+    "select.sort.created": "收录时间",
     "select.sort.difficulty": "难度",
     "select.tag.all": "全部",
     "select.tag.other": "其他",
@@ -50,5 +51,19 @@
     "about.subtitle": "医学与社会学卡牌游戏",
     "about.affiliation": "中山大学",
     "about.homepage": "主页",
-    "about.close": "关闭"
+    "about.close": "关闭",
+
+    "statusBar.disclaimer": "历史场景仅供教育用途，不构成医学建议",
+    "statusBar.license": "MIT 协议",
+
+    "disclaimer.title": "免责声明",
+    "disclaimer.intro": "本游戏中的历史场景及人物模拟，基于公开学术文献与历史记录，仅用于健康决策教育目的。",
+    "disclaimer.points": [
+        "所有模拟内容不代表对历史人物的道德评判",
+        "历史数据经简化处理，不构成医学建议",
+        "涉及真实人物的场景均以教育为目的，符合学术合理使用（Fair Use）原则",
+        "游戏结果为模型推演，非历史事实重现"
+    ],
+    "disclaimer.confirm": "我已了解",
+    "disclaimer.start": "开始故事"
 }

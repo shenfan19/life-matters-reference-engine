@@ -2,8 +2,8 @@ meta:
   name: "马丁·路德·金：我有一个梦想"
   description: "1955年，蒙哥马利公共汽车抵制运动点燃了美国民权运动的火炬。身为浸信会牧师的马丁·路德·金以非暴力抵抗为武器，在FBI监控、暴力威胁与政治压力中，带领美国黑人为平等权利而战。"
   difficulty: hard
-  period: "1955–1965"
-  location: "美国南部"
+  period_start: "1955"
+  period_end: "1965"
   tags: [Politics, Society, 20th Century, History]
   country: US
   author: ""

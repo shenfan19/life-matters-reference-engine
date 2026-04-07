@@ -7,8 +7,8 @@ meta:
     '
   difficulty: hard
   tags: [History, War, Early 20th Century]
-  period: 1916-07-01 – 1916-11-18 CE
-  location: 法国索姆河前线，皮卡第大区
+  period_start: "1916"
+  period_end: "1916"
   country: France
   science_note: "本场景以索姆河战役历史数据为参数来源。 每回合约代表1周时间（7月-10月间的战斗节奏）。 伤亡事件的概率来自实际战斗记录（英军日均伤亡率3-8%/前线单位/天）。\
     \ 物资短缺基于英军后勤日志中的口粮分配记录（战时Archive, WO 95/…, PRO）。 来源：Keegan J (1998) The First\

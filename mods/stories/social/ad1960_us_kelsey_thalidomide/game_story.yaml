@@ -2,8 +2,8 @@ meta:
   name: "凯尔西：守护生命的守门人"
   description: "1960年，弗朗西斯·凯尔西加入FDA，接手了她的第一个案例——沙利度胺（反应停）的上市申请。药企的压力如潮水般涌来，但她坚持要求更多安全证据。在这场与时间、权力和利益的博弈中，科学良知是唯一的武器。"
   difficulty: hard
-  period: "1960–1962"
-  location: "华盛顿特区"
+  period_start: "1960"
+  period_end: "1962"
   tags: [Medicine, Women, 20th Century, Public Health]
   country: US
   author: ""

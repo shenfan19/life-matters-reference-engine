@@ -1,5 +1,6 @@
 {
-    "app.title": "Life Matters·立民",
+    "app.title": "Life Matters",
+    "about.name": "Life Matters (立民)",
     "app.subtitle": "生命体征轨迹仿真与优化平台",
     "menu.calculator": "计算工具",
     "menu.loader": "模型加载",
@@ -103,5 +104,21 @@
     "about.subtitle2": "参数优化平台",
     "about.affiliation": "中山大学",
     "about.homepage": "主页",
-    "about.close": "关闭"
+    "about.close": "关闭",
+
+    "statusBar.disclaimer": "模拟结果不构成医学建议",
+    "statusBar.backend": "后台",
+    "statusBar.offline": "离线",
+    "statusBar.connecting": "连接中...",
+    "statusBar.license": "MIT 协议",
+    "statusBar.noModel": "— 未选择模型 —",
+
+    "disclaimer.title": "免责声明",
+    "disclaimer.intro": "本工具中的历史场景及人物模拟，基于公开学术文献与历史记录，仅用于健康决策教育目的。",
+    "disclaimer.points": [
+        "所有模拟内容不代表对历史人物的道德评判",
+        "历史数据经简化处理，不构成医学建议",
+        "涉及真实人物的场景均以教育为目的，符合学术合理使用（Fair Use）原则",
+        "模拟结果为模型推演，非历史事实重现"
+    ]
 }

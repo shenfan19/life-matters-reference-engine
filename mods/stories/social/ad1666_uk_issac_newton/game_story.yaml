@@ -3,6 +3,8 @@ meta:
   description: "1665年，鼠疫席卷英格兰，剑桥大学关闭，年轻的牛顿被迫回到乡间的伍尔斯索普庄园。与世隔绝的两年，他独自推导出了微积分、发现了万有引力、拆解了光的秘密。在困境中，一个人改变了人类对宇宙的认知。"
   difficulty: medium
   tags: [Science, 17th Century]
+  period_start: "1665"
+  period_end: "1667"
   country: UK
   author: ""
   version: "0.1"

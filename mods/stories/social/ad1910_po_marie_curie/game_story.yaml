@@ -3,6 +3,8 @@ meta:
   description: "1898年巴黎，居里夫人在简陋的棚屋里提炼放射性物质。辐射正在侵蚀她的身体，学术界的偏见阻碍着她的研究。用智慧和意志，完成放射性研究的历史性突破。"
   difficulty: hard
   tags: [Science, Women, 19th Century]
+  period_start: "1898"
+  period_end: "1906"
   country: France
   author: ""
   version: "0.1"

@@ -1,6 +1,6 @@
 // game/src/components/StorySelect.tsx
 import { useState, useEffect, useMemo } from 'react';
-import { SunOutlined, MoonOutlined, AppstoreOutlined, UnorderedListOutlined, LinkOutlined, CheckOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, AppstoreOutlined, UnorderedListOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import MusicBar from './MusicBar';
 import AboutModal, { AUTHOR } from './AboutModal';
 import { useI18n, type Language } from '../core/i18n';
@@ -33,18 +33,19 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
 interface StoryCard {
   path: string;
   title: string;
-  period: string;
-  location: string;
+  periodStart: string;
+  periodEnd: string;
   country: string;
   difficulty: string;
   description: string;
   tags: string[];
   turns: number;
+  createdOn: string;
   cardBackFate?: string;
   cardBackPlayer?: string;
 }
 
-type SortKey = 'period' | 'location' | 'difficulty';
+type SortKey = 'period' | 'created' | 'difficulty';
 type ViewMode = 'card' | 'list';
 
 // ─── Tag group definitions ────────────────────────────────────────────────────
@@ -173,6 +174,18 @@ function extractYear(period: string): number {
   return m ? parseInt(m[0]) : 9999;
 }
 
+function formatPeriod(start: string, end: string): string {
+  if (!start) return '';
+  if (!end || end === start) return start;
+  return `${start}–${end}`;
+}
+
+function shareStory(storyPath: string) {
+  const clean = storyPath.replace(/^mods\//, '');
+  const url = `${window.location.origin}${window.location.pathname}?story=${clean}`;
+  navigator.clipboard.writeText(url).catch(() => {});
+}
+
 // ─── Font size selector ───────────────────────────────────────────────────────
 
 function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: ReturnType<typeof getC> }) {
@@ -220,6 +233,7 @@ export default function StorySelect({
   const [stories, setStories] = useState<StoryCard[]>([]);
   const [loading, setLoading]  = useState(true);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
 
   // ── Load stories ────────────────────────────────────────────────────────────
 
@@ -233,7 +247,7 @@ export default function StorySelect({
         const loaded = await Promise.all(cleanPaths.map(async cleanPath => {
           // storyPath keeps the mods/ prefix convention expected by CardGame
           const path = `mods/${cleanPath}`;
-          const base: StoryCard = { path, title: path, period: '', location: '', country: '', difficulty: 'medium', description: '', tags: [], turns: 15 };
+          const base: StoryCard = { path, title: path, periodStart: '', periodEnd: '', country: '', difficulty: 'medium', description: '', tags: [], turns: 15, createdOn: '' };
           try {
             const d = await fetchYaml(cleanPath);
             if (d?.meta) {
@@ -243,7 +257,7 @@ export default function StorySelect({
               const toAssetUrl = (rel?: string) => rel ? `/${storyDir}/${rel}` : undefined;
               const cardBackFate   = toAssetUrl(d.card_back_fate   ?? m.card_back_fate);
               const cardBackPlayer = toAssetUrl(d.card_back_player ?? m.card_back_player);
-              return { ...base, title: m.name ?? base.title, period: m.period ?? '', location: m.location ?? '', country: m.country ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns, cardBackFate, cardBackPlayer };
+              return { ...base, title: m.name ?? base.title, periodStart: m.period_start ?? '', periodEnd: m.period_end ?? '', country: m.country ?? '', difficulty: m.difficulty ?? 'medium', description: m.description ?? '', tags: m.tags ?? [], turns: maxTurns, createdOn: String(m.created_on ?? ''), cardBackFate, cardBackPlayer };
             }
           } catch {}
           return base;
@@ -323,13 +337,14 @@ export default function StorySelect({
         key === '_country' ? tags.includes(s.country) : tags.some(t => s.tags.includes(t))
       ));
     list.sort((a, b) => {
-      if (sortBy === 'period')     return extractYear(a.period) - extractYear(b.period);
-      if (sortBy === 'location')   return (a.location || '').localeCompare(b.location || '', 'zh');
-      if (sortBy === 'difficulty') return (DIFF[a.difficulty]?.order ?? 1) - (DIFF[b.difficulty]?.order ?? 1);
-      return 0;
+      let cmp = 0;
+      if (sortBy === 'period')     cmp = extractYear(a.periodStart) - extractYear(b.periodStart);
+      if (sortBy === 'created')    cmp = (a.createdOn || '').localeCompare(b.createdOn || '');
+      if (sortBy === 'difficulty') cmp = (DIFF[a.difficulty]?.order ?? 1) - (DIFF[b.difficulty]?.order ?? 1);
+      return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [stories, sortBy, tagFilter, allTags, allCountries]);
+  }, [stories, sortBy, sortAsc, tagFilter, allTags, allCountries]);
 
   // ── Filter helpers ──────────────────────────────────────────────────────────
 
@@ -497,7 +512,7 @@ export default function StorySelect({
       <div style={{ flexShrink: 0, background: c.toolbarBg, borderBottom: `1px solid ${c.border}`, padding: '5px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Sort */}
         <span style={{ color: c.textMute, fontSize: fs.sm, flexShrink: 0 }}>{t('select.sort')}</span>
-        {([['period', 'select.sort.time'], ['location', 'select.sort.region'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
+        {([['period', 'select.sort.time'], ['created', 'select.sort.created'], ['difficulty', 'select.sort.difficulty']] as [SortKey, string][]).map(([key, tkey]) => (
           <button key={key} onClick={() => setSortBy(key)} style={{
             padding: '2px 9px', borderRadius: 5, fontSize: fs.sm,
             border: `1px solid ${sortBy === key ? c.activeSort : c.border}`,
@@ -506,6 +521,11 @@ export default function StorySelect({
             cursor: 'pointer', fontWeight: sortBy === key ? 600 : 400, transition: 'all 0.12s',
           }}>{t(tkey)}</button>
         ))}
+        <button onClick={() => setSortAsc(v => !v)} title={sortAsc ? '升序' : '降序'} style={{
+          padding: '2px 8px', borderRadius: 5, fontSize: fs.sm,
+          border: `1px solid ${c.border}`, background: 'transparent',
+          color: c.textMute, cursor: 'pointer', transition: 'all 0.12s', lineHeight: 1,
+        }}>{sortAsc ? '↑' : '↓'}</button>
 
         <div style={{ flex: 1 }} />
 
@@ -570,8 +590,11 @@ export default function StorySelect({
         fontSize: fs.xs, userSelect: 'none',
       }}>
         <span>{displayed.length} {t('select.scenarios_unit')}</span>
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span>MIT License</span>
+        <span style={{ flex: 1, textAlign: 'center', opacity: 0.8, fontSize: fs.xs - 1, fontStyle: 'italic', padding: '0 20px' }}>
+          {typeof t('statusBar.disclaimer') === 'string' ? t('statusBar.disclaimer') : ''}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>{t('statusBar.license')}</span>
           <span style={{ opacity: 0.2 }}>│</span>
           <span>{AUTHOR.version}</span>
         </span>
@@ -584,15 +607,8 @@ export default function StorySelect({
 
 type FS = ReturnType<typeof makeFontScale>;
 
-function shareStory(storyPath: string) {
-  const clean = storyPath.replace(/^mods\//, '');
-  const url = `${window.location.origin}${window.location.pathname}?story=${clean}`;
-  navigator.clipboard.writeText(url).catch(() => {});
-}
-
 function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string; language: string }) {
   const [hov, setHov] = useState(false);
-  const [copied, setCopied] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: { en: story.difficulty }, color: '#8c8c8c', order: 1 };
 
   return (
@@ -624,9 +640,9 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
           </span>
         </div>
 
-        {(story.period || story.location) && (
+        {(story.periodStart || story.country) && (
           <div style={{ color: c.textMute, marginBottom: 5, fontFamily: 'monospace', fontSize: fs.xs, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {[story.period, story.location].filter(Boolean).join(' · ')}
+            {[formatPeriod(story.periodStart, story.periodEnd), story.country].filter(Boolean).join(' · ')}
           </div>
         )}
 
@@ -643,13 +659,6 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
           <span style={{ marginLeft: 'auto', color: c.textMute, fontFamily: 'monospace', fontSize: fs.xs }}>
             {story.turns} {turnsLabel}
           </span>
-          <button
-            onClick={e => { e.stopPropagation(); shareStory(story.path); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
-            title="复制分享链接"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: copied ? c.primary : c.textMute, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-          >
-            {copied ? <CheckOutlined /> : <LinkOutlined />}
-          </button>
         </div>
       </div>
 
@@ -672,7 +681,6 @@ function CardItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
 
 function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: { story: StoryCard; c: any; isDarkMode: boolean; fs: FS; onSelect: () => void; turnsLabel: string; language: string }) {
   const [hov, setHov] = useState(false);
-  const [copied, setCopied] = useState(false);
   const diff = DIFF[story.difficulty] ?? { label: { en: story.difficulty }, color: '#8c8c8c', order: 1 };
 
   return (
@@ -696,9 +704,9 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
         <div style={{ fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: fs.md }}>
           {story.title}
         </div>
-        {(story.period || story.location) && (
+        {(story.periodStart || story.country) && (
           <div style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-            {[story.period, story.location].filter(Boolean).join(' · ')}
+            {[formatPeriod(story.periodStart, story.periodEnd), story.country].filter(Boolean).join(' · ')}
           </div>
         )}
       </div>
@@ -717,7 +725,7 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
         ))}
       </div>
 
-      {/* Col 4: difficulty + turns + share */}
+      {/* Col 4: difficulty + turns */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ padding: '1px 7px', borderRadius: 5, background: diff.color + '22', color: diff.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
           {diff.label[language] ?? diff.label['en']}
@@ -725,13 +733,6 @@ function ListItem({ story, c, isDarkMode, fs, onSelect, turnsLabel, language }: 
         <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {story.turns} {turnsLabel}
         </span>
-        <button
-          onClick={e => { e.stopPropagation(); shareStory(story.path); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
-          title="复制分享链接"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: copied ? c.primary : c.textMute, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-        >
-          {copied ? <CheckOutlined /> : <LinkOutlined />}
-        </button>
       </div>
     </div>
   );

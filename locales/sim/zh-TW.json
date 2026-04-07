@@ -22,5 +22,25 @@
     "common.light_mode": "切換暗黑模式",
     "common.language": "切換語言",
     "loader.library": "模型庫",
-    "loader.story": "故事集"
+    "loader.story": "故事集",
+    "statusBar.disclaimer": "模擬結果不構成醫學建議",
+    "statusBar.backend": "後台",
+    "statusBar.offline": "離線",
+    "statusBar.connecting": "連接中...",
+    "statusBar.license": "MIT 協議",
+    "statusBar.noModel": "— 未選擇模型 —",
+    "about.subtitle": "生命體徵軌跡仿真與優化平台",
+    "about.subtitle2": "生命科學與生物醫學工程",
+    "about.affiliation": "中山大學",
+    "about.homepage": "主頁",
+    "about.close": "關閉",
+    "disclaimer.title": "Life Matters · 立民 — 歷史場景免責聲明",
+    "disclaimer.intro": "本工具中的歷史場景及人物模擬，基於公開學術文獻與歷史記錄，僅用於健康決策教育目的。",
+    "disclaimer.points": [
+        "所有模擬內容不代表對歷史人物的道德評判",
+        "歷史數據經簡化處理，不構成醫學建議",
+        "涉及真實人物的場景均以教育為目的，符合學術合理使用（Fair Use）原則",
+        "模擬結果為模型推演，非歷史事實重現"
+    ],
+    "disclaimer.academic": "Life Matters is an academic simulation tool for educational purposes only. Historical scenarios are based on publicly available literature and do not represent moral judgments of historical figures."
 }

@@ -5,7 +5,8 @@ export type Language = 'en' | 'zh-CN' | 'zh-TW' | 'fr';
 interface I18nContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
-    t: (key: string) => string;
+    t: (key: string) => any;
+    isLoaded: boolean;
     version: number;
 }
 
@@ -30,7 +31,7 @@ export const I18nProvider = ({ children, section }: { children: ReactNode; secti
         return finalLang;
     });
 
-    const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [translations, setTranslations] = useState<Record<string, any>>({});
     const [isLoaded, setIsLoaded] = useState(false);
     const [version, setVersion] = useState(0); // Force re-render trigger
 
@@ -96,7 +97,7 @@ export const I18nProvider = ({ children, section }: { children: ReactNode; secti
     };
 
     return (
-        <I18nContext.Provider value={{ language, setLanguage, t, version }}>
+        <I18nContext.Provider value={{ language, setLanguage, t, isLoaded, version }}>
             {children}
         </I18nContext.Provider>
     );

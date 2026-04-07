@@ -3,9 +3,12 @@ meta:
   description: 1346年，鼠疫沿丝绸之路抵达欧洲。三年内，三分之一的欧洲人口消亡。作为一个中世纪小镇的领导者，你面临的每一个决策都有代价——隔离还是保持贸易？祈祷还是疏散？这里没有正确答案，只有权衡。
   difficulty: medium
   tags: [History, Epidemic, Medieval]
-  period: 1346–1353 CE
-  location: 欧洲中部小镇
+  period_start: "1346"
+  period_end: "1353"
   country: Europe
+  card_back_fate: ""
+  card_back_player: ""
+  music: []
   science_note: 本场景基于历史流行病学SIR模型（R₀≈2.5）的回合制离散化简化。每回合约代表两周时间，疫情烈度对应感染率，保留了传播–死亡–社会应激的核心动力学，舍弃了空间扩散维度。
   version: '0.1'
   created_on: 2026-03-23

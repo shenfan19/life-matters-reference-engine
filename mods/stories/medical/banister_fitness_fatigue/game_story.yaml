@@ -4,7 +4,13 @@ meta:
     表现 = 基线 + k₁·适应 - k₂·疲劳。 核心冲突：高训练负荷快速积累适应，但同时积累的疲劳会掩盖表现提升甚至造成过度训练。 最优训练分配（强度×频率×恢复）不是直觉可得的。
     推荐作为Paper 1的验证案例（
   difficulty: easy
+  period_start: "2003"
+  period_end: ""
+  country: World
   tags: [Science, Sports]
+  card_back_fate: ""
+  card_back_player: ""
+  music: []
   science_note: 'Banister双分量适应-疲劳模型（场景B3）：量化运动训练对运动表现的动态影响。 适应分量（Fitness）与疲劳分量（Fatigue）均由训练负荷驱动，但以不同时间常数衰减。
     表现 = 基线 + k₁·适应 - k₂·疲劳。 核心冲突：高训练负荷快速积累适应，但同时积累的疲劳会掩盖表现提升甚至造成过度训练。 最优训练分配（强度×频率×恢复）不是直觉可得的。
     推荐作为Paper 1的验证案例（有经典模型对照，抗质疑强度⭐⭐⭐⭐⭐）。

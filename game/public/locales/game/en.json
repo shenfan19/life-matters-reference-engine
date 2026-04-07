@@ -1,11 +1,12 @@
 {
     "app.title": "Life Matters",
+    "about.name": "Life Matters",
     "app.simulator": "Simulator ↗",
     "app.simulator.tip": "Open the medical simulator in a new tab",
 
     "select.sort": "Sort",
-    "select.sort.time": "Time",
-    "select.sort.region": "Region",
+    "select.sort.time": "Period",
+    "select.sort.created": "Added",
     "select.sort.difficulty": "Difficulty",
     "select.tag.all": "All",
     "select.tag.other": "Other",
@@ -49,5 +50,19 @@
     "about.subtitle": "Medical & Social Card Game",
     "about.affiliation": "Sun Yat-Sen University",
     "about.homepage": "Homepage",
-    "about.close": "Close"
+    "about.close": "Close",
+
+    "statusBar.disclaimer": "Historical scenarios are for educational purposes only and do not constitute medical advice",
+    "statusBar.license": "MIT License",
+
+    "disclaimer.title": "Disclaimer",
+    "disclaimer.intro": "The historical scenarios and character simulations in this game are based on public academic literature and historical records, intended solely for health decision-making education.",
+    "disclaimer.points": [
+        "Simulations do not represent moral judgments of historical figures.",
+        "Historical data is simplified and does not constitute medical advice.",
+        "Scenarios involving real persons are for educational purposes, adhering to Fair Use principles.",
+        "Game results are model projections, not factual historical reconstructions."
+    ],
+    "disclaimer.confirm": "I Understand",
+    "disclaimer.start": "Start Story"
 }

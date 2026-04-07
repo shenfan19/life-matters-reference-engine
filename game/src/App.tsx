@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { ConfigProvider, theme } from 'antd';
 import StorySelect from './components/StorySelect';
 import CardGame from './components/CardGame';
+import { useI18n } from './core/i18n';
 
 type ViewMode = 'card' | 'list';
-type SortKey = 'period' | 'location' | 'difficulty';
+type SortKey = 'period' | 'created' | 'difficulty';
 
 const APP_PERSIST_KEY  = 'game_persist';
 const LM_FONT_KEY      = 'lm_font_size';   // shared with sim
+const DISC_ACCEPT_KEY  = 'game_disclaimer_accepted';
 
 function readAppPersist(): Record<string, any> {
   try { return JSON.parse(localStorage.getItem(APP_PERSIST_KEY) ?? '{}'); }
@@ -33,6 +35,11 @@ function App() {
   const [fontSize,  setFontSize]    = useState<number>(
     Number(localStorage.getItem(LM_FONT_KEY)) || saved.fontSize || 16
   );
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean>(
+    localStorage.getItem(DISC_ACCEPT_KEY) === 'true'
+  );
+
+  const { t, isLoaded } = useI18n();
 
   // Lifted select-screen state — persists when returning from game
   const [viewMode,   setViewMode]   = useState<ViewMode>(saved.viewMode ?? 'card');
@@ -81,8 +88,77 @@ function App() {
     },
   };
 
+  const fs = {
+    xs: Math.round(fontSize * 0.75),
+    sm: Math.round(fontSize * 0.875),
+    md: fontSize,
+    lg: Math.round(fontSize * 1.125),
+    xl: Math.round(fontSize * 1.25),
+  };
+
+  const c = isDarkMode ? {
+    bg: '#111111', panel: '#1a1a1a', border: '#2a2a2a',
+    text: '#ffffff', textSec: '#b0b0b0', textMute: '#666666',
+    primary: '#52c41a',
+  } : {
+    bg: '#f5f5f5', panel: '#ffffff', border: '#e0e0e0',
+    text: '#000000', textSec: '#444444', textMute: '#888888',
+    primary: '#007A33',
+  };
+
   return (
     <ConfigProvider theme={antTheme}>
+      {isLoaded && !disclaimerAccepted && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20
+        }}>
+          <div style={{
+            background: c.panel, borderRadius: 14,
+            maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto',
+            padding: '40px 48px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+            display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ fontSize: fs.lg, fontWeight: 700, color: c.text, textAlign: 'center', marginBottom: 16, fontFamily: 'Georgia, serif' }}>
+              {t('disclaimer.title')}
+            </div>
+
+            <div style={{ color: c.textSec, lineHeight: 1.7, marginBottom: 20, fontSize: fs.md }}>
+              {t('disclaimer.intro')}
+            </div>
+
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginBottom: 28 }}>
+              {Array.isArray(t('disclaimer.points')) && (t('disclaimer.points') as string[]).map((point, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 14, color: c.textSec, fontSize: fs.sm, lineHeight: 1.6 }}>
+                  <span style={{ color: c.primary, flexShrink: 0, marginTop: 2 }}>·</span>
+                  <span>{point}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                localStorage.setItem(DISC_ACCEPT_KEY, 'true');
+                setDisclaimerAccepted(true);
+              }}
+              style={{
+                alignSelf: 'center', padding: '10px 32px', borderRadius: 8,
+                background: c.primary, color: '#fff', border: 'none',
+                fontSize: fs.md, fontWeight: 700, cursor: 'pointer',
+                boxShadow: `0 4px 14px ${c.primary}44`,
+                transition: 'transform 0.2s'
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {t('disclaimer.confirm')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {view === 'select' ? (
         <StorySelect
           isDarkMode={isDarkMode}

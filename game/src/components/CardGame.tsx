@@ -5,7 +5,7 @@ import { useI18n } from '../core/i18n';
 import { loadStoryOverlay, mergeStringOverlay } from '../core/storyI18n';
 import { loadNewFormatStory } from '../core/newFormatLoader';
 import { fetchYaml } from '../core/fetchYaml';
-import { SunOutlined, MoonOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, InfoCircleOutlined, LinkOutlined, CheckOutlined } from '@ant-design/icons';
 import MusicBar from './MusicBar';
 import AboutModal, { AUTHOR } from './AboutModal';
 import type { Language } from '../core/i18n';
@@ -74,8 +74,8 @@ interface EnvCard {
 interface RevealedEnvCard { card: EnvCard; triggered: boolean; isPassive?: boolean; }
 
 interface GameStory {
-  meta: { id: string; name: string; period?: string; location?: string;
-          description: string; science_note?: string; tags?: string[]; };
+  meta: { id: string; name: string; period_start?: string; period_end?: string;
+          country?: string; description: string; science_note?: string; tags?: string[]; };
   variables: Record<string, VarDef>;
   goalVariables: string[];
   game: { plays_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; };
@@ -83,9 +83,9 @@ interface GameStory {
   win_conditions?: Array<{ condition: string; message: string }>;
   player_cards: PlayerCard[];
   environment_cards: EnvCard[];
-  cardBackFate?: string;
-  cardBackPlayer?: string;
-  music?: string[];
+  cardBackFate: string;
+  cardBackPlayer: string;
+  music: string[];
 }
 interface LogEntry { text: string; type: 'pos' | 'neg' | 'neutral'; turn: number; }
 
@@ -348,11 +348,13 @@ function DeckPile({ label, count, total, faceUp, accentColor, c, fs, cards, vars
             alignItems: 'center', justifyContent: 'center',
           }}>
             {i === 0 && faceUp && (cardBack
-              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7, filter: 'grayscale(1)', opacity: 0.55 }} />
+              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7, filter: 'grayscale(1)', opacity: 0.55 }}
+                  onError={e => { if (!e.currentTarget.src.includes('assets_common')) e.currentTarget.src = '/stories/assets_common/card_back_fate.png'; }} />
               : <span style={{ color: accentColor ?? c.textMute, fontSize: fs.sm, fontWeight: 700 }}>弃牌</span>
             )}
             {i === 0 && !faceUp && (cardBack
-              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }} />
+              ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }}
+                  onError={e => { if (!e.currentTarget.src.includes('assets_common')) e.currentTarget.src = '/stories/assets_common/card_back_fate.png'; }} />
               : <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.18 }}>?</span>
             )}
           </div>
@@ -416,16 +418,15 @@ function DeckPile({ label, count, total, faceUp, accentColor, c, fs, cards, vars
 // ─── DashedSlot — empty card slot placeholder ─────────────────────────────────
 
 function DashedSlot({ c, variant = 'keep' }: { c: ReturnType<typeof getC>; variant?: 'play' | 'keep' }) {
-  const bg     = variant === 'play' ? 'rgba(250,173,20,0.07)' : 'rgba(22,119,255,0.06)';
-  const border = variant === 'play' ? 'rgba(250,173,20,0.35)'  : 'rgba(22,119,255,0.28)';
+  const accent = variant === 'play' ? '#faad14' : '#1677ff';
   return (
     <div style={{
       width: CARD_W, height: CARD_H, flexShrink: 0, borderRadius: 8,
-      border: `1.5px dashed ${border}`,
-      background: bg,
+      border: `1.5px dashed ${accent}55`,
+      background: accent + '11',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <span style={{ color: variant === 'play' ? 'rgba(250,173,20,0.4)' : 'rgba(22,119,255,0.35)', fontSize: 11, fontFamily: 'monospace' }}>
+      <span style={{ color: accent + '66', fontSize: 11, fontFamily: 'monospace' }}>
         {variant === 'play' ? '打出' : '保留'}
       </span>
     </div>
@@ -443,7 +444,8 @@ function FaceDownCard({ c, fs, cardBack }: { c: ReturnType<typeof getC>; fs: FS;
       overflow: 'hidden',
     }}>
       {cardBack
-        ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }} />
+        ? <img src={cardBack} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 7 }}
+            onError={e => { if (!e.currentTarget.src.includes('assets_common')) e.currentTarget.src = '/stories/assets_common/card_back_fate.png'; }} />
         : <span style={{ color: c.textMute, fontSize: fs.xl, opacity: 0.2 }}>?</span>
       }
     </div>
@@ -622,10 +624,27 @@ function GameCard({
 
 interface Props { storyPath: string; isDarkMode: boolean; onToggleDark: () => void; onBack: () => void; fontSize: number; onFontSize: (n: number) => void; }
 
+function ShareButton({ storyPath, c, fs }: { storyPath: string; c: any; fs: any }) {
+  const [copied, setCopied] = useState(false);
+  const handleShare = () => {
+    const clean = storyPath.replace(/^mods\//, '');
+    const url = `${window.location.origin}${window.location.pathname}?story=${clean}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <button onClick={handleShare} title="复制分享链接"
+      style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: copied ? c.primary : c.textMute, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}>
+      {copied ? <CheckOutlined /> : <LinkOutlined />}
+    </button>
+  );
+}
+
 export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, fontSize, onFontSize }: Props) {
   const c = getC(isDarkMode);
   const fs = makeFontScale(fontSize);
-  const { language, setLanguage, t } = useI18n();
+  const { language, setLanguage, t, isLoaded } = useI18n();
   const langAtLoad = useRef(language);
 
   const [story, setStory]     = useState<GameStory | null>(null);
@@ -664,6 +683,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [boardHoveredEffects, setBoardHoveredEffects] = useState<EffectDef[]>([]);
   const [totalDeltaMode, setTotalDeltaMode]           = useState(false);
   const [aboutOpen, setAboutOpen]                     = useState(false);
+  const [showScenarioIntro, setShowScenarioIntro]     = useState(false);
 
   // Helper: negate all deltas
   const negate = (effs: EffectDef[]): EffectDef[] => effs.map(e => ({ ...e, delta: -e.delta }));
@@ -781,7 +801,14 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         }
       } catch (e: any) {
         setError(e.message ?? t('game.load_failed'));
-      } finally { setLoading(false); }
+      } finally { 
+        setLoading(false); 
+        // Only show scenario intro if not previously seen for this specific story
+        const viewed = JSON.parse(localStorage.getItem('game_viewed_stories') ?? '[]');
+        if (!viewed.includes(storyPath)) {
+          setShowScenarioIntro(true);
+        }
+      }
     };
     load();
   }, [storyPath]);
@@ -1042,6 +1069,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         {story.music && story.music.length > 0 && (
           <MusicBar tracks={story.music} c={c} fs={fs} />
         )}
+        <ShareButton storyPath={storyPath} c={c} fs={fs} />
         <button onClick={() => { clearGameState(); window.location.reload(); }}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: c.textMute, fontSize: fs.sm }}>
           {t('game.retry')}
@@ -1411,6 +1439,68 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           <div style={{ flex: 1 }} />
         </div>
 
+        {/* ── Scenario Intro / Disclaimer Overlay ── */}
+        {isLoaded && showScenarioIntro && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+          }}>
+            <div style={{
+              background: c.panel, borderRadius: 16,
+              maxWidth: 520, width: '90%', maxHeight: '90vh', overflowY: 'auto',
+              padding: '40px 48px',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+              display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Story name */}
+              <div style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, marginBottom: 6, fontFamily: 'Georgia, serif', textAlign: 'center' }}>
+                {story.meta.name}
+              </div>
+
+              {/* Disclaimer label */}
+              <div style={{ fontSize: fs.md, fontWeight: 700, color: c.textSec, textAlign: 'center', marginBottom: 20, marginTop: 4 }}>
+                {t('disclaimer.title')}
+              </div>
+
+              {/* Intro */}
+              <div style={{ color: c.textSec, fontSize: fs.sm, lineHeight: 1.7, marginBottom: 20 }}>
+                {t('disclaimer.intro')}
+              </div>
+
+              {/* Points */}
+              <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 18, marginBottom: 28 }}>
+                {Array.isArray(t('disclaimer.points')) && (t('disclaimer.points') as string[]).map((p, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12, color: c.textSec, fontSize: fs.sm, lineHeight: 1.6 }}>
+                    <span style={{ color: c.primary, flexShrink: 0, marginTop: 2 }}>·</span>
+                    <span>{p}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  const viewed = JSON.parse(localStorage.getItem('game_viewed_stories') ?? '[]');
+                  if (!viewed.includes(storyPath)) {
+                    viewed.push(storyPath);
+                    localStorage.setItem('game_viewed_stories', JSON.stringify(viewed));
+                  }
+                  setShowScenarioIntro(false);
+                }}
+                style={{
+                  alignSelf: 'center', padding: '11px 48px', borderRadius: 10,
+                  background: c.primary, color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                  fontSize: fs.md, fontWeight: 700, minWidth: 160,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {t('disclaimer.start')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>{/* end body */}
 
       {/* ── Status bar ── */}
@@ -1423,16 +1513,22 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         fontSize: fs.xs, userSelect: 'none',
       }}>
         <span>{story.meta.name}</span>
-        {story.meta.period && <>
+        {story.meta.period_start && <>
           <span style={{ opacity: 0.25 }}>│</span>
-          <span>{story.meta.period}</span>
+          <span>{story.meta.period_end && story.meta.period_end !== story.meta.period_start
+            ? `${story.meta.period_start}–${story.meta.period_end}`
+            : story.meta.period_start}
+          </span>
         </>}
-        {story.meta.location && <>
+        {story.meta.country && <>
           <span style={{ opacity: 0.25 }}>│</span>
-          <span>{story.meta.location}</span>
+          <span>{story.meta.country}</span>
         </>}
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span>MIT License</span>
+        <span style={{ flex: 1, textAlign: 'center', opacity: 0.8, fontSize: fs.xs - 1, fontStyle: 'italic', padding: '0 20px' }}>
+          {typeof t('statusBar.disclaimer') === 'string' ? t('statusBar.disclaimer') : ''}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>{t('statusBar.license')}</span>
           <span style={{ opacity: 0.2 }}>│</span>
           <span>{AUTHOR.version}</span>
         </span>

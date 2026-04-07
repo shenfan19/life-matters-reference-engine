@@ -158,19 +158,20 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
   }
 
   // ── Card backs — accept at top level OR nested under meta: ──────────────
-  const toAssetUrl = (rel: string | undefined) =>
-    rel ? `/${storyDir}/${rel}` : undefined;
+  const COMMON = '/stories/assets_common';
+  const toAssetUrl = (rel: string | undefined, commonFile: string) =>
+    rel ? `/${storyDir}/${rel}` : `${COMMON}/${commonFile}`;
   const cardBackFateRaw   = rawStory.card_back_fate   ?? rawStory.meta?.card_back_fate;
   const cardBackPlayerRaw = rawStory.card_back_player ?? rawStory.meta?.card_back_player;
 
   // ── Music tracks — accept string or array, at top level OR under meta: ───
   const rawMusic = rawStory.music ?? rawStory.meta?.music;
   const musicList: string[] = rawMusic == null ? []
-    : Array.isArray(rawMusic) ? rawMusic
+    : Array.isArray(rawMusic) ? rawMusic.filter(Boolean)
     : [String(rawMusic)];
-  const music: string[] | undefined = musicList.length > 0
+  const music: string[] = musicList.length > 0
     ? musicList.map((p: string) => `/${storyDir}/${p}`)
-    : undefined;
+    : [`${COMMON}/music.mid`];
 
   // ── Assemble GameStory ──────────────────────────────────────────────────────
   return {
@@ -195,8 +196,8 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     win_conditions: wins,
     player_cards: playerCards,
     environment_cards: envCards,
-    cardBackFate: toAssetUrl(cardBackFateRaw),
-    cardBackPlayer: toAssetUrl(cardBackPlayerRaw),
+    cardBackFate: toAssetUrl(cardBackFateRaw, 'card_back_fate.png'),
+    cardBackPlayer: toAssetUrl(cardBackPlayerRaw, 'card_back_player.png'),
     music,
   };
 }
