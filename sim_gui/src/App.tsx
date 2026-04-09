@@ -3,7 +3,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined, ToolOutlined, SwapOutlined,
-  GithubOutlined, MailOutlined, InfoCircleOutlined, HomeOutlined,
+  GithubOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -503,21 +503,9 @@ function App() {
               <div style={{ color: c.textMute, fontSize: 13, marginBottom: 16 }}>{t('about.affiliation')}</div>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: c.textSec, fontSize: 13 }}>
-                <a href={`mailto:${AUTHOR.email}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <MailOutlined /> {AUTHOR.email}
-                </a>
                 <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <GithubOutlined /> github.com/shenfan19
                 </a>
-                {AUTHOR.homepage ? (
-                  <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <HomeOutlined /> {AUTHOR.homepage}
-                  </a>
-                ) : (
-                  <span style={{ color: c.textMute, opacity: 0.3, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <HomeOutlined /> {t('about.homepage')} —
-                  </span>
-                )}
               </div>
             </div>
 

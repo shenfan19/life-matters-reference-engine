@@ -26,3 +26,4 @@
 | [0018](0018-background-music-player.md) | 背景音乐 + MusicBar 播放控制条 | ✅ 已实施 | 2026-04-05 |
 | [0019](0019-disclaimer-placement-and-content.md) | 免责声明：位置、内容与呈现规范 | ✅ 已实施 | 2026-04-07 |
 | [0020](0020-app-naming-life-matters.md) | 应用命名：统一为 Life Matters，中文副名仅在 About 中显示 | ✅ 已实施 | 2026-04-07 |
+| [0021](0021-about-contact-info-github-only.md) | About 弹窗联系信息：仅保留 GitHub，去除邮件与主页 | ✅ 已实施 | 2026-04-09 |

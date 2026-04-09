@@ -1,5 +1,5 @@
 // AboutModal — project + author info overlay (i18n-aware)
-import { GithubOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
+import { GithubOutlined } from '@ant-design/icons';
 import { useI18n } from '../core/i18n';
 
 export const AUTHOR = {
@@ -62,21 +62,9 @@ export default function AboutModal({ open, onClose, c, fs }: {
           <div style={{ color: c.textMute, fontSize: fs.sm, marginBottom: 16 }}>{t('about.affiliation')}</div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: c.textSec, fontSize: fs.sm }}>
-            <a href={`mailto:${AUTHOR.email}`} style={linkStyle}>
-              <MailOutlined /> {AUTHOR.email}
-            </a>
             <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={linkStyle}>
               <GithubOutlined /> github.com/shenfan19
             </a>
-            {AUTHOR.homepage ? (
-              <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={linkStyle}>
-                <HomeOutlined /> {AUTHOR.homepage}
-              </a>
-            ) : (
-              <span style={{ color: c.textMute, opacity: 0.3, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <HomeOutlined /> {t('about.homepage')} —
-              </span>
-            )}
           </div>
         </div>
 
