@@ -3,7 +3,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined, ToolOutlined, SwapOutlined,
-  GithubOutlined, InfoCircleOutlined,
+  GithubOutlined, MailOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -238,8 +238,7 @@ function ToolsPage({ isDarkMode, c }: { isDarkMode: boolean; c: typeof C.light }
 const AUTHOR = {
   name: 'Fan Shen',
   email: 'shenfan@mail.sysu.edu.cn',
-  github: 'https://github.com/shenfan19',
-  homepage: 'https://shenfan19.github.io',
+  repo: 'https://github.com/shenfan19/life-matters',
   version: 'v0.4.0',
 };
 
@@ -492,21 +491,21 @@ function App() {
               {t('about.subtitle2')}
             </div>
 
-            {/* Version + license */}
-            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 8, marginBottom: 24 }}>
+            {/* Version + license + repo */}
+            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 8, marginBottom: 12 }}>
               {AUTHOR.version} · MIT License
             </div>
+            <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 11, marginBottom: 24 }}>
+              <GithubOutlined /> github.com/shenfan19/life-matters
+            </a>
 
             {/* Author block */}
             <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginBottom: 20 }}>
               <div style={{ color: c.text, fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{AUTHOR.name}</div>
-              <div style={{ color: c.textMute, fontSize: 13, marginBottom: 16 }}>{t('about.affiliation')}</div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: c.textSec, fontSize: 13 }}>
-                <a href={AUTHOR.github} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <GithubOutlined /> github.com/shenfan19
-                </a>
-              </div>
+              <div style={{ color: c.textMute, fontSize: 13, marginBottom: 12 }}>{t('about.affiliation')}</div>
+              <a href={`mailto:${AUTHOR.email}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 13 }}>
+                <MailOutlined /> {AUTHOR.email}
+              </a>
             </div>
 
             {/* Disclaimer block */}
