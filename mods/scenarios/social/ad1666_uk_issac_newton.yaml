@@ -170,89 +170,84 @@ variables:
     description: "鼠疫感染风险（伍尔斯索普比剑桥低但不为零；户外轻降）"
 
 # ── 基线作息时间表（schedules，sim直接使用；opt以此为搜索起点）─────────────────
-# 基于 Westfall (1980) 传记记录的牛顿典型日
+# 基于 Westfall (1980) 传记记录的牛顿典型日，简化为：
+#   进食3次（早07:00 / 午12:00 / 晚19:00），研究2块（上午 / 下午+晚）
 # 时间点单位：秒（引擎内部时间始终为秒）
-# 食物变量单位：g/min 或 ml/min（速率），在进餐窗口内非零
+# 食物变量为摄入速率（g/min 或 ml/min），进餐窗口60分钟内非零
+#   早餐：07:00-08:00 (25200-28800)  bread+cheese+ale
+#   午餐：12:00-13:00 (43200-46800)  bread+pottage+ale（主餐）
+#   晚餐：19:00-20:00 (68400-72000)  pottage+ale（苹果园后回来，轻餐）
 schedules:
   bread_intake:
     interpolation: step
     points:
-      - { time: 25200, value: 4.0  }   # 07:00 早餐：120g / 30min = 4.0 g/min
-      - { time: 27000, value: 0    }
-      - { time: 43200, value: 2.0  }   # 12:00 午餐：60g / 30min = 2.0 g/min
-      - { time: 45000, value: 0    }
-      - { time: 68400, value: 2.7  }   # 19:00 晚餐：80g / 30min ≈ 2.7 g/min
-      - { time: 70200, value: 0    }
+      - { time: 25200, value: 2.0 }   # 07:00 早餐：120g / 60min = 2.0 g/min
+      - { time: 28800, value: 0   }
+      - { time: 43200, value: 1.0 }   # 12:00 午餐：60g / 60min = 1.0 g/min
+      - { time: 46800, value: 0   }
 
   pottage_intake:
     interpolation: step
     points:
-      - { time: 43200, value: 10.0 }   # 12:00 午餐：300g / 30min = 10.0 g/min（主餐）
-      - { time: 45000, value: 0    }
-      - { time: 68400, value: 6.7  }   # 19:00 晚餐：200g / 30min ≈ 6.7 g/min
-      - { time: 70200, value: 0    }
+      - { time: 43200, value: 5.0 }   # 12:00 午餐：300g / 60min = 5.0 g/min（主餐）
+      - { time: 46800, value: 0   }
+      - { time: 68400, value: 3.3 }   # 19:00 晚餐：200g / 60min ≈ 3.3 g/min
+      - { time: 72000, value: 0   }
 
   ale_intake:
     interpolation: step
     points:
-      - { time: 21600, value: 12.5 }   # 06:00 起床补水：250ml / 20min = 12.5 ml/min
-      - { time: 22800, value: 0    }
-      - { time: 36000, value: 7.5  }   # 10:00 上午：150ml / 20min = 7.5 ml/min
-      - { time: 37200, value: 0    }
-      - { time: 43200, value: 8.3  }   # 12:00 午餐：250ml / 30min ≈ 8.3 ml/min
-      - { time: 45000, value: 0    }
-      - { time: 57600, value: 7.5  }   # 16:00 下午：150ml / 20min = 7.5 ml/min
-      - { time: 58800, value: 0    }
-      - { time: 68400, value: 8.3  }   # 19:00 晚餐：250ml / 30min ≈ 8.3 ml/min
-      - { time: 70200, value: 0    }
-
-  apple_intake:
-    interpolation: step
-    points:
-      - { time: 50400, value: 5.0  }   # 14:00 苹果园：150g / 30min = 5.0 g/min
-      - { time: 52200, value: 0    }
+      - { time: 25200, value: 4.2 }   # 07:00 早餐：250ml / 60min ≈ 4.2 ml/min
+      - { time: 28800, value: 0   }
+      - { time: 43200, value: 4.2 }   # 12:00 午餐：250ml / 60min
+      - { time: 46800, value: 0   }
+      - { time: 68400, value: 4.2 }   # 19:00 晚餐：250ml / 60min
+      - { time: 72000, value: 0   }
 
   cheese_intake:
     interpolation: step
     points:
-      - { time: 25200, value: 1.33 }   # 07:00 早餐：40g / 30min ≈ 1.33 g/min
-      - { time: 27000, value: 0    }
+      - { time: 25200, value: 0.67 }  # 07:00 早餐：40g / 60min ≈ 0.67 g/min
+      - { time: 28800, value: 0    }
 
+  apple_intake:
+    interpolation: step
+    points:
+      - { time: 50400, value: 2.5 }   # 14:00 苹果园：150g / 60min = 2.5 g/min
+      - { time: 54000, value: 0   }
+
+  # 研究分为2块：上午（09:00-12:00）和下午（14:00-22:00 含棱镜+写作）
+  # 14:00-16:00 同时有 outdoor_time（苹果园），两者共存，户外沉思 study_intensity=1
   study_intensity:
     interpolation: step
     points:
-      - { time: 0,     value: 0   }   # 00:00 睡眠
-      - { time: 21600, value: 0   }   # 06:00 起床准备
-      - { time: 27000, value: 1   }   # 07:30 早餐后轻度阅读（思考引力问题）
-      - { time: 32400, value: 2   }   # 09:00 上午集中推导（微积分）
-      - { time: 43200, value: 0   }   # 12:00 午餐休息
-      - { time: 46800, value: 2   }   # 13:00 下午研究
-      - { time: 50400, value: 1   }   # 14:00 苹果园散步/沉思（苹果落下之处）
-      - { time: 54000, value: 3   }   # 15:00 高强度实验（棱镜分光）
-      - { time: 64800, value: 0   }   # 18:00 晚餐前休息
-      - { time: 70200, value: 1   }   # 19:30 饭后整理笔记
-      - { time: 72000, value: 2   }   # 20:00 烛光写作（推导引力逆平方律）
-      - { time: 79200, value: 0   }   # 22:00 就寝
-      - { time: 86400, value: 0   }
+      - { time: 0,     value: 0 }     # 00:00-09:00 睡眠+早晨准备
+      - { time: 32400, value: 2 }     # 09:00 上午研究（微积分，集中推导）
+      - { time: 43200, value: 0 }     # 12:00 午餐休息
+      - { time: 50400, value: 1 }     # 14:00 苹果园沉思（散步中思考引力）
+      - { time: 57600, value: 3 }     # 16:00 下午实验（棱镜分光，高强度）
+      - { time: 68400, value: 0 }     # 19:00 晚餐休息
+      - { time: 72000, value: 2 }     # 20:00 烛光写作（整理推导）
+      - { time: 79200, value: 0 }     # 22:00 就寝
+      - { time: 86400, value: 0 }
 
   candle_study:
     interpolation: step
     points:
-      - { time: 0,     value: 0   }
-      - { time: 72000, value: 2   }   # 20:00-22:00 烛光写作（强度系数2）
-      - { time: 79200, value: 0   }
+      - { time: 72000, value: 2 }     # 20:00-22:00 烛光写作（眼部疲劳来源）
+      - { time: 79200, value: 0 }
 
   outdoor_time:
     interpolation: step
     points:
-      - { time: 50400, value: 2   }   # 14:00-16:00 苹果园（强度系数2）
-      - { time: 57600, value: 0   }
+      - { time: 50400, value: 2 }     # 14:00-16:00 苹果园散步（帕累托改进点）
+      - { time: 57600, value: 0 }
 
   sleep_quality:
     interpolation: step
     points:
-      - { time: 0,     value: 0.75 }  # 00:00-06:00 夜间睡眠（乡间安静，质量较好）
-      - { time: 21600, value: 0    }  # 06:00 起床
+      - { time: 0,     value: 0.75 }  # 00:00-09:00 夜间睡眠（乡间安静）
+      - { time: 32400, value: 0    }  # 09:00 起床入书房
       - { time: 79200, value: 0.75 }  # 22:00 入睡
       - { time: 86400, value: 0.75 }
 
@@ -495,37 +490,37 @@ optimizer:
   # default值与schedules基线一致
   variables_to_optimize:
     - name: morning_study_intensity
-      default: 2.0          # schedules: study_intensity @ 09:00-12:00
+      default: 2.0          # 09:00-12:00 集中推导强度
       bounds: [0.0, 3.0]
       maps_to: "study_intensity @ [32400, 43200]"
 
-    - name: afternoon_study_intensity
-      default: 2.0          # schedules: study_intensity @ 13:00-18:00（含棱镜3和散步1）
+    - name: afternoon_experiment_intensity
+      default: 3.0          # 16:00-19:00 棱镜实验强度
       bounds: [0.0, 3.0]
-      maps_to: "study_intensity @ [46800, 64800]"
+      maps_to: "study_intensity @ [57600, 68400]"
 
     - name: evening_candle_intensity
-      default: 2.0          # schedules: candle_study @ 20:00-22:00
+      default: 2.0          # 20:00-22:00 烛光写作强度
       bounds: [0.0, 4.0]
       maps_to: "candle_study @ 72000"
 
     - name: breakfast_bread_rate
-      default: 4.0          # 120g / 30min = 4 g/min
-      bounds: [0.0, 8.3]    # 0-250g/餐
+      default: 2.0          # 120g / 60min = 2 g/min
+      bounds: [0.0, 5.0]    # 0-300g/早餐
       maps_to: "bread_intake @ 25200"
 
     - name: lunch_pottage_rate
-      default: 10.0         # 300g / 30min = 10 g/min
-      bounds: [3.3, 16.7]   # 100g-500g/餐
+      default: 5.0          # 300g / 60min = 5 g/min
+      bounds: [1.7, 8.3]    # 100g-500g/午餐
       maps_to: "pottage_intake @ 43200"
 
     - name: dinner_meat_rate
       default: 0.0          # 基线无肉（经济限制），opt可发现吃肉的收益
-      bounds: [0.0, 4.0]    # 0-120g/餐
+      bounds: [0.0, 2.0]    # 0-120g/晚餐
       maps_to: "meat_intake @ 68400"
 
     - name: outdoor_intensity
-      default: 2.0          # 苹果园2小时等效强度
+      default: 2.0          # 苹果园2小时等效强度（帕累托改进点）
       bounds: [0.0, 4.0]
       maps_to: "outdoor_time @ 50400"
 

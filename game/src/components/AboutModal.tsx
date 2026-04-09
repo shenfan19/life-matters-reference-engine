@@ -6,7 +6,7 @@ export const AUTHOR = {
   name: 'Fan Shen',
   email: 'shenfan@mail.sysu.edu.cn',
   github: 'https://github.com/shenfan19',
-  homepage: '',   // fill in when ready
+  homepage: 'https://shenfan19.github.io',
   version: 'v0.4.0',
 };
 

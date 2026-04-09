@@ -309,7 +309,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 }) => {
   const { t } = useI18n();
   const c = getC(isDarkMode);
-  const { width: leftW, startDrag: startLeftDrag } = useResize(380, 200, 520);
+  const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
   const freqLabels: Record<InputFreq, string> = {
     hourly: t('sim.freq.hourly'), daily: t('sim.freq.daily'),
     weekly: t('sim.freq.weekly'), monthly: t('sim.freq.monthly'),
@@ -327,6 +327,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
+
+  // ── center tab ───────────────────────────────────────────────────────────────
+  const [centerTab, setCenterTab] = useState<'setup' | 'plot'>('setup');
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
@@ -455,6 +458,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     const current = readSP() || {};
     writeSP({ ...current, simulationData, status, currentStep, progress });
   }, [status]); // captures simulationData snapshot at the moment status changes
+
+  // ── auto-switch center tab to plot when sim is running/completed ──────────────
+  useEffect(() => {
+    if (status === 'running' || status === 'completed') setCenterTab('plot');
+  }, [status]);
 
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
@@ -939,7 +947,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const startY = e.clientY;
     const container = leftPanelRef.current;
     if (!container) return;
-    const allKeys = ['scene', 'inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
+    const allKeys = ['inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
     const availableH = container.clientHeight - SECTION_H * allKeys.length;
     const openArr = allKeys.filter(k => openSections.has(k));
     const totalW = openArr.reduce((s, k) => s + (sectionWeights[k] || 1), 0);
@@ -1185,16 +1193,24 @@ const Simulator: React.FC<SimulatorProps> = ({
       {/* ── Two-column body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* LEFT PANEL */}
+        {/* LEFT PANEL — Scene only ── */}
         <div style={{
           width: leftW, flexShrink: 0,
           background: c.panel,
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
+          borderRight: `1px solid ${c.border}`,
         }}>
-          {(() => {
-            const allKeys = ['scene', 'inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
-            const sceneExtra = selectedKey ? (
+          {/* Scene header */}
+          <div style={{
+            height: SECTION_H, flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px',
+            background: c.sectionHd,
+            borderBottom: `1px solid ${c.border}`,
+          }}>
+            <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{t('sim.scene.header')} ({total})</span>
+            {selectedKey && (
               <Popover
                 open={validationResult !== null && !validationResult.valid}
                 placement="rightTop"
@@ -1221,103 +1237,45 @@ const Simulator: React.FC<SimulatorProps> = ({
                   {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
                 </Button>
               </Popover>
-            ) : null;
+            )}
+          </div>
 
-            const sceneChildren = (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                  <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
-                    onChange={e => setStoryFilter(e.target.value)}
-                    prefix={<FilterOutlined style={{ color: c.textMute }} />}
-                    style={{ flex: 1 }} disabled={isLocked} />
-                  <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
-                    <Button size="small" type="text"
-                      icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
-                      onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
-                      style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
-                  </Tooltip>
-                </div>
-                <div style={{ opacity: isLocked ? 0.4 : 1, pointerEvents: isLocked ? 'none' : 'auto' }}>
-                  <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-                    {storyViewMode === 'tree' ? (
-                      <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
-                        selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect} treeData={storyTree} />
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {storyList.length === 0
-                          ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
-                          : storyList.map((mod: any) => (
-                              <div key={mod.key} onClick={() => handleSelect([mod.key])}
-                                style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === mod.key ? c.rowHover : 'transparent', color: c.text }}>
-                                <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
-                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.displayTitle}</span>
-                              </div>
-                            ))
-                        }
-                      </div>
-                    )}
-                  </Spin>
-                </div>
-              </div>
-            );
-
-            const panels: { key: string; label: React.ReactNode; extra?: React.ReactNode; children: React.ReactNode }[] = [
-              { key: 'scene', label: <>{t('sim.scene.header')} ({total})</>, extra: sceneExtra, children: sceneChildren },
-              ...leftTabs.map(tab => ({ key: tab.key, label: tab.label, children: tab.content })),
-            ];
-
-            return (
-              <div ref={leftPanelRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {panels.map((panel, idx) => {
-                  const isOpen = openSections.has(panel.key);
-                  const openArr = allKeys.filter(k => openSections.has(k));
-                  // find the next open panel key for the drag handle
-                  const nextOpenKey = allKeys.slice(allKeys.indexOf(panel.key) + 1).find(k => openSections.has(k));
-                  const showDragHandle = isOpen && nextOpenKey !== undefined;
-                  return (
-                    <React.Fragment key={panel.key}>
-                      <div style={{
-                        flex: isOpen ? String(sectionWeights[panel.key] || 1) : '0 0 auto',
-                        minHeight: SECTION_H,
-                        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                        borderBottom: `1px solid ${c.border}`,
-                      }}>
-                        {/* Section header */}
-                        <div
-                          onClick={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(panel.key)) n.delete(panel.key); else n.add(panel.key); return n; })}
-                          style={{
-                            height: SECTION_H, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '0 10px', cursor: 'pointer',
-                            background: c.sectionHd, userSelect: 'none',
-                          }}
-                        >
-                          <span style={{ color: c.textMute, fontSize: 9, transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
-                          <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{panel.label}</span>
-                          {panel.extra && <span onClick={e => e.stopPropagation()}>{panel.extra}</span>}
-                        </div>
-                        {/* Section content */}
-                        {isOpen && (
-                          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-                            {panel.children}
+          {/* Scene content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+              <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
+                onChange={e => setStoryFilter(e.target.value)}
+                prefix={<FilterOutlined style={{ color: c.textMute }} />}
+                style={{ flex: 1 }} disabled={isLocked} />
+              <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
+                <Button size="small" type="text"
+                  icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
+                  onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
+                  style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
+              </Tooltip>
+            </div>
+            <div style={{ opacity: isLocked ? 0.4 : 1, pointerEvents: isLocked ? 'none' : 'auto' }}>
+              <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
+                {storyViewMode === 'tree' ? (
+                  <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
+                    selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect} treeData={storyTree} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {storyList.length === 0
+                      ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
+                      : storyList.map((mod: any) => (
+                          <div key={mod.key} onClick={() => handleSelect([mod.key])}
+                            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === mod.key ? c.rowHover : 'transparent', color: c.text }}>
+                            <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.displayTitle}</span>
                           </div>
-                        )}
-                      </div>
-                      {/* Drag handle between two adjacent open sections */}
-                      {showDragHandle && (
-                        <div
-                          onMouseDown={startSectionResize(panel.key, nextOpenKey!)}
-                          style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent', transition: 'background 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                        />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                        ))
+                    }
+                  </div>
+                )}
+              </Spin>
+            </div>
+          </div>
         </div>
 
         {/* LEFT-CENTER resize handle */}
@@ -1325,14 +1283,95 @@ const Simulator: React.FC<SimulatorProps> = ({
           onMouseDown={startLeftDrag}
           style={{
             width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
-            borderRight: `1px solid ${c.border}`, transition: 'background 0.15s',
+            transition: 'background 0.15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         />
 
-        {/* CENTER */}
-        {renderCenterPanel()}
+        {/* CENTER — dual-tab: Setup | Plot ── */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 0,
+            borderBottom: `1px solid ${c.border}`, background: c.panel,
+            flexShrink: 0, paddingLeft: 8,
+          }}>
+            {([
+              { key: 'setup', label: t('sim.tab.setup') || '⚙ 配置' },
+              { key: 'plot',  label: t('sim.tab.plot')  || '📈 图表' },
+            ] as { key: 'setup' | 'plot'; label: string }[]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setCenterTab(tab.key)}
+                style={{
+                  padding: '6px 16px', border: 'none', cursor: 'pointer',
+                  background: 'transparent',
+                  color: centerTab === tab.key ? c.primary : c.textMute,
+                  fontWeight: centerTab === tab.key ? 600 : 400,
+                  borderBottom: centerTab === tab.key ? `2px solid ${c.primary}` : '2px solid transparent',
+                  marginBottom: -1,
+                  outline: 'none',
+                  transition: 'all 0.12s',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Setup tab content */}
+          {centerTab === 'setup' && (
+            <div ref={leftPanelRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {leftTabs.map((tab, idx) => {
+                const isOpen = openSections.has(tab.key);
+                const openArr = leftTabs.filter(t => openSections.has(t.key));
+                const nextOpenTab = leftTabs.slice(idx + 1).find(t => openSections.has(t.key));
+                const showDragHandle = isOpen && !!nextOpenTab;
+                return (
+                  <React.Fragment key={tab.key}>
+                    <div style={{
+                      flex: isOpen ? String(sectionWeights[tab.key] || 1) : '0 0 auto',
+                      minHeight: SECTION_H,
+                      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                      borderBottom: `1px solid ${c.border}`,
+                    }}>
+                      <div
+                        onClick={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(tab.key)) n.delete(tab.key); else n.add(tab.key); return n; })}
+                        style={{
+                          height: SECTION_H, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '0 12px', cursor: 'pointer',
+                          background: c.sectionHd, userSelect: 'none',
+                        }}
+                      >
+                        <span style={{ color: c.textMute, fontSize: 9, transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+                        <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{tab.label}</span>
+                      </div>
+                      {isOpen && (
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+                          {tab.content}
+                        </div>
+                      )}
+                    </div>
+                    {showDragHandle && (
+                      <div
+                        onMouseDown={startSectionResize(tab.key, nextOpenTab!.key)}
+                        style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent', transition: 'background 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Plot tab content */}
+          {centerTab === 'plot' && renderCenterPanel()}
+        </div>
       </div>
 
     </div>

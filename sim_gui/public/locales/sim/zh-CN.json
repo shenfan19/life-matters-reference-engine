@@ -65,6 +65,8 @@
     "sim.scene.select_hint": "点击「待验证」验证并锁定场景",
     "sim.scene.click_to_start": "点击「运行」开始",
     "sim.scene.calculating": "正在计算…",
+    "sim.tab.setup": "⚙ 配置",
+    "sim.tab.plot": "📈 图表",
     "sim.tabs.inputs": "输入",
     "sim.tabs.variables": "变量",
     "sim.tabs.formulas": "公式",

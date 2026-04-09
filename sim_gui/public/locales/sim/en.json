@@ -64,6 +64,8 @@
     "sim.scene.select_hint": "Click \"Unverified\" to validate and lock",
     "sim.scene.click_to_start": "Click \"Run\" to start",
     "sim.scene.calculating": "Calculating...",
+    "sim.tab.setup": "⚙ Setup",
+    "sim.tab.plot": "📈 Plot",
     "sim.tabs.inputs": "Inputs",
     "sim.tabs.variables": "Variables",
     "sim.tabs.formulas": "Formulas",

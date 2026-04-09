@@ -1,12 +1,13 @@
-// StoryEditor.tsx — Scenario → Game Converter (3-panel)
+// StoryEditor.tsx — Scenario → Game Converter + Card Builder (3-panel)
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Input, Select, Button, message, Spin, Tooltip } from 'antd';
+import { Input, Select, Button, message, Spin, Tooltip, Segmented } from 'antd';
 import {
   SearchOutlined, LoadingOutlined, FolderOutlined, FolderOpenOutlined,
   FileTextOutlined, CheckCircleOutlined, SwapRightOutlined,
   EditOutlined, SaveOutlined, CloseOutlined, RightOutlined, DownOutlined,
-  ReloadOutlined,
+  ReloadOutlined, AppstoreOutlined, PlusOutlined, DeleteOutlined,
+  EnvironmentOutlined, UserOutlined,
 } from '@ant-design/icons';
 
 // ─── Resize hook ──────────────────────────────────────────────────────────────
@@ -47,6 +48,12 @@ interface SelectedItem {
 }
 
 interface GameFolder { name: string; hasGameStory: boolean; }
+
+interface CardFile {
+  key: string;          // filename without extension, e.g. "env_fitness_dynamics"
+  path: string;         // full path e.g. "stories/banister.../cards/env_fitness_dynamics.yaml"
+  data: any;            // parsed yaml content
+}
 
 // ─── Recursive tree component ─────────────────────────────────────────────────
 function TreeItem({
@@ -147,6 +154,16 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
   const [healthVar,  setHealthVar]  = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  // Card Builder
+  const [middleMode,      setMiddleMode]      = useState<'converter' | 'cards'>('converter');
+  const [cardTypeFilter,  setCardTypeFilter]  = useState<'all' | 'env' | 'player'>('all');
+  const [cardSearch,      setCardSearch]      = useState('');
+  const [cards,           setCards]           = useState<CardFile[]>([]);
+  const [cardsLoading,    setCardsLoading]    = useState(false);
+  const [expandedCard,    setExpandedCard]    = useState<string | null>(null);
+  const [cardDrafts,      setCardDrafts]      = useState<Record<string, any>>({});
+  const [savingCard,      setSavingCard]      = useState<string | null>(null);
+
   // ── Colors ─────────────────────────────────────────────────────────────────
   const panelBg  = isDarkMode ? '#1a1a1a' : '#ffffff';
   const sideHd   = isDarkMode ? '#111111' : '#f5f5f5';
@@ -210,6 +227,67 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
     return () => clearInterval(timer);
   }, [loadList]);
 
+  // ── Load card files for selected story ──────────────────────────────────────
+  const loadCards = useCallback(async (matchKey: string) => {
+    setCardsLoading(true);
+    setCards([]);
+    try {
+      const d = await fetch('/api/files').then(r => r.json());
+      if (!d.success) return;
+      const modsNode = d.data.find((n: any) => n.key === 'mods');
+      const storiesNode = modsNode?.children?.find((n: any) => n.title === 'stories');
+      // Find the story folder (may be nested in subfolders)
+      const findStoryFolder = (nodes: any[]): any => {
+        for (const n of nodes) {
+          if (n.type === 'folder' && n.title === matchKey) return n;
+          if (n.children) { const found = findStoryFolder(n.children); if (found) return found; }
+        }
+        return null;
+      };
+      const storyFolder = findStoryFolder(storiesNode?.children || []);
+      const cardsFolder = storyFolder?.children?.find((n: any) => n.title === 'cards');
+      if (!cardsFolder?.children) { setCardsLoading(false); return; }
+
+      const cardFiles: CardFile[] = [];
+      for (const f of cardsFolder.children) {
+        if (f.type !== 'file') continue;
+        try {
+          const r = await fetch(`/api/file/${f.key}`).then(x => x.json());
+          if (r.success && r.data?.content) {
+            cardFiles.push({ key: f.title.replace(/\.ya?ml$/, ''), path: f.key, data: r.data.content });
+          }
+        } catch { /* skip */ }
+      }
+      setCards(cardFiles);
+      // Initialize drafts
+      const drafts: Record<string, any> = {};
+      cardFiles.forEach(c => { drafts[c.key] = clone(c.data); });
+      setCardDrafts(drafts);
+    } catch { /* ignore */ }
+    setCardsLoading(false);
+  }, []);
+
+  const saveCard = async (cardKey: string) => {
+    const card = cards.find(c => c.key === cardKey);
+    if (!card) return;
+    setSavingCard(cardKey);
+    try {
+      const r = await fetch('/api/save-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: card.path, content: cardDrafts[cardKey] }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        message.success(`已保存 ${cardKey}`);
+        setCards(prev => prev.map(c => c.key === cardKey ? { ...c, data: clone(cardDrafts[cardKey]) } : c));
+      } else {
+        message.error('保存失败: ' + (d.detail || ''));
+      }
+    } catch (e: any) { message.error(String(e)); }
+    setSavingCard(null);
+  };
+
   // ── Select a model file ─────────────────────────────────────────────────────
   async function selectNode(node: TreeNode) {
     if (node.type !== 'file') return;
@@ -260,6 +338,14 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
       return next;
     });
   }
+
+  // ── Load cards when switching to card builder or when selection changes ──────
+  useEffect(() => {
+    if (middleMode === 'cards' && selected?.matchKey) {
+      loadCards(selected.matchKey);
+      setExpandedCard(null);
+    }
+  }, [middleMode, selected?.matchKey, loadCards]);
 
   // ── Filter tree by search ───────────────────────────────────────────────────
   function filterTree(nodes: TreeNode[], q: string): TreeNode[] {
@@ -419,14 +505,14 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
             ← 从左侧选择一个 Scenario 文件开始
           </div>
         ) : (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
 
             {/* Title row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <span style={{ fontWeight: 600, color: text }}>
                 {selected.matchKey}
               </span>
-              <span style={{ color: mute }}>{selected.filePath}</span>
+              <span style={{ color: mute, fontSize: 12 }}>{selected.filePath}</span>
               {gameExists && (
                 <span style={{
                   padding: '1px 7px', borderRadius: 10,
@@ -438,7 +524,69 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               )}
             </div>
 
-            {loadingDetail ? (
+            {/* ── Sub-control row ── */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '6px 0 10px', borderBottom: `1px solid ${border}`, marginBottom: 12,
+              flexWrap: 'wrap',
+            }}>
+              <Segmented
+                size="small"
+                value={middleMode}
+                onChange={v => setMiddleMode(v as 'converter' | 'cards')}
+                options={[
+                  { label: '转换器', value: 'converter' },
+                  { label: <span><AppstoreOutlined style={{ marginRight: 4 }} />卡牌构建器</span>, value: 'cards' },
+                ]}
+              />
+              {middleMode === 'cards' && (
+                <>
+                  <div style={{ width: 1, height: 16, background: border, flexShrink: 0 }} />
+                  <Select
+                    size="small"
+                    value={cardTypeFilter}
+                    onChange={v => setCardTypeFilter(v)}
+                    style={{ width: 90 }}
+                    options={[
+                      { label: '全部', value: 'all' },
+                      { label: '环境牌', value: 'env' },
+                      { label: '玩家牌', value: 'player' },
+                    ]}
+                  />
+                  <Input
+                    size="small"
+                    placeholder="搜索卡牌…"
+                    value={cardSearch}
+                    onChange={e => setCardSearch(e.target.value)}
+                    prefix={<SearchOutlined style={{ color: mute }} />}
+                    style={{ width: 160 }}
+                    allowClear
+                  />
+                  <Button
+                    size="small" type="dashed" icon={<ReloadOutlined />}
+                    onClick={() => selected?.matchKey && loadCards(selected.matchKey)}
+                    style={{ marginLeft: 'auto', color: mute, borderColor: border }}
+                  />
+                </>
+              )}
+            </div>
+
+            {middleMode === 'cards' ? (
+              /* ── Card Builder ── */
+              <CardBuilder
+                cards={cards} loading={cardsLoading}
+                typeFilter={cardTypeFilter} search={cardSearch}
+                expandedCard={expandedCard} setExpandedCard={setExpandedCard}
+                cardDrafts={cardDrafts} setCardDrafts={setCardDrafts}
+                savingCard={savingCard} onSave={saveCard}
+                isDarkMode={isDarkMode} c={c} border={border}
+                panelBg={panelBg} sideHd={sideHd}
+              />
+            ) : (
+
+            /* ── Converter (original) ── */
+
+            loadingDetail ? (
               <div style={{ padding: 40, textAlign: 'center' }}>
                 <Spin indicator={<LoadingOutlined />} />
               </div>
@@ -570,6 +718,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
                   </div>
                 </div>
               </>
+            )
             )}
           </div>
         )}
@@ -914,6 +1063,248 @@ function VariableMappingRows({ variables, healthVar, mapping, c, border }: {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ─── CardBuilder ──────────────────────────────────────────────────────────────
+function CardBuilder({
+  cards, loading, typeFilter, search,
+  expandedCard, setExpandedCard,
+  cardDrafts, setCardDrafts,
+  savingCard, onSave,
+  isDarkMode, c, border, panelBg, sideHd,
+}: {
+  cards: CardFile[];
+  loading: boolean;
+  typeFilter: 'all' | 'env' | 'player';
+  search: string;
+  expandedCard: string | null;
+  setExpandedCard: (k: string | null) => void;
+  cardDrafts: Record<string, any>;
+  setCardDrafts: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  savingCard: string | null;
+  onSave: (k: string) => void;
+  isDarkMode: boolean; c: any; border: string; panelBg: string; sideHd: string;
+}) {
+  const { text, textMute: mute, primary } = c;
+  const inputSt: React.CSSProperties = {
+    padding: '3px 8px', border: `1px solid ${border}`, borderRadius: 4,
+    background: isDarkMode ? '#222222' : '#ffffff', color: text,
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+  };
+  const textAreaSt: React.CSSProperties = { ...inputSt, resize: 'vertical', minHeight: 56, fontFamily: 'inherit' };
+
+  if (loading) return (
+    <div style={{ padding: 40, textAlign: 'center' }}>
+      <Spin indicator={<LoadingOutlined />} />
+      <div style={{ color: mute, marginTop: 8 }}>加载卡牌…</div>
+    </div>
+  );
+
+  if (cards.length === 0) return (
+    <div style={{ padding: 40, textAlign: 'center', color: mute }}>
+      <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.3 }}>🃏</div>
+      <div>暂无卡牌。请先在转换器中「→ 自动生成」。</div>
+    </div>
+  );
+
+  // Filter
+  const visible = cards.filter(card => {
+    const type = card.data?.type;
+    if (typeFilter === 'env' && type !== 'env') return false;
+    if (typeFilter === 'player' && type !== 'player') return false;
+    const name = (card.data?.display?.name || card.key).toLowerCase();
+    if (search && !name.includes(search.toLowerCase()) && !card.key.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const updateDraft = (key: string, fn: (d: any) => void) => {
+    setCardDrafts(prev => {
+      const next = { ...prev };
+      const d = JSON.parse(JSON.stringify(prev[key] || {}));
+      fn(d);
+      next[key] = d;
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Summary bar */}
+      <div style={{ color: mute, fontSize: 12, marginBottom: 2 }}>
+        {visible.length} 张卡牌
+        {cards.filter(c => c.data?.type === 'env').length > 0 && (
+          <span style={{ marginLeft: 8 }}>
+            <EnvironmentOutlined style={{ marginRight: 3 }} />
+            环境牌 {cards.filter(c => c.data?.type === 'env').length}
+          </span>
+        )}
+        {cards.filter(c => c.data?.type === 'player').length > 0 && (
+          <span style={{ marginLeft: 8 }}>
+            <UserOutlined style={{ marginRight: 3 }} />
+            玩家牌 {cards.filter(c => c.data?.type === 'player').length}
+          </span>
+        )}
+      </div>
+
+      {/* Card rows */}
+      {visible.map(card => {
+        const draft = cardDrafts[card.key] || card.data;
+        const isEnv = card.data?.type === 'env';
+        const isExpanded = expandedCard === card.key;
+        const isDirty = JSON.stringify(draft) !== JSON.stringify(card.data);
+
+        return (
+          <div key={card.key} style={{
+            border: `1px solid ${isExpanded ? primary : border}`,
+            borderRadius: 6, background: panelBg, overflow: 'hidden',
+            transition: 'border-color 0.15s',
+          }}>
+            {/* Row header */}
+            <div
+              onClick={() => setExpandedCard(isExpanded ? null : card.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 12px', cursor: 'pointer',
+                background: isExpanded ? (isDarkMode ? '#1e2e1e' : '#f0faf0') : 'transparent',
+                userSelect: 'none',
+              }}
+            >
+              {/* Icon */}
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{draft?.display?.icon || '🃏'}</span>
+
+              {/* Name */}
+              <span style={{ fontWeight: 600, color: text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {draft?.display?.name || card.key}
+              </span>
+
+              {/* Type badge */}
+              <span style={{
+                fontSize: 10, padding: '1px 6px', borderRadius: 8, flexShrink: 0,
+                background: isEnv ? (isDarkMode ? '#1a2a3a' : '#e6f4ff') : (isDarkMode ? '#1a3a22' : '#f6ffed'),
+                color: isEnv ? (isDarkMode ? '#69b1ff' : '#1677ff') : (isDarkMode ? '#95de64' : '#52c41a'),
+                border: `1px solid ${isEnv ? (isDarkMode ? '#1677ff44' : '#91caff') : (isDarkMode ? '#52c41a44' : '#b7eb8f')}`,
+              }}>
+                {isEnv ? '环境' : '玩家'}
+              </span>
+
+              {/* Cost (player only) */}
+              {!isEnv && draft?.cost != null && (
+                <span style={{ color: mute, fontSize: 12, flexShrink: 0 }}>费用 {draft.cost}</span>
+              )}
+
+              {/* Effects summary */}
+              <span style={{ color: mute, fontSize: 11, flexShrink: 0, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(draft?.effects || []).map((ef: any) => `${ef.target}${ef.delta >= 0 ? '+' : ''}${ef.delta}`).join(', ')}
+              </span>
+
+              {/* Dirty dot */}
+              {isDirty && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#faad14', flexShrink: 0 }} />}
+
+              {/* Expand arrow */}
+              <span style={{
+                color: mute, fontSize: 9, flexShrink: 0,
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s',
+              }}>▶</span>
+            </div>
+
+            {/* Expanded editor */}
+            {isExpanded && (
+              <div style={{ padding: '12px 14px', borderTop: `1px solid ${border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Row: Icon + Name */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flexShrink: 0 }}>
+                    <div style={{ color: mute, fontSize: 11, marginBottom: 3 }}>图标</div>
+                    <input value={draft?.display?.icon || ''} style={{ ...inputSt, width: 52, textAlign: 'center', fontSize: 18 }}
+                      onChange={e => updateDraft(card.key, d => { if (!d.display) d.display = {}; d.display.icon = e.target.value; })} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: mute, fontSize: 11, marginBottom: 3 }}>卡牌名称</div>
+                    <input value={draft?.display?.name || ''} style={inputSt}
+                      onChange={e => updateDraft(card.key, d => { if (!d.display) d.display = {}; d.display.name = e.target.value; })} />
+                  </div>
+                  {!isEnv && (
+                    <div style={{ flexShrink: 0 }}>
+                      <div style={{ color: mute, fontSize: 11, marginBottom: 3 }}>费用</div>
+                      <input type="number" value={draft?.cost ?? ''} style={{ ...inputSt, width: 60 }}
+                        onChange={e => updateDraft(card.key, d => { d.cost = Number(e.target.value); })} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <div style={{ color: mute, fontSize: 11, marginBottom: 3 }}>描述</div>
+                  <textarea value={draft?.display?.description || ''} style={textAreaSt}
+                    onChange={e => updateDraft(card.key, d => { if (!d.display) d.display = {}; d.display.description = e.target.value; })} />
+                </div>
+
+                {/* Flavor */}
+                <div>
+                  <div style={{ color: mute, fontSize: 11, marginBottom: 3 }}>Flavor 文本</div>
+                  <textarea value={draft?.display?.flavor || ''} style={{ ...textAreaSt, minHeight: 40 }}
+                    onChange={e => updateDraft(card.key, d => { if (!d.display) d.display = {}; d.display.flavor = e.target.value; })} />
+                </div>
+
+                {/* Effects */}
+                <div>
+                  <div style={{ color: mute, fontSize: 11, marginBottom: 6 }}>效果</div>
+                  {(draft?.effects || []).map((ef: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                      <input value={ef.target || ''} style={{ ...inputSt, width: 130 }}
+                        placeholder="目标变量"
+                        onChange={e => updateDraft(card.key, d => { if (!d.effects) d.effects = []; d.effects[i] = { ...d.effects[i], target: e.target.value }; })} />
+                      <input type="number" value={ef.delta ?? ''} style={{ ...inputSt, width: 72 }}
+                        placeholder="delta"
+                        onChange={e => updateDraft(card.key, d => { if (!d.effects) d.effects = []; d.effects[i] = { ...d.effects[i], delta: Number(e.target.value) }; })} />
+                      <input value={ef.condition || ''} style={{ ...inputSt, flex: 1 }}
+                        placeholder="条件（可留空）"
+                        onChange={e => updateDraft(card.key, d => { if (!d.effects) d.effects = []; d.effects[i] = { ...d.effects[i], condition: e.target.value || null }; })} />
+                      <button
+                        onClick={() => updateDraft(card.key, d => { d.effects = (d.effects || []).filter((_: any, j: number) => j !== i); })}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4d4f', padding: '0 4px' }}
+                      >
+                        <DeleteOutlined />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => updateDraft(card.key, d => { if (!d.effects) d.effects = []; d.effects.push({ target: '', delta: 0, condition: null }); })}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: 'none', border: `1px dashed ${border}`, borderRadius: 4,
+                      color: mute, cursor: 'pointer', padding: '3px 10px', width: '100%', justifyContent: 'center',
+                    }}
+                  >
+                    <PlusOutlined /> 添加效果
+                  </button>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
+                  <Button size="small"
+                    onClick={() => setCardDrafts(prev => ({ ...prev, [card.key]: clone(card.data) }))}
+                    disabled={!isDirty}
+                    style={{ color: mute, borderColor: border }}
+                  >
+                    还原
+                  </Button>
+                  <Button size="small" type="primary"
+                    loading={savingCard === card.key}
+                    disabled={!isDirty}
+                    onClick={() => onSave(card.key)}
+                    icon={<SaveOutlined />}
+                    style={{ background: primary, borderColor: primary }}
+                  >
+                    保存
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -239,7 +239,7 @@ const AUTHOR = {
   name: 'Fan Shen',
   email: 'shenfan@mail.sysu.edu.cn',
   github: 'https://github.com/shenfan19',
-  homepage: '',   // not ready yet
+  homepage: 'https://shenfan19.github.io',
   version: 'v0.4.0',
 };
 
