@@ -44,13 +44,11 @@ import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
 
-type InputFreq = 'hourly' | 'daily' | 'weekly' | 'monthly';
 interface InputEntry {
   id: string;
   variable: string;
   value: number;
-  frequency: InputFreq;
-  time: string; // 'HH:mm', relevant for daily
+  time: string; // 'HH:mm', daily trigger time (instantaneous bolus)
 }
 
 function getC(dark: boolean) {
@@ -310,10 +308,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t } = useI18n();
   const c = getC(isDarkMode);
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
-  const freqLabels: Record<InputFreq, string> = {
-    hourly: t('sim.freq.hourly'), daily: t('sim.freq.daily'),
-    weekly: t('sim.freq.weekly'), monthly: t('sim.freq.monthly'),
-  };
 
   const {
     status, progress, currentStep, simulationData,
@@ -334,7 +328,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['scene', 'inputs']));
-  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, schedule: 1, opt: 1 });
+  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
   // ── opt mode state ───────────────────────────────────────────────────────────
@@ -372,7 +366,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
-          entries.push({ id: `${name}-0`, variable: name, value: data.value ?? 0, frequency: 'daily', time: '08:00' });
+          entries.push({ id: `${name}-0`, variable: name, value: data.value ?? 0, time: '08:00' });
         } else if (data.type === 'state') states[name] = data.value;
       });
       set('inputParams', inputs);
@@ -520,7 +514,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         content, metadata: content.metadata, variables: content.variables,
         formulas: content.formulas, simulator: content.simulator,
         optimizer: content.optimizer, imports: content.imports,
-        folder: path.includes('/') ? path.split('/')[0] : undefined,
+        // Use full directory path so the loader can find the file regardless of metadata.name
+        folder: path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined,
         validated: undefined, validationErrors: [],
       };
       setLoadedMods(prev => ({ ...prev, [filePath]: model }));
@@ -582,6 +577,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const schedules = selectedModel?.content?.schedules || {};
   const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
   const outputVars: string[] = selectedModel?.content?.simulator?.output_variables
+    || selectedModel?.content?.simulation?.output_variables
     || Object.keys(stateVariables).slice(0, 5);
   const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
 
@@ -606,7 +602,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       const resp = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model_name: selectedModel.content!.metadata.name,
+          // Use filename stem (not metadata.name) so loader can find the file
+          model_name: selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name,
           folder: selectedModel.folder,
           time_hours: timeValue * TIME_UNITS[timeUnit],
           step_size: stepValue * STEP_UNITS[stepUnit],
@@ -640,6 +637,9 @@ const Simulator: React.FC<SimulatorProps> = ({
           setSimData(prev => [...prev, ...res.data.outputs]);
           if (res.data.completed) { set('status', 'completed'); isRunningRef.current = false; message.success(t('sim.msg.sim_complete')); }
           else setTimeout(loop, updateInterval);
+        } else {
+          message.error(res.error || t('sim.msg.start_failed'));
+          set('status', 'idle'); isRunningRef.current = false;
         }
       } catch { set('status', 'idle'); isRunningRef.current = false; }
     };
@@ -675,14 +675,23 @@ const Simulator: React.FC<SimulatorProps> = ({
   // LEFT PANEL TAB CONTENT RENDERERS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const addInputEntry = () => {
-    const firstVar = inputVars[0]?.name ?? '';
+  // classify input vars: food (克/毫升) → timed bolus, coeff (系数/0-1) → single value, others → hidden
+  const isFoodVar = (v: any) => ['克', 'g', '毫升', 'ml'].some(u => (v.unit || '').includes(u));
+  const isCoeffVar = (v: any) => !isFoodVar(v) && (
+    (v.unit || '').includes('系数') ||
+    (Array.isArray(v.bounds) && v.bounds[0] === 0 && (v.bounds[1] ?? 2) <= 1)
+  );
+
+  const addInputEntryFor = (varName: string) => {
+    const existing = inputEntries.filter(e => e.variable === varName);
+    if (existing.length >= 3) return;
+    const varDef = inputVars.find(v => v.name === varName);
+    const defaultTimes = ['08:00', '13:00', '18:00'];
     setInputEntries(prev => [...prev, {
-      id: `${firstVar}-${Date.now()}`,
-      variable: firstVar,
-      value: inputVars[0]?.value ?? 0,
-      frequency: 'daily',
-      time: '08:00',
+      id: `${varName}-${Date.now()}`,
+      variable: varName,
+      value: varDef?.value ?? 0,
+      time: defaultTimes[existing.length],
     }]);
   };
 
@@ -692,82 +701,124 @@ const Simulator: React.FC<SimulatorProps> = ({
   const removeEntry = (id: string) =>
     setInputEntries(prev => prev.filter(e => e.id !== id));
 
+  const updateCoeffEntry = (varName: string, value: number) =>
+    setInputEntries(prev => {
+      const existing = prev.find(e => e.variable === varName);
+      if (existing) return prev.map(e => e.id === existing.id ? { ...e, value } : e);
+      return [...prev, { id: `${varName}-${Date.now()}`, variable: varName, value, time: '00:00' }];
+    });
+
   const renderInputsContent = () => {
-    if (inputVars.length === 0) return (
-      <div style={{ padding: '8px 0' }}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} />
-      </div>
-    );
-    const varOptions = inputVars.map(v => ({ label: v.name, value: v.name }));
-    const freqOptions = (Object.keys(freqLabels) as InputFreq[]).map(k => ({ label: freqLabels[k], value: k }));
+    const foodVars = inputVars.filter(isFoodVar);
+    const coeffVars = inputVars.filter(isCoeffVar);
+    const yamlScheduleEntries = Object.entries(schedules);
+
+    if (foodVars.length === 0 && coeffVars.length === 0 && yamlScheduleEntries.length === 0)
+      return <div style={{ padding: '8px 0' }}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} /></div>;
+
     return (
       <div style={{ padding: '8px 0' }}>
-        {inputEntries.map(entry => {
-          const varDef = inputVars.find(v => v.name === entry.variable);
+
+        {/* ── Food / drink bolus entries grouped by variable ── */}
+        {foodVars.map(v => {
+          const entriesForVar = inputEntries.filter(e => e.variable === v.name);
           return (
-            <div key={entry.id} style={{
-              display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8,
-              padding: '6px 8px', borderRadius: 6,
-              background: c.inputBg, border: `1px solid ${c.border}`,
-              flexWrap: 'wrap',
-            }}>
-              {/* Variable name dropdown */}
-              <Select
-                size="small"
-                value={entry.variable}
-                options={varOptions}
-                onChange={val => {
-                  const def = inputVars.find(v => v.name === val);
-                  updateEntry(entry.id, { variable: val, value: def?.value ?? 0 });
-                }}
-                style={{ minWidth: 100, flex: 1 }}
-              />
-              {/* Value */}
-              <InputNumber
-                size="small"
-                value={entry.value}
-                onChange={val => updateEntry(entry.id, { value: val ?? 0 })}
-                style={{ width: 72 }}
-              />
-              {/* Unit */}
-              {varDef?.unit && (
-                <span style={{ color: c.textMute, flexShrink: 0, minWidth: 20 }}>{varDef.unit}</span>
+            <div key={v.name} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Tooltip title={v.description || undefined}>
+                  <span style={{ fontWeight: 600, color: c.text, cursor: v.description ? 'help' : 'default' }}>{v.name}</span>
+                </Tooltip>
+                {entriesForVar.length > 0 && entriesForVar.length < 3 && (
+                  <Button size="small" type="text" icon={<PlusOutlined />}
+                    onClick={() => addInputEntryFor(v.name)}
+                    style={{ color: c.primary, padding: '0 4px' }} />
+                )}
+              </div>
+              {entriesForVar.map(entry => (
+                <div key={entry.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4,
+                  padding: '4px 8px', borderRadius: 6,
+                  background: c.inputBg, border: `1px solid ${c.border}`,
+                }}>
+                  <Input size="small" value={entry.time} placeholder="08:00"
+                    onChange={e => updateEntry(entry.id, { time: e.target.value })}
+                    style={{ width: 54 }} />
+                  <InputNumber size="small" value={entry.value}
+                    onChange={val => updateEntry(entry.id, { value: val ?? 0 })}
+                    min={v.bounds?.[0] ?? 0} max={v.bounds?.[1]}
+                    style={{ flex: 1 }} />
+                  <span style={{ color: c.textMute, flexShrink: 0, minWidth: 20 }}>{v.unit}</span>
+                  <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
+                    onClick={() => removeEntry(entry.id)}
+                    style={{ padding: '0 2px', flexShrink: 0 }} />
+                </div>
+              ))}
+              {entriesForVar.length === 0 && (
+                <Button size="small" type="dashed" icon={<PlusOutlined />}
+                  onClick={() => addInputEntryFor(v.name)}
+                  style={{ width: '100%', borderColor: c.border, color: c.textMute }}>
+                  {t('sim.inputs.add_meal')}
+                </Button>
               )}
-              {/* Frequency */}
-              <Select
-                size="small"
-                value={entry.frequency}
-                options={freqOptions}
-                onChange={val => updateEntry(entry.id, { frequency: val })}
-                style={{ width: 80 }}
-              />
-              {/* Time (only for daily) */}
-              {entry.frequency === 'daily' && (
-                <Input
-                  size="small"
-                  value={entry.time}
-                  placeholder="08:00"
-                  onChange={e => updateEntry(entry.id, { time: e.target.value })}
-                  style={{ width: 58 }}
-                />
-              )}
-              {/* Delete */}
-              <Button
-                size="small" type="text" danger
-                icon={<MinusCircleOutlined />}
-                onClick={() => removeEntry(entry.id)}
-                style={{ padding: '0 2px', flexShrink: 0 }}
-              />
             </div>
           );
         })}
-        <Button
-          size="small" type="dashed" icon={<PlusOutlined />}
-          onClick={addInputEntry}
-          style={{ width: '100%', marginTop: 4 }}
-        >
-          {t('sim.inputs.add')}
-        </Button>
+
+        {/* ── Coefficient / quality inputs (single value, no time) ── */}
+        {coeffVars.length > 0 && (
+          <>
+            {foodVars.length > 0 && <div style={{ height: 1, background: c.border, margin: '4px 0 10px' }} />}
+            {coeffVars.map(v => {
+              const entry = inputEntries.find(e => e.variable === v.name);
+              return (
+                <Tooltip key={v.name} title={v.description || undefined} placement="top">
+                  <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                    <InputNumber size="small"
+                      value={entry?.value ?? v.value ?? 0}
+                      min={v.bounds?.[0] ?? 0} max={v.bounds?.[1] ?? 1} step={0.1}
+                      onChange={val => updateCoeffEntry(v.name, val ?? 0)}
+                      style={{ width: 70 }} />
+                    {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
+                  </div>
+                </Tooltip>
+              );
+            })}
+          </>
+        )}
+
+        {/* ── YAML-defined schedules (read-only) ── */}
+        {yamlScheduleEntries.length > 0 && (
+          <>
+            <div style={{ height: 1, background: c.border, margin: '4px 0 10px' }} />
+            <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, fontSize: 11 }}>
+              {t('sim.tabs.schedules')}
+            </div>
+            {yamlScheduleEntries.map(([name, sched]: [string, any]) => (
+              <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <strong style={{ color: c.text }}>{name}</strong>
+                  <Tag>{sched.interpolation || 'step'}</Tag>
+                </div>
+                {sched.recurrence && (
+                  <div style={{ color: c.textMute, marginBottom: 4 }}>
+                    {sched.recurrence}{sched.days_of_week ? ` · ${sched.days_of_week.join(' ')}` : ''}
+                  </div>
+                )}
+                {sched.points?.map((pt: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, fontFamily: 'monospace', color: c.text, marginBottom: 2 }}>
+                    <span style={{ color: c.textMute, width: 46 }}>
+                      {typeof pt.time === 'number' ? `${(pt.time / 3600).toFixed(1)}h` : pt.time}
+                    </span>
+                    <span style={{ color: c.textMute }}>→</span>
+                    <span>{typeof pt.value === 'number' ? pt.value.toFixed(3) : pt.value}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </>
+        )}
+
       </div>
     );
   };
@@ -843,38 +894,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     );
   };
 
-  const renderRegimensContent = () => {
-    const entries = Object.entries(schedules);
-    if (entries.length === 0) return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.schedules.empty')} style={{ marginTop: 20 }} />
-    );
-    return (
-      <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {entries.map(([name, sched]: [string, any]) => (
-          <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <strong style={{ color: c.text }}>{name}</strong>
-              <Tag style={{}}>{sched.interpolation || 'step'}</Tag>
-            </div>
-            {sched.recurrence && (
-              <div style={{ color: c.textMute, marginBottom: 4 }}>
-                {sched.recurrence}{sched.days_of_week ? ` · ${sched.days_of_week.join(' ')}` : ''}
-              </div>
-            )}
-            {sched.points?.map((pt: any, i: number) => (
-              <div key={i} style={{ display: 'flex', gap: 8, fontFamily: 'monospace', color: c.text, marginBottom: 2 }}>
-                <span style={{ color: c.textMute, width: 46 }}>
-                  {typeof pt.time === 'number' ? `${(pt.time / 3600).toFixed(1)}h` : pt.time}
-                </span>
-                <span style={{ color: c.textMute }}>→</span>
-                <span>{typeof pt.value === 'number' ? pt.value.toFixed(3) : pt.value}</span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   const renderOptContent = () => (
     <div style={{ padding: '8px 0' }}>
@@ -947,7 +966,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const startY = e.clientY;
     const container = leftPanelRef.current;
     if (!container) return;
-    const allKeys = ['inputs', 'vars', 'formulas', 'schedule', ...(mode === 'opt' ? ['opt'] : [])];
+    const allKeys = ['inputs', 'vars', 'formulas', ...(mode === 'opt' ? ['opt'] : [])];
     const availableH = container.clientHeight - SECTION_H * allKeys.length;
     const openArr = allKeys.filter(k => openSections.has(k));
     const totalW = openArr.reduce((s, k) => s + (sectionWeights[k] || 1), 0);
@@ -1106,11 +1125,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
+  const inputsVarCount = new Set(inputEntries.map(e => e.variable)).size;
   const leftTabs = [
-    { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputEntries.length > 0 ? ` (${inputEntries.length})` : ''}`,           content: renderInputsContent() },
+    { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`,                    content: renderInputsContent() },
     { key: 'vars',     label: `${t('sim.tabs.variables')}${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`,              content: renderVarsContent() },
     { key: 'formulas', label: `${t('sim.tabs.formulas')}${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`, content: renderFormulasContent() },
-    { key: 'schedule', label: `${t('sim.tabs.schedules')}${Object.keys(schedules).length > 0 ? ` (${Object.keys(schedules).length})` : ''}`, content: renderRegimensContent() },
     ...(mode === 'opt' ? [{ key: 'opt', label: t('sim.tabs.optimizer'), content: renderOptContent() }] : []),
   ];
 

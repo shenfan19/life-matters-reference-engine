@@ -73,6 +73,7 @@
     "sim.tabs.schedules": "计划",
     "sim.tabs.optimizer": "优化器",
     "sim.inputs.add": "新增输入",
+    "sim.inputs.add_meal": "添加用餐时间",
     "sim.inputs.empty": "请先选择场景",
     "sim.vars.state_header": "状态变量",
     "sim.vars.params_header": "参数",

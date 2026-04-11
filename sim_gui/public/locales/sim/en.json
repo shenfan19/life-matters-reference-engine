@@ -72,6 +72,7 @@
     "sim.tabs.schedules": "Schedules",
     "sim.tabs.optimizer": "Optimizer",
     "sim.inputs.add": "Add Input",
+    "sim.inputs.add_meal": "Add Meal Time",
     "sim.inputs.empty": "Please select a scenario first",
     "sim.vars.state_header": "State Variables",
     "sim.vars.params_header": "Parameters",

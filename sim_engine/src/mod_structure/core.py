@@ -52,9 +52,9 @@ class ModStructure(Loader, Validator, Simulation):
         self.current_filename: str = None
         self.lang_manager = BabelLanguageManager(default_language=language) # + 初始化 LanguageManager，用于国际化消息
     def _initialize_asteval(self):
-        # 清空符号表
-        self.asteval.symtable.clear()
-        # 定义时间单位常量（秒为基单位）
+        # 重建 Interpreter，让 asteval 自己注册所有内置函数，不破坏其内部状态
+        self.asteval = Interpreter()
+        # 追加时间单位常量（秒为基单位）
         self.asteval.symtable['SECOND'] = 1.0
         self.asteval.symtable['MINUTE'] = 60.0
         self.asteval.symtable['HOUR'] = 3600.0
@@ -62,8 +62,7 @@ class ModStructure(Loader, Validator, Simulation):
         self.asteval.symtable['WEEK'] = 604800.0
         self.asteval.symtable['MONTH'] = 2592000.0
         self.asteval.symtable['YEAR'] = 31536000.0
-        
-        # 注入变量到符号表
+        # 注入模型变量到符号表
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
     

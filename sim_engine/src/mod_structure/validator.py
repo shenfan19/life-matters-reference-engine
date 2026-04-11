@@ -38,18 +38,38 @@ class Validator:
         if self.optimizer:
             if 'method' not in self.optimizer:
                 all_errors.append("optimizer 缺少 method。")
-            # 检查 variables_to_optimize（修改：去除类型检查，仅验证存在）
+            def _check_opt_var(param, section: str):
+                """
+                验证单个优化变量条目：
+                  - 字符串格式: 直接检查是否在 self.variables
+                  - 字典格式:   有 maps_to 则验证其指向的变量存在（格式 "var_name @ ..."）；
+                                无 maps_to 则验证 name 字段本身存在于 self.variables
+                """
+                if isinstance(param, str):
+                    if param not in self.variables:
+                        all_errors.append(f"optimizer.{section}: '{param}' is missing from variables.")
+                        unique_missing_vars.add(param)
+                elif isinstance(param, dict):
+                    maps_to = param.get('maps_to', '')
+                    name = param.get('name', '')
+                    if maps_to:
+                        # 提取 "var_name @ [t1, t2]" 或 "var_name @ t" 中的变量名
+                        target_var = maps_to.split('@')[0].strip()
+                        if target_var and target_var not in self.variables:
+                            all_errors.append(
+                                f"optimizer.{section}: '{name}' maps_to target '{target_var}' is missing from variables."
+                            )
+                            unique_missing_vars.add(target_var)
+                    elif name and name not in self.variables:
+                        all_errors.append(f"optimizer.{section}: '{name}' is missing from variables.")
+                        unique_missing_vars.add(name)
+
             if 'variables_to_optimize' in self.optimizer:
                 for param in self.optimizer['variables_to_optimize']:
-                    if param not in self.variables:
-                        all_errors.append(f"optimizer.variables_to_optimize: {param} is missing.")
-                        unique_missing_vars.add(param)
-            # 检查 parameters_to_optimize（类似修改：去除类型检查，仅验证存在）
+                    _check_opt_var(param, 'variables_to_optimize')
             if 'parameters_to_optimize' in self.optimizer:
                 for param in self.optimizer['parameters_to_optimize']:
-                    if param not in self.variables:
-                        all_errors.append(f"optimizer.parameters_to_optimize: {param} is missing.")
-                        unique_missing_vars.add(param)
+                    _check_opt_var(param, 'parameters_to_optimize')
 
         def validate_metadata() -> tuple[bool, list[str], list[dict]]:
             errors = []
