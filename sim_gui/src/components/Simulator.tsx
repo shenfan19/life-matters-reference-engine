@@ -323,7 +323,25 @@ const Simulator: React.FC<SimulatorProps> = ({
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
 
   // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<'setup' | 'plot'>('setup');
+  const [centerTab, setCenterTab] = useState<'setup' | 'plot' | 'report'>('setup');
+
+  // ── report tab ───────────────────────────────────────────────────────────────
+  const ALL_REPORT_SECTIONS = [
+    { key: 'overview',   label: '模型概览',   desc: '名称、描述、标签、变量总数' },
+    { key: 'simcfg',     label: '仿真配置',   desc: '时间范围、步长、输入参数值' },
+    { key: 'variables',  label: '变量汇总',   desc: '所有变量类型及最终值' },
+    { key: 'formulas',   label: '方程列表',   desc: '所有方程名称及激活条件' },
+    { key: 'trajectory', label: '轨迹数据',   desc: '采样时间序列数值表（每10步）' },
+    { key: 'opt',        label: '优化结果',   desc: '目标函数、约束条件及结果' },
+  ] as const;
+  type ReportSection = typeof ALL_REPORT_SECTIONS[number]['key'];
+  const [reportSections, setReportSections] = useState<Set<ReportSection>>(
+    new Set(['overview', 'simcfg', 'variables', 'trajectory'])
+  );
+  const [openReportPreviews, setOpenReportPreviews] = useState<Set<ReportSection>>(
+    new Set(['overview', 'simcfg', 'variables', 'trajectory'])
+  );
+  const [reportGenerating, setReportGenerating] = useState(false);
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
@@ -1339,9 +1357,10 @@ const Simulator: React.FC<SimulatorProps> = ({
             flexShrink: 0, paddingLeft: 8,
           }}>
             {([
-              { key: 'setup', label: t('sim.tab.setup') || '⚙ 配置' },
-              { key: 'plot',  label: t('sim.tab.plot')  || '📈 图表' },
-            ] as { key: 'setup' | 'plot'; label: string }[]).map(tab => (
+              { key: 'setup',  label: t('sim.tab.setup')   || '⚙ 配置' },
+              { key: 'plot',   label: t('sim.tab.plot')    || '📈 图表' },
+              { key: 'report', label: t('sim.tab.report')  || '📄 报告' },
+            ] as { key: 'setup' | 'plot' | 'report'; label: string }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setCenterTab(tab.key)}
@@ -1411,6 +1430,335 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {/* Plot tab content */}
           {centerTab === 'plot' && renderCenterPanel()}
+
+          {/* Report tab content */}
+          {centerTab === 'report' && (() => {
+            const meta = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
+            const latestStep = simulationData[simulationData.length - 1];
+            const hasData = simulationData.length > 0;
+            const allV: Record<string, any> = selectedModel?.content?.variables || {};
+
+            // ── section summary badges ─────────────────────────────────────
+            function sectionBadge(key: ReportSection): string {
+              if (key === 'overview') return `${stateVars.length + inputVars.length} 个变量`;
+              if (key === 'simcfg')   return `${Object.keys(inputParams).length} 项输入`;
+              if (key === 'variables') return `${Object.keys(allV).length} 个`;
+              if (key === 'formulas') return `${Object.keys(formulas).length} 个`;
+              if (key === 'trajectory') return hasData ? `${simulationData.length} 步` : '需先仿真';
+              if (key === 'opt')      return `${objectives.length} 目标`;
+              return '';
+            }
+
+            // ── section JSX preview ────────────────────────────────────────
+            const TH = ({ children }: { children: React.ReactNode }) => (
+              <th style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, color: c.textMute,
+                textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>{children}</th>
+            );
+            const TD = ({ children, mono }: { children: React.ReactNode; mono?: boolean }) => (
+              <td style={{ padding: '4px 8px', fontSize: 11, color: c.text,
+                fontFamily: mono ? 'monospace' : 'inherit', borderBottom: `1px solid ${c.border}` }}>{children}</td>
+            );
+
+            function renderSectionContent(key: ReportSection): React.ReactNode {
+              if (key === 'overview') return (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
+                  <tr><TD>名称</TD><TD mono>{meta.name || selectedModel?.label || '—'}</TD></tr>
+                  <tr><TD>描述</TD><TD>{(meta.description || '—').slice(0, 120)}</TD></tr>
+                  {meta.tags?.length ? <tr><TD>标签</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
+                  <tr><TD>状态变量</TD><TD mono>{stateVars.length} 个</TD></tr>
+                  <tr><TD>输入变量</TD><TD mono>{inputVars.length} 个</TD></tr>
+                  <tr><TD>方程数</TD><TD mono>{Object.keys(formulas).length} 个</TD></tr>
+                </tbody></table>
+              );
+              if (key === 'simcfg') return (
+                <div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}><tbody>
+                    <tr><TD>总时长</TD><TD mono>{timeValue} {timeUnit}</TD></tr>
+                    <tr><TD>步长</TD><TD mono>{stepValue} {stepUnit}</TD></tr>
+                    <tr><TD>批量大小</TD><TD mono>{batchSize}</TD></tr>
+                  </tbody></table>
+                  {Object.keys(inputParams).length > 0 && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><TH>变量</TH><TH>值</TH></tr></thead>
+                      <tbody>{Object.entries(inputParams).map(([k, v]) => (
+                        <tr key={k}><TD mono>{k}</TD><TD mono>{String(v)}</TD></tr>
+                      ))}</tbody>
+                    </table>
+                  )}
+                </div>
+              );
+              if (key === 'variables') return (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr><TH>变量名</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
+                  <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
+                    const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
+                    return <tr key={name}><TD mono>{name}</TD><TD>{d.type || '—'}</TD>
+                      <TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
+                  })}</tbody>
+                </table>
+              );
+              if (key === 'formulas') return (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr><TH>方程名</TH><TH>条件</TH><TH>影响变量</TH></tr></thead>
+                  <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
+                    const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
+                    const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
+                    return <tr key={name}><TD mono>{name}</TD><TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
+                  })}</tbody>
+                </table>
+              );
+              if (key === 'trajectory') {
+                if (!hasData) return <div style={{ color: c.textMute, fontSize: 11, padding: '8px 0' }}>尚无数据</div>;
+                const sampleStep = Math.max(1, Math.floor(simulationData.length / 15));
+                const sampled = simulationData.filter((_, i) => i % sampleStep === 0 || i === simulationData.length - 1);
+                const cols = stateVars.map(v => v.name).slice(0, 6);
+                return (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><TH>时间</TH>{cols.map(k => <TH key={k}>{k}</TH>)}</tr></thead>
+                      <tbody>{sampled.map((row, i) => (
+                        <tr key={i}><TD mono>{Number(row.time ?? row.step).toFixed(1)}</TD>
+                          {cols.map(k => <TD key={k} mono>{row[k] != null ? Number(row[k]).toFixed(2) : '—'}</TD>)}
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                );
+              }
+              if (key === 'opt') return (
+                <div style={{ fontSize: 11, color: c.text }}>
+                  {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>目标函数</div>
+                    {objectives.map((o, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
+                      {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}</div>)}</>}
+                  {constraints.length > 0 && <><div style={{ fontWeight: 700, margin: '8px 0 4px' }}>约束条件</div>
+                    {constraints.map((c2, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
+                      {c2.variable} {c2.op} {c2.value}</div>)}</>}
+                  <div style={{ marginTop: 8, color: c.textMute }}>算法: {optAlgo} · 种群: {optPop} · 代数: {optGen}</div>
+                </div>
+              );
+              return null;
+            }
+
+            // ── build report markdown (for export) ────────────────────────
+            function buildMd(): string {
+              const lines: string[] = [];
+              const ts = new Date().toLocaleString('zh-CN');
+              lines.push(`# 仿真报告\n\n> 生成时间：${ts}\n`);
+              if (reportSections.has('overview')) {
+                lines.push(`## 模型概览\n`);
+                lines.push(`| 字段 | 值 |\n|------|-----|`);
+                lines.push(`| 名称 | ${meta.name || selectedModel?.label || '—'} |`);
+                lines.push(`| 描述 | ${(meta.description || '—').replace(/\n/g, ' ')} |`);
+                if (meta.tags?.length) lines.push(`| 标签 | ${meta.tags.join(', ')} |`);
+                lines.push(`| 状态变量数 | ${stateVars.length} |\n| 输入变量数 | ${inputVars.length} |\n| 方程数 | ${Object.keys(formulas).length} |\n`);
+              }
+              if (reportSections.has('simcfg')) {
+                lines.push(`## 仿真配置\n\n| 参数 | 值 |\n|------|-----|`);
+                lines.push(`| 总时长 | ${timeValue} ${timeUnit} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
+                if (Object.keys(inputParams).length) {
+                  lines.push(`\n**输入参数**\n\n| 变量 | 值 |\n|------|-----|`);
+                  Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${v} |`));
+                }
+                lines.push('');
+              }
+              if (reportSections.has('variables')) {
+                lines.push(`## 变量汇总\n\n| 变量名 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|--------|--------|------|`);
+                Object.entries(allV).forEach(([name, d]: [string, any]) => {
+                  const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
+                  lines.push(`| \`${name}\` | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
+                });
+                lines.push('');
+              }
+              if (reportSections.has('formulas')) {
+                lines.push(`## 方程列表\n\n| 方程名 | 条件 | 影响变量 |\n|--------|------|----------|`);
+                Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
+                  const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
+                  lines.push(`| \`${name}\` | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
+                });
+                lines.push('');
+              }
+              if (reportSections.has('trajectory') && hasData) {
+                const ss = Math.max(1, Math.floor(simulationData.length / 20));
+                const sampled = simulationData.filter((_, i) => i % ss === 0 || i === simulationData.length - 1);
+                const cols = stateVars.map(v => v.name).slice(0, 8);
+                lines.push(`## 轨迹数据（采样）\n\n| 时间 | ${cols.join(' | ')} |\n|------|${cols.map(()=>'------').join('|')}|`);
+                sampled.forEach(row => {
+                  const vals = cols.map(k => row[k] != null ? Number(row[k]).toFixed(2) : '—');
+                  lines.push(`| ${Number(row.time ?? row.step).toFixed(1)} | ${vals.join(' | ')} |`);
+                });
+                lines.push('');
+              }
+              if (reportSections.has('opt') && mode === 'opt') {
+                lines.push(`## 优化配置\n`);
+                if (objectives.length) { lines.push(`**目标函数**\n`); objectives.forEach(o => lines.push(`- ${o.direction === 'maximize' ? '最大化' : '最小化'} \`${o.variable}\``)); }
+                if (constraints.length) { lines.push(`\n**约束条件**\n`); constraints.forEach(c2 => lines.push(`- \`${c2.variable}\` ${c2.op} ${c2.value}`)); }
+                lines.push(`\n算法: ${optAlgo} · 种群: ${optPop} · 代数: ${optGen}\n`);
+              }
+              return lines.join('\n');
+            }
+
+            function buildHtml(md: string): string {
+              const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const rows = md.split('\n');
+              let html = '<style>body{font-family:system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#1a2e22;line-height:1.6}' +
+                'h1{color:#007A33;border-bottom:2px solid #007A33;padding-bottom:8px}h2{color:#007A33;margin-top:32px}' +
+                'table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #dde5de;padding:6px 10px;text-align:left;font-size:13px}' +
+                'th{background:#f2f4f2;font-weight:700}code{background:#f2f4f2;padding:1px 4px;border-radius:3px;font-size:12px}' +
+                'blockquote{border-left:3px solid #b7eb8f;margin:0;padding-left:12px;color:#555}</style><body>';
+              let inTable = false;
+              rows.forEach(line => {
+                if (line.startsWith('# '))       { if (inTable){html+='</table>';inTable=false;} html+=`<h1>${esc(line.slice(2))}</h1>`; }
+                else if (line.startsWith('## ')) { if (inTable){html+='</table>';inTable=false;} html+=`<h2>${esc(line.slice(3))}</h2>`; }
+                else if (line.startsWith('> '))  { html+=`<blockquote>${esc(line.slice(2))}</blockquote>`; }
+                else if (/^\*\*.*\*\*$/.test(line)){ html+=`<p><strong>${esc(line.slice(2,-2))}</strong></p>`; }
+                else if (line.startsWith('- '))  { html+=`<li>${line.slice(2).replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</li>`; }
+                else if (line.startsWith('|')) {
+                  const cells = line.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>c.trim());
+                  if (cells.every(c=>/^[-:]+$/.test(c))) return;
+                  if (!inTable){ html+='<table>'; inTable=true; }
+                  html+='<tr>'+cells.map(c=>`<td>${c.replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</td>`).join('')+'</tr>';
+                } else { if(inTable){html+='</table>';inTable=false;} if(line.trim()) html+=`<p>${line.replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</p>`; }
+              });
+              if (inTable) html += '</table>';
+              return html + '</body>';
+            }
+
+            function previewHtml() {
+              const w = window.open('', '_blank');
+              if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); }
+            }
+
+            function downloadMd() {
+              setReportGenerating(true);
+              const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `report_${(meta.name || 'sim').replace(/\s+/g,'_')}_${Date.now()}.md`;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
+              setTimeout(() => setReportGenerating(false), 500);
+            }
+
+            const canExport = reportSections.size > 0;
+            const btnBase: React.CSSProperties = {
+              padding: '6px 16px', borderRadius: 5, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', transition: 'opacity 0.15s',
+            };
+
+            return (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+                {/* ── Top action bar ── */}
+                <div style={{
+                  display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
+                  padding: '10px 16px', borderBottom: `1px solid ${c.border}`, background: c.panel,
+                }}>
+                  <button onClick={previewHtml} disabled={!canExport} style={{
+                    ...btnBase, border: `1px solid ${c.primary}`, background: 'transparent',
+                    color: c.primary, opacity: canExport ? 1 : 0.4,
+                  }}>⬡ HTML 预览</button>
+                  <button onClick={downloadMd} disabled={!canExport || reportGenerating} style={{
+                    ...btnBase, border: 'none', background: canExport ? c.primary : c.border,
+                    color: '#fff', opacity: canExport && !reportGenerating ? 1 : 0.4,
+                  }}>{reportGenerating ? '生成中…' : '↓ 导出 .md'}</button>
+                  <Tooltip title="DOCX 导出功能开发中">
+                    <button disabled style={{
+                      ...btnBase, border: `1px solid ${c.border}`, background: 'transparent',
+                      color: c.textMute, cursor: 'not-allowed', opacity: 0.4,
+                    }}>↓ 导出 .docx</button>
+                  </Tooltip>
+                </div>
+
+                {/* ── Main area: left checklist + right accordion ── */}
+                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+                  {/* Left: section checklist */}
+                  <div style={{
+                    width: 168, flexShrink: 0, borderRight: `1px solid ${c.border}`,
+                    background: c.panel, overflowY: 'auto', padding: '12px 0',
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: c.textMute, letterSpacing: '0.1em',
+                      textTransform: 'uppercase', padding: '0 14px 8px' }}>输出章节</div>
+                    {ALL_REPORT_SECTIONS.map(s => {
+                      const checked = reportSections.has(s.key);
+                      const disabledTrajectory = s.key === 'trajectory' && !hasData;
+                      const disabledOpt = s.key === 'opt' && mode !== 'opt';
+                      const isDisabled = disabledTrajectory || disabledOpt;
+                      const tooltipText = disabledTrajectory ? '需先完成仿真才能输出轨迹数据'
+                        : disabledOpt ? '仅在优化模式下可用' : '';
+                      const row = (
+                        <label key={s.key} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '7px 14px', cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          opacity: isDisabled ? 0.4 : 1,
+                          background: checked && !isDisabled ? (c.primary + '12') : 'transparent',
+                          borderLeft: `2px solid ${checked && !isDisabled ? c.primary : 'transparent'}`,
+                          transition: 'all 0.12s',
+                        }}>
+                          <input type="checkbox" checked={checked} disabled={isDisabled}
+                            onChange={() => {
+                              setReportSections(p => { const s2 = new Set(p); s2.has(s.key) ? s2.delete(s.key) : s2.add(s.key); return s2; });
+                              setOpenReportPreviews(p => { const s2 = new Set(p); checked ? s2.delete(s.key) : s2.add(s.key); return s2; });
+                            }}
+                            style={{ accentColor: c.primary, width: 12, height: 12, flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: 12, color: c.text }}>{s.label}</span>
+                        </label>
+                      );
+                      return tooltipText
+                        ? <Tooltip key={s.key} title={tooltipText} placement="right">{row}</Tooltip>
+                        : row;
+                    })}
+                  </div>
+
+                  {/* Right: accordion previews */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {reportSections.size === 0 && (
+                      <div style={{ color: c.textMute, fontSize: 12, padding: '32px 0', textAlign: 'center' }}>
+                        请在左侧勾选章节
+                      </div>
+                    )}
+                    {ALL_REPORT_SECTIONS.filter(s => reportSections.has(s.key)).map(s => {
+                      const isOpen = openReportPreviews.has(s.key);
+                      const badge = sectionBadge(s.key);
+                      return (
+                        <div key={s.key} style={{
+                          border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden',
+                          background: c.panel,
+                        }}>
+                          {/* Accordion header */}
+                          <div
+                            onClick={() => setOpenReportPreviews(p => { const s2 = new Set(p); s2.has(s.key) ? s2.delete(s.key) : s2.add(s.key); return s2; })}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '8px 12px', cursor: 'pointer',
+                              background: isOpen ? c.sectionHd : 'transparent',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <span style={{ fontSize: 9, color: c.textMute, transition: 'transform 0.15s',
+                              transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
+                            <span style={{ fontWeight: 600, fontSize: 12, color: c.text, flex: 1 }}>{s.label}</span>
+                            {badge && <span style={{
+                              fontSize: 10, color: c.primary, fontFamily: 'monospace',
+                              background: c.primary + '15', padding: '1px 7px', borderRadius: 8,
+                            }}>{badge}</span>}
+                          </div>
+                          {/* Accordion content */}
+                          {isOpen && (
+                            <div style={{ padding: '10px 12px', borderTop: `1px solid ${c.border}` }}>
+                              {renderSectionContent(s.key)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

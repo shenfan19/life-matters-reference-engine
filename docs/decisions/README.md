@@ -30,3 +30,5 @@
 | [0022](0022-models-three-level-taxonomy.md) | Models 三层分类体系（medical/social → 学科 → 细分） | ✅ 已实施 | 2026-04-12 |
 | [0023](0023-models-runnable-from-gui.md) | Models 可在 GUI 文件树中直接运行 + standalone 约定 | ✅ 已实施 | 2026-04-12 |
 | [0024](0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ✅ 已实施 | 2026-04-12 |
+| [0025](0025-story-editor-four-tab-layout.md) | StoryEditor 转换器四标签平铺 + 多条件结局设计器 + 通用卡牌库 | ✅ 已实施 | 2026-04-13 |
+| [0026](0026-simulator-report-tab.md) | 仿真器报告标签：左列勾选 + 右侧折叠预览 + MD 导出 | ✅ 已实施；DOCX 待续 | 2026-04-13 |

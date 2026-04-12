@@ -119,6 +119,33 @@ function TreeItem({
   );
 }
 
+interface EndingCondition { id: string; variable: string; op: string; threshold: number; }
+interface EndingDef {
+  id: string; name: string; outcome: 'win' | 'lose' | 'special';
+  logic: 'AND' | 'OR'; priority: number;
+  conditions: EndingCondition[]; message: string;
+}
+
+type ConverterTab = 'vars' | 'endings' | 'generic' | 'cards';
+
+const GENERIC_CARDS: { id: string; cat: string; name: string; cost: number; effect: string; desc: string }[] = [
+  { id: 'heal_sm',   cat: '恢复', name: '急救包',   cost: 1, effect: '目标状态变量 +10',              desc: '对任意状态变量施加小幅回复，适合危机兜底。' },
+  { id: 'heal_lg',   cat: '恢复', name: '全面修复', cost: 3, effect: '目标状态变量 +25',              desc: '高代价的大幅恢复，扭转危局的关键牌。' },
+  { id: 'stabilize', cat: '恢复', name: '稳定剂',   cost: 2, effect: '目标变量本回合免受负向变化',    desc: '为脆弱变量提供一回合保护层。' },
+  { id: 'draw2',     cat: '资源', name: '深度调查', cost: 1, effect: '抽 2 张牌',                    desc: '加速手牌轮转，寻找关键操作卡。' },
+  { id: 'ap_now',    cat: '资源', name: '紧急调配', cost: 0, effect: '本回合 +2 AP',                 desc: '零费用临时爆发，适合最后一轮冲刺。' },
+  { id: 'ap_next',   cat: '资源', name: '战略储备', cost: 1, effect: '下 2 回合各 +1 AP',            desc: '将行动点分摊至未来，节奏型运营牌。' },
+  { id: 'draw1free', cat: '资源', name: '市场情报', cost: 0, effect: '抽 1 张牌',                    desc: '零费抽牌，维持手牌数量的润滑剂。' },
+  { id: 'negate',    cat: '控制', name: '干预措施', cost: 2, effect: '抵消下一个负面环境事件',        desc: '预防性否定，用于高风险回合前布置。' },
+  { id: 'freeze',    cat: '控制', name: '临时冻结', cost: 2, effect: '目标变量本回合数值锁定',        desc: '阻止某变量继续下滑，为恢复争取时间。' },
+  { id: 'redirect',  cat: '控制', name: '转移注意', cost: 1, effect: '将一个负向效果重定向至另一变量', desc: '牺牲次要变量保护核心变量。' },
+  { id: 'gamble',    cat: '特效', name: '破釜沉舟', cost: 0, effect: '全部状态变量 −15，+4 AP',       desc: '以重大代价换取大量行动点，孤注一掷。' },
+  { id: 'comeback',  cat: '特效', name: '转危为机', cost: 3, effect: '最低状态变量 +35',              desc: '自动找到最危险的变量施救，强力保底牌。' },
+  { id: 'chain',     cat: '特效', name: '连锁反应', cost: 2, effect: '对所有状态变量施加同一卡牌效果', desc: '将单体效果扩散至全场，高倍率操作。' },
+  { id: 'insight',   cat: '特效', name: '深度洞察', cost: 1, effect: '查看牌库顶 3 张，可任意排序',   desc: '计划性极强的信息牌，控制未来手牌。' },
+];
+const GENERIC_CARD_CATS = [...new Set(GENERIC_CARDS.map(c => c.cat))];
+
 interface Props { isDarkMode: boolean; c: any; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -154,8 +181,12 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
   const [healthVar,  setHealthVar]  = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  // Converter sub-tabs
+  const [converterTab,    setConverterTab]    = useState<ConverterTab>('vars');
+  const [endings,         setEndings]         = useState<EndingDef[]>([]);
+  const [selGenericCards, setSelGenericCards] = useState<Set<string>>(new Set());
+
   // Card Builder
-  const [middleMode,      setMiddleMode]      = useState<'converter' | 'cards'>('converter');
   const [cardTypeFilter,  setCardTypeFilter]  = useState<'all' | 'env' | 'player'>('all');
   const [cardSearch,      setCardSearch]      = useState('');
   const [cards,           setCards]           = useState<CardFile[]>([]);
@@ -306,7 +337,27 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
     // Load model yaml
     try {
       const r = await fetch(`/api/file/${node.key}`).then(x => x.json());
-      if (r.success && r.data?.content) setScenData(r.data.content);
+      if (r.success && r.data?.content) {
+        const sd = r.data.content;
+        setScenData(sd);
+        // Build default endings from state/output variables
+        const stateKeys = Object.entries(sd.variables || {})
+          .filter(([, v]: [string, any]) => v.type === 'state' || v.type === 'output')
+          .map(([k]) => k);
+        const primary = ((sd.optimizer?.targets_of_optimization || []) as string[])[0] || stateKeys[0];
+        const de: EndingDef[] = [];
+        if (primary) {
+          de.push({ id: 'e_win', name: '目标达成', outcome: 'win', logic: 'AND', priority: 1,
+            conditions: [{ id: 'ew0', variable: primary, op: '>=', threshold: 75 }],
+            message: `${primary} 达到目标水平，任务成功！` });
+        }
+        stateKeys.filter(k => k !== primary).slice(0, 3).forEach((k, i) => {
+          de.push({ id: `e_lose${i}`, name: `${k} 崩溃`, outcome: 'lose', logic: 'AND', priority: 10 + i,
+            conditions: [{ id: `el${i}0`, variable: k, op: '<=', threshold: 15 }],
+            message: `${k} 降至临界值以下，局势失控。` });
+        });
+        setEndings(de);
+      }
     } catch { /* ignore */ }
 
     // Load game_story.yaml from stories/ (may not exist)
@@ -341,11 +392,11 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
 
   // ── Load cards when switching to card builder or when selection changes ──────
   useEffect(() => {
-    if (middleMode === 'cards' && selected?.matchKey) {
+    if (converterTab === 'cards' && selected?.matchKey) {
       loadCards(selected.matchKey);
       setExpandedCard(null);
     }
-  }, [middleMode, selected?.matchKey, loadCards]);
+  }, [converterTab, selected?.matchKey, loadCards]);
 
   // ── Filter tree by search ───────────────────────────────────────────────────
   function filterTree(nodes: TreeNode[], q: string): TreeNode[] {
@@ -524,7 +575,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               )}
             </div>
 
-            {/* ── Sub-control row ── */}
+            {/* ── Tab bar ── */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '6px 0 10px', borderBottom: `1px solid ${border}`, marginBottom: 12,
@@ -532,14 +583,16 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
             }}>
               <Segmented
                 size="small"
-                value={middleMode}
-                onChange={v => setMiddleMode(v as 'converter' | 'cards')}
+                value={converterTab}
+                onChange={v => setConverterTab(v as ConverterTab)}
                 options={[
-                  { label: '转换器', value: 'converter' },
+                  { label: '变量映射', value: 'vars' },
+                  { label: '结局触发', value: 'endings' },
+                  { label: '通用卡牌', value: 'generic' },
                   { label: <span><AppstoreOutlined style={{ marginRight: 4 }} />卡牌构建器</span>, value: 'cards' },
                 ]}
               />
-              {middleMode === 'cards' && (
+              {converterTab === 'cards' && (
                 <>
                   <div style={{ width: 1, height: 16, background: border, flexShrink: 0 }} />
                   <Select
@@ -571,7 +624,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               )}
             </div>
 
-            {middleMode === 'cards' ? (
+            {converterTab === 'cards' ? (
               /* ── Card Builder ── */
               <CardBuilder
                 cards={cards} loading={cardsLoading}
@@ -584,7 +637,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               />
             ) : (
 
-            /* ── Converter (original) ── */
+            /* ── Converter tabs ── */
 
             loadingDetail ? (
               <div style={{ padding: 40, textAlign: 'center' }}>
@@ -592,131 +645,382 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
               </div>
             ) : (
               <>
-                {/* Dual card row */}
-                <div style={{ display: 'flex', gap: 12, minHeight: 280 }}>
+                {/* ── Tab: 变量映射 ── */}
+                {converterTab === 'vars' && (
+                  <>
+                    {/* Dual card row */}
+                    <div style={{ display: 'flex', gap: 12, minHeight: 280 }}>
 
-                  {/* Left card: Model summary (readonly) */}
-                  <div style={{
-                    flex: 1, borderRadius: 8, border: `1px solid ${border}`,
-                    background: cardBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                  }}>
-                    <CardHeader
-                      icon={<FileTextOutlined style={{ color: mute }} />}
-                      title="Scenario 摘要" badge="只读"
-                      bg={sideHd} border={border} text={text} mute={mute}
-                    />
-                    <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
-                      {scenData
-                        ? <ScenarioSummary data={scenData} c={c} codeBg={codeBg} border={border} />
-                        : <span style={{ color: mute }}>加载失败或无内容</span>
-                      }
-                    </div>
-                  </div>
-
-                  {/* Right card: Game story */}
-                  <div style={{
-                    flex: 1, borderRadius: 8, border: `1px solid ${border}`,
-                    background: cardBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      padding: '10px 14px', borderBottom: `1px solid ${border}`,
-                      background: sideHd, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                    }}>
-                      <SwapRightOutlined style={{ color: primary }} />
-                      <span style={{ fontWeight: 600, color: text }}>Game Story</span>
-                      {gameData && !editing && (
-                        <button onClick={() => setEditing(true)} style={{
-                          marginLeft: 'auto', background: 'none', border: 'none',
-                          cursor: 'pointer', color: mute,
-                          display: 'flex', alignItems: 'center', gap: 3,
-                        }}>
-                          <EditOutlined style={{  }} /> 编辑
-                        </button>
-                      )}
-                      {editing && (
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => { setGameDraft(clone(gameData)); setEditing(false); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute }}
-                          >
-                            <CloseOutlined /> 取消
-                          </button>
-                          <button onClick={handleSave} style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: primary, fontWeight: 600,
-                            display: 'flex', alignItems: 'center', gap: 3,
-                          }}>
-                            <SaveOutlined /> {saving ? '保存中…' : '保存'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
-                      {gameData ? (
-                        <GameStorySummary
-                          data={editing ? gameDraft : gameData}
-                          editing={editing}
-                          onChange={fn => setGameDraft((p: any) => { const d = clone(p); fn(d); return d; })}
-                          c={c} codeBg={codeBg} border={border} isDarkMode={isDarkMode}
+                      {/* Left card: Model summary (readonly) */}
+                      <div style={{
+                        flex: 1, borderRadius: 8, border: `1px solid ${border}`,
+                        background: cardBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                      }}>
+                        <CardHeader
+                          icon={<FileTextOutlined style={{ color: mute }} />}
+                          title="Scenario 摘要" badge="只读"
+                          bg={sideHd} border={border} text={text} mute={mute}
                         />
-                      ) : (
-                        <EmptyState mute={mute} />
-                      )}
+                        <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
+                          {scenData
+                            ? <ScenarioSummary data={scenData} c={c} codeBg={codeBg} border={border} />
+                            : <span style={{ color: mute }}>加载失败或无内容</span>
+                          }
+                        </div>
+                      </div>
+
+                      {/* Right card: Game story */}
+                      <div style={{
+                        flex: 1, borderRadius: 8, border: `1px solid ${border}`,
+                        background: cardBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          padding: '10px 14px', borderBottom: `1px solid ${border}`,
+                          background: sideHd, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                        }}>
+                          <SwapRightOutlined style={{ color: primary }} />
+                          <span style={{ fontWeight: 600, color: text }}>Game Story</span>
+                          {gameData && !editing && (
+                            <button onClick={() => setEditing(true)} style={{
+                              marginLeft: 'auto', background: 'none', border: 'none',
+                              cursor: 'pointer', color: mute,
+                              display: 'flex', alignItems: 'center', gap: 3,
+                            }}>
+                              <EditOutlined /> 编辑
+                            </button>
+                          )}
+                          {editing && (
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => { setGameDraft(clone(gameData)); setEditing(false); }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute }}
+                              >
+                                <CloseOutlined /> 取消
+                              </button>
+                              <button onClick={handleSave} style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: primary, fontWeight: 600,
+                                display: 'flex', alignItems: 'center', gap: 3,
+                              }}>
+                                <SaveOutlined /> {saving ? '保存中…' : '保存'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
+                          {gameData ? (
+                            <GameStorySummary
+                              data={editing ? gameDraft : gameData}
+                              editing={editing}
+                              onChange={fn => setGameDraft((p: any) => { const d = clone(p); fn(d); return d; })}
+                              c={c} codeBg={codeBg} border={border} isDarkMode={isDarkMode}
+                            />
+                          ) : (
+                            <EmptyState mute={mute} />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Mapping + controls */}
-                <div style={{
-                  borderRadius: 8, border: `1px solid ${border}`,
-                  background: cardBg, overflow: 'hidden',
-                }}>
-                  <div style={{
-                    padding: '10px 14px', borderBottom: `1px solid ${border}`,
-                    background: sideHd, fontWeight: 600, color: text,
-                  }}>
-                    字段映射
-                  </div>
-                  <div style={{ padding: '14px' }}>
-                    <FixedMappings c={c} />
+                    {/* Mapping + controls */}
+                    <div style={{
+                      borderRadius: 8, border: `1px solid ${border}`,
+                      background: cardBg, overflow: 'hidden', marginTop: 12,
+                    }}>
+                      <div style={{
+                        padding: '10px 14px', borderBottom: `1px solid ${border}`,
+                        background: sideHd, fontWeight: 600, color: text,
+                      }}>
+                        字段映射
+                      </div>
+                      <div style={{ padding: '14px' }}>
+                        <FixedMappings c={c} />
 
-                    {/* Health mapping (required) */}
-                    <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ color: mute, flexShrink: 0, width: 200 }}>
-                        health ← 模型变量 <span style={{ color: '#f5222d' }}>*</span>
-                      </span>
-                      <Select
-                        size="small" placeholder="选择对应 health 的变量"
-                        style={{ flex: 1 }} value={healthVar}
-                        onChange={v => setHealthVar(v)} options={outputVars}
-                      />
+                        {/* Health mapping (required) */}
+                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ color: mute, flexShrink: 0, width: 200 }}>
+                            health ← 模型变量 <span style={{ color: '#f5222d' }}>*</span>
+                          </span>
+                          <Select
+                            size="small" placeholder="选择对应 health 的变量"
+                            style={{ flex: 1 }} value={healthVar}
+                            onChange={v => setHealthVar(v)} options={outputVars}
+                          />
+                        </div>
+
+                        {/* Variable rows */}
+                        {scenData?.variables && (
+                          <VariableMappingRows
+                            variables={scenData.variables}
+                            healthVar={healthVar}
+                            mapping={mapping}
+                            c={c} border={border}
+                          />
+                        )}
+
+                        {/* Actions */}
+                        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <Button
+                            size="small" type="primary"
+                            icon={<SwapRightOutlined />}
+                            loading={generating}
+                            disabled={!scenData || !healthVar}
+                            onClick={handleGenerate}
+                            style={{ background: primary, borderColor: primary }}
+                          >
+                            → 自动生成
+                          </Button>
+                        </div>
+                      </div>
                     </div>
+                  </>
+                )}
 
-                    {/* Variable rows */}
-                    {scenData?.variables && (
-                      <VariableMappingRows
-                        variables={scenData.variables}
-                        healthVar={healthVar}
-                        mapping={mapping}
-                        c={c} border={border}
-                      />
-                    )}
-
-                    {/* Actions */}
-                    <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                {/* ── Tab: 结局触发 ── */}
+                {converterTab === 'endings' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <Button
-                        size="small" type="primary"
-                        icon={<SwapRightOutlined />}
-                        loading={generating}
-                        disabled={!scenData || !healthVar}
-                        onClick={handleGenerate}
-                        style={{ background: primary, borderColor: primary }}
+                        size="small" type="dashed" icon={<PlusOutlined />}
+                        onClick={() => setEndings(p => [...p, {
+                          id: `e${Date.now()}`, name: '新结局', outcome: 'special',
+                          logic: 'AND', priority: p.length + 10,
+                          conditions: [{ id: `c${Date.now()}`, variable: outputVars[0]?.value || '', op: '>=', threshold: 50 }],
+                          message: '',
+                        }])}
+                        style={{ borderColor: primary, color: primary }}
                       >
-                        → 自动生成
+                        新增结局
                       </Button>
                     </div>
+
+                    {endings.length === 0 && (
+                      <div style={{
+                        borderRadius: 8, border: `1px solid ${border}`, background: cardBg,
+                        textAlign: 'center', color: mute, fontSize: 12, padding: '32px 0',
+                      }}>
+                        暂无结局定义 — 点击「新增结局」开始设计
+                      </div>
+                    )}
+
+                    {endings.map(e => {
+                      const oc = e.outcome === 'win'
+                        ? { bg: isDarkMode ? '#162312' : '#f6ffed', bd: isDarkMode ? '#274916' : '#b7eb8f', badge: '#52c41a', badgeBg: isDarkMode ? '#162312' : '#f6ffed' }
+                        : e.outcome === 'lose'
+                        ? { bg: isDarkMode ? '#2a1215' : '#fff1f0', bd: isDarkMode ? '#58181c' : '#ffa39e', badge: '#ff4d4f', badgeBg: isDarkMode ? '#2a1215' : '#fff1f0' }
+                        : { bg: isDarkMode ? '#111a2c' : '#f0f5ff', bd: isDarkMode ? '#1c2d4f' : '#adc6ff', badge: '#4096ff', badgeBg: isDarkMode ? '#111a2c' : '#f0f5ff' };
+                      return (
+                        <div key={e.id} style={{
+                          background: oc.bg, border: `1px solid ${oc.bd}`,
+                          borderRadius: 8, padding: '12px 14px',
+                        }}>
+                          {/* Header row */}
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                            <select
+                              value={e.outcome}
+                              onChange={ev => setEndings(p => p.map(x => x.id === e.id ? { ...x, outcome: ev.target.value as EndingDef['outcome'] } : x))}
+                              style={{
+                                fontSize: 11, fontWeight: 700, padding: '2px 6px',
+                                border: `1px solid ${oc.bd}`, borderRadius: 4,
+                                background: oc.badgeBg, color: oc.badge, cursor: 'pointer',
+                              }}
+                            >
+                              <option value="win">WIN</option>
+                              <option value="lose">LOSE</option>
+                              <option value="special">特殊</option>
+                            </select>
+                            <input
+                              type="text" value={e.name} placeholder="结局名称"
+                              onChange={ev => setEndings(p => p.map(x => x.id === e.id ? { ...x, name: ev.target.value } : x))}
+                              style={{
+                                fontSize: 12, fontWeight: 600, padding: '2px 8px', flex: 1,
+                                border: `1px solid ${oc.bd}`, borderRadius: 4,
+                                background: 'transparent', color: text, outline: 'none',
+                              }}
+                            />
+                            <span style={{ fontSize: 11, color: mute, flexShrink: 0 }}>优先级</span>
+                            <input
+                              type="number" value={e.priority} min={1} max={99}
+                              onChange={ev => setEndings(p => p.map(x => x.id === e.id ? { ...x, priority: Number(ev.target.value) } : x))}
+                              style={{
+                                fontSize: 11, fontFamily: 'monospace', width: 42, padding: '2px 5px',
+                                border: `1px solid ${oc.bd}`, borderRadius: 4,
+                                background: 'transparent', color: text, outline: 'none',
+                              }}
+                            />
+                            <button
+                              onClick={() => setEndings(p => p.map(x => x.id === e.id ? { ...x, logic: x.logic === 'AND' ? 'OR' : 'AND' } : x))}
+                              style={{
+                                fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                                background: e.logic === 'AND' ? (isDarkMode ? '#111a2c' : '#e6f4ff') : (isDarkMode ? '#2b1d11' : '#fff7e6'),
+                                color: e.logic === 'AND' ? '#4096ff' : '#fa8c16',
+                                border: `1px solid ${e.logic === 'AND' ? '#4096ff55' : '#fa8c1655'}`,
+                                borderRadius: 4, cursor: 'pointer',
+                              }}
+                            >
+                              {e.logic}
+                            </button>
+                            <button
+                              onClick={() => setEndings(p => p.filter(x => x.id !== e.id))}
+                              style={{
+                                fontSize: 13, padding: '1px 7px', background: 'none',
+                                border: `1px solid ${oc.bd}`, borderRadius: 4,
+                                cursor: 'pointer', color: mute,
+                              }}
+                            >×</button>
+                          </div>
+
+                          {/* Condition rows */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
+                            {e.conditions.map((cd, ci) => (
+                              <div key={cd.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <span style={{
+                                  fontSize: 9, fontWeight: 700, width: 28, textAlign: 'center', flexShrink: 0,
+                                  color: ci === 0 ? mute : (e.logic === 'AND' ? '#4096ff' : '#fa8c16'),
+                                }}>
+                                  {ci === 0 ? 'IF' : e.logic}
+                                </span>
+                                <select
+                                  value={cd.variable}
+                                  onChange={ev => setEndings(p => p.map(x => x.id !== e.id ? x : {
+                                    ...x, conditions: x.conditions.map(c => c.id === cd.id ? { ...c, variable: ev.target.value } : c),
+                                  }))}
+                                  style={{
+                                    fontSize: 11, fontFamily: 'monospace', padding: '2px 5px', flex: 1,
+                                    border: `1px solid ${border}`, borderRadius: 4, background: cardBg, color: text,
+                                  }}
+                                >
+                                  {outputVars.map(v => <option key={v.value} value={v.value}>{v.value}</option>)}
+                                </select>
+                                <select
+                                  value={cd.op}
+                                  onChange={ev => setEndings(p => p.map(x => x.id !== e.id ? x : {
+                                    ...x, conditions: x.conditions.map(c => c.id === cd.id ? { ...c, op: ev.target.value } : c),
+                                  }))}
+                                  style={{
+                                    fontSize: 11, fontFamily: 'monospace', padding: '2px 4px', width: 42,
+                                    border: `1px solid ${border}`, borderRadius: 4, background: cardBg, color: text,
+                                  }}
+                                >
+                                  <option value=">=">≥</option>
+                                  <option value="<=">≤</option>
+                                  <option value=">">&gt;</option>
+                                  <option value="<">&lt;</option>
+                                  <option value="==">＝</option>
+                                </select>
+                                <input
+                                  type="number" min={0} max={100} value={cd.threshold}
+                                  onChange={ev => setEndings(p => p.map(x => x.id !== e.id ? x : {
+                                    ...x, conditions: x.conditions.map(c => c.id === cd.id ? { ...c, threshold: Number(ev.target.value) } : c),
+                                  }))}
+                                  style={{
+                                    fontSize: 11, fontFamily: 'monospace', width: 52, padding: '2px 6px',
+                                    border: `1px solid ${border}`, borderRadius: 4, background: cardBg, color: text, outline: 'none',
+                                  }}
+                                />
+                                {e.conditions.length > 1 && (
+                                  <button
+                                    onClick={() => setEndings(p => p.map(x => x.id !== e.id ? x : {
+                                      ...x, conditions: x.conditions.filter(c => c.id !== cd.id),
+                                    }))}
+                                    style={{
+                                      fontSize: 11, padding: '1px 5px', background: 'none',
+                                      border: `1px solid ${oc.bd}`, borderRadius: 4,
+                                      cursor: 'pointer', color: mute,
+                                    }}
+                                  >−</button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => setEndings(p => p.map(x => x.id !== e.id ? x : {
+                                ...x, conditions: [...x.conditions, {
+                                  id: `c${Date.now()}`, variable: outputVars[0]?.value || '', op: '<=', threshold: 30,
+                                }],
+                              }))}
+                              style={{
+                                fontSize: 11, alignSelf: 'flex-start', padding: '2px 10px',
+                                background: 'none', border: `1px dashed ${oc.bd}`,
+                                borderRadius: 4, cursor: 'pointer', color: oc.badge, marginTop: 2,
+                              }}
+                            >
+                              + 添加条件
+                            </button>
+                          </div>
+
+                          {/* Message */}
+                          <input
+                            type="text" value={e.message} placeholder="结局描述文本…"
+                            onChange={ev => setEndings(p => p.map(x => x.id === e.id ? { ...x, message: ev.target.value } : x))}
+                            style={{
+                              width: '100%', fontSize: 11, padding: '4px 8px', boxSizing: 'border-box',
+                              border: `1px solid ${oc.bd}`, borderRadius: 4,
+                              background: 'transparent', color: text, outline: 'none',
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
+
+                {/* ── Tab: 通用卡牌 ── */}
+                {converterTab === 'generic' && (
+                  <div>
+                    <div style={{ fontSize: 12, color: mute, marginBottom: 12 }}>
+                      选择加入场景的通用卡牌，独立于模型转换生成的专属卡牌。
+                      已选：<strong style={{ color: primary }}>{selGenericCards.size}</strong> 张
+                    </div>
+                    {GENERIC_CARD_CATS.map(cat => (
+                      <div key={cat} style={{
+                        borderRadius: 8, border: `1px solid ${border}`,
+                        background: cardBg, overflow: 'hidden', marginBottom: 10,
+                      }}>
+                        <div style={{
+                          padding: '8px 14px', background: sideHd,
+                          fontSize: 11, fontWeight: 700, color: mute,
+                          textTransform: 'uppercase', letterSpacing: '0.08em',
+                        }}>{cat}</div>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+                          gap: 8, padding: 10,
+                        }}>
+                          {GENERIC_CARDS.filter(gc => gc.cat === cat).map(gc => {
+                            const sel = selGenericCards.has(gc.id);
+                            return (
+                              <div
+                                key={gc.id}
+                                onClick={() => setSelGenericCards(p => {
+                                  const s = new Set(p);
+                                  sel ? s.delete(gc.id) : s.add(gc.id);
+                                  return s;
+                                })}
+                                style={{
+                                  border: `1.5px solid ${sel ? primary : border}`,
+                                  borderRadius: 6, padding: '8px 10px', cursor: 'pointer',
+                                  background: sel ? (isDarkMode ? '#162312' : '#f6fffa') : 'transparent',
+                                  transition: 'all 0.15s', position: 'relative',
+                                }}
+                              >
+                                {sel && (
+                                  <span style={{
+                                    position: 'absolute', top: 6, right: 8,
+                                    fontSize: 11, color: primary, fontWeight: 700,
+                                  }}>✓</span>
+                                )}
+                                <div style={{ fontSize: 12, fontWeight: 700, color: text, marginBottom: 4 }}>{gc.name}</div>
+                                <div style={{ fontSize: 10, color: primary, fontWeight: 600 }}>
+                                  {gc.effect}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )
             )}
