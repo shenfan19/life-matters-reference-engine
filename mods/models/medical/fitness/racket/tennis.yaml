@@ -1,0 +1,185 @@
+metadata:
+  author: Life Matters Team
+  conflicts: []
+  description: 网球比赛生理模型，90分钟比赛，间歇性爆发与技术精度衰减
+  name: tennis
+  tags:
+  - fitness
+  - tennis
+  - racket
+  - interval
+  version: 1.0.0
+  standalone: true
+variables:
+  rally_intensity:
+    bounds:
+    - 0.0
+    - 10.0
+    description: 回合强度（RPE 0-10），高值=长回合/快节奏
+    type: parameter
+    unit: RPE
+    value: 7.0
+  serve_speed:
+    bounds:
+    - 100.0
+    - 220.0
+    description: 发球速度
+    type: parameter
+    unit: km/h
+    value: 160.0
+  heart_rate:
+    bounds:
+    - 60.0
+    - 200.0
+    description: 心率
+    type: state
+    unit: 次/分
+    value: 70.0
+  calories_burned:
+    bounds:
+    - 0.0
+    - 1000.0
+    description: 消耗热量
+    type: state
+    unit: kcal
+    value: 0.0
+  distance_covered:
+    bounds:
+    - 0.0
+    - 5000.0
+    description: 累计移动距离
+    type: state
+    unit: 米
+    value: 0.0
+  fatigue:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 疲劳指数（0=无疲劳，1=力竭）
+    type: state
+    unit: 无量纲
+    value: 0.0
+  lactate:
+    bounds:
+    - 0.8
+    - 12.0
+    description: 血乳酸浓度
+    type: state
+    unit: mmol/L
+    value: 1.0
+  serve_accuracy:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 发球精准度（疲劳时下降）
+    type: state
+    unit: '%'
+    value: 85.0
+  footwork_quality:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 步法质量（协调性与到位速度）
+    type: state
+    unit: 分
+    value: 80.0
+  shot_consistency:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 击球稳定性（非受迫性失误率的反指标）
+    type: state
+    unit: 分
+    value: 80.0
+  performance:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 综合比赛表现评分
+    type: state
+    unit: 分
+    value: 78.0
+formulas:
+  heart_rate_dynamics:
+    condition: true
+    description: 心率随回合强度波动（网球有明显间歇）
+    dynamics:
+      heart_rate: 65 + rally_intensity * 12 + fatigue * 10
+    priority: 1
+  lactate_rally:
+    condition: rally_intensity > 6.0
+    description: 高强度回合产生乳酸
+    dynamics:
+      lactate: min(12, lactate + (rally_intensity - 6) * 0.15)
+    priority: 2
+  lactate_rest:
+    condition: rally_intensity <= 6.0
+    description: 换边休息时乳酸清除
+    dynamics:
+      lactate: max(1.0, lactate - 0.3)
+    priority: 3
+  distance_accumulation:
+    condition: true
+    description: 移动距离累积
+    dynamics:
+      distance_covered: distance_covered + (rally_intensity * 6 + 5) * (1 - fatigue * 0.2)
+    priority: 4
+  calories_accumulation:
+    condition: true
+    description: 热量消耗
+    dynamics:
+      calories_burned: calories_burned + rally_intensity * 0.85 * (1 - fatigue * 0.1)
+    priority: 5
+  fatigue_accumulation:
+    condition: true
+    description: 疲劳随强度和时间积累
+    dynamics:
+      fatigue: min(1.0, fatigue + rally_intensity * 0.0013 + 0.0003)
+    priority: 6
+  serve_accuracy_decay:
+    condition: fatigue > 0.3
+    description: 疲劳导致发球精准度下降
+    dynamics:
+      serve_accuracy: max(50, serve_accuracy - (fatigue - 0.3) * 1.2)
+    priority: 7
+  footwork_decay:
+    condition: fatigue > 0.4
+    description: 疲劳影响步法
+    dynamics:
+      footwork_quality: max(40, footwork_quality - (fatigue - 0.4) * 1.0)
+    priority: 8
+  shot_consistency_dynamics:
+    condition: true
+    description: 击球稳定性受疲劳和乳酸影响
+    dynamics:
+      shot_consistency: max(30, 85 - fatigue * 30 - max(0, lactate - 4) * 2)
+    priority: 9
+  performance_score:
+    condition: true
+    description: 综合表现评分
+    dynamics:
+      performance: max(0, min(100, serve_accuracy * 0.3 + footwork_quality * 0.3 + shot_consistency * 0.4))
+    priority: 10
+simulator:
+  step_size: 1
+  time_unit: minute
+  total_time: 90
+  output_format: csv
+  output_variables:
+  - heart_rate
+  - calories_burned
+  - distance_covered
+  - fatigue
+  - lactate
+  - serve_accuracy
+  - footwork_quality
+  - shot_consistency
+  - performance
+optimizer:
+  method: grid
+  duration: 90.0
+  targets_of_optimization:
+  - performance
+  variables_to_optimize:
+  - rally_intensity
+  - serve_speed

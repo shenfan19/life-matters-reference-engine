@@ -1,0 +1,115 @@
+metadata:
+  name: swimming
+  version: "1.0.0"
+  author: "Life Matters"
+  description: >
+    游泳训练模型（单次训练课，60分钟）。技术效率主导：划水效率与体能共同决定速度。
+    低冲击有氧运动，核心特征是技术衰减—疲劳越高效率越低。
+  tags: [sport, swimming, aerobic, technique]
+  standalone: true
+
+variables:
+  training_intensity:
+    type: input
+    value: 5.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "运动感知强度"
+  stroke_rate:
+    type: input
+    value: 30.0
+    unit: "次/分"
+    bounds: [15.0, 60.0]
+    description: "划水频率（自由泳：休闲25-35，竞速45-60）"
+  stroke_efficiency:
+    type: state
+    value: 0.8
+    unit: "系数"
+    bounds: [0.1, 1.0]
+    description: "划水效率（每次划水推进距离比；疲劳下降）"
+  heart_rate:
+    type: state
+    value: 70.0
+    unit: "bpm"
+    bounds: [50.0, 190.0]
+    description: "运动心率（游泳心率比跑步低5-10bpm）"
+  distance:
+    type: state
+    value: 0.0
+    unit: "m"
+    bounds: [0.0, 10000.0]
+    description: "累计游泳距离"
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0.0, 1500.0]
+    description: "累计热量消耗（约400-600kcal/小时）"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "肌肉疲劳（上肢为主；>60技术明显退化）"
+  technique_score:
+    type: state
+    value: 80.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "技术评分（疲劳导致动作变形降分）"
+  performance:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "综合表现（效率×体能）"
+
+formulas:
+  heart_rate_response:
+    description: "游泳心率（比跑步低约10bpm）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(190, 60 + training_intensity * 9 + fatigue * 0.3)"
+  distance_accumulate:
+    description: "每分钟游距（m）=划频×效率×单次划水距离"
+    condition: "training_intensity > 0"
+    priority: 9
+    dynamics:
+      distance: "distance + stroke_rate * stroke_efficiency * 1.8"
+  calorie_burn:
+    description: "热量消耗（游泳约500kcal/h=8.3kcal/min，强度调整）"
+    condition: "training_intensity > 0"
+    priority: 8
+    dynamics:
+      calories_burned: "calories_burned + 5.0 + training_intensity * 0.5"
+  fatigue_accumulate:
+    description: "上肢疲劳积累（划水频率和强度共同驱动）"
+    condition: "training_intensity > 0"
+    priority: 8
+    dynamics:
+      fatigue: "min(100, fatigue + training_intensity * 0.07 + stroke_rate * 0.001)"
+  stroke_efficiency_decay:
+    description: "疲劳导致划水效率下降（技术退化核心机制）"
+    condition: "fatigue > 30"
+    priority: 7
+    dynamics:
+      stroke_efficiency: "max(0.1, 0.8 - (fatigue - 30) * 0.007)"
+  technique_decay:
+    description: "技术评分随疲劳下降"
+    condition: true
+    priority: 7
+    dynamics:
+      technique_score: "max(0, 80 - fatigue * 0.5)"
+  performance_update:
+    description: "综合表现=效率×体能"
+    condition: true
+    priority: 6
+    dynamics:
+      performance: "max(0, stroke_efficiency * 100 * (1 - fatigue * 0.005))"
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 60
+  output_variables: [heart_rate, distance, stroke_efficiency, calories_burned, fatigue, technique_score, performance]

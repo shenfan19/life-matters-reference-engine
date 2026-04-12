@@ -1,0 +1,64 @@
+metadata:
+  name: inflammation
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 系统炎症水平和自身免疫活性
+  conflicts: []
+  tags:
+  - inflammation
+  - immune
+imports:
+- glucose_regulation
+- obesity
+variables:
+  inflammation_level:
+    description: 系统炎症水平
+    value: 1.0
+    unit: 指数
+    type: state
+    bounds:
+    - 0.5
+    - 5.0
+  autoimmune_activity:
+    description: 自身免疫活性（针对1型糖尿病）
+    value: 0
+    unit: 指数
+    type: state
+    bounds:
+    - 0
+    - 1.0
+formulas:
+  inflammation_increase:
+    description: 高血糖和肥胖增加炎症
+    condition: blood_glucose > 150 or obesity_index > 0.5
+    dynamics:
+      inflammation_level: min(5.0, inflammation_level + 0.001 * step_size)
+    priority: 3
+  inflammation_decrease:
+    description: 运动和血糖控制减少炎症
+    condition: blood_glucose < 100 and exercise_intensity > 1
+    dynamics:
+      inflammation_level: max(0.5, inflammation_level - 0.002 * step_size)
+    priority: 3
+  autoimmune_activation:
+    description: 1型糖尿病自身免疫激活
+    condition: diabetes_type == 1 and autoimmune_activity < 1.0
+    dynamics:
+      autoimmune_activity: min(1.0, autoimmune_activity + 0.0005 * step_size)
+    priority: 4
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - inflammation_level
+  - autoimmune_activity
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - inflammation_level
+  variables_to_optimize:
+  - exercise_intensity

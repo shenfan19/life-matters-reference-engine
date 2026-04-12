@@ -305,4 +305,89 @@ simulator:
 4. **步长一致性**: 使用 `daily_inputs` 时，任意步长（秒/小时/天）均可正确积分，无需手动调整。
 
 ---
-*最后更新：2026年3月*
+
+## 第五部分：模型分类体系
+
+> 详细决策见 ADR [0022](../decisions/0022-models-three-level-taxonomy.md)。本节为实用速查。
+
+### 5.1 三层目录规则
+
+所有模型文件放在 `mods/models/` 下，按**三层**组织：
+
+```
+mods/models/
+  L1 (领域)  / L2 (学科)  / L3 (细分方向)  / file.yaml
+  medical    / nutrition  / food           / banana_physiology.yaml
+  social     / economy    / labor          / labor_daily.yaml
+```
+
+**L3 不强制**：仅当 L2 目录内文件类型明显多元（≥2种方向）时才增加 L3。
+
+### 5.2 完整分类表
+
+| L1 | L2 | L3 | 说明 |
+|----|----|----|------|
+| medical | physiology | —（扁平）| 生理库组件，被其他模型 import |
+| medical | nutrition | food | 单一食材的营养与代谢 |
+| medical | nutrition | diet | 饮食模式、历史饮食、干预方案 |
+| medical | fitness | individual | 个人耐力项目（跑步、游泳） |
+| medical | fitness | team | 团队运动（篮球、足球） |
+| medical | fitness | racket | 球拍运动（网球、乒乓球） |
+| medical | disease | metabolic | 代谢性疾病（糖尿病、肥胖） |
+| medical | disease | chronic | 慢性病（肝病、高血压、CKD） |
+| medical | disease | acute | 急性病（流感等短期发作） |
+| medical | disease | infectious | 传染病（传播动力学） |
+| medical | disease | mental | 心理健康疾病 |
+| medical | disease | genetic | 遗传病 |
+| medical | medicine | pharmacology | 药代动力学、药物吸收 |
+| medical | medicine | therapy | 治疗方案与干预协议 |
+| medical | medicine | preventive | 预防医学、疫苗 |
+| medical | surgery | orthopedic | 骨科手术 |
+| medical | surgery | cardiovascular | 心血管手术 |
+| medical | surgery | general | 普外科 |
+| social | economy | labor | 劳动力与生产率 |
+| social | economy | market | 市场与供需动力学 |
+| social | economy | finance | 金融、财政、资本积累 |
+| social | conflict | war | 武装冲突动力学 |
+| social | conflict | disaster | 自然灾害与重建 |
+| social | conflict | civil | 社会动乱、骚乱 |
+| social | law | policy | 政策与法规影响 |
+| social | law | criminal | 犯罪与司法 |
+| social | law | civil | 民事与产权 |
+| social | psychology | panic | 群体恐慌与传播 |
+| social | psychology | behavior | 个体行为决策 |
+| social | psychology | cognition | 认知与学习动力学 |
+| social | technology | innovation | 技术发明与扩散 |
+| social | technology | infrastructure | 基础设施发展 |
+| social | technology | digital | 数字化与信息传播 |
+| social | demography | population | 人口增长模型 |
+| social | demography | mortality | 死亡率动力学 |
+| social | demography | migration | 人口迁移 |
+
+### 5.3 import 路径规范
+
+跨目录引用必须从 `mods/` 根出发，加 `models/` 前缀：
+
+```yaml
+# ✅ 正确（在任意位置的模型中均可解析）
+imports:
+  - models/medical/physiology/glucose_regulation
+
+# ⚠️ 仅在同目录文件中可用（loader 先搜当前目录）
+imports:
+  - glucose_regulation
+
+# ❌ 错误（缺少 models/ 前缀，loader 当作相对路径处理）
+imports:
+  - medical/physiology/glucose_regulation
+```
+
+### 5.4 standalone 标注
+
+| 字段 | 含义 | 典型位置 |
+|------|------|----------|
+| `standalone: true`（或省略）| 可独立运行，有完整 `simulator` 配置 | nutrition/food, fitness/\*\* |
+| `standalone: false` | 库组件，需被其他模型 import 才有意义 | physiology/\*, disease/metabolic/\*_core |
+
+---
+*最后更新：2026年4月*

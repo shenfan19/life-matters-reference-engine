@@ -1,0 +1,64 @@
+type: model
+category: intervention
+metadata:
+  name: banana2
+  version: 1.0.0
+  author: Antigravity
+  description: 标准香蕉营养模型。每100g含：碳水化合物 23g, 蛋白质 1.1g, 脂肪 0.3g, 水分 75g。
+  tags:
+  - food
+  - diet
+  - fruit
+imports: []
+variables:
+  banana_intake:
+    description: 摄入香蕉的重量
+    value: 0
+    unit: g
+    type: input
+    bounds:
+    - 0
+    - 1000
+  food_carbohydrate:
+    description: 产生的碳水化合物摄入量
+    value: 0
+    unit: g
+    type: state
+    bounds: null
+  food_protein:
+    description: 产生的蛋白质摄入量
+    value: 0
+    unit: g
+    type: state
+    bounds: null
+  food_fat:
+    description: 产生的脂肪摄入量
+    value: 0
+    unit: g
+    type: state
+    bounds: null
+  water_intake:
+    description: 产生的水分摄入量
+    value: 0
+    unit: ml
+    type: state
+    bounds: null
+formulas:
+  calculate_nutrition_impact:
+    description: ''
+    condition: ''
+    priority: 1
+    dynamics:
+      food_carbohydrate: banana_intake * 0.23
+      food_protein: banana_intake * 0.011
+      food_fat: banana_intake * 0.003
+      water_intake: banana_intake * 0.75
+      banana_intake: 0
+optimizer: {}
+schedules: {}
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 60
+  output_variables: [food_carbohydrate, food_protein, food_fat, water_intake]

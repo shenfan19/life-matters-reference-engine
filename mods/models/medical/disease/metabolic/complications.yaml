@@ -1,0 +1,89 @@
+metadata:
+  name: complications
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 糖尿病并发症进展，如神经病变、肾病变等
+  conflicts: []
+  tags:
+  - complications
+  - diabetes
+imports:
+- glucose_regulation
+- inflammation
+variables:
+  neuropathy_severity:
+    description: 神经病变严重程度
+    value: 0
+    unit: 指数
+    type: state
+    bounds:
+    - 0
+    - 100
+  nephropathy_severity:
+    description: 肾病变严重程度
+    value: 0
+    unit: 指数
+    type: state
+    bounds:
+    - 0
+    - 100
+  retinopathy_severity:
+    description: 视网膜病变严重程度
+    value: 0
+    unit: 指数
+    type: state
+    bounds:
+    - 0
+    - 100
+  cardiovascular_risk:
+    description: 心血管风险指数
+    value: 0.1
+    unit: 风险系数
+    type: state
+    bounds:
+    - 0
+    - 1.0
+formulas:
+  neuropathy_progression:
+    description: 高血糖导致神经病变进展
+    condition: blood_glucose > 150
+    dynamics:
+      neuropathy_severity: min(100, neuropathy_severity + (blood_glucose - 150) * 0.001 * step_size)
+    priority: 7
+  nephropathy_progression:
+    description: 高血糖导致肾病变进展
+    condition: blood_glucose > 160
+    dynamics:
+      nephropathy_severity: min(100, nephropathy_severity + (blood_glucose - 160) * 0.0008 * step_size)
+      kidney_function: max(0.1, kidney_function - 0.0001 * step_size)
+    priority: 7
+  retinopathy_progression:
+    description: 高血糖导致视网膜病变进展
+    condition: blood_glucose > 140
+    dynamics:
+      retinopathy_severity: min(100, retinopathy_severity + (blood_glucose - 140) * 0.0005 * step_size)
+    priority: 7
+  cardiovascular_risk_increase:
+    description: 高血糖和炎症增加心血管风险
+    condition: blood_glucose > 130 or inflammation_level > 2.0
+    dynamics:
+      cardiovascular_risk: min(1.0, cardiovascular_risk + 0.0002 * step_size)
+    priority: 7
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - neuropathy_severity
+  - nephropathy_severity
+  - retinopathy_severity
+  - cardiovascular_risk
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - cardiovascular_risk
+  variables_to_optimize:
+  - kidney_function

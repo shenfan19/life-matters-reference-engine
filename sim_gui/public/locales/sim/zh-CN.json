@@ -102,6 +102,7 @@
     "sim.msg.load_failed": "加载失败",
     "sim.msg.read_failed": "读取失败",
     "sim.msg.start_failed": "启动失败",
+    "sim.msg.component_model_hint": "此文件为库组件——不依赖关联模型时仿真结果可能不完整",
 
     "about.subtitle": "医学与社会学模拟器",
     "about.subtitle2": "参数优化平台",

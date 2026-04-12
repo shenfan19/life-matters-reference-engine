@@ -1,0 +1,97 @@
+type: model
+category: dynamics
+
+metadata:
+  name: "nutrition_intake"
+  version: "3.0.0"
+  standalone: false  # library component, use via imports or combined model
+  author: "Minghui Wu, Antigravity"
+  description: "营养摄入基础模型，处理食物向胃部的初步转移。"
+  tags: [nutrition, intake]
+
+variables:
+  exercise_intensity:
+    type: input
+    value: 0.0
+    unit: "强度级别"
+    bounds: [0.0, 3.0]
+    io_role: input
+    description: "运动强度，0-无运动，1-轻度，2-中度，3-高强度"
+  
+  food_carbohydrate:
+    type: input
+    value: 0
+    unit: "克"
+    bounds: [0, 500]
+    io_role: input
+    description: "当前摄入的碳水化合物"
+  
+  food_fat:
+    type: input
+    value: 0
+    unit: "克"
+    bounds: [0, 200]
+    io_role: input
+    description: "当前摄入的脂肪"
+  
+  food_protein:
+    type: input
+    value: 0
+    unit: "克"
+    bounds: [0, 300]
+    io_role: input
+    description: "当前摄入的蛋白质"
+  
+  physical_activity:
+    type: input
+    value: 0
+    unit: "METs"
+    bounds: [0, 300]
+    io_role: input
+    description: "体力活动水平"
+  
+  water_intake:
+    type: input
+    value: 0
+    unit: "毫升"
+    bounds: [0, 2000]
+    io_role: input
+    description: "当前摄入的水分"
+
+formulas:
+  carbohydrate_ingestion:
+    condition: food_carbohydrate > 0
+    description: "碳水化合物转移至胃"
+    priority: 1
+    dynamics:
+      gastric_carbohydrate: "gastric_carbohydrate + food_carbohydrate"
+      food_carbohydrate: 0
+  
+  fat_ingestion:
+    condition: food_fat > 0
+    description: "脂肪转移至胃"
+    priority: 1
+    dynamics:
+      gastric_fat: "gastric_fat + food_fat"
+      food_fat: 0
+  
+  protein_ingestion:
+    condition: food_protein > 0
+    description: "蛋白质转移至胃"
+    priority: 1
+    dynamics:
+      gastric_protein: "gastric_protein + food_protein"
+      food_protein: 0
+  
+  water_ingestion:
+    condition: water_intake > 0
+    description: "水分转移"
+    priority: 1
+    dynamics:
+      body_water: "body_water + water_intake"
+      water_intake: 0
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 120
+  output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]

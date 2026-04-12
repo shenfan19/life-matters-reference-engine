@@ -1,0 +1,89 @@
+type: model
+category: dynamics
+
+metadata:
+  name: "simple_nutrition"
+  version: "1.0.0"
+  author: "Antigravity"
+  description: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
+  tags: [nutrition, simple, demo]
+
+variables:
+  # ========== 来自食物模型的输入 (匹配 banana.yaml 的输出) ==========
+  food_carbohydrate:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: intermediate
+    description: "待转化的碳水化合物"
+
+  food_protein:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: intermediate
+    description: "待转化的蛋白质"
+
+  food_fat:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: intermediate
+    description: "待转化的脂肪"
+
+  water_intake:
+    type: state
+    value: 0
+    unit: "ml"
+    io_role: intermediate
+    description: "待转化的水分"
+
+  # ========== 身体状态变量 ==========
+  gastric_carbohydrate:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+    description: "胃部碳水化合物含量"
+
+  gastric_protein:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+    description: "胃部蛋白质含量"
+
+  gastric_fat:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+    description: "胃部脂肪含量"
+
+  body_water:
+    type: state
+    value: 42000
+    unit: "ml"
+    io_role: output
+    description: "身体总水分"
+
+formulas:
+  ingestion_transfer:
+    condition: "food_carbohydrate > 0 or food_protein > 0 or food_fat > 0 or water_intake > 0"
+    priority: 1
+    dynamics:
+      gastric_carbohydrate: "gastric_carbohydrate + food_carbohydrate"
+      gastric_protein: "gastric_protein + food_protein"
+      gastric_fat: "gastric_fat + food_fat"
+      body_water: "body_water + water_intake"
+      # 清零输入，防止重复累加
+      food_carbohydrate: 0
+      food_protein: 0
+      food_fat: 0
+      water_intake: 0
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 120
+  output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]

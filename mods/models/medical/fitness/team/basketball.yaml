@@ -1,0 +1,115 @@
+metadata:
+  name: basketball
+  version: "1.0.0"
+  author: "Life Matters"
+  description: >
+    篮球训练/比赛模型（单场，48分钟）。间歇性高强度运动：爆发冲刺与中低强度交替。
+    核心特征：短时爆发（冲刺/跳跃）累积乳酸，间歇期部分清除。
+  tags: [sport, basketball, interval, explosive]
+  standalone: true
+
+variables:
+  game_intensity:
+    type: input
+    value: 6.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "当前比赛强度（攻防节奏；timeout=0，全场紧逼=9）"
+  sprint_frequency:
+    type: input
+    value: 3.0
+    unit: "次/分"
+    bounds: [0.0, 8.0]
+    description: "冲刺/变向频率（快攻/防守反击时增加）"
+  heart_rate:
+    type: state
+    value: 75.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "心率（篮球平均165-180bpm）"
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0.0, 1200.0]
+    description: "累计热量消耗（约600-900kcal/场）"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "综合疲劳（>60影响投篮精度和防守覆盖范围）"
+  lactate:
+    type: state
+    value: 1.5
+    unit: "mmol/L"
+    bounds: [0.5, 18.0]
+    description: "血乳酸（间歇性运动区间内波动2-8mmol/L）"
+  agility:
+    type: state
+    value: 90.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "敏捷性（疲劳下急停变向能力下降）"
+  shot_accuracy:
+    type: state
+    value: 45.0
+    unit: "%"
+    bounds: [0.0, 100.0]
+    description: "投篮命中率（疲劳和乳酸影响上肢控制精度）"
+  performance:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "综合场上表现"
+
+formulas:
+  heart_rate_response:
+    description: "间歇性运动心率（冲刺时飙高，间歇时部分回落）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 80 + game_intensity * 10 + sprint_frequency * 5)"
+  calorie_burn:
+    description: "热量消耗（约10-15kcal/min，强度调整）"
+    condition: "game_intensity > 0"
+    priority: 8
+    dynamics:
+      calories_burned: "calories_burned + 7.0 + game_intensity * 0.8 + sprint_frequency * 0.5"
+  fatigue_accumulate:
+    description: "疲劳由强度和冲刺共同驱动"
+    condition: "game_intensity > 0"
+    priority: 8
+    dynamics:
+      fatigue: "min(100, fatigue + game_intensity * 0.09 + sprint_frequency * 0.05)"
+  lactate_interval:
+    description: "乳酸在冲刺时积累，低强度期缓慢清除"
+    condition: true
+    priority: 8
+    dynamics:
+      lactate: "max(0.5, min(18, lactate + sprint_frequency * 0.3 - (1 - game_intensity / 10) * 0.1))"
+  agility_decay:
+    description: "敏捷性随疲劳下降"
+    condition: true
+    priority: 7
+    dynamics:
+      agility: "max(0, 90 - fatigue * 0.5 - max(0, lactate - 5) * 2)"
+  shot_accuracy_decay:
+    description: "投篮命中率受疲劳和乳酸影响（手臂控制能力下降）"
+    condition: true
+    priority: 7
+    dynamics:
+      shot_accuracy: "max(0, 45 - fatigue * 0.25 - max(0, lactate - 6) * 2)"
+  performance_update:
+    description: "综合表现"
+    condition: true
+    priority: 6
+    dynamics:
+      performance: "max(0, (agility * 0.5 + shot_accuracy * 1.1) * (1 - fatigue * 0.004))"
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 48
+  output_variables: [heart_rate, calories_burned, fatigue, lactate, agility, shot_accuracy, performance]

@@ -101,6 +101,7 @@
     "sim.msg.load_failed": "Load failed",
     "sim.msg.read_failed": "Read failed",
     "sim.msg.start_failed": "Startup failed",
+    "sim.msg.component_model_hint": "This is a library component — results may be incomplete without its coupled models",
 
     "about.name": "Life Matters",
     "about.subtitle": "Medical & Social Simulator",

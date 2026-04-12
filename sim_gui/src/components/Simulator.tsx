@@ -477,9 +477,10 @@ const Simulator: React.FC<SimulatorProps> = ({
               };
             }
           }
+          const isModel = item.key?.startsWith('models/');
           return {
             title: item.type === 'file'
-              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 6 }}>{item.mod_type}</Tag>}</span>
+              ? <span>{titleStr}{item.mod_type && <Tag color={isModel ? 'purple' : 'blue'} style={{ marginLeft: 6 }}>{item.mod_type}</Tag>}</span>
               : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
@@ -491,7 +492,22 @@ const Simulator: React.FC<SimulatorProps> = ({
         const modsNode = result.data.find((n: any) => n.key === 'mods');
         if (modsNode?.children) {
           const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
-          if (sNode) setStoryTree(convert(sNode.children || []));
+          const mNode = modsNode.children.find((n: any) => n.key === 'models');
+          const scenarioItems: DataNode[] = sNode ? convert(sNode.children || []) : [];
+          const modelItems: DataNode[] = mNode ? convert(mNode.children || []) : [];
+          const combined: DataNode[] = [
+            ...(scenarioItems.length ? [{
+              key: '__group_scenarios',
+              title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>SCENARIOS</span>,
+              isLeaf: false, selectable: false, icon: null, children: scenarioItems,
+            } as DataNode] : []),
+            ...(modelItems.length ? [{
+              key: '__group_models',
+              title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>MODELS</span>,
+              isLeaf: false, selectable: false, icon: null, children: modelItems,
+            } as DataNode] : []),
+          ];
+          setStoryTree(combined);
         }
       }
     } catch (e: any) {
@@ -549,7 +565,12 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (result.valid) {
       setValidationResult(null);
       setIsLocked(true);
-      message.success(t('sim.msg.validation_ok'));
+      const isComponent = selectedModel?.content?.metadata?.standalone === false;
+      if (isComponent) {
+        message.warning(t('sim.msg.validation_ok') + ' — ' + t('sim.msg.component_model_hint'));
+      } else {
+        message.success(t('sim.msg.validation_ok'));
+      }
     } else {
       setValidationResult(result);
       setIsLocked(false);
@@ -1165,7 +1186,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         </Button>
         <Button size="small" icon={<StepForwardOutlined />}
           onClick={runSingleStep}
-          disabled={!sessionId || status === 'running' || status === 'completed'}
+          disabled={!isLocked || !sessionId || status === 'running' || status === 'completed'}
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
         >{t('sim.control.step')}</Button>
         <Button size="small" icon={<StopOutlined />}

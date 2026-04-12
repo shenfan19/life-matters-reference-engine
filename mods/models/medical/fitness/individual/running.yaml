@@ -1,0 +1,115 @@
+metadata:
+  name: running
+  version: "1.0.0"
+  author: "Life Matters"
+  description: >
+    跑步训练模型（单次训练课，60分钟）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。
+    公式基于 Fick 原理与 Borg RPE 量表。
+  tags: [sport, running, aerobic, endurance]
+  standalone: true
+
+variables:
+  training_intensity:
+    type: input
+    value: 5.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "运动感知强度（5=中等有氧，7=乳酸阈值，9=极重）"
+  pace:
+    type: input
+    value: 6.0
+    unit: "min/km"
+    bounds: [3.0, 15.0]
+    description: "跑步配速（3=精英，6=中等有氧，10=慢跑恢复）"
+  heart_rate:
+    type: state
+    value: 70.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "运动心率"
+  vo2:
+    type: state
+    value: 10.0
+    unit: "mL/kg/min"
+    bounds: [5.0, 80.0]
+    description: "摄氧量（安静=5，最大有氧=50-70）"
+  distance:
+    type: state
+    value: 0.0
+    unit: "km"
+    bounds: [0.0, 100.0]
+    description: "累计跑步距离"
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0.0, 3000.0]
+    description: "累计热量消耗"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "肌肉与心肺疲劳（>70影响配速，>90需停止）"
+  lactate:
+    type: state
+    value: 1.0
+    unit: "mmol/L"
+    bounds: [0.5, 20.0]
+    description: "血乳酸（<2=有氧区，2-4=阈值区，>4=无氧区）"
+  performance:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "运动表现系数（受疲劳和乳酸抑制）"
+
+formulas:
+  heart_rate_response:
+    description: "心率随配速和强度升高，疲劳加重心脏负担"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 70 + (10 - pace) * 8 + training_intensity * 4 + fatigue * 0.3)"
+  vo2_update:
+    description: "摄氧量随配速升高（Daniels公式简化）"
+    condition: "training_intensity > 0"
+    priority: 9
+    dynamics:
+      vo2: "min(80, 3.5 + (10 - pace) * 6 + training_intensity * 2.5)"
+  distance_accumulate:
+    description: "每分钟累计距离（km）"
+    condition: "training_intensity > 0"
+    priority: 8
+    dynamics:
+      distance: "distance + (1.0 / max(1.0, pace))"
+  calorie_burn:
+    description: "热量消耗（约60kcal/km，强度系数加成）"
+    condition: "training_intensity > 0"
+    priority: 8
+    dynamics:
+      calories_burned: "calories_burned + (1.0 / max(1.0, pace)) * 60 * (1 + training_intensity * 0.05)"
+  fatigue_accumulate:
+    description: "疲劳随强度积累，高强度非线性加速"
+    condition: "training_intensity > 0"
+    priority: 7
+    dynamics:
+      fatigue: "min(100, fatigue + training_intensity * 0.08 * (1 + fatigue * 0.005))"
+  lactate_dynamics:
+    description: "乳酸在阈值强度以上快速积累"
+    condition: true
+    priority: 7
+    dynamics:
+      lactate: "max(0.5, min(20, lactate + (training_intensity - 6) * 0.15))"
+  performance_update:
+    description: "运动表现受疲劳和高乳酸双重抑制"
+    condition: true
+    priority: 6
+    dynamics:
+      performance: "max(0, 100 - fatigue * 0.6 - max(0, lactate - 4) * 5)"
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 60
+  output_variables: [heart_rate, vo2, distance, calories_burned, fatigue, lactate, performance]

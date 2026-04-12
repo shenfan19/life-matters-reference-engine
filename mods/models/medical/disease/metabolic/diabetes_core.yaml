@@ -1,0 +1,79 @@
+metadata:
+  author: Minghui Wu
+  conflicts: []
+  description: 糖尿病核心模型，包括类型、饥饿感、体液和总体健康指标
+  name: diabetes_core
+  tags:
+  - diabetes
+  - core
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+imports:
+- models/medical/physiology/nutrition_intake
+- models/medical/physiology/digestive_system
+- models/medical/physiology/glucose_regulation
+- models/medical/physiology/insulin_system
+- models/medical/physiology/endocrine_system
+- models/medical/physiology/energy_balance
+- models/medical/disease/metabolic/complications
+- models/medical/disease/metabolic/inflammation
+- models/medical/disease/metabolic/obesity
+- models/medical/physiology/physiology
+variables:
+  body_water:
+    bounds:
+    - 30000
+    - 45000
+    description: 体液总量
+    type: state
+    unit: 毫升
+    value: 40000
+  diabetes_risk:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 糖尿病风险指数，0-1之间，1表示高风险
+    type: state
+    unit: 风险指数
+    value: 0.01
+  diabetes_type:
+    bounds:
+    - 0
+    - 2
+    description: 糖尿病类型 (0-无, 1-1型, 2-2型)
+    type: parameter
+    unit: 类型代码
+    value: 0
+formulas:
+  critical_condition_high_risk:
+    condition: diabetes_risk > 0.5
+    description: 高糖尿病风险警报
+    priority: 9
+  dehydration_protection:
+    condition: body_water < 35000
+    description: 脱水时减少尿液产生
+    dynamics:
+      urine_production: urine_production * 0.5
+    priority: 8
+  health_score:
+    condition: true
+    description: 综合健康评分
+    dynamics:
+      health_score: max(0, min(100, 100 - max(0, abs(blood_glucose - 90) - 20) * 0.5 - hunger_level * 30 - max(0, 1 - digestive_efficiency) * 40 - max(0, 40000 - body_water) / 1000 * 10))
+    priority: 1
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - body_water
+  - diabetes_risk
+  - diabetes_type
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - health_score
+  variables_to_optimize:
+  - diabetes_risk

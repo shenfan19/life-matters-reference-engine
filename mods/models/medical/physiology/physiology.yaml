@@ -1,0 +1,165 @@
+metadata:
+  name: physiology
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 肝、胰腺、胃、小肠等器官功能系数及恢复机制
+  conflicts: []
+  tags:
+  - organs
+  - function
+imports:
+- insulin_system
+- glucose_regulation
+variables:
+  liver_function:
+    description: 肝功能系数
+    value: 1.0
+    unit: 系数
+    type: parameter
+    bounds:
+    - 0.1
+    - 1.0
+  pancreatic_function:
+    description: 胰腺功能系数
+    value: 1.0
+    unit: 系数
+    type: parameter
+    bounds:
+    - 0.1
+    - 1.0
+  water:
+    description: 喝水
+    value: 1.0
+    unit: L
+    type: input
+    bounds:
+    - 0.0
+    - 1.0
+  gastric_function:
+    description: 胃功能效率
+    value: 0.9
+    unit: 系数
+    type: state
+    bounds:
+    - 0.0
+    - 1.0
+  intestinal_function:
+    description: 小肠功能效率
+    value: 0.85
+    unit: 系数
+    type: state
+    bounds:
+    - 0.0
+    - 1.0
+  kidney_function:
+    description: 肾功能系数
+    value: 0.8
+    unit: 系数
+    type: state
+    bounds:
+    - 0.0
+    - 1.0
+  
+  body_water:
+    description: Placeholder for body_water
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  glucose:
+    description: Placeholder for glucose
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  malnutrition_risk:
+    description: Placeholder for malnutrition_risk
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  pepsin_level:
+    description: Placeholder for pepsin_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  secretin_level:
+    description: Placeholder for secretin_level
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  liver_glycogen:
+    description: Placeholder for liver_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  carb_intake:
+    description: Placeholder for carb_intake
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  muscle_glycogen:
+    description: Placeholder for muscle_glycogen
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+  diabetes_type:
+    description: Placeholder for diabetes_type
+    value: 0.0
+    type: state
+    unit: unknown
+    bounds:
+    - 0
+    - 100
+
+formulas:
+  organ_function_recovery:
+    description: 休息状态下器官功能逐渐恢复
+    condition: blood_glucose < 120 and plasma_insulin < 20 and physical_activity == 0
+    dynamics:
+      gastric_function: min(1.0, gastric_function + 0.0001)
+      pancreatic_function: min(1.0, pancreatic_function + 0.00005)
+      liver_function: min(1.0, liver_function + 0.0001)
+      intestinal_function: min(1.0, intestinal_function + 0.0001)
+      kidney_function: min(1.0, kidney_function + 0.0001)
+    priority: 2
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - liver_function
+  - pancreatic_function
+  - gastric_function
+  - intestinal_function
+  - kidney_function
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - energy_expenditure
+  variables_to_optimize:
+  - insulin_sensitivity

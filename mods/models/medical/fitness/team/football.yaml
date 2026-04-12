@@ -1,0 +1,209 @@
+metadata:
+  author: Life Matters Team
+  conflicts: []
+  description: 足球比赛生理模型，90分钟比赛，间歇性高强度运动，乳酸动力学与耐力
+  name: football
+  tags:
+  - fitness
+  - football
+  - soccer
+  - interval
+  - endurance
+  version: 1.0.0
+  standalone: true
+variables:
+  game_intensity:
+    bounds:
+    - 0.0
+    - 10.0
+    description: 当前运动强度（RPE 0-10）
+    type: parameter
+    unit: RPE
+    value: 6.0
+  sprint_ratio:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 冲刺占比（0-1），高值=快速反击/逼抢战术
+    type: parameter
+    unit: 比例
+    value: 0.25
+  heart_rate:
+    bounds:
+    - 60.0
+    - 200.0
+    description: 心率
+    type: state
+    unit: 次/分
+    value: 70.0
+  vo2:
+    bounds:
+    - 0.0
+    - 70.0
+    description: 摄氧量
+    type: state
+    unit: mL/kg/min
+    value: 5.0
+  distance_covered:
+    bounds:
+    - 0.0
+    - 15000.0
+    description: 累计跑动距离
+    type: state
+    unit: 米
+    value: 0.0
+  sprint_distance:
+    bounds:
+    - 0.0
+    - 3000.0
+    description: 高速冲刺累计距离
+    type: state
+    unit: 米
+    value: 0.0
+  calories_burned:
+    bounds:
+    - 0.0
+    - 1500.0
+    description: 消耗热量
+    type: state
+    unit: kcal
+    value: 0.0
+  fatigue:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 疲劳指数（0=无疲劳，1=力竭）
+    type: state
+    unit: 无量纲
+    value: 0.0
+  lactate:
+    bounds:
+    - 0.8
+    - 15.0
+    description: 血乳酸浓度
+    type: state
+    unit: mmol/L
+    value: 1.0
+  muscle_glycogen:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 肌糖原储量百分比
+    type: state
+    unit: '%'
+    value: 100.0
+  aerobic_fitness:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 有氧适能指数（VO2max代理）
+    type: parameter
+    unit: 分
+    value: 65.0
+  technical_performance:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 技术发挥评分（传球、控球质量）
+    type: state
+    unit: 分
+    value: 80.0
+  performance:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 综合比赛表现评分
+    type: state
+    unit: 分
+    value: 75.0
+formulas:
+  heart_rate_dynamics:
+    condition: true
+    description: 心率随强度和疲劳变化
+    dynamics:
+      heart_rate: 60 + game_intensity * 13 + fatigue * 15
+    priority: 1
+  vo2_dynamics:
+    condition: true
+    description: 摄氧量跟随心率
+    dynamics:
+      vo2: max(5, (heart_rate - 60) / 140 * aerobic_fitness)
+    priority: 2
+  distance_accumulation:
+    condition: true
+    description: 跑动距离累积（步长单位：分钟）
+    dynamics:
+      distance_covered: distance_covered + (100 + game_intensity * 10) * (1 - fatigue * 0.3)
+    priority: 3
+  sprint_distance_accumulation:
+    condition: sprint_ratio > 0.15
+    description: 冲刺距离累积
+    dynamics:
+      sprint_distance: sprint_distance + sprint_ratio * 30 * (1 - fatigue * 0.4)
+    priority: 4
+  lactate_sprint:
+    condition: sprint_ratio > 0.3
+    description: 高冲刺比时乳酸升高
+    dynamics:
+      lactate: min(15, lactate + sprint_ratio * 0.8 * (1 - fatigue * 0.2))
+    priority: 5
+  lactate_clearance:
+    condition: sprint_ratio <= 0.3
+    description: 低强度时乳酸清除
+    dynamics:
+      lactate: max(1.0, lactate - 0.15 * (1 - game_intensity / 15))
+    priority: 6
+  glycogen_depletion:
+    condition: true
+    description: 肌糖原随时间消耗，冲刺加速消耗
+    dynamics:
+      muscle_glycogen: max(0, muscle_glycogen - (0.05 + sprint_ratio * 0.08) * game_intensity / 10)
+    priority: 7
+  fatigue_accumulation:
+    condition: true
+    description: 疲劳积累，糖原耗尽时加速
+    dynamics:
+      fatigue: min(1.0, fatigue + (game_intensity * 0.0012 + sprint_ratio * 0.0008) * (1 + max(0, (50 - muscle_glycogen) / 100)))
+    priority: 8
+  calories_accumulation:
+    condition: true
+    description: 热量消耗
+    dynamics:
+      calories_burned: calories_burned + (game_intensity * 1.1 + sprint_ratio * 0.8) * (1 - fatigue * 0.1)
+    priority: 9
+  technical_performance_decay:
+    condition: fatigue > 0.4
+    description: 疲劳影响技术表现
+    dynamics:
+      technical_performance: max(40, technical_performance - (fatigue - 0.4) * 0.8)
+    priority: 10
+  performance_score:
+    condition: true
+    description: 综合表现评分
+    dynamics:
+      performance: max(0, min(100, technical_performance * 0.5 + (1 - fatigue) * 30 + (muscle_glycogen / 100) * 20))
+    priority: 11
+simulator:
+  step_size: 1
+  time_unit: minute
+  total_time: 90
+  output_format: csv
+  output_variables:
+  - heart_rate
+  - vo2
+  - distance_covered
+  - sprint_distance
+  - calories_burned
+  - fatigue
+  - lactate
+  - muscle_glycogen
+  - technical_performance
+  - performance
+optimizer:
+  method: grid
+  duration: 90.0
+  targets_of_optimization:
+  - performance
+  variables_to_optimize:
+  - game_intensity
+  - sprint_ratio

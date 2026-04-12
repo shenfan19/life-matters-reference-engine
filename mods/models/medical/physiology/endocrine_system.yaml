@@ -1,0 +1,69 @@
+metadata:
+  name: endocrine_system
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 胰高血糖素、皮质醇、生长激素等
+  conflicts: []
+  tags:
+  - hormones
+  - glucagon
+imports:
+- glucose_regulation
+variables:
+  glucagon_level:
+    description: 胰高血糖素水平
+    value: 50
+    unit: pg/mL
+    type: state
+    bounds:
+    - 20
+    - 250
+  cortisol_level:
+    description: 皮质醇水平
+    value: 15
+    unit: μg/dL
+    type: state
+    bounds:
+    - 5
+    - 40
+  growth_hormone:
+    description: 生长激素水平
+    value: 5
+    unit: ng/mL
+    type: state
+    bounds:
+    - 1
+    - 15
+formulas:
+  glucagon_response:
+    description: 低血糖时胰高血糖素分泌
+    condition: blood_glucose < 70
+    dynamics:
+      glucagon_level: min(250, glucagon_level + (70 - blood_glucose) * 2 * step_size)
+      blood_glucose: blood_glucose + glucagon_level * 0.01 * step_size
+    priority: 6
+  hypoglycemia_counter_regulation:
+    description: 低血糖时的反调节激素反应
+    condition: blood_glucose < 60
+    dynamics:
+      glucagon_level: min(250, glucagon_level + (60 - blood_glucose) * 2)
+      growth_hormone: min(15, growth_hormone + (60 - blood_glucose) * 0.1)
+      cortisol_level: min(40, cortisol_level + (60 - blood_glucose) * 0.2)
+    priority: 9
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - glucagon_level
+  - cortisol_level
+  - growth_hormone
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - glucagon_level
+  variables_to_optimize:
+  - insulin_sensitivity

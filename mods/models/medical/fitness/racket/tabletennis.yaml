@@ -1,0 +1,195 @@
+metadata:
+  author: Life Matters Team
+  conflicts: []
+  description: 乒乓球比赛生理模型，60分钟，强调反应速度、技术精度与神经-肌肉疲劳
+  name: tabletennis
+  tags:
+  - fitness
+  - tabletennis
+  - ping-pong
+  - reaction
+  - skill
+  version: 1.0.0
+  standalone: true
+variables:
+  rally_pace:
+    bounds:
+    - 1.0
+    - 10.0
+    description: 回合节奏（1=慢速练习，10=高速比赛对决）
+    type: parameter
+    unit: RPE
+    value: 7.0
+  spin_intensity:
+    bounds:
+    - 0.0
+    - 10.0
+    description: 旋转/变化球强度（影响神经负荷）
+    type: parameter
+    unit: 强度
+    value: 5.0
+  heart_rate:
+    bounds:
+    - 60.0
+    - 180.0
+    description: 心率（乒乓球相比其他运动偏低）
+    type: state
+    unit: 次/分
+    value: 70.0
+  calories_burned:
+    bounds:
+    - 0.0
+    - 500.0
+    description: 消耗热量
+    type: state
+    unit: kcal
+    value: 0.0
+  physical_fatigue:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 身体疲劳（肌肉、心肺）
+    type: state
+    unit: 无量纲
+    value: 0.0
+  neural_fatigue:
+    bounds:
+    - 0.0
+    - 1.0
+    description: 神经疲劳（反应速度、注意力衰减）
+    type: state
+    unit: 无量纲
+    value: 0.0
+  reaction_time:
+    bounds:
+    - 150.0
+    - 400.0
+    description: 反应时间（神经疲劳增加时上升）
+    type: state
+    unit: 毫秒
+    value: 220.0
+  spin_reading:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 判断旋转球能力（疲劳和专注度影响）
+    type: state
+    unit: 分
+    value: 80.0
+  stroke_precision:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 击球精准度（受神经疲劳影响）
+    type: state
+    unit: 分
+    value: 82.0
+  footwork_speed:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 步法移动速度（受身体疲劳影响）
+    type: state
+    unit: 分
+    value: 80.0
+  concentration:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 专注度（双重疲劳共同影响）
+    type: state
+    unit: 分
+    value: 90.0
+  performance:
+    bounds:
+    - 0.0
+    - 100.0
+    description: 综合比赛表现评分
+    type: state
+    unit: 分
+    value: 80.0
+formulas:
+  heart_rate_dynamics:
+    condition: true
+    description: 心率随节奏变化（乒乓球心率区间较窄）
+    dynamics:
+      heart_rate: 65 + rally_pace * 9 + physical_fatigue * 12
+    priority: 1
+  calories_accumulation:
+    condition: true
+    description: 热量消耗（较其他运动低）
+    dynamics:
+      calories_burned: calories_burned + rally_pace * 0.55 * (1 - physical_fatigue * 0.1)
+    priority: 2
+  physical_fatigue_accumulation:
+    condition: true
+    description: 身体疲劳积累
+    dynamics:
+      physical_fatigue: min(1.0, physical_fatigue + rally_pace * 0.0008 + 0.0002)
+    priority: 3
+  neural_fatigue_accumulation:
+    condition: true
+    description: 神经疲劳积累，旋转球强度加速积累
+    dynamics:
+      neural_fatigue: min(1.0, neural_fatigue + rally_pace * 0.0006 + spin_intensity * 0.0005)
+    priority: 4
+  reaction_time_degradation:
+    condition: neural_fatigue > 0.2
+    description: 神经疲劳增加反应时间
+    dynamics:
+      reaction_time: min(400, 220 + neural_fatigue * 120 + physical_fatigue * 40)
+    priority: 5
+  spin_reading_decay:
+    condition: neural_fatigue > 0.3
+    description: 神经疲劳影响判断旋转球能力
+    dynamics:
+      spin_reading: max(30, 85 - neural_fatigue * 40 - (reaction_time - 220) * 0.1)
+    priority: 6
+  stroke_precision_decay:
+    condition: true
+    description: 击球精准度受神经疲劳和反应时间影响
+    dynamics:
+      stroke_precision: max(30, 85 - neural_fatigue * 35 - physical_fatigue * 15)
+    priority: 7
+  footwork_speed_decay:
+    condition: physical_fatigue > 0.3
+    description: 步法受身体疲劳影响
+    dynamics:
+      footwork_speed: max(40, 85 - physical_fatigue * 35)
+    priority: 8
+  concentration_dynamics:
+    condition: true
+    description: 专注度随双重疲劳下降
+    dynamics:
+      concentration: max(30, 95 - neural_fatigue * 40 - physical_fatigue * 20)
+    priority: 9
+  performance_score:
+    condition: true
+    description: 综合表现评分
+    dynamics:
+      performance: max(0, min(100, stroke_precision * 0.35 + spin_reading * 0.25 + footwork_speed * 0.2 + concentration * 0.2))
+    priority: 10
+simulator:
+  step_size: 1
+  time_unit: minute
+  total_time: 60
+  output_format: csv
+  output_variables:
+  - heart_rate
+  - calories_burned
+  - physical_fatigue
+  - neural_fatigue
+  - reaction_time
+  - spin_reading
+  - stroke_precision
+  - footwork_speed
+  - concentration
+  - performance
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - performance
+  variables_to_optimize:
+  - rally_pace
+  - spin_intensity

@@ -1,0 +1,124 @@
+metadata:
+  name: glucose_regulation
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 血糖浓度、变异性和相关更新公式
+  conflicts: []
+  tags:
+  - glucose
+  - regulation
+imports:
+- digestive_system
+- insulin_system
+- endocrine_system
+variables:
+  blood_glucose:
+    description: 血糖浓度，正常范围70-140 mg/dL
+    value: 95
+    unit: mg/dL
+    type: state
+    bounds:
+    - 30
+    - 600
+  fasting_glucose:
+    description: 空腹血糖，诊断糖尿病的重要指标
+    value: 85
+    unit: mg/dL
+    type: state
+    bounds:
+    - 50
+    - 300
+  postprandial_glucose:
+    description: 餐后2小时血糖
+    value: 120
+    unit: mg/dL
+    type: state
+    bounds:
+    - 70
+    - 400
+  glucose_variability:
+    description: 血糖变异性，反映血糖控制稳定性
+    value: 0.1
+    unit: 变异系数
+    type: state
+    bounds:
+    - 0
+    - 1.0
+formulas:
+  glucose_update:
+    description: 血糖浓度更新
+    condition: true
+    dynamics:
+      blood_glucose: max(30, min(600, blood_glucose + (glucose_uptake - glucose_utilization - renal_glucose_excretion) * step_size))
+    priority: 4
+  hepatic_glycogen_synthesis:
+    description: 高血糖时肝糖原合成
+    condition: blood_glucose > 140 and liver_function > 0.5
+    dynamics:
+      liver_glycogen: min(100, liver_glycogen + (blood_glucose - 140) * liver_function * 0.01 * step_size)
+      blood_glucose: blood_glucose - (blood_glucose - 140) * liver_function * 0.005 * step_size
+    priority: 4
+  hepatic_glycogenolysis:
+    description: 低血糖时肝糖原分解
+    condition: blood_glucose < 80 and liver_glycogen > 0
+    dynamics:
+      liver_glycogen: max(0, liver_glycogen - (80 - blood_glucose) * 0.02 * step_size)
+      blood_glucose: blood_glucose + (80 - blood_glucose) * 0.02 * step_size
+    priority: 5
+  renal_glucose_excretion:
+    description: 高血糖时肾脏排泄葡萄糖
+    condition: blood_glucose > 180 and kidney_function > 0.5
+    dynamics:
+      blood_glucose: max(180, blood_glucose - (blood_glucose - 180) * kidney_function * 0.005 * step_size)
+    priority: 4
+  tissue_glucose_uptake:
+    description: 组织葡萄糖摄取，受胰岛素影响
+    condition: true
+    dynamics:
+      blood_glucose: max(30, blood_glucose - blood_glucose * insulin_sensitivity * plasma_insulin * 0.0005 * step_size)
+    priority: 4
+  glucose_variability_calculation:
+    description: 计算血糖变异性
+    condition: true
+    dynamics:
+      glucose_variability: min(1.0, abs(blood_glucose - fasting_glucose) / fasting_glucose)
+    priority: 3
+  fasting_glucose_update:
+    description: 逐渐更新空腹血糖值
+    condition: exercise_intensity == 0 and carb_intake == 0
+    dynamics:
+      fasting_glucose: fasting_glucose * 0.95 + blood_glucose * 0.05
+    priority: 3
+  circadian_glucose_rhythm:
+    description: 昼夜节律对血糖和胰岛素敏感性的影响
+    condition: true
+    dynamics:
+      blood_glucose: blood_glucose + 5 * sin(time * 3.14159 / 720)
+      insulin_sensitivity: 0.75 + 0.1 * cos(time * 3.14159 / 720)
+    priority: 1
+  hypoglycemia_protection:
+    description: 严重低血糖的紧急保护机制
+    condition: blood_glucose < 50
+    dynamics:
+      blood_glucose: blood_glucose + 20
+      liver_glycogen: max(0, liver_glycogen - 10)
+      muscle_glycogen: max(0, muscle_glycogen - 10)
+    priority: 9
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - blood_glucose
+  - fasting_glucose
+  - postprandial_glucose
+  - glucose_variability
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - blood_glucose
+  variables_to_optimize:
+  - insulin_sensitivity

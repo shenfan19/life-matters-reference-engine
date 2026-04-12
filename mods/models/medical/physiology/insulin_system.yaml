@@ -1,0 +1,92 @@
+metadata:
+  name: insulin_system
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 胰岛素分泌、敏感性和β细胞功能
+  conflicts: []
+  tags:
+  - insulin
+  - beta_cell
+imports:
+- glucose_regulation
+variables:
+  plasma_insulin:
+    description: 血浆胰岛素浓度
+    value: 8
+    unit: μU/mL
+    type: state
+    bounds:
+    - 1
+    - 300
+  insulin_secretion_rate:
+    description: 胰岛素分泌速率
+    value: 1.0
+    unit: μU/mL/min
+    type: state
+    bounds:
+    - 0
+    - 20
+  beta_cell_function:
+    description: 胰岛β细胞功能，0-1之间，1为完全正常
+    value: 0.8
+    unit: 功能系数
+    type: state
+    bounds:
+    - 0
+    - 1.0
+  beta_cell_mass:
+    description: 胰岛β细胞数量/质量
+    value: 100
+    unit: 相对单位
+    type: state
+    bounds:
+    - 10
+    - 120
+  insulin_sensitivity:
+    description: 胰岛素敏感性，影响葡萄糖摄取效率
+    value: 0.75
+    unit: 敏感性指数
+    type: state
+    bounds:
+    - 0.1
+    - 1.0
+formulas:
+  insulin_secretion:
+    description: 胰岛素分泌响应血糖
+    condition: blood_glucose > 100 and beta_cell_function > 0.1
+    dynamics:
+      insulin_secretion_rate: min(20, insulin_secretion_rate + (blood_glucose - 100) * beta_cell_function * 0.005 * step_size)
+      plasma_insulin: plasma_insulin + insulin_secretion_rate * step_size - plasma_insulin * 0.05 * step_size
+    priority: 5
+  type1_autoimmune_destruction:
+    description: 1型糖尿病的自身免疫性β细胞破坏
+    condition: diabetes_type == 1 and beta_cell_mass > 15
+    dynamics:
+      beta_cell_mass: beta_cell_mass - 0.01
+      beta_cell_function: max(0, beta_cell_function - 0.001)
+    priority: 3
+  insulin_sensitivity_recovery:
+    description: 运动改善胰岛素敏感性
+    condition: blood_glucose < 100 and physical_activity > 100
+    dynamics:
+      insulin_sensitivity: min(1.0, insulin_sensitivity + 0.0005)
+    priority: 2
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - plasma_insulin
+  - insulin_secretion_rate
+  - beta_cell_function
+  - beta_cell_mass
+  - insulin_sensitivity
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - insulin_sensitivity
+  variables_to_optimize:
+  - beta_cell_function

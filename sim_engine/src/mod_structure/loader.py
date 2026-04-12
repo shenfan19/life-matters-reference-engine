@@ -70,10 +70,21 @@ class Loader:
                     if not imp_path.endswith('.yaml'):
                         imp_path += '.yaml'
                 
-                # 简单名称：相对于当前文件目录（向后兼容）
+                # 简单名称：先找当前目录（向后兼容），找不到再递归搜索 mods 树
                 else:
-                    imp_path = os.path.join(current_dir, imp_name + '.yaml' if not imp_name.endswith('.yaml') else imp_name)
-                
+                    local_path = os.path.join(current_dir, imp_name + '.yaml' if not imp_name.endswith('.yaml') else imp_name)
+                    if os.path.exists(local_path):
+                        imp_path = local_path
+                    elif mods_root:
+                        # fallback：在整个 mods 树中递归查找
+                        target = imp_name if imp_name.endswith('.yaml') else imp_name + '.yaml'
+                        for walk_root, _, walk_files in os.walk(mods_root):
+                            if target in walk_files:
+                                imp_path = os.path.join(walk_root, target)
+                                break
+                    if not imp_path:
+                        imp_path = local_path  # 保留原路径用于报错
+
                 if not os.path.exists(imp_path):
                     raise FileNotFoundError(f"导入模型 {imp_name} 未找到。尝试路径: {imp_path}")
                 

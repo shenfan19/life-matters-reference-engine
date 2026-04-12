@@ -1,0 +1,103 @@
+metadata:
+  name: energy_balance
+  version: 2.1.0
+  standalone: false  # library component, use via imports or combined model
+  author: Minghui Wu
+  description: 能量平衡模型，包括基础代谢率、能量消耗和运动影响
+  tags:
+  - metabolism
+  - energy
+imports:
+- nutrition_intake
+- glucose_regulation
+variables:
+  energy:
+    description: 当前能量储备
+    value: 2000.0
+    unit: kcal
+    type: state
+  metabolism_rate:
+    description: 基础代谢率系数
+    value: 1.0
+    unit: relative
+    type: parameter
+  basal_metabolic_rate:
+    bounds:
+    - 800
+    - 3000
+    description: 基础代谢率
+    type: state
+    unit: kcal/day
+    value: 1800
+  energy_expenditure:
+    bounds:
+    - 0.5
+    - 3.0
+    description: 能量消耗率
+    type: state
+    unit: 倍数
+    value: 1.2
+  nutrition_base:
+    description: 每日基础营养（kcal）
+    value: 2000.0
+    unit: kcal/day
+    type: parameter
+  exercise_consume:
+    description: 每日运动消耗系数
+    value: 500.0
+    unit: kcal/day
+    type: parameter
+  aging_decay:
+    description: 每日代谢衰减率
+    value: 0.001
+    unit: per_day
+    type: parameter
+formulas:
+  energy_update:
+    description: 能量更新公式
+    dynamics:
+      energy: metabolism_rate * nutrition_base - exercise_consume
+    priority: 3
+  aging_update:
+    description: 代谢率随衰老衰减
+    dynamics:
+      metabolism_rate: metabolism_rate * (1 - aging_decay)
+    priority: 2
+  circadian_hormone_variation:
+    condition: true
+    description: 昼夜节律对代谢的影响
+    dynamics:
+      basal_metabolic_rate: 1800 + 200 * sin(time * 3.14159 / 720)
+      insulin_sensitivity: 0.8 + 0.1 * cos(time * 3.14159 / 720)
+    priority: 1
+  exercise_effect:
+    condition: exercise_intensity > 0
+    description: 运动增加葡萄糖利用和胰岛素敏感性
+    dynamics:
+      energy_expenditure: min(3.0, energy_expenditure + exercise_intensity * 0.1 * step_size)
+      glucose_utilization: glucose_utilization + exercise_intensity * 0.2 * step_size
+      insulin_sensitivity: min(1.0, insulin_sensitivity + exercise_intensity * 0.005 * step_size)
+    priority: 3
+  metabolic_efficiency:
+    condition: true
+    description: 代谢效率指标
+    dynamics:
+      metabolic_efficiency: (digestive_efficiency + insulin_sensitivity) / 2 * 100
+    priority: 1
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - energy
+  - metabolism_rate
+  - basal_metabolic_rate
+  - energy_expenditure
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - energy_expenditure
+  variables_to_optimize:
+  - insulin_sensitivity

@@ -102,6 +102,7 @@
     "sim.msg.load_failed": "加載失敗",
     "sim.msg.read_failed": "讀取失敗",
     "sim.msg.start_failed": "啟動失敗",
+    "sim.msg.component_model_hint": "此檔案為庫組件——不依賴關聯模型時仿真結果可能不完整",
 
     "about.subtitle": "醫學與社會學模擬器",
     "about.subtitle2": "參數優化平台",

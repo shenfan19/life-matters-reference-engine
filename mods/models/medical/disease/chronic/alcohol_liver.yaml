@@ -1,0 +1,76 @@
+metadata:
+  name: "alcohol_liver_disease_model"
+  version: "1.0.0"
+  author: "AI Assisted Generator"
+  description: "酒精剂量响应导致肝病模型，基于医学论文中的剂量依赖和肝损伤动态。效果随剂量累积。"
+  conflicts: []
+  tags: [alcohol, liver_disease, dose_response]
+  reference: ["Dynamic models of alcoholic liver disease", "Dose-response in hepatotoxicity"]
+  comments: ["Focuses on chronic exposure.", "Note: Acute effects not modeled."]
+
+variables:
+  alcohol_dose:
+    description: "酒精剂量水平 (0=无, 1=轻度饮酒, 2=中度, 3=重度)"
+    value: 0.0
+    unit: "剂量级别"
+    type: input
+    bounds: [0.0, 3.0]
+    reference: ["Alcohol consumption levels in epidemiology", "NIAAA drinking guidelines"]
+    comments: ["Simulate via user input.", "Higher doses accelerate damage."]
+
+  liver_damage_effect:
+    description: "肝损伤效果指数，0-1之间，1表示严重损伤"
+    value: 0.0
+    unit: "损伤指数"
+    type: state
+    bounds: [0.0, 1.0]
+    reference: ["Fibrosis progression models", "Liver enzyme dynamics in ALD"]
+    comments: ["Cumulative metric.", "Threshold 0.6 for cirrhosis risk."]
+
+  liver_health_score:
+    description: "肝健康评分，受损伤影响（0=严重损伤，100=健康）"
+    value: 100.0
+    unit: "分"
+    type: state
+    bounds: [0.0, 100.0]
+
+formulas:
+  dose_response_accumulation:
+    description: "酒精剂量导致肝损伤累积"
+    condition: "alcohol_dose > 0"
+    priority: 100
+    dynamics:
+      liver_damage_effect: "min(1.0, liver_damage_effect + (0.001 * alcohol_dose) * step_size/SECOND)"
+    reference: ["PK/PD models for alcohol hepatotoxicity", "Time-course of liver injury"]
+    comments: ["Simple linear for demo.", "Add non-linear for realism."]
+
+  damage_recovery:
+    description: "无饮酒时损伤缓慢恢复（模拟戒酒）"
+    condition: "alcohol_dose == 0 and liver_damage_effect > 0"
+    priority: 90
+    dynamics:
+      liver_damage_effect: "max(0.0, liver_damage_effect - 0.0005 * step_size / SECOND)"
+    reference: ["Liver regeneration studies", "Abstinence effects in ALD"]
+    comments: ["Slow recovery rate.", "Varies by individual factors."]
+
+  liver_health_score_update:
+    description: "肝健康评分更新（100=健康，0=严重损伤）"
+    condition: true
+    priority: 50
+    dynamics:
+      liver_health_score: "max(0, 100 - (liver_damage_effect * 100))"
+
+  critical_condition_severe_damage:
+    condition: "liver_damage_effect > 0.7"
+    description: "严重肝损伤警报"
+    severity: "critical"
+    reference: ["ALD staging guidelines", "Fibrosis thresholds"]
+    comments: ["Trigger medical intervention.", "Customize severity."]
+    dynamics:
+      liver_health_score: "max(0.2, 100 - (liver_damage_effect * 100))"
+      
+simulation:
+  step_size: 1
+  time_unit: day
+  total_time: 90
+  output_variables: [alcohol_dose, liver_damage_effect, liver_health_score]

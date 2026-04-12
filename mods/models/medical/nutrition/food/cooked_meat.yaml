@@ -1,0 +1,62 @@
+type: model
+category: intervention
+
+metadata:
+  name: "cooked_meat"
+  version: "1.0.0"
+  author: "Antigravity"
+  description: "标准烤肉营养模型。每100g含：蛋白质 26g, 脂肪 15g, 碳水化合物 0g, 水分 58g。"
+  tags: [food, diet, meat]
+
+variables:
+  # ========== 输入变量 ==========
+  meat_intake:
+    type: input
+    value: 0
+    unit: "g"
+    bounds: [0, 1000]
+    io_role: input
+    optimizable: true
+    description: "摄入烤肉的重量"
+
+  # ========== 输出指标 (供 nutrition_intake 使用) ==========
+  food_carbohydrate:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+  
+  food_protein:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+
+  food_fat:
+    type: state
+    value: 0
+    unit: "g"
+    io_role: output
+
+  water_intake:
+    type: state
+    value: 0
+    unit: "ml"
+    io_role: output
+
+formulas:
+  calculate_nutrition_impact:
+    condition: meat_intake > 0
+    priority: 1
+    dynamics:
+      food_carbohydrate: 0
+      food_protein: "meat_intake * 0.26"
+      food_fat: "meat_intake * 0.15"
+      water_intake: "meat_intake * 0.58"
+      meat_intake: 0
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 60
+  output_variables: [food_carbohydrate, food_protein, food_fat, water_intake]

@@ -1,0 +1,31 @@
+metadata:
+  name: stress_health_scene
+  version: "1.0"
+  standalone: false  # library component, use via imports or combined model
+  description: 高压环境下糖分摄入与运动的健康权衡优化
+  model_version: personal_stress_v1.0
+
+python_envs:
+  - pymoo: ">=0.6.0"  # 用于 MOO
+  - matplotlib: ">=3.5.0"  # Pareto 前沿可视化
+  - scipy: ">=1.10.0"  # 可选：单目标优化
+
+simulator:
+  total_time: 100
+  step_size: 1
+  time_unit: day
+  pause_every: 5  # 每 5 步暂停，触发钩子
+  hooks:
+    - post_step: interactive_input  # 用户输入压力水平
+
+optimizer:
+  method: nsga2  # MOO 算法
+  targets_of_optimization:
+    - max_happiness
+    - min_health_risk
+  pop_size: 50  # 种群大小
+  n_gen: 100  # 迭代次数
+  bounds: [[0, 100], [0, 60]]  # 参数边界：sugar_intake, exercise_time
+  variables_to_optimize:
+    - insulin_sensitivity
+    - energy_expenditure

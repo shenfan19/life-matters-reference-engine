@@ -1,0 +1,191 @@
+type: model
+category: dynamics
+
+metadata:
+  name: "england_1665_diet"
+  version: "1.0.0"
+  author: "Life Matters"
+  description: "1665年英格兰乡村饮食模型（伍尔斯索普庄园）。基于17世纪英国普通绅士/农场主阶层的食物记录：黑麦面包、浓粥汤、小啤酒（ale）、咸猪肉、奶酪、根茎蔬菜、苹果。牛顿在此期间饮食简单但基本充足，主要风险是沉浸研究时忘记进食。"
+  tags: [food, historical, 17th-century, england, nutrition]
+  source: >
+    Drummond JC, Wilbraham A (1939) The Englishman's Food.
+    Thick C (1984) Garden History of England.
+    17th century household accounts, Lincolnshire records.
+
+# ── 食物输入变量（由 schedules 或手动注入驱动）──────────────────────────────
+variables:
+  # 食物类型输入（克/份，触发后归零）
+  bread_intake:
+    type: input
+    value: 0.0
+    unit: "g"
+    bounds: [0, 300]
+    description: "黑麦/大麦混合面包摄入量（每份约120g，250kcal，主食）"
+
+  pottage_intake:
+    type: input
+    value: 0.0
+    unit: "g"
+    bounds: [0, 500]
+    description: "浓粥汤摄入量（谷物+根菜炖煮，每份约300g，300kcal，营养全面）"
+
+  ale_intake:
+    type: input
+    value: 0.0
+    unit: "ml"
+    bounds: [0, 600]
+    description: "小啤酒/淡啤酒摄入量（酒精低，鼠疫时期比生水安全，每份250ml，150kcal）"
+
+  meat_intake:
+    type: input
+    value: 0.0
+    unit: "g"
+    bounds: [0, 200]
+    description: "咸猪肉/培根摄入量（咸腌保存，每份80g，200kcal，高蛋白高脂肪，不常有）"
+
+  cheese_intake:
+    type: input
+    value: 0.0
+    unit: "g"
+    bounds: [0, 100]
+    description: "农家奶酪摄入量（每份40g，120kcal，保存方便）"
+
+  apple_intake:
+    type: input
+    value: 0.0
+    unit: "g"
+    bounds: [0, 200]
+    description: "苹果摄入量（伍尔斯索普庄园有苹果园，每份150g，80kcal，维生素C）"
+
+  # 营养状态（中间累积量，每日重置）
+  calories_today:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0, 4000]
+    description: "今日已摄入总热量（目标约1800-2200 kcal/天，17世纪体力劳动轻）"
+
+  protein_today:
+    type: state
+    value: 0.0
+    unit: "g"
+    bounds: [0, 200]
+    description: "今日蛋白质摄入（目标约50-70g/天）"
+
+  vitamin_score:
+    type: state
+    value: 50.0
+    unit: "分"
+    bounds: [0, 100]
+    description: "维生素/微量元素评分（坏血病预防：需要果蔬；鼠疫时期缺乏是常态）"
+
+  # 输出：传递给生理模型
+  nutrition:
+    type: state
+    value: 60.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "综合营养状态分（整合热量充足度+蛋白质+维生素）"
+
+  hydration:
+    type: state
+    value: 65.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "水分/液体状态（鼠疫时期靠ale补充，直接饮水有感染风险）"
+
+# ── 食物消化公式 ─────────────────────────────────────────────────────────────
+formulas:
+  bread_eaten:
+    description: "黑麦面包消化：主要提供碳水和能量，蛋白质有限"
+    condition: bread_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + bread_intake * 2.1"    # ~250kcal/120g
+      protein_today:  "protein_today + bread_intake * 0.059"   # ~7g protein/120g
+      nutrition:      "nutrition + bread_intake * 0.08"        # 较弱营养提升
+      bread_intake:   0
+
+  pottage_eaten:
+    description: "浓粥汤消化：谷物+蔬菜炖汤，1665年英国最营养的日常食物"
+    condition: pottage_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + pottage_intake * 1.0"  # ~300kcal/300g
+      protein_today:  "protein_today + pottage_intake * 0.027" # ~8g protein/300g
+      vitamin_score:  "min(100, vitamin_score + pottage_intake * 0.05)"
+      nutrition:      "nutrition + pottage_intake * 0.12"      # 较好营养提升
+      hydration:      "hydration + pottage_intake * 0.05"
+      pottage_intake: 0
+
+  ale_drunk:
+    description: "小啤酒饮用：鼠疫时期主要安全液体来源，低酒精，提供热量和水分"
+    condition: ale_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + ale_intake * 0.6"      # ~150kcal/250ml
+      hydration:      "hydration + ale_intake * 0.08"
+      nutrition:      "nutrition + ale_intake * 0.02"
+      ale_intake:     0
+
+  meat_eaten:
+    description: "咸猪肉/培根：高蛋白高脂肪，补充体力，但盐分高"
+    condition: meat_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + meat_intake * 2.5"     # ~200kcal/80g
+      protein_today:  "protein_today + meat_intake * 0.22"     # ~18g protein/80g
+      nutrition:      "nutrition + meat_intake * 0.18"
+      meat_intake:    0
+
+  cheese_eaten:
+    description: "农家奶酪：热量密集，蛋白质和脂肪，方便携带储存"
+    condition: cheese_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + cheese_intake * 3.0"   # ~120kcal/40g
+      protein_today:  "protein_today + cheese_intake * 0.2"
+      nutrition:      "nutrition + cheese_intake * 0.15"
+      cheese_intake:  0
+
+  apple_eaten:
+    description: "苹果：伍尔斯索普庄园特产，维生素C来源，防坏血病"
+    condition: apple_intake > 0
+    priority: 10
+    dynamics:
+      calories_today: "calories_today + apple_intake * 0.53"   # ~80kcal/150g
+      vitamin_score:  "min(100, vitamin_score + apple_intake * 0.15)"
+      nutrition:      "nutrition + apple_intake * 0.06"
+      apple_intake:   0
+
+  # 营养状态随时间自然消耗（饥饿感上升）
+  nutrition_decay:
+    description: "营养消耗：身体持续消耗储备，需要规律进食"
+    condition: true
+    priority: 5
+    dynamics:
+      nutrition:  "max(0, nutrition - 0.012 * step_size)"   # ~17分/day自然衰减
+      hydration:  "max(0, hydration - 0.008 * step_size)"   # ~12分/day
+      vitamin_score: "max(0, vitamin_score - 0.003 * step_size)"
+
+  # 综合营养评分：热量充足度是基础，蛋白质和维生素调整
+  nutrition_composite:
+    description: "综合营养评分计算（热量+蛋白质+维生素三因素）"
+    condition: true
+    priority: 3
+    dynamics:
+      nutrition: >
+        min(100, max(0,
+          nutrition * 0.7
+          + min(30, calories_today / 2000 * 30)
+          + min(15, protein_today / 60 * 15)
+          + min(15, vitamin_score / 100 * 15)
+        ))
+
+simulation:
+  step_size: 1
+  time_unit: minute
+  total_time: 1440
+  output_variables: [calories_today, protein_today, vitamin_score, nutrition, hydration]

@@ -1,0 +1,66 @@
+metadata:
+  name: obesity
+  version: 1.0.0
+  standalone: false  # library component, use via imports or combined model
+  author: AI Assisted Generator
+  description: 肥胖增加糖尿病风险的动态模型
+  conflicts: []
+  tags:
+  - obesity
+  - diabetes
+  - risk_model
+imports:
+- glucose_regulation
+- insulin_system
+variables:
+  obesity_index:
+    description: 肥胖指数 (0=正常, 1=轻度肥胖, 2=中度, 3=重度)
+    value: 0.0
+    unit: 指数级别
+    type: state
+    bounds:
+    - 0.0
+    - 3.0
+  exposure_duration:
+    description: 暴露持续时间（分钟），用于时间依赖计算
+    value: 0.0
+    unit: 分钟
+    type: state
+    bounds:
+    - 0.0
+    - 100000.0
+formulas:
+  obesity_increase:
+    description: 高血糖和胰岛素促进脂肪储存
+    condition: blood_glucose > 120 or plasma_insulin > 20
+    dynamics:
+      obesity_index: min(1.0, obesity_index + 0.0003 * step_size)
+    priority: 3
+  risk_accumulation:
+    description: 肥胖指数导致糖尿病风险累积增加，受时间影响
+    condition: obesity_index > 0
+    dynamics:
+      diabetes_risk: min(1.0, diabetes_risk + (0.0002 * obesity_index * exposure_duration / 1000) * step_size)
+      exposure_duration: exposure_duration + step_size
+    priority: 100
+  risk_decay:
+    description: 正常体重时风险缓慢衰减（模拟减肥效果）
+    condition: obesity_index == 0 and diabetes_risk > 0
+    dynamics:
+      diabetes_risk: max(0.01, diabetes_risk - 0.0001 * step_size)
+    priority: 90
+simulator:
+  step_size: 1
+  time_unit: minute   # 1440 步 = 24 小时
+  total_time: 1440
+  output_format: csv
+  output_variables:
+  - obesity_index
+  - exposure_duration
+optimizer:
+  method: grid
+  duration: 60.0
+  targets_of_optimization:
+  - diabetes_risk
+  variables_to_optimize:
+  - obesity_index
