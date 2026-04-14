@@ -78,7 +78,7 @@ interface GameStory {
           country?: string; description: string; science_note?: string; tags?: string[]; };
   variables: Record<string, VarDef>;
   goalVariables: string[];
-  game: { plays_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; };
+  game: { plays_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; draw_per_turn?: number; };
   lose_conditions: Array<{ condition: string; message: string }>;
   win_conditions?: Array<{ condition: string; message: string }>;
   player_cards: PlayerCard[];
@@ -477,6 +477,11 @@ interface GameCardProps {
   onDiscard?: () => void;
   canPlay?: boolean;
   className?: string;
+  // drag-to-discard / right-click-to-discard
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   // recall button
   showRecall?: boolean;
   // tooltip
@@ -501,6 +506,7 @@ function GameCard({
   onClick, onDiscard, canPlay = true, className = '',
   showRecall, flavor, hovered, onMouseEnter, onMouseLeave,
   triggered, showMissed, permanent, floated, style: extraStyle,
+  draggable: isDraggable, onDragStart, onDragEnd, onContextMenu,
 }: GameCardProps) {
   const dur = duration ?? 0;
   const rem = remaining;
@@ -515,8 +521,12 @@ function GameCard({
   return (
     <div
       onClick={onClick}
+      onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className={`${className} ${triggered !== undefined ? (triggered ? 'env-card env-triggered' : 'env-card') : ''}`}
       style={{
         width: CARD_W, height: CARD_H, flexShrink: 0,
@@ -524,7 +534,7 @@ function GameCard({
         border: `1px solid ${permanent ? c.primary : c.border}`,
         borderRadius: 10,
         padding: '12px 10px 10px',
-        cursor: onClick ? (canPlay ? 'pointer' : 'not-allowed') : 'default',
+        cursor: isDraggable ? 'grab' : onClick ? (canPlay ? 'pointer' : 'not-allowed') : 'default',
         display: 'flex', flexDirection: 'column', gap: 6,
         position: 'relative',
         transform: (hovered || floated) ? 'translateY(-4px)' : undefined,
@@ -679,6 +689,10 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [playedCards, setPlayedCards]     = useState<PlayerCard[]>([]);
   const [stagedDiscards, setStagedDiscards] = useState<PlayerCard[]>([]);
   const [turnInitGs, setTurnInitGs]       = useState<Record<string, number>>({});
+  const [dragOverDiscard, setDragOverDiscard] = useState(false);
+  const [dragOverPlay, setDragOverPlay]       = useState(false);
+  const [dragOverHand, setDragOverHand]       = useState(false);
+  const [dragSource, setDragSource]           = useState<'hand' | 'played' | 'discard' | null>(null);
   // Snapshot of gs at the moment the player clicks End Turn (before any env resolution)
   const [preEnvGs, setPreEnvGs]       = useState<Record<string, number>>({});
 
@@ -882,6 +896,101 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     setStagedDiscards(prev => [...prev, card]);
   };
 
+  // ── Drag helpers ──────────────────────────────────────────────────────────────
+
+  const clearDragState = () => {
+    setDragOverDiscard(false);
+    setDragOverPlay(false);
+    setDragOverHand(false);
+    setDragSource(null);
+  };
+
+  const startDrag = (e: React.DragEvent, card: PlayerCard, source: 'hand' | 'played' | 'discard') => {
+    e.dataTransfer.setData('cardId', card.id);
+    e.dataTransfer.setData('dragSource', source);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragSource(source);
+  };
+
+  // ── Atomic cross-zone moves (recalculate gs) ──────────────────────────────────
+
+  const movePlayedToDiscard = (cardId: string) => {
+    if (phase !== 'player' || !story || outcome) return;
+    const idx = playedCards.findIndex(c => c.id === cardId);
+    if (idx < 0) return;
+    const card = playedCards[idx];
+    const remaining = playedCards.filter((_, i) => i !== idx);
+    let newGs = { ...turnInitGs };
+    for (const bc of board) newGs = applyEffects(bc.card.effects, newGs, story.variables);
+    for (const pc of remaining) newGs = applyEffects(pc.effects, newGs, story.variables);
+    setGs(newGs);
+    setPlayedCards(remaining);
+    setPlaysLeft(prev => prev + 1);
+    setStagedDiscards(prev => [...prev, card]);
+  };
+
+  const moveDiscardToPlayed = (cardId: string) => {
+    if (phase !== 'player' || !story || outcome) return;
+    if (playsLeft <= 0) return;
+    const idx = stagedDiscards.findIndex(c => c.id === cardId);
+    if (idx < 0) return;
+    const card = stagedDiscards[idx];
+    const remaining = stagedDiscards.filter((_, i) => i !== idx);
+    let newGs = { ...turnInitGs };
+    for (const bc of board) newGs = applyEffects(bc.card.effects, newGs, story.variables);
+    for (const pc of [...playedCards, card]) newGs = applyEffects(pc.effects, newGs, story.variables);
+    setGs(newGs);
+    setStagedDiscards(remaining);
+    setPlayedCards(prev => [...prev, card]);
+    setPlaysLeft(prev => prev - 1);
+  };
+
+  // ── Drop zone handlers ─────────────────────────────────────────────────────────
+
+  const handleDiscardDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+  const handlePlayDragOver    = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+  const handleHandDragOver    = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+
+  const handleDiscardDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    clearDragState();
+    const cardId = e.dataTransfer.getData('cardId');
+    const source = e.dataTransfer.getData('dragSource') as 'hand' | 'played' | 'discard';
+    if (source === 'hand') {
+      const card = hand.find(c => c.id === cardId);
+      if (card) stageDiscard(card);      // stageDiscard already checks handOverflow via canDiscardCard gating
+    } else if (source === 'played') {
+      movePlayedToDiscard(cardId);       // not gated by overflow — card is not in hand
+    }
+  };
+
+  const handlePlayDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    clearDragState();
+    const cardId = e.dataTransfer.getData('cardId');
+    const source = e.dataTransfer.getData('dragSource') as 'hand' | 'played' | 'discard';
+    if (source === 'hand') {
+      const card = hand.find(c => c.id === cardId);
+      if (card && (card.permanent || playsLeft > 0)) playCard(card);
+    } else if (source === 'discard') {
+      moveDiscardToPlayed(cardId);
+    }
+  };
+
+  const handleHandDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    clearDragState();
+    const cardId = e.dataTransfer.getData('cardId');
+    const source = e.dataTransfer.getData('dragSource') as 'hand' | 'played' | 'discard';
+    if (source === 'played') {
+      const idx = playedCards.findIndex(c => c.id === cardId);
+      if (idx >= 0) recallCard(idx);
+    } else if (source === 'discard') {
+      const idx = stagedDiscards.findIndex(c => c.id === cardId);
+      if (idx >= 0) recallDiscard(idx);
+    }
+  };
+
   // ── Recall staged discard back to hand ────────────────────────────────────────
   const recallDiscard = (idx: number) => {
     if (phase !== 'player' || !story || outcome) return;
@@ -1001,7 +1110,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       const permHand   = curHand.filter(c => c.permanent);
       const regHand    = curHand.filter(c => !c.permanent);
       const space      = story.game.hand_size - regHand.length;
-      const drawCard   = Math.max(0, Math.min(DRAW_PER_TURN, space, plyDeck.length));
+      const drawPerTurn = story.game.draw_per_turn ?? DRAW_PER_TURN;
+      const drawCard   = Math.max(0, Math.min(drawPerTurn, space, plyDeck.length));
       const newCards   = plyDeck.slice(0, drawCard);
       plyDeck          = plyDeck.slice(drawCard);
 
@@ -1074,6 +1184,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const defPairs  = Object.entries(story.variables).filter(([k]) => !goalSet.has(k));
   const allPairs  = Object.entries(story.variables);
   const canAct = phase === 'player' && !outcome;
+  // Discard is only permitted when regular hand cards exceed the hand size limit
+  const handOverflow = hand.filter(hc => !hc.permanent).length > story.game.hand_size;
 
   // Right column deck sections share the same height as each card row
   const deckSectionStyle = (borderColor?: string): React.CSSProperties => ({
@@ -1276,64 +1388,106 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
 
             {board.length > 0 && <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0 }} />}
 
-            {/* Play slots — dashed boxes for this turn's plays */}
-            {Array.from({ length: playsTotal }).map((_, i) => {
-              const card = playedCards[i];
-              if (card) {
+            {/* Play slots — drop target for hand→play and discard→play */}
+            <div
+              onDragOver={canAct ? handlePlayDragOver : undefined}
+              onDragEnter={canAct ? () => setDragOverPlay(true) : undefined}
+              onDragLeave={canAct ? () => setDragOverPlay(false) : undefined}
+              onDrop={canAct ? handlePlayDrop : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '0 8px', borderRadius: 8, flexShrink: 0,
+                border: dragOverPlay ? '2px dashed #faad14' : '2px dashed transparent',
+                background: dragOverPlay ? 'rgba(250,173,20,0.06)' : 'transparent',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              {Array.from({ length: playsTotal }).map((_, i) => {
+                const card = playedCards[i];
+                if (card) {
+                  const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
+                  return (
+                    <GameCard
+                      key={`staged-${card.id}-${i}`}
+                      name={card.name}
+                      effects={card.effects}
+                      typeColor={typeColor}
+                      vars={story.variables}
+                      c={c} fs={fs}
+                      duration={card.duration}
+                      floated={totalDeltaMode}
+                      onClick={() => canAct && recallCard(i)}
+                      canPlay={canAct}
+                      showRecall={canAct}
+                      draggable={canAct}
+                      onDragStart={canAct ? (e) => startDrag(e, card, 'played') : undefined}
+                      onDragEnd={clearDragState}
+                      className={lastStagedId === card.id ? 'card-stage-in' : ''}
+                    />
+                  );
+                }
+                return <DashedSlot key={`play-slot-${i}`} c={c} variant="play" />;
+              })}
+            </div>
+
+            {/* ── Discard staging zone (drag-drop target) ── */}
+            <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0, marginLeft: 4 }} />
+            <span style={{ color: dragOverDiscard ? '#8c8c8c' : 'rgba(128,128,128,0.3)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none', transition: 'color 0.15s' }}>放弃</span>
+            <div
+              onDragOver={canAct && (dragSource === 'played' || (dragSource === 'hand' && handOverflow)) ? handleDiscardDragOver : undefined}
+              onDragEnter={canAct && (dragSource === 'played' || (dragSource === 'hand' && handOverflow)) ? () => setDragOverDiscard(true) : undefined}
+              onDragLeave={canAct ? () => setDragOverDiscard(false) : undefined}
+              onDrop={canAct ? handleDiscardDrop : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '0 8px', borderRadius: 8, flexShrink: 0,
+                border: dragOverDiscard ? '2px dashed #8c8c8c' : '2px dashed transparent',
+                background: dragOverDiscard ? 'rgba(140,140,140,0.08)' : 'transparent',
+                transition: 'border-color 0.15s, background 0.15s',
+                minWidth: CARD_W + 16,
+              }}
+            >
+              {stagedDiscards.map((card, i) => {
                 const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
                 return (
                   <GameCard
-                    key={`staged-${card.id}-${i}`}
+                    key={`discard-staged-${card.id}-${i}`}
                     name={card.name}
                     effects={card.effects}
                     typeColor={typeColor}
                     vars={story.variables}
                     c={c} fs={fs}
                     duration={card.duration}
-                    floated={totalDeltaMode}
-                    onClick={() => canAct && recallCard(i)}
+                    onClick={() => canAct && recallDiscard(i)}
                     canPlay={canAct}
                     showRecall={canAct}
-                    className={lastStagedId === card.id ? 'card-stage-in' : ''}
+                    draggable={canAct}
+                    onDragStart={canAct ? (e) => startDrag(e, card, 'discard') : undefined}
+                    onDragEnd={clearDragState}
+                    style={{ opacity: 0.55, filter: 'grayscale(45%)' }}
                   />
                 );
-              }
-              return <DashedSlot key={`play-slot-${i}`} c={c} variant="play" />;
-            })}
-
-            {/* ── Discard staging zone ── */}
-            <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0, marginLeft: 4 }} />
-            <span style={{ color: 'rgba(128,128,128,0.3)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>放弃</span>
-            {stagedDiscards.map((card, i) => {
-              const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
-              return (
-                <GameCard
-                  key={`discard-staged-${card.id}-${i}`}
-                  name={card.name}
-                  effects={card.effects}
-                  typeColor={typeColor}
-                  vars={story.variables}
-                  c={c} fs={fs}
-                  duration={card.duration}
-                  onClick={() => canAct && recallDiscard(i)}
-                  canPlay={canAct}
-                  showRecall={canAct}
-                  style={{ opacity: 0.55, filter: 'grayscale(45%)' }}
-                />
-              );
-            })}
-            <DashedSlot key="discard-hint" c={c} variant="discard" />
+              })}
+              {stagedDiscards.length === 0 && <DashedSlot key="discard-hint" c={c} variant="discard" />}
+            </div>
           </div>
 
-          {/* ─ Row 5: Player hand ─ */}
-          <div style={{
-            height: ROW_CARD, flexShrink: 0,
-            background: c.plyBg,
-            borderBottom: `1px solid ${c.border}`,
-            display: 'flex', alignItems: 'center',
-            padding: '0 12px', gap: 8,
-            overflowX: 'auto', overflowY: 'hidden',
-          }}>
+          {/* ─ Row 5: Player hand (drop target for played→hand and discard→hand) ─ */}
+          <div
+            onDragOver={canAct && (dragSource === 'played' || dragSource === 'discard') ? handleHandDragOver : undefined}
+            onDragEnter={canAct && (dragSource === 'played' || dragSource === 'discard') ? () => setDragOverHand(true) : undefined}
+            onDragLeave={canAct ? () => setDragOverHand(false) : undefined}
+            onDrop={canAct ? handleHandDrop : undefined}
+            style={{
+              height: ROW_CARD, flexShrink: 0,
+              background: dragOverHand ? (dark ? 'rgba(22,119,255,0.06)' : 'rgba(22,119,255,0.04)') : c.plyBg,
+              borderBottom: `1px solid ${dragOverHand ? '#1677ff' : c.border}`,
+              display: 'flex', alignItems: 'center',
+              padding: '0 12px', gap: 8,
+              overflowX: 'auto', overflowY: 'hidden',
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+          >
             <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>手牌</span>
 
             {(() => {
@@ -1343,7 +1497,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
 
               const renderCard = (card: PlayerCard, excess = false) => {
                 const canPlay        = (card.permanent || playsLeft > 0) && canAct;
-                const canDiscardCard = canAct && !card.permanent;
+                // Discard only allowed when hand exceeds limit (overflow constraint)
+                const canDiscardCard = canAct && !card.permanent && handOverflow;
                 const typeColor      = TYPE_COLORS[card.type] ?? '#8c8c8c';
                 const dealIdx        = newlyDealtMap.get(card.id) ?? -1;
                 const outlineStyle: React.CSSProperties = excess
@@ -1364,6 +1519,9 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                     permanent={card.permanent}
                     onClick={() => { if (canPlay) playCard(card); }}
                     onDiscard={canDiscardCard ? () => stageDiscard(card) : undefined}
+                    draggable={canAct && !card.permanent}
+                    onDragStart={canAct && !card.permanent ? (e) => startDrag(e, card, 'hand') : undefined}
+                    onDragEnd={clearDragState}
                     canPlay={canPlay}
                     className={`player-card ${canPlay ? 'card-playable' : 'card-disabled'}${dealIdx >= 0 ? ' card-deal-in' : ''}`}
                     flavor={card.flavor}
@@ -1371,6 +1529,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                     onMouseEnter={() => setHoveredCardId(card.id)}
                     onMouseLeave={() => setHoveredCardId(null)}
                     style={{ ...outlineStyle, ...dealStyle }}
+                    onContextMenu={canDiscardCard ? (e) => { e.preventDefault(); stageDiscard(card); } : undefined}
                   />
                 );
               };
