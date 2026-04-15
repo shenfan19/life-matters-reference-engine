@@ -31,8 +31,9 @@ turns:
   total: 12
   time_per_turn: "2 months"
   env_cards_per_turn: 2
-  player_hand_size: 5
-  action_points: 3
+  player_hand_size: 5   # H=5: 政府官员，有制度支撑
+  action_points: 2      # p=2: 官僚体系，决策谨慎而慢
+  draw_per_turn: 2      # a=2: b=3，有积累空间
 
 win_condition:
   type: reach_target
@@ -78,11 +79,17 @@ env_deck:
 
 player_deck:
   - path: cards/player_review_files.yaml
+    copies: 3
   - path: cards/player_demand_data.yaml
+    copies: 3
   - path: cards/player_consult_expert.yaml
+    copies: 3
   - path: cards/player_document_concerns.yaml
+    copies: 3
   - path: cards/player_rest.yaml
+    copies: 3
   - path: cards/player_write_report.yaml
+    copies: 3
 
 generic_cards:
   inject: [rest, interrupt]

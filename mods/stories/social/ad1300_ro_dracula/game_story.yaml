@@ -49,13 +49,16 @@ meta:
   music: []
 player_deck:
 - path: cards/player_sun_exposure.yaml
+  copies: 5
 - path: cards/player_hunt_intensity.yaml
+  copies: 5
 turns:
-  action_points: 3
+  action_points: 2      # p=2: 贵族节奏，不急于行动
   env_cards_per_turn: 2
-  player_hand_size: 5
+  player_hand_size: 5   # H=5: 封建贵族，资源和网络都有
   time_per_turn: 1 month
   total: 12
+  draw_per_turn: 2      # a=2: b=3，积累型
 win_condition:
   description: 撑过 12 个回合
   type: survive

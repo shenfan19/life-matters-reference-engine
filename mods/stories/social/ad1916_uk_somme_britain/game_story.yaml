@@ -55,8 +55,9 @@ turns:
   total: 14
   time_per_turn: 1 month
   env_cards_per_turn: 2
-  player_hand_size: 4
-  action_points: 3
+  player_hand_size: 3   # H=3: 底层动荡，普通士兵
+  action_points: 2      # p=2: 有执行力但受军令压制
+  draw_per_turn: 2      # a=2: b=1，基本无战略纵深
 win_condition:
   type: custom
   description: 你活过了索姆河，带着积蓄和伤疤回到家乡。大多数人没有这样的运气。
@@ -95,13 +96,21 @@ env_deck:
   weight: 120
 player_deck:
 - path: cards/player_hold_position.yaml
+  copies: 3
 - path: cards/player_advance_attack.yaml
+  copies: 3
 - path: cards/player_treat_wounds.yaml
+  copies: 3
 - path: cards/player_ration_conservation.yaml
+  copies: 3
 - path: cards/player_write_home.yaml
+  copies: 3
 - path: cards/player_barter_locals.yaml
+  copies: 3
 - path: cards/player_seek_medical_transfer.yaml
+  copies: 3
 - path: cards/player_rum_ration_trade.yaml
+  copies: 3
 generic_cards:
   inject:
   - rest

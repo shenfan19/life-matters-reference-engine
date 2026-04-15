@@ -32,8 +32,9 @@ turns:
   total: 15
   time_per_turn: "6 months"
   env_cards_per_turn: 2
-  player_hand_size: 5
-  action_points: 3
+  player_hand_size: 6   # H=6: 组织领袖，SCLC网络+道义权威
+  action_points: 3      # p=3: 演讲/游行/谈判多线并行
+  draw_per_turn: 3      # a=3: b=H-a=3，有一定战略纵深
 
 win_condition:
   type: reach_target
@@ -79,11 +80,17 @@ env_deck:
 
 player_deck:
   - path: cards/player_speech.yaml
+    copies: 5
   - path: cards/player_march.yaml
+    copies: 5
   - path: cards/player_negotiate.yaml
+    copies: 5
   - path: cards/player_community.yaml
+    copies: 5
   - path: cards/player_rest.yaml
+    copies: 5
   - path: cards/player_letter.yaml
+    copies: 5
 
 generic_cards:
   inject: [rest, interrupt]

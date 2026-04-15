@@ -46,8 +46,9 @@ turns:
   total: 15
   time_per_turn: 1 month
   env_cards_per_turn: 2
-  player_hand_size: 4
-  action_points: 3
+  player_hand_size: 2   # H=2: 底层平民，选项极少
+  action_points: 1      # p=1: 每回合只能做一件事
+  draw_per_turn: 2      # a=2: b=0，a>p → 手牌常年溢出，被迫弃牌
 win_condition:
   type: custom
   description: 目标达成。
@@ -78,13 +79,21 @@ env_deck:
   weight: 120
 player_deck:
 - path: cards/player_quarantine.yaml
+  copies: 2
 - path: cards/player_herbal_remedy.yaml
+  copies: 2
 - path: cards/player_prayer_gathering.yaml
+  copies: 2
 - path: cards/player_food_rationing.yaml
+  copies: 2
 - path: cards/player_trade_embargo.yaml
+  copies: 2
 - path: cards/player_recruit_physicians.yaml
+  copies: 2
 - path: cards/player_flee_city.yaml
+  copies: 2
 - path: cards/player_community_defense.yaml
+  copies: 2
 generic_cards:
   inject:
   - rest

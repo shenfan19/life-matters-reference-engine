@@ -105,12 +105,16 @@ function buildConditions(raw: any) {
 export async function loadNewFormatStory(cleanPath: string, rawStory: any): Promise<any> {
   const storyDir = cleanPath.replace(/\/game_story\.ya?ml$/, '');
 
-  // ── Load player cards ───────────────────────────────────────────────────────
+  // ── Load player cards (supports copies: N for deck duplication) ────────────
   const playerCards: any[] = [];
   for (const entry of rawStory.player_deck ?? []) {
     const cardRelPath = `${storyDir}/${entry.path ?? entry}`;
     const card = await fetchYaml(cardRelPath);
-    playerCards.push(toPlayerCard(card));
+    const copies = entry.copies ?? 1;
+    const base = toPlayerCard(card);
+    for (let i = 0; i < copies; i++) {
+      playerCards.push(copies > 1 ? { ...base, id: `${base.id}_${i + 1}` } : base);
+    }
   }
 
   // ── Load env cards ──────────────────────────────────────────────────────────
@@ -187,10 +191,11 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     variables,
     goalVariables,
     game: {
-      plays_per_turn: rawStory.turns?.plays_per_turn ?? rawStory.turns?.action_points ?? 3,
-      max_turns: rawStory.turns?.total ?? 15,
-      hand_size: rawStory.turns?.player_hand_size ?? 5,
-      env_per_turn: rawStory.turns?.env_cards_per_turn ?? 2,
+      plays_per_turn:  rawStory.turns?.plays_per_turn ?? rawStory.turns?.action_points ?? 3,
+      max_turns:       rawStory.turns?.total ?? 15,
+      hand_size:       rawStory.turns?.player_hand_size ?? 5,
+      env_per_turn:    rawStory.turns?.env_cards_per_turn ?? 2,
+      draw_per_turn:   rawStory.turns?.draw_per_turn ?? undefined,
     },
     lose_conditions: loses,
     win_conditions: wins,

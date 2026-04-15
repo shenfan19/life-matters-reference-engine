@@ -65,8 +65,9 @@ turns:
   total: 12
   time_per_turn: "1 month"
   env_cards_per_turn: 2
-  player_hand_size: 5
-  action_points: 3
+  player_hand_size: 5   # H=5: 剑桥学者，无性别歧视压制，资源略优于居里
+  action_points: 2      # p=2: 深度思考型，专注而非多线
+  draw_per_turn: 2      # a=2: b=3，较大战略纵深
 
 win_condition:
   type: reach_target
@@ -109,15 +110,25 @@ env_deck:
 
 player_deck:
   - path: cards/player_contemplation.yaml
+    copies: 2
   - path: cards/player_prism.yaml
+    copies: 2
   - path: cards/player_calculus.yaml
+    copies: 2
   - path: cards/player_write.yaml
+    copies: 2
   - path: cards/player_rest.yaml
+    copies: 2
   - path: cards/player_correspondence.yaml
+    copies: 2
   - path: cards/player_eat_bread.yaml
+    copies: 2
   - path: cards/player_eat_pottage.yaml
+    copies: 2
   - path: cards/player_drink_ale.yaml
+    copies: 2
   - path: cards/player_eat_meat.yaml
+    copies: 2
 
 generic_cards:
   inject: [rest, interrupt]

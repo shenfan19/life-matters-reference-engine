@@ -31,8 +31,9 @@ turns:
   total: 15
   time_per_turn: "1 month"
   env_cards_per_turn: 2
-  player_hand_size: 5
-  action_points: 3
+  player_hand_size: 4   # H=4: 受限科学家，性别歧视压缩选项空间
+  action_points: 2      # p=2: 研究节奏稳定但受制约
+  draw_per_turn: 2      # a=2: b=H-a=2，有基本战略纵深
 
 win_condition:
   type: reach_target
@@ -72,11 +73,17 @@ env_deck:
 
 player_deck:
   - path: cards/player_research.yaml
+    copies: 3
   - path: cards/player_teaching.yaml
+    copies: 3
   - path: cards/player_rest.yaml
+    copies: 3
   - path: cards/player_fundraise.yaml
+    copies: 3
   - path: cards/player_publish.yaml
+    copies: 3
   - path: cards/player_lecture.yaml
+    copies: 3
 
 generic_cards:
   inject: [rest, interrupt]

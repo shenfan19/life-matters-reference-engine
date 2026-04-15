@@ -723,6 +723,21 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   // Set of env card IDs being revealed this turn
   const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set());
 
+  // ── Log drawer (narrow screens) ──────────────────────────────────────────────
+  const [logDrawerOpen, setLogDrawerOpen] = useState(false);
+
+  // ── Responsive breakpoints ───────────────────────────────────────────────────
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handle = () => setWinWidth(window.innerWidth);
+    window.addEventListener('resize', handle);
+    return () => window.removeEventListener('resize', handle);
+  }, []);
+  // isNarrow: half-screen laptop, portrait tablet, phone
+  // isMobile: phone portrait (compact top bar, smaller cards)
+  const isNarrow = winWidth < 900;
+  const isMobile = winWidth < 600;
+
   // Helper: negate all deltas
   const negate = (effs: EffectDef[]): EffectDef[] => effs.map(e => ({ ...e, delta: -e.delta }));
 
@@ -868,10 +883,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       setLastStagedId(card.id);
       setTimeout(() => setLastStagedId(null), 400);
     }
-    const loss = checkLosePure(newGs, story.lose_conditions);
-    if (loss) { setOutcome(loss); return; }
-    const win = checkWinPure(newGs, story.win_conditions);
-    if (win) setOutcome(win);
+    // Win/lose conditions are only evaluated at end-of-turn, not during card play.
   };
 
   // ── Recall card ───────────────────────────────────────────────────────────────
@@ -1103,15 +1115,16 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       const drawEnvN   = Math.min(story.game.env_per_turn, evtDeck.length);
       const newEnvHand = evtDeck.splice(0, drawEnvN);
 
-      // 6. Player draw — staging discards made room; space = hand_size - remaining reg hand
+      // 6. Player draw — hand_size is an END-OF-TURN limit, not an instant cap.
+      //    Draw freely up to draw_per_turn; hand can exceed hand_size during the turn,
+      //    which is what triggers the discard requirement before ending the turn.
       const nextTurn   = curTurn + 1;
       let plyDeck      = [...curDeck];
       let plyDiscard   = [...newPlyDiscard];
       const permHand   = curHand.filter(c => c.permanent);
       const regHand    = curHand.filter(c => !c.permanent);
-      const space      = story.game.hand_size - regHand.length;
       const drawPerTurn = story.game.draw_per_turn ?? DRAW_PER_TURN;
-      const drawCard   = Math.max(0, Math.min(drawPerTurn, space, plyDeck.length));
+      const drawCard   = Math.min(drawPerTurn, plyDeck.length);
       const newCards   = plyDeck.slice(0, drawCard);
       plyDeck          = plyDeck.slice(drawCard);
 
@@ -1195,74 +1208,153 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     padding: '0 6px',
   });
 
+  // Small inline deck-count badge (used on narrow screens in place of right column)
+  const DeckBadge = ({ label, count, color }: { label: string; count: number; color: string }) => (
+    <span style={{
+      marginLeft: 'auto', flexShrink: 0,
+      fontSize: fs.xs, color, fontWeight: 600,
+      background: color + '18', border: `1px solid ${color}44`,
+      borderRadius: 10, padding: '1px 8px', whiteSpace: 'nowrap',
+    }}>{label} {count}</span>
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────────
   //
-  // Layout:
+  // Responsive breakpoints:
+  //   isNarrow (< 900px): no left sidebar, no right deck column; deck counts as inline badges
+  //   isMobile (< 600px): compact top bar, cards in hand wrap to multiple rows
+  //
+  // Layout (wide ≥ 900px):
   //  [Top bar 50px]
-  //  [Left log | Main 6-row | Right deck col]
+  //  [Left log 168px | Main | Right deck col ~150px]
+  //
+  // Layout (narrow < 900px):
+  //  [Top bar 50px — includes turn counter + action dots]
+  //  [Combined gauge row (goals + status, scrollable)]
+  //  [Env events row + deck badge]
+  //  [Player board + discard]
+  //  [Player hand: flex-wrap, expands to multiple rows]
+  //  [Controls]
   //
   //  Main rows (top → bottom):
-  //   1. HP row (goals)         ROW_GAUGE
-  //   2. Env hand (face-down)   ROW_CARD
-  //   3. Env board (revealed)   ROW_CARD
-  //   4. Player board           ROW_CARD
-  //   5. Player hand            ROW_CARD
-  //   6. Controls               ROW_CTRL
-  //   7. HP row (status)        ROW_GAUGE
-  //
-  //  Right col sections 1-4 align with main rows 2-5.
+  //   1. HP row (goals)         ROW_GAUGE   (hidden on isNarrow — merged into combined row)
+  //   2. Env board (revealed)   ROW_CARD
+  //   3. Player board           ROW_CARD
+  //   4. Player hand            auto-height (wraps)
+  //   5. Controls               ROW_CTRL
+  //   6. HP row (status)        ROW_GAUGE   (hidden on isNarrow — merged into combined row)
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, overflow: 'hidden', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, position: 'relative' }}>
 
       {/* ── Top bar ── */}
-      <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10 }}>
-        <CardPulseIcon size={28} color={c.primary} />
-        <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', flexShrink: 0 }}>{t('app.title')}</span>
-        <span style={{ color: c.textMute, fontSize: fs.sm, flexShrink: 0 }}>· {t('about.subtitle')}</span>
-        <div style={{ width: 1, height: 14, background: c.border, flexShrink: 0 }} />
-        <span style={{ fontWeight: 600, color: c.textSec, fontSize: fs.sm, flexShrink: 0 }}>{story.meta.name}</span>
+      <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8, position: 'sticky', top: 0, zIndex: 100 }}>
+        {/* Logo — hidden on mobile to save space */}
+        {!isMobile && <CardPulseIcon size={26} color={c.primary} />}
+        {!isMobile && <span style={{ fontSize: fs.xl, fontWeight: 700, color: c.text, fontFamily: 'Georgia, serif', flexShrink: 0 }}>{t('app.title')}</span>}
+        {!isNarrow && <span style={{ color: c.textMute, fontSize: fs.sm, flexShrink: 0 }}>· {t('about.subtitle')}</span>}
+        {!isNarrow && <div style={{ width: 1, height: 14, background: c.border, flexShrink: 0 }} />}
+        <span style={{ fontWeight: 600, color: c.textSec, fontSize: fs.sm, flexShrink: 0, maxWidth: isMobile ? 120 : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{story.meta.name}</span>
+
+        {/* Turn counter + action points — shown inline on narrow screens (left sidebar is hidden) */}
+        {isNarrow && (
+          <>
+            <div style={{ width: 1, height: 14, background: c.border, flexShrink: 0 }} />
+            <span style={{ color: c.primary, fontWeight: 700, fontSize: fs.sm, fontFamily: 'monospace', flexShrink: 0 }}>
+              T{turn}<span style={{ color: c.textMute, fontWeight: 400 }}>/{maxTurns}</span>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+              {Array.from({ length: playsTotal }).map((_, i) => (
+                <div key={i} style={{ width: 7, height: 7, borderRadius: 2, background: i < playsLeft ? c.primary : c.barTrack, transition: 'background 0.2s' }} />
+              ))}
+            </div>
+          </>
+        )}
+
         <div style={{ flex: 1 }} />
-        {/* ── Inline music controls ── */}
-        {story.music && story.music.length > 0 && (
+        {/* Music — hidden on mobile */}
+        {!isMobile && story.music && story.music.length > 0 && (
           <MusicBar tracks={story.music} c={c} fs={fs} />
         )}
         <ShareButton storyPath={storyPath} c={c} fs={fs} />
-        <button onClick={() => { clearGameState(); window.location.reload(); }}
-          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: c.textMute, fontSize: fs.sm }}>
-          {t('game.retry')}
-        </button>
+        {/* Log drawer toggle — narrow screens only */}
+        {isNarrow && (
+          <button onClick={() => setLogDrawerOpen(v => !v)}
+            style={{ background: logDrawerOpen ? c.primary + '22' : 'none', border: `1px solid ${logDrawerOpen ? c.primary : c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: logDrawerOpen ? c.primary : c.textMute, fontSize: fs.sm }}>
+            日志
+          </button>
+        )}
+        {!isMobile && (
+          <button onClick={() => { clearGameState(); window.location.reload(); }}
+            style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: c.textMute, fontSize: fs.sm }}>
+            {t('game.retry')}
+          </button>
+        )}
         <button onClick={onBack}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: c.textSec, fontSize: fs.sm }}>
           {t('game.back')}
         </button>
-        <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />
-        <select value={language} onChange={e => setLanguage(e.target.value as Language)}
-          style={{ padding: '2px 5px', borderRadius: 6, border: `1px solid ${c.border}`, background: c.panel, color: c.textMute, cursor: 'pointer', outline: 'none', fontSize: fs.sm }}>
-          <option value="en">EN</option>
-          <option value="zh-CN">CHS</option>
-          <option value="zh-TW">CHT</option>
-        </select>
+        {!isMobile && <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />}
+        {!isMobile && (
+          <select value={language} onChange={e => setLanguage(e.target.value as Language)}
+            style={{ padding: '2px 5px', borderRadius: 6, border: `1px solid ${c.border}`, background: c.panel, color: c.textMute, cursor: 'pointer', outline: 'none', fontSize: fs.sm }}>
+            <option value="en">EN</option>
+            <option value="zh-CN">CHS</option>
+            <option value="zh-TW">CHT</option>
+          </select>
+        )}
         <button onClick={onToggleDark}
           style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}>
           {isDarkMode ? <MoonOutlined /> : <SunOutlined />}
         </button>
-        <button onClick={() => setAboutOpen(true)}
-          style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}
-          title="About">
-          <InfoCircleOutlined />
-        </button>
+        {!isMobile && (
+          <button onClick={() => setAboutOpen(true)}
+            style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center' }}
+            title="About">
+            <InfoCircleOutlined />
+          </button>
+        )}
       </div>
 
-      {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', overflowY: 'auto', minHeight: 0 }}>
+      {/* ── Log drawer overlay (narrow screens) ── */}
+      {isNarrow && logDrawerOpen && (
+        <div style={{
+          position: 'fixed', top: 50, right: 0, bottom: 0, zIndex: 200,
+          width: Math.min(300, winWidth * 0.85),
+          background: c.logBg, borderLeft: `1px solid ${c.border}`,
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '-4px 0 20px rgba(0,0,0,0.25)',
+        }}>
+          <div style={{ flexShrink: 0, padding: '10px 12px 8px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: fs.sm, color: c.textSec }}>事件日志</span>
+            <button onClick={() => setLogDrawerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.textMute, fontSize: 16, padding: 0 }}>✕</button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {logs.map((log, i) => (
+              <div key={i} style={{
+                lineHeight: 1.35, fontSize: fs.xs, wordBreak: 'break-all',
+                color: log.type === 'pos' ? (isDarkMode ? '#86efac' : '#005c20')
+                     : log.type === 'neg' ? '#ff7875' : c.textMute,
+                fontWeight: log.text.startsWith('──') ? 700 : 400,
+              }}>
+                {log.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* ════ Left sidebar: log ════ */}
+      {/* ── Body ── */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+
+        {/* ════ Left sidebar: log — hidden on narrow screens ════ */}
+        {!isNarrow && (
         <div style={{
           width: 168, flexShrink: 0,
           display: 'flex', flexDirection: 'column',
           borderRight: `1px solid ${c.border}`,
           background: c.logBg,
+          overflowY: 'auto',
         }}>
           {/* Turn + plays info */}
           <div style={{ flexShrink: 0, padding: '10px 12px 8px', borderBottom: `1px solid ${c.border}` }}>
@@ -1291,11 +1383,34 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             ))}
           </div>
         </div>
+        )}
 
         {/* ════ Main game area ════ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
 
-          {/* ─ Row 1: Goal gauges ─ */}
+          {/* ─ Combined gauge row (narrow screens only): goals + status in one scrollable strip ─ */}
+          {isNarrow && (
+            <div style={{
+              flexShrink: 0, background: c.panel,
+              borderBottom: `1px solid ${c.border}`,
+              padding: '0 12px',
+              display: 'flex', alignItems: 'center', gap: 10, overflowX: 'auto',
+              minHeight: 60,
+            }}>
+              {allPairs.map(([key, vdef]) => (
+                <Gauge key={key} varKey={key} label={vdef.label}
+                  value={Math.round(gs[key] ?? 0)}
+                  baseValue={Math.round(gaugeBase[key] ?? gs[key] ?? 0)}
+                  max={vdef.max}
+                  higherIsBetter={vdef.higherIsBetter !== false}
+                  primary={goalSet.has(key) ? c.primary : c.textSec}
+                  c={c} fs={fs} hoverEffects={hoverEffects} />
+              ))}
+            </div>
+          )}
+
+          {/* ─ Row 1: Goal gauges (wide screens only) ─ */}
+          {!isNarrow && (
           <div style={{
             height: ROW_GAUGE, flexShrink: 0,
             background: c.panel,
@@ -1315,6 +1430,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
               ))}
           </div>
+          )}
 
           {/* ─ Row 2: Env board (revealed this turn) ─ */}
           <div style={{
@@ -1354,6 +1470,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   />
                 );
               })}
+            {/* Narrow: inline env deck count badge */}
+            {isNarrow && <DeckBadge label="事件弃" count={envEventDiscard.length} color="#fa8c16" />}
           </div>
 
           {/* ─ Row 4: Player board ─ */}
@@ -1470,25 +1588,29 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
               })}
               {stagedDiscards.length === 0 && <DashedSlot key="discard-hint" c={c} variant="discard" />}
             </div>
+            {/* Narrow: inline player discard count badge */}
+            {isNarrow && <DeckBadge label="我方弃" count={playerDiscard.length} color="#722ed1" />}
           </div>
 
           {/* ─ Row 5: Player hand (drop target for played→hand and discard→hand) ─ */}
+          {/* On narrow screens: flexWrap allows multiple rows; height is auto instead of fixed */}
           <div
             onDragOver={canAct && (dragSource === 'played' || dragSource === 'discard') ? handleHandDragOver : undefined}
             onDragEnter={canAct && (dragSource === 'played' || dragSource === 'discard') ? () => setDragOverHand(true) : undefined}
             onDragLeave={canAct ? () => setDragOverHand(false) : undefined}
             onDrop={canAct ? handleHandDrop : undefined}
             style={{
-              height: ROW_CARD, flexShrink: 0,
+              ...(isNarrow
+                ? { minHeight: ROW_CARD, flexShrink: 0, flexWrap: 'wrap' as const, alignContent: 'flex-start', overflowX: 'hidden', overflowY: 'visible' }
+                : { height: ROW_CARD, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden' }),
               background: dragOverHand ? (dark ? 'rgba(22,119,255,0.06)' : 'rgba(22,119,255,0.04)') : c.plyBg,
               borderBottom: `1px solid ${dragOverHand ? '#1677ff' : c.border}`,
-              display: 'flex', alignItems: 'center',
-              padding: '0 12px', gap: 8,
-              overflowX: 'auto', overflowY: 'hidden',
+              display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center',
+              padding: isNarrow ? '8px 12px' : '0 12px', gap: 8,
               transition: 'background 0.15s, border-color 0.15s',
             }}
           >
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>手牌</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: isNarrow ? 'horizontal-tb' : 'vertical-rl', alignSelf: isNarrow ? 'flex-start' : 'auto', paddingTop: isNarrow ? 4 : 0, userSelect: 'none' }}>手牌</span>
 
             {(() => {
               const permCards = hand.filter(c => c.permanent);
@@ -1548,6 +1670,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                 {regCards.slice(handSize).map(card => renderCard(card, true))}
                 {/* Permanent cards — always appended after slots, no limit */}
                 {permCards.map(card => renderCard(card))}
+                {/* Narrow: deck remaining badge at end of hand row */}
+                {isNarrow && <DeckBadge label="牌组" count={playerDeck.length} color={c.textMute} />}
               </>;
             })()}
           </div>
@@ -1559,8 +1683,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             borderBottom: `1px solid ${c.border}`,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            {canAct && hand.filter(c => !c.permanent).length >= story.game.hand_size && stagedDiscards.length === 0 && (
-              <span style={{ color: '#fa8c16', fontFamily: 'monospace', fontWeight: 600, fontSize: fs.xs }}>放弃一张牌以抽新牌</span>
+            {canAct && handOverflow && (
+              <span style={{ color: '#f5222d', fontFamily: 'monospace', fontWeight: 600, fontSize: fs.xs }}>手牌溢出，请先弃牌</span>
             )}
             <div style={{ flex: 1 }} />
             {/* Total-delta mode toggle */}
@@ -1579,21 +1703,23 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             </button>
             <button
               onClick={endTurn}
-              disabled={!canAct}
+              disabled={!canAct || handOverflow}
+              title={handOverflow ? `手牌超出上限（${hand.filter(hc => !hc.permanent).length}/${story.game.hand_size}），请先弃牌` : undefined}
               style={{
                 padding: '4px 20px', borderRadius: 5, fontWeight: 600, fontSize: fs.sm,
-                background: canAct ? c.primary : 'transparent',
-                border: `1px solid ${canAct ? c.primary : c.border}`,
-                color: canAct ? '#fff' : c.textMute,
-                cursor: canAct ? 'pointer' : 'not-allowed',
+                background: canAct && !handOverflow ? c.primary : 'transparent',
+                border: `1px solid ${canAct && !handOverflow ? c.primary : handOverflow ? '#f5222d' : c.border}`,
+                color: canAct && !handOverflow ? '#fff' : handOverflow ? '#f5222d' : c.textMute,
+                cursor: canAct && !handOverflow ? 'pointer' : 'not-allowed',
                 transition: 'all 0.15s',
               }}
             >
-              {phase === 'env' ? '结算中…' : t('game.end_turn')}
+              {phase === 'env' ? '结算中…' : handOverflow ? `弃牌后结束 (${hand.filter(hc => !hc.permanent).length}/${story.game.hand_size})` : t('game.end_turn')}
             </button>
           </div>
 
-          {/* ─ Row 7: Status gauges ─ */}
+          {/* ─ Row 7: Status gauges (wide screens only) ─ */}
+          {!isNarrow && (
           <div style={{
             height: ROW_GAUGE, flexShrink: 0,
             background: c.sectionBg,
@@ -1612,11 +1738,13 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
               ))}
           </div>
+          )}
 
         </div>{/* end main */}
 
-        {/* ════ Right deck column ════ */}
+        {/* ════ Right deck column (wide screens only) ════ */}
         {/* Sections align 1:1 with rows 1-6 by sharing the same height constants */}
+        {!isNarrow && (
         <div style={{
           width: CARD_W + 18, flexShrink: 0,
           display: 'flex', flexDirection: 'column',
@@ -1646,6 +1774,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           {/* Placeholder aligns with controls + status */}
           <div style={{ flex: 1 }} />
         </div>
+        )}{/* end right deck column */}
 
         {/* ── Scenario Intro / Disclaimer Overlay ── */}
         {isLoaded && showScenarioIntro && (
