@@ -1,0 +1,21 @@
+id: player_endure_fever
+type: player
+category: health
+display:
+  name: "熬过发烧"
+  description: "他喝水，睡觉，让烧自己退。这是他能做的全部。他没有钱买药，他的朋友不知道他病了，他一个人躺在阁楼里。"
+  flavor: "在最孤独的时候，身体是唯一陪伴他的东西。连身体也背叛了他。"
+  icon: "🛏️"
+cost: 1
+effects:
+  - target: fever_level
+    delta: -12
+  - target: mental_health
+    delta: 5
+channel: health
+tags: [fever, endurance, recovery]
+source:
+  variable: fever_level
+  formula: "natural recovery × rest: fever-12; isolation but clarity: mental_health+5"
+  pattern_detected: P1
+  sim_notes: "熬过发烧：fever-12，mental_health+5（清醒的代价也是清醒的收获）"

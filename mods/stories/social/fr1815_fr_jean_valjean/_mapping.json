@@ -1,0 +1,48 @@
+{
+  "story_id": "fr1815_fr_jean_valjean",
+  "source_scenario": "mods/scenarios/social/fr1815_fr_jean_valjean.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "216 months (18 years)",
+    "game_turn_duration": "18 months",
+    "game_turns": 12,
+    "note": "216 months / 12 turns = 18 months per turn. Valjean's arc from Digne (1815) to his death after the 1832 barricades."
+  },
+
+  "variable_mapping": {
+    "redemption_progress": { "scenario_var": "redemption_progress", "io_role": "output", "initial": 5,  "scale": "1:1" },
+    "physical_health":     { "scenario_var": "physical_health",     "io_role": "output", "initial": 60, "scale": "1:1" },
+    "community_trust":     { "scenario_var": "community_trust",     "io_role": "output", "initial": 5,  "scale": "1:1" },
+    "javert_pursuit":      { "scenario_var": "javert_pursuit",      "io_role": "output", "initial": 15, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "virtue_expression": { "range": [0, 1], "maps_to": "player_act_of_virtue, player_confess_who_i_am" },
+    "concealment":       { "range": [0, 1], "maps_to": "player_hide_identity" },
+    "care_for_cosette":  { "range": [0, 1], "maps_to": "player_protect_cosette, player_endure_and_rest" }
+  },
+
+  "card_derivations": {
+    "player_act_of_virtue":      { "formula": "virtue_expression=0.8 × 18mo: redemption rate ~1/mo → +15; trust +10", "derived_effects": { "redemption_progress": "+15", "community_trust": "+10" } },
+    "player_hide_identity":      { "derived_effects": { "javert_pursuit": "-15", "community_trust": "-8" } },
+    "player_confess_who_i_am":   { "derived_effects": { "redemption_progress": "+25", "javert_pursuit": "+20", "community_trust": "+15" } },
+    "player_protect_cosette":    { "derived_effects": { "redemption_progress": "+12", "physical_health": "-8", "javert_pursuit": "+8" } },
+    "player_endure_and_rest":    { "derived_effects": { "physical_health": "+18" } },
+    "env_javert_closes_in":      { "derived_effects": { "javert_pursuit": "+18", "community_trust": "-5" } },
+    "env_false_valjean_arrested":{ "derived_effects": { "redemption_progress": "+20", "javert_pursuit": "+25" } },
+    "env_cosette_in_danger":     { "derived_effects": { "redemption_progress": "+12", "physical_health": "-10" } },
+    "env_barricade_battle":      { "derived_effects": { "redemption_progress": "+15", "physical_health": "-15", "community_trust": "+8" } },
+    "env_bishop_memory":         { "derived_effects": { "redemption_progress": "+10", "physical_health": "+5" } },
+    "env_community_needs":       { "derived_effects": { "community_trust": "+15", "redemption_progress": "+8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "redemption_progress >= 80",
+    "note": "Hugo's thesis: redemption is a lifelong project, not a moment. The game spans 18 years of Valjean's transformation. 80 represents the full arc — from bishop's silver to carrying Marius through the sewers.",
+    "lose_condition": "physical_health <= 0",
+    "note2": "Historical: Valjean dies peacefully after Marius and Cosette's marriage, his redemption complete. The bishop's silver bought his soul. He spent 18 years paying it forward."
+  }
+}

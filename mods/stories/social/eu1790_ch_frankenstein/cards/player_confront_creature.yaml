@@ -1,0 +1,23 @@
+id: player_confront_creature
+type: player
+category: goal
+display:
+  name: "正视造物"
+  description: "在冰川上，他们第一次真正对话了。造物要求一个伴侣，要求被承认。维克多必须决定能给什么。"
+  flavor: "\"你是我的创造者——但我不是你的奴隶。我是你遗弃的儿子，而你欠我的，不是怜悯，是公正。\""
+  icon: "🏔️"
+cost: 2
+effects:
+  - target: creature_threat
+    delta: -15
+  - target: ethical_burden
+    delta: -10
+  - target: health
+    delta: -8
+channel: goal
+tags: [confrontation, dialogue, courage]
+source:
+  variable: creature_threat
+  formula: "confrontation_willingness=0.8 × 2mo → threat_decrease: -1.5×0.8×2 = -2.4/mo? scaled to -15 turn impact"
+  pattern_detected: P1
+  sim_notes: "直面事件：creature_threat-15（谈判缓解），ethical_burden-10（承担责任减轻罪感），health-8（情感消耗）"

@@ -1,0 +1,20 @@
+id: env_scientific_obsession
+type: env
+category: mental
+display:
+  name: "研究的强迫"
+  description: "他又开始了——不是为了治愈，而是出于无法控制的冲动。笔记本里写满了他自己也看不懂的公式。"
+  flavor: "创造怪物时的那种热情，又回来了。这一次，他研究的是如何销毁它。"
+  icon: "🔬"
+effects:
+  - target: health
+    delta: -12
+  - target: ethical_burden
+    delta: 8
+channel: mental
+tags: [obsession, research, overwork]
+source:
+  variable: health
+  formula: "research_continuation(1.5) × overwork × 2mo → health-12；obsession驱动ethical_burden+8"
+  pattern_detected: P2
+  sim_notes: "研究强迫事件：health-12（过劳），ethical_burden+8（强迫行为加剧罪恶感）"

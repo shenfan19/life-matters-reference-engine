@@ -1,0 +1,23 @@
+id: player_dispatch_supply
+type: player
+category: goal
+display:
+  name: "调配军粮"
+  description: "亲自督导粮草转运，重新规划粮道路线，优化分配机制。补给稳定，士气随之提振。"
+  flavor: "木牛流马是传说，但蜀道粮运的困境是真实的——这是诸葛亮一生没能彻底解决的问题。"
+  icon: "🐂"
+cost: 2
+effects:
+  - target: supply
+    delta: 15
+  - target: morale
+    delta: 10
+  - target: health
+    delta: -4
+channel: goal
+tags: [supply, logistics]
+source:
+  variable: supply
+  formula: "eating: food supplement to troops"
+  pattern_detected: P1
+  sim_notes: "主动补充供给+15，士气回升+10，体力代价-4"

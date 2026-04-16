@@ -1,0 +1,21 @@
+id: player_pray_accept
+type: player
+category: health
+display:
+  name: "祈祷与接受"
+  description: "他不确定他相信什么。但他跪下来，像小时候一样，把头压在手上。不是祈求延寿，而是祈求——理解。"
+  flavor: "在最后，宗教给他的不是答案，而是一个可以安放恐惧的地方。"
+  icon: "🕯️"
+cost: 1
+effects:
+  - target: inner_peace
+    delta: 12
+  - target: dignity
+    delta: 8
+channel: health
+tags: [prayer, acceptance, peace]
+source:
+  variable: inner_peace
+  formula: "spiritual practice → peace+12; accepting death→dignity+8（接受vs对抗的尊严差异）"
+  pattern_detected: P1
+  sim_notes: "祈祷接受：inner_peace+12（精神安慰），dignity+8（接受死亡的尊严）"

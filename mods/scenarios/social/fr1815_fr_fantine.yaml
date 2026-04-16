@@ -1,0 +1,147 @@
+id: fr1815_fr_fantine
+name: "芳汀：母亲的代价"
+description: |
+  芳汀，一个被情人抛弃的年轻工人，把女儿珂赛特托付给客栈老板，独自去城里工厂做工。
+  她寄钱，工厂因为她是未婚母亲而解雇她，她找其他活路，
+  钱越来越不够，她卖掉头发，卖掉牙齿，最后卖掉身体。
+  她只是想让女儿活下去。
+type: scenario
+tags: [poverty, single-mother, tuberculosis, exploitation, sacrifice, literature]
+source: 悲惨世界 (Victor Hugo, 1862)
+
+simulation:
+  step: 1        # 单位：月
+  total: 36      # 约3年（从独自进城到去世）
+  step_unit: month
+
+inputs:
+  - id: work_intensity
+    label: "劳动强度"
+    description: "做工努力程度：高则多挣钱，但加速肺病"
+    min: 0
+    max: 3
+    default: 2.0
+    unit: intensity
+
+  - id: sacrifice_level
+    label: "自我牺牲程度"
+    description: "为寄钱给珂赛特牺牲自身生存资源（头发/牙齿/身体）"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: ratio
+
+  - id: seek_help
+    label: "寻求援助"
+    description: "向教会/官员/善人求助（风险高，尊严代价大）"
+    min: 0
+    max: 1
+    default: 0.2
+    unit: intensity
+
+variables:
+  - id: cosette_wellbeing
+    label: "珂赛特生存状态"
+    description: "女儿在客栈的生活质量（取决于汇款）"
+    min: 0
+    max: 100
+    initial: 40
+    io_role: output
+    unit: score
+
+  - id: health
+    label: "芳汀的健康"
+    description: "肺结核+营养不足+过度劳动的累积损耗"
+    min: 0
+    max: 100
+    initial: 75
+    io_role: output
+    unit: hp
+
+  - id: income
+    label: "月收入（相对）"
+    description: "当前的劳动收入水平"
+    min: 0
+    max: 100
+    initial: 50
+    io_role: output
+    unit: score
+
+  - id: desperation
+    label: "绝望程度"
+    description: "社会排斥·健康恶化·资源枯竭的综合绝望"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+  - id: tb_progression
+    label: "肺结核进展"
+    description: "结核病的不可逆进展"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+formulas:
+  - id: health_decay
+    description: "肺结核+劳动强度+营养不足消耗健康"
+    expr: |
+      tb_cost = (tb_progression / 100) * 2.5
+      overwork = work_intensity * 0.8
+      sacrifice_cost = sacrifice_level * 1.5  # 卖牙/卖发/劳身
+      health = max(0, health - tb_cost - overwork - sacrifice_cost + seek_help * 0.5)
+
+  - id: tb_growth
+    description: "结核病随营养不足和劳累而加速"
+    expr: |
+      nutrition_factor = 1.0 + sacrifice_level * 1.2  # 为寄钱饿自己
+      overwork_factor = work_intensity * 0.4
+      tb_progression = min(100, tb_progression + nutrition_factor + overwork_factor)
+
+  - id: income_dynamics
+    description: "收入随工作强度，但社会排斥（desperation）逐渐降低就业机会"
+    expr: |
+      earn = work_intensity * 15.0
+      exclusion = (desperation / 100) * 20.0  # 身份败露后被解雇
+      help_gain = seek_help * 5.0
+      income = max(0, earn - exclusion + help_gain)
+
+  - id: cosette_status
+    description: "寄钱→珂赛特状态，但客栈主人会截留"
+    expr: |
+      remittance = income * sacrifice_level * 0.5
+      innkeeper_corruption = 0.4   # 德纳迪埃截留40%
+      net_to_cosette = remittance * (1 - innkeeper_corruption)
+      cosette_wellbeing = max(0, min(100, cosette_wellbeing + net_to_cosette * 0.1 - 2.0))
+
+  - id: desperation_growth
+    description: "绝望随健康下降·收入下降·无援助积累"
+    expr: |
+      desperation_drive = (1 - health / 100) * 2.0 + (1 - income / 100) * 1.5
+      help_relief = seek_help * 1.5
+      desperation = min(100, max(0, desperation + desperation_drive - help_relief))
+
+schedules:
+  - at: 6
+    event: "factory_dismissal"
+    effect: "income = max(0, income * 0.3); desperation = min(100, desperation + 20)"
+    label: "工厂发现她是未婚母亲，解雇"
+
+  - at: 12
+    event: "sell_hair"
+    effect: "income = min(100, income + 15); health = max(0, health - 5)"
+    label: "卖掉头发（一次性收入，自我损耗）"
+
+  - at: 20
+    event: "sell_teeth"
+    effect: "income = min(100, income + 10); health = max(0, health - 10); tb_progression = min(100, tb_progression + 5)"
+    label: "卖掉两颗门牙（感染风险，肺病加重）"
+
+optimizer:
+  target: cosette_wellbeing
+  direction: maximize
+  secondary: health
+  note: "历史结局：芳汀health→0，cosette_wellbeing低（珂赛特被虐待），冉·阿让最终解救"

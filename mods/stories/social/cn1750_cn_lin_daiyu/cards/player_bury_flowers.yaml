@@ -1,0 +1,23 @@
+id: player_bury_flowers
+type: player
+category: goal
+display:
+  name: "葬花"
+  description: "她把落下的花瓣一片一片收起来，埋进花冢。这个仪式，别人看不懂，她自己也说不清——但她每次做完，都感觉轻了一点。"
+  flavor: "\"花谢花飞花满天，红消香断有谁怜？\"她不是在悲叹花，她是在悲叹自己。"
+  icon: "🌺"
+cost: 1
+effects:
+  - target: creative_output
+    delta: 15
+  - target: emotional_burden
+    delta: -12
+  - target: health
+    delta: -5
+channel: goal
+tags: [ritual, flowers, grief]
+source:
+  variable: creative_output
+  formula: "poetic ritual: creative+15（仪式触发创作力）; burden-12（释放）; health-5（体力）"
+  pattern_detected: P1
+  sim_notes: "葬花：creative+15，burden-12，health-5"

@@ -1,0 +1,115 @@
+meta:
+  name: "弗兰肯斯坦：创造者的逃跑"
+  description: "维克多·弗兰肯斯坦赋予了一个生命，然后在恐惧中逃跑。那个被遗弃的存在，开始向世界索取本属于它的一切——从维克多的至亲身上。"
+  difficulty: hard
+  period_start: "1790-01"
+  period_end: "1792-06"
+  tags: [Science, Ethics, Isolation, Literature, Europe]
+  country: CH
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/eu1790_ch_frankenstein.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  health:               85
+  relationships_intact: 90
+  ethical_burden:       20
+  creature_threat:      10
+
+variable_display:
+  health:
+    label: "维克多的生命力"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  relationships_intact:
+    label: "至亲存续"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  ethical_burden:
+    label: "伦理重量"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: false
+  creature_threat:
+    label: "造物威胁"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: health
+  scale: [0, 100, 0, 100]
+  display: "维克多的生命力"
+
+turns:
+  total: 15
+  time_per_turn: "2个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: relationships_intact
+  target_value: 60
+  description: "在造物的复仇中保住足够多的至亲"
+
+lose_condition:
+  type: health_zero
+  description: "维克多在北极的追逐中精力耗尽，带着无尽悔恨死去。造物在他身旁哭泣。"
+
+endings:
+  - grade: S
+    condition: "health >= 50 and relationships_intact >= 80"
+    title: "承担责任的科学家"
+    description: "他选择正视造物，达成了某种和解。科学的边界，需要创造者自己守护。"
+  - grade: A
+    condition: "health > 0 and relationships_intact >= 60"
+    title: "勉强守住的爱"
+    description: "失去了一些人，但保住了最重要的。这代价，他终其一生无法原谅自己。"
+  - grade: B
+    condition: "relationships_intact >= 40 and ethical_burden < 80"
+    title: "不完整的救赎"
+    description: "他没有做到最好，但他至少试图面对了。历史会怎么判断他？"
+  - grade: D
+    condition: "relationships_intact <= 0 or health <= 0"
+    title: "创造者的代价"
+    description: "伊丽莎白、威廉、克拉维尔——全部消失了。维克多在北极的冰上追逐他的造物，再也没有回来。"
+
+env_deck:
+  - path: cards/env_creature_revenge.yaml
+    weight: 200
+  - path: cards/env_loved_one_threatened.yaml
+    weight: 180
+  - path: cards/env_public_discovery.yaml
+    weight: 150
+  - path: cards/env_isolation_deepens.yaml
+    weight: 140
+  - path: cards/env_scientific_obsession.yaml
+    weight: 120
+  - path: cards/env_unexpected_ally.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_confront_creature.yaml
+    copies: 3
+  - path: cards/player_research_solution.yaml
+    copies: 3
+  - path: cards/player_protect_loved_ones.yaml
+    copies: 3
+  - path: cards/player_rest_recover.yaml
+    copies: 3
+  - path: cards/player_confess_truth.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

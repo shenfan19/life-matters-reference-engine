@@ -1,0 +1,23 @@
+id: player_memorial
+type: player
+category: political
+display:
+  name: "上表出师"
+  description: "修书成都，陈明北伐利害，安抚朝廷，稳固后方。出师表字字泣血，情真意切。"
+  flavor: "\"臣本布衣，躬耕于南阳，苟全性命于乱世，不求闻达于诸侯……\""
+  icon: "📜"
+cost: 2
+effects:
+  - target: strategy
+    delta: 8
+  - target: morale
+    delta: 8
+  - target: supply
+    delta: 10
+channel: political
+tags: [political, court, historical]
+source:
+  variable: court_stability
+  formula: "court_management: court_stability += (political_address-0.3)*4"
+  pattern_detected: P1
+  sim_notes: "political_address=1.5, 12天: court_stability回升→掣肘减少→strategy+8, supply+10"

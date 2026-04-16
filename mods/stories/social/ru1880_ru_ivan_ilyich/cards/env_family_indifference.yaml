@@ -1,0 +1,20 @@
+id: env_family_indifference
+type: env
+category: social
+display:
+  name: "家人的漠然"
+  description: "妻子在为当天的晚宴担心。女儿在为她的裙子担心。他们谈话时，他意识到：他的痛苦打扰了他们。"
+  flavor: "最恶毒的谎言不是说出来的，而是假装没有任何异常的沉默。"
+  icon: "🪟"
+effects:
+  - target: social_isolation
+    delta: 12
+  - target: pain_level
+    delta: 6
+channel: social
+tags: [family, indifference, isolation]
+source:
+  variable: social_isolation
+  formula: "facade × family avoidance cycle → isolation+12/2wk; emotional pain: pain+6"
+  pattern_detected: P2
+  sim_notes: "家人漠然：social_isolation+12，pain_level+6（情感疼痛叠加生理疼痛）"

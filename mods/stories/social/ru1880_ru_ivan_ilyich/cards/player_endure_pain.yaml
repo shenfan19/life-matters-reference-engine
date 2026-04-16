@@ -1,0 +1,23 @@
+id: player_endure_pain
+type: player
+category: health
+display:
+  name: "忍受疼痛"
+  description: "他拒绝服用更多鸦片。不是因为他不需要，而是因为他想要清醒地活着——即使这意味着更多的疼痛。"
+  flavor: "他选择疼痛而不是麻木，因为麻木意味着他甚至无法感受到自己还活着。"
+  icon: "😤"
+cost: 1
+effects:
+  - target: dignity
+    delta: 12
+  - target: inner_peace
+    delta: 6
+  - target: pain_level
+    delta: 5
+channel: health
+tags: [endurance, dignity, consciousness]
+source:
+  variable: dignity_preserved
+  formula: "pain_endurance=1: dignity+12; consciousness maintained → peace+6; pain cost: pain+5"
+  pattern_detected: P1
+  sim_notes: "忍痛清醒：dignity+12（有意识地选择），inner_peace+6（清醒才能面对），pain+5（不用药的代价）"

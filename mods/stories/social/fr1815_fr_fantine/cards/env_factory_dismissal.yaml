@@ -1,0 +1,20 @@
+id: env_factory_dismissal
+type: env
+category: social
+display:
+  name: "工厂解雇"
+  description: "工头发现她在寄钱给珂赛特，发现了信封上的字。他叫她来，告诉她：未婚母亲不能在这里工作。你明天不用来了。"
+  flavor: "她没有哭，在他面前。她走出了工厂，然后坐在街边，哭了很久。"
+  icon: "🏭"
+effects:
+  - target: income
+    delta: -30
+  - target: desperation
+    delta: 20
+channel: social
+tags: [dismissal, poverty, stigma]
+source:
+  variable: income
+  formula: "schedule at month 6: income×0.3 → income-30; desperation+20"
+  pattern_detected: P3
+  sim_notes: "工厂解雇（场景第6月）：income-30，desperation+20"

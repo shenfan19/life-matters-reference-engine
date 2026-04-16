@@ -1,0 +1,21 @@
+id: player_endure_pain
+type: player
+category: health
+display:
+  name: "忍受慢性疼痛"
+  description: "他的背从来就是痛的。他习惯了。他让自己休息几个小时，用敲钟多年磨出的忍耐力，把疼痛压到次要位置。"
+  flavor: "痛苦对他来说，是老朋友了。这不让他更强，但让他更能承受。"
+  icon: "😤"
+cost: 1
+effects:
+  - target: quasimodo_health
+    delta: 15
+  - target: sanctuary_integrity
+    delta: 3
+channel: health
+tags: [endurance, pain, rest]
+source:
+  variable: quasimodo_health
+  formula: "rest + pain endurance: health+15; residual defense value: sanctuary+3"
+  pattern_detected: P1
+  sim_notes: "忍痛休息：health+15，sanctuary+3"

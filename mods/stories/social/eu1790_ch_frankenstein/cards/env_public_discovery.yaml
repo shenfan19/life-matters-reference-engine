@@ -1,0 +1,20 @@
+id: env_public_discovery
+type: env
+category: exposure
+display:
+  name: "真相开始泄露"
+  description: "有人看见了那个存在。问题开始涌向维克多。他无法解释，却也无法否认。"
+  flavor: "科学创造了一个不能被承认的存在——这是科学的耻辱，也是维克多的孤独。"
+  icon: "👁️"
+effects:
+  - target: ethical_burden
+    delta: 15
+  - target: health
+    delta: -8
+channel: exposure
+tags: [exposure, society, shame]
+source:
+  variable: ethical_burden
+  formula: "concealment_effort(0.5) → exposure partial: ethical_burden+15; health-8（社会压力与恐惧）"
+  pattern_detected: P2
+  sim_notes: "公众暴露事件：ethical_burden+15，health-8（无法解释造物存在的心理压力）"

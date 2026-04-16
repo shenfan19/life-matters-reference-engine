@@ -1,0 +1,20 @@
+id: env_colleague_suspects
+type: env
+category: social
+display:
+  name: "拉尼恩的疑问"
+  description: "他的老朋友拉尼恩医生来访。他问了一些Jekyll无法回答的问题。Jekyll感到他在隐瞒时所消耗的精力，正在压垮他。"
+  flavor: "一个朋友的眼睛，有时比陌生人的眼睛更难对付——因为他认识你从前的样子。"
+  icon: "👁️"
+effects:
+  - target: self_control
+    delta: -10
+  - target: drug_dependency
+    delta: 8
+channel: social
+tags: [lanyon, suspicion, social_pressure]
+source:
+  variable: self_control
+  formula: "social_scrutiny: self_control-10（维持伪装消耗）; drug_dependency+8（压力导致依赖加深）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "同僚起疑：self_control-10，drug_dependency+8"

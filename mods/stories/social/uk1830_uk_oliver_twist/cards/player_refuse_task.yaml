@@ -1,0 +1,23 @@
+id: player_refuse_task
+type: player
+category: integrity
+display:
+  name: "拒绝任务"
+  description: "他说了不。他不知道会有什么后果——他只知道如果他做了，他就再也不是他了。这不是英雄主义，这是他唯一还能掌控的事情。"
+  flavor: "在所有的东西都能被拿走的地方，\"不\"是最后剩下的一样东西。"
+  icon: "✊"
+cost: 1
+effects:
+  - target: moral_integrity
+    delta: 15
+  - target: danger_level
+    delta: 12
+  - target: physical_health
+    delta: -8
+channel: integrity
+tags: [refusal, integrity, resistance]
+source:
+  variable: moral_integrity
+  formula: "refuse_task: moral_integrity+15（保住本心）; danger_level+12（触怒团伙）; physical_health-8（受到惩罚）"
+  pattern_detected: P1
+  sim_notes: "拒绝任务：moral_integrity+15，danger_level+12，physical_health-8"

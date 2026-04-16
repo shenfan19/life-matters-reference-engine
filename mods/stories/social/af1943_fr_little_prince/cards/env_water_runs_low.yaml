@@ -1,0 +1,18 @@
+id: env_water_runs_low
+type: env
+category: survival
+display:
+  name: "水快用完了"
+  description: "飞行员数了数剩下的水。还够几天。他的飞机还没有修好。沙漠在白天是一个烤箱，晚上又变成了一个冰箱。小王子坐在那里，看着远处，好像完全不在意。"
+  flavor: "\"渴不是什么大事，\"小王子说。飞行员看了看他的水壶，觉得这个说法需要讨论。"
+  icon: "💧"
+effects:
+  - target: pilot_survival
+    delta: -15
+channel: survival
+tags: [water, desert, survival]
+source:
+  variable: pilot_survival
+  formula: "water_low: pilot_survival-15（脱水风险上升）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "水快用完：pilot_survival-15"

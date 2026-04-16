@@ -1,0 +1,48 @@
+{
+  "story_id": "ru1865_ru_raskolnikov",
+  "source_scenario": "mods/scenarios/social/ru1865_ru_raskolnikov.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 day",
+    "scenario_total": "90 days",
+    "game_turn_duration": "10 days",
+    "game_turns": 9,
+    "note": "90 days / 9 turns = 10 days per turn. The story spans about 3 months from the murder to the confession."
+  },
+
+  "variable_mapping": {
+    "mental_health":       { "scenario_var": "mental_health",       "io_role": "output", "initial": 45, "scale": "1:1" },
+    "fever_level":         { "scenario_var": "fever_level",         "io_role": "output", "initial": 30, "scale": "1:1" },
+    "redemption_potential":{ "scenario_var": "redemption_potential","io_role": "output", "initial": 5,  "scale": "1:1" },
+    "detection_risk":      { "scenario_var": "detection_risk",      "io_role": "output", "initial": 10, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "concealment_effort": { "range": [0, 1], "maps_to": "player_hide_evidence, player_philosophical_justification" },
+    "spiritual_seeking":  { "range": [0, 1], "maps_to": "player_seek_sonya, player_confess_fragment" },
+    "social_withdrawal":  { "range": [0, 1], "maps_to": "player_endure_fever" }
+  },
+
+  "card_derivations": {
+    "player_seek_sonya":                { "derived_effects": { "redemption_potential": "+20", "mental_health": "+8" } },
+    "player_hide_evidence":             { "derived_effects": { "detection_risk": "-10", "redemption_potential": "-8" } },
+    "player_confess_fragment":          { "derived_effects": { "redemption_potential": "+15", "detection_risk": "+8", "fever_level": "-8" } },
+    "player_endure_fever":              { "derived_effects": { "fever_level": "-12", "mental_health": "+5" } },
+    "player_philosophical_justification":{ "derived_effects": { "redemption_potential": "-12", "mental_health": "-8" } },
+    "env_porfiry_visits":               { "derived_effects": { "detection_risk": "+15", "mental_health": "-12" } },
+    "env_guilt_hallucination":          { "derived_effects": { "mental_health": "-18", "fever_level": "+10" } },
+    "env_sonya_finds_him":              { "derived_effects": { "redemption_potential": "+15", "fever_level": "-8" } },
+    "env_evidence_found":               { "derived_effects": { "detection_risk": "+20", "mental_health": "-15" } },
+    "env_fever_breaks":                 { "derived_effects": { "fever_level": "-20", "mental_health": "+10" } },
+    "env_razumikhin_helps":             { "derived_effects": { "mental_health": "+12", "fever_level": "-8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "redemption_potential >= 70",
+    "note": "The game's counterfactual: if Raskolnikov had sought Sonya earlier and rejected his 'extraordinary man' theory, redemption could have come before complete breakdown. Win = the genuine confession arc.",
+    "lose_condition": "mental_health <= 0",
+    "note2": "Historical: Raskolnikov confesses under psychological collapse. The question is whether he confesses from genuine repentance or simply can no longer maintain the burden."
+  }
+}

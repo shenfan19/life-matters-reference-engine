@@ -1,0 +1,25 @@
+id: player_sell_teeth
+type: player
+category: sacrifice
+display:
+  name: "卖掉牙齿"
+  description: "牙医说两颗门牙，给这个价格。她想到珂赛特，点了头。手术没有麻药。"
+  flavor: "她用最私密的身体部位换取金钱——不是因为她没有尊严，而是因为尊严在这个世界里是昂贵的奢侈品。"
+  icon: "🦷"
+cost: 2
+effects:
+  - target: income
+    delta: 15
+  - target: health
+    delta: -15
+  - target: cosette_wellbeing
+    delta: 10
+  - target: desperation
+    delta: 8
+channel: sacrifice
+tags: [sacrifice, teeth, pain]
+source:
+  variable: income
+  formula: "schedule event: sell_teeth → income+15; health-15（手术感染风险，结核加重）; cosette+10; desperation+8"
+  pattern_detected: P1
+  sim_notes: "卖牙齿（高代价）：income+15，health-15，cosette+10，desperation+8"

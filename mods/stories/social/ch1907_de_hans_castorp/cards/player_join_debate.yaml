@@ -1,0 +1,21 @@
+id: player_join_debate
+type: player
+category: intellectual
+display:
+  name: "参与辩论"
+  description: "今天他没有只是坐在那里听，他说了话。他对塞特姆布里尼提出了一个问题，这个问题让两个人都停顿了一下。他感觉到自己的思想在这个对话里变得更清晰了一点。"
+  flavor: "在魔山上，辩论是一种形式的治疗——不一定治肺，但治头脑。"
+  icon: "💭"
+cost: 1
+effects:
+  - target: intellectual_depth
+    delta: 15
+  - target: world_disconnect
+    delta: -8
+channel: intellectual
+tags: [debate, philosophy, engagement]
+source:
+  variable: intellectual_depth
+  formula: "join_debate: intellectual_depth+15（主动参与深化思考）; world_disconnect-8（智识上与世界连接）"
+  pattern_detected: P1
+  sim_notes: "参与辩论：intellectual_depth+15，world_disconnect-8"

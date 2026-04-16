@@ -1,0 +1,131 @@
+id: uk1830_uk_oliver_twist
+name: "奥利弗：济贫院的孩子"
+description: |
+  1830年代的英国伦敦。奥利弗·退斯特，一个济贫院的孤儿，
+  在法律允许范围内被当作劳动力分配——棺材铺、工厂、偷窃团伙。
+  他的生存取决于：服从多少、抵抗多少、以及一点点运气。
+  但规律不是运气——规律是整个制度。
+type: scenario
+tags: [orphan, child-labor, poverty, exploitation, survival, literature]
+source: Oliver Twist (Charles Dickens, 1837)
+
+simulation:
+  step: 1        # 单位：周
+  total: 78      # 约18个月（济贫院出逃到最终安置）
+  step_unit: week
+
+inputs:
+  - id: compliance
+    label: "服从程度"
+    description: "听从雇主/犯罪团伙指令（减少惩罚，换取最低生存资源）"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: ratio
+
+  - id: resistance_effort
+    label: "抵抗与逃跑尝试"
+    description: "拒绝指令、尝试逃跑或向成年人求助"
+    min: 0
+    max: 1
+    default: 0.3
+    unit: intensity
+
+  - id: connection_seeking
+    label: "建立人际连接"
+    description: "向南希·布朗罗等人表达信任，寻求善意"
+    min: 0
+    max: 1
+    default: 0.4
+    unit: intensity
+
+variables:
+  - id: survival_resource
+    label: "生存资源"
+    description: "食物·衣物·基本庇护的累积水平"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+  - id: physical_health
+    label: "身体健康"
+    description: "营养不良·被打·疾病的综合健康状态"
+    min: 0
+    max: 100
+    initial: 55
+    io_role: output
+    unit: hp
+
+  - id: danger_level
+    label: "当前危险等级"
+    description: "来自犯罪团伙/当局追捕的威胁程度"
+    min: 0
+    max: 100
+    initial: 25
+    io_role: output
+    unit: score
+
+  - id: hope_for_escape
+    label: "逃脱的希望"
+    description: "找到真正保护者、脱离剥削系统的可能性积累"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+  - id: moral_integrity
+    label: "道德完整性"
+    description: "在压力下保持内心的善良（抵抗成为共犯）"
+    min: 0
+    max: 100
+    initial: 85
+    io_role: output
+    unit: score
+
+formulas:
+  - id: resource_dynamics
+    description: "服从换取资源，但道德代价高；连接可带来帮助"
+    expr: |
+      compliance_gain = compliance * 8.0
+      connection_gain = connection_seeking * 5.0
+      survival_resource = min(100, max(0, survival_resource + compliance_gain + connection_gain - 5.0))
+
+  - id: health_dynamics
+    description: "营养不良+受伤+疾病消耗健康；资源多时健康恢复"
+    expr: |
+      malnutrition = max(0, (50 - survival_resource) / 50) * 2.0
+      punishment_risk = (1 - compliance) * danger_level / 100 * 3.0
+      health_gain = (survival_resource / 100) * 1.5
+      physical_health = max(0, min(100, physical_health - malnutrition - punishment_risk + health_gain))
+
+  - id: danger_dynamics
+    description: "抵抗增加危险；服从减少危险；逃脱成功则危险降低"
+    expr: |
+      resistance_risk = resistance_effort * 3.0
+      compliance_safety = compliance * 2.0
+      danger_level = min(100, max(0, danger_level + resistance_risk - compliance_safety))
+
+  - id: hope_growth
+    description: "逃脱希望随连接建立和抵抗积累增长"
+    expr: |
+      connection_hope = connection_seeking * 3.0
+      resistance_hope = resistance_effort * 2.0
+      danger_drag = (danger_level / 100) * 1.5
+      hope_for_escape = min(100, max(0, hope_for_escape + connection_hope + resistance_hope - danger_drag))
+
+  - id: moral_dynamics
+    description: "道德完整性随服从（共犯）消耗，随连接和抵抗维持"
+    expr: |
+      compliance_cost = compliance * 1.5
+      connection_support = connection_seeking * 1.0
+      resistance_support = resistance_effort * 0.5
+      moral_integrity = max(0, min(100, moral_integrity - compliance_cost + connection_support + resistance_support))
+
+optimizer:
+  target: hope_for_escape
+  direction: maximize
+  secondary: moral_integrity
+  note: "历史结局：南希在Oliver和Fagin之间选择Oliver→被Sikes杀死；Oliver通过Brownlow先生解救，moral_integrity保持高水平"

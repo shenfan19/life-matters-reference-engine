@@ -1,0 +1,20 @@
+id: env_innkeeper_laughs
+type: env
+category: humiliation
+display:
+  name: "旅馆主人的嘲笑"
+  description: "旅馆里的人在笑他。旅馆主人把他的\"城堡\"称为旅馆，把他的\"骑士授封\"称为笑话。堂吉诃德站得很直，谢了他的盛情款待，然后骑马离开了。"
+  flavor: "他的尊严从来不依赖别人是否承认它。"
+  icon: "😂"
+effects:
+  - target: social_ridicule
+    delta: 15
+  - target: ideal_strength
+    delta: 5
+channel: humiliation
+tags: [innkeeper, ridicule, dignity]
+source:
+  variable: social_ridicule
+  formula: "innkeeper_ridicule: social_ridicule+15（嘲笑加深）; ideal_strength+5（嘲笑反而强化了信念）"
+  pattern_detected: ENV_MIXED
+  sim_notes: "旅馆主人嘲笑：social_ridicule+15，ideal_strength+5"

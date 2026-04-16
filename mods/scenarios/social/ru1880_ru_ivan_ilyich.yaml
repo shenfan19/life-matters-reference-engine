@@ -1,0 +1,126 @@
+id: ru1880_ru_ivan_ilyich
+name: "伊万·伊里奇：临终的真实"
+description: |
+  伊万·伊里奇是一位法官，一个在"正确"的社会阶层生活的正确的人。
+  然后他摔了一跤，开始感到疼痛，慢慢意识到自己快要死了。
+  他的家人继续表演正常。他的医生继续表演专业。
+  只有农民仆人格拉西姆，真实地陪伴着他。
+  这是一个关于：你愿意用多少真实换取多少体面的模拟。
+type: scenario
+tags: [death, dignity, authenticity, social-pretense, disease, literature]
+source: The Death of Ivan Ilyich (Tolstoy, 1886)
+
+simulation:
+  step: 1       # 单位：周
+  total: 20     # 约5个月（从确认病重到死亡）
+  step_unit: week
+
+inputs:
+  - id: facade_maintenance
+    label: "维持社会体面"
+    description: "继续表现正常、掩盖病情、回避死亡话题"
+    min: 0
+    max: 1
+    default: 0.8
+    unit: intensity
+
+  - id: authentic_expression
+    label: "真实表达"
+    description: "向家人、医生或仆人表达真实恐惧与需求"
+    min: 0
+    max: 1
+    default: 0.2
+    unit: intensity
+
+  - id: pain_endurance
+    label: "忍痛程度"
+    description: "不要求镇痛药物（鸦片），强撑（当时医生能做的极少）"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: intensity
+
+variables:
+  - id: pain_level
+    label: "疼痛等级"
+    description: "内脏慢性疼痛的累积强度（19世纪无有效止痛）"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+  - id: inner_peace
+    label: "内心平静"
+    description: "接受死亡、与生命和解的程度"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: social_isolation
+    label: "情感孤立"
+    description: "家人回避、医生敷衍、无真实连接的孤独感"
+    min: 0
+    max: 100
+    initial: 60
+    io_role: output
+    unit: score
+
+  - id: dignity_preserved
+    label: "尊严完整度"
+    description: "在生命末期保有作为人的尊严（非社会地位，而是真实的自我）"
+    min: 0
+    max: 100
+    initial: 30
+    io_role: output
+    unit: score
+
+  - id: physical_decline
+    label: "身体衰竭进程"
+    description: "不可逆的生理衰竭积累"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+formulas:
+  - id: pain_progression
+    description: "疼痛随时间不可逆增长，忍痛会让痛苦内化"
+    expr: |
+      base_pain_growth = 2.5
+      endurance_cost = pain_endurance * 1.5
+      pain_level = min(100, pain_level + base_pain_growth + endurance_cost)
+
+  - id: isolation_dynamics
+    description: "维持体面→家人更疏离（因为疏离也在表演）；真实表达→孤立可能减少"
+    expr: |
+      facade_cost = facade_maintenance * 2.0   # 表演越努力，家人越冷漠
+      authentic_gain = authentic_expression * 3.0
+      social_isolation = min(100, max(0, social_isolation + facade_cost - authentic_gain))
+
+  - id: peace_growth
+    description: "真实表达和接受疼痛（非逃避）缓慢带来内心平静"
+    expr: |
+      peace_gain = authentic_expression * 2.5 + (1 - facade_maintenance) * 1.5
+      inner_peace = min(100, inner_peace + peace_gain)
+
+  - id: dignity_change
+    description: "内心平静↑带来尊严↑；体面表演↑反而侵蚀真实尊严"
+    expr: |
+      dignity_gain = (inner_peace / 100) * 2.0
+      facade_cost = facade_maintenance * 1.0
+      dignity_preserved = min(100, max(0, dignity_preserved + dignity_gain - facade_cost))
+
+  - id: body_decline
+    description: "身体衰竭按固定速率进行，无法阻止，只受微弱影响"
+    expr: |
+      physical_decline = min(100, physical_decline + 4.0 - (1 - pain_endurance) * 0.5)
+
+optimizer:
+  target: inner_peace
+  direction: maximize
+  secondary: dignity_preserved
+  note: "历史结局：伊万在临终最后一刻通过接受死亡找到平静（inner_peace爆发）；social_isolation高但dignity在最后一刻恢复"

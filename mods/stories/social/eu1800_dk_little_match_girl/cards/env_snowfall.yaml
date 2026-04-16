@@ -1,0 +1,22 @@
+id: env_snowfall
+type: env
+category: hazard
+display:
+  name: "大雪降临"
+  description: "雪开始落下来，大片大片的。街上的人都急着回家。她还站在原地，篮子被雪压得越来越重。"
+  flavor: "雪是美丽的，当你在窗户里面的时候。"
+  icon: "❄️"
+effects:
+  - target: body_temperature
+    delta: -10
+  - target: matches_remaining
+    delta: -8
+  - target: coins_earned
+    delta: -8
+channel: hazard
+tags: [snow, cold, weather]
+source:
+  variable: body_temperature
+  formula: "snowfall: temperature-10, matches_wet-8, people_leave→coins-8"
+  pattern_detected: P2
+  sim_notes: "降雪：temperature-10，matches受潮-8，人群散去coins-8"

@@ -1,0 +1,20 @@
+id: env_evidence_found
+type: env
+category: threat
+display:
+  name: "证据被发现"
+  description: "他以为他处理得很干净。但血从来不会完全消失——不是物理意义上的，而是心理意义上的。波费利的眼神告诉他：他知道了。"
+  flavor: "证据比直觉更慢，但比直觉更致命。"
+  icon: "🔍"
+effects:
+  - target: detection_risk
+    delta: 20
+  - target: mental_health
+    delta: -10
+channel: threat
+tags: [evidence, detection, crisis]
+source:
+  variable: detection_risk
+  formula: "guilt_leakage high → detection spike: +20; mental_health-10（危机状态）"
+  pattern_detected: P2
+  sim_notes: "证据事件：detection_risk+20，mental_health-10"

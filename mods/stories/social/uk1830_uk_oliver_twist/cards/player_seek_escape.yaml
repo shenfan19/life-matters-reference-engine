@@ -1,0 +1,23 @@
+id: player_seek_escape
+type: player
+category: goal
+display:
+  name: "寻找出路"
+  description: "他在脑子里一遍遍描绘那条路：从这里到街角，从街角到布朗罗先生住的那个方向。他记住了细节。逃跑不是冲动，是计划。"
+  flavor: "希望是一种需要练习的技能。他在练习。"
+  icon: "🗺️"
+cost: 1
+effects:
+  - target: hope_for_escape
+    delta: 20
+  - target: danger_level
+    delta: 10
+  - target: physical_health
+    delta: -5
+channel: goal
+tags: [escape, planning, hope]
+source:
+  variable: hope_for_escape
+  formula: "seek_escape: hope_for_escape+20（主动建立逃脱路径）; danger_level+10（行动增加暴露风险）; physical_health-5（消耗体力）"
+  pattern_detected: P1
+  sim_notes: "寻找出路：hope_for_escape+20，danger_level+10，physical_health-5"

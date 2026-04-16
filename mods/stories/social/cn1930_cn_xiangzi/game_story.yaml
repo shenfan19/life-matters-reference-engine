@@ -1,0 +1,117 @@
+meta:
+  name: "祥子：骆驼的梦想"
+  description: "北京，1930年代。祥子从农村来，想买一辆属于自己的洋车。他买到了。被没收了。他再买。被骗了。第三次，他心死了。这不是祥子的失败——这是整个制度的设计。"
+  difficulty: hard
+  period_start: "1930-01"
+  period_end: "1934-12"
+  tags: [Labor, Class, China, Literature, Urban]
+  country: CN
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/cn1930_cn_xiangzi.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  savings:          0
+  physical_strength: 95
+  morale:           90
+  exploitation:     0
+
+variable_display:
+  savings:
+    label: "积蓄进度"
+    color: "#faad14"
+    max: 100
+    higher_is_better: true
+  physical_strength:
+    label: "体力"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  morale:
+    label: "精神意志"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  exploitation:
+    label: "被剥削程度"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: physical_strength
+  scale: [0, 100, 0, 100]
+  display: "体力"
+
+turns:
+  total: 15
+  time_per_turn: "4个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: savings
+  target_value: 80
+  description: "在被彻底击垮之前攒够买车的钱"
+
+lose_condition:
+  type: variable_threshold
+  variable: morale
+  threshold: 10
+  description: "祥子心死了。他不再是那个从农村来的有梦想的年轻人。他变成了另一种人。"
+
+endings:
+  - grade: S
+    condition: "savings >= 80 and morale >= 60"
+    title: "属于自己的车"
+    description: "他买到了车。他知道，这个城市还会找到方法夺走它。但今天，它是他的。"
+  - grade: A
+    condition: "savings >= 80 and physical_strength >= 40"
+    title: "勉强赢得的梦想"
+    description: "车到手了，但他的身体已经提前老了十年。他知道自己付出了什么。"
+  - grade: B
+    condition: "morale >= 50 and physical_strength >= 50"
+    title: "还没有放弃"
+    description: "他没有买到车，但他还没有心死。也许下一次。也许下下次。"
+  - grade: D
+    condition: "morale <= 10 or physical_strength <= 0"
+    title: "体面的丧失"
+    description: "他忘记了自己曾经有过梦想。他开始出卖别人，因为被出卖久了，这好像也就是这样了。"
+
+env_deck:
+  - path: cards/env_militia_confiscation.yaml
+    weight: 180
+  - path: cards/env_summer_heatstroke.yaml
+    weight: 170
+  - path: cards/env_tigress_traps.yaml
+    weight: 160
+  - path: cards/env_detective_extortion.yaml
+    weight: 150
+  - path: cards/env_bad_employer.yaml
+    weight: 140
+  - path: cards/env_fellow_worker_solidarity.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_long_shift.yaml
+    copies: 4
+  - path: cards/player_risky_route.yaml
+    copies: 3
+  - path: cards/player_save_carefully.yaml
+    copies: 3
+  - path: cards/player_rest_and_eat.yaml
+    copies: 3
+  - path: cards/player_make_connections.yaml
+    copies: 3
+
+generic_cards:
+  inject: [rest, interrupt]

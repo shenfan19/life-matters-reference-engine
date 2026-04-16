@@ -1,0 +1,23 @@
+id: player_confess_truth
+type: player
+category: goal
+display:
+  name: "向人倾诉真相"
+  description: "他第一次对某个人说出来了。整件事——实验，造物，逃跑，威胁。说出来之后，那个重量没有消失，但它变成了别的形状。"
+  flavor: "也许他不应该一个人扛着这一切。也许分担不是软弱。"
+  icon: "💬"
+cost: 2
+effects:
+  - target: ethical_burden
+    delta: -20
+  - target: relationships_intact
+    delta: 8
+  - target: health
+    delta: 5
+channel: goal
+tags: [confession, truth, connection]
+source:
+  variable: ethical_burden
+  formula: "confrontation_willingness=1 → ethical relief: -1.0×2mo = -2 base, narrative event: -20"
+  pattern_detected: P1
+  sim_notes: "倾诉真相：ethical_burden-20（卸下秘密），relationships+8（被理解的连接），health+5（解脱感）"

@@ -1,0 +1,48 @@
+{
+  "story_id": "es1600_es_don_quixote",
+  "source_scenario": "mods/scenarios/social/es1600_es_don_quixote.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "36 months (3 years)",
+    "game_turn_duration": "3 months",
+    "game_turns": 12,
+    "note": "36 months / 12 turns = 3 months per turn. Don Quixote's three sallies compressed into a 3-year arc."
+  },
+
+  "variable_mapping": {
+    "ideal_strength":   { "scenario_var": "ideal_strength",   "io_role": "output", "initial": 95, "scale": "1:1" },
+    "physical_health":  { "scenario_var": "physical_health",  "io_role": "output", "initial": 65, "scale": "1:1" },
+    "social_ridicule":  { "scenario_var": "social_ridicule",  "io_role": "output", "initial": 20, "scale": "1:1" },
+    "actual_good_done": { "scenario_var": "actual_good_done", "io_role": "output", "initial": 0,  "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "idealist_action":    { "range": [0, 1], "maps_to": "player_charge_windmill, player_noble_speech" },
+    "pragmatic_listening":{ "range": [0, 1], "maps_to": "player_listen_to_sancho, player_help_traveler" },
+    "self_care":          { "range": [0, 1], "maps_to": "player_rest_and_read" }
+  },
+
+  "card_derivations": {
+    "player_charge_windmill":  { "formula": "idealist_action: ideal+8 (reinforced conviction); health-12 (beaten); ridicule+8", "derived_effects": { "ideal_strength": "+8", "physical_health": "-12", "social_ridicule": "+8" } },
+    "player_noble_speech":     { "derived_effects": { "actual_good_done": "+15", "social_ridicule": "-8", "ideal_strength": "+5" } },
+    "player_listen_to_sancho": { "derived_effects": { "actual_good_done": "+12", "physical_health": "+8", "ideal_strength": "-5" } },
+    "player_help_traveler":    { "derived_effects": { "actual_good_done": "+20", "physical_health": "-5" } },
+    "player_rest_and_read":    { "derived_effects": { "physical_health": "+15", "ideal_strength": "+10" } },
+    "env_windmill_battle":     { "derived_effects": { "physical_health": "-18", "social_ridicule": "+12", "ideal_strength": "-8" } },
+    "env_beaten_by_merchants": { "derived_effects": { "physical_health": "-20", "social_ridicule": "+10" } },
+    "env_sancho_doubts":       { "derived_effects": { "ideal_strength": "-12", "actual_good_done": "+5" } },
+    "env_knight_of_moon":      { "derived_effects": { "ideal_strength": "-20", "physical_health": "-12" } },
+    "env_shepherd_helps":      { "derived_effects": { "physical_health": "+12", "actual_good_done": "+8" } },
+    "env_innkeeper_laughs":    { "derived_effects": { "social_ridicule": "+15", "ideal_strength": "+5" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "actual_good_done >= 60",
+    "note": "The game's question to Cervantes: amid the delusion, how much real good did he do? 60 represents enough genuine help (freed prisoners, defended the weak) to have made the madness meaningful. Historical: it's ambiguous — Cervantes leaves this open.",
+    "lose_condition": "physical_health <= 0",
+    "note2": "Historical: Don Quixote recovers his sanity before dying — and in doing so, grieves the loss of his ideal self. Sancho weeps, preferring the mad knight. The irony is Cervantes' final joke on rationalism."
+  }
+}

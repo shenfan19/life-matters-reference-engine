@@ -1,0 +1,23 @@
+id: player_call_out_matches
+type: player
+category: goal
+display:
+  name: "叫卖火柴"
+  description: "她鼓起勇气，对着街上的人大声说：买根火柴吗？声音很小，因为冷。但她说了。"
+  flavor: "有时候，开口是最难的事情。"
+  icon: "📢"
+cost: 1
+effects:
+  - target: coins_earned
+    delta: 10
+  - target: body_temperature
+    delta: -3
+  - target: matches_remaining
+    delta: -5
+channel: goal
+tags: [selling, effort, courage]
+source:
+  variable: coins_earned
+  formula: "match_selling_effort=0.8 × mobility(0.5) × 1hr: coins+10; movement cost: temperature-3; matches sold: -5"
+  pattern_detected: P1
+  sim_notes: "叫卖：coins+10，temperature-3（活动消耗体温），matches-5（售出）"

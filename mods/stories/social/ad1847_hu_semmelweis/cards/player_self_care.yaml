@@ -1,0 +1,21 @@
+id: player_self_care
+type: player
+category: health
+display:
+  name: "独处疗愈"
+  description: "放下那些数字和那些死亡，去拜访朋友，散步于多瑙河边，让心灵短暂休息。"
+  flavor: "他极少这样做。也许如果他更经常这样做，历史会有不同的结局。"
+  icon: "🌿"
+cost: 1
+effects:
+  - target: mental_health
+    delta: 20
+  - target: isolation
+    delta: -8
+channel: health
+tags: [rest, mental, recovery]
+source:
+  variable: mental_health
+  formula: "self_care_recovery: mental_health += self_care*5/month"
+  pattern_detected: P1
+  sim_notes: "self_care=1.0, 18个月: mental_health+20; isolation-8（社交接触减少孤立感）"

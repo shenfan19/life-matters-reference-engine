@@ -1,0 +1,127 @@
+id: dz1940_fr_dr_rieux
+name: "里厄医生：鼠疫中的坚守"
+description: |
+  1940年代，阿尔及利亚的奥兰城突然爆发鼠疫。城市被封锁。
+  里厄医生留了下来——他的妻子在封城前刚去了另一个城市疗养。
+  他不知道她是否还活着。他继续工作。
+  这是一个关于：在荒诞世界中选择反抗的代价的模拟。
+type: scenario
+tags: [epidemic, duty, existentialism, isolation, sacrifice, literature]
+source: La Peste (Albert Camus, 1947)
+
+simulation:
+  step: 1        # 单位：周
+  total: 52      # 约一年（1940年4月至次年2月鼠疫结束）
+  step_unit: week
+
+inputs:
+  - id: care_intensity
+    label: "救治强度"
+    description: "医生积极投入病人救治的程度"
+    min: 0
+    max: 3
+    default: 2.0
+    unit: intensity
+
+  - id: quarantine_strictness
+    label: "隔离执行严格度"
+    description: "对病患及接触者实施严格隔离的力度"
+    min: 0
+    max: 1
+    default: 0.6
+    unit: intensity
+
+  - id: self_care
+    label: "自我保护与休息"
+    description: "医生自身的防护与休息"
+    min: 0
+    max: 1
+    default: 0.3
+    unit: intensity
+
+variables:
+  - id: patients_treated
+    label: "累计救治人数"
+    description: "在有限资源下成功治疗或减少痛苦的患者数量"
+    min: 0
+    max: 500
+    initial: 0
+    io_role: output
+    unit: people
+
+  - id: plague_spread
+    label: "疫情蔓延程度"
+    description: "疾病在城市中的扩散速度（隔离越严格，蔓延越慢）"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+  - id: doctor_health
+    label: "里厄的健康"
+    description: "长期过度劳累和暴露的身体状态"
+    min: 0
+    max: 100
+    initial: 90
+    io_role: output
+    unit: hp
+
+  - id: compassion_fatigue
+    label: "同情心疲劳"
+    description: "持续见证大规模死亡导致的情感麻木和耗竭"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: personal_grief
+    label: "个人悲痛积累"
+    description: "妻子病重、盟友去世、无尽的失去带来的心理负担"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+formulas:
+  - id: treatment_rate
+    description: "救治效率受疫情扩散和医生状态影响"
+    expr: |
+      efficiency = max(0.3, 1 - compassion_fatigue / 100) * max(0.4, doctor_health / 100)
+      patients_treated = patients_treated + care_intensity * 6.0 * efficiency
+
+  - id: plague_dynamics
+    description: "鼠疫扩散受隔离强度影响"
+    expr: |
+      natural_spread = 3.0
+      quarantine_effect = quarantine_strictness * 4.0
+      plague_spread = min(100, max(0, plague_spread + natural_spread - quarantine_effect))
+
+  - id: health_decay
+    description: "医生健康随工作强度和疫情暴露而下降"
+    expr: |
+      exposure_risk = (plague_spread / 100) * care_intensity * 0.8
+      overwork_cost = care_intensity * 0.5
+      recovery = self_care * 2.5
+      doctor_health = max(0, doctor_health - exposure_risk - overwork_cost + recovery)
+
+  - id: fatigue_accumulation
+    description: "同情心疲劳随死亡规模累积，休息可减缓"
+    expr: |
+      fatigue_gain = (plague_spread / 100) * 2.5 + care_intensity * 0.4
+      fatigue_relief = self_care * 1.5
+      compassion_fatigue = min(100, max(0, compassion_fatigue + fatigue_gain - fatigue_relief))
+
+  - id: grief_accumulation
+    description: "个人悲痛随疫情时间缓慢累积（妻子→朋友→无数死亡）"
+    expr: |
+      grief_rate = 0.8 + (plague_spread / 100) * 1.2
+      personal_grief = min(100, personal_grief + grief_rate)
+
+optimizer:
+  target: patients_treated
+  direction: maximize
+  secondary: doctor_health
+  note: "历史结局：鼠疫自然结束，patients_treated↑，但personal_grief↑（妻子在封城期死亡），doctor_health下降但未死"

@@ -1,0 +1,23 @@
+id: player_intensive_care
+type: player
+category: goal
+display:
+  name: "高强度救治"
+  description: "他今天在医院多留了四个小时。又多治疗了一些人，又多承受了一点辐射。这是他唯一会做的事情。"
+  flavor: "反抗不是一种感情，而是一种做法。每天继续工作，就是反抗。"
+  icon: "⚕️"
+cost: 2
+effects:
+  - target: patients_treated
+    delta: 25
+  - target: doctor_health
+    delta: -10
+  - target: compassion_fatigue
+    delta: 8
+channel: goal
+tags: [treatment, sacrifice, medicine]
+source:
+  variable: patients_treated
+  formula: "care_intensity=2.5 × efficiency × 4wk = 25patients; health-10（高强度暴露），fatigue+8"
+  pattern_detected: P1
+  sim_notes: "高强度救治：patients+25（高效救治），doctor_health-10，compassion_fatigue+8"

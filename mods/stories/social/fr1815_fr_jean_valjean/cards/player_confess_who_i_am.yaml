@@ -1,0 +1,23 @@
+id: player_confess_who_i_am
+type: player
+category: courage
+display:
+  name: "坦白身份"
+  description: "他说出了他的名字——真正的名字，他是谁，他做过什么。这让所有的隐瞒都失去了意义，也让所有的善行变得不可辩驳。贾维尔无法理解这件事，这才是真正重要的。"
+  flavor: "在一个不允许人改变的制度里，改变本身就是一种革命。"
+  icon: "⚡"
+cost: 2
+effects:
+  - target: redemption_progress
+    delta: 25
+  - target: javert_pursuit
+    delta: 20
+  - target: community_trust
+    delta: 15
+channel: courage
+tags: [confession, truth, identity]
+source:
+  variable: redemption_progress
+  formula: "confess_identity: redemption_progress+25（最高救赎行为）; javert_pursuit+20（暴露）; community_trust+15（真实建立信任）"
+  pattern_detected: P1
+  sim_notes: "坦白身份：redemption_progress+25，javert_pursuit+20，community_trust+15"

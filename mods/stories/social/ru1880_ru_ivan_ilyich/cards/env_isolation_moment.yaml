@@ -1,0 +1,22 @@
+id: env_isolation_moment
+type: env
+category: mental
+display:
+  name: "三点钟的孤独"
+  description: "夜里三点，他醒来了。疼痛是老样子，但那个问题再次出现：我为什么活过了这一切？我做了什么正确的事？"
+  flavor: "在死亡来临之前，他被迫回顾了他的一生。他不喜欢他所看到的。"
+  icon: "🌙"
+effects:
+  - target: social_isolation
+    delta: 10
+  - target: dignity
+    delta: -6
+  - target: inner_peace
+    delta: 5
+channel: mental
+tags: [isolation, night, reflection]
+source:
+  variable: social_isolation
+  formula: "3am crisis: isolation+10; forced self-reflection: dignity-6（不满意自己的人生）, inner_peace+5（诚实的自我审视）"
+  pattern_detected: P2
+  sim_notes: "深夜孤独：social_isolation+10，dignity-6（人生回顾的不满），inner_peace+5（被迫诚实带来的微弱平静）"

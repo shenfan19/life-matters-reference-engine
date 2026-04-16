@@ -1,0 +1,21 @@
+id: player_hide_identity
+type: player
+category: survival
+display:
+  name: "隐藏身份"
+  description: "他换了名字，换了城市，换了面孔。这是他多年来学会的技能。他在街上看见熟悉的眼神时，他知道怎么走开。生存需要谨慎，但谨慎有代价。"
+  flavor: "他没有一个名字可以保留超过几年。这是那个时代的法律给他的条件。"
+  icon: "🎭"
+cost: 1
+effects:
+  - target: javert_pursuit
+    delta: -15
+  - target: community_trust
+    delta: -8
+channel: survival
+tags: [identity, hiding, survival]
+source:
+  variable: javert_pursuit
+  formula: "hide_identity: javert_pursuit-15（摆脱追踪）; community_trust-8（伪装削减真实信任）"
+  pattern_detected: P1
+  sim_notes: "隐藏身份：javert_pursuit-15，community_trust-8"

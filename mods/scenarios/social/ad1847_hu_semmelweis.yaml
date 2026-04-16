@@ -1,0 +1,217 @@
+metadata:
+  name: ad1847_hu_semmelweis
+  version: "1.0.0"
+  author: ""
+  description: >
+    塞麦尔维斯洗手倡导仿真场景（1847–1865，维也纳产科医院）。
+    sim模式：模拟医学证据积累与机构接受度之间的动力学，
+    以及持续受挫对研究者心理健康的侵蚀。
+    opt模式：在维多利亚时代医学体制约束下，
+    找到最优倡导策略——何时发表、何时休养、何时放弃？
+  tags: [historical, medical, handwashing, science-rejection, mental-health, 19th-century]
+  period: "1847-1865"
+  location: "Vienna General Hospital / Budapest, Hungary"
+  science_note: >
+    基于科学创新扩散理论（Rogers 1962）与历史传记（Carter 1983）。
+    接受度公式：acceptance_gain = advocacy_intensity × evidence_factor × (1 - rejection_resistance)。
+    evidence_factor = min(1, evidence / 60)；
+    rejection_resistance = 0.4 + 0.4 × (1 - acceptance / 100)
+    （即越不被接受，越难推动接受，与历史上的"抵触惯性"吻合）。
+    步长=1月，总时长=216月（18年）。
+
+variables:
+  # ── 行为输入 ─────────────────────────────────────────────────────────────────
+  research_effort:
+    type: input
+    value: 2.0
+    unit: "强度"
+    bounds: [0.0, 3.0]
+    description: "研究强度：0=停止, 1=收集病历, 2=统计分析, 3=发表论文/演讲"
+
+  advocacy_intensity:
+    type: input
+    value: 1.5
+    unit: "强度"
+    bounds: [0.0, 3.0]
+    description: "倡导强度：0=沉默, 1=同事交流, 2=机构提案, 3=公开辩论/出版专著"
+
+  self_care:
+    type: input
+    value: 0.4
+    unit: "系数"
+    bounds: [0.0, 1.0]
+    description: "自我照护（0=完全忽视健康, 1=注重休息社交与精神调节）"
+
+  # ── 科学/社会状态 ─────────────────────────────────────────────────────────────
+  evidence:
+    type: state
+    value: 20.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "证据质量与完整度（>60时advocacy才真正有效；<40时被机构一笑置之）"
+
+  acceptance:
+    type: state
+    value: 5.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "医学界接受度（目标75=主要机构开始推广洗手；<10=完全不被接受）"
+
+  isolation:
+    type: state
+    value: 15.0
+    unit: "分"
+    bounds: [0, 100]
+    description: "职业孤立程度（随拒绝积累上升；加速mental_health下滑）"
+
+  patient_mortality:
+    type: state
+    value: 80.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "产科病房死亡率指数（高=糟糕；每次倡导成功将实际降低死亡）"
+
+  # ── 心理健康 ─────────────────────────────────────────────────────────────────
+  mental_health:
+    type: state
+    value: 75.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "心理健康状态（0=精神崩溃送入精神病院；每次驳斥都在消耗）"
+
+simulation:
+  step_size: 1
+  time_unit: month
+  total_time: 216
+  output_variables:
+    - mental_health
+    - acceptance
+    - evidence
+    - isolation
+    - patient_mortality
+    - research_effort
+    - advocacy_intensity
+
+formulas:
+
+  # 1. 研究积累证据
+  # research_effort=2, 每月积累：2 × 2.5 = 5分；60分需12个月不间断
+  evidence_accumulation:
+    description: "研究工作积累统计证据；研究强度越高，证据增长越快"
+    condition: research_effort > 0
+    priority: 10
+    dynamics:
+      evidence:      "min(100, evidence + research_effort * 2.5)"
+      mental_health: "max(0, mental_health - research_effort * 0.5)"
+
+  # 2. 倡导推动接受度（核心公式）
+  # evidence_factor = min(1, evidence/60)
+  # rejection_resistance = 0.4 + 0.4*(1 - acceptance/100)
+  # advocacy_intensity=2, evidence=60, acceptance=5:
+  #   gain = 2 × 1.0 × (1 - 0.796) = 2 × 0.204 = 0.41/月
+  # 这正是历史上的困境：即便证据充足，制度惯性也极难突破
+  advocacy_effect:
+    description: "倡导推动机构接受；evidence不足时驳斥增加孤立感"
+    condition: advocacy_intensity > 0
+    priority: 9
+    dynamics:
+      acceptance: "min(100, acceptance + advocacy_intensity
+                    * min(1, evidence / 60)
+                    * (1 - (0.4 + 0.4 * (1 - acceptance / 100))))"
+      mental_health: "max(0, mental_health - advocacy_intensity * 1.2)"
+      isolation: "min(100, isolation + advocacy_intensity
+                    * (1 - min(1, acceptance / 50)) * 0.8)"
+
+  # 3. 自我照护恢复心理健康
+  self_care_recovery:
+    description: "自我照护缓解精神压力；但减少了研究和倡导时间"
+    condition: self_care > 0
+    priority: 8
+    dynamics:
+      mental_health: "min(100, mental_health + self_care * 5)"
+      isolation:     "max(0, isolation - self_care * 2)"
+
+  # 4. 孤立加速心理崩溃
+  isolation_damage:
+    description: "职业孤立持续侵蚀心理健康（无人理解的孤独感）"
+    condition: isolation > 20
+    priority: 7
+    dynamics:
+      mental_health: "max(0, mental_health - (isolation - 20) * 0.06)"
+
+  # 5. 接受度提升→患者死亡率下降（人道主义成果）
+  acceptance_saves_lives:
+    description: "接受度提升意味着更多医院实施洗手，患者死亡率下降"
+    condition: acceptance > 10
+    priority: 6
+    dynamics:
+      patient_mortality: "max(0, patient_mortality - acceptance * 0.05)"
+
+  # 6. 证据不足时倡导反效果（被嘲笑增加孤立）
+  evidence_too_low:
+    description: "证据不足时强行倡导反被嘲笑，加速职业边缘化"
+    condition: "evidence < 30 and advocacy_intensity > 1.5"
+    priority: 8
+    dynamics:
+      isolation:     "min(100, isolation + 2)"
+      mental_health: "max(0, mental_health - 2)"
+
+  # 7. 心理崩溃影响研究产出
+  mental_collapse_penalty:
+    description: "心理严重受损（<25）时无法有效工作和倡导"
+    condition: mental_health < 25
+    priority: 9
+    dynamics:
+      evidence:   "max(0, evidence - 1)"
+      acceptance: "max(0, acceptance - 0.5)"
+
+optimizer:
+  method: multi_objective
+  algorithm: nsga2
+  population_size: 50
+  generations: 80
+
+  objectives:
+    - variable: acceptance
+      direction: maximize
+      weight: 1.0
+    - variable: mental_health
+      direction: maximize
+      weight: 0.8
+    - variable: patient_mortality
+      direction: minimize
+      weight: 0.6
+
+  constraints:
+    - expression: "mental_health >= 20"
+      description: "心理健康不能完全崩溃（送入精神病院）"
+    - expression: "evidence >= 40"
+      description: "需积累足够证据再大力倡导"
+
+  variables_to_optimize:
+    - name: research_phase_effort
+      default: 2.0
+      bounds: [0.0, 3.0]
+      maps_to: "research_effort @ [0, 24]"
+
+    - name: advocacy_phase_intensity
+      default: 1.5
+      bounds: [0.0, 3.0]
+      maps_to: "advocacy_intensity @ [24, 216]"
+
+    - name: self_care_level
+      default: 0.4
+      bounds: [0.0, 1.0]
+      maps_to: "self_care"
+
+  analysis:
+    pareto_description: >
+      关键发现：最优策略是先集中2年（24个月）积累证据（research_effort=3），
+      再转向倡导（advocacy_intensity=2），同时保持self_care≈0.5。
+      历史塞麦尔维斯的实际路径：过早高强度倡导（evidence不足时）
+      + 极低self_care（≈0.1），导致接受度进展缓慢且心理崩溃——
+      这正是模型预测的"帕累托劣势路径"，以18年痛苦换来了本可更快实现的结果。

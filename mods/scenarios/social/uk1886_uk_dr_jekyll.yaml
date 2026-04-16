@@ -1,0 +1,128 @@
+id: uk1886_uk_dr_jekyll
+name: "杰基尔博士：失控的实验"
+description: |
+  亨利·杰基尔博士，维多利亚社会的体面绅士，秘密研发出一种药物，
+  能够让他暂时变成另一个人——海德先生，那个被压抑的阴暗面。
+  起初他能自由切换。后来需要药物才能变回来。
+  再后来，他在睡梦中就开始变化了。
+  这是一个关于：成瘾是如何从控制变为被控制的模拟。
+type: scenario
+tags: [addiction, self-experimentation, dual-personality, ethics, literature]
+source: Strange Case of Dr Jekyll and Mr Hyde (R.L. Stevenson, 1886)
+
+simulation:
+  step: 1        # 单位：周
+  total: 52      # 约1年（实验开始到失控自杀）
+  step_unit: week
+
+inputs:
+  - id: drug_usage_frequency
+    label: "药物使用频率"
+    description: "每周使用变身药物的次数（越高→Hyde停留时间越长）"
+    min: 0
+    max: 5
+    default: 1.0
+    unit: times_per_week
+
+  - id: research_rigor
+    label: "科学研究严谨度"
+    description: "分析药物机制·寻找解药的努力"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: intensity
+
+  - id: social_facade
+    label: "维持社会形象"
+    description: "以Jekyll身份维持绅士形象，掩盖Hyde的行为"
+    min: 0
+    max: 1
+    default: 0.7
+    unit: intensity
+
+variables:
+  - id: self_control
+    label: "自我控制力"
+    description: "Jekyll保持主导意识的能力（降至0=完全被Hyde接管）"
+    min: 0
+    max: 100
+    initial: 90
+    io_role: output
+    unit: score
+
+  - id: hyde_dominance
+    label: "Hyde人格强度"
+    description: "阴暗面人格对身体的控制程度"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: drug_dependency
+    label: "药物依赖度"
+    description: "需要越来越多剂量才能维持同等效果的成瘾进展"
+    min: 0
+    max: 100
+    initial: 0
+    io_role: output
+    unit: score
+
+  - id: social_exposure_risk
+    label: "社会曝光风险"
+    description: "Hyde的行为被追查到Jekyll的风险"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: antidote_progress
+    label: "解药研究进度"
+    description: "找到永久控制Hyde的科学方案的进度"
+    min: 0
+    max: 100
+    initial: 0
+    io_role: output
+    unit: score
+
+formulas:
+  - id: dependency_growth
+    description: "成瘾性随使用频率指数增长"
+    expr: |
+      tolerance_build = drug_usage_frequency * 2.5
+      drug_dependency = min(100, drug_dependency + tolerance_build)
+
+  - id: self_control_decay
+    description: "自我控制力随依赖度和Hyde强度消耗"
+    expr: |
+      dependency_cost = (drug_dependency / 100) * 3.0
+      hyde_cost = (hyde_dominance / 100) * 2.0
+      control_recovery = research_rigor * 1.5
+      self_control = max(0, min(100, self_control - dependency_cost - hyde_cost + control_recovery))
+
+  - id: hyde_growth
+    description: "Hyde人格随使用次数和依赖度增强"
+    expr: |
+      hyde_growth = drug_usage_frequency * 1.5 + (drug_dependency / 100) * 2.0
+      hyde_suppression = self_control / 100 * 1.0
+      hyde_dominance = min(100, max(0, hyde_dominance + hyde_growth - hyde_suppression))
+
+  - id: exposure_risk
+    description: "曝光风险随Hyde强度增长，facade维持可延缓"
+    expr: |
+      hyde_activity = (hyde_dominance / 100) * 3.0
+      facade_protection = social_facade * 1.5
+      social_exposure_risk = min(100, max(0, social_exposure_risk + hyde_activity - facade_protection))
+
+  - id: antidote_research
+    description: "解药研究进度随科研努力推进，但self_control降低则研究效率下降"
+    expr: |
+      research_efficiency = research_rigor * (self_control / 100)
+      antidote_progress = min(100, antidote_progress + research_efficiency * 3.0)
+
+optimizer:
+  target: self_control
+  direction: maximize
+  secondary: antidote_progress
+  note: "历史结局：self_control→0，药物原料用尽无法回归Jekyll，在自杀时写下最后陈述（Hyde人格已完全主导）"

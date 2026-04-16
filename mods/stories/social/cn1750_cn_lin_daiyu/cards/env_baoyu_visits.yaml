@@ -1,0 +1,20 @@
+id: env_baoyu_visits
+type: env
+category: support
+display:
+  name: "宝玉来探望"
+  description: "他来了，坐在她床边，什么也不说，只是在那里。有时候，被人看见，就已经是最好的药。"
+  flavor: "他们之间的话从来不是说出来的，而是不需要说的。这种默契，在贾府里，是一种危险的东西。"
+  icon: "🎋"
+effects:
+  - target: emotional_burden
+    delta: -15
+  - target: creative_output
+    delta: 10
+channel: support
+tags: [baoyu, love, connection]
+source:
+  variable: emotional_burden
+  formula: "baoyu visit: burden-15（真实连接释放压抑），creative+10（被看见后的创作热情）"
+  pattern_detected: P1
+  sim_notes: "宝玉探望：emotional_burden-15，creative+10"

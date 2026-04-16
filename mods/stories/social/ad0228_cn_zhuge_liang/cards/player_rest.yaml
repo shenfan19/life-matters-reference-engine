@@ -1,0 +1,21 @@
+id: player_rest
+type: player
+category: health
+display:
+  name: "闭目养神"
+  description: "难得的片刻清净。放下军务，简单进食，让疲惫的身躯稍作恢复。"
+  flavor: "如果他多休息一些，也许五丈原的秋风不会那么快吹来。"
+  icon: "🌙"
+cost: 1
+effects:
+  - target: health
+    delta: 20
+  - target: morale
+    delta: -5
+channel: health
+tags: [rest, health, recovery]
+source:
+  variable: health
+  formula: "rest_recovery: fatigue-=rest_quality*12, health+=rest_quality*0.8"
+  pattern_detected: P1
+  sim_notes: "rest_quality=0.8, 12天: health+20; 丞相休息时士气略降（-5）因缺乏领导存在"

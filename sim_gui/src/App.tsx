@@ -62,7 +62,7 @@ const C = {
 function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: typeof C.light }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-      {([14, 16, 18] as const).map(size => (
+      {([12, 14, 16] as const).map(size => (
         <button key={size} onClick={() => onFontSize(size)} style={{
           padding: '3px 7px', border: 'none', cursor: 'pointer',
           background: fontSize === size ? c.primary : 'transparent',
@@ -314,7 +314,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
   const [aboutOpen,  setAboutOpen]  = useState(false);
   const [fontSize,   setFontSize]   = useState<number>(
-    () => Number(localStorage.getItem(LM_FONT_KEY)) || readPrefs().fontSize || 16
+    () => Number(localStorage.getItem(LM_FONT_KEY)) || readPrefs().fontSize || 14
   );
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);

@@ -1,0 +1,20 @@
+id: env_javert_closes_in
+type: env
+category: threat
+display:
+  name: "贾维尔的靠近"
+  description: "他又见到那张脸了。贾维尔在人群里扫视，还没有认出他——但距离在缩短。在这个世界上，有些人被设计成不允许你改变的。贾维尔就是这种人的制度化版本。"
+  flavor: "贾维尔不是坏人。他是一个完全相信法律的人。这两件事，可以同时为真。"
+  icon: "👮"
+effects:
+  - target: javert_pursuit
+    delta: 18
+  - target: community_trust
+    delta: -5
+channel: threat
+tags: [javert, pursuit, law]
+source:
+  variable: javert_pursuit
+  formula: "javert_approach: javert_pursuit+18（追踪进展）; community_trust-5（被怀疑影响信任）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "贾维尔靠近：javert_pursuit+18，community_trust-5"

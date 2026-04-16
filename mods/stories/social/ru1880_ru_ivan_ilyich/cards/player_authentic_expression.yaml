@@ -1,0 +1,21 @@
+id: player_authentic_expression
+type: player
+category: goal
+display:
+  name: "说真话"
+  description: "他对格拉西姆说：我害怕。他第一次说出来了——不是为了别人，只是因为这是真的。"
+  flavor: "\"恐惧死亡的原因是什么？我不知道。但我知道，我一直在恐惧中活着，而这不是我想要的方式死去。\""
+  icon: "🗣️"
+cost: 1
+effects:
+  - target: inner_peace
+    delta: 15
+  - target: social_isolation
+    delta: -12
+channel: goal
+tags: [authenticity, truth, connection]
+source:
+  variable: inner_peace
+  formula: "authentic_expression=0.8 → peace+2.5×0.8×2wk = +4 base, narrative event: +15"
+  pattern_detected: P1
+  sim_notes: "真实表达：inner_peace+15，social_isolation-12（真实连接打破孤立）"

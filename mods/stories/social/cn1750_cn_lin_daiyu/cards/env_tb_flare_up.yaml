@@ -1,0 +1,22 @@
+id: env_tb_flare_up
+type: env
+category: health
+display:
+  name: "咳血"
+  description: "她的手帕上有血。她把它折起来，不让紫鹃看见。她没有告诉任何人。"
+  flavor: "在她那个时代，在那个地方，病是羞耻的，因为病代表你快要消失了，而消失是对别人的打扰。"
+  icon: "🩸"
+effects:
+  - target: health
+    delta: -15
+  - target: tb_progression
+    delta: 10
+  - target: emotional_burden
+    delta: 8
+channel: health
+tags: [tuberculosis, blood, health-crisis]
+source:
+  variable: tb_progression
+  formula: "tb acute: health-15, tb_progression+10; emotional_burden+8（隐瞒的代价）"
+  pattern_detected: P2
+  sim_notes: "咳血：health-15，tb+10，emotional_burden+8（压抑病情）"

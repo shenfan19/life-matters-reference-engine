@@ -1,0 +1,23 @@
+id: player_work_harder
+type: player
+category: goal
+display:
+  name: "更拼命地工作"
+  description: "多接一份活，晚上缝纫，早起去码头。不是因为她想，而是因为珂赛特的信还在等着被回复。"
+  flavor: "她的身体比她的意志先到达极限。但她还没有停下来。"
+  icon: "⚒️"
+cost: 1
+effects:
+  - target: income
+    delta: 15
+  - target: health
+    delta: -10
+  - target: cosette_wellbeing
+    delta: 5
+channel: goal
+tags: [work, sacrifice, income]
+source:
+  variable: income
+  formula: "work_intensity=2.5 × 3mo → income+15; health-10（过劳加速结核）; cosette+5（汇款）"
+  pattern_detected: P1
+  sim_notes: "拼命工作：income+15，health-10，cosette+5"

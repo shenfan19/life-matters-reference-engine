@@ -1,0 +1,48 @@
+{
+  "story_id": "ch1907_de_hans_castorp",
+  "source_scenario": "mods/scenarios/social/ch1907_de_hans_castorp.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "84 months (7 years)",
+    "game_turn_duration": "6 months",
+    "game_turns": 14,
+    "note": "84 months / 14 turns = 6 months per turn. Hans Castorp's famous 7-year stay at the Berghof sanatorium, 1907-1914."
+  },
+
+  "variable_mapping": {
+    "health":             { "scenario_var": "health",             "io_role": "output", "initial": 45, "scale": "1:1" },
+    "intellectual_depth": { "scenario_var": "intellectual_depth", "io_role": "output", "initial": 20, "scale": "1:1" },
+    "world_disconnect":   { "scenario_var": "world_disconnect",   "io_role": "output", "initial": 20, "scale": "1:1" },
+    "time_sense":         { "scenario_var": "time_sense",         "io_role": "output", "initial": 30, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "treatment_compliance": { "range": [0, 1], "maps_to": "player_follow_treatment, player_rest_in_sun" },
+    "intellectual_engagement":{ "range": [0, 1], "maps_to": "player_join_debate, player_walk_outside" },
+    "world_connection":     { "range": [0, 1], "maps_to": "player_write_to_family" }
+  },
+
+  "card_derivations": {
+    "player_follow_treatment": { "formula": "treatment compliance × 6mo: health +12; world_disconnect +5 (staying in sanatorium)", "derived_effects": { "health": "+12", "world_disconnect": "+5" } },
+    "player_join_debate":      { "derived_effects": { "intellectual_depth": "+15", "world_disconnect": "-8" } },
+    "player_write_to_family":  { "derived_effects": { "world_disconnect": "-12", "intellectual_depth": "+5" } },
+    "player_walk_outside":     { "derived_effects": { "health": "+8", "time_sense": "-10", "world_disconnect": "-8" } },
+    "player_rest_in_sun":      { "formula": "sanatorium cure method: health+15; time distortion from idle days", "derived_effects": { "health": "+15", "time_sense": "+8" } },
+    "env_settembrini_lectures":{ "derived_effects": { "intellectual_depth": "+12", "world_disconnect": "-5" } },
+    "env_naphta_debates":      { "derived_effects": { "intellectual_depth": "+15", "time_sense": "+8" } },
+    "env_x_ray_results":       { "derived_effects": { "health": "-10", "world_disconnect": "+8" } },
+    "env_patient_dies":        { "derived_effects": { "health": "-5", "intellectual_depth": "+8", "world_disconnect": "+10" } },
+    "env_war_news_arrives":    { "derived_effects": { "world_disconnect": "-15", "intellectual_depth": "+10" } },
+    "env_snow_walk":           { "derived_effects": { "intellectual_depth": "+15", "health": "-8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "health >= 75",
+    "note": "The counterfactual: if Castorp had kept his intellectual engagement without losing track of the outside world, he could have recovered and returned to Hamburg a wiser man. Historical: he goes to war in 1914, fate unknown.",
+    "lose_condition": "world_disconnect >= 90",
+    "note2": "The magic mountain's central danger: the timeless atmosphere of the sanatorium swallows people. Those who stay too long lose the ability to return. Mann's thesis: the bourgeois European lost himself in spiritual contemplation while history marched toward catastrophe."
+  }
+}

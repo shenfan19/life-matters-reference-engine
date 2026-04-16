@@ -1,0 +1,109 @@
+id: af1943_fr_little_prince
+name: "小王子：沙漠中的告别"
+description: |
+  一个飞行员的飞机在撒哈拉沙漠迫降。他遇见了一个小男孩——从另一颗星球来的王子。
+  他们交谈了八天。
+  小王子说：我的玫瑰，我必须回去了。
+  他不会飞，只有一种方式能回去。
+  这个模拟的问题是：飞行员能不能给小王子另一个选择。
+type: scenario
+tags: [desert, meaning, connection, loss, philosophy, literature]
+source: Le Petit Prince (Antoine de Saint-Exupéry, 1943)
+
+simulation:
+  step: 1         # 单位：天
+  total: 8        # 8天（相遇到告别）
+  step_unit: day
+
+inputs:
+  - id: repair_effort
+    label: "修飞机努力"
+    description: "飞行员修复发动机的专注程度（关系到他自己的生存）"
+    min: 0
+    max: 3
+    default: 1.5
+    unit: intensity
+
+  - id: listening_depth
+    label: "真正聆听小王子"
+    description: "放下大人视角，真正理解小王子说的话"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: intensity
+
+  - id: persuasion_attempt
+    label: "说服小王子留下"
+    description: "尝试说服小王子不要回去（留在地球）"
+    min: 0
+    max: 1
+    default: 0.3
+    unit: intensity
+
+variables:
+  - id: pilot_survival
+    label: "飞行员生存概率"
+    description: "在沙漠中的水和飞机修复进度（低=必死）"
+    min: 0
+    max: 100
+    initial: 40
+    io_role: output
+    unit: score
+
+  - id: understanding
+    label: "真正理解"
+    description: "飞行员对小王子所说重要之物的真实理解程度"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+  - id: prince_resolve
+    label: "小王子的回家意志"
+    description: "小王子对回到玫瑰身边的决心（高=不可动摇）"
+    min: 0
+    max: 100
+    initial: 70
+    io_role: output
+    unit: score
+
+  - id: connection_depth
+    label: "连接的深度"
+    description: "两人之间真实的理解与连接（这才是故事真正的遗产）"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+formulas:
+  - id: survival_progress
+    description: "修复飞机+减少水消耗"
+    expr: |
+      pilot_survival = min(100, max(0, pilot_survival + repair_effort * 8.0 - 5.0))
+
+  - id: understanding_growth
+    description: "真正聆听带来理解；急于说服反而阻断理解"
+    expr: |
+      listen_gain = listening_depth * 12.0
+      persuasion_block = persuasion_attempt * 4.0
+      understanding = min(100, max(0, understanding + listen_gain - persuasion_block))
+
+  - id: prince_resolve_change
+    description: "说服尝试反而强化他的意志（越被阻止越坚定）"
+    expr: |
+      persuasion_effect = persuasion_attempt * 3.0  # 反效果
+      understanding_softening = (understanding / 100) * 2.0  # 真正被理解→稍微放慢脚步
+      prince_resolve = min(100, max(0, prince_resolve + persuasion_effect - understanding_softening))
+
+  - id: connection_growth
+    description: "连接随聆听和共同时间积累；是故事留下的唯一真实"
+    expr: |
+      connection_depth = min(100, connection_depth + listening_depth * 10.0 + (1 - persuasion_attempt) * 3.0)
+
+optimizer:
+  target: connection_depth
+  direction: maximize
+  secondary: understanding
+  note: "历史结局：小王子在第八天让蛇咬自己（神经毒素→无痛死亡）；飞行员修好飞机，带着画了绵羊的记忆离开沙漠"

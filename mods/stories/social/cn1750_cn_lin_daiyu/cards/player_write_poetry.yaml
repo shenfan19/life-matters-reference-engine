@@ -1,0 +1,23 @@
+id: player_write_poetry
+type: player
+category: goal
+display:
+  name: "写诗"
+  description: "她提起笔，把那些无处可说的话，变成了另一种语言。这是她最自由的时刻，也是她最诚实的时刻。"
+  flavor: "\"侬今葬花人笑痴，他年葬侬知是谁？\"——这首诗，她一遍一遍地改，直到满意为止。"
+  icon: "🖌️"
+cost: 1
+effects:
+  - target: creative_output
+    delta: 18
+  - target: emotional_burden
+    delta: -10
+  - target: health
+    delta: -5
+channel: goal
+tags: [poetry, expression, art]
+source:
+  variable: creative_output
+  formula: "poetic_sublimation=0.8: creative+18/3mo; burden-10（诗词转化情感）; health-5（体力消耗）"
+  pattern_detected: P1
+  sim_notes: "写诗：creative+18，emotional_burden-10，health-5"

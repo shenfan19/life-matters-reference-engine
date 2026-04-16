@@ -1,0 +1,22 @@
+id: env_creature_revenge
+type: env
+category: threat
+display:
+  name: "造物的复仇"
+  description: "它找到了他的家人。不是出于邪恶，而是出于绝望。一个被抛弃的存在，向创造者索取的，只是被承认的权利。"
+  flavor: "\"你是我的创造者，但我是你的主人——服从吧！\""
+  icon: "⚡"
+effects:
+  - target: relationships_intact
+    delta: -15
+  - target: creature_threat
+    delta: 10
+  - target: health
+    delta: -6
+channel: threat
+tags: [creature, revenge, family]
+source:
+  variable: relationships_intact
+  formula: "threat_increase(confrontation=0.2) × 2mo → relationships -= 4/mo × 2 × damage_factor → -15"
+  pattern_detected: P2
+  sim_notes: "低直面意愿时造物威胁快速增长；2个月复仇事件：relationships-15，creature_threat+10，health-6（精神打击）"

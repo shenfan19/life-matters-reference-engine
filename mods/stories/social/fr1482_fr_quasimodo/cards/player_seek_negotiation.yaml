@@ -1,0 +1,21 @@
+id: player_seek_negotiation
+type: player
+category: social
+display:
+  name: "尝试沟通"
+  description: "他去找了格兰瓜，比划着让他传递信息：也许可以谈判。他不知道该谈什么，但他知道暴力不是唯一的选项。"
+  flavor: "他一生中很少与人沟通，因为人们不愿意看他的眼睛。这一次，他必须尝试。"
+  icon: "🕊️"
+cost: 1
+effects:
+  - target: external_pressure
+    delta: -12
+  - target: esmeralda_hope
+    delta: 8
+channel: social
+tags: [negotiation, diplomacy, hope]
+source:
+  variable: external_pressure
+  formula: "negotiation_attempt=0.6: pressure-12; hope+8（有出路的感觉）"
+  pattern_detected: P1
+  sim_notes: "谈判尝试：external_pressure-12，esmeralda_hope+8"

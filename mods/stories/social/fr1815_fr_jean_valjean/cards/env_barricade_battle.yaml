@@ -1,0 +1,22 @@
+id: env_barricade_battle
+type: env
+category: revolution
+display:
+  name: "街垒之战"
+  description: "1832年的巴黎。学生们搭起了街垒，革命又来了。他在那里，因为马吕斯在那里，因为珂赛特爱着马吕斯。他在枪声里把那个年轻人背了出来。"
+  flavor: "他的救赎，不是在教堂里完成的，而是在下水道里。"
+  icon: "🔥"
+effects:
+  - target: redemption_progress
+    delta: 15
+  - target: physical_health
+    delta: -15
+  - target: community_trust
+    delta: 8
+channel: revolution
+tags: [barricade, revolution, paris]
+source:
+  variable: redemption_progress
+  formula: "barricade_battle: redemption_progress+15（英勇行动）; physical_health-15（战斗伤耗）; community_trust+8（英雄行为）"
+  pattern_detected: ENV_MIXED
+  sim_notes: "街垒之战：redemption_progress+15，physical_health-15，community_trust+8"

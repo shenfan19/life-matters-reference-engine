@@ -1,0 +1,20 @@
+id: env_snake_appears
+type: env
+category: omen
+display:
+  name: "蛇出现了"
+  description: "小王子和那条蛇在说话。飞行员不知道他们在说什么，但他感到一种不安——那条蛇在听，那条蛇在回答，小王子的脸上有一种平静，让飞行员的心沉了下来。"
+  flavor: "有些对话，旁观者能感到它的重量，却听不懂内容。"
+  icon: "🐍"
+effects:
+  - target: prince_resolve
+    delta: 15
+  - target: connection_depth
+    delta: 10
+channel: omen
+tags: [snake, death, resolve]
+source:
+  variable: prince_resolve
+  formula: "snake_appears: prince_resolve+15（小王子离去的决心增强）; connection_depth+10（意识到时间有限，加深连接）"
+  pattern_detected: ENV_MIXED
+  sim_notes: "蛇出现：prince_resolve+15，connection_depth+10"

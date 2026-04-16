@@ -1,0 +1,117 @@
+meta:
+  name: "包法利夫人：浪漫主义的账单"
+  description: "她读了太多浪漫主义小说。她嫁给了一个平庸的乡村医生。她相信自己应该有不同的生活——激情、华服、真爱。每一次追求之后，现实比之前更令人窒息。债务，终将到来。"
+  difficulty: medium
+  period_start: "1840-01"
+  period_end: "1845-01"
+  tags: [Depression, Romance, Society, France, Literature]
+  country: FR
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/fr1840_fr_emma_bovary.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  psychological_health: 60
+  debt_level:           5
+  disillusionment:      10
+  social_reputation:    65
+
+variable_display:
+  psychological_health:
+    label: "心理健康"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  debt_level:
+    label: "债务积累"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+  disillusionment:
+    label: "幻灭感"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: false
+  social_reputation:
+    label: "社会声誉"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+
+health_mapping:
+  source_variable: psychological_health
+  scale: [0, 100, 0, 100]
+  display: "心理健康"
+
+turns:
+  total: 12
+  time_per_turn: "5个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: psychological_health
+  target_value: 70
+  description: "找到平静与现实和解，而不是逃向幻觉"
+
+lose_condition:
+  type: variable_threshold
+  variable: debt_level
+  threshold: 90
+  description: "债主上门了。她拿起了砒霜。"
+
+endings:
+  - grade: S
+    condition: "psychological_health >= 70 and debt_level < 40"
+    title: "清醒"
+    description: "她选择了接受平庸，而不是被幻觉摧毁。这不是退让，这是生存。"
+  - grade: A
+    condition: "psychological_health >= 70"
+    title: "代价清楚"
+    description: "她明白了什么是真实的代价。这个认知，让她成了不同的人。"
+  - grade: B
+    condition: "psychological_health >= 45 and disillusionment < 60"
+    title: "还在追求中"
+    description: "她还没有找到答案。也许她永远找不到。但她还活着，还在尝试。"
+  - grade: D
+    condition: "debt_level >= 90 or psychological_health <= 0"
+    title: "账单"
+    description: "砒霜的味道是苦的。她死了很长时间，因为砒霜不是快死法。"
+
+env_deck:
+  - path: cards/env_romantic_disappointment.yaml
+    weight: 200
+  - path: cards/env_debt_letter.yaml
+    weight: 190
+  - path: cards/env_gossip_spreads.yaml
+    weight: 160
+  - path: cards/env_charles_oblivious.yaml
+    weight: 150
+  - path: cards/env_moment_of_clarity.yaml
+    weight: 90
+  - path: cards/env_lheureux_pushes.yaml
+    weight: 170
+
+player_deck:
+  - path: cards/player_pursue_romance.yaml
+    copies: 3
+  - path: cards/player_buy_luxury.yaml
+    copies: 3
+  - path: cards/player_accept_reality.yaml
+    copies: 3
+  - path: cards/player_confide_in_husband.yaml
+    copies: 2
+  - path: cards/player_seek_meaning.yaml
+    copies: 3
+
+generic_cards:
+  inject: [rest, interrupt]

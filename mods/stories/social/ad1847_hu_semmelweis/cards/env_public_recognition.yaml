@@ -1,0 +1,20 @@
+id: env_public_recognition
+type: env
+category: social
+display:
+  name: "民间口碑"
+  description: "洗手规程在布达佩斯的诊所中悄悄推广开来。产妇们口耳相传：\"去找那个让医生洗手的先生。\""
+  flavor: "医学界不承认他，但产妇们认识他。民间的认可，是体制外的生存土壤。"
+  icon: "💬"
+effects:
+  - target: mental_health
+    delta: 10
+  - target: acceptance
+    delta: 6
+channel: social
+tags: [recognition, public, positive]
+weight: 100
+source:
+  formula: "acceptance_saves_lives (feedback)"
+  pattern_detected: P1
+  sim_notes: "基层口碑传播→mental_health+10, acceptance+6（非机构路径）"

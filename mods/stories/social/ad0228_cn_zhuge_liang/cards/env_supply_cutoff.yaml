@@ -1,0 +1,21 @@
+id: env_supply_cutoff
+type: env
+category: political
+display:
+  name: "粮道受阻"
+  description: "魏军截断祁山粮道，数万石军粮滞留后方。前线兵士三日未饱，怨言渐起。"
+  flavor: "\"兵马未动，粮草先行。\"——兵法常识，却是北伐最难克服的现实。"
+  icon: "🌾"
+effects:
+  - target: supply
+    delta: -20
+  - target: morale
+    delta: -10
+channel: political
+tags: [supply, military, historical]
+weight: 220
+source:
+  formula: "supply_consumption + low_supply_morale"
+  pattern_detected: P1
+  sim_notes: "对应sim supply_level每日-0.4基础消耗 + 低供给时morale额外-0.15*(30-supply)，
+              游戏一回合≈12天，量化为-20 supply -10 morale"

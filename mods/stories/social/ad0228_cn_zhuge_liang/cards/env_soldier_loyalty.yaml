@@ -1,0 +1,20 @@
+id: env_soldier_loyalty
+type: env
+category: social
+display:
+  name: "将士效命"
+  description: "蜀将马忠、王平带领精锐死守要道，将士齐心，今日战线稳固，军中士气高涨。"
+  flavor: "\"鞠躬尽瘁，死而后已。\"丞相如此，将士亦如此。"
+  icon: "🛡️"
+effects:
+  - target: morale
+    delta: 15
+  - target: strategy
+    delta: 5
+channel: social
+tags: [loyalty, military, positive]
+weight: 70
+source:
+  formula: "frontline_morale bonus (positive)"
+  pattern_detected: P1
+  sim_notes: "正面环境事件：士气+15，战略小幅推进+5"

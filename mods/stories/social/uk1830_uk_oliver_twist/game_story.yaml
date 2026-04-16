@@ -1,0 +1,115 @@
+meta:
+  name: "奥利弗：济贫院的孩子"
+  description: "英国，1830年代。奥利弗·退斯特，一个济贫院的孤儿。法律允许他被当作劳动力分配。他被扔进了一个偷窃团伙。他不知道规则，他只知道他必须活着，而且他不想成为他们那样的人。"
+  difficulty: medium
+  period_start: "1830-01"
+  period_end: "1831-06"
+  tags: [Orphan, Poverty, Britain, Literature, Child]
+  country: GB
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/uk1830_uk_oliver_twist.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  hope_for_escape: 10
+  physical_health: 55
+  moral_integrity: 85
+  danger_level:    25
+
+variable_display:
+  hope_for_escape:
+    label: "逃脱的希望"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  physical_health:
+    label: "身体健康"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  moral_integrity:
+    label: "内心善良"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: true
+  danger_level:
+    label: "当前危险"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: physical_health
+  scale: [0, 100, 0, 100]
+  display: "身体健康"
+
+turns:
+  total: 13
+  time_per_turn: "6周"
+  env_cards_per_turn: 2
+  player_hand_size: 4
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: hope_for_escape
+  target_value: 80
+  description: "建立足够的连接和信任，让真正的庇护成为可能"
+
+lose_condition:
+  type: health_zero
+  description: "营养不良、惩罚、疾病——他的身体没有撑到被发现。"
+
+endings:
+  - grade: S
+    condition: "hope_for_escape >= 80 and moral_integrity >= 75"
+    title: "布朗罗先生"
+    description: "他找到了真正的善意。他保住了他的善良。这两件事，都不是理所当然的。"
+  - grade: A
+    condition: "hope_for_escape >= 80"
+    title: "南希的牺牲"
+    description: "南希选择了他而不是Fagin。她付出了生命。他活了下来。"
+  - grade: B
+    condition: "moral_integrity >= 70 and danger_level < 60"
+    title: "还没有被摧毁"
+    description: "他还没有成为他们。这是最难的事。"
+  - grade: D
+    condition: "physical_health <= 0 or moral_integrity <= 20"
+    title: "制度的设计"
+    description: "这不是奥利弗的失败。这是济贫法的结果。但奥利弗是那个承担的人。"
+
+env_deck:
+  - path: cards/env_fagin_tasks.yaml
+    weight: 200
+  - path: cards/env_police_chase.yaml
+    weight: 180
+  - path: cards/env_punishment_hunger.yaml
+    weight: 190
+  - path: cards/env_sikes_threatens.yaml
+    weight: 160
+  - path: cards/env_nancy_kindness.yaml
+    weight: 100
+  - path: cards/env_brownlow_glimpse.yaml
+    weight: 90
+
+player_deck:
+  - path: cards/player_comply_survive.yaml
+    copies: 3
+  - path: cards/player_refuse_task.yaml
+    copies: 3
+  - path: cards/player_trust_nancy.yaml
+    copies: 3
+  - path: cards/player_seek_escape.yaml
+    copies: 3
+  - path: cards/player_rest_and_eat.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

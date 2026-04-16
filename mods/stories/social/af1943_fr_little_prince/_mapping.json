@@ -1,0 +1,49 @@
+{
+  "story_id": "af1943_fr_little_prince",
+  "source_scenario": "mods/scenarios/social/af1943_fr_little_prince.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "6 hours",
+    "scenario_total": "8 days",
+    "game_turn_duration": "1 day",
+    "game_turns": 8,
+    "note": "8 days / 8 turns = 1 day per turn. The pilot's 8-day encounter with the Little Prince in the Sahara, January 1943."
+  },
+
+  "variable_mapping": {
+    "pilot_survival":  { "scenario_var": "pilot_survival",  "io_role": "output", "initial": 40, "scale": "abstract 0-100, water+repair state" },
+    "understanding":   { "scenario_var": "understanding",   "io_role": "output", "initial": 10, "scale": "1:1" },
+    "connection_depth":{ "scenario_var": "connection_depth","io_role": "output", "initial": 5,  "scale": "1:1" },
+    "prince_resolve":  { "scenario_var": "prince_resolve",  "io_role": "output", "initial": 70, "scale": "1:1 (higher = closer to leaving)" }
+  },
+
+  "input_mapping": {
+    "engine_repair":      { "range": [0, 1], "maps_to": "player_repair_engine" },
+    "listening":          { "range": [0, 1], "maps_to": "player_listen_to_prince, player_ask_about_rose" },
+    "connection_building":{ "range": [0, 1], "maps_to": "player_draw_sheep, player_persuade_to_stay" }
+  },
+
+  "note_on_prince_resolve": "prince_resolve represents the Little Prince's resolve to return to his rose. It is higher_is_better: false in game display. As player deepens connection, prince_resolve can be slowed but not stopped — he must return. The narrative endpoint is fixed; only the depth of understanding before departure varies.",
+
+  "card_derivations": {
+    "player_repair_engine":    { "formula": "engine work: survival +12/day of progress", "derived_effects": { "pilot_survival": "+12" } },
+    "player_listen_to_prince": { "derived_effects": { "connection_depth": "+18", "understanding": "+12" } },
+    "player_draw_sheep":       { "derived_effects": { "connection_depth": "+20", "understanding": "+8" } },
+    "player_ask_about_rose":   { "derived_effects": { "understanding": "+20", "connection_depth": "+10", "prince_resolve": "-8" } },
+    "player_persuade_to_stay": { "derived_effects": { "connection_depth": "+15", "prince_resolve": "-12", "understanding": "+10" } },
+    "env_water_runs_low":      { "derived_effects": { "pilot_survival": "-15" } },
+    "env_prince_asks_question":{ "derived_effects": { "understanding": "+12", "connection_depth": "+8" } },
+    "env_snake_appears":       { "derived_effects": { "prince_resolve": "+15", "connection_depth": "+10" } },
+    "env_sand_storm":          { "derived_effects": { "pilot_survival": "-12", "connection_depth": "+5" } },
+    "env_well_found":          { "derived_effects": { "pilot_survival": "+20", "understanding": "+15" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "connection_depth >= 70",
+    "note": "Saint-Exupéry's message: the encounter's value is in what the pilot learns, not in preventing the prince's departure. Win = genuine understanding achieved ('On ne voit bien qu'avec le coeur'). The prince leaving is not failure.",
+    "lose_condition": "pilot_survival <= 0",
+    "note2": "Historical: the pilot survives, repairs his plane, and returns to the world carrying the memory. The prince returns to his rose via the snake's bite. The story is told as memoir — the pilot already knows the ending when he begins writing."
+  }
+}

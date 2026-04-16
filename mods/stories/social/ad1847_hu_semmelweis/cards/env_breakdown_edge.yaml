@@ -1,0 +1,20 @@
+id: env_breakdown_edge
+type: env
+category: mental
+display:
+  name: "崩溃的边缘"
+  description: "深夜，他又一次在信纸上写下那些数字：死亡率18%，洗手后降至1.3%……然后撕掉。没有人在听。"
+  flavor: "历史记录显示，1865年前后塞麦尔维斯的行为开始出现明显异常——这是一个被系统性忽视的人的心灵极限。"
+  icon: "💔"
+effects:
+  - target: mental_health
+    delta: -15
+  - target: isolation
+    delta: 8
+channel: mental
+tags: [mental, crisis, historical]
+weight: 120
+source:
+  formula: "isolation_damage: (isolation-20)*0.06/month"
+  pattern_detected: P1
+  sim_notes: "高孤立触发精神危机事件：mental_health-15, isolation+8（恶性循环）"

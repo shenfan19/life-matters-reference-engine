@@ -1,0 +1,81 @@
+{
+  "story_id": "ad1847_hu_semmelweis",
+  "source_scenario": "mods/scenarios/social/ad1847_hu_semmelweis.yaml",
+  "generated_on": "2026-04-15",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "216 months (18 years)",
+    "game_turn_duration": "18 months",
+    "game_turns": 12,
+    "note": "216 months / 12 turns = 18 months per turn; card deltas derived from formula rates × 18"
+  },
+
+  "variable_mapping": {
+    "mental_health": { "scenario_var": "mental_health", "io_role": "output", "initial": 75, "scale": "1:1" },
+    "acceptance":   { "scenario_var": "acceptance",    "io_role": "output", "initial": 5,  "scale": "1:1" },
+    "evidence":     { "scenario_var": "evidence",      "io_role": "output", "initial": 20, "scale": "1:1" },
+    "isolation":    { "scenario_var": "isolation",     "io_role": "output", "initial": 15, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "research_effort":     { "range": [0, 3], "maps_to": "player_collect_data card" },
+    "advocacy_intensity":  { "range": [0, 3], "maps_to": "player_publish_report, player_demonstrate_handwash" },
+    "self_care":           { "range": [0, 1], "maps_to": "player_self_care card" }
+  },
+
+  "card_derivations": {
+    "player_collect_data": {
+      "formula": "evidence_accumulation = research_effort(2) × 2.5/month × 18months = 90 → capped game delta +14 (diminishing returns)",
+      "derived_effects": { "evidence": "+14", "mental_health": "-5 (confronting mortality data)" }
+    },
+    "player_publish_report": {
+      "formula": "advocacy_intensity=2, evidence>=60: acceptance_gain ≈ 0.5/month × 18 → +8 (resistance dampened by inertia)",
+      "derived_effects": { "acceptance": "+8", "mental_health": "-8 (expectation then disappointment)", "evidence": "+5" }
+    },
+    "player_demonstrate_handwash": {
+      "formula": "high evidence floor: advocacy_effect doubles at evidence>=40 → acceptance+14 vs baseline +7",
+      "derived_effects": { "acceptance": "+14", "mental_health": "-5 (emotional cost of being ignored)" }
+    },
+    "player_self_care": {
+      "formula": "self_care=1.0, 18months: mental_health += 5/month × 18 = 90 → capped +20; isolation-8 (social contact)",
+      "derived_effects": { "mental_health": "+20", "isolation": "-8" }
+    },
+    "player_mentor_students": {
+      "formula": "advocacy_effect low intensity but sustainable: acceptance+7/18mo, isolation-10 (network growth), mh+5",
+      "derived_effects": { "acceptance": "+7", "isolation": "-10", "mental_health": "+5" }
+    },
+    "env_medical_ridicule": {
+      "formula": "rejection event: mental_health -= 12 (acute), acceptance -= 5 (backfire effect)",
+      "derived_effects": { "mental_health": "-12", "acceptance": "-5" }
+    },
+    "env_maternal_death": {
+      "formula": "mortality event: mental_health -= 10 (grief), acceptance += 3 (tragedy evidence)",
+      "derived_effects": { "mental_health": "-10", "acceptance": "+3" }
+    },
+    "env_hospital_dismissal": {
+      "formula": "institutional rejection: acceptance-10, isolation+15 (network severed), mental_health-8",
+      "derived_effects": { "acceptance": "-10", "isolation": "+15", "mental_health": "-8" }
+    },
+    "env_ally_found": {
+      "formula": "ally event: acceptance+12 (network effect), isolation-12, mental_health+8",
+      "derived_effects": { "acceptance": "+12", "isolation": "-12", "mental_health": "+8" }
+    },
+    "env_public_recognition": {
+      "formula": "rare positive event: mental_health+10 (validation), acceptance+6",
+      "derived_effects": { "mental_health": "+10", "acceptance": "+6" }
+    },
+    "env_breakdown_edge": {
+      "formula": "mental_health crisis: -15 (acute breakdown trigger), isolation+8 (withdrawal)",
+      "derived_effects": { "mental_health": "-15", "isolation": "+8" }
+    }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "acceptance >= 75",
+    "note": "acceptance starts at 5, needs +70 over 12 turns. Core formula has resistance: rejection_rate = 0.4 + 0.4*(1-acceptance/100). Early turns are hardest; later turns have compounding gains. Requires evidence>60 unlock for best cards.",
+    "lose_condition": "mental_health <= 0",
+    "note2": "Semmelweis died in an asylum in 1865. The lose condition is historical. mental_health starts at 75, each rejection event drains it."
+  }
+}

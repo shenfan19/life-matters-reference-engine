@@ -1,0 +1,22 @@
+id: env_fever_breaks
+type: env
+category: health
+display:
+  name: "高烧暂退"
+  description: "他喝了几杯水，睡了十几个小时，醒来时烧退了一些。头脑清醒的代价是：所有的问题都更清晰了。"
+  flavor: "清醒有时候比发烧更难受——因为发烧至少让一切变得模糊。"
+  icon: "🌤️"
+effects:
+  - target: fever_level
+    delta: -15
+  - target: mental_health
+    delta: 5
+  - target: guilt_pressure
+    delta: 8
+channel: health
+tags: [fever, recovery, clarity]
+source:
+  variable: fever_level
+  formula: "natural recovery: fever-15; clarity → mental_health+5; guilt more visible: guilt+8"
+  pattern_detected: P1
+  sim_notes: "烧退：fever-15，mental_health+5（清醒），guilt_pressure+8（清醒后罪恶感更明显）"

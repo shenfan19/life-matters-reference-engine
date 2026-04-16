@@ -1,0 +1,48 @@
+{
+  "story_id": "dz1940_fr_dr_rieux",
+  "source_scenario": "mods/scenarios/social/dz1940_fr_dr_rieux.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 week",
+    "scenario_total": "52 weeks (1 year)",
+    "game_turn_duration": "4 weeks (1 month)",
+    "game_turns": 13,
+    "note": "52 weeks / 13 turns = 4 weeks per turn. Plague year of 194x Oran mapped to 13 monthly turns."
+  },
+
+  "variable_mapping": {
+    "patients_treated":  { "scenario_var": "patients_treated",  "io_role": "output", "initial": 0,  "scale": "1:1" },
+    "doctor_health":     { "scenario_var": "doctor_health",     "io_role": "output", "initial": 90, "scale": "1:1" },
+    "compassion_fatigue":{ "scenario_var": "compassion_fatigue","io_role": "output", "initial": 5,  "scale": "1:1" },
+    "personal_grief":    { "scenario_var": "personal_grief",    "io_role": "output", "initial": 10, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "care_intensity":      { "range": [0, 3], "maps_to": "player_intensive_care, player_triage_efficiently" },
+    "quarantine_strictness":{ "range": [0, 1], "maps_to": "player_enforce_quarantine" },
+    "self_care":           { "range": [0, 1], "maps_to": "player_rest_and_grieve, player_train_volunteers" }
+  },
+
+  "card_derivations": {
+    "player_intensive_care":    { "formula": "care_intensity=3 × 4wk: patients rate ~6/wk → +25; health cost from exhaustion", "derived_effects": { "patients_treated": "+25", "doctor_health": "-10" } },
+    "player_enforce_quarantine":{ "derived_effects": { "patients_treated": "+8", "compassion_fatigue": "+8" } },
+    "player_triage_efficiently":{ "derived_effects": { "patients_treated": "+15", "doctor_health": "-5" } },
+    "player_rest_and_grieve":   { "derived_effects": { "doctor_health": "+18", "personal_grief": "-10" } },
+    "player_train_volunteers":  { "derived_effects": { "patients_treated": "+12", "compassion_fatigue": "-8" } },
+    "env_mass_death":           { "derived_effects": { "personal_grief": "+15", "compassion_fatigue": "+10" } },
+    "env_serum_shortage":       { "derived_effects": { "patients_treated": "-8", "doctor_health": "-5" } },
+    "env_ally_infected":        { "derived_effects": { "personal_grief": "+18", "compassion_fatigue": "+12" } },
+    "env_quarantine_resistance":{ "derived_effects": { "patients_treated": "-5", "compassion_fatigue": "+8" } },
+    "env_wife_news":            { "derived_effects": { "personal_grief": "+20", "doctor_health": "-8" } },
+    "env_moment_of_humanity":   { "derived_effects": { "compassion_fatigue": "-15", "doctor_health": "+8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "patients_treated >= 200",
+    "note": "Rieux treats patients throughout the plague year. 200 represents significant contribution given resource constraints. Must balance intensive care with self-preservation.",
+    "lose_condition": "health <= 0",
+    "note2": "Counterfactual: if Rieux had proper support and serum, far more could have been saved. The historical constraint is institutional failure, not individual will."
+  }
+}

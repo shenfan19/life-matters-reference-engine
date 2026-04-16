@@ -1,0 +1,20 @@
+id: env_moment_of_humanity
+type: env
+category: support
+display:
+  name: "人性的瞬间"
+  description: "一个老人给了他一杯茶。一个母亲在女儿退烧后哭着说谢谢。这些瞬间，提醒他为什么还在。"
+  flavor: "加缪说：在严冬，我终于发现了，在我心中，有一个不可战胜的夏天。"
+  icon: "☀️"
+effects:
+  - target: doctor_health
+    delta: 10
+  - target: compassion_fatigue
+    delta: -12
+channel: support
+tags: [humanity, hope, recovery]
+source:
+  variable: compassion_fatigue
+  formula: "positive human connection → compassion_fatigue-12, health+10"
+  pattern_detected: P1
+  sim_notes: "人性瞬间：compassion_fatigue-12（重燃同情心），doctor_health+10（精神恢复）"

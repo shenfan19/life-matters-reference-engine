@@ -1,0 +1,48 @@
+{
+  "story_id": "fr1482_fr_quasimodo",
+  "source_scenario": "mods/scenarios/social/fr1482_fr_quasimodo.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 day",
+    "scenario_total": "30 days",
+    "game_turn_duration": "3 days",
+    "game_turns": 10,
+    "note": "30 days / 10 turns = 3 days per turn. The siege of Notre-Dame is compressed into one month of desperate defense."
+  },
+
+  "variable_mapping": {
+    "sanctuary_integrity": { "scenario_var": "sanctuary_integrity", "io_role": "output", "initial": 80, "scale": "1:1" },
+    "esmeralda_hope":      { "scenario_var": "esmeralda_hope",      "io_role": "output", "initial": 35, "scale": "1:1" },
+    "quasimodo_health":    { "scenario_var": "quasimodo_health",    "io_role": "output", "initial": 70, "scale": "1:1" },
+    "external_pressure":   { "scenario_var": "external_pressure",   "io_role": "output", "initial": 30, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "defense_intensity":    { "range": [0, 2], "maps_to": "player_defend_walls, player_pour_hot_lead" },
+    "care_for_esmeralda":   { "range": [0, 1], "maps_to": "player_care_for_esmeralda" },
+    "negotiation_attempt":  { "range": [0, 1], "maps_to": "player_seek_negotiation, player_endure_pain" }
+  },
+
+  "card_derivations": {
+    "player_defend_walls":       { "formula": "defense=2 × 3days: sanctuary stability rate +20 per push; health cost of combat", "derived_effects": { "sanctuary_integrity": "+20", "quasimodo_health": "-10" } },
+    "player_care_for_esmeralda": { "derived_effects": { "esmeralda_hope": "+15", "quasimodo_health": "-5" } },
+    "player_pour_hot_lead":      { "derived_effects": { "sanctuary_integrity": "+25", "quasimodo_health": "-12", "external_pressure": "-8" } },
+    "player_endure_pain":        { "derived_effects": { "quasimodo_health": "+15" } },
+    "player_seek_negotiation":   { "derived_effects": { "external_pressure": "-12", "esmeralda_hope": "+8" } },
+    "env_mob_attacks":           { "derived_effects": { "sanctuary_integrity": "-18", "quasimodo_health": "-10" } },
+    "env_frollo_manipulates":    { "derived_effects": { "esmeralda_hope": "-15", "external_pressure": "+12" } },
+    "env_food_runs_low":         { "derived_effects": { "quasimodo_health": "-12", "esmeralda_hope": "-8" } },
+    "env_esmeralda_despairs":    { "derived_effects": { "esmeralda_hope": "-18", "quasimodo_health": "-5" } },
+    "env_royal_decree":          { "derived_effects": { "external_pressure": "+15", "sanctuary_integrity": "-10" } },
+    "env_gringoire_visits":      { "derived_effects": { "esmeralda_hope": "+12", "external_pressure": "-5" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "esmeralda_hope >= 70",
+    "note": "The counterfactual: if Quasimodo had successfully protected Esmeralda and exposed Frollo before the mob overwhelmed the sanctuary. Historical: he fails — Esmeralda is captured and executed.",
+    "lose_condition": "quasimodo_health <= 0",
+    "note2": "Historical: Quasimodo survives but loses everything. Found later holding Esmeralda's skeleton in the Crypt of the Innocents, turned to dust beside her."
+  }
+}

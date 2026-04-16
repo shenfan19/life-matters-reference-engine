@@ -1,0 +1,112 @@
+id: fr1815_fr_jean_valjean
+name: "冉·阿让：苦役之后的人"
+description: |
+  冉·阿让因偷一块面包被判五年苦役，屡次逃跑变成十九年。
+  出狱后：没有人愿意收留一个前囚犯。
+  直到一个主教给了他银烛台，并说：我用这些买下了你的灵魂。
+  他选择成为另一种人。但贾维尔警探永远不会停下来。
+type: scenario
+tags: [justice, redemption, labor-injury, aging, identity, literature]
+source: 悲惨世界 (Victor Hugo, 1862)
+
+simulation:
+  step: 1
+  total: 216   # 18年（出狱到去世）
+  step_unit: month
+
+inputs:
+  - id: virtue_effort
+    label: "践行善行强度"
+    description: "用行动救助他人、回报社会的努力"
+    min: 0
+    max: 2
+    default: 1.5
+    unit: intensity
+
+  - id: concealment
+    label: "隐藏身份"
+    description: "掩盖前囚犯身份以在社会中生存"
+    min: 0
+    max: 1
+    default: 0.7
+    unit: ratio
+
+  - id: self_care
+    label: "自我照料"
+    description: "注意身体恢复，减少苦役后遗症的进展"
+    min: 0
+    max: 1
+    default: 0.3
+    unit: intensity
+
+variables:
+  - id: physical_health
+    label: "身体状态"
+    description: "19年苦役的长期损伤与老化的综合健康"
+    min: 0
+    max: 100
+    initial: 60
+    io_role: output
+    unit: hp
+
+  - id: redemption_progress
+    label: "救赎进度"
+    description: "用善行弥补过去的积累"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: javert_pursuit
+    label: "贾维尔的追踪"
+    description: "警察对他身份和下落的掌握程度"
+    min: 0
+    max: 100
+    initial: 15
+    io_role: output
+    unit: score
+
+  - id: community_trust
+    label: "社区信任"
+    description: "在新身份下建立的社会信任资本"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+formulas:
+  - id: health_decay
+    description: "苦役后遗症不可逆；善行消耗体力；自我照料可减缓"
+    expr: |
+      labor_legacy = 0.8   # 苦役积累损伤的慢性进展
+      virtue_cost = virtue_effort * 0.6
+      recovery = self_care * 1.5
+      physical_health = max(0, physical_health - labor_legacy - virtue_cost + recovery)
+
+  - id: redemption_growth
+    description: "善行积累救赎"
+    expr: |
+      redemption_progress = min(100, redemption_progress + virtue_effort * 2.5)
+
+  - id: javert_tracking
+    description: "隐藏身份减缓追踪；善行的曝光度反而可能泄露线索"
+    expr: |
+      natural_detection = 0.5
+      exposure_from_virtue = virtue_effort * 0.3   # 好事被注意
+      concealment_delay = concealment * 1.5
+      javert_pursuit = min(100, max(0, javert_pursuit + natural_detection + exposure_from_virtue - concealment_delay))
+
+  - id: trust_growth
+    description: "社区信任随善行和稳定身份积累"
+    expr: |
+      virtue_trust = virtue_effort * 1.5
+      identity_stability = concealment * 0.8
+      community_trust = min(100, community_trust + virtue_trust + identity_stability)
+
+optimizer:
+  target: redemption_progress
+  direction: maximize
+  secondary: community_trust
+  note: "历史结局：冉·阿让救珂赛特、救马里尤斯、感化贾维尔自杀→redemption_progress最大；physical_health→0（在女儿怀中去世）"

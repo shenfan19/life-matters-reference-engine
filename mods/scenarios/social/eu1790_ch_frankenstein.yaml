@@ -1,0 +1,124 @@
+id: eu1790_ch_frankenstein
+name: "弗兰肯斯坦：造物者的代价"
+description: |
+  维克多·弗兰肯斯坦在日内瓦大学实验室中，用两年时间组装并激活了一个生命体。
+  他成功了。然后他逃走了。
+  这是模拟他在逃避、被追寻、目睹至亲死亡过程中的身体崩溃与伦理代价——
+  创造者拒绝承担责任，造物于是替他做出了选择。
+type: scenario
+tags: [science, ethics, isolation, obsession, literature]
+source: Frankenstein (Mary Shelley, 1818)
+
+simulation:
+  step: 1         # 单位：月
+  total: 30       # 30个月（创造怪物后到维克多死亡的时间跨度）
+  step_unit: month
+
+inputs:
+  - id: concealment_effort
+    label: "压制造物知情范围"
+    description: "是否主动压制关于造物存在的消息，保密程度"
+    min: 0
+    max: 1
+    default: 0.5
+    unit: intensity
+
+  - id: confrontation_willingness
+    label: "直面造物的意愿"
+    description: "是否尝试与造物沟通或对峙（而非逃跑）"
+    min: 0
+    max: 1
+    default: 0.2
+    unit: intensity
+
+  - id: research_continuation
+    label: "继续研究强度"
+    description: "是否继续推进科学研究（以控制/销毁造物）"
+    min: 0
+    max: 2
+    default: 1.0
+    unit: intensity
+
+variables:
+  - id: health
+    label: "维克多生命力"
+    description: "身体健康状态：过度劳累、北极追逐、精神崩溃的综合损耗"
+    min: 0
+    max: 100
+    initial: 85
+    io_role: output
+    unit: hp
+
+  - id: ethical_burden
+    label: "伦理负担"
+    description: "未承担责任的道德重量：逃避→累积，直面→缓解"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+  - id: relationships_intact
+    label: "亲情存续"
+    description: "威廉、贾斯汀、克拉维尔、伊丽莎白等至亲的存续状态"
+    min: 0
+    max: 100
+    initial: 90
+    io_role: output
+    unit: score
+
+  - id: creature_threat
+    label: "造物威胁等级"
+    description: "造物的复仇行动强度：被忽视则升高，被面对则可能谈判"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+  - id: scientific_control
+    label: "对造物的科学掌控"
+    description: "能否通过研究理解/控制/销毁造物"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+formulas:
+  - id: creature_growth
+    description: "造物威胁随逃避而增长，直面可减缓"
+    expr: |
+      threat_increase = 3.0 * (1 - confrontation_willingness) - 1.5 * confrontation_willingness
+      creature_threat = min(100, creature_threat + threat_increase)
+
+  - id: relationship_decay
+    description: "威胁越高，亲情损耗越快"
+    expr: |
+      damage = (creature_threat / 100) * 4.0
+      relationships_intact = max(0, relationships_intact - damage)
+
+  - id: ethical_accumulation
+    description: "逃避让伦理负担快速增长；直面可缓慢卸载"
+    expr: |
+      burden_change = 2.5 * (1 - confrontation_willingness) - 1.0 * confrontation_willingness
+      ethical_burden = min(100, max(0, ethical_burden + burden_change))
+
+  - id: health_decay
+    description: "研究+伦理负担+威胁三重消耗健康"
+    expr: |
+      overwork_cost = research_continuation * 1.2
+      burden_cost = (ethical_burden / 100) * 1.5
+      threat_cost = (creature_threat / 100) * 0.8
+      health = max(0, health - overwork_cost - burden_cost - threat_cost)
+
+  - id: scientific_progress
+    description: "研究推进科学控制，但不能直接降低威胁（需配合直面）"
+    expr: |
+      scientific_control = min(100, scientific_control + research_continuation * 2.0)
+
+optimizer:
+  target: relationships_intact
+  direction: maximize
+  secondary: health
+  note: "保住至亲（relationships_intact最大化）同时维持健康；历史结局：relationships=0, health=0"

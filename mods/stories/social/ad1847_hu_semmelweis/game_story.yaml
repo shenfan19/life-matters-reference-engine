@@ -1,0 +1,115 @@
+meta:
+  name: "塞麦尔维斯：无人聆听的真理"
+  description: "1847年，维也纳产科医院。匈牙利医生伊格纳兹·塞麦尔维斯发现：医生在解剖后不洗手就去接生，正是产妇死亡的元凶。证据清晰，逻辑无懈可击——但整个医学界都不愿相信。"
+  difficulty: hard
+  period_start: "1847"
+  period_end: "1865"
+  tags: [Science, Medicine, Europe, History, Mental Health]
+  country: HU
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-15
+  source_scenario: "scenarios/social/ad1847_hu_semmelweis.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  mental_health:  75
+  acceptance:     5
+  evidence:       20
+  isolation:      15
+
+variable_display:
+  mental_health:
+    label: "心理健康"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  acceptance:
+    label: "医界接受度"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  evidence:
+    label: "证据完整度"
+    color: "#faad14"
+    max: 100
+    higher_is_better: true
+  isolation:
+    label: "职业孤立"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: mental_health
+  scale: [0, 100, 0, 100]
+  display: "心理健康"
+
+turns:
+  total: 12
+  time_per_turn: "约18个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5    # H=5: 孤立研究者，社会网络有限
+  action_points: 2       # p=2: 研究/倡导/自我照护三择二
+  draw_per_turn: 2       # a=2: b=H-a=3，有基本战略深度
+
+win_condition:
+  type: reach_target
+  target_variable: acceptance
+  target_value: 75
+  description: "医学界接受度达到75，洗手规程开始在主要医院推广，产妇死亡率开始下降"
+
+lose_condition:
+  type: health_zero
+  description: "长期遭受职业排斥与精神折磨，心理防线彻底崩溃，被强制送入精神病院"
+
+endings:
+  - grade: S
+    condition: "mental_health >= 50 and acceptance >= 75"
+    title: "真理终将到来"
+    description: "以健全的心灵推动了医学革命。历史上的塞麦尔维斯没能做到这一点——也许因为他太急、太孤独。"
+  - grade: A
+    condition: "mental_health > 0 and acceptance >= 75"
+    title: "带伤的传播者"
+    description: "在精神几近崩溃前，真理终于开始扩散。代价是沉重的，但那些被挽救的产妇们的孩子，不会知道你的名字。"
+  - grade: B
+    condition: "mental_health > 30 and acceptance >= 50"
+    title: "播下的种子"
+    description: "接受度推进了一半，证据完整。也许再过十年，巴斯德和李斯特会完成你未竟的工作。"
+  - grade: D
+    condition: "mental_health <= 0"
+    title: "精神病院里的先知"
+    description: "1865年7月，塞麦尔维斯被强制送入精神病院。两周后，他死于感染——正是他一生对抗的那种感染。历史如实重演。"
+
+env_deck:
+  - path: cards/env_medical_ridicule.yaml
+    weight: 220
+  - path: cards/env_maternal_death.yaml
+    weight: 190
+  - path: cards/env_hospital_dismissal.yaml
+    weight: 160
+  - path: cards/env_public_recognition.yaml
+    weight: 100
+  - path: cards/env_ally_found.yaml
+    weight: 80
+  - path: cards/env_breakdown_edge.yaml
+    weight: 120
+
+player_deck:
+  - path: cards/player_collect_data.yaml
+    copies: 4
+  - path: cards/player_publish_report.yaml
+    copies: 3
+  - path: cards/player_demonstrate_handwash.yaml
+    copies: 3
+  - path: cards/player_self_care.yaml
+    copies: 4
+  - path: cards/player_mentor_students.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

@@ -1,0 +1,18 @@
+id: env_brownlow_glimpse
+type: env
+category: hope
+display:
+  name: "布朗罗先生"
+  description: "他在书摊附近看到了那个老人。那个老人的脸有一种他说不清楚的东西——不是同情，是承认。承认他是一个人，而不是一个问题。"
+  flavor: "有时候，被一个陌生人真正看见一眼，就足以让你撑过很长时间。"
+  icon: "☀️"
+effects:
+  - target: hope_for_escape
+    delta: 15
+channel: hope
+tags: [brownlow, hope, connection]
+source:
+  variable: hope_for_escape
+  formula: "brownlow_glimpse: hope_for_escape+15（看见真正的善意）"
+  pattern_detected: ENV_POSITIVE
+  sim_notes: "布朗罗一瞥：hope_for_escape+15"

@@ -1,0 +1,20 @@
+id: env_wind_intensifies
+type: env
+category: hazard
+display:
+  name: "寒风加强"
+  description: "风从街道的另一端吹来，把她的裙子掀起来，把冷刺进皮肤里。她没有地方可以躲。"
+  flavor: "城市的风不是自然的风，它沿着石砖的缝隙找到一切可以找到的人，然后吹穿他们。"
+  icon: "💨"
+effects:
+  - target: body_temperature
+    delta: -12
+  - target: hope
+    delta: -8
+channel: hazard
+tags: [cold, wind, temperature]
+source:
+  variable: body_temperature
+  formula: "base_loss(0.8/hr) + wind_factor × 1hr → temperature-12; hope-8（恶化的环境）"
+  pattern_detected: P2
+  sim_notes: "寒风事件：body_temperature-12，hope-8"

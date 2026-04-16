@@ -1,0 +1,20 @@
+id: env_transformation_involuntary
+type: env
+category: crisis
+display:
+  name: "无药自变"
+  description: "他没有服用任何东西。他只是坐在公园的长椅上，看着鸽子——然后他的手开始变了。第一次无药变形。这意味着他已经没有控制权了。"
+  flavor: "曾经，那种药物是钥匙。现在Hyde已经不需要钥匙了。"
+  icon: "⚠️"
+effects:
+  - target: self_control
+    delta: -20
+  - target: hyde_dominance
+    delta: 15
+channel: crisis
+tags: [transformation, involuntary, loss_of_control]
+source:
+  variable: self_control
+  formula: "involuntary_transformation: self_control-20（重大失控）; hyde_dominance+15（Hyde人格突破）"
+  pattern_detected: ENV_CRITICAL
+  sim_notes: "无药自变：self_control-20，hyde_dominance+15（关键事件）"

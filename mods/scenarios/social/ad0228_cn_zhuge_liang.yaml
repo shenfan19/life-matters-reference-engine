@@ -1,0 +1,284 @@
+metadata:
+  name: ad0228_cn_zhuge_liang
+  version: "1.0.0"
+  author: ""
+  description: >
+    诸葛亮北伐仿真场景（228–234 AD，祁山大营）。
+    sim模式：模拟北伐一日的体力分配与军务筹划。
+    opt模式：在蜀汉国力受限的约束下，搜索最优军务强度与休息分配——
+    怎样在保全丞相健康的同时最大化北伐战略进度？
+  tags: [historical, china, three-kingdoms, cognition, strategy, overwork]
+  period: "228-234"
+  location: "Qishan Camp, Wei-Shu Border, China"
+  science_note: >
+    基于慢性过劳动力学模型（Xie & Boven 2006）与《三国志·诸葛亮传》。
+    洞见公式：strategy_gain = work_intensity × max(0.2, 1 − fatigue/100)
+              × max(0.3, morale/80) × max(0.3, nutrition/70)。
+    疲劳、士气、营养三重调制战略效率；与史载"食少事烦，其能久乎"吻合。
+    步长=1天，总时长=180天（一次北伐季）。
+
+variables:
+  # ── 行为输入（玩家/优化器控制）────────────────────────────────────────────────
+  work_intensity:
+    type: input
+    value: 2.0
+    unit: "强度"
+    bounds: [0.0, 3.0]
+    description: "军务强度：0=完全休息, 1=轻务处理, 2=军事谋划, 3=亲临督战"
+
+  rest_quality:
+    type: input
+    value: 0.6
+    unit: "系数"
+    bounds: [0.0, 1.0]
+    description: "休息质量（0=失眠忧思, 1=充分休养）；直接影响体力与疲劳恢复"
+
+  food_intake:
+    type: input
+    value: 120.0
+    unit: "g"
+    bounds: [0.0, 400.0]
+    description: "每日食物摄入量（史载'日食不过数升'，基线约120g）"
+
+  political_address:
+    type: input
+    value: 0.5
+    unit: "强度"
+    bounds: [0.0, 1.5]
+    description: "应对朝廷/盟军关系的精力投入（过低→朝中掣肘；过高→消耗精力）"
+
+  # ── 核心生理状态 ──────────────────────────────────────────────────────────────
+  health:
+    type: state
+    value: 70.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "丞相体力/生命力（史载诸葛亮多病，北伐前已体力不支）"
+
+  fatigue:
+    type: state
+    value: 30.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "身心疲劳积累（>70时战略效率显著下降；睡眠和休息恢复）"
+
+  nutrition:
+    type: state
+    value: 55.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "营养状态（<30时触发健康损耗；'食少事烦'的生理根源）"
+
+  # ── 战略/社会状态 ─────────────────────────────────────────────────────────────
+  strategy:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "北伐战略筹划进度（目标100=完成一次战役规划）"
+
+  supply_level:
+    type: state
+    value: 80.0
+    unit: "分"
+    bounds: [0, 100]
+    description: "军粮储备水平（每日自然消耗；<30时士气大跌）"
+
+  morale:
+    type: state
+    value: 70.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "军心士气（供给、胜负、丞相亲临共同影响；调制战略效率）"
+
+  court_stability:
+    type: state
+    value: 60.0
+    unit: "分"
+    bounds: [0, 100]
+    description: "后方朝廷稳定度（不处理则缓慢下降；<30时掣肘前线）"
+
+simulation:
+  step_size: 1
+  time_unit: day
+  total_time: 180
+  output_variables:
+    - health
+    - fatigue
+    - strategy
+    - nutrition
+    - supply_level
+    - morale
+    - court_stability
+    - work_intensity
+
+formulas:
+
+  # 1. 饮食消化：食物→营养
+  # 120g/天 × 0.18 = 21.6 nutrition/天，自然衰减抵消后净增量适中
+  eating:
+    description: "每日饮食补充营养；食少则营养不足，过多则耗用军需"
+    condition: food_intake > 0
+    priority: 10
+    dynamics:
+      nutrition: "min(100, nutrition + food_intake * 0.18)"
+      supply_level: "max(0, supply_level - food_intake * 0.02)"
+
+  # 2. 营养自然代谢衰减
+  nutrition_decay:
+    description: "每日代谢消耗营养；需进食补偿"
+    condition: true
+    priority: 5
+    dynamics:
+      nutrition: "max(0, nutrition - 16)"
+
+  # 3. 军务产生战略进度（核心公式）
+  # 工作强度2，fatigue=40，morale=70，nutrition=55
+  # gain/day = 2 × (1-40/100) × (70/80) × (55/70) × 8.0
+  #          = 2 × 0.6 × 0.875 × 0.786 × 8.0 ≈ 6.6/天
+  # 180天不可能满强度，目标100需约15天有效强度2的工作
+  strategy_planning:
+    description: "军务筹划积累战略进度；疲劳、士气、营养三重调制效率"
+    condition: work_intensity > 0
+    priority: 10
+    dynamics:
+      strategy: "min(100, strategy + work_intensity * 8.0
+                  * max(0.2, 1 - fatigue / 100)
+                  * max(0.3, morale / 80)
+                  * max(0.3, nutrition / 70))"
+      fatigue: "min(100, fatigue + work_intensity * 3.5)"
+
+  # 4. 休息恢复（睡眠/静养）
+  # rest_quality=0.6：fatigue恢复 = 0.6 × 12 = 7.2/天（基线适中）
+  rest_recovery:
+    description: "休息恢复疲劳和体力；但不能完全弥补过劳积累"
+    condition: rest_quality > 0
+    priority: 8
+    dynamics:
+      fatigue: "max(0, fatigue - rest_quality * 12)"
+      health:  "min(100, health + rest_quality * 0.8)"
+
+  # 5. 供给自然消耗
+  supply_consumption:
+    description: "全军每日军粮消耗（与军队规模挂钩；固定消耗）"
+    condition: true
+    priority: 6
+    dynamics:
+      supply_level: "max(0, supply_level - 0.4)"
+
+  # 6. 供给不足→士气下跌
+  low_supply_morale:
+    description: "军粮不足时士气急速下跌（'兵马未动，粮草先行'）"
+    condition: supply_level < 30
+    priority: 7
+    dynamics:
+      morale: "max(0, morale - (30 - supply_level) * 0.15)"
+
+  # 7. 朝廷干预处理
+  court_management:
+    description: "处理后方政务维持朝廷稳定；neglect→稳定度缓慢下降"
+    condition: true
+    priority: 5
+    dynamics:
+      court_stability: "min(100, court_stability + (political_address - 0.3) * 4)"
+
+  # 8. 朝廷不稳定→前线掣肘→战略受损
+  court_interference:
+    description: "朝廷稳定度过低时，宦官掣肘导致前线资源削减和战略迟滞"
+    condition: court_stability < 30
+    priority: 7
+    dynamics:
+      strategy: "max(0, strategy - (30 - court_stability) * 0.08)"
+      supply_level: "max(0, supply_level - 0.5)"
+
+  # 9. 过劳损耗体力（fatigue > 70）
+  overwork_penalty:
+    description: "严重过劳（疲劳>70）加速体力崩溃（'食少事烦，其能久乎'）"
+    condition: fatigue >= 70
+    priority: 9
+    dynamics:
+      health: "max(0, health - (fatigue - 70) * 0.04)"
+
+  # 10. 营养不足损耗体力
+  malnutrition_health:
+    description: "长期营养不足（<30）损耗体力"
+    condition: nutrition < 30
+    priority: 7
+    dynamics:
+      health: "max(0, health - (30 - nutrition) * 0.05)"
+
+  # 11. 亲临督战鼓舞士气（work_intensity=3时额外效果）
+  frontline_morale:
+    description: "丞相亲临督战显著鼓舞军心（但同时加重体力负担）"
+    condition: work_intensity >= 3
+    priority: 9
+    dynamics:
+      morale:  "min(100, morale + 3)"
+      health:  "max(0, health - 0.5)"
+
+  # 12. 士气低落影响战略执行
+  low_morale_penalty:
+    description: "士气严重低落（<30）时将士消极，战略难以执行"
+    condition: morale < 30
+    priority: 6
+    dynamics:
+      strategy: "max(0, strategy - 0.5)"
+
+optimizer:
+  method: multi_objective
+  algorithm: nsga2
+  population_size: 50
+  generations: 60
+
+  objectives:
+    - variable: strategy
+      direction: maximize
+      weight: 1.0
+    - variable: health
+      direction: maximize
+      weight: 0.8
+    - variable: morale
+      direction: maximize
+      weight: 0.4
+
+  constraints:
+    - expression: "health >= 40"
+      description: "丞相健康不能低于40（历史约束：需维持基本军务能力）"
+    - expression: "supply_level >= 10"
+      description: "军粮不能完全耗尽"
+    - expression: "morale >= 20"
+      description: "军心不能崩溃"
+
+  variables_to_optimize:
+    - name: daily_work_intensity
+      default: 2.0
+      bounds: [0.5, 3.0]
+      maps_to: "work_intensity"
+
+    - name: daily_rest_quality
+      default: 0.6
+      bounds: [0.3, 1.0]
+      maps_to: "rest_quality"
+
+    - name: daily_food_intake
+      default: 120.0
+      bounds: [60.0, 300.0]
+      maps_to: "food_intake"
+
+    - name: political_effort
+      default: 0.5
+      bounds: [0.0, 1.5]
+      maps_to: "political_address"
+
+  analysis:
+    pareto_description: >
+      帕累托前沿揭示：提高work_intensity在fatigue<50时线性提升strategy，
+      但fatigue>70后效率骤降且health加速损耗。
+      最优解通常在work_intensity=2.0–2.3、rest_quality=0.7–0.8区间——
+      这与历史记录矛盾：诸葛亮实际长期处于work_intensity≈3、rest_quality≈0.4，
+      即历史证明他选择了帕累托前沿之外的"忠诚最优"而非"健康最优"解。

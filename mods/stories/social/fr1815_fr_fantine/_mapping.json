@@ -1,0 +1,54 @@
+{
+  "story_id": "fr1815_fr_fantine",
+  "source_scenario": "mods/scenarios/social/fr1815_fr_fantine.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "36 months (3 years)",
+    "game_turn_duration": "3 months",
+    "game_turns": 12,
+    "note": "36 months / 12 turns = 3 months per turn. Fantine's arc from factory worker to death spans approximately 3 years."
+  },
+
+  "variable_mapping": {
+    "health":             { "scenario_var": "health",             "io_role": "output", "initial": 75, "scale": "1:1" },
+    "cosette_wellbeing":  { "scenario_var": "cosette_wellbeing",  "io_role": "output", "initial": 40, "scale": "1:1" },
+    "income":             { "scenario_var": "income",             "io_role": "output", "initial": 50, "scale": "1:1" },
+    "desperation":        { "scenario_var": "desperation",        "io_role": "output", "initial": 20, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "work_intensity":  { "range": [0, 2], "maps_to": "player_work_harder, player_seek_charity" },
+    "sacrifice_level": { "range": [0, 1], "maps_to": "player_sell_hair, player_sell_teeth" },
+    "seek_help":       { "range": [0, 1], "maps_to": "player_rest_and_heal, player_seek_charity" }
+  },
+
+  "schedule_events": {
+    "month_6":  "factory_dismissal — income-30 (env_factory_dismissal triggered)",
+    "month_18": "thenardier escalation — cosette_wellbeing drops sharply",
+    "month_30": "javert involvement — health crisis and arrest risk"
+  },
+
+  "card_derivations": {
+    "player_work_harder":  { "formula": "work_intensity=2: income rate ~5/mo × 3mo → +15; health cost of exhaustion+TB", "derived_effects": { "income": "+15", "health": "-10" } },
+    "player_sell_hair":    { "derived_effects": { "income": "+20", "health": "-5", "desperation": "+8" } },
+    "player_sell_teeth":   { "derived_effects": { "income": "+15", "health": "-15", "desperation": "+15" } },
+    "player_seek_charity": { "derived_effects": { "income": "+8", "desperation": "-5" } },
+    "player_rest_and_heal":{ "derived_effects": { "health": "+18", "income": "-5" } },
+    "env_factory_dismissal":       { "derived_effects": { "income": "-30", "desperation": "+15" } },
+    "env_tb_flare":                { "derived_effects": { "health": "-18", "desperation": "+10" } },
+    "env_thenardier_demands_more": { "derived_effects": { "cosette_wellbeing": "-15", "desperation": "+12" } },
+    "env_social_exclusion":        { "derived_effects": { "income": "-10", "desperation": "+10" } },
+    "env_javert_harassment":       { "derived_effects": { "desperation": "+15", "health": "-8" } },
+    "env_charitable_moment":       { "derived_effects": { "income": "+12", "cosette_wellbeing": "+8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "cosette_wellbeing >= 65",
+    "note": "Fantine's only goal is her daughter. The win condition represents Cosette being moved to a safer arrangement. This mirrors what Valjean eventually achieves after Fantine's death — the game's counterfactual is if Fantine had survived to see it.",
+    "lose_condition": "health <= 0",
+    "note2": "Historical: Fantine dies of TB and desperation before Valjean can rescue Cosette. Hugo's thesis: the social system kills Fantine, not her choices."
+  }
+}

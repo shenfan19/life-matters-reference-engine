@@ -1,0 +1,21 @@
+id: player_triage_efficiently
+type: player
+category: goal
+display:
+  name: "高效检伤分类"
+  description: "他建立了一个更系统的分诊流程，让每一剂血清都用在最能起作用的地方。这需要计算，而不是感情。"
+  flavor: "他对自己的冷静感到奇怪——不是麻木，而是某种专业的距离，让他能继续工作。"
+  icon: "📋"
+cost: 1
+effects:
+  - target: patients_treated
+    delta: 18
+  - target: compassion_fatigue
+    delta: 3
+channel: goal
+tags: [triage, efficiency, system]
+source:
+  variable: patients_treated
+  formula: "systematic triage → efficiency 1.5×: patients+18/4wk; lower direct exposure: fatigue+3"
+  pattern_detected: P1
+  sim_notes: "高效分诊：patients+18，compassion_fatigue+3（系统化减少直接情感消耗）"

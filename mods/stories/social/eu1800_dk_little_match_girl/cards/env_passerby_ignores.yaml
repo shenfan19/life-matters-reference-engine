@@ -1,0 +1,20 @@
+id: env_passerby_ignores
+type: env
+category: social
+display:
+  name: "路人经过"
+  description: "有人从她身边走过，她举起火柴，说了\"买一根火柴吗\"，但那个人已经走过去了，没有回头。"
+  flavor: "不是恶意。只是没有看见。这有时候更难承受。"
+  icon: "🚶"
+effects:
+  - target: coins_earned
+    delta: -5
+  - target: hope
+    delta: -10
+channel: social
+tags: [ignored, loneliness, indifference]
+source:
+  variable: coins_earned
+  formula: "selling failure: coins-5（机会损失），hope-10（被忽视的心理打击）"
+  pattern_detected: P2
+  sim_notes: "路人无视：coins-5（机会丢失），hope-10（社会漠视）"

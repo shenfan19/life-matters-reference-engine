@@ -1,0 +1,20 @@
+id: env_social_pressure
+type: env
+category: social
+display:
+  name: "维多利亚的体面"
+  description: "宴会邀请、慈善活动、学术演讲——Jekyll必须出现，必须得体，必须完全正常。每一次维持体面的代价，都是他留给研究的时间和精力。"
+  flavor: "那个时代对绅士的要求是：把所有的阴暗面，都压回看不见的地方去。Jekyll只是把这个要求实验化了。"
+  icon: "🎩"
+effects:
+  - target: self_control
+    delta: -8
+  - target: antidote_progress
+    delta: -5
+channel: social
+tags: [victorian, social, facade]
+source:
+  variable: self_control
+  formula: "social_facade_cost: self_control-8（维持体面消耗）; antidote_progress-5（研究时间被占用）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "社交压力：self_control-8，antidote_progress-5"

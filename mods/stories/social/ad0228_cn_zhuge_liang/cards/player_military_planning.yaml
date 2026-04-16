@@ -1,0 +1,21 @@
+id: player_military_planning
+type: player
+category: goal
+display:
+  name: "运筹帷幄"
+  description: "秉烛夜读兵书，推演阵法，核算粮道，布置哨探——每一个细节都不能错。"
+  flavor: "\"运筹帷幄之中，决胜千里之外。\"这是他给自己的要求，也是他的宿命。"
+  icon: "🗺️"
+cost: 2
+effects:
+  - target: strategy
+    delta: 12
+  - target: health
+    delta: -6
+channel: goal
+tags: [work, strategy, mental]
+source:
+  variable: strategy
+  formula: "strategy_planning: gain = work_intensity*8.0 × efficiency_factors"
+  pattern_detected: P1
+  sim_notes: "work_intensity=2, 12天: strategy+=12; 同时health-6（疲劳→health损耗）"

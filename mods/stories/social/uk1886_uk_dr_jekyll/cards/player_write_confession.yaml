@@ -1,0 +1,23 @@
+id: player_write_confession
+type: player
+category: reflection
+display:
+  name: "写下陈述"
+  description: "他坐下来，把一切写下来。从最开始的想法，到第一次实验，到现在。写作让他的思路变得清晰——他第一次看到了整件事的全貌，而不只是当时的每一个选择。"
+  flavor: "\"Henry Jekyll的完整陈述\"——他在封面上写下这行字。也许是给律师看的，也许只是给他自己。"
+  icon: "📜"
+cost: 1
+effects:
+  - target: self_control
+    delta: 15
+  - target: antidote_progress
+    delta: 5
+  - target: drug_dependency
+    delta: -8
+channel: reflection
+tags: [confession, writing, clarity]
+source:
+  variable: self_control
+  formula: "written_confession: self_control+15（书写带来清醒）; antidote_progress+5（整理思路有助研究）; drug_dependency-8（清醒时期减少依赖）"
+  pattern_detected: P1
+  sim_notes: "写下陈述：self_control+15，antidote_progress+5，drug_dependency-8"

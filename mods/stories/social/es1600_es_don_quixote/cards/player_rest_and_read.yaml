@@ -1,0 +1,21 @@
+id: player_rest_and_read
+type: player
+category: health
+display:
+  name: "休息与读书"
+  description: "他坐下来，拿出一本骑士书。他又读了那些句子，那些他读了上千遍的句子。桑丘在旁边睡着了。夜晚很安静。明天还有巨人需要对付。"
+  flavor: "这些书，是他所有疯狂的根源，也是他所有激情的来源。这两件事无法分开。"
+  icon: "📖"
+cost: 1
+effects:
+  - target: physical_health
+    delta: 15
+  - target: ideal_strength
+    delta: 10
+channel: health
+tags: [rest, reading, recovery]
+source:
+  variable: physical_health
+  formula: "rest_and_read: physical_health+15（休息恢复）; ideal_strength+10（书籍重燃信念）"
+  pattern_detected: P1
+  sim_notes: "休息读书：physical_health+15，ideal_strength+10"

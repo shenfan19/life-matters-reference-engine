@@ -1,0 +1,115 @@
+meta:
+  name: "里厄医生：奥兰的鼠疫"
+  description: "1940年代，北非奥兰城爆发鼠疫，城市封锁。里厄医生留了下来。他的妻子在封城前一天去了另一个城市疗养。他不知道她还有多久。他继续工作。在荒诞的世界里，反抗是唯一诚实的答案。"
+  difficulty: hard
+  period_start: "1940-04"
+  period_end: "1941-02"
+  tags: [Epidemic, Medicine, Existentialism, Literature, Africa]
+  country: DZ
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/dz1940_fr_dr_rieux.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  patients_treated:   0
+  doctor_health:      90
+  compassion_fatigue: 5
+  personal_grief:     10
+
+variable_display:
+  patients_treated:
+    label: "救治人数"
+    color: "#1677ff"
+    max: 300
+    higher_is_better: true
+  doctor_health:
+    label: "里厄的健康"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  compassion_fatigue:
+    label: "同情心疲劳"
+    color: "#faad14"
+    max: 100
+    higher_is_better: false
+  personal_grief:
+    label: "个人悲痛"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: doctor_health
+  scale: [0, 100, 0, 100]
+  display: "里厄的健康"
+
+turns:
+  total: 13
+  time_per_turn: "4周"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: patients_treated
+  target_value: 200
+  description: "在鼠疫结束前救治或稳定200名病患"
+
+lose_condition:
+  type: health_zero
+  description: "里厄终于倒下了。没有人记录这件事，因为还有太多其他死亡。"
+
+endings:
+  - grade: S
+    condition: "doctor_health >= 50 and patients_treated >= 250"
+    title: "目击者"
+    description: "他没有治愈鼠疫，鼠疫自己退去了。但他留下来，他见证了，他记录了。这就是他能给世界的东西。"
+  - grade: A
+    condition: "doctor_health > 0 and patients_treated >= 200"
+    title: "坚守的意义"
+    description: "妻子的消息，在鼠疫结束那天到了。他明白了：坚守不需要结果，坚守本身就是答案。"
+  - grade: B
+    condition: "patients_treated >= 120 and compassion_fatigue < 80"
+    title: "医生的荒诞"
+    description: "他做了他能做的。加缪说：反抗是唯一诚实的立场。他做到了。"
+  - grade: D
+    condition: "doctor_health <= 0 or compassion_fatigue >= 95"
+    title: "无名的倒下"
+    description: "他在鼠疫结束前倒下了。没有人有空悼念他，因为还有更多人正在死去。"
+
+env_deck:
+  - path: cards/env_mass_death.yaml
+    weight: 200
+  - path: cards/env_serum_shortage.yaml
+    weight: 180
+  - path: cards/env_ally_infected.yaml
+    weight: 160
+  - path: cards/env_quarantine_resistance.yaml
+    weight: 150
+  - path: cards/env_wife_news.yaml
+    weight: 120
+  - path: cards/env_moment_of_humanity.yaml
+    weight: 90
+
+player_deck:
+  - path: cards/player_intensive_care.yaml
+    copies: 4
+  - path: cards/player_enforce_quarantine.yaml
+    copies: 3
+  - path: cards/player_triage_efficiently.yaml
+    copies: 3
+  - path: cards/player_rest_and_grieve.yaml
+    copies: 3
+  - path: cards/player_train_volunteers.yaml
+    copies: 3
+
+generic_cards:
+  inject: [rest, interrupt]

@@ -1,0 +1,23 @@
+id: player_walk_outside
+type: player
+category: health
+display:
+  name: "户外散步"
+  description: "他走进了山里。空气很冷，很干净。他感觉到他的肺在工作，感觉到他的腿在移动，感觉到他是一个有身体的人，不只是一个病人。这个区别，在疗养院里，有时候会模糊掉。"
+  flavor: "身体的活动，是对时间扭曲的一种矫正。"
+  icon: "🏔️"
+cost: 1
+effects:
+  - target: health
+    delta: 8
+  - target: time_sense
+    delta: -10
+  - target: world_disconnect
+    delta: -8
+channel: health
+tags: [walk, nature, health]
+source:
+  variable: health
+  formula: "walk_outside: health+8（体力恢复）; time_sense-10（时间感回归正常）; world_disconnect-8（与自然连接）"
+  pattern_detected: P1
+  sim_notes: "户外散步：health+8，time_sense-10，world_disconnect-8"

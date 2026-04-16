@@ -1,0 +1,115 @@
+meta:
+  name: "拉斯柯尔尼科夫：道德的发烧"
+  description: "圣彼得堡，1865年夏。他杀了一个放贷人，相信自己是超出道德的存在。现在他发着烧，侦探在敲门，索尼娅在祈祷。他必须弄清楚：他到底是谁。"
+  difficulty: hard
+  period_start: "1865-07"
+  period_end: "1865-10"
+  tags: [Crime, Redemption, Poverty, Russia, Literature]
+  country: RU
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/ru1865_ru_raskolnikov.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  mental_health:       45
+  fever_level:         30
+  redemption_potential: 5
+  detection_risk:      10
+
+variable_display:
+  mental_health:
+    label: "精神状态"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  fever_level:
+    label: "发烧强度"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+  redemption_potential:
+    label: "救赎可能"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  detection_risk:
+    label: "被发现风险"
+    color: "#faad14"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: mental_health
+  scale: [0, 100, 0, 100]
+  display: "精神状态"
+
+turns:
+  total: 9
+  time_per_turn: "10天"
+  env_cards_per_turn: 2
+  player_hand_size: 4
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: redemption_potential
+  target_value: 70
+  description: "找到足够的内在力量，选择走向广场，亲吻土地，然后自首"
+
+lose_condition:
+  type: health_zero
+  description: "精神在发烧与罪恶感中彻底崩溃。他变成了他认为自己可以成为的那种人——只是以错误的方式。"
+
+endings:
+  - grade: S
+    condition: "redemption_potential >= 85 and mental_health >= 40"
+    title: "在广场上"
+    description: "他跪下来，亲吻了圣彼得堡的土地。然后走进警察局，自首。西伯利亚，新的开始。"
+  - grade: A
+    condition: "redemption_potential >= 70"
+    title: "索尼娅的福音"
+    description: "她读了《拉撒路复活》给他听。他哭了。这是第一次真实的眼泪。"
+  - grade: B
+    condition: "mental_health >= 40 and detection_risk < 70"
+    title: "仍在挣扎"
+    description: "他没有崩溃，也没有救赎。他继续在圣彼得堡的街道上行走，发着热，等待着某种他不知道是什么的东西。"
+  - grade: D
+    condition: "mental_health <= 0 or detection_risk >= 90"
+    title: "超人的幻灭"
+    description: "理论是错的。他不是拿破仑，他只是一个在阁楼里发烧的学生。被捕时，他什么都没说。"
+
+env_deck:
+  - path: cards/env_porfiry_visits.yaml
+    weight: 200
+  - path: cards/env_guilt_hallucination.yaml
+    weight: 190
+  - path: cards/env_sonya_finds_him.yaml
+    weight: 100
+  - path: cards/env_evidence_found.yaml
+    weight: 170
+  - path: cards/env_fever_breaks.yaml
+    weight: 120
+  - path: cards/env_razumikhin_helps.yaml
+    weight: 90
+
+player_deck:
+  - path: cards/player_seek_sonya.yaml
+    copies: 3
+  - path: cards/player_hide_evidence.yaml
+    copies: 3
+  - path: cards/player_confess_fragment.yaml
+    copies: 3
+  - path: cards/player_endure_fever.yaml
+    copies: 3
+  - path: cards/player_philosophical_justification.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

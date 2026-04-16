@@ -12,6 +12,7 @@ export interface StoryMeta {
   goal_value: number;
   goal_variable: string;
   variable_labels?: Record<string, string>;
+  author?: string;
 }
 
 

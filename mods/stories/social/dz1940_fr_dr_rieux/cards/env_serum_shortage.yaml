@@ -1,0 +1,20 @@
+id: env_serum_shortage
+type: env
+category: resource
+display:
+  name: "血清告急"
+  description: "从巴黎运来的血清不够了。他必须决定谁用，谁等——谁也许等不到。"
+  flavor: "医学资源分配是最难的决定，因为它把数学变成了死亡。"
+  icon: "💉"
+effects:
+  - target: patients_treated
+    delta: -15
+  - target: compassion_fatigue
+    delta: 10
+channel: resource
+tags: [shortage, triage, resource]
+source:
+  variable: patients_treated
+  formula: "supply shortage event: patients_treated-15（无法救治者增加），fatigue+10（艰难决策的消耗）"
+  pattern_detected: P3
+  sim_notes: "血清短缺：patients_treated-15（救治能力下降），compassion_fatigue+10（分配决策的道德负担）"

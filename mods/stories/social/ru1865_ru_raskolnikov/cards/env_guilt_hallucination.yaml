@@ -1,0 +1,22 @@
+id: env_guilt_hallucination
+type: env
+category: mental
+display:
+  name: "幻觉"
+  description: "他梦见了那个女人，梦见她用颤抖的手挡住他的斧头，梦见她还在那里，笑着。他醒来时，床单都湿了。"
+  flavor: "罪恶感不是道德的证明，但它证明了他终究是普通人——而不是超人。"
+  icon: "👻"
+effects:
+  - target: fever_level
+    delta: 15
+  - target: mental_health
+    delta: -15
+  - target: redemption_potential
+    delta: 5
+channel: mental
+tags: [hallucination, guilt, fever]
+source:
+  variable: fever_level
+  formula: "guilt_pressure(80) × fever_drive × 10days → fever+15; mental_health-15; forced reflection: redemption+5"
+  pattern_detected: P2
+  sim_notes: "罪恶幻觉：fever+15，mental_health-15，redemption+5（幻觉触发真实反思）"

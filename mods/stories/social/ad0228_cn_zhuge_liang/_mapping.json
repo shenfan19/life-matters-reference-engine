@@ -1,0 +1,86 @@
+{
+  "story_id": "ad0228_cn_zhuge_liang",
+  "source_scenario": "mods/scenarios/social/ad0228_cn_zhuge_liang.yaml",
+  "generated_on": "2026-04-15",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 day",
+    "scenario_total": "180 days",
+    "game_turn_duration": "12 days",
+    "game_turns": 15,
+    "note": "180 days / 15 turns = 12 days per turn; card deltas derived from formula rates × 12"
+  },
+
+  "variable_mapping": {
+    "health":    { "scenario_var": "health",    "io_role": "output", "initial": 70,  "scale": "1:1" },
+    "strategy":  { "scenario_var": "strategy",  "io_role": "output", "initial": 0,   "scale": "1:1" },
+    "supply":    { "scenario_var": "supply_level", "io_role": "output", "initial": 80, "scale": "1:1" },
+    "morale":    { "scenario_var": "morale",    "io_role": "output", "initial": 70,  "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "work_intensity":    { "range": [0, 3], "maps_to": "player card cost / effect magnitude" },
+    "rest_quality":      { "range": [0, 1], "maps_to": "player_rest card" },
+    "food_intake":       { "range": [0, 400], "maps_to": "player_dispatch_supply indirectly via morale" },
+    "political_address": { "range": [0, 1.5], "maps_to": "player_memorial card" }
+  },
+
+  "card_derivations": {
+    "player_military_planning": {
+      "formula": "strategy_gain = work_intensity(2) × 8.0 × efficiency(~0.7) = ~11.2/day × 12days → ~12",
+      "derived_effects": { "strategy": "+12", "health": "-6 (overwork penalty at fatigue~60)" }
+    },
+    "player_inspect_troops": {
+      "formula": "morale_gain ≈ political_address(1) × 12/day × 12days → 15 (with cap)",
+      "derived_effects": { "morale": "+15", "health": "-5 (travel/field exposure)" }
+    },
+    "player_dispatch_supply": {
+      "formula": "supply_level recovery when supply_level<80 → +15; morale from food boost +10",
+      "derived_effects": { "supply": "+15", "morale": "+10", "health": "-4 (logistics effort)" }
+    },
+    "player_rest": {
+      "formula": "rest_quality=1: health += 1.8/day × 12days → +22 (capped ~20); fatigue recovery",
+      "derived_effects": { "health": "+20", "morale": "-5 (troops sense commander resting)" }
+    },
+    "player_memorial": {
+      "formula": "political_address=1.5: morale+8, supply_bureaucracy+10, strategy+8 (12-day cycle)",
+      "derived_effects": { "strategy": "+8", "morale": "+8", "supply": "+10" }
+    },
+    "player_delegate": {
+      "formula": "reduced work_intensity → health recovery +1/day × 12 → +12; morale bonus from trust",
+      "derived_effects": { "health": "+12", "morale": "+8" }
+    },
+    "env_supply_cutoff": {
+      "formula": "supply_level -= 20/event (logistic failure); morale -= 10 (hunger)",
+      "derived_effects": { "supply": "-20", "morale": "-10" }
+    },
+    "env_court_interference": {
+      "formula": "strategy disruption: -10 (wasted planning); supply bureaucracy -8",
+      "derived_effects": { "strategy": "-10", "supply": "-8" }
+    },
+    "env_wei_ambush": {
+      "formula": "battle event: health-8 (direct), morale-12 (defeat shock), strategy-5 (plan disruption)",
+      "derived_effects": { "health": "-8", "morale": "-12", "strategy": "-5" }
+    },
+    "env_camp_disease": {
+      "formula": "epidemic: health-10 (commander exposure), morale-8 (troop suffering), supply-5 (medicine)",
+      "derived_effects": { "health": "-10", "morale": "-8", "supply": "-5" }
+    },
+    "env_autumn_rain": {
+      "formula": "seasonal: supply drain -12/month (wet roads), strategy -6 (delayed operations)",
+      "derived_effects": { "supply": "-12", "strategy": "-6" }
+    },
+    "env_soldier_loyalty": {
+      "formula": "loyalty event: morale+15 (high court_stability), strategy+5 (coordinated attack)",
+      "derived_effects": { "morale": "+15", "strategy": "+5" }
+    }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "strategy >= 80",
+    "note": "strategy starts at 0, needs +80 over 15 turns. Theoretical max with player_military_planning spam ~180, but health constraint forces balance.",
+    "lose_condition": "health <= 0",
+    "note2": "Overwork penalty formula: fatigue>=70 → health -= (fatigue-70)*0.04/day. Mapped to card health costs."
+  }
+}

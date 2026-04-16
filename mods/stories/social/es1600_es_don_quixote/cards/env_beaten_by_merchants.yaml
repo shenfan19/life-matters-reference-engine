@@ -1,0 +1,20 @@
+id: env_beaten_by_merchants
+type: env
+category: humiliation
+display:
+  name: "被商人痛打"
+  description: "他拦住了一队商人，要求他们承认杜尔西内娅是世界上最美的女人。商人们不肯。他们的骡夫把他打倒在地，骑马走了。他躺在尘土里，喃喃背诵骑士故事里的句子。"
+  flavor: "他被打倒了，但他没有放弃他的世界观。这也许是悲剧，也许是坚守。"
+  icon: "💥"
+effects:
+  - target: physical_health
+    delta: -20
+  - target: social_ridicule
+    delta: 10
+channel: humiliation
+tags: [merchants, beaten, humiliation]
+source:
+  variable: physical_health
+  formula: "beaten_merchants: physical_health-20（被痛打）; social_ridicule+10（再次出丑）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "被商人痛打：physical_health-20，social_ridicule+10"

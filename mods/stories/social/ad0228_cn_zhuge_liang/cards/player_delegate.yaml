@@ -1,0 +1,21 @@
+id: player_delegate
+type: player
+category: social
+display:
+  name: "委以重任"
+  description: "将部分军务交付心腹将领，姜维负责机动作战，王平驻守险要。信任有时比亲力亲为更有力量。"
+  flavor: "诸葛亮不善放权，是史学家普遍的评价。这张牌，他用得太少了。"
+  icon: "🤝"
+cost: 1
+effects:
+  - target: health
+    delta: 12
+  - target: morale
+    delta: 8
+channel: social
+tags: [delegation, health, leadership]
+source:
+  variable: health
+  formula: "rest_recovery (indirect via work reduction)"
+  pattern_detected: P1
+  sim_notes: "委任降低work_intensity→health损耗减少；等效health+12, morale+8（下属激励）"

@@ -1,0 +1,130 @@
+id: ru1865_ru_raskolnikov
+name: "拉斯柯尔尼科夫：道德的发烧"
+description: |
+  圣彼得堡，1865年夏。一个贫困的法律学生相信自己是"超人"——
+  能够越过普通人的道德限制，为更大善意杀死一个"有害的"放贷人。
+  他杀了。他没想到，道德不是一个可以推翻的哲学命题，而是烧在身体里的病。
+  这个模拟从谋杀之后开始：发烧、妄想、追踪、忏悔的边界。
+type: scenario
+tags: [poverty, crime, mental-health, fever, redemption, literature]
+source: Crime and Punishment (Dostoyevsky, 1866)
+
+simulation:
+  step: 1        # 单位：天
+  total: 90      # 约3个月（谋杀到自首）
+  step_unit: day
+
+inputs:
+  - id: concealment_effort
+    label: "掩盖罪行努力"
+    description: "主动消除痕迹、控制表现、避免暴露"
+    min: 0
+    max: 1
+    default: 0.6
+    unit: intensity
+
+  - id: spiritual_seeking
+    label: "精神救赎寻求"
+    description: "与索尼娅等人的真实交流，寻求道德出路"
+    min: 0
+    max: 1
+    default: 0.2
+    unit: intensity
+
+  - id: social_withdrawal
+    label: "社会退缩程度"
+    description: "拒绝人际接触、独居程度（越高越安全，也越快崩溃）"
+    min: 0
+    max: 1
+    default: 0.7
+    unit: intensity
+
+variables:
+  - id: mental_health
+    label: "精神状态"
+    description: "罪恶感·发烧·妄想·心理分裂的综合状态（高=稳定）"
+    min: 0
+    max: 100
+    initial: 45
+    io_role: output
+    unit: score
+
+  - id: fever_level
+    label: "发烧强度"
+    description: "心理创伤导致的生理发热（陀思妥耶夫斯基式症状）"
+    min: 0
+    max: 100
+    initial: 30
+    io_role: output
+    unit: score
+
+  - id: detection_risk
+    label: "被侦探发现的风险"
+    description: "波费利等侦探逐渐收紧包围圈的程度"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+  - id: redemption_potential
+    label: "救赎可能性"
+    description: "走向自首和灵魂重建的内在能量"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: guilt_pressure
+    label: "罪恶感压力"
+    description: "无法逃避的道德重量"
+    min: 0
+    max: 100
+    initial: 60
+    io_role: output
+    unit: score
+
+formulas:
+  - id: fever_dynamics
+    description: "发烧随罪恶压力增高，精神寻求可缓解"
+    expr: |
+      fever_drive = (guilt_pressure / 100) * 2.0
+      spiritual_relief = spiritual_seeking * 1.5
+      fever_level = min(100, max(0, fever_level + fever_drive - spiritual_relief))
+
+  - id: mental_health_change
+    description: "精神状态受发烧·掩盖努力·孤立的消耗"
+    expr: |
+      fever_cost = (fever_level / 100) * 2.5
+      concealment_cost = concealment_effort * 1.2
+      isolation_cost = social_withdrawal * 0.8
+      spiritual_gain = spiritual_seeking * 2.0
+      mental_health = max(0, min(100, mental_health - fever_cost - concealment_cost - isolation_cost + spiritual_gain))
+
+  - id: detection_progression
+    description: "侦探的追踪随时间推进，掩盖努力可短暂延缓"
+    expr: |
+      natural_progress = 1.5
+      concealment_delay = concealment_effort * 0.8
+      guilt_leakage = (guilt_pressure / 100) * 1.0  # 罪恶感越强，越容易暴露
+      detection_risk = min(100, detection_risk + natural_progress - concealment_delay + guilt_leakage)
+
+  - id: guilt_dynamics
+    description: "罪恶感随时间增长，只有精神寻求可真正减少"
+    expr: |
+      guilt_growth = 1.0 + social_withdrawal * 0.5
+      guilt_relief = spiritual_seeking * 2.5
+      guilt_pressure = min(100, max(0, guilt_pressure + guilt_growth - guilt_relief))
+
+  - id: redemption_growth
+    description: "救赎可能性随精神寻求增长，需要接受痛苦（非掩盖）"
+    expr: |
+      redemption_gain = spiritual_seeking * 3.0 * (1 - concealment_effort * 0.5)
+      redemption_potential = min(100, redemption_potential + redemption_gain)
+
+optimizer:
+  target: redemption_potential
+  direction: maximize
+  secondary: mental_health
+  note: "历史结局：拉斯柯尔尼科夫向索尼娅坦白→在广场自首→西伯利亚流放中开始真正的心理重建"

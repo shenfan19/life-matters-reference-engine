@@ -1,0 +1,22 @@
+id: env_food_runs_low
+type: env
+category: resource
+display:
+  name: "食物减少"
+  description: "他爬下去找食物，带回来的越来越少。外面的人开始知道他在藏她，不允许商贩靠近圣母院。"
+  flavor: "封锁从来不是暴力的，它让你感受到：你的存在，正在慢慢耗尽。"
+  icon: "🍞"
+effects:
+  - target: esmeralda_hope
+    delta: -10
+  - target: quasimodo_health
+    delta: -8
+  - target: external_pressure
+    delta: 8
+channel: resource
+tags: [food, shortage, siege]
+source:
+  variable: esmeralda_hope
+  formula: "siege: food shortage → esmeralda_hope-10, health-8（体力消耗）, pressure+8（包围收紧）"
+  pattern_detected: P2
+  sim_notes: "食物短缺：esmeralda_hope-10，quasimodo_health-8，external_pressure+8"

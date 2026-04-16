@@ -1,0 +1,21 @@
+id: player_follow_treatment
+type: player
+category: health
+display:
+  name: "遵从治疗方案"
+  description: "他按时躺在阳台上晒太阳，按时服药，按时接受检查。贝伦斯医生点了点头，说他的情况有进展。这是魔山上的一种胜利——微小的，以月为单位的。"
+  flavor: "在这里，耐心是最难的医嘱。"
+  icon: "🌞"
+cost: 1
+effects:
+  - target: health
+    delta: 12
+  - target: world_disconnect
+    delta: 5
+channel: health
+tags: [treatment, medicine, patience]
+source:
+  variable: health
+  formula: "follow_treatment: health+12（治疗有效）; world_disconnect+5（继续留在疗养院）"
+  pattern_detected: P1
+  sim_notes: "遵从治疗：health+12，world_disconnect+5"

@@ -1,0 +1,20 @@
+id: env_police_chase
+type: env
+category: crisis
+display:
+  name: "被追捕"
+  description: "他跑了。他的腿很短，警察的腿很长。街上的人在喊\"抓贼\"，但他不是贼——或者说，他不想是贼。这个区别，在跑的时候，没有时间解释。"
+  flavor: "在那个制度里，穷孩子被追捕，不需要证据。"
+  icon: "🏃"
+effects:
+  - target: physical_health
+    delta: -15
+  - target: danger_level
+    delta: 20
+channel: crisis
+tags: [police, chase, danger]
+source:
+  variable: physical_health
+  formula: "police_chase: physical_health-15（体力消耗、受伤）; danger_level+20（暴露风险）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "被追捕：physical_health-15，danger_level+20"

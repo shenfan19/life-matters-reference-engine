@@ -1,0 +1,115 @@
+meta:
+  name: "冉·阿让：苦役之后"
+  description: "十九年苦役。一块面包。出狱时，没有人愿意收留他。直到一个主教给了他银烛台，说：我用这些买下了你的灵魂。他选择成为另一种人。但贾维尔不会停下来。"
+  difficulty: medium
+  period_start: "1815-01"
+  period_end: "1833-06"
+  tags: [Justice, Redemption, France, Literature, Class]
+  country: FR
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/fr1815_fr_jean_valjean.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  redemption_progress: 5
+  physical_health:     60
+  community_trust:     5
+  javert_pursuit:      15
+
+variable_display:
+  redemption_progress:
+    label: "救赎进度"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  physical_health:
+    label: "身体状态"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  community_trust:
+    label: "社区信任"
+    color: "#faad14"
+    max: 100
+    higher_is_better: true
+  javert_pursuit:
+    label: "贾维尔的追踪"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: physical_health
+  scale: [0, 100, 0, 100]
+  display: "身体状态"
+
+turns:
+  total: 12
+  time_per_turn: "18个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: redemption_progress
+  target_value: 80
+  description: "在生命消耗殆尽之前完成救赎"
+
+lose_condition:
+  type: health_zero
+  description: "苦役的账单，最终还是找上了他。他死在了珂赛特能找到他之前。"
+
+endings:
+  - grade: S
+    condition: "redemption_progress >= 90 and community_trust >= 70"
+    title: "银烛台"
+    description: "主教用银烛台买下了他的灵魂。他用余生付清了这笔债。他死在了珂赛特的怀里。"
+  - grade: A
+    condition: "redemption_progress >= 80"
+    title: "感化"
+    description: "贾维尔无法理解他，但贾维尔也无法否认他。这对一个警察来说，是不可承受的矛盾。"
+  - grade: B
+    condition: "community_trust >= 50 and javert_pursuit < 70"
+    title: "新的身份"
+    description: "他建立了新的生活，新的名字，新的信任。这不容易，但他做到了一部分。"
+  - grade: D
+    condition: "physical_health <= 0 or javert_pursuit >= 90"
+    title: "贾维尔的法律"
+    description: "法律追上了他。法律不在乎他现在是什么人，只在乎他曾经做过什么。"
+
+env_deck:
+  - path: cards/env_javert_closes_in.yaml
+    weight: 190
+  - path: cards/env_false_valjean_arrested.yaml
+    weight: 150
+  - path: cards/env_cosette_in_danger.yaml
+    weight: 170
+  - path: cards/env_barricade_battle.yaml
+    weight: 140
+  - path: cards/env_bishop_memory.yaml
+    weight: 80
+  - path: cards/env_community_needs.yaml
+    weight: 120
+
+player_deck:
+  - path: cards/player_act_of_virtue.yaml
+    copies: 4
+  - path: cards/player_hide_identity.yaml
+    copies: 3
+  - path: cards/player_confess_who_i_am.yaml
+    copies: 2
+  - path: cards/player_protect_cosette.yaml
+    copies: 3
+  - path: cards/player_endure_and_rest.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

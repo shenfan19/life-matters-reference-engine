@@ -1,0 +1,20 @@
+id: env_mass_death
+type: env
+category: crisis
+display:
+  name: "大批死亡"
+  description: "今天死了多少人？他不再数了，因为数字开始不代表任何事情。这是同情心疲劳开始的时候。"
+  flavor: "\"一个人的死亡是悲剧，一百万人的死亡是统计数字。\"——里厄不是斯大林，但他明白这句话的危险。"
+  icon: "💀"
+effects:
+  - target: compassion_fatigue
+    delta: 15
+  - target: doctor_health
+    delta: -8
+channel: crisis
+tags: [death, epidemic, fatigue]
+source:
+  variable: compassion_fatigue
+  formula: "plague_spread(60) × fatigue_gain × 4wk → compassion_fatigue+15; health-8"
+  pattern_detected: P2
+  sim_notes: "大规模死亡事件：compassion_fatigue+15（情感麻木），doctor_health-8（目睹的心理生理消耗）"

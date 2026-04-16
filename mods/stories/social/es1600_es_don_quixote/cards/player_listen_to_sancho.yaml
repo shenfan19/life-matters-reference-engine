@@ -1,0 +1,23 @@
+id: player_listen_to_sancho
+type: player
+category: wisdom
+display:
+  name: "听桑丘说话"
+  description: "今天他没有打断桑丘。桑丘说了很多关于实际情况的话——关于他们没有食物，关于他们的马需要休息，关于那个所谓的公主其实是个农村姑娘。堂吉诃德听完了，说：你说的也有道理。"
+  flavor: "一个真正伟大的骑士，应该听他的随从说话。"
+  icon: "👂"
+cost: 1
+effects:
+  - target: actual_good_done
+    delta: 12
+  - target: physical_health
+    delta: 8
+  - target: ideal_strength
+    delta: -5
+channel: wisdom
+tags: [sancho, listening, pragmatism]
+source:
+  variable: actual_good_done
+  formula: "listen_sancho: actual_good_done+12（务实判断增加真实效果）; physical_health+8（照顾好自己）; ideal_strength-5（现实稍有渗入）"
+  pattern_detected: P1
+  sim_notes: "听桑丘说话：actual_good_done+12，physical_health+8，ideal_strength-5"

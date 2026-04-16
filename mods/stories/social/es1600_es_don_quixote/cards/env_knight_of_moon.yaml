@@ -1,0 +1,20 @@
+id: env_knight_of_moon
+type: env
+category: defeat
+display:
+  name: "月亮骑士的挑战"
+  description: "一个自称\"月亮骑士\"的人向他发出决斗。他被打败了。按照骑士法则，他必须回家，放弃骑士生涯整整一年。他跪在地上，感觉比任何时候都更像他自己。"
+  flavor: "他的朋友扮成了月亮骑士。这是一种爱，也是一种残忍。"
+  icon: "🌙"
+effects:
+  - target: ideal_strength
+    delta: -20
+  - target: physical_health
+    delta: -12
+channel: defeat
+tags: [knight_of_moon, defeat, rules]
+source:
+  variable: ideal_strength
+  formula: "knight_of_moon: ideal_strength-20（骑士精神被迫受挫）; physical_health-12（受伤）"
+  pattern_detected: ENV_CRITICAL
+  sim_notes: "月亮骑士败北：ideal_strength-20，physical_health-12（关键情节）"

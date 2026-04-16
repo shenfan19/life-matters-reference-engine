@@ -1,0 +1,20 @@
+id: env_social_exclusion
+type: env
+category: social
+display:
+  name: "社会排斥"
+  description: "邻居知道了她的事。房东提高了房租，或者暗示她找别处住。街上有人指指点点。"
+  flavor: "19世纪的社会道德是一种集体暴力，以体面的名义执行。"
+  icon: "👆"
+effects:
+  - target: desperation
+    delta: 15
+  - target: health
+    delta: -8
+channel: social
+tags: [exclusion, stigma, social]
+source:
+  variable: desperation
+  formula: "social exclusion event: desperation+15, health-8（精神压力生理化）"
+  pattern_detected: P2
+  sim_notes: "社会排斥：desperation+15，health-8"

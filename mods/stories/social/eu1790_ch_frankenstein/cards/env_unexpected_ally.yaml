@@ -1,0 +1,20 @@
+id: env_unexpected_ally
+type: env
+category: support
+display:
+  name: "意外的支持"
+  description: "克拉维尔或亨利·克拉维尔——一个真正关心他的朋友，暂时把他拉回了人世。不知道真相，但给了他一点喘息。"
+  flavor: "这个世界上有人在乎他，这个事实本身，就是他继续的理由。"
+  icon: "🤝"
+effects:
+  - target: health
+    delta: 12
+  - target: ethical_burden
+    delta: -8
+channel: support
+tags: [friendship, support, recovery]
+source:
+  variable: health
+  formula: "social contact → health recovery +12; friendship reduces ethical pressure -8"
+  pattern_detected: P1
+  sim_notes: "正向事件：朋友陪伴health+12，伦理负担缓解-8（被接纳减轻罪感）"

@@ -1,0 +1,22 @@
+id: env_lheureux_pushes
+type: env
+category: pressure
+display:
+  name: "勒赫罗登门"
+  description: "商人勒赫罗亲自来了。他笑着，说话很客气，但意思很清楚：钱，或者她去找她丈夫。她意识到她已经没有退路了。"
+  flavor: "他的善意，是所有威胁里最令人窒息的一种。"
+  icon: "💸"
+effects:
+  - target: debt_level
+    delta: 20
+  - target: psychological_health
+    delta: -15
+  - target: social_reputation
+    delta: -8
+channel: pressure
+tags: [lheureux, debt, crisis]
+source:
+  variable: debt_level
+  formula: "lheureux_pressure: debt_level+20（债务危机升级）; psychological_health-15（崩溃边缘）; social_reputation-8（被要挟）"
+  pattern_detected: ENV_CRITICAL
+  sim_notes: "勒赫罗登门：debt_level+20，psychological_health-15，social_reputation-8"

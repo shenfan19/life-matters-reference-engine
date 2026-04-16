@@ -1,0 +1,21 @@
+id: player_rest_recover
+type: player
+category: health
+display:
+  name: "强迫休息"
+  description: "克拉维尔逼他放下笔记本，出去走走。日内瓦湖的风吹过来，他第一次想起来他曾经喜欢什么。"
+  flavor: "他试图记住：在实验室之前，他是什么样的人。"
+  icon: "🌊"
+cost: 1
+effects:
+  - target: health
+    delta: 18
+  - target: ethical_burden
+    delta: -6
+channel: health
+tags: [rest, recovery, nature]
+source:
+  variable: health
+  formula: "self_care=1: health recovery +1.5/mo × 2 = +3 base, scaled +18 for game turn"
+  pattern_detected: P1
+  sim_notes: "rest: health+18, ethical_burden-6（暂时从罪恶感中解脱）"

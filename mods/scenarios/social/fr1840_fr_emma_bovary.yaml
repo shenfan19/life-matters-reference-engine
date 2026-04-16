@@ -1,0 +1,109 @@
+id: fr1840_fr_emma_bovary
+name: "包法利夫人：浪漫主义的代价"
+description: |
+  艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。
+  她相信自己应该过另一种生活——激情、华服、真爱。
+  她一次次行动，一次次失望，一次次借债。
+  最终的账单不只是金钱上的。
+type: scenario
+tags: [depression, romantic-delusion, debt, society, literature]
+source: Madame Bovary (Gustave Flaubert, 1857)
+
+simulation:
+  step: 1
+  total: 60   # 约5年（婚后到自杀）
+  step_unit: month
+
+inputs:
+  - id: romantic_pursuit
+    label: "浪漫主义追求强度"
+    description: "追求婚外情、华服、奢靡生活的强度"
+    min: 0
+    max: 3
+    default: 1.5
+    unit: intensity
+
+  - id: social_conformity
+    label: "融入乡村生活"
+    description: "接受平庸现实、履行妻子母亲职责"
+    min: 0
+    max: 1
+    default: 0.3
+    unit: ratio
+
+  - id: self_reflection
+    label: "自我认知"
+    description: "理解自身期望与现实差距的努力"
+    min: 0
+    max: 1
+    default: 0.1
+    unit: intensity
+
+variables:
+  - id: psychological_health
+    label: "心理健康"
+    description: "抑郁程度的反指标（高=健康，低=崩溃）"
+    min: 0
+    max: 100
+    initial: 60
+    io_role: output
+    unit: score
+
+  - id: debt_level
+    label: "债务积累"
+    description: "为追求浪漫主义生活欠下的债务"
+    min: 0
+    max: 100
+    initial: 5
+    io_role: output
+    unit: score
+
+  - id: disillusionment
+    label: "幻灭感"
+    description: "每次期待落空的累积失望"
+    min: 0
+    max: 100
+    initial: 10
+    io_role: output
+    unit: score
+
+  - id: social_reputation
+    label: "社会声誉"
+    description: "在小镇的社会地位和他人评价"
+    min: 0
+    max: 100
+    initial: 65
+    io_role: output
+    unit: score
+
+formulas:
+  - id: debt_growth
+    description: "浪漫追求累积债务"
+    expr: |
+      debt_level = min(100, debt_level + romantic_pursuit * 2.5)
+
+  - id: disillusionment_growth
+    description: "每次追求都有幻灭的反弹"
+    expr: |
+      disillusionment = min(100, disillusionment + romantic_pursuit * 1.5 - self_reflection * 2.0)
+
+  - id: mental_decay
+    description: "幻灭+债务+压抑共同侵蚀心理健康"
+    expr: |
+      illusion_cost = (disillusionment / 100) * 2.5
+      debt_anxiety = (debt_level / 100) * 1.5
+      conformity_relief = social_conformity * 1.0
+      reflection_gain = self_reflection * 1.5
+      psychological_health = max(0, min(100, psychological_health - illusion_cost - debt_anxiety + conformity_relief + reflection_gain))
+
+  - id: reputation_change
+    description: "婚外情暴露降低声誉"
+    expr: |
+      exposure_risk = romantic_pursuit * 0.8
+      social_reputation = max(0, min(100, social_reputation - exposure_risk + social_conformity * 0.5))
+
+optimizer:
+  target: psychological_health
+  direction: maximize
+  secondary: social_reputation
+  note: "历史结局：debt_level=100→债主上门→砒霜自杀；psychological_health先高峰后断崖"

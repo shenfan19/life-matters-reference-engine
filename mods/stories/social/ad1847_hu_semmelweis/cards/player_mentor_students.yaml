@@ -1,0 +1,23 @@
+id: player_mentor_students
+type: player
+category: social
+display:
+  name: "培育支持者"
+  description: "把洗手规程悄悄传授给年轻学生——他们会成为医生，会在自己的病房里实践这件事。"
+  flavor: "真理的传播不靠期刊，靠学生。李斯特后来发展了消毒理论，部分灵感来自塞麦尔维斯的工作。"
+  icon: "🎓"
+cost: 2
+effects:
+  - target: acceptance
+    delta: 7
+  - target: isolation
+    delta: -10
+  - target: mental_health
+    delta: 5
+channel: social
+tags: [mentoring, education, long-term]
+source:
+  variable: acceptance
+  formula: "advocacy_effect (low intensity, sustainable path)"
+  pattern_detected: P1
+  sim_notes: "低强度倡导路径: acceptance+7, isolation-10（人际网络）, mental_health+5"

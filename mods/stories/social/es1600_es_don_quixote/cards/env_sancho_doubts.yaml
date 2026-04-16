@@ -1,0 +1,20 @@
+id: env_sancho_doubts
+type: env
+category: doubt
+display:
+  name: "桑丘的疑虑"
+  description: "桑丘今天说了一些不该说的话——他问骑士大人，那个承诺的岛是否真的存在，那场胜利是否真的发生了。堂吉诃德停顿了一下，然后说当然是真的。但那个停顿，持续了太久了。"
+  flavor: "忠诚的朋友，有时候会在不该提问的时候提问。"
+  icon: "🤔"
+effects:
+  - target: ideal_strength
+    delta: -12
+  - target: actual_good_done
+    delta: 5
+channel: doubt
+tags: [sancho, doubt, questioning]
+source:
+  variable: ideal_strength
+  formula: "sancho_doubts: ideal_strength-12（信念受到挑战）; actual_good_done+5（反思中做了真实的事）"
+  pattern_detected: ENV_MIXED
+  sim_notes: "桑丘疑虑：ideal_strength-12，actual_good_done+5"

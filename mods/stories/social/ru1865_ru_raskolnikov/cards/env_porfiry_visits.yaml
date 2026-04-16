@@ -1,0 +1,20 @@
+id: env_porfiry_visits
+type: env
+category: pressure
+display:
+  name: "波费利来访"
+  description: "侦探来了，说只是随便聊聊。他的每一个问题都是陷阱，每一句话都是试探。他知道，但他无法证明。而拉斯柯尔尼科夫知道他在玩什么游戏。"
+  flavor: "最危险的对手，不是那个拿着证据的人，而是那个用你的神经质来等你崩溃的人。"
+  icon: "🕵️"
+effects:
+  - target: detection_risk
+    delta: 15
+  - target: mental_health
+    delta: -12
+channel: pressure
+tags: [porfiry, interrogation, pressure]
+source:
+  variable: detection_risk
+  formula: "natural_progress(1.5) + guilt_leakage × 10days → detection+15; mental_health-12（审讯压力）"
+  pattern_detected: P2
+  sim_notes: "波费利审讯：detection_risk+15，mental_health-12（精神压力峰值）"

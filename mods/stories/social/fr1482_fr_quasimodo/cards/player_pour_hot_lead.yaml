@@ -1,0 +1,23 @@
+id: player_pour_hot_lead
+type: player
+category: goal
+display:
+  name: "倾倒融化的铅水"
+  description: "他熔化了教堂的铅皮，从高处倾泻而下。这是他能做的最极端的防御。他知道，这会激怒他们更多。"
+  flavor: "有些防御，是一种宣言：我不会退让，即使代价是激起更大的愤怒。"
+  icon: "🔥"
+cost: 2
+effects:
+  - target: sanctuary_integrity
+    delta: 25
+  - target: quasimodo_health
+    delta: -12
+  - target: external_pressure
+    delta: 10
+channel: goal
+tags: [extreme-defense, lead, battle]
+source:
+  variable: sanctuary_integrity
+  formula: "maximum defense: sanctuary+25; health-12（极限消耗）; provocation: pressure+10"
+  pattern_detected: P1
+  sim_notes: "倾倒铅水：sanctuary+25（极端防御），health-12，pressure+10（激化矛盾）"

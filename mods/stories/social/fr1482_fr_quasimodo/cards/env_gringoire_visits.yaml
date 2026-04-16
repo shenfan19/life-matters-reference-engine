@@ -1,0 +1,20 @@
+id: env_gringoire_visits
+type: env
+category: support
+display:
+  name: "格兰瓜来访"
+  description: "诗人格兰瓜来了，带来了消息，也带来了一些食物。他们无法交流太多，但他的出现证明：她还没有被遗忘。"
+  flavor: "在孤立的时候，一个人的到来，是对存在本身的确认。"
+  icon: "📜"
+effects:
+  - target: esmeralda_hope
+    delta: 12
+  - target: quasimodo_health
+    delta: 8
+channel: support
+tags: [gringoire, support, hope]
+source:
+  variable: esmeralda_hope
+  formula: "external ally visit: hope+12, health+8（补给与精神支持）"
+  pattern_detected: P1
+  sim_notes: "格兰瓜来访：hope+12，health+8"

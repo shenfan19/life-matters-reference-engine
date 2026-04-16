@@ -1,0 +1,20 @@
+id: env_debt_letter
+type: env
+category: crisis
+display:
+  name: "债务催款信"
+  description: "勒赫罗又寄来了一封信。数字比上次大。她把信压在抽屉底层，告诉自己以后再说。但「以后」越来越短了。"
+  flavor: "债务有一种特性：它不会因为你不去想它而缩小。"
+  icon: "📨"
+effects:
+  - target: debt_level
+    delta: 15
+  - target: psychological_health
+    delta: -10
+channel: crisis
+tags: [debt, money, lheureux]
+source:
+  variable: debt_level
+  formula: "debt_accumulation: debt_level+15（债务增加）; psychological_health-10（焦虑加重）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "催款信：debt_level+15，psychological_health-10"

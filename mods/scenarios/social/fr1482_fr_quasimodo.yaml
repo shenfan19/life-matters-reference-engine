@@ -1,0 +1,132 @@
+id: fr1482_fr_quasimodo
+name: "卡西莫多：钟楼之上的庇护"
+description: |
+  巴黎圣母院的敲钟人卡西莫多，驼背、独眼、几乎全聋。
+  他从未被这个城市当作人——直到艾丝美拉达对他温柔。
+  她被捕了，被判死刑。他用尽所有力气把她从绞架上夺下来，藏进圣母院。
+  圣母院就是他的整个世界。他必须决定：用什么代价，守护她多久。
+type: scenario
+tags: [disability, isolation, protection, love, sacrifice, literature]
+source: Notre-Dame de Paris (Victor Hugo, 1831)
+
+simulation:
+  step: 1        # 单位：天
+  total: 30      # 约1个月（艾丝美拉达被庇护到悲剧结局）
+  step_unit: day
+
+inputs:
+  - id: defense_intensity
+    label: "防守强度"
+    description: "主动抵抗攻入圣母院的人群/骑兵的激烈程度"
+    min: 0
+    max: 3
+    default: 2.0
+    unit: intensity
+
+  - id: care_for_esmeralda
+    label: "对艾丝美拉达的照料"
+    description: "提供食物·安慰·陪伴（减少她的恐惧与绝望）"
+    min: 0
+    max: 1
+    default: 0.6
+    unit: intensity
+
+  - id: negotiation_attempt
+    label: "与外界沟通尝试"
+    description: "通过弗罗洛等人寻求政治解决（风险：被利用）"
+    min: 0
+    max: 1
+    default: 0.2
+    unit: intensity
+
+variables:
+  - id: sanctuary_integrity
+    label: "庇护所防守强度"
+    description: "圣母院能维持的安全屏障（物理+政治+宗教权威）"
+    min: 0
+    max: 100
+    initial: 80
+    io_role: output
+    unit: score
+
+  - id: esmeralda_hope
+    label: "艾丝美拉达的希望"
+    description: "她在庇护所中的心理状态和对未来的信心"
+    min: 0
+    max: 100
+    initial: 35
+    io_role: output
+    unit: score
+
+  - id: quasimodo_health
+    label: "卡西莫多的体力"
+    description: "驼背+慢性疼痛+防守消耗的身体状态"
+    min: 0
+    max: 100
+    initial: 70
+    io_role: output
+    unit: hp
+
+  - id: external_pressure
+    label: "外部威胁压力"
+    description: "王室·教会·民众对驱逐艾丝美拉达的压力"
+    min: 0
+    max: 100
+    initial: 30
+    io_role: output
+    unit: score
+
+  - id: frollo_betrayal_risk
+    label: "弗罗洛背叛风险"
+    description: "卡西莫多对弗罗洛的信任被利用的程度"
+    min: 0
+    max: 100
+    initial: 20
+    io_role: output
+    unit: score
+
+formulas:
+  - id: sanctuary_defense
+    description: "防守力度vs外部压力"
+    expr: |
+      defense = defense_intensity * 5.0
+      pressure_damage = (external_pressure / 100) * 4.0
+      sanctuary_integrity = max(0, min(100, sanctuary_integrity + defense - pressure_damage))
+
+  - id: esmeralda_mood
+    description: "希望感随照料和防守成功增加，随外部压力降低"
+    expr: |
+      care_gain = care_for_esmeralda * 3.0
+      pressure_drain = (external_pressure / 100) * 2.0
+      esmeralda_hope = max(0, min(100, esmeralda_hope + care_gain - pressure_drain))
+
+  - id: health_decay
+    description: "体力随防守强度和慢性疼痛消耗"
+    expr: |
+      chronic_pain = 1.0   # 驼背的日常代价
+      defense_cost = defense_intensity * 1.5
+      quasimodo_health = max(0, quasimodo_health - chronic_pain - defense_cost + care_for_esmeralda * 0.3)
+
+  - id: pressure_growth
+    description: "外部压力随时间自然增长；谈判可部分缓解"
+    expr: |
+      natural_growth = 2.5
+      negotiation_relief = negotiation_attempt * 2.0
+      external_pressure = min(100, max(0, external_pressure + natural_growth - negotiation_relief))
+
+  - id: frollo_risk
+    description: "与弗罗洛的沟通越多，被其利用艾丝美拉达的风险越高"
+    expr: |
+      frollo_betrayal_risk = min(100, frollo_betrayal_risk + negotiation_attempt * 4.0)
+
+schedules:
+  - at: 15
+    event: "esmeralda_leaves_briefly"
+    effect: "esmeralda_hope = max(0, esmeralda_hope - 20); external_pressure = min(100, external_pressure + 15)"
+    label: "艾丝美拉达因绝望离开庇护，被抓"
+
+optimizer:
+  target: esmeralda_hope
+  direction: maximize
+  secondary: sanctuary_integrity
+  note: "历史结局：弗罗洛背叛→艾丝美拉达被绞死→卡西莫多杀弗罗洛→守在艾丝美拉达坟墓旁死去"

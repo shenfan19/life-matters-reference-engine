@@ -1,0 +1,115 @@
+meta:
+  name: "芳汀：母亲的代价"
+  description: "她被工厂解雇，因为她是未婚母亲。她卖掉头发。卖掉牙齿。卖掉身体。她只是想让珂赛特活下去。肺结核不问她愿不愿意。"
+  difficulty: hard
+  period_start: "1815-01"
+  period_end: "1823-04"
+  tags: [Poverty, Tuberculosis, Motherhood, France, Literature]
+  country: FR
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/fr1815_fr_fantine.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  health:            75
+  cosette_wellbeing: 40
+  income:            50
+  desperation:       20
+
+variable_display:
+  health:
+    label: "芳汀的健康"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  cosette_wellbeing:
+    label: "珂赛特的生存状态"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  income:
+    label: "月收入"
+    color: "#faad14"
+    max: 100
+    higher_is_better: true
+  desperation:
+    label: "绝望程度"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: health
+  scale: [0, 100, 0, 100]
+  display: "芳汀的健康"
+
+turns:
+  total: 12
+  time_per_turn: "3个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: cosette_wellbeing
+  target_value: 65
+  description: "在生命耗尽之前让珂赛特脱离危险"
+
+lose_condition:
+  type: health_zero
+  description: "芳汀在医院的床上死去，珂赛特还在德纳迪埃家里受苦。冉·阿让还没有到。"
+
+endings:
+  - grade: S
+    condition: "cosette_wellbeing >= 65 and health >= 30"
+    title: "她听到了"
+    description: "冉·阿让找到了珂赛特。芳汀在临死前听到了这个消息。够了。"
+  - grade: A
+    condition: "cosette_wellbeing >= 65"
+    title: "值得的代价"
+    description: "她死的时候知道女儿安全了。她把所有的都给了她。"
+  - grade: B
+    condition: "health >= 30 and income >= 30"
+    title: "还在撑着"
+    description: "她还活着，但珂赛特还在受苦。也许冉·阿让会来。也许不会。"
+  - grade: D
+    condition: "health <= 0 and cosette_wellbeing < 40"
+    title: "徒劳的牺牲"
+    description: "她死了，珂赛特还在受苦。这不是任何人的故事——这是一个制度的结果。"
+
+env_deck:
+  - path: cards/env_factory_dismissal.yaml
+    weight: 180
+  - path: cards/env_tb_flare.yaml
+    weight: 200
+  - path: cards/env_thenardier_demands_more.yaml
+    weight: 170
+  - path: cards/env_social_exclusion.yaml
+    weight: 160
+  - path: cards/env_javert_harassment.yaml
+    weight: 150
+  - path: cards/env_charitable_moment.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_work_harder.yaml
+    copies: 4
+  - path: cards/player_sell_hair.yaml
+    copies: 2
+  - path: cards/player_sell_teeth.yaml
+    copies: 2
+  - path: cards/player_seek_charity.yaml
+    copies: 3
+  - path: cards/player_rest_and_heal.yaml
+    copies: 3
+
+generic_cards:
+  inject: [rest, interrupt]

@@ -1,0 +1,113 @@
+meta:
+  name: "小王子：八天"
+  description: "一个飞行员在撒哈拉沙漠迫降。他遇见了一个从另一颗星球来的小男孩。他们在一起了八天。飞行员想修好飞机，小王子想回到他的玫瑰身边。两件事都有代价。"
+  difficulty: easy
+  period_start: "1943-01-08"
+  period_end: "1943-01-16"
+  tags: [Philosophy, Desert, Connection, Literature, France]
+  country: FR
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/af1943_fr_little_prince.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  pilot_survival:  40
+  understanding:   10
+  connection_depth: 5
+  prince_resolve:  70
+
+variable_display:
+  pilot_survival:
+    label: "飞行员生存概率"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  understanding:
+    label: "真正理解"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+  connection_depth:
+    label: "连接的深度"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: true
+  prince_resolve:
+    label: "小王子的决心"
+    color: "#faad14"
+    max: 100
+    higher_is_better: false
+
+health_mapping:
+  source_variable: pilot_survival
+  scale: [0, 100, 0, 100]
+  display: "飞行员生存概率"
+
+turns:
+  total: 8
+  time_per_turn: "1天"
+  env_cards_per_turn: 1
+  player_hand_size: 4
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: connection_depth
+  target_value: 70
+  description: "真正理解了什么是重要的——在小王子离开之前"
+
+lose_condition:
+  type: health_zero
+  description: "飞行员没有修好飞机。水也用完了。他和小王子都留在了沙漠里。"
+
+endings:
+  - grade: S
+    condition: "connection_depth >= 70 and understanding >= 60"
+    title: "驯化"
+    description: "\"你驯化了我。\"他懂了。玫瑰，是他的玫瑰，因为他为她付出了时间。小王子离开了。飞行员修好了飞机。他带走了一幅绵羊的画。"
+  - grade: A
+    condition: "connection_depth >= 70"
+    title: "夜空中的星星"
+    description: "他不确定自己是否真的理解了。但他知道，从那以后，他看星星的方式不一样了。"
+  - grade: B
+    condition: "pilot_survival >= 60 and understanding >= 40"
+    title: "还没有完全明白"
+    description: "他修好了飞机，离开了沙漠。那个小男孩的话，他有时候还会想起。"
+  - grade: D
+    condition: "pilot_survival <= 0"
+    title: "沙漠"
+    description: "沙漠不解释。它只是存在，吸收一切，不留痕迹。"
+
+env_deck:
+  - path: cards/env_water_runs_low.yaml
+    weight: 180
+  - path: cards/env_prince_asks_question.yaml
+    weight: 160
+  - path: cards/env_snake_appears.yaml
+    weight: 150
+  - path: cards/env_sand_storm.yaml
+    weight: 140
+  - path: cards/env_well_found.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_repair_engine.yaml
+    copies: 4
+  - path: cards/player_listen_to_prince.yaml
+    copies: 4
+  - path: cards/player_draw_sheep.yaml
+    copies: 2
+  - path: cards/player_ask_about_rose.yaml
+    copies: 2
+  - path: cards/player_persuade_to_stay.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

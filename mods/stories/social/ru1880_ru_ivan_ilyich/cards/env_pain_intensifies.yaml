@@ -1,0 +1,20 @@
+id: env_pain_intensifies
+type: env
+category: physical
+display:
+  name: "疼痛加剧"
+  description: "昨天还能忍受的，今天开始无法承受了。他的身体在划定新的边界，而他必须在这个新的边界里继续存在。"
+  flavor: "疼痛不是关于身体的——它是关于你在疼痛中仍然是谁。"
+  icon: "⚡"
+effects:
+  - target: pain_level
+    delta: 15
+  - target: dignity
+    delta: -8
+channel: physical
+tags: [pain, physical, crisis]
+source:
+  variable: pain_level
+  formula: "base_pain_growth(2.5) × 2wk = +5; acute episode: pain+15, dignity-8（失去控制感）"
+  pattern_detected: P2
+  sim_notes: "疼痛急性事件：pain_level+15（2周疼痛峰值），dignity-8（无法控制身体的尊严损耗）"

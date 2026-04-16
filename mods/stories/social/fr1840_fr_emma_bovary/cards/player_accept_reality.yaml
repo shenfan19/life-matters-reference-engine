@@ -1,0 +1,21 @@
+id: player_accept_reality
+type: player
+category: acceptance
+display:
+  name: "接受现实"
+  description: "她今天没有出去。她坐在家里，整理了账单，看了看窗外的院子，做了一顿普通的晚饭。这不是她梦想的生活，但这是她的生活。这个认识，又痛苦又稳定。"
+  flavor: "平静是一种很难获得的东西，因为它看起来太像放弃了。"
+  icon: "🏡"
+cost: 1
+effects:
+  - target: psychological_health
+    delta: 15
+  - target: disillusionment
+    delta: -10
+channel: acceptance
+tags: [acceptance, reality, peace]
+source:
+  variable: psychological_health
+  formula: "accept_reality: psychological_health+15（真实的平静）; disillusionment-10（幻灭感降低）"
+  pattern_detected: P1
+  sim_notes: "接受现实：psychological_health+15，disillusionment-10"

@@ -1,0 +1,23 @@
+id: player_hide_evidence
+type: player
+category: survival
+display:
+  name: "掩盖痕迹"
+  description: "他回去看了一次现场，清除了一些东西，改变了一些细节。每一个动作都让他更深地陷进去。"
+  flavor: "他不知道，每一次掩盖，都在训练自己成为他不想成为的人。"
+  icon: "🧹"
+cost: 1
+effects:
+  - target: detection_risk
+    delta: -10
+  - target: mental_health
+    delta: -8
+  - target: redemption_potential
+    delta: -8
+channel: survival
+tags: [concealment, evidence, moral-cost]
+source:
+  variable: detection_risk
+  formula: "concealment_effort=0.8 × 10days → detection-10; mental_health-8, redemption-8（行为固化）"
+  pattern_detected: P1
+  sim_notes: "掩盖痕迹：detection-10，mental_health-8（良心代价），redemption-8（救赎路径变窄）"

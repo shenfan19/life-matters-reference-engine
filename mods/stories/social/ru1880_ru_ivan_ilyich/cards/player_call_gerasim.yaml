@@ -1,0 +1,23 @@
+id: player_call_gerasim
+type: player
+category: health
+display:
+  name: "叫格拉西姆来"
+  description: "格拉西姆把他的双腿抬起来架在肩膀上，就这样待着，一待就是几个小时。他不感到被打扰，因为他喜欢帮助人。这个单纯让伊万感到奇怪的安慰。"
+  flavor: "真实的善良不需要表演。它只是做，不问回报，不表现出代价。"
+  icon: "🌿"
+cost: 1
+effects:
+  - target: pain_level
+    delta: -10
+  - target: inner_peace
+    delta: 10
+  - target: social_isolation
+    delta: -10
+channel: health
+tags: [gerasim, care, comfort]
+source:
+  variable: inner_peace
+  formula: "authentic care event: pain_level-10（体力支撑减轻疼痛）, inner_peace+10, isolation-10"
+  pattern_detected: P1
+  sim_notes: "格拉西姆照料：pain-10（物理舒适），inner_peace+10，social_isolation-10（真实陪伴）"

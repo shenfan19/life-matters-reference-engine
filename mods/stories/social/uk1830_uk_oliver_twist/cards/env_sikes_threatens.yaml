@@ -1,0 +1,20 @@
+id: env_sikes_threatens
+type: env
+category: threat
+display:
+  name: "塞克斯的威胁"
+  description: "比尔·塞克斯从来不需要很多话。他只是站在那里，用他的眼睛看你，让你明白：如果你不配合，后果不是惩罚——是消失。"
+  flavor: "费金用笑话威胁人。塞克斯用沉默。沉默，往往更可怕。"
+  icon: "⚡"
+effects:
+  - target: danger_level
+    delta: 18
+  - target: moral_integrity
+    delta: -8
+channel: threat
+tags: [sikes, threat, violence]
+source:
+  variable: danger_level
+  formula: "sikes_threat: danger_level+18（直接人身威胁）; moral_integrity-8（被迫妥协）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "塞克斯威胁：danger_level+18，moral_integrity-8"

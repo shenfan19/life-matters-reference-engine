@@ -187,6 +187,7 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
       description: rawStory.meta?.description ?? '',
       science_note: rawStory.meta?.science_note,
       tags: rawStory.meta?.tags ?? [],
+      author: rawStory.meta?.author ?? '',
     },
     variables,
     goalVariables,

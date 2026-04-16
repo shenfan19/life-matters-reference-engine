@@ -1,0 +1,22 @@
+id: env_bad_employer
+type: env
+category: social
+display:
+  name: "苛刻的雇主"
+  description: "这家雇主不允许他在院子里休息，不允许他多穿一件衣服，不允许他和其他下人说话。"
+  flavor: "他换了一家，下一家一样。这不是个人问题，这是阶层问题。"
+  icon: "👔"
+effects:
+  - target: physical_strength
+    delta: -10
+  - target: morale
+    delta: -10
+  - target: exploitation
+    delta: 8
+channel: social
+tags: [employer, exploitation, class]
+source:
+  variable: exploitation_damage
+  formula: "bad employer event: exploitation+8, physical_strength-10（过度劳动），morale-10"
+  pattern_detected: P2
+  sim_notes: "苛刻雇主：exploitation+8，physical_strength-10，morale-10"

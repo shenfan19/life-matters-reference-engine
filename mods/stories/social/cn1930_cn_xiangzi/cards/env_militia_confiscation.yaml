@@ -1,0 +1,22 @@
+id: env_militia_confiscation
+type: env
+category: crisis
+display:
+  name: "军阀没收"
+  description: "军阀的兵经过。他们需要运东西，就把祥子的车拉走了。没有补偿，没有理由。这就是乱世里的规则。"
+  flavor: "他花了多少个月攒的车，在三分钟里消失了。"
+  icon: "⚔️"
+effects:
+  - target: savings
+    delta: -50
+  - target: morale
+    delta: -20
+  - target: exploitation
+    delta: 15
+channel: crisis
+tags: [confiscation, military, loss]
+source:
+  variable: savings
+  formula: "schedule event at turn 3: savings -= 80 (scenario) → game scaled: -50; morale-20, exploitation+15"
+  pattern_detected: P3
+  sim_notes: "军阀没收事件（场景表schedule第12月）：savings-50，morale-20，exploitation+15"

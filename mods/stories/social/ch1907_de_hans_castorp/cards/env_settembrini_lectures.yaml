@@ -1,0 +1,20 @@
+id: env_settembrini_lectures
+type: env
+category: intellectual
+display:
+  name: "塞特姆布里尼的演讲"
+  description: "那个意大利人又开始讲话了——关于理性、人文主义、进步、光明。他讲得很好，让汉斯觉得世界是可以被理解的，人类是朝好的方向走的。他不完全相信，但他喜欢听。"
+  flavor: "塞特姆布里尼的世界观，是一个美好的、可能不完整的答案。"
+  icon: "🗣️"
+effects:
+  - target: intellectual_depth
+    delta: 12
+  - target: world_disconnect
+    delta: -5
+channel: intellectual
+tags: [settembrini, humanism, debate]
+source:
+  variable: intellectual_depth
+  formula: "settembrini_lecture: intellectual_depth+12（人文主义思想输入）; world_disconnect-5（与世界的连接感增加）"
+  pattern_detected: ENV_POSITIVE
+  sim_notes: "塞特姆布里尼演讲：intellectual_depth+12，world_disconnect-5"

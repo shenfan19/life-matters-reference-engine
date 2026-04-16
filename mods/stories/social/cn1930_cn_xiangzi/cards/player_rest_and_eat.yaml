@@ -1,0 +1,21 @@
+id: player_rest_and_eat
+type: player
+category: health
+display:
+  name: "好好吃饭休息"
+  description: "今天少拉一趟，多花点钱吃顿热乎的。这不是浪费，这是投资——让身体能撑得住明天。"
+  flavor: "他父亲说：身体是本钱。他老了之后才完全明白这句话是什么意思。"
+  icon: "🍜"
+cost: 1
+effects:
+  - target: physical_strength
+    delta: 18
+  - target: morale
+    delta: 8
+channel: health
+tags: [rest, food, recovery]
+source:
+  variable: physical_strength
+  formula: "self_care=1, 4mo: physical_strength+18; morale+8（身体恢复带来精神恢复）"
+  pattern_detected: P1
+  sim_notes: "休息饮食：physical_strength+18，morale+8"

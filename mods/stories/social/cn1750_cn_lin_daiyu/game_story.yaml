@@ -1,0 +1,115 @@
+meta:
+  name: "林黛玉：葬花词未竟"
+  description: "寄居贾府的孤女，肺痨缠身，才情横溢，爱着一个注定无法属于她的人。封建礼教不允许她病，不允许她爱，不允许她哭。她把所有的话都写进了诗里。"
+  difficulty: medium
+  period_start: "1750-01"
+  period_end: "1753-12"
+  tags: [Tuberculosis, Feudal, China, Literature, Female]
+  country: CN
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/cn1750_cn_lin_daiyu.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  health:           60
+  emotional_burden: 50
+  creative_output:  70
+  social_standing:  55
+
+variable_display:
+  health:
+    label: "身体状态"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  emotional_burden:
+    label: "情感压抑"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+  creative_output:
+    label: "诗词创作力"
+    color: "#722ed1"
+    max: 100
+    higher_is_better: true
+  social_standing:
+    label: "在贾府的地位"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+
+health_mapping:
+  source_variable: health
+  scale: [0, 100, 0, 100]
+  display: "身体状态"
+
+turns:
+  total: 12
+  time_per_turn: "3个月"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: creative_output
+  target_value: 85
+  description: "在生命终结之前留下她最深刻的诗词"
+
+lose_condition:
+  type: health_zero
+  description: "宝玉成婚的那一夜，她在另一个院子里咳出了最后一口血。她的手稿，被她自己烧掉了。"
+
+endings:
+  - grade: S
+    condition: "creative_output >= 85 and emotional_burden < 40"
+    title: "葬花词"
+    description: "她把所有无法说出口的话，都写进了诗里。这些诗留下来了。她的名字，留下来了。"
+  - grade: A
+    condition: "creative_output >= 85"
+    title: "焚稿断痴情"
+    description: "她知道了宝玉的婚事，烧掉了手稿。但有些诗，她已经送出去了。"
+  - grade: B
+    condition: "health >= 40 and social_standing >= 50"
+    title: "寄人篱下"
+    description: "她仍然活着，仍然在贾府，仍然在写诗。也许这个冬天不会是最后一个。"
+  - grade: D
+    condition: "health <= 0 and creative_output < 50"
+    title: "尚未完成"
+    description: "她死的时候，那首诗还没有写完。没有人知道后面那半首是什么。"
+
+env_deck:
+  - path: cards/env_baochai_rivalry.yaml
+    weight: 170
+  - path: cards/env_tb_flare_up.yaml
+    weight: 200
+  - path: cards/env_feudal_pressure.yaml
+    weight: 180
+  - path: cards/env_baoyu_visits.yaml
+    weight: 100
+  - path: cards/env_household_gossip.yaml
+    weight: 150
+  - path: cards/env_autumn_rain.yaml
+    weight: 140
+
+player_deck:
+  - path: cards/player_write_poetry.yaml
+    copies: 4
+  - path: cards/player_express_feelings.yaml
+    copies: 3
+  - path: cards/player_take_medicine.yaml
+    copies: 3
+  - path: cards/player_bury_flowers.yaml
+    copies: 2
+  - path: cards/player_confide_in_zijuan.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

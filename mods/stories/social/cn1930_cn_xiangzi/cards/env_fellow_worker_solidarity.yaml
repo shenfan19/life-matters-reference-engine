@@ -1,0 +1,20 @@
+id: env_fellow_worker_solidarity
+type: env
+category: support
+display:
+  name: "工友的团结"
+  description: "车行里有个老车夫，把他多年前学会的省力拉法教给了祥子。还给了他一块饼。"
+  flavor: "底层人之间的互助，是这个社会里唯一免费的东西。"
+  icon: "🫂"
+effects:
+  - target: morale
+    delta: 12
+  - target: physical_strength
+    delta: 8
+channel: support
+tags: [solidarity, support, community]
+source:
+  variable: morale
+  formula: "social_connection event → morale+12, physical_strength+8（技巧+休息）"
+  pattern_detected: P1
+  sim_notes: "工友团结：morale+12，physical_strength+8（经验与互助）"

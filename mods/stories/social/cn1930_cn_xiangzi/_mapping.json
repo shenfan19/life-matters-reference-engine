@@ -1,0 +1,54 @@
+{
+  "story_id": "cn1930_cn_xiangzi",
+  "source_scenario": "mods/scenarios/social/cn1930_cn_xiangzi.yaml",
+  "generated_on": "2026-04-16",
+  "method": "scenario_to_story_v1",
+
+  "time_mapping": {
+    "scenario_step": "1 month",
+    "scenario_total": "60 months (5 years)",
+    "game_turn_duration": "4 months",
+    "game_turns": 15,
+    "note": "60 months / 15 turns = 4 months per turn. Xiangzi's arc spans approximately 5 years of Republican-era Beijing."
+  },
+
+  "variable_mapping": {
+    "savings":            { "scenario_var": "savings",         "io_role": "output", "initial": 0,  "scale": "1:1" },
+    "physical_strength":  { "scenario_var": "physical_strength","io_role": "output", "initial": 95, "scale": "1:1" },
+    "morale":             { "scenario_var": "morale",          "io_role": "output", "initial": 90, "scale": "1:1" },
+    "exploitation_damage":{ "scenario_var": "exploitation_damage","io_role": "output","initial": 0, "scale": "1:1" }
+  },
+
+  "input_mapping": {
+    "work_intensity":   { "range": [0, 3], "maps_to": "player_long_shift, player_risky_route" },
+    "risk_tolerance":   { "range": [0, 1], "maps_to": "player_risky_route" },
+    "social_connection":{ "range": [0, 1], "maps_to": "player_make_connections, player_rest_and_eat" }
+  },
+
+  "schedule_events": {
+    "month_12": "militia_confiscation — savings-50, morale-20 (env_militia_confiscation triggered)",
+    "month_30": "tigress_traps — savings stolen by Tiger Girl (env_tigress_traps triggered)",
+    "month_45": "tigress_death — morale collapse (env_tigress_traps + env_bad_employer cascade)"
+  },
+
+  "card_derivations": {
+    "player_long_shift":         { "formula": "work_intensity=2.5 × 4mo: savings rate ~3/mo → +12; strength cost", "derived_effects": { "savings": "+12", "physical_strength": "-8" } },
+    "player_risky_route":        { "derived_effects": { "savings": "+18", "physical_strength": "-12", "exploitation_damage": "+5" } },
+    "player_save_carefully":     { "derived_effects": { "savings": "+8", "morale": "+5" } },
+    "player_rest_and_eat":       { "derived_effects": { "physical_strength": "+18", "morale": "+5" } },
+    "player_make_connections":   { "derived_effects": { "morale": "+12", "exploitation_damage": "-5" } },
+    "env_militia_confiscation":  { "formula": "scheduled event: all savings seized", "derived_effects": { "savings": "-50", "morale": "-20" } },
+    "env_summer_heatstroke":     { "derived_effects": { "physical_strength": "-15", "savings": "-5" } },
+    "env_tigress_traps":         { "derived_effects": { "savings": "-30", "morale": "-15" } },
+    "env_detective_extortion":   { "derived_effects": { "savings": "-40", "morale": "-10" } },
+    "env_bad_employer":          { "derived_effects": { "exploitation_damage": "+15", "morale": "-10" } },
+    "env_fellow_worker_solidarity":{ "derived_effects": { "morale": "+15", "exploitation_damage": "-8" } }
+  },
+
+  "win_loss_derivation": {
+    "win_target": "savings >= 80",
+    "note": "Xiangzi's dream was to own his own rickshaw. The game counterfactual: if he had avoided the three catastrophic losses, savings of 80 (own rickshaw) was achievable. Historical: he never reaches it.",
+    "lose_condition": "morale <= 10",
+    "note2": "Historical: Xiangzi's spirit is broken by repeated exploitation. He becomes a parasite — Lao She's critique of how systems destroy individuals."
+  }
+}

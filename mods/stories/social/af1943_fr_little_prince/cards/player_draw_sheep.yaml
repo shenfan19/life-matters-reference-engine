@@ -1,0 +1,21 @@
+id: player_draw_sheep
+type: player
+category: gift
+display:
+  name: "画一只绵羊"
+  description: "小王子说：\"请给我画一只绵羊。\"飞行员画了三次，都不对。最后他画了一个箱子，说：你要的绵羊就在里面。小王子看了，说：这正是我想要的。这是他们友谊的开始。"
+  flavor: "有时候，最正确的答案，是给对方留下想象的空间。"
+  icon: "🎨"
+cost: 1
+effects:
+  - target: connection_depth
+    delta: 20
+  - target: understanding
+    delta: 8
+channel: gift
+tags: [sheep, drawing, friendship]
+source:
+  variable: connection_depth
+  formula: "draw_sheep: connection_depth+20（友谊建立的关键时刻）; understanding+8（理解\"看不见\"的真实）"
+  pattern_detected: P1
+  sim_notes: "画绵羊：connection_depth+20，understanding+8"

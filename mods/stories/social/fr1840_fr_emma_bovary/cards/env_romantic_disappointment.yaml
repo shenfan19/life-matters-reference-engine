@@ -1,0 +1,20 @@
+id: env_romantic_disappointment
+type: env
+category: disillusionment
+display:
+  name: "幻想的崩塌"
+  description: "那个她以为会改变一切的男人，今天说了一些非常平庸的话。她站在那里，感觉那个美好的画面在眼前一点一点碎开。又一次。"
+  flavor: "浪漫主义文学教会她期待那种感觉。却没有人告诉她，那种感觉根本无法持续。"
+  icon: "💔"
+effects:
+  - target: psychological_health
+    delta: -15
+  - target: disillusionment
+    delta: 12
+channel: disillusionment
+tags: [romance, disappointment, expectations]
+source:
+  variable: psychological_health
+  formula: "romantic_letdown: psychological_health-15（期望落差）; disillusionment+12（幻灭积累）"
+  pattern_detected: ENV_NEGATIVE
+  sim_notes: "浪漫失望：psychological_health-15，disillusionment+12"

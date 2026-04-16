@@ -1,0 +1,21 @@
+id: player_write_to_family
+type: player
+category: connection
+display:
+  name: "给家人写信"
+  description: "他给汉堡的亲戚写了一封信。他用一段时间想了想要写什么——他真实的想法，还是他们期待听到的话。最后，他写了两者之间的某个版本。这已经比之前诚实了很多。"
+  flavor: "山下的世界，需要他提醒自己它还存在。"
+  icon: "✉️"
+cost: 1
+effects:
+  - target: world_disconnect
+    delta: -12
+  - target: intellectual_depth
+    delta: 5
+channel: connection
+tags: [family, letter, connection]
+source:
+  variable: world_disconnect
+  formula: "write_family: world_disconnect-12（维持与外部世界的连接）; intellectual_depth+5（整理思路）"
+  pattern_detected: P1
+  sim_notes: "给家人写信：world_disconnect-12，intellectual_depth+5"

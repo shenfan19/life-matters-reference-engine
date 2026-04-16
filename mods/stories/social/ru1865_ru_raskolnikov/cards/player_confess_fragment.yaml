@@ -1,0 +1,23 @@
+id: player_confess_fragment
+type: player
+category: goal
+display:
+  name: "说出一部分"
+  description: "他没有说全，但他说了一部分。\"假设有人杀了一个有害的人，理论上，这算不算罪？\"索尼娅知道他在说什么。"
+  flavor: "真相不是一次说完的。它需要练习，像一块肌肉，使用才会变强。"
+  icon: "🗣️"
+cost: 1
+effects:
+  - target: redemption_potential
+    delta: 15
+  - target: guilt_pressure
+    delta: -12
+  - target: detection_risk
+    delta: 5
+channel: goal
+tags: [confession, partial, truth]
+source:
+  variable: redemption_potential
+  formula: "partial confession: redemption+15, guilt-12; detection risk slightly up: +5"
+  pattern_detected: P1
+  sim_notes: "部分坦白：redemption+15，guilt-12，detection+5（信息外泄风险）"

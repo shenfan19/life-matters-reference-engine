@@ -1,0 +1,21 @@
+id: player_rest_and_eat
+type: player
+category: health
+display:
+  name: "休息与进食"
+  description: "他找到了一个短暂安全的角落，把找到的食物吃完，闭上眼睛。他知道这只是暂时的。但此刻，他感觉到自己还活着，还能继续。"
+  flavor: "活着的身体，是一切其他事情的前提。"
+  icon: "🍞"
+cost: 1
+effects:
+  - target: physical_health
+    delta: 18
+  - target: hope_for_escape
+    delta: 5
+channel: health
+tags: [rest, food, recovery]
+source:
+  variable: physical_health
+  formula: "rest_and_eat: physical_health+18（恢复体力）; hope_for_escape+5（体力恢复带来希望）"
+  pattern_detected: P1
+  sim_notes: "休息进食：physical_health+18，hope_for_escape+5"

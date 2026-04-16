@@ -1,0 +1,115 @@
+meta:
+  name: "杰基尔博士：失控实验"
+  description: "他研发出了一种药物，能让他变成另一个人——那个被维多利亚道德压抑的阴暗面。起初他能控制。后来控制变成依赖。再后来，他在睡梦中就开始变形了。"
+  difficulty: hard
+  period_start: "1885-01"
+  period_end: "1886-01"
+  tags: [Addiction, Science, Victorian, Literature, Britain]
+  country: GB
+  author: ""
+  version: "0.1"
+  created_on: 2026-04-16
+  source_scenario: "scenarios/social/uk1886_uk_dr_jekyll.yaml"
+
+card_back_fate:   ""
+card_back_player: ""
+
+music: []
+
+initial_state:
+  self_control:      90
+  hyde_dominance:    5
+  drug_dependency:   0
+  antidote_progress: 0
+
+variable_display:
+  self_control:
+    label: "自我控制力"
+    color: "#52c41a"
+    max: 100
+    higher_is_better: true
+  hyde_dominance:
+    label: "Hyde人格强度"
+    color: "#f5222d"
+    max: 100
+    higher_is_better: false
+  drug_dependency:
+    label: "药物依赖度"
+    color: "#faad14"
+    max: 100
+    higher_is_better: false
+  antidote_progress:
+    label: "解药进度"
+    color: "#1677ff"
+    max: 100
+    higher_is_better: true
+
+health_mapping:
+  source_variable: self_control
+  scale: [0, 100, 0, 100]
+  display: "自我控制力"
+
+turns:
+  total: 13
+  time_per_turn: "4周"
+  env_cards_per_turn: 2
+  player_hand_size: 5
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: reach_target
+  target_variable: antidote_progress
+  target_value: 75
+  description: "在失去自我之前研究出永久控制Hyde的方案"
+
+lose_condition:
+  type: health_zero
+  description: "Jekyll人格不复存在。Hyde现在完全控制这具身体。原料用尽，无法回来。服毒。"
+
+endings:
+  - grade: S
+    condition: "antidote_progress >= 75 and self_control >= 50"
+    title: "解法"
+    description: "他找到了控制机制。他选择永远不再使用那种药物。这需要极大的勇气，因为他知道Hyde仍然在那里。"
+  - grade: A
+    condition: "antidote_progress >= 75"
+    title: "最后的陈述"
+    description: "他写下了完整的陈述，把真相留在世界上。然后用最后一剂药物，让Hyde出现，让Hyde死去。"
+  - grade: B
+    condition: "self_control >= 40 and drug_dependency < 60"
+    title: "还能控制"
+    description: "他还在，Hyde还没有完全胜出。但他知道，每一天都是一场战争。"
+  - grade: D
+    condition: "self_control <= 0 or drug_dependency >= 90"
+    title: "Hyde先生"
+    description: "Jekyll消失了。警察在实验室里发现了一具尸体，旁边有一封信和一瓶空药瓶。"
+
+env_deck:
+  - path: cards/env_hyde_causes_incident.yaml
+    weight: 200
+  - path: cards/env_drug_runs_low.yaml
+    weight: 190
+  - path: cards/env_colleague_suspects.yaml
+    weight: 160
+  - path: cards/env_transformation_involuntary.yaml
+    weight: 180
+  - path: cards/env_social_pressure.yaml
+    weight: 150
+  - path: cards/env_research_breakthrough.yaml
+    weight: 80
+
+player_deck:
+  - path: cards/player_resist_temptation.yaml
+    copies: 3
+  - path: cards/player_use_drug_controlled.yaml
+    copies: 3
+  - path: cards/player_research_antidote.yaml
+    copies: 4
+  - path: cards/player_confide_in_lanyon.yaml
+    copies: 2
+  - path: cards/player_write_confession.yaml
+    copies: 2
+
+generic_cards:
+  inject: [rest, interrupt]

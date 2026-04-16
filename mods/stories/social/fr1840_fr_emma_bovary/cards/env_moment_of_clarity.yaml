@@ -1,0 +1,20 @@
+id: env_moment_of_clarity
+type: env
+category: insight
+display:
+  name: "片刻清醒"
+  description: "她坐在窗边，阳光照进来。她第一次感到：也许问题不在于她的生活，而在于她用来衡量生活的标准。这个想法让她难受，但也让她松了一口气。"
+  flavor: "清醒是一种代价很高的礼物。"
+  icon: "🌤️"
+effects:
+  - target: psychological_health
+    delta: 10
+  - target: disillusionment
+    delta: -8
+channel: insight
+tags: [clarity, insight, awareness]
+source:
+  variable: psychological_health
+  formula: "clarity_moment: psychological_health+10（短暂清醒）; disillusionment-8（幻灭减轻）"
+  pattern_detected: ENV_POSITIVE
+  sim_notes: "片刻清醒：psychological_health+10，disillusionment-8"

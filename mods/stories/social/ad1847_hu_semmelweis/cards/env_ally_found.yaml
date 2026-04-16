@@ -1,0 +1,22 @@
+id: env_ally_found
+type: env
+category: social
+display:
+  name: "发现同道者"
+  description: "年轻医生斯科达写信来——他读了那份报告，他相信。在这个四面都是嘲笑的世界里，一个盟友就是全部。"
+  flavor: "历史上，布雷斯劳的海加博士是最早支持塞麦尔维斯的人之一。每一个支持者，都推迟了精神崩溃的到来。"
+  icon: "🤝"
+effects:
+  - target: acceptance
+    delta: 12
+  - target: isolation
+    delta: -12
+  - target: mental_health
+    delta: 8
+channel: social
+tags: [support, ally, positive]
+weight: 80
+source:
+  formula: "self_care_recovery: isolation -= self_care*2 (positive event)"
+  pattern_detected: P1
+  sim_notes: "正面事件：acceptance+12, isolation-12, mental_health+8"

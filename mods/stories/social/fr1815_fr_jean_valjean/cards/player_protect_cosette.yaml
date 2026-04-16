@@ -1,0 +1,23 @@
+id: player_protect_cosette
+type: player
+category: love
+display:
+  name: "保护珂赛特"
+  description: "不管需要什么——搬家、逃跑、放弃他建立的一切——他都会做。她不知道他是谁，但她是他学会如何爱一个人的原因。这已经足够。"
+  flavor: "他在德纳第夫妇那里找到她的时候，她在扫地，手很冷。他给了她一个玩具。那是他第一次给人礼物。"
+  icon: "💙"
+cost: 1
+effects:
+  - target: redemption_progress
+    delta: 12
+  - target: physical_health
+    delta: -8
+  - target: javert_pursuit
+    delta: 8
+channel: love
+tags: [cosette, protection, love]
+source:
+  variable: redemption_progress
+  formula: "protect_cosette: redemption_progress+12（为她行动）; physical_health-8（代价）; javert_pursuit+8（移动增加暴露）"
+  pattern_detected: P1
+  sim_notes: "保护珂赛特：redemption_progress+12，physical_health-8，javert_pursuit+8"

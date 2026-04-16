@@ -1,0 +1,23 @@
+id: player_research_solution
+type: player
+category: goal
+display:
+  name: "寻找科学解法"
+  description: "他尝试用科学来控制他创造的东西——不是逃跑，而是理解。也许知识能给出答案。"
+  flavor: "他创造了一个生命，然后他试图用另一个生命来控制它。这是他唯一会做的事情。"
+  icon: "📖"
+cost: 2
+effects:
+  - target: creature_threat
+    delta: -8
+  - target: health
+    delta: -6
+  - target: ethical_burden
+    delta: 5
+channel: goal
+tags: [research, science, solution]
+source:
+  variable: scientific_control
+  formula: "research_continuation=1.5 × scientific_control efficiency → mapped: creature_threat-8, health-6"
+  pattern_detected: P1
+  sim_notes: "科学研究：creature_threat-8（科学控制方案），health-6（过劳代价），ethical_burden+5（研究越深越自知）"
