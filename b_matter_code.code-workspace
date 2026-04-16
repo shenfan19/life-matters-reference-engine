@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../fan/b_matter"
+		}
+	],
+    "settings": {
+        "python-envs.defaultEnvManager": "ms-python.python:system",
+        "terminal.integrated.env.windows": {
+            "PYTHONPATH": "${workspaceFolder}",
+            "PATH": "${env:PATH};${workspaceFolder}/script"
+        },
+        "terminal.integrated.defaultProfile.windows": "Command Prompt",
+        "folder-color.pathColors": [
+            {
+                "folderPath": "code_matter\\mods\\",
+                "color": "foldercolorizer.color_cc6600"
+            },
+            {
+                "folderPath": "code_matter\\plugins\\",
+                "color": "foldercolorizer.color_cc6600"
+            },
+            {
+                "folderPath": "code_matter\\GUI\\",
+                "color": "foldercolorizer.color_00cc00"
+            },
+            {
+                "folderPath": "code_matter\\engine\\",
+                "color": "foldercolorizer.color_00cc00"
+            }
+        ]
+    }
+}
