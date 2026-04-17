@@ -16,19 +16,19 @@
         "terminal.integrated.defaultProfile.windows": "Command Prompt",
         "folder-color.pathColors": [
             {
-                "folderPath": "code_matter\\mods\\",
+                "folderPath": "b_matter_code\\mods\\",
                 "color": "foldercolorizer.color_cc6600"
             },
             {
-                "folderPath": "code_matter\\plugins\\",
+                "folderPath": "b_matter_code\\plugins\\",
                 "color": "foldercolorizer.color_cc6600"
             },
             {
-                "folderPath": "code_matter\\GUI\\",
+                "folderPath": "b_matter_code\\sim_gui\\",
                 "color": "foldercolorizer.color_00cc00"
             },
             {
-                "folderPath": "code_matter\\engine\\",
+                "folderPath": "b_matter_code\\sim_engine\\",
                 "color": "foldercolorizer.color_00cc00"
             }
         ]
