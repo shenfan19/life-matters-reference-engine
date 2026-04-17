@@ -443,32 +443,10 @@ graph LR
 
 ---
 
-## 🚀 实施路线图
-
-### Phase 1: MVP（0-3个月）
-- ✅ 支持Core层YAML（已完成80%）
-- ✅ 实现Story引擎和卡牌加载器
-- 🔲 Patch机制验证
-- 🔲 3个示例剧情（伦敦流感、老年患者、战斗或人生经历）
-
-### Phase 2: 元数据层（3-6个月）
-- 🔲 建立drug_availability.yaml库（20-30个药物）
-- 🔲 手动时空适配
-- 🔲 社区贡献指南
-
-### Phase 3: 数据库优化（6-12个月）
-- 🔲 迁移到SQLite
-- 🔲 Web表单提交接口
-- 🔲 区域树形结构（国家→城市）
-- 🔲 自动化可用性查询
-
----
-
 ## 📚 相关文档
 
-- **建模设计手册**: 统一的建模与技术规范文档
-- **架构文档**: [architecture.md](../Architecture.md)
-- **项目愿景**: [Project_v2_LM.md](../Project_v2_LM.md)
+- **建模设计手册**: [model.md](model.md)
+- **系统概览**: [README](../README.md)
 
 ---
 

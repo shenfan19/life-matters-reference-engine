@@ -99,7 +99,7 @@ life-matters/
 确认后端已启动，访问 `http://localhost:18080/api/health` 验证。再检查对应前端目录下已运行 `npm install`。
 
 **Q: 如何添加新游戏场景？**
-在 `mods/stories/` 下新建子目录，放入 `game_story.yaml`。文件格式参见 [game_story Schema](../docs_game/converter_arch.md)。如需添加中文翻译，在同目录下放 `game_story.zh-CN.yaml`（只含文字字段，无需游戏逻辑）。
+在 `mods/stories/` 下新建子目录，放入 `game_story.yaml`。文件格式参见 [game_story Schema](design/game_and_converter.md)。如需添加中文翻译，在同目录下放 `game_story.zh-CN.yaml`（只含文字字段，无需游戏逻辑）。
 
 **Q: 如何自定义科学模型？**
 参考 [建模设计手册](design/model.md) 的 YAML 规范，将 `.yaml` 文件放入 `mods/core/`，在 Loader 界面点击刷新。
@@ -110,8 +110,8 @@ life-matters/
 
 - [建模设计手册](design/model.md)
 - [Story 层剧本设计](design/story.md)
-- [系统架构](Architecture.md)
-- [Game Story Schema & Converter](../docs_game/converter_arch.md)
+- [Game Story Schema & Converter](design/game_and_converter.md)
+- [设计决策记录](decisions/README.md)
 
 ---
-*最后更新：2026-03-23*
+*最后更新：2026-04-18*

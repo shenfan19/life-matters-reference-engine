@@ -32,3 +32,11 @@
 | [0024](0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ✅ 已实施 | 2026-04-12 |
 | [0025](0025-story-editor-four-tab-layout.md) | StoryEditor 转换器四标签平铺 + 多条件结局设计器 + 通用卡牌库 | ✅ 已实施 | 2026-04-13 |
 | [0026](0026-simulator-report-tab.md) | 仿真器报告标签：左列勾选 + 右侧折叠预览 + MD 导出 | ✅ 已实施；DOCX 待续 | 2026-04-13 |
+| [0027](0027-hand-discard-and-card-backs.md) | 手牌弃置机制与界面重组 | ✅ 已实施 | 2026-04-15 |
+| [0028](0028-card-drag-drop-zones.md) | 卡牌区域拖拽系统 | ✅ 已实施 | 2026-04-15 |
+| [0029](0029-responsive-layout-and-deck-config.md) | 响应式游戏布局、draw_per_turn 与 copies 牌组配置 | ✅ 已实施 | 2026-04-15 |
+| [0030](0030-story-meta-author-field.md) | Story Meta author 字段标准化 | ✅ 已实施 | 2026-04-15 |
+| [0031](0031-scenario-to-story-semi-auto-generation.md) | Scenario-to-Story 半自动生成工作流 | ✅ 已实施 | 2026-04-15 |
+| [0032](0032-sim-gui-default-font-size-14.md) | sim_gui 默认字号调整为 14px | ✅ 已实施 | 2026-04-16 |
+| [0033](0033-2026-04-14_game_弃牌机制设计决策.md) | 弃牌机制设计（暂存区 + 双区布局） | ✅ 已实施 | 2026-04-14 |
+| [0034](0034-2026-04-15_game_手牌数量设计.md) | 手牌数量设计（hand_size + draw_per_turn） | ✅ 已定稿 | 2026-04-15 |
