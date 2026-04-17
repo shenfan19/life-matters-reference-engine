@@ -10,7 +10,7 @@ The B·Matter project maintains two parallel artifacts for each historical scena
 1. **Scenario YAML** (`mods/scenarios/`): A system-dynamics simulation model used in the Simulator GUI. It defines continuous-time ODEs/difference equations, input variables, and optimizer targets.
 2. **Story package** (`mods/stories/`): A card-game representation used in the Game GUI. It defines a turn-based deck-building experience with the same narrative content.
 
-As the number of historical characters grows (see `b_matter/c_story_candidates_100.md`), it becomes impractical to design each game story independently from scratch. We need a **repeatable workflow** that derives game card effects directly from scenario formula coefficients, keeping the two representations consistent.
+As the number of historical characters grows, it becomes impractical to design each game story independently from scratch. We need a **repeatable workflow** that derives game card effects directly from scenario formula coefficients, keeping the two representations consistent.
 
 The first three stories generated under this workflow were:
 - `ad0228_cn_zhuge_liang` (228–234 CE, overwork tragedy)
