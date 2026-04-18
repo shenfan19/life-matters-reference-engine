@@ -1,8 +1,3 @@
-# Game 与 Converter 设计文档
-
-**版本**: 2026-04-16  
-**范围**: `game/` 卡牌游戏前端 + `sim_gui/src/components/Converter.tsx` + 转换工作流
-
 ## 一、整体架构概览
 
 ```
