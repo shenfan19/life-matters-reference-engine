@@ -74,6 +74,58 @@ function niceTickStep(range: number, targetTicks: number): number {
   return nice * mag;
 }
 
+function drawChartOnCtx(
+  ctx: CanvasRenderingContext2D, W: number, H: number,
+  varName: string, data: SimulationDataPoint[], isDark: boolean, lineColor: string
+) {
+  ctx.clearRect(0, 0, W, H);
+  const PAD = { l: 58, r: 12, t: 8, b: 28 };
+  const plotW = W - PAD.l - PAD.r;
+  const plotH = H - PAD.t - PAD.b;
+  if (data.length === 0) return;
+  const values = data.map(d => (d[varName] as number) ?? 0);
+  let minV = Math.min(...values); let maxV = Math.max(...values);
+  if (minV === maxV) { minV -= 1; maxV += 1; }
+  const step = niceTickStep(maxV - minV, 5);
+  const yMin = Math.floor(minV / step) * step;
+  const yMax = yMin + step * Math.ceil((maxV - yMin) / step || 1);
+  const yActualRange = yMax - yMin || 1;
+  const tMin = data[0].time ?? 0;
+  const tMax = data[data.length - 1].time ?? 0;
+  const tRange = tMax - tMin || 1;
+  const toX = (t: number) => PAD.l + ((t - tMin) / tRange) * plotW;
+  const toY = (v: number) => PAD.t + plotH - ((v - yMin) / yActualRange) * plotH;
+  ctx.lineWidth = 1;
+  const tickCount = Math.round((yMax - yMin) / step);
+  for (let i = 0; i <= tickCount; i++) {
+    const val = yMin + i * step;
+    const y = toY(val);
+    if (y < PAD.t - 1 || y > PAD.t + plotH + 1) continue;
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
+    ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    const lbl = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
+    ctx.fillText(lbl, PAD.l - 4, y + 3);
+  }
+  for (let i = 0; i <= 6; i++) {
+    const x = PAD.l + (plotW / 6) * i;
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
+    const t = tMin + (tRange / 6) * i;
+    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
+    ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
+  }
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  data.forEach((d, i) => {
+    const x = toX(d.time ?? 0); const y = toY((d[varName] as number) ?? 0);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
 // ─── SimChart component ───────────────────────────────────────────────────────
 const VAR_COLORS = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
 
@@ -93,89 +145,18 @@ const SimChart: React.FC<{
   const lineColor = VAR_COLORS[colorIndex % VAR_COLORS.length];
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvas.offsetWidth * dpr;
-    canvas.height = canvas.offsetHeight * dpr;
-    ctx.scale(dpr, dpr);
-
-    const W = canvas.offsetWidth;
-    const H = canvas.offsetHeight;
-    ctx.clearRect(0, 0, W, H);
-
-    const PAD = { l: 58, r: 12, t: 8, b: 28 };
-    const plotW = W - PAD.l - PAD.r;
-    const plotH = H - PAD.t - PAD.b;
-
-    if (data.length === 0) return;
-
-    // Y-axis range
-    const values = data.map(d => (d[varName] as number) ?? 0);
-    let minV = Math.min(...values);
-    let maxV = Math.max(...values);
-    if (minV === maxV) { minV -= 1; maxV += 1; }
-    const yRange = maxV - minV;
-    const step = niceTickStep(yRange, 5);
-    const yMin = Math.floor(minV / step) * step;
-    const yMax = yMin + step * Math.ceil((maxV - yMin) / step || 1);
-    const yActualRange = yMax - yMin || 1;
-
-    // X-axis range (seconds → hours)
-    const tMin = data[0].time ?? 0;
-    const tMax = data[data.length - 1].time ?? 0;
-    const tRange = tMax - tMin || 1;
-
-    const toX = (t: number) => PAD.l + ((t - tMin) / tRange) * plotW;
-    const toY = (v: number) => PAD.t + plotH - ((v - yMin) / yActualRange) * plotH;
-
-    // Grid lines
-    ctx.lineWidth = 1;
-
-    // Horizontal gridlines (5 ticks)
-    const tickCount = Math.round((yMax - yMin) / step);
-    for (let i = 0; i <= tickCount; i++) {
-      const val = yMin + i * step;
-      const y = toY(val);
-      if (y < PAD.t - 1 || y > PAD.t + plotH + 1) continue;
-      ctx.strokeStyle = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-      // Y label
-      ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
-      ctx.font = '9px system-ui';
-      ctx.textAlign = 'right';
-      const label = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
-      ctx.fillText(label, PAD.l - 4, y + 3);
-    }
-
-    // Vertical gridlines (6)
-    for (let i = 0; i <= 6; i++) {
-      const x = PAD.l + (plotW / 6) * i;
-      ctx.strokeStyle = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
-      // X label (hours)
-      const t = tMin + (tRange / 6) * i;
-      ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
-      ctx.font = '9px system-ui';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
-    }
-
-    // Data line
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    data.forEach((d, i) => {
-      const x = toX(d.time ?? 0);
-      const y = toY((d[varName] as number) ?? 0);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    const frame = requestAnimationFrame(() => {
+      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+      drawChartOnCtx(ctx, canvas.offsetWidth, canvas.offsetHeight, varName, data, isDarkMode, lineColor);
     });
-    ctx.stroke();
-
-    // Crosshair (drawn from hover state during mousemove — handled separately)
+    return () => cancelAnimationFrame(frame);
   }, [data, varName, isDarkMode, lineColor]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -327,19 +308,20 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── report tab ───────────────────────────────────────────────────────────────
   const ALL_REPORT_SECTIONS = [
+    { key: 'intro',      label: '简介',       desc: '模型背景与适用场景说明' },
     { key: 'overview',   label: '模型概览',   desc: '名称、描述、标签、变量总数' },
+    { key: 'formulas',   label: '方程列表',   desc: '所有方程含义及激活条件' },
+    { key: 'variables',  label: '变量汇总',   desc: '所有变量类型、含义及最终值' },
     { key: 'simcfg',     label: '仿真配置',   desc: '时间范围、步长、输入参数值' },
-    { key: 'variables',  label: '变量汇总',   desc: '所有变量类型及最终值' },
-    { key: 'formulas',   label: '方程列表',   desc: '所有方程名称及激活条件' },
-    { key: 'trajectory', label: '轨迹数据',   desc: '采样时间序列数值表（每10步）' },
+    { key: 'plots',      label: 'Plot 曲线',  desc: '各输出变量仿真轨迹图' },
     { key: 'opt',        label: '优化结果',   desc: '目标函数、约束条件及结果' },
   ] as const;
   type ReportSection = typeof ALL_REPORT_SECTIONS[number]['key'];
   const [reportSections, setReportSections] = useState<Set<ReportSection>>(
-    new Set(['overview', 'simcfg', 'variables', 'trajectory'])
+    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg', 'plots'])
   );
   const [openReportPreviews, setOpenReportPreviews] = useState<Set<ReportSection>>(
-    new Set(['overview', 'simcfg', 'variables', 'trajectory'])
+    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg'])
   );
   const [reportGenerating, setReportGenerating] = useState(false);
 
@@ -1067,6 +1049,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
                       <span style={{ fontWeight: 600 }}>{varName}</span>
+                      {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 11 }}>{varInfo.description}</span>}
                       {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
                     </span>
                   ),
@@ -1108,13 +1091,17 @@ const Simulator: React.FC<SimulatorProps> = ({
                     const lineColor = VAR_COLORS[(outputVars.length + idx) % VAR_COLORS.length];
                     return {
                       key: v.name,
-                      label: (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
-                          <span style={{ fontWeight: 600 }}>{v.name}</span>
-                          {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
-                        </span>
-                      ),
+                      label: (() => {
+                        const inputVarInfo = selectedModel?.content?.variables?.[v.name];
+                        return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600 }}>{v.name}</span>
+                            {inputVarInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 11 }}>{inputVarInfo.description}</span>}
+                            {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
+                          </span>
+                        );
+                      })(),
                       extra: (
                         <Button
                           size="small" type="text" icon={<DownloadOutlined />}
@@ -1440,11 +1427,12 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             // ── section summary badges ─────────────────────────────────────
             function sectionBadge(key: ReportSection): string {
+              if (key === 'intro')    return meta.description ? '有描述' : '无描述';
               if (key === 'overview') return `${stateVars.length + inputVars.length} 个变量`;
-              if (key === 'simcfg')   return `${Object.keys(inputParams).length} 项输入`;
-              if (key === 'variables') return `${Object.keys(allV).length} 个`;
               if (key === 'formulas') return `${Object.keys(formulas).length} 个`;
-              if (key === 'trajectory') return hasData ? `${simulationData.length} 步` : '需先仿真';
+              if (key === 'variables') return `${Object.keys(allV).length} 个`;
+              if (key === 'simcfg')   return `${Object.keys(inputParams).length} 项输入`;
+              if (key === 'plots')    return hasData ? `${outputVars.length} 条曲线` : '需先仿真';
               if (key === 'opt')      return `${objectives.length} 目标`;
               return '';
             }
@@ -1460,6 +1448,15 @@ const Simulator: React.FC<SimulatorProps> = ({
             );
 
             function renderSectionContent(key: ReportSection): React.ReactNode {
+              if (key === 'intro') return (
+                <div style={{ fontSize: 12, color: c.text, lineHeight: 1.8 }}>
+                  {meta.description
+                    ? <p style={{ margin: 0 }}>{meta.description}</p>
+                    : <span style={{ color: c.textMute }}>暂无简介（可在 YAML metadata.description 中填写）</span>
+                  }
+                  {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 11 }}>标签：{meta.tags.join('  ·  ')}</div> : null}
+                </div>
+              );
               if (key === 'overview') return (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
                   <tr><TD>名称</TD><TD mono>{meta.name || selectedModel?.label || '—'}</TD></tr>
@@ -1479,9 +1476,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                   </tbody></table>
                   {Object.keys(inputParams).length > 0 && (
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><TH>变量</TH><TH>值</TH></tr></thead>
+                      <thead><tr><TH>变量</TH><TH>含义</TH><TH>值</TH></tr></thead>
                       <tbody>{Object.entries(inputParams).map(([k, v]) => (
-                        <tr key={k}><TD mono>{k}</TD><TD mono>{String(v)}</TD></tr>
+                        <tr key={k}><TD mono>{k}</TD><TD>{allV[k]?.description || '—'}</TD><TD mono>{String(v)}</TD></tr>
                       ))}</tbody>
                     </table>
                   )}
@@ -1489,39 +1486,43 @@ const Simulator: React.FC<SimulatorProps> = ({
               );
               if (key === 'variables') return (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr><TH>变量名</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
+                  <thead><tr><TH>变量名</TH><TH>含义</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
                   <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
                     const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                    return <tr key={name}><TD mono>{name}</TD><TD>{d.type || '—'}</TD>
+                    return <tr key={name}><TD mono>{name}</TD><TD>{d.description || '—'}</TD><TD>{d.type || '—'}</TD>
                       <TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
                   })}</tbody>
                 </table>
               );
               if (key === 'formulas') return (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr><TH>方程名</TH><TH>条件</TH><TH>影响变量</TH></tr></thead>
+                  <thead><tr><TH>方程名</TH><TH>含义</TH><TH>条件</TH><TH>影响变量</TH></tr></thead>
                   <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
                     const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
                     const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
-                    return <tr key={name}><TD mono>{name}</TD><TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
+                    return <tr key={name}><TD mono>{name}</TD><TD>{fd.description || '—'}</TD><TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
                   })}</tbody>
                 </table>
               );
-              if (key === 'trajectory') {
-                if (!hasData) return <div style={{ color: c.textMute, fontSize: 11, padding: '8px 0' }}>尚无数据</div>;
-                const sampleStep = Math.max(1, Math.floor(simulationData.length / 15));
-                const sampled = simulationData.filter((_, i) => i % sampleStep === 0 || i === simulationData.length - 1);
-                const cols = stateVars.map(v => v.name).slice(0, 6);
+              if (key === 'plots') {
+                if (!hasData) return <div style={{ color: c.textMute, fontSize: 11, padding: '8px 0' }}>尚无数据，请先运行仿真</div>;
                 return (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><TH>时间</TH>{cols.map(k => <TH key={k}>{k}</TH>)}</tr></thead>
-                      <tbody>{sampled.map((row, i) => (
-                        <tr key={i}><TD mono>{Number(row.time ?? row.step).toFixed(1)}</TD>
-                          {cols.map(k => <TD key={k} mono>{row[k] != null ? Number(row[k]).toFixed(2) : '—'}</TD>)}
-                        </tr>
-                      ))}</tbody>
-                    </table>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {outputVars.map((varName, idx) => {
+                      const varInfo = allV[varName];
+                      return (
+                        <div key={varName}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: c.text, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: VAR_COLORS[idx % VAR_COLORS.length], display: 'inline-block' }} />
+                            <span style={{ fontFamily: 'monospace' }}>{varName}</span>
+                            {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400 }}>{varInfo.description}</span>}
+                            {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
+                          </div>
+                          <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
+                            isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar />
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               }
@@ -1544,6 +1545,11 @@ const Simulator: React.FC<SimulatorProps> = ({
               const lines: string[] = [];
               const ts = new Date().toLocaleString('zh-CN');
               lines.push(`# 仿真报告\n\n> 生成时间：${ts}\n`);
+              if (reportSections.has('intro') && meta.description) {
+                lines.push(`## 简介\n`);
+                lines.push(`${meta.description}\n`);
+                if (meta.tags?.length) lines.push(`**标签**：${meta.tags.join('  ·  ')}\n`);
+              }
               if (reportSections.has('overview')) {
                 lines.push(`## 模型概览\n`);
                 lines.push(`| 字段 | 值 |\n|------|-----|`);
@@ -1556,35 +1562,35 @@ const Simulator: React.FC<SimulatorProps> = ({
                 lines.push(`## 仿真配置\n\n| 参数 | 值 |\n|------|-----|`);
                 lines.push(`| 总时长 | ${timeValue} ${timeUnit} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
                 if (Object.keys(inputParams).length) {
-                  lines.push(`\n**输入参数**\n\n| 变量 | 值 |\n|------|-----|`);
-                  Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${v} |`));
+                  lines.push(`\n**输入参数**\n\n| 变量 | 含义 | 值 |\n|------|------|-----|`);
+                  Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${allV[k]?.description || '—'} | ${v} |`));
                 }
                 lines.push('');
               }
               if (reportSections.has('variables')) {
-                lines.push(`## 变量汇总\n\n| 变量名 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|--------|--------|------|`);
+                lines.push(`## 变量汇总\n\n| 变量名 | 含义 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|------|--------|--------|------|`);
                 Object.entries(allV).forEach(([name, d]: [string, any]) => {
                   const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                  lines.push(`| \`${name}\` | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
+                  lines.push(`| \`${name}\` | ${d.description || '—'} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
                 });
                 lines.push('');
               }
               if (reportSections.has('formulas')) {
-                lines.push(`## 方程列表\n\n| 方程名 | 条件 | 影响变量 |\n|--------|------|----------|`);
+                lines.push(`## 方程列表\n\n| 方程名 | 含义 | 条件 | 影响变量 |\n|--------|------|------|----------|`);
                 Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
                   const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
-                  lines.push(`| \`${name}\` | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
+                  lines.push(`| \`${name}\` | ${fd.description || '—'} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
                 });
                 lines.push('');
               }
-              if (reportSections.has('trajectory') && hasData) {
-                const ss = Math.max(1, Math.floor(simulationData.length / 20));
-                const sampled = simulationData.filter((_, i) => i % ss === 0 || i === simulationData.length - 1);
-                const cols = stateVars.map(v => v.name).slice(0, 8);
-                lines.push(`## 轨迹数据（采样）\n\n| 时间 | ${cols.join(' | ')} |\n|------|${cols.map(()=>'------').join('|')}|`);
-                sampled.forEach(row => {
-                  const vals = cols.map(k => row[k] != null ? Number(row[k]).toFixed(2) : '—');
-                  lines.push(`| ${Number(row.time ?? row.step).toFixed(1)} | ${vals.join(' | ')} |`);
+              if (reportSections.has('plots') && hasData) {
+                lines.push(`## Plot 曲线\n`);
+                outputVars.forEach((varName, idx) => {
+                  const d = allV[varName] || {};
+                  const caption = [varName, d.description, d.unit ? `(${d.unit})` : ''].filter(Boolean).join('  ');
+                  lines.push(`\n**${caption}**\n`);
+                  const dataUrl = varToDataUrl(varName, idx);
+                  if (dataUrl) lines.push(`![${varName}](${dataUrl})\n`);
                 });
                 lines.push('');
               }
@@ -1611,6 +1617,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                 else if (line.startsWith('## ')) { if (inTable){html+='</table>';inTable=false;} html+=`<h2>${esc(line.slice(3))}</h2>`; }
                 else if (line.startsWith('> '))  { html+=`<blockquote>${esc(line.slice(2))}</blockquote>`; }
                 else if (/^\*\*.*\*\*$/.test(line)){ html+=`<p><strong>${esc(line.slice(2,-2))}</strong></p>`; }
+                else if (/^!\[/.test(line)) {
+                  const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
+                  if (m) html += `<img alt="${esc(m[1])}" src="${m[2]}" style="width:100%;max-width:680px;margin:4px 0;display:block">`;
+                }
                 else if (line.startsWith('- '))  { html+=`<li>${line.slice(2).replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</li>`; }
                 else if (line.startsWith('|')) {
                   const cells = line.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>c.trim());
@@ -1640,6 +1650,39 @@ const Simulator: React.FC<SimulatorProps> = ({
               setTimeout(() => setReportGenerating(false), 500);
             }
 
+            function varToDataUrl(varName: string, colorIndex: number, W = 680, H = 160): string {
+              if (simulationData.length === 0) return '';
+              const canvas = document.createElement('canvas');
+              canvas.width = W * 2; canvas.height = H * 2;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) return '';
+              ctx.scale(2, 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, W, H);
+              drawChartOnCtx(ctx, W, H, varName, simulationData, false, VAR_COLORS[colorIndex % VAR_COLORS.length]);
+              return canvas.toDataURL('image/png');
+            }
+
+            function downloadTrajectoryCsv() {
+              if (!hasData) return;
+              const allCols = Object.keys(simulationData[0]).filter(k => k !== 'step');
+              const header = allCols.map(k => {
+                const desc = allV[k]?.description;
+                return desc ? `${k}(${desc})` : k;
+              }).join(',');
+              const rows = simulationData.map(row =>
+                allCols.map(k => row[k] != null ? String(row[k]) : '').join(',')
+              );
+              const csv = [header, ...rows].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `trajectory_${(meta.name || 'sim').replace(/\s+/g,'_')}_${Date.now()}.csv`;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
+            }
+
             const canExport = reportSections.size > 0;
             const btnBase: React.CSSProperties = {
               padding: '6px 16px', borderRadius: 5, fontSize: 12, fontWeight: 600,
@@ -1662,6 +1705,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                     ...btnBase, border: 'none', background: canExport ? c.primary : c.border,
                     color: '#fff', opacity: canExport && !reportGenerating ? 1 : 0.4,
                   }}>{reportGenerating ? '生成中…' : '↓ 导出 .md'}</button>
+                  <button onClick={downloadTrajectoryCsv} disabled={!hasData} style={{
+                    ...btnBase, border: `1px solid ${c.border}`, background: 'transparent',
+                    color: hasData ? c.text : c.textMute, opacity: hasData ? 1 : 0.4,
+                  }}>↓ 轨迹 .csv</button>
                   <Tooltip title="DOCX 导出功能开发中">
                     <button disabled style={{
                       ...btnBase, border: `1px solid ${c.border}`, background: 'transparent',
@@ -1682,10 +1729,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                       textTransform: 'uppercase', padding: '0 14px 8px' }}>输出章节</div>
                     {ALL_REPORT_SECTIONS.map(s => {
                       const checked = reportSections.has(s.key);
-                      const disabledTrajectory = s.key === 'trajectory' && !hasData;
+                      const disabledPlots = s.key === 'plots' && !hasData;
                       const disabledOpt = s.key === 'opt' && mode !== 'opt';
-                      const isDisabled = disabledTrajectory || disabledOpt;
-                      const tooltipText = disabledTrajectory ? '需先完成仿真才能输出轨迹数据'
+                      const isDisabled = disabledPlots || disabledOpt;
+                      const tooltipText = disabledPlots ? '需先完成仿真才能显示曲线'
                         : disabledOpt ? '仅在优化模式下可用' : '';
                       const row = (
                         <label key={s.key} style={{
@@ -1725,7 +1772,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       return (
                         <div key={s.key} style={{
                           border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden',
-                          background: c.panel,
+                          background: c.panel, flexShrink: 0,
                         }}>
                           {/* Accordion header */}
                           <div
