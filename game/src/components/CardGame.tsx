@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './CardGame.css';
 import { useI18n } from '../core/i18n';
-import { loadStoryOverlay, mergeStringOverlay } from '../core/storyI18n';
 import { loadNewFormatStory } from '../core/newFormatLoader';
 import { fetchYaml } from '../core/fetchYaml';
 import { SunOutlined, MoonOutlined, InfoCircleOutlined, LinkOutlined, CheckOutlined } from '@ant-design/icons';
@@ -77,7 +76,8 @@ interface RevealedEnvCard { card: EnvCard; triggered: boolean; isPassive?: boole
 
 interface GameStory {
   meta: { id: string; name: string; period_start?: string; period_end?: string;
-          country?: string; description: string; science_note?: string; tags?: string[]; };
+          country?: string; description: string; science_note?: string; tags?: string[];
+          languages?: string[]; baseLang?: string; };
   variables: Record<string, VarDef>;
   goalVariables: string[];
   game: { plays_per_turn: number; max_turns: number; hand_size: number; env_per_turn: number; draw_per_turn?: number; };
@@ -694,6 +694,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const fs = makeFontScale(fontSize);
   const { language, setLanguage, t, isLoaded } = useI18n();
   const langAtLoad = useRef(language);
+  const rawContentRef = useRef<any>(null);
+  const cleanPathRef  = useRef<string>('');
 
   const [story, setStory]     = useState<GameStory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -847,10 +849,10 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       try {
         const clean = storyPath.replace(/^mods\//, '');
         const content = await fetchYaml(clean);
-        let s: GameStory = await loadNewFormatStory(clean, content);
+        rawContentRef.current = content;
+        cleanPathRef.current  = clean;
+        const s: GameStory = await loadNewFormatStory(clean, content, langAtLoad.current);
         if (!s?.meta || !s?.variables || !s?.player_cards) throw new Error(t('game.load_failed'));
-        const overlay = await loadStoryOverlay(clean, langAtLoad.current);
-        if (overlay) s = mergeStringOverlay(s, overlay);
         setStory(s);
 
         const saved = readGameState(storyPath);
@@ -924,6 +926,31 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     };
     load();
   }, [storyPath]);
+
+  // ── Re-apply i18n overlay when language changes ──────────────────────────────
+  useEffect(() => {
+    if (!rawContentRef.current || !cleanPathRef.current) return;
+    const applyLang = async () => {
+      const s = await loadNewFormatStory(cleanPathRef.current, rawContentRef.current, language);
+      if (!s) return;
+      setStory(s);
+      // Remap card display text in all live card state by id lookup
+      const pcMap = new Map<string, PlayerCard>(s.player_cards.map((c: PlayerCard) => [c.id, c]));
+      const ecMap = new Map<string, EnvCard>(s.environment_cards.map((c: EnvCard) => [c.id, c]));
+      const remapP = (c: PlayerCard): PlayerCard => pcMap.get(c.id) ?? c;
+      const remapE = (c: EnvCard): EnvCard => ecMap.get(c.id) ?? c;
+      setHand(prev => prev.map(remapP));
+      setPlayerDeck(prev => prev.map(remapP));
+      setPlayerDiscard(prev => prev.map(remapP));
+      setBoard(prev => prev.map(b => ({ ...b, card: remapP(b.card) })));
+      setPlayedCards(prev => prev.map(remapP));
+      setStagedDiscards(prev => prev.map(remapP));
+      setEnvEventDeck(prev => prev.map(remapE));
+      setEnvEventDiscard(prev => prev.map(remapE));
+      setEnvRevealed(prev => prev.map(r => ({ ...r, card: remapE(r.card) })));
+    };
+    applyLang();
+  }, [language]);
 
   // ── Play card ─────────────────────────────────────────────────────────────────
   const playCard = (card: PlayerCard) => {
@@ -1485,9 +1512,9 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         {!isMobile && (
           <select value={language} onChange={e => setLanguage(e.target.value as Language)}
             style={{ padding: '2px 5px', borderRadius: 6, border: `1px solid ${c.border}`, background: c.panel, color: c.textMute, cursor: 'pointer', outline: 'none', fontSize: fs.sm }}>
-            <option value="en">EN</option>
-            <option value="zh-CN">CHS</option>
-            <option value="zh-TW">CHT</option>
+            {(story?.meta?.languages ?? ['zh-CN', 'en']).map(l => (
+              <option key={l} value={l}>{l === 'zh-CN' ? 'CHS' : l === 'zh-TW' ? 'CHT' : l.toUpperCase()}</option>
+            ))}
           </select>
         )}
         <button onClick={onToggleDark}

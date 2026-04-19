@@ -1,0 +1,60 @@
+meta:
+  name: "Marie Curie: Light of Science"
+  description: "Paris, 1898. Marie Curie refines radioactive material in a leaking shed. Radiation gnaws at her body; academic prejudice blocks her research. Use intelligence and will to achieve a historic breakthrough in the study of radioactivity."
+
+variable_display:
+  health:
+    label: "Health"
+  money:
+    label: "Money"
+  radiation:
+    label: "Radiation"
+  research_progress:
+    label: "Research Progress"
+
+win_conditions:
+  - message: "【Triumph of Science】You completed a historic discovery in good health — two Nobel Prizes are richly deserved."
+  - message: "【Breakthrough at a Price】A heavy toll on your health, but the secret of radioactivity is finally revealed."
+
+lose_conditions:
+  - message: "【Mission Unfinished】The candle of science had not yet burned out — but the body gave way first."
+
+cards:
+  player_research:
+    name: "Laboratory Research"
+    flavor: "In 1902, Curie refined 0.1 g of pure radium from several tonnes of pitchblende."
+  player_teaching:
+    name: "Teaching"
+    flavor: "Teaching was her way of supporting herself and Pierre — and of giving back to society."
+  player_rest:
+    name: "Rest & Recovery"
+    flavor: "Occasional rest is the price of a longer journey."
+  player_fundraise:
+    name: "Seek Funding"
+    flavor: "Science needs money — the task she least enjoyed but could not avoid."
+  player_publish:
+    name: "Publish a Paper"
+    flavor: "In 1898, the Curies announced the discovery of polonium and radium in the Comptes Rendus."
+  player_lecture:
+    name: "Public Lecture"
+    flavor: "After each lecture, she felt a little further from the sceptical stares."
+  env_radiation_damage:
+    name: "Chronic Radiation Damage"
+    description: "Radioactive material silently erodes the body — every day is a battle."
+    science: "Curie's hands bore permanent radiation burns from years of handling radioactive substances."
+  env_discrimination:
+    name: "Academic Prejudice"
+    description: "As a female scientist, her research is repeatedly questioned and dismissed."
+    science: "\"How could a woman have carried out such research independently?\""
+  env_funding_cut:
+    name: "Funding Cut"
+    description: "The research committee decides to reduce support for this 'dangerous' work."
+    science: "Without money there is no experiment; without experiment there is no science."
+  env_lab_accident:
+    name: "Laboratory Accident"
+    description: "An accident while handling radioactive ore causes a sudden spike in radiation exposure."
+    science: "Danger lurks in every sample bottle, every weighing."
+  env_acute_radiation:
+    name: "Acute Radiation Episode"
+    description: "Long-term high-dose exposure triggers acute symptoms — a serious warning from her body."
+    science: "Numb fingers, blurred vision — early signs of radiation sickness."

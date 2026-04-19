@@ -18,6 +18,8 @@ const COLOR_POOL = ['#52c41a', '#1677ff', '#faad14', '#f5222d', '#722ed1', '#13c
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 import { fetchYaml } from './fetchYaml';
+import type { Language } from './i18n';
+import { loadI18nOverlay, applyI18nOverlay } from './storyI18n';
 
 // ── Card converters ───────────────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ function buildConditions(raw: any) {
  * @param cleanPath  Path relative to mods/, e.g. "stories/marie_curie/game_story.yaml"
  * @param rawStory   Already-parsed game_story.yaml content (from the first /api/file/ call)
  */
-export async function loadNewFormatStory(cleanPath: string, rawStory: any): Promise<any> {
+export async function loadNewFormatStory(cleanPath: string, rawStory: any, lang: Language = 'zh-CN'): Promise<any> {
   const storyDir = cleanPath.replace(/\/game_story\.ya?ml$/, '');
 
   // ── Load player cards (supports copies: N for deck duplication) ────────────
@@ -180,7 +182,8 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     : [`${COMMON}/music.mid`];
 
   // ── Assemble GameStory ──────────────────────────────────────────────────────
-  return {
+  const baseLang: string = rawStory.meta?.base_language ?? 'zh-CN';
+  const assembled: any = {
     meta: {
       id: cleanPath,
       name: rawStory.meta?.name ?? '',
@@ -190,6 +193,8 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
       science_note: rawStory.meta?.science_note,
       tags: rawStory.meta?.tags ?? [],
       author: rawStory.meta?.author ?? '',
+      languages: rawStory.meta?.languages ?? [baseLang],
+      baseLang,
     },
     variables,
     goalVariables,
@@ -208,5 +213,11 @@ export async function loadNewFormatStory(cleanPath: string, rawStory: any): Prom
     cardBackPlayer: toAssetUrl(cardBackPlayerRaw, 'card_back_player.png'),
     music,
   };
+
+  // ── Apply i18n overlay (mutates assembled.meta, variables, wins, loses, cards) ─
+  const overlay = await loadI18nOverlay(storyDir, lang, baseLang);
+  applyI18nOverlay(assembled, overlay, playerCards, envCards);
+
+  return assembled;
 }
 

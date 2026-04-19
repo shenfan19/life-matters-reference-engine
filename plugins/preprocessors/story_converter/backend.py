@@ -857,6 +857,8 @@ def _save_new_format(story: dict, out_dir: Path, source_path: str, source_meta: 
             "author":          "Universal Dynamics Converter",
             "version":         "0.1",
             "source_scenario": source_meta.get("name", ""),
+            "base_language":   "en",
+            "languages":       ["en"],
         },
         "initial_state": initial_state,
         "health_mapping": {
@@ -882,6 +884,33 @@ def _save_new_format(story: dict, out_dir: Path, source_path: str, source_meta: 
     main_file = out_dir / "game_story.yaml"
     _write_yaml(main_file, game_story)
     files.insert(0, "game_story.yaml")
+
+    # ── Write i18n/zh-CN.yaml template ───────────────────────────────────────
+    i18n_dir = out_dir / "i18n"
+    i18n_dir.mkdir(exist_ok=True)
+    i18n_template: dict = {
+        "meta": {
+            "name": game_story["meta"]["name"],
+            "description": game_story["meta"]["description"],
+        },
+        "variable_display": {
+            k: {"label": k} for k in (story.get("variables") or {})
+        },
+        "win_conditions": [{"message": e["description"]} for e in game_story.get("endings", []) if e.get("grade") not in ("D", "F")],
+        "lose_conditions": [{"message": e["description"]} for e in game_story.get("endings", []) if e.get("grade") in ("D", "F")],
+        "cards": {
+            card["id"]: {
+                "name": card.get("display", {}).get("name", card.get("name", card["id"])),
+                "description": card.get("display", {}).get("description", card.get("description", "")),
+                **({"flavor": card.get("display", {}).get("flavor", "")} if card.get("type") == "player" or card.get("category") not in ("env",) else {}),
+            }
+            for card in list(story.get("environment_cards", [])) + list(story.get("player_cards", []))
+            if card.get("id")
+        },
+    }
+    i18n_file = i18n_dir / "zh-CN.yaml.template"
+    _write_yaml(i18n_file, i18n_template)
+    files.append("i18n/zh-CN.yaml.template")
 
     # ── Write _mapping.json ───────────────────────────────────────────────────
     mapping = {

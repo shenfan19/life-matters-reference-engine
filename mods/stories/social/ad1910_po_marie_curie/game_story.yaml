@@ -8,6 +8,7 @@ meta:
   country: France
   author: ""
   version: "0.1"
+  languages: [zh-CN, en]
   created_on: 2026-03-23
   source_scenario: ""
   card_back_fate:   assets/card_back_fate.jpg

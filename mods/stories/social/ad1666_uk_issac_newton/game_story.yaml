@@ -8,6 +8,7 @@ meta:
   country: UK
   author: ""
   version: "0.2"
+  languages: [zh-CN, en]
   created_on: 2026-03-23
   source_scenario: "scenarios/social/ad1666_uk_issac_newton"
   science_note: >
