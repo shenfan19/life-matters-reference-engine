@@ -1,0 +1,22 @@
+id: acute_radiation
+type: env
+category: state
+display:
+  name: Acute Radiation
+  description: '[Type4] 辐射积累超过60分后出现急性症状，健康加速恶化'
+  flavor: '[Type4] 阈值条件触发'
+  icon: ⚠️
+effects:
+- target: health
+  delta: -12
+  condition: null
+channel: medical
+tags:
+- env
+- conditional
+weight: 120
+source:
+  formula: '[Type4] 阈值条件触发'
+  pattern_detected: Type4
+references: []
+condition: radiation >= 60

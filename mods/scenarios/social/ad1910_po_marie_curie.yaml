@@ -1,0 +1,212 @@
+metadata:
+  name: ad1910_po_marie_curie
+  version: "1.0.0"
+  author: "Life Matters"
+  description: >
+    居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。
+    sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
+    opt模式：在性别歧视压制和辐射威胁的约束下，搜索最优的研究节律——
+    怎样分配实验时间、授课与休息，在完成放射性发现的同时维持健康？
+  tags: [historical, curie, radiation, research, 19th-century, france, women-in-science]
+  period: "1898-1906"
+  location: "Paris, France"
+  science_note: >
+    基于放射性暴露模型与科学史研究（Quinn 1995；Reid 1974）。
+    辐射积累公式：radiation += research_intensity × exposure_factor。
+    健康损耗：health_decay = radiation × 0.05 + overwork_penalty。
+    研究产出：progress += research_intensity × max(0.3, 1 - radiation/120)。
+    经费约束：每回合固定支出；授课和经费申请是主要收入来源。
+    步长=1月，总时长=96月（8年）。
+
+variables:
+  # 输入变量（玩家每月可调整）
+  research_intensity:
+    type: input
+    value: 0.6
+    unit: "强度"
+    bounds: [0.0, 1.0]
+    optimizable: true
+    description: "实验室研究强度（0=不做实验, 1=全力投入）；辐射主要来源"
+
+  rest_time:
+    type: input
+    value: 0.2
+    unit: "强度"
+    bounds: [0.0, 1.0]
+    optimizable: true
+    description: "休养与郊外疗养时间比例；降低辐射，恢复健康"
+
+  teaching_load:
+    type: input
+    value: 0.3
+    unit: "强度"
+    bounds: [0.0, 0.8]
+    optimizable: true
+    description: "授课负荷（巴黎高等师范学校）；主要稳定收入来源，消耗健康"
+
+  fundraise_effort:
+    type: input
+    value: 0.1
+    unit: "强度"
+    bounds: [0.0, 0.6]
+    optimizable: true
+    description: "经费申请投入（撰写报告、游说委员会）；大额收入但成功率低"
+
+  # 状态变量
+  health:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "身体健康（辐射损伤、过劳、营养不足的综合体现）"
+
+  radiation:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0, 120]
+    io_role: output
+    description: "辐射积累量（不可逆；>60时急性症状；>90时危及生命）"
+
+  research_progress:
+    type: state
+    value: 0.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "研究进度（目标100=完成钋和镭的发现与提炼）"
+
+  money:
+    type: state
+    value: 40.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: "研究经费（<10时无法维持实验室运转）"
+
+simulation:
+  step_size: 1
+  time_unit: month
+  total_time: 96
+  output_variables:
+    - health
+    - radiation
+    - research_progress
+    - money
+
+formulas:
+  # 研究产出洞见，同时积累辐射
+  research_gain:
+    description: "实验室研究推进科学进展，同时辐射不可避免地积累"
+    condition: research_intensity > 0
+    priority: 10
+    dynamics:
+      research_progress: "min(100, research_progress + research_intensity * 8.0 * max(0.3, 1 - radiation / 120))"
+      radiation: "min(120, radiation + research_intensity * 4.0)"
+      money: "max(0, money - research_intensity * 2.0)"
+
+  # 休养恢复健康，缓慢降低辐射（不可逆，只能减缓）
+  rest_recovery:
+    description: "休养恢复健康，新鲜空气和休息能轻微减缓辐射损伤"
+    condition: rest_time > 0
+    priority: 9
+    dynamics:
+      health: "min(100, health + rest_time * 10.0)"
+      radiation: "max(0, radiation - rest_time * 1.5)"
+
+  # 授课带来稳定收入，消耗健康
+  teaching_income:
+    description: "教学维持经费，但占用时间和精力，轻度损耗健康"
+    condition: teaching_load > 0
+    priority: 8
+    dynamics:
+      money: "min(100, money + teaching_load * 8.0)"
+      health: "max(0, health - teaching_load * 2.0)"
+
+  # 申请经费（高收益，低概率成功）
+  fundraise_income:
+    description: "游说科学委员会申请经费；时间消耗大，成功带来较大资助"
+    condition: fundraise_effort > 0
+    priority: 7
+    dynamics:
+      money: "min(100, money + fundraise_effort * 20.0)"
+      health: "max(0, health - fundraise_effort * 3.0)"
+
+  # 辐射持续损害健康（慢性，不可逆）
+  radiation_damage:
+    description: "长期辐射暴露对健康的慢性侵蚀"
+    condition: radiation > 0
+    priority: 6
+    dynamics:
+      health: "max(0, health - radiation * 0.04)"
+
+  # 辐射超阈值：急性症状
+  acute_radiation:
+    description: "辐射积累超过60分后出现急性症状，健康加速恶化"
+    condition: radiation >= 60
+    priority: 11
+    dynamics:
+      health: "max(0, health - (radiation - 60) * 0.08)"
+
+  # 经费不足无法维持实验室
+  funding_crisis:
+    description: "经费严重不足时实验室无法运转，研究进度停滞"
+    condition: money < 10
+    priority: 5
+    dynamics:
+      research_progress: "max(0, research_progress - 3.0)"
+      health: "max(0, health - 2.0)"
+
+  # 学术歧视：常态压力（每回合）
+  discrimination_pressure:
+    description: "作为女性科学家承受的持续性学术偏见压力"
+    condition: true
+    priority: 4
+    dynamics:
+      money: "max(0, money - 1.5)"
+      health: "max(0, health - 0.5)"
+
+optimizer:
+  method: multi_objective
+  algorithm: nsga2
+  population_size: 50
+  generations: 60
+
+  objectives:
+    - variable: research_progress
+      direction: maximize
+      weight: 1.0
+    - variable: health
+      direction: maximize
+      weight: 0.8
+    - variable: radiation
+      direction: minimize
+      weight: 0.6
+
+  constraints:
+    - expression: "health >= 30"
+      description: "健康不能低于30（历史约束：居里夫人坚持工作至生命最后阶段）"
+    - expression: "money >= 5"
+      description: "最低经费维持实验室基本运转"
+
+  variables_to_optimize:
+    - name: research_fraction
+      default: 0.6
+      bounds: [0.0, 1.0]
+      maps_to: research_intensity
+
+    - name: rest_fraction
+      default: 0.2
+      bounds: [0.0, 0.5]
+      maps_to: rest_time
+
+    - name: teaching_fraction
+      default: 0.3
+      bounds: [0.0, 0.7]
+      maps_to: teaching_load
+
+    - name: fundraise_fraction
+      default: 0.1
+      bounds: [0.0, 0.5]
+      maps_to: fundraise_effort

@@ -1,0 +1,96 @@
+meta:
+  name: ad1910_po_marie_curie
+  description: 居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。 sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
+    opt模式：在性别歧视压制和辐射威胁的约束下，搜索最优的研究节律—— 怎样分配实验时间、授课与休息，在完成放射性发现的同时维持健康？
+variable_display:
+  health:
+    label: health
+  radiation:
+    label: radiation
+  research_progress:
+    label: research_progress
+  money:
+    label: money
+win_conditions:
+- message: Health(分)达到目标水平，优化成功。
+- message: Radiation(分)控制达标，临床目标实现。
+- message: Research Pro达到目标水平，优化成功。
+- message: Money(分)达到目标水平，优化成功。
+lose_conditions:
+- message: Health(分)过低，无法继续。
+- message: Radiation(分)过高，出现严重并发症。
+- message: Research Pro过低，无法继续。
+- message: Money(分)过低，无法继续。
+cards:
+  radiation_damage:
+    name: Radiation Damage
+    description: '[Type4] 长期辐射暴露对健康的慢性侵蚀'
+    flavor: ''
+  acute_radiation:
+    name: Acute Radiation
+    description: '[Type4] 辐射积累超过60分后出现急性症状，健康加速恶化'
+    flavor: ''
+  funding_crisis:
+    name: Funding Crisis
+    description: '[Type4] 经费严重不足时实验室无法运转，研究进度停滞'
+    flavor: ''
+  discrimination_pressure:
+    name: Discrimination Pressure
+    description: '[Type6] 作为女性科学家承受的持续性学术偏见压力'
+    flavor: ''
+  increase_research_intensity:
+    name: Research Intensity↑
+    description: ''
+    flavor: ''
+  decrease_research_intensity:
+    name: Research Intensity↓
+    description: ''
+    flavor: ''
+  increase_rest_time:
+    name: Rest Time↑
+    description: ''
+    flavor: ''
+  decrease_rest_time:
+    name: Rest Time↓
+    description: ''
+    flavor: ''
+  increase_teaching_load:
+    name: Teaching Load↑
+    description: ''
+    flavor: ''
+  decrease_teaching_load:
+    name: Teaching Load↓
+    description: ''
+    flavor: ''
+  increase_fundraise_effort:
+    name: Fundraise Effort↑
+    description: ''
+    flavor: ''
+  decrease_fundraise_effort:
+    name: Fundraise Effort↓
+    description: ''
+    flavor: ''
+  sys_extra_ap:
+    name: 紧急集中
+    description: ''
+    flavor: ''
+  sys_extra_draw:
+    name: 快速回顾
+    description: ''
+    flavor: ''
+  sys_routine:
+    name: 建立规律
+    description: ''
+    flavor: ''
+  sys_amplify:
+    name: 全力以赴
+    description: ''
+    flavor: ''
+  sys_shield:
+    name: 保护屏障
+    description: ''
+    flavor: ''
+  sys_avoid:
+    name: 暂时回避
+    description: ''
+    flavor: ''

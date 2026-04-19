@@ -88,6 +88,75 @@ sim_gui/src/components/
 | **数值归一化** | 大数 → 0–100；`RR=14` → 极高风险 + 高 weight | `variable_display.max`；`weight: 300` |
 | **胜负结局** | 输出变量+目标阈值 → `win_condition`；多阈值 → `endings[]` | `endings[]: { grade: S/A/B/C/D/F }` |
 | **通用牌注入** | 系统内置，不来自 sim | `generic_cards.inject` ⚠️ newFormatLoader 当前未实现 |
+| **系统功能牌注入** | 根据 scenario 参数自动选择并注入 | 见下方"系统功能牌"章节 |
+
+## 牌组比例规则
+
+### 总牌数
+
+```
+P = clamp(hand_size × max_turns × 0.65, 10, 28)
+```
+
+### 内容牌（Content Cards）— 来自 sim input 变量，~65%
+
+每个可优化 input 变量生成 2 张（increase / decrease）：
+- 副本数 = `ceil(P × 0.65 / (n_inputs × 2))`，最多 3 份
+- 费用按效果强度动态计算：`delta_sum ≤ 8 → cost 0`，`≤ 18 → 1`，`≤ 30 → 2`，`> 30 → 3`
+
+### 系统功能牌（System Cards）— 约 30–35%
+
+LM 采用**回合末批量结算**（类昆特牌），系统牌作用于游戏机制本身，不直接改变 sim 变量。分两大类：
+
+#### 资源类（Resource）— 控制"能做多少事"
+
+| 子类 | 牌 ID | 效果 | 费用 | 自动注入条件 |
+|---|---|---|---|---|
+| **临时透支** | `sys_extra_ap` | 本回合 +1 行动点 | 0 | 始终注入，`AP ≤ 2` 时 3 份，否则 2 份 |
+| **临时透支** | `sys_extra_draw` | 本回合多摸 1 张牌 | 0 | 始终注入，`T ≥ 12` 或 `H ≤ 4` 时 2 份，否则 1 份 |
+| **长线投资** | `sys_routine` | 接下来 3 回合 +1 行动点（duration 卡） | 2 | `T ≥ 10` 时注入 1 份 |
+
+#### 效果类（Effect Modifier）— 控制"这回合结算质量"
+
+| 子类 | 牌 ID | 效果 | 费用 | 自动注入条件 |
+|---|---|---|---|---|
+| **翻倍** | `sys_amplify` | 本回合所有内容牌效果 ×1.5 | 2 | `n_vars ≥ 3` 时注入 1–2 份 |
+| **屏蔽** | `sys_shield` | 本回合抵消所有负面环境效果 | 2 | `neg_env ≥ 3` 时注入 1 份 |
+| **逃避** | `sys_avoid` | 本回合所有变量冻结（好坏均不变） | 1 | 始终注入 1 份 |
+
+> **信息牌（侦察/回收）不纳入**：LM 的设计哲学是"玩家在不知道未来的情况下撞见事件"，保留不确定性是体验的一部分。
+
+#### 自适应注入汇总规则
+
+```python
+sys_extra_ap:   copies = 3 if AP <= 2 else 2          # 始终
+sys_extra_draw: copies = 2 if T >= 12 or H <= 4 else 1  # 始终
+sys_routine:    copies = 1 if T >= 10 else 0
+sys_amplify:    copies = (2 if n_vars >= 4 else 1) if n_vars >= 3 else 0
+sys_shield:     copies = 1 if neg_env >= 3 else 0
+sys_avoid:      copies = 1                              # 始终
+```
+
+> 玩家可在 Converter UI 中手动覆盖每张牌的开关与副本数。
+
+#### Game 支持状态
+
+| 牌 | 当前状态 | 实现方式 |
+|---|---|---|
+| `sys_extra_ap` | ⚠️ 需 game 支持 | `system_effect: {type: extra_ap, value: 1}` |
+| `sys_extra_draw` | ⚠️ 需 game 支持 | `system_effect: {type: extra_draw, value: 1}` |
+| `sys_routine` | ✅ 可用 duration 卡近似 | `duration: 3, effects: []` + game 层处理 |
+| `sys_amplify` | ⚠️ 需 game 支持 | `system_effect: {type: amplify, multiplier: 1.5}` |
+| `sys_shield` | ⚠️ 需 game 支持 | `system_effect: {type: shield_negative}` |
+| `sys_avoid` | ⚠️ 需 game 支持 | `system_effect: {type: freeze_turn}` |
+
+### 手牌大小
+
+```
+H = clamp(AP + 2, 3, 6)
+```
+
+---
 
 ## 公式识别 → 环境牌类型（P1-P6）
 

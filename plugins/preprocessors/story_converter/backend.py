@@ -15,6 +15,7 @@ Classification taxonomy
   D3      SDE / continuous noise → forced → Type 5
 """
 
+import math
 import re
 import yaml
 from pathlib import Path
@@ -125,25 +126,46 @@ def _convert(model: dict, inputs: dict) -> tuple[dict, list[str]]:
 
     game_vars = _build_game_vars(game_var_keys, state_vars)
 
-    # 3. Time scaling
-    step_size      = float(simulator.get("step_size", 1))
-    total_time     = float(simulator.get("total_time", 90))
-    turn_days      = _estimate_turn_length(total_time)
-    steps_per_turn = turn_days / step_size if step_size > 0 else turn_days
+    # 3. Time scaling — normalize total_time to days for turn estimation
+    step_size  = float(simulator.get("step_size", 1))
+    total_time = float(simulator.get("total_time", 90))
+    time_unit  = str(simulator.get("time_unit", "day")).lower()
+    _UNIT_TO_DAYS = {"minute": 1/1440, "hour": 1/24, "day": 1, "week": 7, "month": 30, "year": 365}
+    unit_factor    = _UNIT_TO_DAYS.get(time_unit, 1.0)
+    step_days      = step_size * unit_factor
+    total_days     = total_time * step_days          # total simulation in days
+    total_steps    = total_time / step_size if step_size > 0 else total_time
+    turn_days      = _estimate_turn_length(total_days)
+    raw_turns      = max(8, min(20, int(total_days / turn_days)))
 
     ap_per_turn = int(inputs.get("ap_per_turn", 3))
-    max_turns   = int(inputs.get("turns") or max(8, min(20, int(total_time / turn_days))))
+    max_turns   = int(inputs.get("turns") or raw_turns)
+    steps_per_turn = total_steps / max_turns if max_turns > 0 else 1.0
 
-    # 4. Classify formulas → environment cards (respecting user enabled/override)
+    # 4. Classify formulas → env cards OR input-driven player card effects
+    #    Key rule: if a formula's condition references an input variable,
+    #    it is NOT an env event — it IS the mechanism behind a player card.
+    #    We separate these two sets here, then use input_formula_map in step 5.
     env_cards: list[dict] = []
+    input_formula_map: dict[str, list[dict]] = {}   # input_key → [formula_defs]
     type_log: list[str] = []
 
     for fname, fdef in forms_src.items():
         fui = formula_config_in.get(fname, {})
-
-        # Respect enabled toggle
         if fui and not fui.get("enabled", True):
             type_log.append(f"{fname}→(disabled)")
+            continue
+
+        # Check whether condition directly mentions an input variable
+        cond_raw = str(fdef.get("condition", "true"))
+        driving_input = next(
+            (k for k in input_vars if re.search(rf"\b{re.escape(k)}\b", cond_raw)),
+            None,
+        )
+        if driving_input:
+            # This formula is driven by a player input → record for player card effects
+            input_formula_map.setdefault(driving_input, []).append(fdef)
+            type_log.append(f"{fname}→player({driving_input})")
             continue
 
         ftype, card = _classify_formula(
@@ -160,18 +182,33 @@ def _convert(model: dict, inputs: dict) -> tuple[dict, list[str]]:
                 "Review effects manually."
             )
 
-    # 5. Player cards — respect asCard toggle
+    # 5. Player cards — derive effects from formula dynamics, not hardcoded heuristics
     active_inputs = {
         k: v for k, v in input_vars.items()
         if var_config_in.get(k, {}).get("asCard", v.get("optimizable", False)) is not False
     }
-    # Use full input_vars if no config provided (fallback)
     if not var_config_in:
         active_inputs = input_vars
 
     player_cards = _build_player_cards(
-        active_inputs, game_var_keys, game_vars, steps_per_turn, optimizer
+        active_inputs, game_var_keys, game_vars, steps_per_turn, optimizer,
+        input_formula_map,
     )
+
+    # 5b. System cards — auto-selected by scenario params, overridable by UI config
+    system_cards_config_in = inputs.get("system_cards_config", {})
+    neg_env_count = sum(
+        1 for c in env_cards if any(e.get("delta", 0) < 0 for e in c.get("effects", []))
+    )
+    system_cards = _select_system_cards(
+        ap=ap_per_turn,
+        turns=max_turns,
+        hand_size=min(5, max(3, len(player_cards))),
+        neg_env_count=neg_env_count,
+        n_vars=len(game_var_keys),
+        config=system_cards_config_in,
+    )
+    player_cards = player_cards + system_cards
 
     # 6. Win / lose conditions — use user-defined if provided, else auto
     if conditions_in:
@@ -187,11 +224,11 @@ def _convert(model: dict, inputs: dict) -> tuple[dict, list[str]]:
         ]
         # Fallback if either list is empty
         if not lose_conds or not win_conds:
-            auto_lose, auto_win = _build_conditions(game_var_keys, game_vars)
+            auto_lose, auto_win = _build_conditions(game_var_keys, game_vars, optimizer)
             lose_conds = lose_conds or auto_lose
             win_conds  = win_conds  or auto_win
     else:
-        lose_conds, win_conds = _build_conditions(game_var_keys, game_vars)
+        lose_conds, win_conds = _build_conditions(game_var_keys, game_vars, optimizer)
 
     # 7. Science note
     refs = meta_src.get("references", [])
@@ -225,7 +262,7 @@ def _convert(model: dict, inputs: dict) -> tuple[dict, list[str]]:
         "game": {
             "ap_per_turn": ap_per_turn,
             "max_turns": max_turns,
-            "hand_size": min(5, max(3, len(player_cards))),
+            "hand_size": min(6, max(3, ap_per_turn + 2)),
         },
         "lose_conditions": lose_conds,
         "win_conditions": win_conds,
@@ -451,57 +488,148 @@ def _make_env_card(
     return card
 
 
+_SAFE_MATH = {
+    "min": min, "max": max, "abs": abs,
+    "sqrt": math.sqrt, "exp": math.exp, "log": math.log,
+    "floor": math.floor, "ceil": math.ceil,
+    "__builtins__": {},
+}
+
+
+def _build_eval_ctx(game_vars: dict, state_vars: dict, extra: dict | None = None) -> dict:
+    """Build a representative numeric context for formula evaluation (variable midpoints).
+
+    game_vars entries have _raw_lo/_raw_hi from build step; state_vars have raw `bounds`.
+    game_vars wins on overlap so its processed metadata is preserved.
+    """
+    ctx: dict = {}
+    # First pass: raw state_vars using bounds
+    for k, v in state_vars.items():
+        bounds = v.get("bounds", [0.0, 100.0])
+        lo = float(bounds[0]) if bounds else 0.0
+        hi = float(bounds[-1]) if bounds else 100.0
+        ctx[k] = (lo + hi) / 2.0
+    # Second pass: game_vars overwrite with _raw_lo/_raw_hi
+    for k, v in game_vars.items():
+        lo = v.get("_raw_lo", 0.0)
+        hi = v.get("_raw_hi", 100.0)
+        ctx[k] = (lo + hi) / 2.0
+    if extra:
+        ctx.update(extra)
+    return ctx
+
+
 def _estimate_delta(
     var_key: str, expr: str,
-    game_vars: dict, state_vars: dict, steps_per_turn: float
+    game_vars: dict, state_vars: dict, steps_per_turn: float,
+    extra_ctx: dict | None = None,
 ) -> int:
     """
-    Estimate per-turn delta in game units [0, 100].
+    Estimate per-turn delta for env cards in game units [0, 100].
 
-    Strategy:
-      1. Look for explicit numeric coefficient next to step_size in the expression.
-      2. Fall back to annual rate patterns (/ 365).
-      3. Fall back to time-constant patterns (1/tau).
-      4. Default: small negative (most env effects are harmful).
+    Primary strategy: numerically evaluate the expression at representative midpoint
+    values and subtract the variable's current value to find the per-step change.
+    Fallback: regex coefficient extraction for step_size / annual-rate patterns.
     """
     gv = game_vars.get(var_key, {})
     raw_lo  = gv.get("_raw_lo", 0.0)
     raw_hi  = gv.get("_raw_hi", 100.0)
     raw_rng = max(raw_hi - raw_lo, 1.0)
 
+    ctx = _build_eval_ctx(game_vars, state_vars, extra_ctx)
+    current_val = ctx.get(var_key, (raw_lo + raw_hi) / 2.0)
+
     raw_delta_per_step: float = 0.0
+    used_numerical = False
 
-    # Pattern 1: explicit "(± C) * step_size"
-    coeffs = re.findall(r"([\+\-]?\s*[\d]+(?:\.[\d]+)?)\s*\*\s*step_size", expr)
-    if coeffs:
-        for c in coeffs:
-            try:
-                raw_delta_per_step += float(c.replace(" ", ""))
-            except ValueError:
-                pass
-    else:
-        # Pattern 2: annual rate  e.g. "gfr_base_decline / 365.0"
-        m = re.search(r"([\d\.]+)\s*/\s*365", expr)
-        if m:
-            annual = float(m.group(1))
-            raw_delta_per_step = -(annual / 365.0)
+    # Try evaluation at multiple quantiles; use the largest-magnitude non-zero result.
+    # This handles threshold formulas (e.g. radiation_damage only triggers above 60)
+    # where the midpoint falls exactly on the threshold giving delta=0.
+    for quantile in (0.5, 0.75, 0.25):
+        probe_ctx = {k: gv2.get("_raw_lo", 0.0) + (gv2.get("_raw_hi", 100.0) - gv2.get("_raw_lo", 0.0)) * quantile
+                     for k, gv2 in game_vars.items()}
+        probe_ctx.update({k: v for k, v in ctx.items() if k not in probe_ctx})
+        probe_current = probe_ctx.get(var_key, current_val)
+        try:
+            safe = {**_SAFE_MATH, **probe_ctx}
+            new_val = float(eval(expr, {"__builtins__": {}}, safe))  # noqa: S307
+            candidate = new_val - probe_current
+            if abs(candidate) > abs(raw_delta_per_step):
+                raw_delta_per_step = candidate
+                used_numerical = True
+        except Exception:
+            pass
 
-        # Pattern 3: ODE approach with time constant  e.g. "* (1.0/14.0) *"
-        elif re.search(r"\(1\.0\s*/\s*([\d\.]+)\)", expr) or re.search(r"1\s*/\s*([\d]+)", expr):
-            tau_m = re.search(r"1\.?0?\s*/\s*([\d\.]+)", expr)
-            if tau_m:
-                tau = float(tau_m.group(1))
-                # Approach at rate 1/tau per step; net effect ~10% of baseline per tau
-                raw_val = gv.get("_raw_val", (raw_lo + raw_hi) / 2)
-                raw_delta_per_step = -(raw_val - raw_lo) / tau * 0.05
+    if not used_numerical:
+        # Fallback regex patterns
+        coeffs = re.findall(r"([\+\-]?\s*[\d]+(?:\.[\d]+)?)\s*\*\s*step_size", expr)
+        if coeffs:
+            for c in coeffs:
+                try:
+                    raw_delta_per_step += float(c.replace(" ", ""))
+                except ValueError:
+                    pass
         else:
-            # Pattern 4: default small negative
-            raw_delta_per_step = -raw_rng * 0.003
+            m = re.search(r"([\d\.]+)\s*/\s*365", expr)
+            if m:
+                raw_delta_per_step = -(float(m.group(1)) / 365.0)
+            else:
+                raw_delta_per_step = -raw_rng * 0.003
 
     raw_delta_per_turn = raw_delta_per_step * steps_per_turn
     game_delta = raw_delta_per_turn / raw_rng * 100.0
 
-    # Clamp & round
+    if abs(game_delta) < 0.3:
+        return 0
+    rounded = int(round(game_delta))
+    if rounded == 0:
+        rounded = 1 if game_delta > 0 else -1
+    return max(-30, min(30, rounded))
+
+
+def _eval_input_delta(
+    state_var: str, expr: str,
+    input_var: str, step_raw: float,
+    game_vars: dict, state_vars: dict,
+    input_vars: dict,
+    steps_per_turn: float,
+) -> int:
+    """
+    For a player card that increases `input_var` by `step_raw`, estimate the marginal
+    per-turn change in `state_var` by numerical evaluation:
+      delta = eval(expr, input_var=step_raw) - eval(expr, input_var=0)
+
+    Uses midpoint values for all other variables to get a representative estimate.
+    """
+    gv = game_vars.get(state_var, {})
+    raw_lo  = gv.get("_raw_lo", 0.0)
+    raw_hi  = gv.get("_raw_hi", 100.0)
+    raw_rng = max(raw_hi - raw_lo, 1.0)
+
+    # Build context with midpoints; include input variable defaults/midpoints
+    ctx = _build_eval_ctx(game_vars, state_vars)
+    for k, v in input_vars.items():
+        lo = float((v.get("bounds") or [0, 1])[0])
+        hi = float((v.get("bounds") or [0, 1])[-1])
+        default = v.get("value", (lo + hi) / 2.0)
+        ctx[k] = float(default)
+
+    current_state = ctx.get(state_var, (raw_lo + raw_hi) / 2.0)
+
+    try:
+        safe0 = {**_SAFE_MATH, **ctx, input_var: 0.0, state_var: current_state}
+        val_0 = float(eval(expr, {"__builtins__": {}}, safe0))  # noqa: S307
+
+        safe_s = {**_SAFE_MATH, **ctx, input_var: step_raw, state_var: current_state}
+        val_s = float(eval(expr, {"__builtins__": {}}, safe_s))  # noqa: S307
+
+        raw_delta_per_step = val_s - val_0
+    except Exception:
+        return -1
+
+    raw_delta_per_turn = raw_delta_per_step * steps_per_turn
+    game_delta = raw_delta_per_turn / raw_rng * 100.0
+
     if abs(game_delta) < 0.3:
         return 0
     rounded = int(round(game_delta))
@@ -524,12 +652,22 @@ def _build_player_cards(
     game_vars: dict,
     steps_per_turn: float,
     optimizer: dict,
+    input_formula_map: dict | None = None,
 ) -> list[dict]:
     """
     Generate 2 player cards per optimizable input variable (increase / decrease).
-    Effects are estimated from the input's bounds relative to game variable ranges.
+    Effects are derived from the formula dynamics where the input drives the condition.
+    Falls back to input-bounds scaling only when no formula is found.
     """
-    opt_targets = set(optimizer.get("variables_to_optimize", list(input_vars)))
+    vto = optimizer.get("variables_to_optimize", list(input_vars))
+    opt_targets = set(
+        v["maps_to"] if isinstance(v, dict) and "maps_to" in v else
+        (v["name"] if isinstance(v, dict) else v)
+        for v in vto
+    )
+    if input_formula_map is None:
+        input_formula_map = {}
+
     cards: list[dict] = []
 
     for i, (k, v) in enumerate(input_vars.items()):
@@ -537,100 +675,201 @@ def _build_player_cards(
             continue
 
         bounds = v.get("bounds", [0, 100])
-        lo, hi = float(bounds[0]), float(bounds[-1])
-        step_pct = 0.20            # 20% of input range per card play
+        lo, hi   = float(bounds[0]), float(bounds[-1])
+        step_pct = 0.20
         step_raw = (hi - lo) * step_pct
         unit     = v.get("unit", "")
-        short    = _short_label(k, unit)
+        short    = _formula_display_name(k)   # use same label logic as env cards
+        desc     = (v.get("description") or k).strip()[:80]
 
-        desc = (v.get("description") or k).strip()[:60]
+        # ── Derive effects from formula dynamics ──────────────────────────────
+        effects_up: list[dict] = []
+        for fdef in input_formula_map.get(k, []):
+            dynamics = fdef.get("dynamics", {})
+            for vk, expr in dynamics.items():
+                if vk not in game_var_keys:
+                    continue
+                delta = _eval_input_delta(
+                    vk, str(expr), k, step_raw,
+                    game_vars, {}, input_vars, steps_per_turn,
+                )
+                if delta != 0:
+                    # Merge: if same variable appears in multiple formulas, sum deltas
+                    existing = next((e for e in effects_up if e["variable"] == vk), None)
+                    if existing:
+                        existing["delta"] = max(-30, min(30, existing["delta"] + delta))
+                    else:
+                        effects_up.append({"variable": vk, "delta": delta})
 
-        # Estimate how this input affects each game variable
-        # Heuristic: each game var shifts by ±5 game-units per 20% input change
-        # (domain knowledge embedded: higher training → more fitness AND more fatigue;
-        #  more diuretic → lower BP but higher UA; more protein → more muscle, faster GFR loss)
-        effects_up, effects_down = _infer_input_effects(k, game_var_keys, game_vars)
-
+        # ── Fallback: scale by input range fraction × game range ──────────────
         if not effects_up:
-            # Generic fallback: affects first game var positively
-            if game_var_keys:
-                effects_up   = [{"variable": game_var_keys[0], "delta": 6}]
-                effects_down = [{"variable": game_var_keys[0], "delta": -6}]
+            for vk in game_var_keys:
+                gv = game_vars.get(vk, {})
+                raw_rng = max(gv.get("_raw_hi", 100) - gv.get("_raw_lo", 0), 1.0)
+                delta = int(round(step_raw / raw_rng * 100 * 0.5))
+                if delta != 0:
+                    effects_up.append({"variable": vk, "delta": max(-30, min(30, delta))})
+
+        effects_down = [{"variable": e["variable"], "delta": -e["delta"]} for e in effects_up]
+
+        # ── Cost from effect magnitude ────────────────────────────────────────
+        delta_sum = sum(abs(e["delta"]) for e in effects_up)
+        cost_up   = 0 if delta_sum <= 8 else (1 if delta_sum <= 18 else (2 if delta_sum <= 30 else 3))
+        cost_down = max(0, cost_up - 1)
 
         cards.append({
-            "id":     f"increase_{k}",
-            "name":   f"增加{short}",
-            "type":   _input_card_type(k),
-            "cost":   2,
-            "emoji":  _EMOJIS_UP[i % len(_EMOJIS_UP)],
-            "flavor": f"增加{unit}摄入：{desc}",
+            "id":      f"increase_{k}",
+            "name":    f"{short}↑",
+            "type":    _input_card_type(k),
+            "cost":    cost_up,
+            "emoji":   _EMOJIS_UP[i % len(_EMOJIS_UP)],
+            "flavor":  desc,
             "science": f"优化变量 {k}（+{step_raw:.2g} {unit}/回合）",
             "effects": effects_up,
         })
         cards.append({
-            "id":     f"decrease_{k}",
-            "name":   f"减少{short}",
-            "type":   _input_card_type(k),
-            "cost":   1,
-            "emoji":  _EMOJIS_DOWN[i % len(_EMOJIS_DOWN)],
-            "flavor": f"减少{unit}摄入：{desc}",
+            "id":      f"decrease_{k}",
+            "name":    f"{short}↓",
+            "type":    _input_card_type(k),
+            "cost":    cost_down,
+            "emoji":   _EMOJIS_DOWN[i % len(_EMOJIS_DOWN)],
+            "flavor":  desc,
             "science": f"优化变量 {k}（-{step_raw:.2g} {unit}/回合）",
             "effects": effects_down,
         })
 
-    return cards[:12]
+    return cards[:16]
 
 
-# Domain heuristics: known input → game variable effect directions
-_INPUT_EFFECTS: dict[str, dict[str, int]] = {
-    # Banister: training load
-    "training_load": {
-        "fitness_component":  8,    # more training → more fitness
-        "fatigue_component":  -10,  # more training → more fatigue (bad)
-        "performance":        3,
+# ──────────────────────────────────────────────────────────────────────────────
+# System cards (功能牌) — affect game mechanics, not sim variables
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Master library of all available system cards
+_SYSTEM_CARD_LIBRARY: dict[str, dict] = {
+    "sys_extra_ap": {
+        "id": "sys_extra_ap",
+        "name": "紧急集中",
+        "type": "system",
+        "category": "resource_burst",
+        "cost": 0,
+        "emoji": "⚡",
+        "flavor": "有时候，专注本身就是一种力量。",
+        "system_effect": {"type": "extra_ap", "value": 1},
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "resource", "burst"],
     },
-    # CKD: protein intake
-    "protein_intake": {
-        "muscle_mass": 10,   # more protein → more muscle
-        "gfr":        -8,    # more protein → faster GFR decline
-        "bun":        -6,    # more protein → higher BUN (bad for game = lower game score)
+    "sys_extra_draw": {
+        "id": "sys_extra_draw",
+        "name": "快速回顾",
+        "type": "system",
+        "category": "resource_burst",
+        "cost": 0,
+        "emoji": "🃏",
+        "flavor": "翻阅记忆，找到那张差点遗忘的牌。",
+        "system_effect": {"type": "extra_draw", "value": 1},
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "resource", "draw"],
     },
-    # HTN+Gout: diuretic dose
-    "diuretic_dose": {
-        "systolic_bp": 12,   # more diuretic → lower BP (good, so +12 in "lower is better" scale)
-        "uric_acid":  -10,   # more diuretic → higher UA (bad, so -10)
-        "goal_score":  4,
+    "sys_routine": {
+        "id": "sys_routine",
+        "name": "建立规律",
+        "type": "system",
+        "category": "resource_investment",
+        "cost": 2,
+        "emoji": "📅",
+        "flavor": "系统化的节律，比偶然的爆发更持久。",
+        "system_effect": {"type": "extra_ap", "value": 1},
+        "duration": 3,
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "resource", "duration"],
     },
-    # HTN+Gout: purine intake
-    "purine_intake": {
-        "uric_acid":  -8,    # less purine → lower UA (but card is "decrease", so reversed)
-        "systolic_bp": 0,
-        "goal_score":  2,
+    "sys_amplify": {
+        "id": "sys_amplify",
+        "name": "全力以赴",
+        "type": "system",
+        "category": "effect_amplify",
+        "cost": 2,
+        "emoji": "🔥",
+        "flavor": "在关键时刻，超越自己的极限。",
+        "system_effect": {"type": "amplify", "multiplier": 1.5},
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "effect", "amplify"],
     },
-    # HTN+Gout: weight loss rate
-    "weight_loss_rate": {
-        "systolic_bp": 8,    # more weight loss → lower BP
-        "uric_acid":  -4,    # moderate loss: ok; fast loss: UA rises. Net slightly bad.
-        "body_weight": 6,
-        "goal_score":  5,
+    "sys_shield": {
+        "id": "sys_shield",
+        "name": "保护屏障",
+        "type": "system",
+        "category": "effect_shield",
+        "cost": 2,
+        "emoji": "🛡️",
+        "flavor": "有时候，最好的进攻是无懈可击的防守。",
+        "system_effect": {"type": "shield_negative"},
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "effect", "shield"],
+    },
+    "sys_avoid": {
+        "id": "sys_avoid",
+        "name": "暂时回避",
+        "type": "system",
+        "category": "effect_avoid",
+        "cost": 1,
+        "emoji": "🌫️",
+        "flavor": "不是逃避，而是积蓄力量，等待时机。",
+        "system_effect": {"type": "freeze_turn"},
+        "effects": [],
+        "channel": "system",
+        "tags": ["system", "effect", "avoid"],
     },
 }
 
 
-def _infer_input_effects(
-    input_key: str, game_var_keys: list[str], game_vars: dict
-) -> tuple[list[dict], list[dict]]:
-    """Return (up_effects, down_effects) lists based on domain heuristics."""
-    if input_key not in _INPUT_EFFECTS:
-        return [], []
+def _select_system_cards(
+    ap: int,
+    turns: int,
+    hand_size: int,
+    neg_env_count: int,
+    n_vars: int,
+    config: dict,
+) -> list[dict]:
+    """
+    Auto-select system cards and their copy counts based on scenario parameters.
+    config: {card_id: {"enabled": bool, "copies": int}} — UI overrides.
+    Returns list of card dicts (with "_copies" key for deck injection).
+    """
+    # Default auto-selection rules
+    auto: dict[str, int] = {}  # card_id → copies
+    auto["sys_extra_ap"]   = 3 if ap <= 2 else 2
+    auto["sys_extra_draw"] = 2 if (turns >= 12 or hand_size <= 4) else 1
+    auto["sys_routine"]    = 1 if turns >= 10 else 0
+    auto["sys_amplify"]    = (2 if n_vars >= 4 else 1) if n_vars >= 3 else 0
+    auto["sys_shield"]     = 1 if neg_env_count >= 3 else 0
+    auto["sys_avoid"]      = 1
 
-    known = _INPUT_EFFECTS[input_key]
-    up, down = [], []
-    for gk in game_var_keys:
-        if gk in known and known[gk] != 0:
-            up.append({"variable": gk, "delta": known[gk]})
-            down.append({"variable": gk, "delta": -known[gk]})
-    return up, down
+    # Apply UI overrides
+    for card_id, cfg in config.items():
+        if not cfg.get("enabled", True):
+            auto[card_id] = 0
+        elif "copies" in cfg:
+            auto[card_id] = int(cfg["copies"])
+
+    cards = []
+    for card_id, copies in auto.items():
+        if copies <= 0:
+            continue
+        base = _SYSTEM_CARD_LIBRARY.get(card_id)
+        if base:
+            card = dict(base)
+            card["_copies"] = copies
+            cards.append(card)
+    return cards
+
+
 
 
 def _input_card_type(key: str) -> str:
@@ -649,45 +888,77 @@ def _input_card_type(key: str) -> str:
 # Win / lose conditions
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Variables where HIGH is bad (BP, UA, BUN, fatigue)
-_HIGH_BAD = {"fatigue_component", "bun", "systolic_bp", "uric_acid"}
-# Variables where LOW is bad (GFR, fitness, muscle, performance, goal_score)
-_LOW_BAD  = {"gfr", "performance", "fitness_component", "muscle_mass", "goal_score"}
-
-
 def _build_conditions(
-    game_var_keys: list[str], game_vars: dict
+    game_var_keys: list[str],
+    game_vars: dict,
+    optimizer: dict | None = None,
 ) -> tuple[list[dict], list[dict]]:
-    lose, win = [], []
+    """
+    Derive win/lose conditions from optimizer objectives (maximize/minimize)
+    and optimizer constraints. Falls back to variable semantics (higher_is_better)
+    when no optimizer info is available.
+    """
+    lose: list[dict] = []
+    win:  list[dict] = []
 
+    # ── Build direction map from optimizer objectives ─────────────────────────
+    # direction: 'maximize' → higher is better (low = lose); 'minimize' → lower is better (high = lose)
+    direction: dict[str, str] = {}
+    if optimizer:
+        for obj in optimizer.get("objectives", []):
+            vname = obj.get("variable", "")
+            if vname in game_var_keys:
+                direction[vname] = obj.get("direction", "maximize")
+
+    # ── Derive conditions for optimizer target variables first ─────────────────
+    handled: set[str] = set()
     for k in game_var_keys:
-        label = game_vars[k]["label"]
-        if k in _LOW_BAD:
-            lose.append({
-                "condition": f"{k} <= 15",
-                "message": f"{label}过低，无法继续——治疗失败。",
-            })
-            win.append({
-                "condition": f"{k} >= 75",
-                "message": f"{label}达到目标水平，优化成功。",
-            })
-        elif k in _HIGH_BAD:
-            lose.append({
-                "condition": f"{k} >= 88",
-                "message": f"{label}过高，出现严重并发症。",
-            })
-            win.append({
-                "condition": f"{k} <= 25",
-                "message": f"{label}控制达标，临床目标实现。",
-            })
+        gv    = game_vars.get(k, {})
+        label = gv.get("label", k)
+        # Determine direction: optimizer > variable higher_is_better flag > default maximize
+        if k in direction:
+            maximize = direction[k] == "maximize"
+        else:
+            maximize = gv.get("higher_is_better", True)
 
+        # Use optimizer constraints for thresholds if available
+        lose_threshold = win_threshold = None
+        if optimizer:
+            for c in optimizer.get("constraints", []):
+                expr = c.get("expression", "")
+                # e.g. "health >= 30" → lose if health < 30
+                m = re.match(rf"\b{re.escape(k)}\b\s*(>=|<=|>|<)\s*([\d\.]+)", expr)
+                if m:
+                    op, val = m.group(1), float(m.group(2))
+                    if op in (">=", ">") and maximize:
+                        lose_threshold = float(val)
+                    elif op in ("<=", "<") and not maximize:
+                        lose_threshold = float(val)
+
+        if maximize:
+            lt = lose_threshold if lose_threshold is not None else 10.0
+            wt = 80.0
+            lose.append({"condition": f"{k} <= {int(lt)}", "message": f"{label}过低，无法继续。"})
+            win.append( {"condition": f"{k} >= {int(wt)}", "message": f"{label}达到目标水平，优化成功。"})
+        else:
+            lt = lose_threshold if lose_threshold is not None else 88.0
+            wt = 20.0
+            lose.append({"condition": f"{k} >= {int(lt)}", "message": f"{label}过高，出现严重并发症。"})
+            win.append( {"condition": f"{k} <= {int(wt)}", "message": f"{label}控制达标，临床目标实现。"})
+        handled.add(k)
+
+    # ── Fallback if no conditions derived ────────────────────────────────────
     if not lose:
         first = game_var_keys[0] if game_var_keys else None
         lose = [{"condition": f"{first} <= 5" if first else "false",
                  "message": "状态恶化至无法恢复的程度。"}]
     if not win:
-        first = game_var_keys[0] if game_var_keys else None
-        win = [{"condition": f"{first} >= 80" if first else "true",
+        # Pick the primary optimizer maximize target, else first var
+        primary = next(
+            (k for k in game_var_keys if direction.get(k) == "maximize"),
+            game_var_keys[0] if game_var_keys else None,
+        )
+        win = [{"condition": f"{primary} >= 80" if primary else "true",
                 "message": "目标达成，优化成功。"}]
 
     return lose, win
@@ -801,12 +1072,27 @@ def _save_new_format(story: dict, out_dir: Path, source_path: str, source_meta: 
         env_deck.append({"path": f"cards/{fname}", "weight": weight})
         mapping_vars[card["id"]] = f"cards/{fname}"
 
-    for card in story.get("player_cards", []):
-        card_data = _to_new_card(card, "player")
-        fname = f"player_{card['id']}.yaml"
+    # Compute content card copy count: P = clamp(H×T×0.65, 10, 28)
+    # content cards take ~65% of P; split evenly across n_content cards, max 3
+    all_player = story.get("player_cards", [])
+    n_content = sum(1 for c in all_player if c.get("type") != "system")
+    game_cfg   = story.get("game", {})
+    _H = game_cfg.get("hand_size", 5)
+    _T = game_cfg.get("max_turns", 12)
+    _P = max(10, min(28, int(_H * _T * 0.65)))
+    content_copies = min(3, max(1, -(-int(_P * 0.65) // max(n_content, 1))))  # ceiling div
+
+    for card in all_player:
+        is_system = card.get("type") == "system"
+        copies = card.pop("_copies", 1) if is_system else content_copies
+        card_data = card if is_system else _to_new_card(card, "player")
+        fname = f"{card['id']}.yaml" if is_system else f"player_{card['id']}.yaml"
         _write_yaml(cards_dir / fname, card_data)
         files.append(f"cards/{fname}")
-        player_deck.append({"path": f"cards/{fname}"})
+        deck_entry: dict = {"path": f"cards/{fname}"}
+        if copies > 1:
+            deck_entry["copies"] = copies
+        player_deck.append(deck_entry)
         mapping_vars[card["id"]] = f"cards/{fname}"
 
     # ── Build initial_state from variables ────────────────────────────────────

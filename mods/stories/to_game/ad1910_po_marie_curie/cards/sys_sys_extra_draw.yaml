@@ -1,0 +1,17 @@
+id: sys_extra_draw
+name: 快速回顾
+type: system
+category: resource_burst
+cost: 0
+emoji: 🃏
+flavor: 翻阅记忆，找到那张差点遗忘的牌。
+system_effect:
+  type: extra_draw
+  value: 1
+effects: []
+channel: system
+tags:
+- system
+- resource
+- draw
+references: []

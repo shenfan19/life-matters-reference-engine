@@ -1,0 +1,16 @@
+id: sys_shield
+name: 保护屏障
+type: system
+category: effect_shield
+cost: 2
+emoji: 🛡️
+flavor: 有时候，最好的进攻是无懈可击的防守。
+system_effect:
+  type: shield_negative
+effects: []
+channel: system
+tags:
+- system
+- effect
+- shield
+references: []

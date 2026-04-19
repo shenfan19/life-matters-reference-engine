@@ -1,0 +1,28 @@
+id: research_gain
+type: env
+category: state
+display:
+  name: Research Gain
+  description: '[Type4] 实验室研究推进科学进展，同时辐射不可避免地积累'
+  flavor: '[Type4] 阈值条件触发'
+  icon: ⚠️
+effects:
+- target: research_progress
+  delta: -4
+  condition: null
+- target: radiation
+  delta: -4
+  condition: null
+- target: money
+  delta: -4
+  condition: null
+channel: medical
+tags:
+- env
+- conditional
+weight: 120
+source:
+  formula: '[Type4] 阈值条件触发'
+  pattern_detected: Type4
+references: []
+condition: health < 40

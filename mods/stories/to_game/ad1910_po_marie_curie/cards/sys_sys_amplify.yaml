@@ -1,0 +1,17 @@
+id: sys_amplify
+name: 全力以赴
+type: system
+category: effect_amplify
+cost: 2
+emoji: 🔥
+flavor: 在关键时刻，超越自己的极限。
+system_effect:
+  type: amplify
+  multiplier: 1.5
+effects: []
+channel: system
+tags:
+- system
+- effect
+- amplify
+references: []

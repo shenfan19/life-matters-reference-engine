@@ -1,0 +1,25 @@
+id: decrease_teaching_load
+type: player
+category: action
+display:
+  name: Teaching Load↓
+  description: ''
+  flavor: 优化变量 teaching_load（-0.16 强度/回合）
+  icon: 🚫
+effects:
+- target: money
+  delta: -6
+  condition: null
+- target: health
+  delta: 2
+  condition: null
+channel: tactical
+tags:
+- player
+- tactical
+weight: 120
+source:
+  formula: 优化变量 teaching_load（-0.16 强度/回合）
+  pattern_detected: P1
+references: []
+cost: 0

@@ -1,0 +1,25 @@
+id: teaching_income
+type: env
+category: state
+display:
+  name: Teaching Income
+  description: '[Type4] 教学维持经费，但占用时间和精力，轻度损耗健康'
+  flavor: '[Type4] 阈值条件触发'
+  icon: ⚠️
+effects:
+- target: money
+  delta: -4
+  condition: null
+- target: health
+  delta: -4
+  condition: null
+channel: medical
+tags:
+- env
+- conditional
+weight: 120
+source:
+  formula: '[Type4] 阈值条件触发'
+  pattern_detected: Type4
+references: []
+condition: health < 40
