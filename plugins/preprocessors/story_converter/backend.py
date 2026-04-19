@@ -201,7 +201,14 @@ def _convert(model: dict, inputs: dict) -> tuple[dict, list[str]]:
         + f"\n[Converter: {'; '.join(type_log)}]"
     )
 
-    # 8. Assemble
+    # 8. Attach model references to every generated card
+    for card in env_cards:
+        if card:
+            card["references"] = refs
+    for card in player_cards:
+        card["references"] = refs
+
+    # 9. Assemble
     story: dict[str, Any] = {
         "meta": {
             "id": _slug(meta_src.get("name", "converted")),
@@ -915,6 +922,7 @@ def _to_new_card(card: dict, card_type: str) -> dict:
             "formula": card.get("science", ""),
             "pattern_detected": _ftype_to_pattern(card),
         },
+        "references": card.get("references", []),
     }
     if card_type == "player":
         data["cost"] = card.get("cost", 1)

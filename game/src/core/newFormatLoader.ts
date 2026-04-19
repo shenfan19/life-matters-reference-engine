@@ -39,6 +39,7 @@ function toPlayerCard(raw: any) {
     effects: convertEffects(raw.effects),
     // undefined / 0 = instant spell; -1 = permanent; N > 0 = countdown turns
     duration: raw.duration !== undefined ? Number(raw.duration) : undefined,
+    references: Array.isArray(raw.references) ? raw.references as string[] : [],
   };
 }
 
@@ -54,6 +55,7 @@ function toEnvCard(raw: any) {
     // probability only from explicit YAML field — weight affects draw frequency, not trigger chance
     probability: raw.always_active ? undefined : (raw.probability ?? undefined),
     effects: convertEffects(raw.effects),
+    references: Array.isArray(raw.references) ? raw.references as string[] : [],
   };
 }
 

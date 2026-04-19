@@ -315,10 +315,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     { key: 'simcfg',     label: '仿真配置',   desc: '时间范围、步长、输入参数值' },
     { key: 'plots',      label: 'Plot 曲线',  desc: '各输出变量仿真轨迹图' },
     { key: 'opt',        label: '优化结果',   desc: '目标函数、约束条件及结果' },
+    { key: 'refs',       label: '参考文献',   desc: 'IEEE 编号格式引用列表' },
   ] as const;
   type ReportSection = typeof ALL_REPORT_SECTIONS[number]['key'];
   const [reportSections, setReportSections] = useState<Set<ReportSection>>(
-    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg', 'plots'])
+    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg', 'plots', 'refs'])
   );
   const [openReportPreviews, setOpenReportPreviews] = useState<Set<ReportSection>>(
     new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg'])
@@ -1425,6 +1426,26 @@ const Simulator: React.FC<SimulatorProps> = ({
             const hasData = simulationData.length > 0;
             const allV: Record<string, any> = selectedModel?.content?.variables || {};
 
+            // ── reference collector ────────────────────────────────────────
+            const allRefs: string[] = [];
+            const refIdx = new Map<string, number>();
+            function collectRefs(val: unknown): number[] {
+              if (!val) return [];
+              const arr = (Array.isArray(val) ? val : [val]) as string[];
+              return arr.filter(Boolean).map(r => {
+                if (refIdx.has(r)) return refIdx.get(r)!;
+                allRefs.push(r); refIdx.set(r, allRefs.length); return allRefs.length;
+              });
+            }
+            function citeStr(val: unknown): string {
+              const nums = collectRefs(val);
+              return nums.length ? ' ' + nums.map(n => `[${n}]`).join('') : '';
+            }
+            // Collect eagerly in display order: meta → variables → formulas
+            collectRefs((meta as any).references ?? (meta as any).reference);
+            Object.values(allV).forEach((d: any) => collectRefs(d.reference));
+            Object.values(formulas).forEach((fd: any) => collectRefs(fd.reference));
+
             // ── section summary badges ─────────────────────────────────────
             function sectionBadge(key: ReportSection): string {
               if (key === 'intro')    return meta.description ? '有描述' : '无描述';
@@ -1434,6 +1455,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (key === 'simcfg')   return `${Object.keys(inputParams).length} 项输入`;
               if (key === 'plots')    return hasData ? `${outputVars.length} 条曲线` : '需先仿真';
               if (key === 'opt')      return `${objectives.length} 目标`;
+              if (key === 'refs')     return allRefs.length > 0 ? `${allRefs.length} 条` : '无';
               return '';
             }
 
@@ -1489,8 +1511,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                   <thead><tr><TH>变量名</TH><TH>含义</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
                   <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
                     const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                    return <tr key={name}><TD mono>{name}</TD><TD>{d.description || '—'}</TD><TD>{d.type || '—'}</TD>
-                      <TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
+                    const cite = citeStr(d.reference);
+                    return <tr key={name}><TD mono>{name}</TD>
+                      <TD>{d.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 10 }}>{cite}</span>}</TD>
+                      <TD>{d.type || '—'}</TD><TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
                   })}</tbody>
                 </table>
               );
@@ -1500,7 +1524,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                   <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
                     const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
                     const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
-                    return <tr key={name}><TD mono>{name}</TD><TD>{fd.description || '—'}</TD><TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
+                    const cite = citeStr(fd.reference);
+                    return <tr key={name}><TD mono>{name}</TD>
+                      <TD>{fd.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 10 }}>{cite}</span>}</TD>
+                      <TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
                   })}</tbody>
                 </table>
               );
@@ -1526,6 +1553,19 @@ const Simulator: React.FC<SimulatorProps> = ({
                   </div>
                 );
               }
+              if (key === 'refs') return (
+                <div style={{ fontSize: 11, color: c.text, lineHeight: 1.9 }}>
+                  {allRefs.length === 0
+                    ? <span style={{ color: c.textMute }}>当前模型无参考文献（可在 YAML metadata.references / variable.reference / formula.reference 中添加）</span>
+                    : allRefs.map((ref, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+                          <span style={{ color: c.primary, fontWeight: 700, flexShrink: 0, fontFamily: 'monospace', minWidth: 28 }}>[{i + 1}]</span>
+                          <span>{ref}</span>
+                        </div>
+                      ))
+                  }
+                </div>
+              );
               if (key === 'opt') return (
                 <div style={{ fontSize: 11, color: c.text }}>
                   {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>目标函数</div>
@@ -1571,7 +1611,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 lines.push(`## 变量汇总\n\n| 变量名 | 含义 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|------|--------|--------|------|`);
                 Object.entries(allV).forEach(([name, d]: [string, any]) => {
                   const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                  lines.push(`| \`${name}\` | ${d.description || '—'} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
+                  lines.push(`| \`${name}\` | ${d.description || '—'}${citeStr(d.reference)} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
                 });
                 lines.push('');
               }
@@ -1579,7 +1619,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 lines.push(`## 方程列表\n\n| 方程名 | 含义 | 条件 | 影响变量 |\n|--------|------|------|----------|`);
                 Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
                   const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
-                  lines.push(`| \`${name}\` | ${fd.description || '—'} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
+                  lines.push(`| \`${name}\` | ${fd.description || '—'}${citeStr(fd.reference)} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
                 });
                 lines.push('');
               }
@@ -1599,6 +1639,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                 if (objectives.length) { lines.push(`**目标函数**\n`); objectives.forEach(o => lines.push(`- ${o.direction === 'maximize' ? '最大化' : '最小化'} \`${o.variable}\``)); }
                 if (constraints.length) { lines.push(`\n**约束条件**\n`); constraints.forEach(c2 => lines.push(`- \`${c2.variable}\` ${c2.op} ${c2.value}`)); }
                 lines.push(`\n算法: ${optAlgo} · 种群: ${optPop} · 代数: ${optGen}\n`);
+              }
+              if (reportSections.has('refs') && allRefs.length > 0) {
+                lines.push(`## 参考文献\n`);
+                allRefs.forEach((ref, i) => lines.push(`[${i + 1}] ${ref}`));
+                lines.push('');
               }
               return lines.join('\n');
             }

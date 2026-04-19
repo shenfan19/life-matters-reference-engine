@@ -58,6 +58,7 @@ interface PlayerCard {
   duration?: number;
   /** Permanent cards stay in hand after being played — never consumed, not counted toward hand limit */
   permanent?: boolean;
+  references?: string[];
 }
 
 interface BoardCard {
@@ -70,8 +71,9 @@ interface EnvCard {
   id: string; name: string; emoji: string; description: string;
   science?: string; always_active?: boolean; condition?: string;
   probability?: number; effects: EffectDef[];
+  references?: string[];
 }
-interface RevealedEnvCard { card: EnvCard; triggered: boolean; isPassive?: boolean; }
+interface RevealedEnvCard { card: EnvCard; triggered: boolean; isPassive?: boolean; pending?: boolean; }
 
 interface GameStory {
   meta: { id: string; name: string; period_start?: string; period_end?: string;
@@ -88,6 +90,9 @@ interface GameStory {
   music: string[];
 }
 interface LogEntry { text: string; type: 'pos' | 'neg' | 'neutral'; turn: number; }
+interface FlyCard  { uid: string; card: PlayerCard; x0: number; y0: number; x1: number; y1: number; typeColor: string; }
+
+const FLY_DUR = 280;
 
 // ─── Layout constants (all cards share the same dimensions) ───────────────────
 //
@@ -236,11 +241,12 @@ function gaugeArcPath(startLen: number, endLen: number): string {
   return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${G_R} ${G_R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
 }
 
-function Gauge({ varKey, label, value, baseValue, max, higherIsBetter = true, primary, c, fs, hoverEffects }: {
+function Gauge({ varKey, label, value, baseValue, max, higherIsBetter = true, primary, c, fs, hoverEffects, shaking }: {
   varKey: string; label: string; value: number; baseValue: number; max: number;
   higherIsBetter?: boolean; primary: string;
   c: ReturnType<typeof getC>; fs: FS;
   hoverEffects: EffectDef[];
+  shaking?: boolean;
 }) {
   // Solid arc uses baseValue (= gs normally, = preEnvGs in cumulative mode)
   const rawPct     = Math.max(0, Math.min(1, baseValue / max));
@@ -269,7 +275,8 @@ function Gauge({ varKey, label, value, baseValue, max, higherIsBetter = true, pr
   const previewColor = previewPositive ? '#52c41a' : '#f5222d';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+    <div className={shaking ? 'gauge-shaking' : undefined}
+         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
       <svg width={G_SIZE} height={G_SIZE} viewBox={`0 0 ${G_SIZE} ${G_SIZE}`}>
         {/* Track arc */}
         <circle cx={G_CX} cy={G_CY} r={G_R}
@@ -486,6 +493,7 @@ interface GameCardProps {
   showRecall?: boolean;
   // tooltip
   flavor?: string;
+  references?: string[];
   hovered?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -498,15 +506,17 @@ interface GameCardProps {
   floated?: boolean;
   // extra inline style (e.g. excess-card highlight)
   style?: React.CSSProperties;
+  // data-card-id for fly animation targeting
+  dataId?: string;
 }
 
 function GameCard({
   name, effects, typeColor, vars, c, fs,
   cost, duration, remaining,
   onClick, onDiscard, canPlay = true, className = '',
-  showRecall, flavor, hovered, onMouseEnter, onMouseLeave,
+  showRecall, flavor, references, hovered, onMouseEnter, onMouseLeave,
   triggered, showMissed, permanent, floated, style: extraStyle,
-  draggable: isDraggable, onDragStart, onDragEnd, onContextMenu,
+  draggable: isDraggable, onDragStart, onDragEnd, onContextMenu, dataId,
 }: GameCardProps) {
   const dur = duration ?? 0;
   const rem = remaining;
@@ -520,6 +530,7 @@ function GameCard({
 
   return (
     <div
+      data-card-id={dataId}
       onClick={onClick}
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
@@ -544,16 +555,28 @@ function GameCard({
       }}
     >
       {/* Tooltip */}
-      {hovered && flavor && (
+      {hovered && (flavor || (references && references.length > 0)) && (
         <div style={{
           position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
           transform: 'translateX(-50%)',
           background: c.panel, border: `1px solid ${c.border}`,
           borderRadius: 7, padding: '7px 10px',
-          color: c.textSec, fontStyle: 'italic', lineHeight: 1.5, fontSize: fs.sm,
-          width: 200, zIndex: 100, pointerEvents: 'none',
+          color: c.textSec, lineHeight: 1.5, fontSize: fs.sm,
+          width: 220, zIndex: 100, pointerEvents: 'none',
           boxShadow: '0 8px 24px rgba(0,0,0,0.28)', whiteSpace: 'normal',
-        }}>{flavor}</div>
+        }}>
+          {flavor && <div style={{ fontStyle: 'italic', marginBottom: references && references.length > 0 ? 6 : 0 }}>{flavor}</div>}
+          {references && references.length > 0 && (
+            <div style={{ borderTop: flavor ? `1px solid ${c.border}` : undefined, paddingTop: flavor ? 5 : 0 }}>
+              <div style={{ fontSize: fs.xs, color: c.textMute, marginBottom: 3, fontWeight: 600 }}>参考文献</div>
+              {references.map((ref, i) => (
+                <div key={i} style={{ fontSize: fs.xs, color: c.textMute, lineHeight: 1.4, marginBottom: 2 }}>
+                  [{i + 1}] {ref}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Recall button */}
@@ -710,7 +733,11 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [logs, setLogs]       = useState<LogEntry[]>([]);
   const [outcome, setOutcome] = useState<{ win: boolean; message: string } | null>(null);
   const [hoveredCardId, setHoveredCardId]             = useState<string | null>(null);
+  const [hoveredEnvId, setHoveredEnvId]               = useState<string | null>(null);
   const [boardHoveredEffects, setBoardHoveredEffects] = useState<EffectDef[]>([]);
+  const [shakingCardIds, setShakingCardIds]           = useState<Set<string>>(new Set());
+  const [shakingVarIds, setShakingVarIds]             = useState<Set<string>>(new Set());
+  const [shatteringEnvIds, setShatteringEnvIds]       = useState<Set<string>>(new Set());
   const [totalDeltaMode, setTotalDeltaMode]           = useState(false);
   const [aboutOpen, setAboutOpen]                     = useState(false);
   const [showScenarioIntro, setShowScenarioIntro]     = useState(false);
@@ -722,6 +749,15 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const [lastStagedId, setLastStagedId]   = useState<string | null>(null);
   // Set of env card IDs being revealed this turn
   const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set());
+  // Flying card ghosts (play / discard / recall transitions)
+  const [flyingCards, setFlyingCards]     = useState<FlyCard[]>([]);
+  // Cards whose hand slot is collapsing (departed, awaiting state-change)
+  const [departingIds, setDepartingIds]   = useState<Set<string>>(new Set());
+  // ID of the card just recalled into hand (triggers card-recall-in)
+  const [recalledCardId, setRecalledCardId] = useState<string | null>(null);
+
+  // ── Container ref (for fly-to position measurement) ───────────────────────
+  const gameContainerRef = useRef<HTMLDivElement>(null);
 
   // ── Log drawer (narrow screens) ──────────────────────────────────────────────
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
@@ -748,6 +784,24 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       for (const e of group)
         map.set(e.variable, (map.get(e.variable) ?? 0) + e.delta);
     return Array.from(map.entries()).map(([variable, delta]) => ({ variable, delta }));
+  };
+
+  // ── Fly animation helper ──────────────────────────────────────────────────
+  const spawnFly = (card: PlayerCard, fromEl: Element | null, toEl: Element | null): boolean => {
+    const container = gameContainerRef.current;
+    if (!container || !fromEl || !toEl) return false;
+    const cr = container.getBoundingClientRect();
+    const fr = fromEl.getBoundingClientRect();
+    const tr = toEl.getBoundingClientRect();
+    const uid = `fly-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setFlyingCards(prev => [...prev, {
+      uid, card,
+      x0: fr.left - cr.left, y0: fr.top - cr.top,
+      x1: tr.left - cr.left, y1: tr.top - cr.top,
+      typeColor: TYPE_COLORS[card.type] ?? '#8c8c8c',
+    }]);
+    setTimeout(() => setFlyingCards(prev => prev.filter(f => f.uid !== uid)), FLY_DUR + 80);
+    return true;
   };
 
   const handHoverEffects = hoveredCardId
@@ -840,15 +894,19 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           setPlayerDiscard([]);
           setPlayerDeckTotal(total);
           setBoard([]); setPlayedCards([]); setStagedDiscards([]);
-          // Pre-draw initial env hand so opponent shows cards from turn 1
+          // Reveal initial event cards face-up immediately so turn 1 shows upcoming events
+          const passiveEnvCards = s.environment_cards.filter(e => e.always_active);
           const initDrawN   = Math.min(s.game.env_per_turn, shuffledEvt.length);
-          const initEnvHand = shuffledEvt.slice(0, initDrawN);
           const initEvtDeck = shuffledEvt.slice(initDrawN);
-          setEnvHand(initEnvHand);
+          const initReveal: RevealedEnvCard[] = [
+            ...passiveEnvCards.map(ec => ({ card: ec, triggered: false, isPassive: true as const, pending: false })),
+            ...shuffledEvt.slice(0, initDrawN).map(c => ({ card: c, triggered: false, isPassive: false as const, pending: true })),
+          ];
+          setEnvHand([]);
           setEnvEventDeck(initEvtDeck);
           setEnvEventDiscard([]);
           setEnvEventTotal(shuffledEvt.length);
-          setEnvRevealed([]);
+          setEnvRevealed(initReveal);
           setPhase('player');
           setOutcome(null);
           setLogs([{ text: `${s.meta.name}${s.meta.period ? ' · ' + s.meta.period : ''}`, type: 'neutral', turn: 1 }]);
@@ -871,41 +929,93 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   const playCard = (card: PlayerCard) => {
     if (phase !== 'player' || !story || outcome) return;
     if (!card.permanent && playsLeft <= 0) return;
+    if (departingIds.has(card.id)) return;
+
     const newGs = applyEffects(card.effects, gs, story.variables);
     setGs(newGs);
-    if (card.permanent) {
-      // Permanent cards: effects apply, no play slot consumed, card stays in hand
+
+    if (card.permanent) return;
+
+    const container = gameContainerRef.current;
+    const sourceEl  = container?.querySelector(`[data-card-id="${CSS.escape(card.id)}"]`) ?? null;
+    const firstEmpty = Array.from({ length: story.game.plays_per_turn }).findIndex((_, i) => !playedCards[i]);
+    const destEl    = container?.querySelector(`[data-play-slot="${firstEmpty}"]`) ?? null;
+    const didFly    = spawnFly(card, sourceEl, destEl);
+
+    if (didFly) {
+      setDepartingIds(prev => new Set([...prev, card.id]));
+      setTimeout(() => {
+        setPlaysLeft(p => p - 1);
+        setHand(p => p.filter(c => c.id !== card.id));
+        setPlayedCards(prev => [...prev, card]);
+        setDepartingIds(prev => { const s = new Set(prev); s.delete(card.id); return s; });
+        setLastStagedId(card.id);
+        setTimeout(() => setLastStagedId(null), 400);
+      }, FLY_DUR);
     } else {
       setPlaysLeft(p => p - 1);
       setHand(p => p.filter(c => c.id !== card.id));
       setPlayedCards(prev => [...prev, card]);
-      // Trigger stage-in animation for this card
       setLastStagedId(card.id);
       setTimeout(() => setLastStagedId(null), 400);
     }
-    // Win/lose conditions are only evaluated at end-of-turn, not during card play.
   };
 
   // ── Recall card ───────────────────────────────────────────────────────────────
   const recallCard = (idx: number) => {
     if (phase !== 'player' || !story || outcome) return;
-    const card      = playedCards[idx];
+    const card = playedCards[idx];
+    if (!card || departingIds.has(card.id)) return;
     const remaining = playedCards.filter((_, i) => i !== idx);
     let newGs = { ...turnInitGs };
     for (const pc of remaining) newGs = applyEffects(pc.effects, newGs, story.variables);
-    setPlayedCards(remaining);
-    setGs(newGs);
-    setPlaysLeft(prev => prev + 1);
-    setHand(prev => [...prev, card]);
-    // setLogs removed — silent during turn
+
+    const container = gameContainerRef.current;
+    const sourceEl  = container?.querySelector(`[data-play-slot="${idx}"]`) ?? null;
+    const destEl    = container?.querySelector(`[data-hand-row]`) ?? null;
+    const didFly    = spawnFly(card, sourceEl, destEl);
+
+    if (didFly) {
+      setDepartingIds(prev => new Set([...prev, card.id]));
+      setTimeout(() => {
+        setPlayedCards(remaining);
+        setGs(newGs);
+        setPlaysLeft(prev => prev + 1);
+        setHand(prev => [...prev, card]);
+        setDepartingIds(prev => { const s = new Set(prev); s.delete(card.id); return s; });
+        setRecalledCardId(card.id);
+        setTimeout(() => setRecalledCardId(null), 380);
+      }, FLY_DUR);
+    } else {
+      setPlayedCards(remaining);
+      setGs(newGs);
+      setPlaysLeft(prev => prev + 1);
+      setHand(prev => [...prev, card]);
+    }
   };
 
   // ── Stage card for discard (active choice, reversible until end turn) ─────────
   const stageDiscard = (card: PlayerCard) => {
     if (phase !== 'player' || !story || outcome) return;
     if (card.permanent) return;
-    setHand(prev => prev.filter(c => c.id !== card.id));
-    setStagedDiscards(prev => [...prev, card]);
+    if (departingIds.has(card.id)) return;
+
+    const container = gameContainerRef.current;
+    const sourceEl  = container?.querySelector(`[data-card-id="${CSS.escape(card.id)}"]`) ?? null;
+    const destEl    = container?.querySelector(`[data-discard-zone]`) ?? null;
+    const didFly    = spawnFly(card, sourceEl, destEl);
+
+    if (didFly) {
+      setDepartingIds(prev => new Set([...prev, card.id]));
+      setTimeout(() => {
+        setHand(prev => prev.filter(c => c.id !== card.id));
+        setStagedDiscards(prev => [...prev, card]);
+        setDepartingIds(prev => { const s = new Set(prev); s.delete(card.id); return s; });
+      }, FLY_DUR);
+    } else {
+      setHand(prev => prev.filter(c => c.id !== card.id));
+      setStagedDiscards(prev => [...prev, card]);
+    }
   };
 
   // ── Drag helpers ──────────────────────────────────────────────────────────────
@@ -1014,7 +1124,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   // ── End turn ──────────────────────────────────────────────────────────────────
   const endTurn = () => {
     if (phase !== 'player' || !story || outcome) return;
-    setPreEnvGs({ ...gs });   // snapshot before any resolution
+    setPreEnvGs({ ...gs });
     setPhase('env');
 
     const curGs          = gs;
@@ -1023,130 +1133,192 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
     const curDeck        = playerDeck;
     const curPlyDiscard  = playerDiscard;
     const curStagedDiscs = stagedDiscards;
-    const curEnvHand     = envHand;       // face-down cards drawn last turn → resolve now
-    const curEvtDeck    = envEventDeck;
-    const curEvtDisc    = envEventDiscard;
-    const curBoard      = board;
-    const curPlayed     = playedCards;
-    const passiveEnv    = story.environment_cards.filter(e => e.always_active);
+    const curEvtDeck     = envEventDeck;
+    const curEvtDisc     = envEventDiscard;
+    const curBoard       = board;
+    const curPlayed      = playedCards;
 
-    setTimeout(() => {
-      let state = { ...curGs };
-      const nextBoard: BoardCard[] = [];
-      const revealed: RevealedEnvCard[] = [];
-      const newPlyDiscard: PlayerCard[] = [...curPlyDiscard];
-      const newLogs: LogEntry[] = [];
+    // Separate this turn's visible env cards: passive (always-active) vs pending events
+    const curPassiveRevealed = envRevealed.filter(r => r.isPassive);
+    const curPendingEvents   = envRevealed.filter(r => !r.isPassive && r.pending);
 
-      // 0. Commit staged discards
-      for (const card of curStagedDiscs) {
+    // ── Pre-compute all results ──────────────────────────────────────────────
+    let state = { ...curGs };
+    const nextBoard: BoardCard[] = [];
+    const newPlyDiscard: PlayerCard[] = [...curPlyDiscard];
+    const newLogs: LogEntry[] = [];
+
+    // 0. Staged discards
+    for (const card of curStagedDiscs) {
+      newPlyDiscard.push(card);
+      newLogs.push({ text: `放弃了 [${card.name}]`, type: 'neutral', turn: curTurn });
+    }
+
+    // 1. Log played + apply board card effects
+    for (const card of curPlayed) {
+      newLogs.push({ text: `打出 [${card.name}]  ${fmtEffects(card.effects, story.variables)}`, type: 'pos', turn: curTurn });
+    }
+    for (const bc of curBoard) {
+      state = applyEffects(bc.card.effects, state, story.variables);
+      const durLabel = bc.remaining === -1 ? '永久' : `${bc.remaining}回合`;
+      newLogs.push({
+        text: `[${bc.card.name}] 触发  ${fmtEffects(bc.card.effects, story.variables)}  (${durLabel})`,
+        type: bc.card.effects.every(e => e.delta >= 0) ? 'pos' : 'neg',
+        turn: curTurn,
+      });
+      if (bc.remaining === -1) {
+        nextBoard.push(bc);
+      } else if (bc.remaining > 1) {
+        nextBoard.push({ ...bc, remaining: bc.remaining - 1 });
+      } else {
+        newPlyDiscard.push(bc.card);
+      }
+    }
+
+    // 2. Staged played cards → board or discard
+    for (const card of curPlayed) {
+      const dur = card.duration;
+      if (dur !== undefined && dur !== 0) {
+        nextBoard.push({ card, remaining: dur, iid: `${card.id}-${Date.now()}-${Math.random()}` });
+        newLogs.push({ text: `[${card.name}] 驻场  (${dur === -1 ? '永久' : dur + ' 回合'})`, type: 'neutral', turn: curTurn });
+      } else {
         newPlyDiscard.push(card);
-        newLogs.push({ text: `放弃了 [${card.name}]`, type: 'neutral', turn: curTurn });
       }
+    }
 
-      // 1. Commit staged played cards to log
-      for (const card of curPlayed) {
-        newLogs.push({ text: `打出 [${card.name}]  ${fmtEffects(card.effects, story.variables)}`, type: 'pos', turn: curTurn });
-      }
-      for (const bc of curBoard) {
-        state = applyEffects(bc.card.effects, state, story.variables);
-        const durLabel = bc.remaining === -1 ? '永久' : `${bc.remaining}回合`;
-        newLogs.push({
-          text: `[${bc.card.name}] 触发  ${fmtEffects(bc.card.effects, story.variables)}  (${durLabel})`,
-          type: bc.card.effects.every(e => e.delta >= 0) ? 'pos' : 'neg',
-          turn: curTurn,
-        });
-        if (bc.remaining === -1) {
-          nextBoard.push(bc);
-        } else if (bc.remaining > 1) {
-          nextBoard.push({ ...bc, remaining: bc.remaining - 1 });
-        } else {
-          newPlyDiscard.push(bc.card);
-        }
-      }
+    // 3. Passive env effects (always_active, already visible on board)
+    for (const r of curPassiveRevealed) {
+      const ec = r.card;
+      state = applyEffects(ec.effects, state, story.variables);
+      newLogs.push({
+        text: `${ec.name}  ${fmtEffects(ec.effects, story.variables)}`,
+        type: ec.effects.every(e => e.delta >= 0) ? 'pos' : 'neg',
+        turn: curTurn,
+      });
+    }
 
-      // 2. Staged cards: duration → board, instant → player discard
-      for (const card of curPlayed) {
-        const dur = card.duration;
-        if (dur !== undefined && dur !== 0) {
-          nextBoard.push({ card, remaining: dur, iid: `${card.id}-${Date.now()}-${Math.random()}` });
-          newLogs.push({ text: `[${card.name}] 驻场  (${dur === -1 ? '永久' : dur + ' 回合'})`, type: 'neutral', turn: curTurn });
-        } else {
-          newPlyDiscard.push(card);
-        }
-      }
-
-      // 3. Passive env trigger (always_active)
-      for (const ec of passiveEnv) {
+    // 4. Resolve this turn's pending event cards (already visible on board)
+    const resolvedEvents: RevealedEnvCard[] = [];
+    let evtUsedNew = [...curEvtDisc];
+    for (const r of curPendingEvents) {
+      const ec = r.card;
+      const condOk    = !ec.condition || evalCond(ec.condition, state);
+      const probOk    = ec.probability === undefined || Math.random() < ec.probability;
+      const triggered = condOk && probOk;
+      if (triggered) {
         state = applyEffects(ec.effects, state, story.variables);
         newLogs.push({
           text: `${ec.name}  ${fmtEffects(ec.effects, story.variables)}`,
           type: ec.effects.every(e => e.delta >= 0) ? 'pos' : 'neg',
           turn: curTurn,
         });
-        revealed.push({ card: ec, triggered: true, isPassive: true });
       }
+      resolvedEvents.push({ card: ec, triggered, isPassive: false, pending: false });
+      evtUsedNew.push(ec);
+    }
 
-      // 4. Flip & resolve curEnvHand (drawn last turn, now visible)
-      //    After resolving, they go to envEventDiscard (used pile)
-      let evtUsedNew = [...curEvtDisc];
-      for (const ec of curEnvHand) {
-        const condOk    = !ec.condition || evalCond(ec.condition, state);
-        const probOk    = ec.probability === undefined || Math.random() < ec.probability;
-        const triggered = condOk && probOk;
-        if (triggered) {
-          state = applyEffects(ec.effects, state, story.variables);
-          newLogs.push({
-            text: `${ec.name}  ${fmtEffects(ec.effects, story.variables)}`,
-            type: ec.effects.every(e => e.delta >= 0) ? 'pos' : 'neg',
-            turn: curTurn,
-          });
-        }
-        revealed.push({ card: ec, triggered });
-        evtUsedNew.push(ec);
+    // 5. Draw next turn's event cards
+    let evtDeck = [...curEvtDeck];
+    if (evtDeck.length < story.game.env_per_turn && evtUsedNew.length > 0) {
+      evtDeck    = shuffle([...evtDeck, ...evtUsedNew]);
+      evtUsedNew = [];
+      newLogs.push({ text: `事件牌组重新洗牌`, type: 'neutral', turn: curTurn });
+    }
+    const drawEnvN       = Math.min(story.game.env_per_turn, evtDeck.length);
+    const nextTurnEvents = evtDeck.splice(0, drawEnvN);
+
+    // 6. Player draw
+    const nextTurn    = curTurn + 1;
+    let plyDeck       = [...curDeck];
+    const plyDiscard  = [...newPlyDiscard];
+    const permHand    = curHand.filter(c => c.permanent);
+    const regHand     = curHand.filter(c => !c.permanent);
+    const drawPerTurn = story.game.draw_per_turn ?? DRAW_PER_TURN;
+    const drawCard    = Math.min(drawPerTurn, plyDeck.length);
+    const newCards    = plyDeck.slice(0, drawCard);
+    plyDeck           = plyDeck.slice(drawCard);
+    const nextHand    = [...permHand, ...regHand, ...newCards];
+    const newPlays    = story.game.plays_per_turn;
+
+    // ── Animation timeline ───────────────────────────────────────────────────
+    const SHATTER_DUR = 310;
+    const SLIDE_LAG   = 80;
+    const SLIDE_DUR   = 480;
+    const SHAKE_DUR   = 360;
+    const SHAKE_GAP   = 70;
+
+    let t = 0;
+
+    // Step 1: Update envRevealed immediately to show triggered/not-triggered results
+    setEnvRevealed([...curPassiveRevealed, ...resolvedEvents]);
+
+    // Step 2: Sequential shakes — board cards → passive env → resolved events → played cards
+    const shakeSeq: Array<{ id: string; varKeys: string[] }> = [];
+    for (const bc of curBoard) {
+      shakeSeq.push({ id: bc.card.id, varKeys: bc.card.effects.map(e => e.variable) });
+    }
+    for (const r of curPassiveRevealed) {
+      shakeSeq.push({ id: r.card.id, varKeys: r.card.effects.map(e => e.variable) });
+    }
+    for (const r of resolvedEvents) {
+      shakeSeq.push({
+        id: r.card.id,
+        varKeys: r.triggered ? r.card.effects.map(e => e.variable) : [],
+      });
+    }
+    for (const card of curPlayed) {
+      shakeSeq.push({ id: card.id, varKeys: card.effects.map(e => e.variable) });
+    }
+
+    for (const step of shakeSeq) {
+      setTimeout(() => {
+        setShakingCardIds(new Set([step.id]));
+        setShakingVarIds(new Set(step.varKeys));
+      }, t);
+      t += SHAKE_DUR;
+      setTimeout(() => {
+        setShakingCardIds(new Set());
+        setShakingVarIds(new Set());
+      }, t);
+      t += SHAKE_GAP;
+    }
+
+    // Step 3: After all shakes, shatter the resolved event cards (not passive — they persist)
+    const shatterIds = new Set(resolvedEvents.map(r => r.card.id));
+    if (shatterIds.size > 0) {
+      setTimeout(() => setShatteringEnvIds(shatterIds), t);
+      t += SHATTER_DUR + SLIDE_LAG;
+    } else {
+      t += SLIDE_LAG;
+    }
+
+    // Step 4: Clear shatter + slide in next turn's event cards
+    setTimeout(() => {
+      setShatteringEnvIds(new Set());
+      const nextReveal: RevealedEnvCard[] = nextTurnEvents.map(c => ({
+        card: c, triggered: false, isPassive: false as const, pending: true,
+      }));
+      setEnvRevealed([...curPassiveRevealed, ...nextReveal]);
+      if (nextReveal.length > 0) {
+        const revIds = new Set(nextReveal.map(r => r.card.id));
+        setRevealAnimIds(revIds);
+        setTimeout(() => setRevealAnimIds(new Set()), 700);
       }
+    }, t);
+    t += SLIDE_DUR;
 
-      // 5. Draw new env cards into next envHand (face-down for next player turn)
-      let evtDeck = [...curEvtDeck];
-      if (evtDeck.length < story.game.env_per_turn && evtUsedNew.length > 0) {
-        evtDeck    = shuffle([...evtDeck, ...evtUsedNew]);
-        evtUsedNew = [];
-        newLogs.push({ text: `事件牌组重新洗牌`, type: 'neutral', turn: curTurn });
-      }
-      const drawEnvN   = Math.min(story.game.env_per_turn, evtDeck.length);
-      const newEnvHand = evtDeck.splice(0, drawEnvN);
-
-      // 6. Player draw — hand_size is an END-OF-TURN limit, not an instant cap.
-      //    Draw freely up to draw_per_turn; hand can exceed hand_size during the turn,
-      //    which is what triggers the discard requirement before ending the turn.
-      const nextTurn   = curTurn + 1;
-      let plyDeck      = [...curDeck];
-      let plyDiscard   = [...newPlyDiscard];
-      const permHand   = curHand.filter(c => c.permanent);
-      const regHand    = curHand.filter(c => !c.permanent);
-      const drawPerTurn = story.game.draw_per_turn ?? DRAW_PER_TURN;
-      const drawCard   = Math.min(drawPerTurn, plyDeck.length);
-      const newCards   = plyDeck.slice(0, drawCard);
-      plyDeck          = plyDeck.slice(drawCard);
-
-      // Commit
+    // Step 5: Commit remaining state
+    setTimeout(() => {
       setBoard(nextBoard);
       setPlayedCards([]);
       setStagedDiscards([]);
       setPlayerDiscard(plyDiscard);
       setPlayerDeck(plyDeck);
-      setEnvHand(newEnvHand);
+      setEnvHand([]);
       setEnvEventDeck(evtDeck);
       setEnvEventDiscard(evtUsedNew);
-      setEnvRevealed(revealed);
       setGs(state);
       setLogs(prev => [...newLogs, ...prev]);
-
-      // Trigger env reveal animation
-      const revIds = new Set(revealed.filter(r => !r.isPassive).map(r => r.card.id));
-      if (revIds.size > 0) {
-        setRevealAnimIds(revIds);
-        setTimeout(() => setRevealAnimIds(new Set()), 600);
-      }
 
       const loss = checkLosePure(state, story.lose_conditions);
       if (loss) { setOutcome(loss); setPhase('player'); return; }
@@ -1159,13 +1331,10 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
         setPhase('player'); return;
       }
 
-      const newPlays   = story.game.plays_per_turn;
-      const nextHand   = [...permHand, ...regHand, ...newCards];
       setTurn(nextTurn);
       setPlaysLeft(newPlays);
       setTurnInitGs(state);
       setHand(nextHand);
-      // Trigger deal animation for newly drawn cards
       if (newCards.length > 0) {
         const dealMap = new Map(newCards.map((card, i) => [card.id, i] as [string, number]));
         setNewlyDealtMap(dealMap);
@@ -1173,7 +1342,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
       }
       setPhase('player');
       setLogs(prev => [{ text: `── 第 ${nextTurn} 回合 ──`, type: 'neutral', turn: nextTurn }, ...prev]);
-    }, 800);
+    }, t + 120);
   };
 
   // ── Loading / error ───────────────────────────────────────────────────────────
@@ -1245,7 +1414,25 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
   //   6. HP row (status)        ROW_GAUGE   (hidden on isNarrow — merged into combined row)
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, position: 'relative' }}>
+    <div ref={gameContainerRef} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: c.bg, color: c.text, position: 'relative' }}>
+
+      {/* ── Flying card overlay ── */}
+      {flyingCards.map(f => (
+        <div key={f.uid} className="card-flying" style={{
+          left: f.x0, top: f.y0,
+          width: CARD_W, height: CARD_H,
+          background: c.cardBg,
+          border: `2px solid ${f.typeColor}`,
+          boxSizing: 'border-box' as const,
+          display: 'flex', flexDirection: 'column' as const,
+          alignItems: 'center', justifyContent: 'center', gap: 4,
+          ['--fly-dx' as string]: `${f.x1 - f.x0}px`,
+          ['--fly-dy' as string]: `${f.y1 - f.y0}px`,
+        }}>
+          <span style={{ fontSize: 28 }}>{f.card.emoji}</span>
+          <span style={{ fontSize: fs.xs, color: c.textSec, textAlign: 'center', padding: '0 6px', lineHeight: 1.2 }}>{f.card.name}</span>
+        </div>
+      ))}
 
       {/* ── Top bar ── */}
       <div style={{ height: 50, flexShrink: 0, background: c.panel, borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8, position: 'sticky', top: 0, zIndex: 100 }}>
@@ -1404,7 +1591,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   max={vdef.max}
                   higherIsBetter={vdef.higherIsBetter !== false}
                   primary={goalSet.has(key) ? c.primary : c.textSec}
-                  c={c} fs={fs} hoverEffects={hoverEffects} />
+                  c={c} fs={fs} hoverEffects={hoverEffects} shaking={shakingVarIds.has(key)} />
               ))}
             </div>
           )}
@@ -1427,7 +1614,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   baseValue={Math.round(gaugeBase[key] ?? gs[key] ?? 0)}
                   max={vdef.max}
                   higherIsBetter={vdef.higherIsBetter !== false}
-                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
+                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} shaking={shakingVarIds.has(key)} />
               ))}
           </div>
           )}
@@ -1441,37 +1628,49 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>事件</span>
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>本回合事件</span>
             {envRevealed.length === 0
               ? <span style={{ color: c.textMute, opacity: 0.2 }}>—</span>
-              : envRevealed.map(({ card: ec, triggered, isPassive }, idx) => {
+              : envRevealed.map(({ card: ec, triggered, isPassive, pending }, idx) => {
                 const typeColor = isPassive ? '#f5222d'
                                 : ec.probability !== undefined ? '#722ed1' : '#fa8c16';
                 // Triggered cards: effects already in gs → show reverse (counterfactual)
                 // Untriggered cards: effects NOT in gs → show positive (what could have been)
-                const hoverEffs = triggered ? negate(ec.effects) : ec.effects;
+                // Pending cards haven't resolved yet — show effects as preview
+                const hoverEffs = (!pending && triggered) ? negate(ec.effects) : ec.effects;
                 const isRevealing = !isPassive && revealAnimIds.has(ec.id);
+                const envHoverId = `${ec.id}-${idx}`;
+                const isShaking   = shakingCardIds.has(ec.id);
+                const isShattering = shatteringEnvIds.has(ec.id);
+                const envCls = [
+                  isRevealing  ? 'card-reveal-in'  : '',
+                  isShaking    ? 'card-resolving'   : '',
+                  isShattering ? 'card-shattering'  : '',
+                ].filter(Boolean).join(' ');
                 return (
                   <GameCard
-                    key={`${ec.id}-${idx}`}
+                    key={envHoverId}
                     name={ec.name}
                     effects={ec.effects}
                     typeColor={typeColor}
                     vars={story.variables}
                     c={c} fs={fs}
                     duration={isPassive ? -1 : 1}
-                    triggered={triggered}
-                    showMissed={!isPassive}
+                    triggered={pending ? undefined : triggered}
+                    showMissed={!pending && !isPassive}
                     floated={totalDeltaMode}
-                    className={isRevealing ? 'card-reveal-in' : ''}
+                    flavor={ec.description || ec.science}
+                    references={ec.references}
+                    hovered={hoveredEnvId === envHoverId}
+                    className={envCls}
                     style={isRevealing ? { animationDelay: `${idx * 60}ms` } : undefined}
-                    onMouseEnter={() => setBoardHoveredEffects(hoverEffs)}
-                    onMouseLeave={() => setBoardHoveredEffects([])}
+                    onMouseEnter={() => { setHoveredEnvId(envHoverId); setBoardHoveredEffects(hoverEffs); }}
+                    onMouseLeave={() => { setHoveredEnvId(null); setBoardHoveredEffects([]); }}
                   />
                 );
               })}
             {/* Narrow: inline env deck count badge */}
-            {isNarrow && <DeckBadge label="事件弃" count={envEventDiscard.length} color="#fa8c16" />}
+            {isNarrow && <DeckBadge label="事件" count={envEventDeck.length} color="#fa8c16" />}
           </div>
 
           {/* ─ Row 4: Player board ─ */}
@@ -1483,28 +1682,31 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             padding: '0 12px', gap: 8,
             overflowX: 'auto', overflowY: 'hidden',
           }}>
-            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>应对</span>
+            {board.length > 0 && <>
+              <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>驻场</span>
+              {/* Confirmed board cards (from previous turns) */}
+              {board.map(bc => {
+                const typeColor = TYPE_COLORS[bc.card.type] ?? '#8c8c8c';
+                return (
+                  <GameCard
+                    key={bc.iid}
+                    name={bc.card.name}
+                    effects={bc.card.effects}
+                    typeColor={typeColor}
+                    vars={story.variables}
+                    c={c} fs={fs}
+                    remaining={bc.remaining}
+                    floated={totalDeltaMode}
+                    className={shakingCardIds.has(bc.card.id) ? 'card-resolving' : ''}
+                    onMouseEnter={() => !totalDeltaMode && setBoardHoveredEffects(negate(bc.card.effects))}
+                    onMouseLeave={() => setBoardHoveredEffects([])}
+                  />
+                );
+              })}
+              <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0 }} />
+            </>}
 
-            {/* Confirmed board cards (from previous turns) */}
-            {board.map(bc => {
-              const typeColor = TYPE_COLORS[bc.card.type] ?? '#8c8c8c';
-              return (
-                <GameCard
-                  key={bc.iid}
-                  name={bc.card.name}
-                  effects={bc.card.effects}
-                  typeColor={typeColor}
-                  vars={story.variables}
-                  c={c} fs={fs}
-                  remaining={bc.remaining}
-                  floated={totalDeltaMode}
-                  onMouseEnter={() => !totalDeltaMode && setBoardHoveredEffects(negate(bc.card.effects))}
-                  onMouseLeave={() => setBoardHoveredEffects([])}
-                />
-              );
-            })}
-
-            {board.length > 0 && <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0 }} />}
+            <span style={{ color: 'rgba(128,128,128,0.45)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none' }}>出牌</span>
 
             {/* Play slots — drop target for hand→play and discard→play */}
             <div
@@ -1522,29 +1724,38 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             >
               {Array.from({ length: playsTotal }).map((_, i) => {
                 const card = playedCards[i];
+                const isDeparting = card ? departingIds.has(card.id) : false;
                 if (card) {
                   const typeColor = TYPE_COLORS[card.type] ?? '#8c8c8c';
                   return (
-                    <GameCard
-                      key={`staged-${card.id}-${i}`}
-                      name={card.name}
-                      effects={card.effects}
-                      typeColor={typeColor}
-                      vars={story.variables}
-                      c={c} fs={fs}
-                      duration={card.duration}
-                      floated={totalDeltaMode}
-                      onClick={() => canAct && recallCard(i)}
-                      canPlay={canAct}
-                      showRecall={canAct}
-                      draggable={canAct}
-                      onDragStart={canAct ? (e) => startDrag(e, card, 'played') : undefined}
-                      onDragEnd={clearDragState}
-                      className={lastStagedId === card.id ? 'card-stage-in' : ''}
-                    />
+                    <div key={`play-slot-wrap-${i}`} data-play-slot={i} style={{ flexShrink: 0, opacity: isDeparting ? 0 : 1, pointerEvents: isDeparting ? 'none' : undefined }}>
+                      <GameCard
+                        name={card.name}
+                        effects={card.effects}
+                        typeColor={typeColor}
+                        vars={story.variables}
+                        c={c} fs={fs}
+                        duration={card.duration}
+                        floated={totalDeltaMode}
+                        onClick={() => canAct && recallCard(i)}
+                        canPlay={canAct}
+                        showRecall={canAct}
+                        draggable={canAct}
+                        onDragStart={canAct ? (e) => startDrag(e, card, 'played') : undefined}
+                        onDragEnd={clearDragState}
+                        className={[
+                          lastStagedId === card.id ? 'card-stage-in' : '',
+                          shakingCardIds.has(card.id) ? 'card-resolving' : '',
+                        ].filter(Boolean).join(' ')}
+                      />
+                    </div>
                   );
                 }
-                return <DashedSlot key={`play-slot-${i}`} c={c} variant="play" />;
+                return (
+                  <div key={`play-slot-wrap-${i}`} data-play-slot={i} style={{ flexShrink: 0 }}>
+                    <DashedSlot c={c} variant="play" />
+                  </div>
+                );
               })}
             </div>
 
@@ -1552,6 +1763,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
             <div style={{ width: 1, height: '60%', background: c.border, flexShrink: 0, marginLeft: 4 }} />
             <span style={{ color: dragOverDiscard ? '#8c8c8c' : 'rgba(128,128,128,0.3)', fontSize: fs.xs, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0, writingMode: 'vertical-rl', userSelect: 'none', transition: 'color 0.15s' }}>放弃</span>
             <div
+              data-discard-zone
               onDragOver={canAct && (dragSource === 'played' || (dragSource === 'hand' && handOverflow)) ? handleDiscardDragOver : undefined}
               onDragEnter={canAct && (dragSource === 'played' || (dragSource === 'hand' && handOverflow)) ? () => setDragOverDiscard(true) : undefined}
               onDragLeave={canAct ? () => setDragOverDiscard(false) : undefined}
@@ -1595,6 +1807,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           {/* ─ Row 5: Player hand (drop target for played→hand and discard→hand) ─ */}
           {/* On narrow screens: flexWrap allows multiple rows; height is auto instead of fixed */}
           <div
+            data-hand-row
             onDragOver={canAct && (dragSource === 'played' || dragSource === 'discard') ? handleHandDragOver : undefined}
             onDragEnter={canAct && (dragSource === 'played' || dragSource === 'discard') ? () => setDragOverHand(true) : undefined}
             onDragLeave={canAct ? () => setDragOverHand(false) : undefined}
@@ -1623,6 +1836,8 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                 const canDiscardCard = canAct && !card.permanent && handOverflow;
                 const typeColor      = TYPE_COLORS[card.type] ?? '#8c8c8c';
                 const dealIdx        = newlyDealtMap.get(card.id) ?? -1;
+                const isDepart       = departingIds.has(card.id);
+                const isRecalled     = recalledCardId === card.id;
                 const outlineStyle: React.CSSProperties = excess
                   ? { outline: `2px solid #f5222d`, outlineOffset: -2 }
                   : {};
@@ -1630,29 +1845,32 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   ? { animationDelay: `${dealIdx * 75}ms` }
                   : {};
                 return (
-                  <GameCard
-                    key={card.id}
-                    name={card.name}
-                    effects={card.effects}
-                    typeColor={typeColor}
-                    vars={story.variables}
-                    c={c} fs={fs}
-                    duration={card.duration}
-                    permanent={card.permanent}
-                    onClick={() => { if (canPlay) playCard(card); }}
-                    onDiscard={canDiscardCard ? () => stageDiscard(card) : undefined}
-                    draggable={canAct && !card.permanent}
-                    onDragStart={canAct && !card.permanent ? (e) => startDrag(e, card, 'hand') : undefined}
-                    onDragEnd={clearDragState}
-                    canPlay={canPlay}
-                    className={`player-card ${canPlay ? 'card-playable' : 'card-disabled'}${dealIdx >= 0 ? ' card-deal-in' : ''}`}
-                    flavor={card.flavor}
-                    hovered={hoveredCardId === card.id}
-                    onMouseEnter={() => setHoveredCardId(card.id)}
-                    onMouseLeave={() => setHoveredCardId(null)}
-                    style={{ ...outlineStyle, ...dealStyle }}
-                    onContextMenu={canDiscardCard ? (e) => { e.preventDefault(); stageDiscard(card); } : undefined}
-                  />
+                  <div key={card.id} className={`hand-card-slot${isDepart ? ' departing' : ''}`}>
+                    <GameCard
+                      dataId={card.id}
+                      name={card.name}
+                      effects={card.effects}
+                      typeColor={typeColor}
+                      vars={story.variables}
+                      c={c} fs={fs}
+                      duration={card.duration}
+                      permanent={card.permanent}
+                      onClick={() => { if (canPlay) playCard(card); }}
+                      onDiscard={canDiscardCard ? () => stageDiscard(card) : undefined}
+                      draggable={canAct && !card.permanent}
+                      onDragStart={canAct && !card.permanent ? (e) => startDrag(e, card, 'hand') : undefined}
+                      onDragEnd={clearDragState}
+                      canPlay={canPlay}
+                      className={`player-card ${canPlay ? 'card-playable' : 'card-disabled'}${dealIdx >= 0 ? ' card-deal-in' : ''}${isRecalled ? ' card-recall-in' : ''}`}
+                      flavor={card.flavor}
+                      references={card.references}
+                      hovered={hoveredCardId === card.id}
+                      onMouseEnter={() => setHoveredCardId(card.id)}
+                      onMouseLeave={() => setHoveredCardId(null)}
+                      style={{ ...outlineStyle, ...dealStyle }}
+                      onContextMenu={canDiscardCard ? (e) => { e.preventDefault(); stageDiscard(card); } : undefined}
+                    />
+                  </div>
                 );
               };
 
@@ -1735,7 +1953,7 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
                   baseValue={Math.round(gaugeBase[key] ?? gs[key] ?? 0)}
                   max={vdef.max}
                   higherIsBetter={vdef.higherIsBetter !== false}
-                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} />
+                  primary={c.primary} c={c} fs={fs} hoverEffects={hoverEffects} shaking={shakingVarIds.has(key)} />
               ))}
           </div>
           )}
@@ -1753,10 +1971,10 @@ export default function CardGame({ storyPath, isDarkMode, onToggleDark, onBack, 
           {/* Row 1 placeholder (aligns with goal gauges) */}
           <div style={{ height: ROW_GAUGE, flexShrink: 0, borderBottom: `1px solid ${c.border}` }} />
 
-          {/* Row 2: Env discard (aligns with env board) */}
+          {/* Row 2: Env deck (aligns with env board) — face-down; count includes drawn-but-unrevealed */}
           <div style={deckSectionStyle(c.border + ' 2px')}>
-            <DeckPile label="事件弃" count={envEventDiscard.length} total={envEventTotal} faceUp accentColor="#fa8c16"
-              cards={envEventDiscard} vars={story.variables} c={c} fs={fs} cardBack={story.cardBackFate} />
+            <DeckPile label="事件" count={envEventDeck.length} total={envEventTotal}
+              c={c} fs={fs} cardBack={story.cardBackFate} />
           </div>
 
           {/* Row 3: Player discard (aligns with player board + discard staging) */}
