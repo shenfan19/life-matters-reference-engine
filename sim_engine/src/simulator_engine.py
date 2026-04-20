@@ -165,9 +165,75 @@ class SimulatorEngine:
             return {"success": False, "error": str(e)}
 
     # ==================== 新增：GUI 会话管理功能 ====================
-    
+
+    @staticmethod
+    def _apply_regimens(model, regimens: list, prev_time: float, next_time: float):
+        """在 [prev_time, next_time) 窗口内触发 Regimen 事件，将 value 写入模型变量。
+
+        时间约定：
+          - prev_time / next_time 单位为秒（仿真已流逝时间）
+          - 事件时刻 "HH:mm" 以每日周期判断（模 86400）
+          - days [Mon..Sun] 以 int(prev_time/86400) % 7 判断星期
+          - valid_range 以天数偏移 int(day) 与起止日期解析后比较
+        """
+        from datetime import date, timedelta, datetime
+
+        # 仿真起始日（固定为 1900-01-01，仅用于相对比较）
+        _EPOCH = date(1900, 1, 1)
+
+        prev_day_idx = int(prev_time / 86400)
+        prev_sec_of_day = prev_time % 86400
+        next_sec_of_day = next_time % 86400
+        day_boundary_crossed = int(next_time / 86400) > prev_day_idx
+
+        for reg in regimens:
+            variable = reg.get('variable', '')
+            if variable not in model.variables:
+                continue
+
+            # 有效期检查
+            if reg.get('valid_range_enabled'):
+                sim_date = _EPOCH + timedelta(days=prev_day_idx)
+                vs, ve = reg.get('valid_start', ''), reg.get('valid_end', '')
+                try:
+                    if vs and sim_date < date.fromisoformat(vs):
+                        continue
+                    if ve and sim_date > date.fromisoformat(ve):
+                        continue
+                except ValueError:
+                    pass  # 日期格式错误则忽略限制
+
+            # 执行日检查（0=Mon … 6=Sun）
+            if reg.get('days_enabled'):
+                dow = prev_day_idx % 7
+                days_mask = reg.get('days', [True]*7)
+                if not (days_mask[dow] if dow < len(days_mask) else True):
+                    continue
+
+            for ev in reg.get('events', []):
+                time_str = ev.get('time', '08:00')
+                try:
+                    hh, mm = map(int, time_str.split(':'))
+                except Exception:
+                    continue
+                ev_sec = hh * 3600 + mm * 60
+
+                # 事件是否落在当前步的时间窗口内
+                fires = False
+                if day_boundary_crossed:
+                    # 跨天：两段均检查
+                    fires = ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day
+                else:
+                    fires = prev_sec_of_day <= ev_sec < next_sec_of_day
+
+                if fires:
+                    value = float(ev.get('value', 0))
+                    model.set_variable_value(variable, value)
+                    logger.debug(f"Regimen 触发: {variable}={value} @ t={prev_time:.0f}s (事件时刻 {time_str})")
+
     def start_session(self, model_name: str, time_hours: float, folder: Optional[str] = None,
-                     step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+                     step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None,
+                     regimens: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
         开始一个新的仿真会话（GUI 使用）。
         :param model_name: 模型名称。
@@ -216,7 +282,8 @@ class SimulatorEngine:
                 'time': 0.0,
                 'running': True,
                 'output_variables': capture_variables,
-                'data': []  # 存储仿真数据
+                'data': [],  # 存储仿真数据
+                'regimens': regimens or [],  # Regimen K×4 计划表
             }
             
             logger.info(f"会话已创建: {session_id}, 模型: {model_name}, 总步数: {total_steps}")
@@ -277,6 +344,11 @@ class SimulatorEngine:
             actual_steps = min(steps, remaining_steps)
             
             for i in range(actual_steps):
+                # 应用 Regimen 计划（时刻触发）
+                prev_time = session['time']
+                next_time = prev_time + step_size
+                self._apply_regimens(model, session['regimens'], prev_time, next_time)
+
                 # 执行单步
                 model.step(step_size)
                 session['current_step'] += 1

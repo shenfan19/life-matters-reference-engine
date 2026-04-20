@@ -699,6 +699,15 @@ const Simulator: React.FC<SimulatorProps> = ({
           time_hours: timeValue * TIME_UNITS[timeUnit],
           step_size: stepValue * STEP_UNITS[stepUnit],
           input_params: inputParams,
+          regimens: regimens.map(r => ({
+            variable: r.variable,
+            events: r.events,
+            days_enabled: r.daysEnabled,
+            days: r.days,
+            valid_range_enabled: r.validRangeEnabled,
+            valid_start: r.validStart,
+            valid_end: r.validEnd,
+          })),
         }),
       });
       const result = await resp.json();
@@ -820,7 +829,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
     const isOpt = mode === 'opt';
     const blockBase: React.CSSProperties = {
-      flex: '1 1 160px', minWidth: 150,
+      flex: '3 1 150px', minWidth: 130,
       border: `1px solid ${c.border}`, borderRadius: 6,
       padding: '6px 8px', background: c.sectionHd,
     };
@@ -914,55 +923,50 @@ const Simulator: React.FC<SimulatorProps> = ({
                   ))}
                 </div>
 
-                {/* Block 2 + 3: 有效期 and 执行日 on same row */}
-                <div style={{ flex: '2 1 240px', minWidth: 200, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-
-                  {/* Block 2: valid_range 有效期 */}
-                  <div style={{ ...blockBase, flex: '1 1 110px', minWidth: 110 }}>
-                    <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span>有效期</span>
-                      <Switch size="small" checked={r.validRangeEnabled}
-                        onChange={v => updateRegimen(r.id, { validRangeEnabled: v })} />
-                    </div>
-                    {r.validRangeEnabled ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        <Input size="small" value={r.validStart} placeholder="YYYY-MM-DD"
-                          onChange={e => updateRegimen(r.id, { validStart: e.target.value })}
-                          style={{ width: '100%' }} />
-                        <span style={{ color: c.textMute, fontSize: 10, textAlign: 'center' }}>~</span>
-                        <Input size="small" value={r.validEnd} placeholder="YYYY-MM-DD"
-                          onChange={e => updateRegimen(r.id, { validEnd: e.target.value })}
-                          style={{ width: '100%' }} />
-                      </div>
-                    ) : (
-                      <span style={{ color: c.textMute, fontSize: 11 }}>永久有效</span>
-                    )}
+                {/* Block 2: days 执行日（靠左，tag compact） */}
+                <div style={{ ...blockBase, flex: '3 1 130px', minWidth: 120 }}>
+                  <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>执行日</span>
+                    <Switch size="small" checked={r.daysEnabled}
+                      onChange={v => updateRegimen(r.id, { daysEnabled: v })} />
                   </div>
-
-                  {/* Block 3: days 执行日 */}
-                  <div style={{ ...blockBase, flex: '1 1 110px', minWidth: 110 }}>
-                    <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span>执行日</span>
-                      <Switch size="small" checked={r.daysEnabled}
-                        onChange={v => updateRegimen(r.id, { daysEnabled: v })} />
+                  {r.daysEnabled ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                      {DAY_LABELS.map((label, i) => (
+                        <Tag key={i}
+                          style={{ cursor: 'pointer', userSelect: 'none', margin: 0, padding: '1px 5px', fontSize: 11 }}
+                          color={r.days[i] ? 'success' : undefined}
+                          onClick={() => {
+                            const nd = [...r.days]; nd[i] = !nd[i];
+                            updateRegimen(r.id, { days: nd });
+                          }}>
+                          {label}
+                        </Tag>
+                      ))}
                     </div>
-                    {r.daysEnabled ? (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                        {DAY_LABELS.map((label, i) => (
-                          <Tag key={i}
-                            style={{ cursor: 'pointer', userSelect: 'none', margin: 0, padding: '1px 5px', fontSize: 11 }}
-                            color={r.days[i] ? 'success' : undefined}
-                            onClick={() => {
-                              const nd = [...r.days]; nd[i] = !nd[i];
-                              updateRegimen(r.id, { days: nd });
-                            }}>
-                            {label}
-                          </Tag>
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ color: c.textMute, fontSize: 11 }}>每天</span>
-                    )}
+                  ) : (
+                    <span style={{ color: c.textMute, fontSize: 11 }}>每天</span>
+                  )}
+                </div>
+
+                {/* Block 3: valid_range 有效期（日期框常显，switch 控制启用） */}
+                <div style={{ ...blockBase, flex: '4 1 180px', minWidth: 160 }}>
+                  <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>有效期</span>
+                    <Switch size="small" checked={r.validRangeEnabled}
+                      onChange={v => updateRegimen(r.id, { validRangeEnabled: v })} />
+                    {!r.validRangeEnabled && <span style={{ color: c.textMute, fontSize: 10 }}>永久有效</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Input size="small" value={r.validStart} placeholder="YYYY-MM-DD"
+                      disabled={!r.validRangeEnabled}
+                      onChange={e => updateRegimen(r.id, { validStart: e.target.value })}
+                      style={{ flex: 1, minWidth: 80, opacity: r.validRangeEnabled ? 1 : 0.45 }} />
+                    <span style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}>~</span>
+                    <Input size="small" value={r.validEnd} placeholder="YYYY-MM-DD"
+                      disabled={!r.validRangeEnabled}
+                      onChange={e => updateRegimen(r.id, { validEnd: e.target.value })}
+                      style={{ flex: 1, minWidth: 80, opacity: r.validRangeEnabled ? 1 : 0.45 }} />
                   </div>
                 </div>
 

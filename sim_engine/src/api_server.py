@@ -185,12 +185,27 @@ class FileNewRequest(BaseModel):
     template: str = "model"  # "model" | "scenario"
 
 
+class RegimenEventData(BaseModel):
+    id: str = ""
+    time: str = "08:00"   # "HH:mm"
+    value: float = 0.0
+
+class RegimenData(BaseModel):
+    variable: str
+    events: List[RegimenEventData] = []
+    days_enabled: bool = False
+    days: List[bool] = [True]*7   # [Mon..Sun]
+    valid_range_enabled: bool = False
+    valid_start: str = ""   # "YYYY-MM-DD"
+    valid_end: str = ""
+
 class SimulationStartRequest(BaseModel):
     model_name: str
     folder: Optional[str] = None
     time_hours: float = 24.0
     step_size: Optional[float] = None
     input_params: Optional[Dict[str, float]] = None
+    regimens: Optional[List[RegimenData]] = None
 
 
 class SimulationStepRequest(BaseModel):
@@ -1092,12 +1107,14 @@ async def start_simulation(request: SimulationStartRequest):
         raise HTTPException(status_code=503, detail="Simulator engine not initialized")
     
     try:
+        regimens_raw = [r.dict() for r in request.regimens] if request.regimens else None
         result = simulator_engine.start_session(
             model_name=request.model_name,
             folder=request.folder,
             time_hours=request.time_hours,
             step_size=request.step_size,
-            input_params=request.input_params
+            input_params=request.input_params,
+            regimens=regimens_raw,
         )
         
         if result['success']:

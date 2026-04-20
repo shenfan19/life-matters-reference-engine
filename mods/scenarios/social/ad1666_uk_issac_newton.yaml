@@ -18,49 +18,48 @@ metadata:
 
 # ── 变量定义（完全内联，无需导入模型文件）────────────────────────────────────────
 variables:
-  # 饮食摄入输入（由 schedules 驱动，单位：g/min 或 ml/min）
-  # 进餐窗口内非零，公式每分钟一次性累积营养效果
+  # 饮食摄入输入（每次摄入量，由 schedules 驱动；仿真引擎按步长累积）
   bread_intake:
     type: input
-    value: 0.0
-    unit: "g/min"
-    bounds: [0, 20]
-    description: "黑麦/大麦混合面包摄入速率（主食，250kcal/120g）"
+    value: 120.0
+    unit: "g"
+    bounds: [0, 300]
+    description: "黑麦/大麦混合面包每餐摄入量（主食，250kcal/120g）"
 
   pottage_intake:
     type: input
-    value: 0.0
-    unit: "g/min"
-    bounds: [0, 30]
-    description: "浓粥汤摄入速率（谷物+根菜炖煮，营养全面，1kcal/g）"
+    value: 200.0
+    unit: "g"
+    bounds: [0, 500]
+    description: "浓粥汤每餐摄入量（谷物+根菜炖煮，营养全面，1kcal/g）"
 
   ale_intake:
     type: input
-    value: 0.0
-    unit: "ml/min"
-    bounds: [0, 40]
-    description: "小啤酒摄入速率（鼠疫时期代替生水，低酒精，0.6kcal/ml）"
+    value: 300.0
+    unit: "ml"
+    bounds: [0, 800]
+    description: "小啤酒每次摄入量（鼠疫时期代替生水，低酒精，0.6kcal/ml）"
 
   meat_intake:
     type: input
-    value: 0.0
-    unit: "g/min"
-    bounds: [0, 10]
-    description: "咸猪肉/培根摄入速率（高蛋白，价格较贵，2.5kcal/g）"
+    value: 50.0
+    unit: "g"
+    bounds: [0, 150]
+    description: "咸猪肉/培根每餐摄入量（高蛋白，价格较贵，2.5kcal/g）"
 
   cheese_intake:
     type: input
-    value: 0.0
-    unit: "g/min"
-    bounds: [0, 10]
-    description: "农家奶酪摄入速率（热量密集，保存方便，3kcal/g）"
+    value: 30.0
+    unit: "g"
+    bounds: [0, 100]
+    description: "农家奶酪每餐摄入量（热量密集，保存方便，3kcal/g）"
 
   apple_intake:
     type: input
-    value: 0.0
-    unit: "g/min"
-    bounds: [0, 15]
-    description: "苹果摄入速率（庄园自产免费，维生素C来源，0.53kcal/g）"
+    value: 100.0
+    unit: "g"
+    bounds: [0, 250]
+    description: "苹果每次摄入量（庄园自产免费，维生素C来源，0.53kcal/g）"
 
   # 行为输入（强度/系数，schedules 驱动，非速率）
   study_intensity:
