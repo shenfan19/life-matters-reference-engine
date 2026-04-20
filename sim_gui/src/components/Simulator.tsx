@@ -24,7 +24,7 @@ function useResize(initial: number, min = 150, max = 700, direction: 'right' | '
 
 
 import {
-  Button, Select, InputNumber, Tooltip, Tag,
+  Button, Select, InputNumber, Tooltip, Tag, Switch,
   message, Spin, Alert, Empty, Input, Tree,
   Segmented, Collapse, Popover,
 } from 'antd';
@@ -44,11 +44,45 @@ import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
 
+// Legacy flat entry — kept only for localStorage migration
 interface InputEntry {
   id: string;
   variable: string;
   value: number;
-  time: string; // 'HH:mm', daily trigger time (instantaneous bolus)
+  time: string;
+}
+
+// Regimen K×4: one scheduled behaviour (one model input variable)
+interface RegimenEvent {
+  id: string;
+  time: string;   // 'HH:mm'
+  value: number;
+}
+
+interface Regimen {
+  id: string;
+  variable: string;
+  // valid_range: off = 永久有效
+  validRangeEnabled: boolean;
+  validStart: string;   // 'YYYY-MM-DD'
+  validEnd: string;
+  // events: (time, value) pairs
+  events: RegimenEvent[];
+  // days: off = 每天; on = custom weekdays
+  daysEnabled: boolean;
+  days: boolean[];      // [Mon,Tue,Wed,Thu,Fri,Sat,Sun]
+}
+
+// Per-regimen opt config (lock vs optimize per dimension)
+interface RegimenOpt {
+  timeLocked: boolean;
+  timeMin: string;
+  timeMax: string;
+  valueLocked: boolean;
+  valueMin: number;
+  valueMax: number;
+  daysLocked: boolean;
+  daysMin: number;
 }
 
 function getC(dark: boolean) {
@@ -340,8 +374,22 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optPop, setOptPop] = useState(100);
   const [optGen, setOptGen] = useState(200);
 
-  // ── scheduled input entries ──────────────────────────────────────────────────
-  const [inputEntries, setInputEntries] = useState<InputEntry[]>(() => readSP()?.inputEntries || []);
+  // ── regimen K×4 state ───────────────────────────────────────────────────────
+  const [regimens, setRegimens] = useState<Regimen[]>(() => {
+    const saved = readSP();
+    // migrate legacy inputEntries if present
+    if (saved?.regimens) return saved.regimens;
+    if (saved?.inputEntries?.length) {
+      return (saved.inputEntries as InputEntry[]).map(e => ({
+        id: e.id, variable: e.variable,
+        validRangeEnabled: false, validStart: '', validEnd: '',
+        events: [{ id: `${e.id}-ev`, time: e.time, value: e.value }],
+        daysEnabled: false, days: [true, true, true, true, true, true, true],
+      }));
+    }
+    return [];
+  });
+  const [regimenOpts, setRegimenOpts] = useState<Record<string, RegimenOpt>>({});
 
   const isRunningRef = useRef(false);
   // refs for restore flow
@@ -363,19 +411,36 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
-      const entries: InputEntry[] = [];
+      const newRegimens: Regimen[] = [];
+      const newRegimenOpts: Record<string, RegimenOpt> = {};
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
-          entries.push({ id: `${name}-0`, variable: name, value: data.value ?? 0, time: '08:00' });
+          newRegimens.push({
+            id: `${name}-0`,
+            variable: name,
+            validRangeEnabled: false,
+            validStart: '',
+            validEnd: '',
+            events: [{ id: `${name}-ev0`, time: '08:00', value: data.value ?? 0 }],
+            daysEnabled: false,
+            days: [true, true, true, true, true, true, true],
+          });
+          const v = data.value as number;
+          newRegimenOpts[`${name}-0`] = {
+            timeLocked: true, timeMin: '06:00', timeMax: '22:00',
+            valueLocked: true, valueMin: 0, valueMax: v * 2 || 1,
+            daysLocked: true, daysMin: 3,
+          };
         } else if (data.type === 'state') states[name] = data.value;
       });
       set('inputParams', inputs);
       set('stateVariables', states);
       if (skipInputInitRef.current) {
-        skipInputInitRef.current = false; // use saved entries once, then allow model defaults on next load
+        skipInputInitRef.current = false;
       } else {
-        setInputEntries(entries);
+        setRegimens(newRegimens);
+        setRegimenOpts(newRegimenOpts);
       }
       const ranges: typeof optRanges = {};
       Object.entries(inputs).forEach(([name, val]) => {
@@ -392,12 +457,16 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
   }, [selectedModel]);
 
-  // ── sync inputEntries → inputParams ─────────────────────────────────────────
+  // ── sync regimens → inputParams ─────────────────────────────────────────────
+  // Simple aggregation: sum all event values per variable (backend gets totals per step)
   useEffect(() => {
     const params: Record<string, number> = {};
-    inputEntries.forEach(e => { params[e.variable] = e.value; }); // last value wins per variable
+    regimens.forEach(r => {
+      const total = r.events.reduce((s, e) => s + e.value, 0);
+      params[r.variable] = (params[r.variable] ?? 0) + total;
+    });
     set('inputParams', params);
-  }, [inputEntries]);
+  }, [regimens]);
 
   // ── load tree on mount + restore selected model ──────────────────────────────
   useEffect(() => {
@@ -444,8 +513,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── persist config to localStorage ───────────────────────────────────────────
   useEffect(() => {
     const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, inputEntries, isLocked, openSections: [...openSections], sectionWeights, timeValue, timeUnit, stepValue, stepUnit });
-  }, [selectedKey, mode, inputEntries, isLocked, openSections, sectionWeights, timeValue, timeUnit, stepValue, stepUnit]);
+    writeSP({ ...current, selectedKey, mode, regimens, regimenOpts, isLocked, openSections: [...openSections], sectionWeights, timeValue, timeUnit, stepValue, stepUnit });
+  }, [selectedKey, mode, regimens, regimenOpts, isLocked, openSections, sectionWeights, timeValue, timeUnit, stepValue, stepUnit]);
 
   // ── persist simulation results on status settle ───────────────────────────────
   useEffect(() => {
@@ -697,126 +766,219 @@ const Simulator: React.FC<SimulatorProps> = ({
   // LEFT PANEL TAB CONTENT RENDERERS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // classify input vars: food (克/毫升) → timed bolus, coeff (系数/0-1) → single value, others → hidden
-  const isFoodVar = (v: any) => ['克', 'g', '毫升', 'ml'].some(u => (v.unit || '').includes(u));
-  const isCoeffVar = (v: any) => !isFoodVar(v) && (
-    (v.unit || '').includes('系数') ||
-    (Array.isArray(v.bounds) && v.bounds[0] === 0 && (v.bounds[1] ?? 2) <= 1)
-  );
+  // ── Regimen helpers ───────────────────────────────────────────────────────────
+  const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
-  const addInputEntryFor = (varName: string) => {
-    const existing = inputEntries.filter(e => e.variable === varName);
-    if (existing.length >= 3) return;
-    const varDef = inputVars.find(v => v.name === varName);
-    const defaultTimes = ['08:00', '13:00', '18:00'];
-    setInputEntries(prev => [...prev, {
-      id: `${varName}-${Date.now()}`,
-      variable: varName,
-      value: varDef?.value ?? 0,
-      time: defaultTimes[existing.length],
+  const updateRegimen = (id: string, patch: Partial<Regimen>) =>
+    setRegimens(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+
+  const addNewRegimen = () => {
+    const firstVar = inputVars[0];
+    if (!firstVar) return;
+    const id = `reg-${Date.now()}`;
+    setRegimens(prev => [...prev, {
+      id, variable: firstVar.name,
+      validRangeEnabled: false, validStart: '', validEnd: '',
+      events: [{ id: `${id}-ev0`, time: '08:00', value: firstVar.value ?? 0 }],
+      daysEnabled: false, days: [true, true, true, true, true, true, true],
     }]);
+    setRegimenOpts(prev => ({
+      ...prev,
+      [id]: { timeLocked: true, timeMin: '06:00', timeMax: '22:00', valueLocked: true, valueMin: 0, valueMax: (firstVar.value ?? 0) * 2 || 1, daysLocked: true, daysMin: 3 },
+    }));
   };
 
-  const updateEntry = (id: string, patch: Partial<InputEntry>) =>
-    setInputEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+  const removeRegimen = (id: string) => {
+    setRegimens(prev => prev.filter(r => r.id !== id));
+    setRegimenOpts(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
 
-  const removeEntry = (id: string) =>
-    setInputEntries(prev => prev.filter(e => e.id !== id));
+  const addEvent = (regimenId: string) =>
+    setRegimens(prev => prev.map(r => {
+      if (r.id !== regimenId || r.events.length >= 6) return r;
+      const times = ['08:00', '12:00', '18:00', '20:00', '22:00', '06:00'];
+      const varDef = inputVars.find(v => v.name === r.variable);
+      return { ...r, events: [...r.events, { id: `${regimenId}-ev${Date.now()}`, time: times[r.events.length % times.length], value: varDef?.value ?? 0 }] };
+    }));
 
-  const updateCoeffEntry = (varName: string, value: number) =>
-    setInputEntries(prev => {
-      const existing = prev.find(e => e.variable === varName);
-      if (existing) return prev.map(e => e.id === existing.id ? { ...e, value } : e);
-      return [...prev, { id: `${varName}-${Date.now()}`, variable: varName, value, time: '00:00' }];
-    });
+  const updateEvent = (regimenId: string, evId: string, patch: Partial<RegimenEvent>) =>
+    setRegimens(prev => prev.map(r => r.id !== regimenId ? r : {
+      ...r, events: r.events.map(e => e.id === evId ? { ...e, ...patch } : e),
+    }));
+
+  const removeEvent = (regimenId: string, evId: string) =>
+    setRegimens(prev => prev.map(r => r.id !== regimenId ? r : {
+      ...r, events: r.events.filter(e => e.id !== evId),
+    }));
+
+  const updateRegimenOpt = (id: string, patch: Partial<RegimenOpt>) =>
+    setRegimenOpts(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }));
 
   const renderInputsContent = () => {
-    const foodVars = inputVars.filter(isFoodVar);
-    const coeffVars = inputVars.filter(isCoeffVar);
-    const yamlScheduleEntries = Object.entries(schedules);
-
-    if (foodVars.length === 0 && coeffVars.length === 0 && yamlScheduleEntries.length === 0)
+    if (inputVars.length === 0 && Object.keys(schedules).length === 0)
       return <div style={{ padding: '8px 0' }}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} /></div>;
 
-    return (
-      <div style={{ padding: '8px 0' }}>
+    const isOpt = mode === 'opt';
+    const blockBase: React.CSSProperties = {
+      flex: '1 1 160px', minWidth: 150,
+      border: `1px solid ${c.border}`, borderRadius: 6,
+      padding: '6px 8px', background: c.sectionHd,
+    };
+    const blockLabel: React.CSSProperties = { color: c.textMute, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 };
 
-        {/* ── Food / drink bolus entries grouped by variable ── */}
-        {foodVars.map(v => {
-          const entriesForVar = inputEntries.filter(e => e.variable === v.name);
+    return (
+      <div style={{ padding: '4px 0' }}>
+
+        {/* ── Add new Regimen ── */}
+        {inputVars.length > 0 && (
+          <Button size="small" icon={<PlusOutlined />} block type="dashed"
+            onClick={addNewRegimen}
+            style={{ borderColor: c.primary, color: c.primary, marginBottom: 10 }}>
+            新增摄入计划
+          </Button>
+        )}
+
+        {/* ── Regimen cards ── */}
+        {regimens.map(r => {
+          const varDef = inputVars.find(v => v.name === r.variable);
+          const opt: RegimenOpt = regimenOpts[r.id] || { timeLocked: true, timeMin: '06:00', timeMax: '22:00', valueLocked: true, valueMin: 0, valueMax: 1, daysLocked: true, daysMin: 3 };
+          const unit = varDef?.unit ?? '';
+
           return (
-            <div key={v.name} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Tooltip title={v.description || undefined}>
-                  <span style={{ fontWeight: 600, color: c.text, cursor: v.description ? 'help' : 'default' }}>{v.name}</span>
-                </Tooltip>
-                {entriesForVar.length > 0 && entriesForVar.length < 3 && (
-                  <Button size="small" type="text" icon={<PlusOutlined />}
-                    onClick={() => addInputEntryFor(v.name)}
-                    style={{ color: c.primary, padding: '0 4px' }} />
-                )}
+            <div key={r.id} style={{ border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 10, background: c.inputBg, overflow: 'hidden' }}>
+
+              {/* ── Header: variable selector ── */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: c.sectionHd, borderBottom: `1px solid ${c.border}` }}>
+                <Select
+                  size="small" value={r.variable} style={{ flex: 1 }}
+                  options={inputVars.map(v => ({ label: `${v.name}${v.unit ? ` (${v.unit})` : ''}`, value: v.name }))}
+                  onChange={val => {
+                    const vd = inputVars.find(v => v.name === val);
+                    updateRegimen(r.id, { variable: val, events: [{ id: `${r.id}-ev${Date.now()}`, time: '08:00', value: vd?.value ?? 0 }] });
+                  }}
+                />
+                <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
+                  onClick={() => removeRegimen(r.id)} style={{ padding: '0 4px', flexShrink: 0 }} />
               </div>
-              {entriesForVar.map(entry => (
-                <div key={entry.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4,
-                  padding: '4px 8px', borderRadius: 6,
-                  background: c.inputBg, border: `1px solid ${c.border}`,
-                }}>
-                  <Input size="small" value={entry.time} placeholder="08:00"
-                    onChange={e => updateEntry(entry.id, { time: e.target.value })}
-                    style={{ width: 54 }} />
-                  <InputNumber size="small" value={entry.value}
-                    onChange={val => updateEntry(entry.id, { value: val ?? 0 })}
-                    min={v.bounds?.[0] ?? 0} max={v.bounds?.[1]}
-                    style={{ flex: 1 }} />
-                  <span style={{ color: c.textMute, flexShrink: 0, minWidth: 20 }}>{v.unit}</span>
-                  <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
-                    onClick={() => removeEntry(entry.id)}
-                    style={{ padding: '0 2px', flexShrink: 0 }} />
+
+              {/* ── Body: 3 blocks in a flex-wrap row ── */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px' }}>
+
+                {/* Block 1: 时刻 / 摄入量 */}
+                <div style={blockBase}>
+                  <div style={{ ...blockLabel, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>时刻 → 摄入量{unit ? ` (${unit})` : ''}</span>
+                    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                      {isOpt && (
+                        <Tag style={{ cursor: 'pointer', userSelect: 'none', fontSize: 10, margin: 0 }}
+                          color={opt.valueLocked ? undefined : 'processing'}
+                          onClick={() => updateRegimenOpt(r.id, { valueLocked: !opt.valueLocked })}>
+                          {opt.valueLocked ? '🔒' : '🔀'}
+                        </Tag>
+                      )}
+                      {r.events.length < 6 && (
+                        <Button size="small" type="text" icon={<PlusOutlined />}
+                          onClick={() => addEvent(r.id)}
+                          style={{ color: c.primary, padding: '0 2px', height: 16, lineHeight: '16px' }} />
+                      )}
+                    </div>
+                  </div>
+                  {r.events.map(ev => (
+                    <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
+                      <Input size="small" value={ev.time} placeholder="08:00"
+                        onChange={e => updateEvent(r.id, ev.id, { time: e.target.value })}
+                        style={{ width: 62, fontFamily: 'monospace' }} />
+                      <span style={{ color: c.textMute, fontSize: 11 }}>→</span>
+                      {isOpt && !opt.valueLocked ? (
+                        <>
+                          <InputNumber size="small" value={opt.valueMin} placeholder="min"
+                            onChange={v => updateRegimenOpt(r.id, { valueMin: v ?? 0 })}
+                            min={varDef?.bounds?.[0] ?? 0} style={{ width: 52 }} />
+                          <span style={{ color: c.textMute, fontSize: 10 }}>~</span>
+                          <InputNumber size="small" value={opt.valueMax} placeholder="max"
+                            onChange={v => updateRegimenOpt(r.id, { valueMax: v ?? 1 })}
+                            max={varDef?.bounds?.[1]} style={{ width: 52 }} />
+                        </>
+                      ) : (
+                        <InputNumber size="small" value={ev.value}
+                          onChange={v => updateEvent(r.id, ev.id, { value: v ?? 0 })}
+                          min={varDef?.bounds?.[0] ?? 0} max={varDef?.bounds?.[1]}
+                          style={{ flex: 1, minWidth: 60 }} />
+                      )}
+                      {r.events.length > 1 && (
+                        <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
+                          onClick={() => removeEvent(r.id, ev.id)}
+                          style={{ padding: '0 1px', flexShrink: 0 }} />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {entriesForVar.length === 0 && (
-                <Button size="small" type="dashed" icon={<PlusOutlined />}
-                  onClick={() => addInputEntryFor(v.name)}
-                  style={{ width: '100%', borderColor: c.border, color: c.textMute }}>
-                  {t('sim.inputs.add_meal')}
-                </Button>
-              )}
+
+                {/* Block 2 + 3: 有效期 and 执行日 on same row */}
+                <div style={{ flex: '2 1 240px', minWidth: 200, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+
+                  {/* Block 2: valid_range 有效期 */}
+                  <div style={{ ...blockBase, flex: '1 1 110px', minWidth: 110 }}>
+                    <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>有效期</span>
+                      <Switch size="small" checked={r.validRangeEnabled}
+                        onChange={v => updateRegimen(r.id, { validRangeEnabled: v })} />
+                    </div>
+                    {r.validRangeEnabled ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Input size="small" value={r.validStart} placeholder="YYYY-MM-DD"
+                          onChange={e => updateRegimen(r.id, { validStart: e.target.value })}
+                          style={{ width: '100%' }} />
+                        <span style={{ color: c.textMute, fontSize: 10, textAlign: 'center' }}>~</span>
+                        <Input size="small" value={r.validEnd} placeholder="YYYY-MM-DD"
+                          onChange={e => updateRegimen(r.id, { validEnd: e.target.value })}
+                          style={{ width: '100%' }} />
+                      </div>
+                    ) : (
+                      <span style={{ color: c.textMute, fontSize: 11 }}>永久有效</span>
+                    )}
+                  </div>
+
+                  {/* Block 3: days 执行日 */}
+                  <div style={{ ...blockBase, flex: '1 1 110px', minWidth: 110 }}>
+                    <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>执行日</span>
+                      <Switch size="small" checked={r.daysEnabled}
+                        onChange={v => updateRegimen(r.id, { daysEnabled: v })} />
+                    </div>
+                    {r.daysEnabled ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                        {DAY_LABELS.map((label, i) => (
+                          <Tag key={i}
+                            style={{ cursor: 'pointer', userSelect: 'none', margin: 0, padding: '1px 5px', fontSize: 11 }}
+                            color={r.days[i] ? 'success' : undefined}
+                            onClick={() => {
+                              const nd = [...r.days]; nd[i] = !nd[i];
+                              updateRegimen(r.id, { days: nd });
+                            }}>
+                            {label}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ color: c.textMute, fontSize: 11 }}>每天</span>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
           );
         })}
 
-        {/* ── Coefficient / quality inputs (single value, no time) ── */}
-        {coeffVars.length > 0 && (
-          <>
-            {foodVars.length > 0 && <div style={{ height: 1, background: c.border, margin: '4px 0 10px' }} />}
-            {coeffVars.map(v => {
-              const entry = inputEntries.find(e => e.variable === v.name);
-              return (
-                <Tooltip key={v.name} title={v.description || undefined} placement="top">
-                  <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                    <InputNumber size="small"
-                      value={entry?.value ?? v.value ?? 0}
-                      min={v.bounds?.[0] ?? 0} max={v.bounds?.[1] ?? 1} step={0.1}
-                      onChange={val => updateCoeffEntry(v.name, val ?? 0)}
-                      style={{ width: 70 }} />
-                    {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
-                  </div>
-                </Tooltip>
-              );
-            })}
-          </>
-        )}
-
         {/* ── YAML-defined schedules (read-only) ── */}
-        {yamlScheduleEntries.length > 0 && (
+        {Object.entries(schedules).length > 0 && (
           <>
             <div style={{ height: 1, background: c.border, margin: '4px 0 10px' }} />
             <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, fontSize: 11 }}>
               {t('sim.tabs.schedules')}
             </div>
-            {yamlScheduleEntries.map(([name, sched]: [string, any]) => (
+            {Object.entries(schedules).map(([name, sched]: [string, any]) => (
               <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <strong style={{ color: c.text }}>{name}</strong>
@@ -840,7 +1002,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             ))}
           </>
         )}
-
       </div>
     );
   };
@@ -1152,7 +1313,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
-  const inputsVarCount = new Set(inputEntries.map(e => e.variable)).size;
+  const inputsVarCount = regimens.length;
   const leftTabs = [
     { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`,                    content: renderInputsContent() },
     { key: 'vars',     label: `${t('sim.tabs.variables')}${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`,              content: renderVarsContent() },
