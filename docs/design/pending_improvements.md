@@ -2,7 +2,7 @@
 
 > 创建日期：2026-04-20  
 > 状态：待处理
-- [ ] 重要 [priority:: high]
+- [ ] sim opt input 核心 [priority:: high]
 ---
 
 ## 问题 1：Regimen 仿真后端时间调度（已完成基础实现）

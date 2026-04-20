@@ -77,7 +77,7 @@ function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: 
 const initialSimulationState: SimulationState = {
   status: 'idle', progress: 0, currentStep: 0, totalSteps: 1440,
   simulationData: [], inputParams: {}, stateVariables: {}, sessionId: '',
-  timeValue: 24, timeUnit: 'day', stepValue: 3600, stepUnit: 'second',
+  simStartDate: '2000-01-01', simEndDate: '2001-01-01', stepValue: 3600, stepUnit: 'second',
   batchSize: 10, updateInterval: 50,
 };
 

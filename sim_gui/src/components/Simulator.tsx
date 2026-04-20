@@ -38,7 +38,7 @@ import {
   UnorderedListOutlined, ClusterOutlined,
   LoadingOutlined, ReloadOutlined,
 } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, DurationUnit, StepUnit, DataNode, ModelFile } from '../types';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile } from '../types';
 import { validateModFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 
@@ -327,7 +327,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const {
     status, progress, currentStep, simulationData,
     inputParams, stateVariables, sessionId,
-    timeValue, timeUnit, stepValue, stepUnit, batchSize, updateInterval,
+    simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
   } = state;
 
   // ── loader state ─────────────────────────────────────────────────────────────
@@ -397,8 +397,16 @@ const Simulator: React.FC<SimulatorProps> = ({
   const skipInputInitRef = useRef<boolean>(!!(readSP()?.inputEntries?.length));
   const isInitialMount = useRef(true);
 
-  const TIME_UNITS: Record<DurationUnit, number> = { year: 8760, month: 720, day: 24, hour: 1 };
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
+
+  const dateToHours = (start: string, end: string) =>
+    Math.max(0, (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 3_600_000);
+
+  const totalSecondsToEndDate = (startDate: string, totalSec: number): string => {
+    const d = new Date(startDate + 'T00:00:00');
+    d.setSeconds(d.getSeconds() + Math.round(totalSec));
+    return d.toISOString().slice(0, 10);
+  };
 
   // ── helpers ──────────────────────────────────────────────────────────────────
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
@@ -452,8 +460,9 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (sim) {
       set('stepValue', sim.step_size || 3600);
       set('stepUnit', 'second');
-      set('timeValue', (sim.total_time || 86400) / 3600);
-      set('timeUnit', 'hour');
+      const baseStart = '2000-01-01';
+      set('simStartDate', baseStart);
+      set('simEndDate', totalSecondsToEndDate(baseStart, sim.total_time || 86400));
     }
   }, [selectedModel]);
 
@@ -495,8 +504,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       status: saved.status === 'paused' ? 'completed' : (saved.status || 'idle'),
       currentStep: saved.currentStep ?? 0,
       progress: saved.progress ?? 0,
-      ...(saved.timeValue != null && { timeValue: saved.timeValue }),
-      ...(saved.timeUnit && { timeUnit: saved.timeUnit }),
+      // migrate legacy timeValue/timeUnit → date range
+      ...(saved.simStartDate && { simStartDate: saved.simStartDate }),
+      ...(saved.simEndDate && { simEndDate: saved.simEndDate }),
       ...(saved.stepValue != null && { stepValue: saved.stepValue }),
       ...(saved.stepUnit && { stepUnit: saved.stepUnit }),
     }));
@@ -513,8 +523,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── persist config to localStorage ───────────────────────────────────────────
   useEffect(() => {
     const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, regimens, regimenOpts, isLocked, openSections: [...openSections], sectionWeights, timeValue, timeUnit, stepValue, stepUnit });
-  }, [selectedKey, mode, regimens, regimenOpts, isLocked, openSections, sectionWeights, timeValue, timeUnit, stepValue, stepUnit]);
+    writeSP({ ...current, selectedKey, mode, regimens, regimenOpts, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit });
+  }, [selectedKey, mode, regimens, regimenOpts, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit]);
 
   // ── persist simulation results on status settle ───────────────────────────────
   useEffect(() => {
@@ -696,7 +706,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           // Use filename stem (not metadata.name) so loader can find the file
           model_name: selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name,
           folder: selectedModel.folder,
-          time_hours: timeValue * TIME_UNITS[timeUnit],
+          time_hours: dateToHours(simStartDate, simEndDate),
           step_size: stepValue * STEP_UNITS[stepUnit],
           input_params: inputParams,
           regimens: regimens.map(r => ({
@@ -1328,9 +1338,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Top bar — controls + time settings ── */}
+      {/* ── Top bar — controls + time settings（flexWrap 自动换行） ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
         padding: '5px 12px', flexShrink: 0,
         borderBottom: `1px solid ${c.border}`, background: c.panel,
       }}>
@@ -1368,12 +1378,16 @@ const Simulator: React.FC<SimulatorProps> = ({
 
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
-        {/* Duration */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.duration.label')}</span>
-          <InputNumber size="small" value={timeValue} onChange={v => set('timeValue', v || 1)} style={{ width: 58 }} min={0} />
-          <Select size="small" value={timeUnit} onChange={v => set('timeUnit', v)} style={{ width: 76, flexShrink: 0 }}
-            options={[{ label: t('sim.duration.hour'), value: 'hour' }, { label: t('sim.duration.day'), value: 'day' }, { label: t('sim.duration.month'), value: 'month' }, { label: t('sim.duration.year'), value: 'year' }]} />
+        {/* Date range */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 12 }}>{t('sim.duration.label')}</span>
+          <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
+            onChange={e => set('simStartDate', e.target.value)}
+            style={{ width: 100, fontFamily: 'monospace' }} />
+          <span style={{ color: c.textMute, fontSize: 11 }}>~</span>
+          <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
+            onChange={e => set('simEndDate', e.target.value)}
+            style={{ width: 100, fontFamily: 'monospace' }} />
         </div>
 
         {/* Step size */}
@@ -1657,7 +1671,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (key === 'simcfg') return (
                 <div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}><tbody>
-                    <tr><TD>总时长</TD><TD mono>{timeValue} {timeUnit}</TD></tr>
+                    <tr><TD>时间范围</TD><TD mono>{simStartDate} ~ {simEndDate}</TD></tr>
                     <tr><TD>步长</TD><TD mono>{stepValue} {stepUnit}</TD></tr>
                     <tr><TD>批量大小</TD><TD mono>{batchSize}</TD></tr>
                   </tbody></table>
@@ -1765,7 +1779,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               }
               if (reportSections.has('simcfg')) {
                 lines.push(`## 仿真配置\n\n| 参数 | 值 |\n|------|-----|`);
-                lines.push(`| 总时长 | ${timeValue} ${timeUnit} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
+                lines.push(`| 时间范围 | ${simStartDate} ~ ${simEndDate} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
                 if (Object.keys(inputParams).length) {
                   lines.push(`\n**输入参数**\n\n| 变量 | 含义 | 值 |\n|------|------|-----|`);
                   Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${allV[k]?.description || '—'} | ${v} |`));

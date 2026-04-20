@@ -85,8 +85,8 @@ export interface SimulationState {
     inputParams: Record<string, number>;
     stateVariables: Record<string, number>;
     sessionId: string;
-    timeValue: number;
-    timeUnit: DurationUnit;
+    simStartDate: string;   // 'YYYY-MM-DD'
+    simEndDate: string;     // 'YYYY-MM-DD'
     stepValue: number;
     stepUnit: StepUnit;
     batchSize: number;
@@ -102,8 +102,8 @@ export interface OptimizerState {
     inputParams: Record<string, number>;
     stateVariables: Record<string, number>;
     sessionId: string;
-    timeValue: number;
-    timeUnit: DurationUnit;
+    simStartDate: string;
+    simEndDate: string;
     stepValue: number;
     stepUnit: StepUnit;
     batchSize: number;

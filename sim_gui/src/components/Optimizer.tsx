@@ -9,7 +9,8 @@ import {
   PlayCircleOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons';
-import type { OptimizerProps, OptimizerState, DurationUnit, StepUnit } from '../types';
+import type { OptimizerProps, OptimizerState, StepUnit } from '../types';
+import { Input } from 'antd';
 
 const API_BASE = '/api';
 
@@ -18,7 +19,7 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
   const {
     status, progress, optimizationData,
     inputParams,
-    timeValue, timeUnit, stepValue, stepUnit, batchSize, updateInterval
+    simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval
   } = state;
 
   const setStatus = (val: OptimizerState['status']) => setState(prev => ({ ...prev, status: val }));
@@ -30,15 +31,16 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
   const setInputParams = (val: Record<string, number>) => setState(prev => ({ ...prev, inputParams: val }));
   const setStateVariables = (val: Record<string, number>) => setState(prev => ({ ...prev, stateVariables: val }));
   const setSessionId = (val: string) => setState(prev => ({ ...prev, sessionId: val }));
-  const setTimeValue = (val: number) => setState(prev => ({ ...prev, timeValue: val }));
-  const setTimeUnit = (val: DurationUnit) => setState(prev => ({ ...prev, timeUnit: val }));
+  const setSimStartDate = (val: string) => setState(prev => ({ ...prev, simStartDate: val }));
+  const setSimEndDate = (val: string) => setState(prev => ({ ...prev, simEndDate: val }));
   const setStepValue = (val: number) => setState(prev => ({ ...prev, stepValue: val }));
   const setStepUnit = (val: StepUnit) => setState(prev => ({ ...prev, stepUnit: val }));
   const setBatchSize = (val: number) => setState(prev => ({ ...prev, batchSize: val }));
   const isRunningRef = useRef(false);
 
-  const TIME_UNITS: Record<string, number> = { year: 8760, month: 720, day: 24, hour: 1 };
   const STEP_UNITS: Record<string, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
+  const dateToHours = (s: string, e: string) =>
+    Math.max(0, (new Date(e + 'T00:00:00').getTime() - new Date(s + 'T00:00:00').getTime()) / 3_600_000);
 
   useEffect(() => {
     if (selectedModel?.content?.variables) {
@@ -53,21 +55,17 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
     }
     if (selectedModel?.content?.simulator) {
       const sim = selectedModel.content.simulator;
-      if (timeValue === 30 && stepValue === 3600) {
+      if (stepValue === 3600) {
         setStepValue(sim.step_size || 3600);
         setStepUnit('second');
-        setTimeValue((sim.total_time || 86400) / 3600);
-        setTimeUnit('day');
+        const base = '2000-01-01';
+        const d = new Date(base + 'T00:00:00');
+        d.setSeconds(d.getSeconds() + Math.round(sim.total_time || 86400));
+        setSimStartDate(base);
+        setSimEndDate(d.toISOString().slice(0, 10));
       }
     }
   }, [selectedModel]);
-
-  const handleTimeUnitChange = (newUnit: DurationUnit) => {
-    let hours = timeValue * (TIME_UNITS[timeUnit] || 1);
-    let newValue = hours / (TIME_UNITS[newUnit] || 1);
-    setTimeValue(Number(newValue.toFixed(2)));
-    setTimeUnit(newUnit);
-  };
 
   const handleStepUnitChange = (newUnit: StepUnit) => {
     let seconds = stepValue * (STEP_UNITS[stepUnit] || 1);
@@ -84,7 +82,7 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
       setCurrentStep(0);
       setOptimizationData([]);
       isRunningRef.current = true;
-      const finalTimeHours = timeValue * TIME_UNITS[timeUnit];
+      const finalTimeHours = dateToHours(simStartDate, simEndDate);
       const finalStepSeconds = stepValue * STEP_UNITS[stepUnit];
       const response = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST',
@@ -149,11 +147,31 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
       <Card title={<span style={{ fontWeight: 600, fontSize: '14px' }}>优化参数配置</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {!isLocked && <Alert message="模型未锁定" type="warning" showIcon />}
-          <Row gutter={16}>
-            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>周期</div><Select value={timeUnit} onChange={handleTimeUnitChange} options={[{ label: '年', value: 'year' }, { label: '月', value: 'month' }, { label: '日', value: 'day' }]} /><InputNumber value={timeValue} onChange={v => setTimeValue(v || 1)} style={{ width: '100%' }} /></Col>
-            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>间隔</div><Select value={stepUnit} onChange={handleStepUnitChange} options={[{ label: '分', value: 'minute' }, { label: '秒', value: 'second' }]} /><InputNumber value={stepValue} onChange={v => setStepValue(v || 1)} style={{ width: '100%' }} /></Col>
-            <Col span={8}><div style={{ fontSize: '12px', marginBottom: 4 }}>强度</div><InputNumber value={batchSize} onChange={v => setBatchSize(v || 1)} style={{ width: '100%' }} /></Col>
-          </Row>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>时间范围</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
+                  onChange={e => setSimStartDate(e.target.value)}
+                  style={{ width: 105, fontFamily: 'monospace' }} />
+                <span style={{ color: '#999', fontSize: 11 }}>~</span>
+                <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
+                  onChange={e => setSimEndDate(e.target.value)}
+                  style={{ width: 105, fontFamily: 'monospace' }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>步长</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Select size="small" value={stepUnit} onChange={handleStepUnitChange} options={[{ label: '分', value: 'minute' }, { label: '秒', value: 'second' }]} style={{ width: 60 }} />
+                <InputNumber size="small" value={stepValue} onChange={v => setStepValue(v || 1)} style={{ width: 70 }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>强度</div>
+              <InputNumber size="small" value={batchSize} onChange={v => setBatchSize(v || 1)} style={{ width: 70 }} />
+            </div>
+          </div>
           <Space>
             <Button type="primary" icon={<PlayCircleOutlined />} onClick={startOptimization} disabled={!isLocked || status === 'running'}>开始优化</Button>
             <Button onClick={() => { isRunningRef.current = false; setStatus('paused'); }} disabled={status !== 'running'}>暂停</Button>
