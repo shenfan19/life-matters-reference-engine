@@ -20,16 +20,16 @@
 
 | 模块 | 职责 | 文档 |
 |------|------|------|
-| **Sim** | YAML 模型加载、Euler 仿真引擎、Regimen 外环优化 | `c_sim_需求` · `c_sim_设计` · `c_sim_实现` |
-| **Game** | 卡牌游戏引擎，消费 Sim 的仿真结果 | `c_game_需求` · `c_game_设计` · `c_game_实现` |
-| **Converter** | Sim 模型 → Game Story 半自动转换工具 | `c_converter_需求` · `c_converter_设计` · `c_converter_实现` |
-| **Mod** | YAML 模型生态管理（目录结构、版本、发布） | `c_mod_需求` · `c_mod_设计` · `c_mod_实现` |
+| **Sim** | YAML 模型加载、Euler 仿真引擎、Regimen 外环优化 | `sim_requirements` · `sim_design` · `sim_impl` |
+| **Game** | 卡牌游戏引擎，消费 Sim 的仿真结果 | `game_requirements` · `game_design` · `game_impl` |
+| **Converter** | Sim 模型 → Game Story 半自动转换工具 | `converter_requirements` · `converter_design` · `converter_impl` |
+| **Mod** | YAML 模型生态管理（目录结构、版本、发布） | `mod_requirements` · `mod_design` · `mod_impl` |
 
 ---
 
 ## 变量类型体系
 
-所有 YAML 模型共用同一套变量类型，详见 `c_sim_设计.md § 变量类型（4 种）`：
+所有 YAML 模型共用同一套变量类型，详见 `sim_design.md § 变量类型（4 种）`：
 
 | 类型 | 用途 | 优化归属 |
 |------|------|---------|
@@ -48,7 +48,7 @@
   fit to literature data         Pareto front output
 ```
 
-详见 `c_sim_设计.md § 双环优化架构`。
+详见 `sim_design.md § 双环优化架构`。
 
 ---
 
@@ -58,10 +58,10 @@
 docs/
   overview.md              ← 本文件
   global_prompt.md         ← 前端 UI/UX 编码规范（sim_gui + game 通用）
-  c_sim_需求.md / 设计 / 实现
-  c_game_需求.md / 设计 / 实现
-  c_converter_需求.md / 设计 / 实现
-  c_mod_需求.md / 设计 / 实现
+  sim_requirements.md · sim_design.md · sim_impl.md
+  game_requirements.md · game_design.md · game_impl.md
+  converter_requirements.md · converter_design.md · converter_impl.md
+  mod_requirements.md · mod_design.md · mod_impl.md
   pending_sim_opt_plan.md  ← Monte Carlo + 外环 opt 实现任务清单
   pending_improvements.md  ← 待修复的已知问题清单
   decisions/               ← 架构决策记录（ADR 0001–0040+）

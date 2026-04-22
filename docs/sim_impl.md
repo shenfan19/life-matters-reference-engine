@@ -495,7 +495,7 @@ tunable_params:
 生存率(t) = ∏(1 − ir_effective × step_size)
 ```
 
-`ir_effective` 由 Loader 从 YAML `evidence` 节读取后填入运行时命名空间，公式中直接用变量名引用。详见 `c_sim_设计.md § 变量类型（4 种）`。
+`ir_effective` 由 Loader 从 YAML `evidence` 节读取后填入运行时命名空间，公式中直接用变量名引用。详见 `sim_design.md § 变量类型（4 种）`。
 
 ### Trajectory（轨迹）
 
