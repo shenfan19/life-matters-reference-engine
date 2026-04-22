@@ -47,8 +47,9 @@ sim_gui/src/components/
 | 类型 | Sim (`model.yaml`) | Opt | Converter 映射 | Game |
 |------|-------------------|-----|---------------|------|
 | **状态变量** `state` | `type: state`；Euler 更新；`bounds`, `io_role` | 可作优化目标函数输出 | `io_role: output` → `initial_state`；`bounds[1]` → `variable_display.max` | Gauge 圆弧状态条 |
-| **输入变量** `input` | `type: input`；用户可调控干预量 | `optimizable: true` 时可作干预序列寻优 | 每个 `input` → 一张玩家牌；`card_delta = input_rate × days_per_turn × efficiency_factor` | `player_deck[].path → player_*.yaml` |
-| **参数** `parameter` | `type: parameter`；模型固有系数；`bounds` 为搜索空间 | **优化器主要搜索对象** | 参数值 → 环境牌 `weight` 或 `probability` | `env_deck[].weight`；`env_*.yaml: probability` |
+| **输入变量** `input` | `type: input`；用户可调控干预量 | **外环 opt 主要搜索对象**（Regimen 寻优） | 每个 `input` → 一张玩家牌；`card_delta = input_rate × days_per_turn × efficiency_factor` | `player_deck[].path → player_*.yaml` |
+| **参数** `parameter` | `type: parameter`；动力学机制系数 | **内环 opt（Modeller，待实现）**；Converter 不直接映射 | 参数值影响公式系数，间接通过环境牌 `weight` 体现 | `env_deck[].weight` |
+| **Evidence** `evidence` | 文献效应量（ir/rr/or/hr/cohens_d/ard/beta/pk）；Loader 换算为 `_effective` | 不进入任何 opt | `_effective` → 环境牌 `weight` 或 `probability`（Converter 使用换算后的有效值） | `env_*.yaml: probability`；`weight: round(rr × base_weight)` |
 
 ### B. 公式类型
 
