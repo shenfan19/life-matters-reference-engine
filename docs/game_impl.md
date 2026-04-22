@@ -322,7 +322,7 @@ environment_cards:
 
 前端（`game/src/core/storyI18n.ts`）在加载 `game_story.yaml` 后，若当前语言非英语，会尝试加载 `game_story.{lang}.yaml`，并将字符串字段深度合并覆盖到基础 story 对象上。数字、布尔值、effects 数组等游戏逻辑字段不受影响。404 时静默跳过，回退英文。
 
-> 转换框架（Sim → Game 映射、Converter UI、P1-P6 公式识别、自动转换逻辑）详见 [`c_converter_设计.md`](c_converter_设计.md)。
+> 转换框架（Sim → Game 映射、Converter UI、P1-P6 公式识别、自动转换逻辑）详见 [`converter_design.md`](converter_design.md)。
 
 ---
 

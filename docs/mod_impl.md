@@ -7,7 +7,7 @@ MOD 系统尚未独立实现。当前所有"MOD"内容均为官方内嵌场景�
 ## 已有基础
 
 - `mods/` 目录结构已确立，场景作为文件夹包存在
-- `game_story.yaml` + `cards/*.yaml` 格式已稳定（见 `c_game_实现.md`）
+- `game_story.yaml` + `cards/*.yaml` 格式已稳定（见 `game_impl.md`）
 - 文件系统加载已通过 `newFormatLoader.ts` 实现
 
 ## 待实现

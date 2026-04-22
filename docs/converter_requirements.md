@@ -9,8 +9,8 @@ Converter 是 LM 系统的桥梁层：将 LM-Sim 的 YAML 仿真模型自动（�
 
 ## 依赖关系
 
-- 依赖 **sim 模块**：需理解 model.yaml 格式（见 `c_sim_model.md`）
-- 依赖 **game 模块**：需知道 game_story.yaml 格式（见 `c_game_实现.md`）
+- 依赖 **sim 模块**：需理解 model.yaml 格式（见 `sim_design.md`）
+- 依赖 **game 模块**：需知道 game_story.yaml 格式（见 `game_impl.md`）
 - Converter 在 game 模块格式稳定后才能确定（逻辑顺序不变）
 
 ## 功能需求

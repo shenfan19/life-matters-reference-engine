@@ -132,6 +132,6 @@ Opt 模式（方案 B）
 - [ ] 前端：session 信息面板中显示 session seed（供用户复现记录）
 
 ### T5：文档与测试
-- [ ] 在 `c_sim_设计.md` 中更新随机参数语法示例
+- [ ] 在 `sim_design.md` 中更新随机参数语法示例
 - [ ] 在 Newton / Curie YAML 中补充至少一个概率参数示例（如辐射致病率）
 - [ ] 集成测试：对含概率参数的模型验证 Monte Carlo 分布宽度随 N 收敛

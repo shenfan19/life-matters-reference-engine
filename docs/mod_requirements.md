@@ -10,7 +10,7 @@ MOD 系统是 LM-Game 的内容扩展层。官方只维护最严谨的基石场�
 
 ### 场景 MOD
 - 用户可创作新的历史场景（新的 `mods/stories/{category}/{id}/`）
-- 场景需符合 game_story.yaml 格式规范（见 `c_game_实现.md`）
+- 场景需符合 game_story.yaml 格式规范（见 `game_impl.md`）
 - 支持自定义角色、卡牌、初始参数
 
 ### 内容分级
