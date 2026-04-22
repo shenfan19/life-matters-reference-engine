@@ -178,3 +178,62 @@ H = clamp(AP + 2, 3, 6)
 | 概率 p | `weight = round(p × 1000)` | `p=0.05 → weight=50` |
 | 百分比 r | 保留为 `delta_percent: -r` | `r=0.1 → -10% health/turn` |
 | 阈值 T | 直接映射 | `glucose > 180 → condition.value: 180` |
+
+---
+
+## Story 层设计规范
+
+### 双层架构
+
+| 层 | 目录 | 职责 |
+|----|------|------|
+| **Model 层** | `mods/models/` | 纯科学动力学：药理参数、生理方程、可调参数 |
+| **Story 层** | `mods/stories/` | 预配置剧情：组合 model、覆写参数、添加叙事元素 |
+
+Story 是"一键运行"的预配置关卡，让用户无需手动设置即可体验完整场景。
+
+### Model 层约束
+
+**允许**：
+- 药理/生理参数（吸收率、半衰期）
+- 动力学方程
+- 可调参数（`optimizable: true`）
+
+**禁止**：
+- 历史日期（`invention_year`）
+- 地理/社会经济因素（`price`、`region`）
+- `optimizer` 配置（应放 story 层）
+
+### Patch 机制
+
+Story 层通过 `patches` 字段覆写 model 参数，**字段级合并**（只修改指定字段，未指定字段保留默认值）：
+
+```yaml
+# story.yaml
+imports:
+  - models/medical/medicine/pharmacology/aspirin
+
+patches:
+  aspirin:
+    variables:
+      aspirin_efficacy: 0.6   # 1910年制药工艺不成熟，纯度低
+                              # 参考: Smith et al. (2015)
+```
+
+```python
+def merge_patches(base_model, patches):
+    for mod_name, overrides in patches.items():
+        if mod_name not in base_model.imports:
+            raise ValueError(f"Cannot patch non-imported mod: {mod_name}")
+        for var_name, new_value in overrides.get('variables', {}).items():
+            if var_name in base_model.variables:
+                base_model.variables[var_name].value = new_value
+            else:
+                logger.warning(f"Patch variable {var_name} not in {mod_name}")
+```
+
+规则：必须指定要 patch 哪个 model；注释须说明覆写原因和参考来源。
+
+### 单包封装原则
+
+每个 Story 是一个独立文件夹，包含所有元数据、逻辑与资源，不允许在 `mods/stories/` 根目录放外部索引文件。文件夹名与对应 scenario 文件夹名一致，Converter 据此自动关联。

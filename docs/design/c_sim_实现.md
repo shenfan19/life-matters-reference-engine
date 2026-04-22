@@ -1057,6 +1057,101 @@ SIM <---> OPT 的数据流
 3. OPT自动可用
 ```
 
+---
+
+## Loader 模块（数据加载与组装）
+
+Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `mods/models/` 和 `mods/stories/` 中的模型，处理依赖导入，在内存中组装完整可执行的 `ModStructure`。
+
+### 跨模型数据调用原则
+
+- **`models/` 层**：只声明自己的变量和公式，不引用其他模型。
+- **`stories/` 层**：`imports` 多个 model，通过 `patches` 覆写参数。
+
+这避免模型间耦合，符合单一职责原则。
+
+### 表达式求值方案
+
+| 场景 | 推荐方案 | 原因 |
+|------|---------|------|
+| 表达式简单、来源可信 | `numexpr` | 最快，C 后端 |
+| 需要函数调用或动态变量 | `asteval` | 最灵活，支持 Python 语法子集 |
+| 简单条件分支 | `asteval` 三元表达式 | 直接解析 `x if cond else y` |
+| 复杂分支（性能优先） | 分步条件 + `numexpr` | 预先分组执行 |
+
+> 当前系统使用 `asteval`，可按需逐步切换，保持向后兼容。
+
+### 变量命名冲突处理
+
+多模型合并时：
+- **根模型（调用方）**定义的变量和公式**始终覆盖**被导入模型中的同名定义。
+- 语义歧义的同名变量（如两个模型都定义 `body_weight`）发出警告，要求在 `patches` 中明确指定。
+
+### 架构约束检测
+
+- 禁止循环依赖（`A imports B imports A`）。
+- 禁止 `models/` 层 import `stories/` 层。
+- `models/` 层若包含 `optimizer` 字段，给出警告，建议迁移至 story 层。
+
+### AST 预编译
+
+加载期将 `dynamics` 表达式文本转为 `asteval` 安全语法树节点，加速仿真主循环的每步求值，避免重复解析字符串。
+
+---
+
+## 仿真引擎运行时
+
+### 线程模型
+
+长时仿真（数千步）需在后台线程运行，通过消息机制推送进度：
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+executor = ThreadPoolExecutor(max_workers=4)
+
+def run_simulation(params, progress_cb):
+    for step in range(params.steps):
+        state = simulator.step(state)
+        if step % 100 == 0:
+            progress_cb(step, state)   # WebSocket 或 pubsub 推送到前端
+```
+
+| 需求 | 实现方式 |
+|------|---------|
+| **暂停 / 取消** | 传 `threading.Event` 给积分循环，按钮 `set()` 中止 |
+| **多任务并行** | `max_workers` 调大，每任务带唯一 `task_id` |
+| **实时曲线** | 每 N 步广播状态，前端追加数据点并刷新 |
+| **实时调参** | 参数使用 `multiprocessing.Value`，计算线程随时读取 |
+
+### 公式执行顺序
+
+多个公式更新同一变量时，通过 `priority` 字段控制执行顺序：
+- 数字越小越先执行（如 `-100` 先于 `0`）。
+- 并行冲突变量用 `asteval` 顺序求值，避免隐式 race condition。
+
+### 模型校验（入仿真前）
+
+进入仿真前系统先校验模型合法性：
+1. 前向仿真统计发病率（一段时间）
+2. 分组对比统计（与文献对比）
+3. 对照原始论文 KM 曲线或 RCT 结果
+
+```bash
+GET /api/validate?model=stories/marie_curie
+```
+
+校验未通过时显示报告并阻止进入仿真，避免产生误导性结果。
+
+### CLI 接口
+
+```bash
+python sim_engine/src/optimizer_cli.py \
+  --file stories/marie_curie/story \
+  --target max_qol \
+  --method nsga2
+```
+
 ### 整合外部工具
 
 ```

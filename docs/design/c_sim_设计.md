@@ -1,5 +1,6 @@
 # 软件设计
 ## 仿真/优化: 数学结构
+- [ ] 核心在这里更新 [priority:: high] 
 ### Regimen 的 K×4 参数空间
 一条 **Regimen** 描述**一种行为的重复计划**——类比手机日历里的一条重复事件。每条 Regimen 恰好由四个维度组成：
 
@@ -344,3 +345,225 @@ probability_params:
 │ alt_response     ★★☆☆☆ 较低       │
 └───────────────────────────────────┘
 ```
+
+---
+
+## YAML 建模规范
+
+> 面向建模者的完整 YAML 格式规范。引擎实现细节见 `c_sim_实现.md`。
+
+### 变量类型（5 种）
+
+| 类型 | 引擎读取 | 建模者填入 | 用途 |
+|------|---------|----------|------|
+| `state` | `value`（随时间更新） | 初始值 | 随时间演化的状态变量 |
+| `input` | `value`（用户可调） | 控制量 | 用户干预量 |
+| `parameter` | `value`（不变） | 最终系数 | **直接进公式**的动力学系数（PK速率、方程斜率等） |
+| `probability_constant` | `value`（不变） | 概率值 | 随机事件概率，以期望值运行（发病率、病死率等） |
+| **`evidence_param`** | `_effective_value`（**Loader 自动换算**） | **原始文献值** | 流行病学效应量（OR / HR / Cohen's d 等），Loader 换算后才进公式 |
+
+`probability_constant` 放在 `probability_params:` 节下；`evidence_param` 放在 `evidence_params:` 节下。
+
+**`parameter` vs `evidence_param` 的判断准则：**
+- 文献直接给你一个可以放进公式的数（吸收率 0.8、衰减系数 0.02）→ `parameter`
+- 文献给你的是统计效应量（OR=1.65、HR=0.82、d=0.68），需要换算才能进公式 → `evidence_param`
+
+---
+
+### 医学证据类型与变量映射
+
+`evidence_param` 由 Loader 在组装阶段自动换算，Simulator 只见换算后的 `_effective_value`。完整规范见 `decisions/0040`。
+
+| 效应量 | `evidence_type` 值 | Loader 换算公式 | 必填辅助字段 |
+|--------|------------------|---------------|------------|
+| **RR**（相对风险） | `relative_risk` | `effective = value` | — |
+| **OR**（比值比） | `odds_ratio` | `effective = OR / ((1−p₀) + p₀×OR)` | `baseline_prevalence` |
+| **HR**（风险比） | `hazard_ratio` | `effective = baseline_rate × HR` | `baseline_rate_ref` |
+| **ARD**（绝对风险差） | `absolute_risk_difference` | `effective = value` | — |
+| **ES / Cohen's d** | `effect_size` | `effective = d × population_sd` | `population_sd` |
+| **IR**（发病率） | `incidence_rate` | `effective = value` | — |
+| **PK/PD 参数** | `pk_rate_constant` 等 | `effective = value` | — |
+
+患病率（Prevalence）直接设为对应 `state` 变量的初始 `value`，不需要 `evidence_param`。
+
+---
+
+### 完整 YAML Schema
+
+```yaml
+type: model | story
+category: physiological | socio_economic | environmental | risk | simple
+
+metadata:
+  name: "唯一标识符"
+  version: "1.0.0"
+  tags: [tag1, tag2]
+  references: ["Author et al. (Year) Title. Journal."]
+
+imports:
+  - models/medical/physiology/glucose_regulation   # 从 mods/ 根出发加 models/ 前缀
+
+variables:
+  var_name:
+    type: input | state | parameter
+    value: 0.0
+    unit: "unit"
+    bounds: [min, max]
+    optimizable: true | false
+    io_role: input | output | intermediate    # UI 与 IO 语义
+    description: "说明（用于报告）"
+    reference: "文献来源"
+
+probability_params:
+  param_name:
+    value: 0.008
+    unit: "prob/day"              # prob/day | prob/event | prob/year
+    description: "说明"
+    reference: "文献来源"
+    type: probability_constant
+
+evidence_params:
+  # 流行病学效应量：建模者填原始文献值，Loader 自动换算为 _effective_value
+  smoking_lung_cancer_rr:
+    evidence_type: relative_risk  # relative_risk | odds_ratio | hazard_ratio |
+                                  # absolute_risk_difference | effect_size |
+                                  # incidence_rate | regression_coefficient |
+                                  # pk_rate_constant | pk_volume |
+                                  # pd_emax | pd_ec50 | pd_hill
+    value: 2.7                    # 原始文献值（不需要手动换算）
+    unit: "RR"
+    reference: "文献来源"
+    # OR 必填辅助字段:
+    # baseline_prevalence: 0.23
+    # HR 必填辅助字段:
+    # baseline_rate_ref: "对应 probability_constant 的变量名"
+    # effect_size 必填辅助字段:
+    # population_sd: 0.5          # 参考人群 SD（与 unit 同单位）
+
+formulas:
+  formula_name:
+    condition: "expression"       # 条件满足时才执行
+    priority: 0                   # 执行顺序（-100 到 100，小值先执行）
+    dynamics:                     # 动力学更新（dt 驱动），与 formula 二选一
+      var: "expression"
+    formula: "expression"         # 静态指标计算（不依赖 dt）
+    description: "说明"
+    reference: "文献来源"
+
+simulator:
+  step_size: 1
+  time_unit: minute               # second | minute | hour | day | week | month | year
+  total_time: 1440
+  output_variables: [var1, var2]
+```
+
+---
+
+### 时间与步长
+
+`time_unit` 消除步长歧义；公式中 `dt` 和 `t` 单位均为 `time_unit`：
+
+| 变量 | 含义 |
+|------|------|
+| `dt` / `step_size` | 当前步长（= YAML 中的 `step_size`） |
+| `t` / `time` | 当前仿真时间 |
+
+`time_unit: second` 时可用预定义常量：`SECOND=1`、`MINUTE=60`、`HOUR=3600`、`DAY=86400`。
+
+---
+
+### Euler 离散积分（永久决策）
+
+**本框架永久采用统一 Euler 离散明文表达，直接写出下一时刻的值，不引入 RK4 等高阶积分器。**
+
+```yaml
+dynamics:
+  blood_glucose: blood_glucose + (uptake - utilization) * dt
+  position: position + velocity * dt
+  velocity: velocity + (force - damping * velocity) * dt
+```
+
+理由：生理/社会模型参数不确定性 ±10–50%，Euler 截断误差远低于此；离散事件（进餐、用药）破坏高阶积分器精度优势；明文表达所见即所得。
+
+---
+
+### daily_inputs 与 accumulators
+
+`daily_inputs` 以天为单位指定输入值，引擎自动转秒级时间戳：
+
+```yaml
+daily_inputs:
+  cigarettes:
+    interpolation: step       # step（阶梯）| linear（线性插值）
+    values:
+      - { day: 1,  value: 20 }
+      - { day: 8,  value: 10 }
+      - { day: 30, value: 0  }
+```
+
+`accumulators` 按天/周/月窗口自动积分：
+
+```yaml
+accumulators:
+  weekly_cigarettes:
+    source: cigarettes
+    window: week              # day | week | month
+    operation: sum            # sum | mean
+    unit: cigs/week
+```
+
+每步贡献 = `V × (dt / 86400)`，对任意步长均一致。
+
+---
+
+### 分层约束
+
+1. **Model**：只能 `import` 其他 Model，严禁引用 Story。
+2. **Story**：组合 Model 并配置场景，允许 `optimizer` 配置和 `patches`。
+3. **循环检测**：`LoaderEngine` 自动阻止循环导入。
+
+---
+
+### 模型分类体系
+
+三层目录：`mods/models/{L1}/{L2}/{L3}/file.yaml`
+
+| L1 | L2 | 说明 |
+|----|----|----|
+| medical | physiology / nutrition / fitness / disease / medicine / surgery | 生理与医学 |
+| social | economy / conflict / law / psychology / technology / demography | 社会经济与社会学 |
+
+完整 L3 细分见 `docs/decisions/0022-models-three-level-taxonomy.md`。
+
+`standalone: true`（或省略）= 可独立运行；`standalone: false` = 库组件，需被 import。
+
+---
+
+## 优化目标与方法
+
+### 可选优化目标
+
+在 `story.yaml` 的 `optimizer.targets` 中定义：
+
+| 目标名 | 含义 | 典型场景 |
+|--------|------|---------|
+| `max_longevity` | 寿命最长 | 慢性病健康仿真 |
+| `max_wealth` | 财富最大 | 职业路径经济仿真 |
+| `max_qol` | 生活品质最高 | 交互式人生模拟 |
+| `max_career` | 事业最成功 | 职业影响力仿真 |
+| `max_social_impact` | 社会影响力最大 | 传染病/政策仿真 |
+| `max_sustainability` | 环境可持续性最高 | 碳足迹/生态仿真 |
+
+多目标组合通过 Pareto 前沿输出权衡解集。
+
+### 优化方法对比
+
+| 方法 | 优点 | 缺点 | 推荐场景 |
+|------|------|------|---------|
+| **加权和法** | 最简单，计算快 | 权重需人工设定，遗漏非凸区域 | 入门，快速验证 |
+| **NSGA-II** | 完整 Pareto 解集，处理非凸 | 计算密集，收敛慢 | 多目标平衡，科研分析 |
+| **ε-约束法** | 约束控制精确，解均匀 | 需多次求解，对 ε 敏感 | 约束明确的单指标优化 |
+| **MOPSO** | 全局搜索强，收敛快 | 易陷局部最优 | 并行计算场景 |
+| **MORL** | 适应动态环境 | 训练不稳定，样本效率低 | 长期动态决策 |
+
+推荐顺序：加权和法跑通流程 → NSGA-II（`pymoo` 库）→ MORL（动态交互时）。

@@ -322,4 +322,28 @@ environment_cards:
 
 前端（`game/src/core/storyI18n.ts`）在加载 `game_story.yaml` 后，若当前语言非英语，会尝试加载 `game_story.{lang}.yaml`，并将字符串字段深度合并覆盖到基础 story 对象上。数字、布尔值、effects 数组等游戏逻辑字段不受影响。404 时静默跳过，回退英文。
 
-> 转换框架（Sim → Game 映射、Converter UI、P1-P6 公式识别、自动转换逻辑）详见 [`game_and_converter.md`](game_and_converter.md)。
+> 转换框架（Sim → Game 映射、Converter UI、P1-P6 公式识别、自动转换逻辑）详见 [`c_converter_设计.md`](c_converter_设计.md)。
+
+---
+
+## 游戏引擎运行时
+
+游戏引擎 (`StoryEngine.tsx`) 是卡牌游戏的前端运行时，与仿真引擎共享底层动力学但独立于 sim 的批量仿真模式。
+
+### 运行模式
+
+| 模式 | 入口 | 特点 |
+|------|------|------|
+| 科研仿真模式 | `simulator_cli.py` / `POST /api/story/{id}/step` | 自动批量迭代，输出 CSV/JSON |
+| 游戏剧情模式 | `StoryEngine.tsx` | 回合制，玩家出牌后执行 `applyEffects`，推进一个仿真步骤 |
+
+### 出牌结算
+
+玩家出牌后 `applyEffects` 按如下顺序执行：
+1. 消耗行动点（AP）
+2. 应用玩家牌 `effects`（delta 累加到变量）
+3. 若本回合有系统牌（`system_effect`），按类型执行（`extra_ap` / `extra_draw` / `amplify` / `shield` / `freeze_turn`）
+4. 触发环境牌（按 `condition` + `probability` 过滤，`always_active` 必触发）
+5. 检查胜负条件
+
+> `system_effect` 字段当前引擎未完整实现，详见 `pending_improvements.md` 问题 3。
