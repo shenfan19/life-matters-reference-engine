@@ -3,13 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Personal archived
-b_matter/
-_saved_/
-_temp_/
-messages.mo
-users/test/
-
 # Build artifacts
 build/
 dist/
@@ -18,15 +11,19 @@ dist/
 
 # IDE specific
 .vscode/
-.idea/
-*.swp
 
 # Environment files
 .env
 .venv/
 venv/
 
-# System files
-.DS_Store
-Thumbs.db
+# Node
 node_modules
+
+# Personal
+_saved_/
+messages.mo
+
+# AI
+.claude/
+CLAUDE.md
