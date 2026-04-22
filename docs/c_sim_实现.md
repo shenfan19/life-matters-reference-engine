@@ -483,53 +483,19 @@ tunable_params:
 
 **关键**：这些参数不在scenario中暴露，只在OPT时使用
 
-### 概率常数参数（Probability Constants）
+### Evidence 变量（取代旧 probability_constant）
 
-**概念**：随机事件参数，不进入优化搜索空间，以确定性期望值纳入模型动力学
+> **注意**：`probability_constant` / `probability_params:` 已退役。发病率、死亡率及所有文献效应量统一用 `evidence:` 节下的对应 `type` 表示。
 
-```
-ProbabilityConstants {
-    参数定义：
-    └─ params: Dict[str, ProbabilityParam]
-       └─ ProbabilityParam {
-          ├─ name: str
-          ├─ value: float                # 概率值（如0.008 = 0.8%/天）
-          ├─ unit: str                   # 如 "prob/day", "prob/event", "prob/year"
-          ├─ reference: str              # 文献来源
-          └─ type: "probability_constant"  # 区别于普通参数和tunable param
-       }
-}
-```
+**概念**：从文献直接读入的效应量，由 Loader 自动换算为 `_effective` 值，Simulator 只见换算结果，永不进入优化。
 
-**示例**：
-
-```yaml
-probability_params:
-  combat_death_rate:
-    value: 0.008
-    unit: "prob/day"
-    description: "参战时日死亡概率（索姆河战役）"
-    reference: "Prior 1992, Historical Journal"
-    type: probability_constant  # 概率事件参数，不进入优化搜索空间，以确定性期望值纳入模型动力学
-
-  surgery_mortality:
-    value: 0.03
-    unit: "prob/event"
-    description: "手术死亡概率（单次事件）"
-    type: probability_constant
-
-  disease_incidence:
-    value: 0.05
-    unit: "prob/year"
-    description: "某病年发病率"
-    type: probability_constant
-```
-
-**在仿真中的处理方式**：不随机采样，直接计算期望存活率确定性轨迹：
+仿真引擎的处理方式：不随机采样，直接以期望值计算确定性轨迹：
 
 ```
-生存率(t) = ∏(1 - death_rate × step_size)
+生存率(t) = ∏(1 − ir_effective × step_size)
 ```
+
+`ir_effective` 由 Loader 从 YAML `evidence` 节读取后填入运行时命名空间，公式中直接用变量名引用。详见 `c_sim_设计.md § 变量类型（4 种）`。
 
 ### Trajectory（轨迹）
 
@@ -713,9 +679,11 @@ InterventionOptimizer
 └─ sensitivity_report: Report    # 参数敏感性
 ```
 
-### 插件2：参数校准
+### 插件2：参数校准（内环 opt，属于 Modeller，当前未实现）
 
-**目标**：调整内部参数使仿真匹配文献数据
+> **归属说明**：参数校准是**内环优化**，服务于模型开发者，属于未来 Modeller 工具的功能。以下设计作为框架预留，当前 Simulator 不提供参数校准 UI。
+
+**目标**：调整 `parameter` 变量（机制系数）使仿真曲线拟合文献观测数据
 
 ```
 ParameterCalibrator
@@ -1092,6 +1060,31 @@ Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `mods/models
 - 禁止循环依赖（`A imports B imports A`）。
 - 禁止 `models/` 层 import `stories/` 层。
 - `models/` 层若包含 `optimizer` 字段，给出警告，建议迁移至 story 层。
+
+### Evidence 换算（加载期自动完成）
+
+Loader 遍历 YAML `evidence:` 节，按 `type` 字段执行换算，将结果写入 `_effective`，并注入运行时命名空间，使公式可以直接用变量名引用：
+
+```python
+def resolve_evidence(model):
+    for name, ep in model.get('evidence', {}).items():
+        raw = ep['value']
+        match ep['type']:
+            case 'or':
+                p0 = ep['baseline_prevalence']
+                effective = raw / ((1 - p0) + p0 * raw)
+            case 'hr':
+                baseline = model['evidence'][ep['baseline_ref']]['_effective']
+                effective = baseline * raw
+            case 'cohens_d':
+                effective = raw * ep['population_sd']
+            case _:  # rr, ard, ir, beta, pk
+                effective = raw
+        ep['_effective'] = effective
+        model.runtime_vars[name] = effective
+```
+
+`baseline_ref` 引用的 `ir` 变量必须在同一 `evidence:` 节中先行解析（Loader 按依赖顺序执行，若存在循环引用则报错）。
 
 ### AST 预编译
 

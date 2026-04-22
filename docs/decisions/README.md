@@ -44,4 +44,4 @@
 | [0036](0036-2026-04-19_game_动画与结算时序设计.md) | Game 动画与结算时序设计 | ✅ 已实施 | 2026-04-19 |
 | [0037](0037-2026-04-19_game_i18n多语言覆盖层设计.md) | Game i18n 多语言覆盖层设计 | ✅ 已实施 | 2026-04-19 |
 | [0038](0038-2026-04-20_sim_regimen-k4-input-scheduling.md) | Regimen K×4 输入调度：时刻/摄入量/执行日/有效期 | ✅ 已实施 | 2026-04-20 |
-| 0039 | Sim/Opt 概率仿真策略：单条 vs Monte Carlo，优化迭代次数 | ✅ 已决策，见 docs/design/pending_sim_opt_plan.md | 2026-04-20 |
+| 0039 | Sim/Opt 概率仿真策略：单条 vs Monte Carlo，优化迭代次数 | ✅ 已决策，见 docs/pending_sim_opt_plan.md | 2026-04-20 |

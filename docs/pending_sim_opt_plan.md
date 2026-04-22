@@ -108,8 +108,9 @@ Opt 模式（方案 B）
 - [ ] sim和opt核心 [priority:: medium] 
 
 ### T1：仿真引擎支持随机参数采样
-- [ ] 在 YAML 模型格式中定义概率参数语法（如 `distribution: normal(mean=0.8, std=0.1)`）
-- [ ] 在 `simulator_engine.py` 中实现参数采样：每次 run 开始时对概率参数独立采样
+- [ ] `parameter` 变量的 `value` 字段支持分布表达式：`normal(μ, σ)` / `uniform(a, b)` / `lognormal(μ, σ)`；Loader 解析时检测字符串形式，静态数字走原有路径
+- [ ] 确定性模式 / opt 模式：自动取均值（分布第一参数），目标函数稳定
+- [ ] MC 模式：每次 run 开始时对所有分布型 `parameter` 独立采样一次，整条 run 用采样值跑
 - [ ] 支持随机种子注入（`run_with_seed(seed)`）
 - [ ] 单元测试：相同种子 → 相同结果；不同种子 → 不同结果
 

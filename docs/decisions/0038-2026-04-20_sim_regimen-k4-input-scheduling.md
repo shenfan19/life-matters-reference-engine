@@ -5,7 +5,7 @@
 - `sim_gui/src/components/Simulator.tsx`
 - `sim_engine/src/simulator_engine.py`
 - `sim_engine/src/api_server.py`
-- `docs/design/c_sim_设计.md`
+- `docs/c_sim_设计.md`
 - `mods/scenarios/social/ad1666_uk_issac_newton.yaml`
 
 ---
