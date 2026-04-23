@@ -22,15 +22,16 @@ imports:
   - models/interventions/diet/banana
 
 simulation:
-  duration: 3600 # 1 hour
-  time_step: 60   # 1 minute steps
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
     - gastric_carbohydrate
     - gastric_protein
     - gastric_fat
     - body_water
     - banana_intake
-
 # 初始输入
 variables:
   banana_intake:

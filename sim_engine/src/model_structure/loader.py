@@ -118,17 +118,34 @@ class Loader:
             self.current_step = 0
             self.time = 0.0
         
+        # 确保 _param_dist_raw 字典存在（保存分布表达式原始字符串）
+        if not hasattr(self, '_param_dist_raw'):
+            self._param_dist_raw: dict = {}
+
         # 应用变量
+        import re as _re
+        _DIST_RE = _re.compile(
+            r'^\s*(normal|uniform|lognormal)\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)\s*$'
+        )
         for var_name, var_data in data.get('variables', {}).items():
             if not clear_existing and var_name in self.variables:
                 logger.warning(f"覆盖变量 (从 {module_name}): {var_name}")
-            
+
             value = var_data.get('value', var_data.get('default', 0.0))
             if isinstance(value, str):
-                try:
-                    value = float(value)
-                except ValueError:
-                    pass
+                m = _DIST_RE.match(value)
+                if m:
+                    # 分布表达式：保存原始字符串，用均值（第一参数）作为运行时初始值
+                    self._param_dist_raw[var_name] = value
+                    try:
+                        value = float(m.group(2))
+                    except ValueError:
+                        value = 0.0
+                else:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        pass  # 非分布、非数字字符串保留原样（验证器会报错）
 
             self.variables[var_name] = Variable(
                 description=var_data.get('description', ''),
@@ -156,6 +173,37 @@ class Loader:
         # 合并 simulator 和 optimizer
         # 支持新的 'simulation' 字段（向后兼容 'simulator'）
         simulator_data = data.get('simulation', data.get('simulator', {}))
+
+        # ── 新格式：start_date / end_date / step / step_unit → 转换为内部字段 ──
+        if 'start_date' in simulator_data and 'end_date' in simulator_data:
+            step_unit_raw = str(simulator_data.get('step_unit', 'hour')).lower()
+            if step_unit_raw not in TIME_UNIT_SECONDS:
+                step_unit_raw = 'hour'
+            unit_sec = TIME_UNIT_SECONDS[step_unit_raw]
+            raw_step  = float(simulator_data.get('step', 1))
+            step_sec  = raw_step * unit_sec  # 换算为秒
+
+            # 计算 total_time（秒数）= end_date - start_date
+            # 仅做前端展示用，引擎实际用 API 传入的 time_hours
+            from datetime import date as _date
+            try:
+                sd = simulator_data['start_date']
+                ed = simulator_data['end_date']
+                # 处理 0228-03-01 这类古代日期（Python date 不支持年份 < 1，但可支持到 1 年）
+                sy, sm, sdd = [int(x) for x in str(sd).split('-')]
+                ey, em, edd = [int(x) for x in str(ed).split('-')]
+                # 近似计算天数
+                total_days = (ey - sy) * 365 + (em - sm) * 30 + (edd - sdd)
+                total_sec = max(0, total_days * 86400)
+            except Exception:
+                total_sec = 86400  # fallback 1 day
+
+            # 注入兼容字段，让 SimulatorEngine 直接使用
+            simulator_data = dict(simulator_data)
+            simulator_data['step_size'] = step_sec
+            simulator_data['time_unit'] = step_unit_raw
+            simulator_data['total_time'] = total_sec / step_sec if step_sec > 0 else 1
+
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 

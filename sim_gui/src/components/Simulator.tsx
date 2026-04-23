@@ -110,15 +110,23 @@ function niceTickStep(range: number, targetTicks: number): number {
 
 function drawChartOnCtx(
   ctx: CanvasRenderingContext2D, W: number, H: number,
-  varName: string, data: SimulationDataPoint[], isDark: boolean, lineColor: string
+  varName: string, data: SimulationDataPoint[], isDark: boolean, lineColor: string,
+  runsData?: SimulationDataPoint[][]   // optional: per-run data for MC fan
 ) {
   ctx.clearRect(0, 0, W, H);
   const PAD = { l: 58, r: 12, t: 8, b: 28 };
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
   if (data.length === 0) return;
-  const values = data.map(d => (d[varName] as number) ?? 0);
-  let minV = Math.min(...values); let maxV = Math.max(...values);
+
+  // Compute y-range across all runs (so fan fits the axis)
+  let allValues = data.map(d => (d[varName] as number) ?? 0);
+  if (runsData && runsData.length > 1) {
+    for (const rd of runsData) {
+      for (const d of rd) allValues.push((d[varName] as number) ?? 0);
+    }
+  }
+  let minV = Math.min(...allValues); let maxV = Math.max(...allValues);
   if (minV === maxV) { minV -= 1; maxV += 1; }
   const step = niceTickStep(maxV - minV, 5);
   const yMin = Math.floor(minV / step) * step;
@@ -129,6 +137,7 @@ function drawChartOnCtx(
   const tRange = tMax - tMin || 1;
   const toX = (t: number) => PAD.l + ((t - tMin) / tRange) * plotW;
   const toY = (v: number) => PAD.t + plotH - ((v - yMin) / yActualRange) * plotH;
+
   ctx.lineWidth = 1;
   const tickCount = Math.round((yMax - yMin) / step);
   for (let i = 0; i <= tickCount; i++) {
@@ -151,7 +160,30 @@ function drawChartOnCtx(
     ctx.font = '9px system-ui'; ctx.textAlign = 'center';
     ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
   }
-  ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5;
+
+  // Draw semi-transparent individual run lines (MC fan)
+  if (runsData && runsData.length > 1) {
+    const runAlpha = Math.max(0.12, Math.min(0.35, 1.8 / runsData.length));
+    ctx.save();
+    ctx.globalAlpha = runAlpha;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 0.8;
+    for (const rd of runsData) {
+      if (rd.length === 0) continue;
+      ctx.beginPath();
+      rd.forEach((d, i) => {
+        const x = toX(d.time ?? 0);
+        const v = Math.max(yMin, Math.min(yMax, (d[varName] as number) ?? 0));
+        const y = toY(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Draw mean (or single) line on top
+  ctx.strokeStyle = lineColor; ctx.lineWidth = runsData && runsData.length > 1 ? 2 : 1.5;
   ctx.beginPath();
   data.forEach((d, i) => {
     const x = toX(d.time ?? 0); const y = toY((d[varName] as number) ?? 0);
@@ -171,7 +203,8 @@ const SimChart: React.FC<{
   c: ReturnType<typeof getC>;
   colorIndex?: number;
   hideTitleBar?: boolean;
-}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false }) => {
+  runsData?: SimulationDataPoint[][];
+}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false, runsData }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; time: number; value: number } | null>(null);
@@ -188,10 +221,11 @@ const SimChart: React.FC<{
       canvas.width = canvas.offsetWidth * dpr;
       canvas.height = canvas.offsetHeight * dpr;
       ctx.scale(dpr, dpr);
-      drawChartOnCtx(ctx, canvas.offsetWidth, canvas.offsetHeight, varName, data, isDarkMode, lineColor);
+      drawChartOnCtx(ctx, canvas.offsetWidth, canvas.offsetHeight, varName, data, isDarkMode, lineColor,
+        runsData && runsData.length > 1 ? runsData : undefined);
     });
     return () => cancelAnimationFrame(frame);
-  }, [data, varName, isDarkMode, lineColor]);
+  }, [data, runsData, varName, isDarkMode, lineColor]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || data.length === 0) return;
@@ -325,9 +359,10 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
 
   const {
-    status, progress, currentStep, simulationData,
+    status, progress, currentStep, simulationData, dataPerRun,
     inputParams, stateVariables, sessionId,
     simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
+    simRuns, sessionSeed,
   } = state;
 
   // ── loader state ─────────────────────────────────────────────────────────────
@@ -457,12 +492,40 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptRanges(ranges);
     }
     const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
+    const DEFAULT_START = '2026-01-01';
+    const DEFAULT_END   = '2026-12-31';
+    const toStepUnit = (u: string): StepUnit => {
+      if (u === 'day') return 'day';
+      if (u === 'hour') return 'hour';
+      if (u === 'minute') return 'minute';
+      if (u === 'second') return 'second';
+      return 'day';   // week/month/year → show as day in UI
+    };
     if (sim) {
-      set('stepValue', sim.step_size || 3600);
-      set('stepUnit', 'second');
-      const baseStart = '2000-01-01';
-      set('simStartDate', baseStart);
-      set('simEndDate', totalSecondsToEndDate(baseStart, sim.total_time || 86400));
+      // ── new format: start_date / end_date / step / step_unit ──
+      if (sim.start_date && sim.end_date) {
+        set('simStartDate', String(sim.start_date));
+        set('simEndDate',   String(sim.end_date));
+        set('stepValue', sim.step ?? 1);
+        set('stepUnit',  toStepUnit(String(sim.step_unit || 'day')));
+      } else {
+        // ── legacy fallback: step_size / time_unit / total_time ──
+        const UNIT_SEC: Record<string, number> = {
+          second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000,
+        };
+        const timeUnit  = String(sim.time_unit || 'hour').toLowerCase();
+        const rawStep   = sim.step_size ?? 1;
+        const totalSec  = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);
+        set('stepValue', rawStep);
+        set('stepUnit', toStepUnit(timeUnit));
+        set('simStartDate', DEFAULT_START);
+        set('simEndDate', totalSecondsToEndDate(DEFAULT_START, totalSec));
+      }
+    } else {
+      set('stepValue', 1);
+      set('stepUnit', 'hour');
+      set('simStartDate', DEFAULT_START);
+      set('simEndDate', DEFAULT_END);
     }
   }, [selectedModel]);
 
@@ -504,9 +567,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       status: saved.status === 'paused' ? 'completed' : (saved.status || 'idle'),
       currentStep: saved.currentStep ?? 0,
       progress: saved.progress ?? 0,
-      // migrate legacy timeValue/timeUnit → date range
-      ...(saved.simStartDate && { simStartDate: saved.simStartDate }),
-      ...(saved.simEndDate && { simEndDate: saved.simEndDate }),
+      // restore dates — skip legacy '2000-01-01' default so new default kicks in
+      ...(saved.simStartDate && saved.simStartDate !== '2000-01-01' && { simStartDate: saved.simStartDate }),
+      ...(saved.simEndDate && saved.simEndDate !== '2001-01-01' && { simEndDate: saved.simEndDate }),
       ...(saved.stepValue != null && { stepValue: saved.stepValue }),
       ...(saved.stepUnit && { stepUnit: saved.stepUnit }),
     }));
@@ -698,12 +761,13 @@ const Simulator: React.FC<SimulatorProps> = ({
   const startSimulation = async () => {
     if (!selectedModel) return;
     try {
-      set('status', 'running'); set('progress', 0); set('currentStep', 0); setSimData([]);
+      set('status', 'running'); set('progress', 0); set('currentStep', 0);
+      setSimData([]);
+      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
       isRunningRef.current = true;
       const resp = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Use filename stem (not metadata.name) so loader can find the file
           model_name: selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name,
           folder: selectedModel.folder,
           time_hours: dateToHours(simStartDate, simEndDate),
@@ -718,12 +782,14 @@ const Simulator: React.FC<SimulatorProps> = ({
             valid_start: r.validStart,
             valid_end: r.validEnd,
           })),
+          sim_runs: simRuns,
         }),
       });
       const result = await resp.json();
       if (result.success && result.data) {
         set('sessionId', result.data.session_id);
         set('totalSteps', result.data.total_steps);
+        if (result.data.session_seed) set('sessionSeed', result.data.session_seed);
         runBatch(result.data.session_id);
       } else {
         message.error(result.error || t('sim.msg.start_failed'));
@@ -745,8 +811,24 @@ const Simulator: React.FC<SimulatorProps> = ({
           set('currentStep', res.data.current_step);
           set('progress', res.data.progress);
           setSimData(prev => [...prev, ...res.data.outputs]);
-          if (res.data.completed) { set('status', 'completed'); isRunningRef.current = false; message.success(t('sim.msg.sim_complete')); }
-          else setTimeout(loop, updateInterval);
+
+          // Accumulate per-run data for MC fan display
+          if (res.data.outputs_per_run && res.data.sim_runs > 1) {
+            setState(prev => {
+              const incoming: SimulationDataPoint[][] = res.data.outputs_per_run;
+              const existing = prev.dataPerRun.length > 0 ? prev.dataPerRun : Array.from({ length: incoming.length }, () => []);
+              const merged = existing.map((runArr, i) => [
+                ...runArr,
+                ...(incoming[i] || []),
+              ]);
+              return { ...prev, dataPerRun: merged };
+            });
+          }
+
+          if (res.data.completed) {
+            set('status', 'completed'); isRunningRef.current = false;
+            message.success(t('sim.msg.sim_complete'));
+          } else setTimeout(loop, updateInterval);
         } else {
           message.error(res.error || t('sim.msg.start_failed'));
           set('status', 'idle'); isRunningRef.current = false;
@@ -779,6 +861,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const resetSimulation = () => {
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
+    setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1245,6 +1328,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       c={c}
                       colorIndex={idx}
                       hideTitleBar
+                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
                     />
                   ),
                   styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
@@ -1294,6 +1378,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                           c={c}
                           colorIndex={outputVars.length + idx}
                           hideTitleBar
+                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
                         />
                       ),
                       styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
@@ -1398,6 +1483,19 @@ const Simulator: React.FC<SimulatorProps> = ({
             options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
         </div>
 
+        {/* MC runs */}
+        <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '–'}` : 'Monte Carlo 运行条数（1=单条）'}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 12 }}>MC×</span>
+            <InputNumber
+              size="small" min={1} max={50} value={simRuns}
+              onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
+              style={{ width: 46 }}
+              disabled={status === 'running'}
+            />
+          </div>
+        </Tooltip>
+
         {/* Progress — only flexible element */}
         {progress > 0 && (
           <>
@@ -1457,7 +1555,22 @@ const Simulator: React.FC<SimulatorProps> = ({
                   style={isLocked
                     ? { color: '#52c41a', borderColor: '#52c41a' }
                     : { color: '#faad14', borderColor: '#faad14' }}
-                  onClick={e => { e.stopPropagation(); if (isLocked) { setIsLocked(false); setValidationResult(null); } else handleValidateAndLock(); }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (isLocked) {
+                      // unlock = reset，清除仿真结果，准备下次直接运行
+                      setIsLocked(false);
+                      setValidationResult(null);
+                      isRunningRef.current = false;
+                      set('status', 'idle');
+                      set('progress', 0);
+                      set('currentStep', 0);
+                      setSimData([]);
+                      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
+                    } else {
+                      handleValidateAndLock();
+                    }
+                  }}
                 >
                   {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
                 </Button>

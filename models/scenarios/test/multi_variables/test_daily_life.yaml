@@ -55,6 +55,8 @@ schedules:
       - { time: 57600, value: 0 }
 
 simulation:
-  step_size: 600
-  total_time: 86400
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 10
+  step_unit: minute
   output_variables: [energy, hydration, meal_size]

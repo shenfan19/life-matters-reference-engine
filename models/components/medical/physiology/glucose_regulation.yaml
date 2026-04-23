@@ -104,11 +104,11 @@ formulas:
       liver_glycogen: max(0, liver_glycogen - 10)
       muscle_glycogen: max(0, muscle_glycogen - 10)
     priority: 9
-simulator:
-  step_size: 1
-  time_unit: minute   # 1440 步 = 24 小时
-  total_time: 1440
-  output_format: csv
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
   - blood_glucose
   - fasting_glucose

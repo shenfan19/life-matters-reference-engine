@@ -140,12 +140,12 @@ formulas:
       muscle_synthesis_rate: "(protein_intake - 0.8) * 0.05 * body_weight - max(0.0, (30.0 - gfr) / 30.0) * 0.3"
     priority: 5
 
-simulator:
-  step_size: 1      # 1天/步
-  time_unit: day    # 365 步 = 1 年
-  total_time: 365   # 1年仿真（CKD进展需年尺度观察）
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-12-31"
+  step: 1
+  step_unit: day
   output_variables: [gfr, muscle_mass, bun, protein_intake, muscle_synthesis_rate]
-
 optimizer:
   method: grid
   duration: 120.0

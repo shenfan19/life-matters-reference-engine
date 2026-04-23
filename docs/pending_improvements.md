@@ -3,7 +3,12 @@
 > 创建日期：2026-04-20  
 > 状态：待处理
 - [ ] sim opt input 核心 [priority:: high]
----
+    - [ ] 梳理逻辑，MC，opt等，位于两个pending和sim_design
+        - [ ] 用牛顿scenario验证，要出现parameter导致的MC计算分叉
+- [ ] 公式步长和仿真步长不一致怎么兼容 [priority:: medium] 
+- [ ] 每个模型校验
+    - [ ] 内分泌校验
+- [ ] modeller页面的内环opt
 
 ## 问题 1：Regimen 仿真后端时间调度（已完成基础实现）
 

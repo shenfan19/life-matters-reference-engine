@@ -83,7 +83,8 @@ formulas:
       water_intake: 0
 
 simulation:
-  step_size: 1
-  time_unit: minute
-  total_time: 120
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]

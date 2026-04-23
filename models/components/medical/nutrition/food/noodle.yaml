@@ -25,8 +25,9 @@ formulas:
       softness: "min(100, softness + (temperature - 90) * 0.2 * step_size)"
     priority: 4
 
-simulator:
-  step_size: 1
-  time_unit: minute   # 15 步 = 15 分钟烹饪
-  total_time: 15
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables: [softness, temperature]

@@ -104,9 +104,10 @@ variables:
     description: "后方朝廷稳定度（不处理则缓慢下降；<30时掣肘前线）"
 
 simulation:
-  step_size: 1
-  time_unit: day
-  total_time: 180
+  start_date: "0228-03-01"
+  end_date: "0228-09-01"
+  step: 1
+  step_unit: day
   output_variables:
     - health
     - fatigue
@@ -116,7 +117,6 @@ simulation:
     - morale
     - court_stability
     - work_intensity
-
 formulas:
 
   # 1. 饮食消化：食物→营养

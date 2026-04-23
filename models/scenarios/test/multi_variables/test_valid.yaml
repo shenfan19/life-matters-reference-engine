@@ -57,12 +57,12 @@ formulas:
       stress_level: stress_level + ((temperature - 37.0) * 0.01)
 
 simulation:
-  dt: 0.1
-  t_end: 10.0
-  method: euler
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
     - energy_level
     - stress_level
-
 optimization:
   enabled: false

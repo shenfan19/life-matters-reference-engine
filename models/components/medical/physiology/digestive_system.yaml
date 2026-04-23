@@ -352,7 +352,8 @@ formulas:
       water_absorption: "(water_intake / 2) + 0.05 * (residue_protein + residue_glucose + residue_fats)"
       body_water: "body_water + water_absorption * dt"
 simulation:
-  step_size: 1
-  time_unit: minute
-  total_time: 480
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, digestive_efficiency, amino_acids, fatty_acids]

@@ -60,11 +60,11 @@ formulas:
     dynamics:
       health_score: max(0, min(100, 100 - max(0, abs(blood_glucose - 90) - 20) * 0.5 - hunger_level * 30 - max(0, 1 - digestive_efficiency) * 40 - max(0, 40000 - body_water) / 1000 * 10))
     priority: 1
-simulator:
-  step_size: 1
-  time_unit: minute   # 1440 步 = 24 小时
-  total_time: 1440
-  output_format: csv
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
   - body_water
   - diabetes_risk

@@ -144,11 +144,11 @@ formulas:
       intestinal_function: min(1.0, intestinal_function + 0.0001)
       kidney_function: min(1.0, kidney_function + 0.0001)
     priority: 2
-simulator:
-  step_size: 1
-  time_unit: minute   # 1440 步 = 24 小时
-  total_time: 1440
-  output_format: csv
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
   - liver_function
   - pancreatic_function
