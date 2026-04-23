@@ -162,8 +162,8 @@ const Converter = () => {
                             String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                     />
                     <div style={{ marginTop: 10 }}>
-                        <Tag color="processing">mods/scenarios/</Tag>
-                        <Tag color="default">输出 → mods/stories/to_game/</Tag>
+                        <Tag color="processing">models/scenarios/</Tag>
+                        <Tag color="default">输出 → models/stories/to_game/</Tag>
                     </div>
                 </Card>
 

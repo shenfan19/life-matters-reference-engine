@@ -6,7 +6,7 @@
 - `sim_engine/src/simulator_engine.py`
 - `sim_engine/src/api_server.py`
 - `docs/sim_design.md`
-- `mods/scenarios/social/ad1666_uk_issac_newton.yaml`
+- `models/scenarios/social/ad1666_uk_issac_newton.yaml`
 
 ---
 

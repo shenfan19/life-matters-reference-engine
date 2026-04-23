@@ -1,4 +1,4 @@
-// Loader for the folder-based story format (mods/stories/*/game_story.yaml)
+// Loader for the folder-based story format (models/stories/*/game_story.yaml)
 // Converts new schema → GameStory shape expected by CardGame.tsx
 
 // ── Shared label/color hints ──────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function buildConditions(raw: any) {
  * Loads a new-format story (game_story.yaml + cards/) and returns
  * a GameStory object compatible with CardGame.tsx.
  *
- * @param cleanPath  Path relative to mods/, e.g. "stories/marie_curie/game_story.yaml"
+ * @param cleanPath  Path relative to models/, e.g. "stories/marie_curie/game_story.yaml"
  * @param rawStory   Already-parsed game_story.yaml content (from the first /api/file/ call)
  */
 export async function loadNewFormatStory(cleanPath: string, rawStory: any, lang: Language = 'zh-CN'): Promise<any> {

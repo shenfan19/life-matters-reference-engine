@@ -17,10 +17,10 @@ function readAppPersist(): Record<string, any> {
   catch { return {}; }
 }
 
-// Read ?story= URL param (cleanPath without mods/ prefix)
+// Read ?story= URL param (cleanPath without models/ prefix)
 function readStoryParam(): string | null {
   const p = new URLSearchParams(window.location.search).get('story');
-  return p ? `mods/${p}` : null;
+  return p ? `models/${p}` : null;
 }
 
 function App() {
@@ -51,7 +51,7 @@ function App() {
     const handlePop = () => {
       const p = new URLSearchParams(window.location.search).get('story');
       if (p) {
-        setStoryPath(`mods/${p}`);
+        setStoryPath(`models/${p}`);
         setView('game');
       } else {
         setStoryPath(null);

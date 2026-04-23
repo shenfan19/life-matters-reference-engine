@@ -121,7 +121,7 @@ const Loader: React.FC<LoaderProps> = ({
             titleStr, mod_type: item.mod_type,
           };
         });
-        const modsNode = result.data.find((n: any) => n.key === 'mods');
+        const modsNode = result.data.find((n: any) => n.key === 'models');
         if (modsNode?.children) {
           const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
           if (sNode) setStoryTree(convert(sNode.children || []));

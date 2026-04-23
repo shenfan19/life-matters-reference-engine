@@ -43,7 +43,7 @@ type FTName = keyof typeof FT;
 function fileType(key: string): FTName {
   if (/game_story\.(yaml|yml)$/.test(key)) return 'game_story';
   if (key.includes('/scenarios/'))          return 'scenario';
-  if (key.includes('/models/'))             return 'model';
+  if (key.includes('/components/'))         return 'model';
   return 'other';
 }
 
@@ -189,9 +189,8 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   const visible = useMemo(() => {
     const q = search.toLowerCase();
     return allNodes.filter(n => {
-      // Only show models/ and scenarios/ subtrees
-      const rel = n.key.replace(/^mods\//, '');
-      if (!rel.startsWith('models') && !rel.startsWith('scenarios')) return false;
+      // Only show components/ and scenarios/ subtrees
+      if (!n.key.startsWith('components') && !n.key.startsWith('scenarios')) return false;
       // Collapse check
       const parts = n.key.split('/');
       for (let i = 1; i < parts.length; i++)
@@ -499,7 +498,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         {showMerge && (
           <div style={{ padding: '6px 10px 8px', background: isDarkMode ? 'rgba(82,196,26,0.06)' : '#f6ffed',
             borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
-            <div style={{ color: mute, marginBottom: 4 }}>输出路径（相对 mods/）</div>
+            <div style={{ color: mute, marginBottom: 4 }}>输出路径（相对 models/）</div>
             <input value={mergeOut} onChange={e => setMergeOut(e.target.value)}
               style={{ width: '100%', fontFamily: 'monospace', padding: '3px 7px',
                 border: `1px solid ${border}`, borderRadius: 4,
@@ -653,7 +652,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
           </div>
           <div>
             <div style={{ marginBottom: 6, fontWeight: 500 }}>
-              文件路径 <span style={{ color: mute, fontWeight: 400 }}>（相对 mods/）</span>
+              文件路径 <span style={{ color: mute, fontWeight: 400 }}>（相对 models/）</span>
             </div>
             <input
               value={newFilePath}

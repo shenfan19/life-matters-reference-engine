@@ -1,13 +1,13 @@
 import logging
 from typing import Dict, Any, Optional
-from sim_engine.src.mod_structure import ModStructure
+from sim_engine.src.model_structure import ModStructure
 from sim_engine.src.loader.loader_engine import LoaderEngine
 
 logger = logging.getLogger(__name__)
 
 class GeneratorEngine:
     """模型生成引擎，负责从通用医学模板生成 ModStructure 模型。"""
-    def __init__(self, mods_directory: str = "mods"):
+    def __init__(self, mods_directory: str = "models"):
         self.mods_dir = mods_directory
         self.loader = LoaderEngine(mods_directory)
         self.available_templates = [

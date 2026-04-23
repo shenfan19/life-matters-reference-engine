@@ -80,8 +80,9 @@ life-matters/
 │   │       ├── i18n.tsx         # UI 语言系统（JSON locale 文件）
 │   │       └── storyI18n.ts     # 故事内容语言叠加层
 │   └── public/locales/game/     # UI 翻译文件 (en / zh-CN / zh-TW)
-├── mods/                # 模型与故事库
-│   ├── core/            # 核心科学/医学模型（纯 YAML）
+├── models/              # 模型与故事库
+│   ├── components/      # 核心科学/医学模型（纯 YAML，三层分类体系）
+│   ├── scenarios/       # 仿真场景配置
 │   └── stories/         # 游戏故事（每个子目录一个 game_story.yaml）
 ├── docs/                # 框架文档（本目录）
 ├── docs_game/           # 游戏设计与 Schema 文档
@@ -99,10 +100,10 @@ life-matters/
 确认后端已启动，访问 `http://localhost:18080/api/health` 验证。再检查对应前端目录下已运行 `npm install`。
 
 **Q: 如何添加新游戏场景？**
-在 `mods/stories/` 下新建子目录，放入 `game_story.yaml`。文件格式参见 [game_story Schema](design/game_and_converter.md)。如需添加中文翻译，在同目录下放 `game_story.zh-CN.yaml`（只含文字字段，无需游戏逻辑）。
+在 `models/stories/` 下新建子目录，放入 `game_story.yaml`。文件格式参见 [game_story Schema](design/game_and_converter.md)。如需添加中文翻译，在同目录下放 `game_story.zh-CN.yaml`（只含文字字段，无需游戏逻辑）。
 
 **Q: 如何自定义科学模型？**
-参考 [建模设计手册](design/model.md) 的 YAML 规范，将 `.yaml` 文件放入 `mods/core/`，在 Loader 界面点击刷新。
+参考 [建模设计手册](model_design.md) 的 YAML 规范，将 `.yaml` 文件放入 `models/components/`，在 Loader 界面点击刷新。
 
 ---
 

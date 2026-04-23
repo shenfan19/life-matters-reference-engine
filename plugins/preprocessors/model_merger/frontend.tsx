@@ -9,7 +9,7 @@ const DT_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'year'];
 const PluginComponent = () => {
     const [modelTree, setModelTree] = useState([]);
     const [storyTree, setStoryTree] = useState([]);
-    const [expandedKeys, setExpandedKeys] = useState(['mods', 'models', 'scenarios']);
+    const [expandedKeys, setExpandedKeys] = useState(['models', 'components', 'scenarios']);
     const [modelViewMode, setModelViewMode] = useState('tree');
     const [storyViewMode, setStoryViewMode] = useState('tree');
     const [modelFilter, setModelFilter] = useState('');
@@ -120,7 +120,7 @@ const PluginComponent = () => {
                 };
             });
 
-            const modsNode = result.data.find(n => n.key === 'mods');
+            const modsNode = result.data.find(n => n.key === 'models');
             if (modsNode?.children) {
                 const mNode = modsNode.children.find(n => n.key === 'models');
                 const sNode = modsNode.children.find(n => n.key === 'scenarios');
@@ -159,8 +159,8 @@ const PluginComponent = () => {
                 const keys = model.imports.map(imp => {
                     let key = imp.replace(/\\/g, '/');
                     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) key += '.yaml';
-                    const clean = key.startsWith('mods/') ? key.replace(/^mods\//, '') : key;
-                    return clean.startsWith('models/') || clean.startsWith('scenarios/') ? clean : `models/${clean}`;
+                    const clean = key.startsWith('models/') ? key.replace(/^models\//, '') : key;
+                    return clean.startsWith('components/') || clean.startsWith('scenarios/') ? clean : `components/${clean}`;
                 });
                 keys.forEach(k => { if (!loadedMods[k]) loadFileContent(k); });
             }
@@ -211,10 +211,10 @@ const PluginComponent = () => {
         if (selectedMods.length === 0) return;
         const target = selectedMods[0];
         const fileName = target.path.split('/').pop()?.replace('.yaml', '_patch.yaml');
-        const patchKey = `mods/models/_output/patch/${fileName}`;
+        const patchKey = `models/components/_output/patch/${fileName}`;
         setHighlightPatch(false);
         setManualCheckedModelKeys(prev => [...new Set([...prev, patchKey])]);
-        setOpAlert({ type: 'success', message: '补丁已生成', description: `已输出至 models/_output/patch/${fileName} 并自动勾选。` });
+        setOpAlert({ type: 'success', message: '补丁已生成', description: `已输出至 components/_output/patch/${fileName} 并自动勾选。` });
         loadFileTree();
     };
 
@@ -303,7 +303,7 @@ const PluginComponent = () => {
 
             setBuildModalVisible(false);
             if (result.success) {
-                setOpAlert({ type: 'success', message: '构建成功', description: `场景已保存至 mods/${filePath}` });
+                setOpAlert({ type: 'success', message: '构建成功', description: `场景已保存至 models/${filePath}` });
                 loadFileTree();
             } else {
                 setOpAlert({ type: 'error', message: '构建失败', description: result.error || result.detail || '未知错误' });

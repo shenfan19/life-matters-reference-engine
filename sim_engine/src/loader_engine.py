@@ -15,7 +15,7 @@ import os
 import logging
 import yaml
 from typing import Dict, Any, List, Optional, Set
-from .mod_structure import ModStructure, ModelMetadata  # 注意：假设mod_structure.py是core.py的重命名或别名，根据您的文件结构调整
+from .model_structure import ModStructure, ModelMetadata
 
 # 设置日志记录器，用于在程序运行时输出信息和错误。
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class LoaderEngine:
     模型加载引擎，负责处理模型文件的查找、加载、合并、拆分等核心操作。
     它管理模型缓存，并处理模型间的导入关系。
     """
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化 LoaderEngine 实例。
         :param mods_directory: 存放模型文件的根目录。
@@ -366,7 +366,7 @@ class LoaderEngine:
         """
         拆分模型并生成多个文件，使用文件名而非 metadata.name。
         :param model_name: 模型名称（文件或文件夹名）。
-        :param output_dir: 输出目录（完整路径，如 mods/splited/bcd/）。
+        :param output_dir: 输出目录（完整路径，如 models/splited/bcd/）。
         :param folder: 可选的子文件夹（用于 --folder）。
         :return: 包含拆分结果的字典。
         """

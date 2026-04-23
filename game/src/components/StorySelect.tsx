@@ -245,8 +245,8 @@ export default function StorySelect({
         const cleanPaths: string[] = await res.json();
 
         const loaded = await Promise.all(cleanPaths.map(async cleanPath => {
-          // storyPath keeps the mods/ prefix convention expected by CardGame
-          const path = `mods/${cleanPath}`;
+          // storyPath keeps the models/ prefix convention expected by CardGame
+          const path = `models/${cleanPath}`;
           const base: StoryCard = { path, title: path, periodStart: '', periodEnd: '', country: '', difficulty: 'medium', description: '', tags: [], turns: 15, createdOn: '' };
           try {
             const d = await fetchYaml(cleanPath);

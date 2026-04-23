@@ -20,7 +20,7 @@ export interface StoryI18nOverlay {
 
 /**
  * Load the i18n/{lang}.yaml overlay file for a story.
- * storyDir is relative to mods/ (e.g. "stories/social/ad1666_uk_issac_newton").
+ * storyDir is relative to models/ (e.g. "stories/social/ad1666_uk_issac_newton").
  * Returns null if lang equals baseLang or the file doesn't exist.
  */
 export async function loadI18nOverlay(

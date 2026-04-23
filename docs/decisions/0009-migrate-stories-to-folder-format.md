@@ -5,7 +5,7 @@
 
 ## 背景
 
-ADR-0006 确立了新文件夹格式为 story 标准，但当时为兼容旧格式，CardGame.tsx 保留了双路加载逻辑（`isNewFormat()` 判断）。`mods/stories/` 下仍有 6 个旧格式 story：
+ADR-0006 确立了新文件夹格式为 story 标准，但当时为兼容旧格式，CardGame.tsx 保留了双路加载逻辑（`isNewFormat()` 判断）。`models/stories/` 下仍有 6 个旧格式 story：
 
 - `ad1346_europe_black_death`
 - `ad1916_somme_britain`
@@ -60,13 +60,13 @@ variable_display:
 | `src/core/StoryLoader.ts` | 旧 YAML 加载类 |
 | `src/core/Engine.ts` | 旧游戏引擎类 |
 | `src/core/AdaptiveConverter.ts` | 旧 Universal Dynamics → Story 转换器（前端版） |
-| `game/stories/` | 旧开发用 story 文件夹（已被 `mods/stories/` 取代） |
+| `game/stories/` | 旧开发用 story 文件夹（已被 `models/stories/` 取代） |
 
 `isNewFormat` 函数从 `newFormatLoader.ts` 中移除。
 
 ## 后果
 
-- ✅ `mods/stories/` 下所有 story 格式统一，无遗留旧格式
+- ✅ `models/stories/` 下所有 story 格式统一，无遗留旧格式
 - ✅ CardGame.tsx 加载路径单一，无条件分支
 - ✅ 删除约 400 行死代码，减少维护负担
 - ✅ `variable_display` 字段保留了旧手工 story 的自定义显示信息

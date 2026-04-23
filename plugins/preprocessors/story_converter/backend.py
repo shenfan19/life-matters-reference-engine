@@ -29,18 +29,18 @@ from typing import Any
 class ScenarioConverterPlugin:
     """
     Input keys:
-        model_path   str  — relative to mods/  e.g. "models/medical/dynamics/banister_fitness_fatigue.yaml"
+        model_path   str  — relative to models/  e.g. "components/medical/dynamics/banister_fitness_fatigue.yaml"
         scenario_id  str  — output folder name (optional, derived from model name)
         turns        int  — override max game turns
         ap_per_turn  int  — action points per turn (default 3)
 
     Output:
-        game_story.yaml saved to mods/scenarios/to_game/<scenario_id>/game_story.yaml
+        game_story.yaml saved to models/scenarios/to_game/<scenario_id>/game_story.yaml
     """
 
     def __init__(self, context):
         self.context = context
-        self.mods_dir = Path("mods")
+        self.mods_dir = Path("models")
 
     def run(self, inputs: dict) -> dict:
         model_path = inputs.get("model_path")

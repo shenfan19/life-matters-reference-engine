@@ -3,16 +3,16 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-// Dev plugin: serve /stories/* directly from ../../mods/stories/*
+// Dev plugin: serve /stories/* directly from ../../models/stories/*
 function modsPlugin() {
   return {
     name: 'serve-mods',
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url: string = req.url || '/';
-        const modsDir = path.resolve(process.cwd(), '..', 'mods');
+        const modsDir = path.resolve(process.cwd(), '..', 'models');
 
-        // /stories/index.json — generate dynamically by scanning mods/stories/
+        // /stories/index.json — generate dynamically by scanning models/stories/
         if (url === '/stories/index.json') {
           const results: string[] = [];
           const scan = (dir: string, rel: string) => {
@@ -31,9 +31,9 @@ function modsPlugin() {
           return;
         }
 
-        // /mods/<anything> — serve files from the mods root (e.g. /mods/title.mid)
-        if (url.startsWith('/mods/')) {
-          const filePath = path.join(modsDir, decodeURIComponent(url.slice('/mods/'.length).split('?')[0]));
+        // /models/<anything> — serve files from the models root (e.g. /models/title.mid)
+        if (url.startsWith('/models/')) {
+          const filePath = path.join(modsDir, decodeURIComponent(url.slice('/models/'.length).split('?')[0]));
           if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             const ext = path.extname(filePath).toLowerCase();
             const mimeMap: Record<string, string> = {
@@ -48,7 +48,7 @@ function modsPlugin() {
           }
         }
 
-        // /stories/<anything> — serve from mods/stories/<anything>
+        // /stories/<anything> — serve from models/stories/<anything>
         if (url.startsWith('/stories/')) {
           // url = '/stories/marie_curie/game_story.yaml'
           // → filePath = modsDir/stories/marie_curie/game_story.yaml

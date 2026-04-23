@@ -82,14 +82,14 @@ async def lifespan(app: FastAPI):
     try:
         from src.loader_engine import LoaderEngine
         
-        mods_dir = PROJECT_ROOT / "mods"
-        logger.info(f"Mods directory: {mods_dir}")
-        
+        mods_dir = PROJECT_ROOT / "models"
+        logger.info(f"Models directory: {mods_dir}")
+
         if not mods_dir.exists():
             mods_dir.mkdir(parents=True, exist_ok=True)
-        
+
         loader_engine = LoaderEngine(mods_directory=str(mods_dir))
-        logger.info(f"✅ Mods system initialized")
+        logger.info(f"✅ Models system initialized")
         
         try:
             models = loader_engine.scan_models()
@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
         from src.simulator_engine import SimulatorEngine
         from src.optimizer_engine import OptimizerEngine
         
-        mods_dir = PROJECT_ROOT / "mods"
+        mods_dir = PROJECT_ROOT / "models"
         simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
         optimizer_engine = OptimizerEngine(mods_directory=str(mods_dir))
         
@@ -171,17 +171,17 @@ class SplitRequest(BaseModel):
 
 
 class SaveFileRequest(BaseModel):
-    path: str          # relative to mods/, e.g. "scenarios/examples/my_scene.yaml"
+    path: str          # relative to models/, e.g. "scenarios/examples/my_scene.yaml"
     content: Dict[str, Any]
 
 
 class FileMoveRequest(BaseModel):
-    src: str   # relative to mods/
-    dst: str   # relative to mods/
+    src: str   # relative to models/
+    dst: str   # relative to models/
 
 
 class FileNewRequest(BaseModel):
-    path: str           # relative to mods/
+    path: str           # relative to models/
     template: str = "model"  # "model" | "scenario"
 
 
@@ -247,8 +247,8 @@ async def health_check():
             "loader_engine": loader_engine is not None
         },
         "plugins_loaded": len(plugin_manager.plugins) if plugin_manager else 0,
-        "mods_directory": str(PROJECT_ROOT / "mods"),
-        "mods_exists": (PROJECT_ROOT / "mods").exists()
+        "mods_directory": str(PROJECT_ROOT / "models"),
+        "mods_exists": (PROJECT_ROOT / "models").exists()
     }
 
 
@@ -425,15 +425,15 @@ async def list_mods(folder: str = None):
             "total": len(models)
         }
     except Exception as e:
-        logger.error(f"Error listing mods: {e}")
+        logger.error(f"Error listing models: {e}")
         return {"models": [], "error": str(e)}
 
 
-@app.get("/api/mods/{model_name}")
+@app.get("/api/models/{model_name}")
 async def get_mod(model_name: str, folder: str = None):
     """获取单个模型详情"""
     if loader_engine is None:
-        raise HTTPException(status_code=503, detail="Mods system not initialized")
+        raise HTTPException(status_code=503, detail="Models system not initialized")
     
     try:
         # 解析路径：优先考虑全路径
@@ -534,10 +534,10 @@ async def list_files():
         return items
     
     try:
-        mods_dir = PROJECT_ROOT / "mods"
+        mods_dir = PROJECT_ROOT / "models"
         tree = [{
-            'title': 'mods',
-            'key': 'mods',
+            'title': 'models',
+            'key': 'models',
             'type': 'folder',
             'children': build_tree(str(mods_dir))
         }]
@@ -553,11 +553,11 @@ async def get_file_content(file_path: str):
     """读取单个 YAML 文件原始内容（用于编辑器，直接读文件，不经过 loader）"""
     try:
         logger.info(f"读取文件: {file_path}")
-        yaml_file = PROJECT_ROOT / "mods" / file_path.lstrip('/')
+        yaml_file = PROJECT_ROOT / "models" / file_path.lstrip('/')
         if not yaml_file.suffix:
             yaml_file = yaml_file.with_suffix('.yaml')
-        if not str(yaml_file.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
-            raise HTTPException(status_code=400, detail="Path outside mods/")
+        if not str(yaml_file.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside models/")
         if not yaml_file.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
         with open(yaml_file, 'r', encoding='utf-8') as f:
@@ -570,10 +570,10 @@ async def get_file_content(file_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ========== Validate a mods/ YAML file (GET, delegates to shared logic) ==========
+# ========== Validate a models/ YAML file (GET, delegates to shared logic) ==========
 @app.get("/api/validate/{file_path:path}")
 async def validate_file(file_path: str):
-    """Validate a single mods/ YAML file."""
+    """Validate a single models/ YAML file."""
     valid, errors = _simple_yaml_validate(file_path, PROJECT_ROOT)
     return {'valid': valid, 'errors': errors}
 
@@ -581,8 +581,8 @@ async def validate_file(file_path: str):
 # ========== Save structured JSON as YAML ==========
 @app.post("/api/file-structured/{file_path:path}")
 async def save_file_structured(file_path: str, payload: dict):
-    """Receive a JSON object, serialize to YAML, and save to mods/"""
-    target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
+    """Receive a JSON object, serialize to YAML, and save to models/"""
+    target = PROJECT_ROOT / "models" / file_path.lstrip('/')
     target.parent.mkdir(parents=True, exist_ok=True)
     data = payload.get('data', {})
     text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
@@ -596,14 +596,14 @@ async def save_file_structured(file_path: str, payload: dict):
 # ========== Diff two files ==========
 @app.post("/api/diff")
 async def diff_files(payload: dict):
-    """Return unified diff patch between two mods/ files"""
+    """Return unified diff patch between two models/ files"""
     import difflib
     path_a = (payload.get('file_a') or '').lstrip('/')
     path_b = (payload.get('file_b') or '').lstrip('/')
     if not path_a or not path_b:
         raise HTTPException(status_code=400, detail="file_a and file_b required")
-    target_a = PROJECT_ROOT / "mods" / path_a
-    target_b = PROJECT_ROOT / "mods" / path_b
+    target_a = PROJECT_ROOT / "models" / path_a
+    target_b = PROJECT_ROOT / "models" / path_b
     try:
         text_a = target_a.read_text(encoding='utf-8').splitlines(keepends=True)
         text_b = target_b.read_text(encoding='utf-8').splitlines(keepends=True)
@@ -616,11 +616,11 @@ async def diff_files(payload: dict):
 # ========== Raw file read/write (for YAML text editor) ==========
 @app.get("/api/file-raw/{file_path:path}")
 async def get_file_raw(file_path: str):
-    """Return the raw text content of a file in mods/"""
+    """Return the raw text content of a file in models/"""
     try:
-        target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
-        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
-            raise HTTPException(status_code=400, detail="Path outside mods/")
+        target = PROJECT_ROOT / "models" / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside models/")
         if not target.exists():
             raise HTTPException(status_code=404, detail="File not found")
         text = target.read_text(encoding='utf-8')
@@ -633,11 +633,11 @@ async def get_file_raw(file_path: str):
 
 @app.post("/api/file-raw/{file_path:path}")
 async def save_file_raw(file_path: str, payload: dict):
-    """Save raw text to a file in mods/ (creates parent dirs as needed)"""
+    """Save raw text to a file in models/ (creates parent dirs as needed)"""
     try:
-        target = PROJECT_ROOT / "mods" / file_path.lstrip('/')
-        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
-            raise HTTPException(status_code=400, detail="Path outside mods/")
+        target = PROJECT_ROOT / "models" / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
+            raise HTTPException(status_code=400, detail="Path outside models/")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(payload.get('text', ''), encoding='utf-8')
         if loader_engine:
@@ -652,11 +652,11 @@ async def save_file_raw(file_path: str, payload: dict):
 # ========== Save File 端点 ==========
 @app.post("/api/save-file")
 async def save_file_endpoint(request: SaveFileRequest):
-    """保存文件到 mods 目录（用于构建新 scenario）"""
+    """保存文件到 models 目录（用于构建新 scenario）"""
     try:
-        target = PROJECT_ROOT / "mods" / request.path.lstrip('/')
-        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
-            raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+        target = PROJECT_ROOT / "models" / request.path.lstrip('/')
+        if not str(target.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
+            raise HTTPException(status_code=400, detail="Path must be inside models directory")
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, 'w', encoding='utf-8') as f:
             yaml.dump(request.content, f, allow_unicode=True, sort_keys=False,
@@ -665,7 +665,7 @@ async def save_file_endpoint(request: SaveFileRequest):
         if loader_engine:
             loader_engine.models_cache.clear()
         logger.info(f"File saved: {target}")
-        return {'success': True, 'data': {'path': str(target.relative_to(PROJECT_ROOT / "mods"))}}
+        return {'success': True, 'data': {'path': str(target.relative_to(PROJECT_ROOT / "models"))}}
     except HTTPException:
         raise
     except Exception as e:
@@ -677,11 +677,11 @@ async def save_file_endpoint(request: SaveFileRequest):
 
 @app.delete("/api/file/{file_path:path}")
 async def delete_file(file_path: str):
-    """Delete a file inside the mods directory."""
-    mods_root = PROJECT_ROOT / "mods"
+    """Delete a file inside the models directory."""
+    mods_root = PROJECT_ROOT / "models"
     target = mods_root / file_path.lstrip('/')
     if not str(target.resolve()).startswith(str(mods_root.resolve())):
-        raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+        raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
     if target.is_dir():
@@ -695,14 +695,14 @@ async def delete_file(file_path: str):
 
 @app.post("/api/file-move")
 async def move_file(request: FileMoveRequest):
-    """Move / rename a file inside the mods directory."""
+    """Move / rename a file inside the models directory."""
     import shutil
-    mods_root = PROJECT_ROOT / "mods"
+    mods_root = PROJECT_ROOT / "models"
     src = mods_root / request.src.lstrip('/')
     dst = mods_root / request.dst.lstrip('/')
     for p in (src, dst):
         if not str(p.resolve()).startswith(str(mods_root.resolve())):
-            raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+            raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if not src.exists():
         raise HTTPException(status_code=404, detail=f"Source not found: {request.src}")
     if dst.exists():
@@ -731,11 +731,11 @@ _FILE_TEMPLATES = {
 
 @app.post("/api/file-new")
 async def create_new_file(request: FileNewRequest):
-    """Create a new YAML file from a template inside the mods directory."""
-    mods_root = PROJECT_ROOT / "mods"
+    """Create a new YAML file from a template inside the models directory."""
+    mods_root = PROJECT_ROOT / "models"
     target = mods_root / request.path.lstrip('/')
     if not str(target.resolve()).startswith(str(mods_root.resolve())):
-        raise HTTPException(status_code=400, detail="Path must be inside mods directory")
+        raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if target.exists():
         raise HTTPException(status_code=409, detail=f"File already exists: {request.path}")
     template = _FILE_TEMPLATES.get(request.template, _FILE_TEMPLATES["model"])
@@ -754,7 +754,7 @@ def _simple_yaml_merge(files, output_path, project_root):
     merged = {'metadata': {'name': 'merged', 'description': '', 'tags': []},
               'variables': {}, 'formulas': {}, 'simulator': {}}
     for f in (files or []):
-        target = project_root / "mods" / f.lstrip('/')
+        target = project_root / "models" / f.lstrip('/')
         if not target.exists():
             continue
         try:
@@ -767,7 +767,7 @@ def _simple_yaml_merge(files, output_path, project_root):
         sim = data.get('simulator') or data.get('simulation') or {}
         merged['simulator'].update(sim)
     if output_path:
-        out = project_root / "mods" / output_path.lstrip('/')
+        out = project_root / "models" / output_path.lstrip('/')
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, 'w', encoding='utf-8') as fh:
             yaml.dump(merged, fh, allow_unicode=True, default_flow_style=False,
@@ -780,7 +780,7 @@ async def merge_models(request: MergeRequest):
     # Try loader_engine first, fall back to simple YAML merge on failure
     if loader_engine is not None:
         try:
-            abs_out = str(PROJECT_ROOT / "mods" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
+            abs_out = str(PROJECT_ROOT / "models" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
             result = loader_engine.merge_models(
                 model_names=request.files,
                 folders=request.folders,
@@ -825,7 +825,7 @@ def _simple_yaml_validate(file_path, project_root):
     """
     import re
 
-    target = project_root / "mods" / file_path.lstrip('/')
+    target = project_root / "models" / file_path.lstrip('/')
     if not target.exists():
         return False, [f'文件不存在: {file_path}']
     try:
@@ -962,9 +962,9 @@ async def split_model(request: SplitRequest):
         if model_name.endswith(('.yaml', '.yml')):
             model_name = os.path.splitext(model_name)[0]
 
-        # Output dir: models/mods/splitted_{clean_name}
+        # Output dir: models/components/splitted_{clean_name}
         clean_name = os.path.basename(model_name.replace('\\', '/'))
-        full_output_dir = str(PROJECT_ROOT / "mods" / "models" / "mods" / f"splitted_{clean_name}")
+        full_output_dir = str(PROJECT_ROOT / "models" / "components" / f"splitted_{clean_name}")
 
         # 调用 split_model
         result = loader_engine.split_model(model_name, full_output_dir, folder)
@@ -1019,7 +1019,7 @@ async def search_files(q: str = ""):
             logger.error(f"Search error in {directory}: {e}")
     
     try:
-        mods_dir = PROJECT_ROOT / "mods"
+        mods_dir = PROJECT_ROOT / "models"
         search_in_dir(str(mods_dir))
         return {'success': True, 'data': results}
     except Exception as e:
@@ -1032,12 +1032,12 @@ async def search_files(q: str = ""):
 async def get_story_data(story_id: str):
     """加载完整的故事数据，包括卡牌和初始状态"""
     try:
-        story_dir = PROJECT_ROOT / "mods" / "stories" / story_id
+        story_dir = PROJECT_ROOT / "models" / "stories" / story_id
         story_file = story_dir / "story.yaml"
-        
+
         if not story_file.exists():
             # 兼容单个文件的故事
-            story_file = PROJECT_ROOT / "mods" / "stories" / f"{story_id}.yaml"
+            story_file = PROJECT_ROOT / "models" / "stories" / f"{story_id}.yaml"
             if not story_file.exists():
                 raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
             story_dir = story_file.parent
@@ -1091,7 +1091,7 @@ async def list_folders():
             logger.error(f"Error collecting folders from {directory}: {e}")
     
     try:
-        mods_dir = PROJECT_ROOT / "mods"
+        mods_dir = PROJECT_ROOT / "models"
         collect_folders(str(mods_dir))
         return {'success': True, 'data': folders}
     except Exception as e:
@@ -1236,7 +1236,7 @@ async def run_optimization(request: OptimizationRequest):
 # ========== Converter 端点 ==========
 
 class ConvertRequest(BaseModel):
-    scenario_path: str      # path relative to mods/, e.g. "models/medical/dynamics/foo.yaml"
+    scenario_path: str      # path relative to models/, e.g. "components/medical/dynamics/foo.yaml"
     game_name: str          # basename used for scenarios/to_game/{game_name}/ folder
     health_variable: str
 
@@ -1274,11 +1274,11 @@ async def convert_scenario(request: ConvertRequest):
     game_name     = request.game_name
     health_var    = request.health_variable
 
-    scen_file = PROJECT_ROOT / "mods" / scenario_path
+    scen_file = PROJECT_ROOT / "models" / scenario_path
     if not scen_file.exists():
         raise HTTPException(status_code=404, detail=f"Model file not found: {scenario_path}")
-    if not str(scen_file.resolve()).startswith(str((PROJECT_ROOT / "mods").resolve())):
-        raise HTTPException(status_code=400, detail="Path outside mods/")
+    if not str(scen_file.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
+        raise HTTPException(status_code=400, detail="Path outside models/")
 
     with open(scen_file, 'r', encoding='utf-8') as f:
         scenario = yaml.safe_load(f) or {}
@@ -1292,7 +1292,7 @@ async def convert_scenario(request: ConvertRequest):
     total_time = simulator.get("total_time", 365)
     total_turns = max(1, round(total_time / 30)) if isinstance(total_time, (int, float)) else 12
 
-    out_dir   = PROJECT_ROOT / "mods" / "stories" / game_name
+    out_dir   = PROJECT_ROOT / "models" / "stories" / game_name
     cards_dir = out_dir / "cards"
     out_dir.mkdir(parents=True, exist_ok=True)
     cards_dir.mkdir(parents=True, exist_ok=True)

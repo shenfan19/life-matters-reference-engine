@@ -11,7 +11,7 @@ import os
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
-from .mod_structure import ModStructure
+from .model_structure import ModStructure
 from .loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class SimulatorEngine:
     """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
     
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化仿真引擎。
         :param mods_directory: 模型目录路径。
@@ -32,7 +32,7 @@ class SimulatorEngine:
         self.current_model: Optional[ModStructure] = None
         # 初始化当前仿真步数。
         self.current_step = 0
-        # 初始化仿真时间（秒）。from mod_structure import ModStructure, ModelMetadata
+        # 初始化仿真时间（秒）。
         self.time = 0.0
         # 初始化仿真运行状态。
         self.running = False
@@ -138,7 +138,7 @@ class SimulatorEngine:
             # 写入 CSV 文件
             csv_output_path = output_path
             if not csv_output_path:
-                # 默认输出到 mods/output/ 目录
+                # 默认输出到 models/output/ 目录
                 output_dir = os.path.join(self.loader.mods_directory, "output")
                 os.makedirs(output_dir, exist_ok=True)
                 csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_simulation.csv")

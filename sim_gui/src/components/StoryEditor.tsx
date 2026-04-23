@@ -35,14 +35,14 @@ const clone = (o: any) => JSON.parse(JSON.stringify(o));
 
 // ─── Tree types ───────────────────────────────────────────────────────────────
 interface TreeNode {
-  key: string;        // path relative to mods/, e.g. "models/medical/dynamics/foo.yaml"
+  key: string;        // path relative to models/, e.g. "components/medical/dynamics/foo.yaml"
   title: string;
   type: 'folder' | 'file';
   children?: TreeNode[];
 }
 
 interface SelectedItem {
-  filePath: string;   // full path relative to mods/
+  filePath: string;   // full path relative to models/
   matchKey: string;   // basename without extension, used to pair with to_game/
   name: string;
 }
@@ -220,7 +220,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
       const d = await fetch('/api/files').then(r => r.json());
       if (!d.success) return;
 
-      const modsNode = d.data.find((n: any) => n.key === 'mods');
+      const modsNode = d.data.find((n: any) => n.key === 'models');
       if (!modsNode) return;
 
       // Left: full scenarios tree
@@ -265,7 +265,7 @@ export default function StoryEditor({ isDarkMode, c }: Props) {
     try {
       const d = await fetch('/api/files').then(r => r.json());
       if (!d.success) return;
-      const modsNode = d.data.find((n: any) => n.key === 'mods');
+      const modsNode = d.data.find((n: any) => n.key === 'models');
       const storiesNode = modsNode?.children?.find((n: any) => n.title === 'stories');
       // Find the story folder (may be nested in subfolders)
       const findStoryFolder = (nodes: any[]): any => {
