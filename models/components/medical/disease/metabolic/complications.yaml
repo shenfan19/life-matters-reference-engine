@@ -1,7 +1,6 @@
 metadata:
   name: complications
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: Minghui Wu
   description: 糖尿病并发症进展，如神经病变、肾病变等
   conflicts: []

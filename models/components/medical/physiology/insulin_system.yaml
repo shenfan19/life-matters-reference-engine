@@ -1,7 +1,6 @@
 metadata:
   name: insulin_system
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: Minghui Wu
   description: 胰岛素分泌、敏感性和β细胞功能
   conflicts: []

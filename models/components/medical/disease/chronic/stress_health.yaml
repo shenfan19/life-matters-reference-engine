@@ -1,9 +1,7 @@
 metadata:
   name: stress_health_scene
-  version: "1.0"
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   description: 高压环境下糖分摄入与运动的健康权衡优化
-  model_version: personal_stress_v1.0
 
 python_envs:
   - pymoo: ">=0.6.0"  # 用于 MOO

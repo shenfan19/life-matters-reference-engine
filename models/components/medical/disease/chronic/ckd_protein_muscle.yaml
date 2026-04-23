@@ -1,7 +1,7 @@
 metadata:
   name: ckd_protein_muscle
-  version: 1.0.0
-  author: LifeMatters Academic Team
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     慢性肾病（CKD）蛋白质摄入 vs 肌肉保持动态模型（场景A4）。
     核心学术案例：低蛋白饮食减缓GFR下降（保护肾功能），但同时导致肌肉萎缩，
@@ -93,7 +93,6 @@ variables:
     unit: "g/kg/day"
     type: input
     bounds: [0.3, 2.0]
-    optimizable: true
 
 formulas:
   # F1: GFR Decline Dynamics

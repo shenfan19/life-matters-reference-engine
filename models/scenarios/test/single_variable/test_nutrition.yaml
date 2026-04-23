@@ -3,7 +3,7 @@ category: education_story
 
 metadata:
   name: "basic_nutrition_demo"
-  version: "1.0.0"
+  updated: 2026-04-23
   author: "Antigravity"
   description: "一个基础的营养摄入与消化演示故事。主角摄入一根香蕉，观察其营养成分如何进入消化系统并转化为血糖。"
   tags: [demo, nutrition, banana]

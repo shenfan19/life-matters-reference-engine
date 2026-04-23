@@ -3,8 +3,7 @@ category: dynamics
 
 metadata:
   name: "nutrition_intake"
-  version: "3.0.0"
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: "Minghui Wu, Antigravity"
   description: "营养摄入基础模型，处理食物向胃部的初步转移。"
   tags: [nutrition, intake]

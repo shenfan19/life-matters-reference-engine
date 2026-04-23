@@ -1,5 +1,5 @@
 metadata:
-  author: Life Matters Team
+  author: TODO:AUTHOR
   conflicts: []
   description: 乒乓球比赛生理模型，60分钟，强调反应速度、技术精度与神经-肌肉疲劳
   name: tabletennis
@@ -9,8 +9,7 @@ metadata:
   - ping-pong
   - reaction
   - skill
-  version: 1.0.0
-  standalone: true
+  updated: 2026-04-23
 variables:
   rally_pace:
     bounds:

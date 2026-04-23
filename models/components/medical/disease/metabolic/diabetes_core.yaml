@@ -6,8 +6,7 @@ metadata:
   tags:
   - diabetes
   - core
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
 imports:
 - models/medical/physiology/nutrition_intake
 - models/medical/physiology/digestive_system

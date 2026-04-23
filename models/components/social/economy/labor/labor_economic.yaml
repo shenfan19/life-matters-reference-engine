@@ -1,7 +1,7 @@
 metadata:
   name: labor
-  version: 1.0.0
-  author: Universal Dynamics System
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: "劳动力与经济动力学模型：包含工作量（R1）、收入与储蓄（R2）与疲劳度（R3）。"
   tags: [social, socio_economic, labor]
 

@@ -3,7 +3,7 @@ category: dynamics
 
 metadata:
   name: "simple_nutrition"
-  version: "1.0.0"
+  updated: 2026-04-23
   author: "Antigravity"
   description: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
   tags: [nutrition, simple, demo]

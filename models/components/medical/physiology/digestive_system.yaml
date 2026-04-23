@@ -3,8 +3,7 @@ category: dynamics
 
 metadata:
   name: "digestive_system"
-  version: "3.0.0"
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: "Minghui Wu, Antigravity"
   description: "胃肠道状态、营养吸收、激素酶和小肠大肠动力学模型。"
   tags: [digestion, gastrointestinal]

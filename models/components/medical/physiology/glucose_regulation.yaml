@@ -1,7 +1,6 @@
 metadata:
   name: glucose_regulation
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: Minghui Wu
   description: 血糖浓度、变异性和相关更新公式
   conflicts: []

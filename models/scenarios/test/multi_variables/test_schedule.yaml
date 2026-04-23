@@ -1,6 +1,6 @@
 metadata:
   name: "Schedule Test"
-  version: "1.0.0"
+  updated: 2026-04-23
   description: "A scenario to test scheduled inputs and manual overrides"
   category: "test"
 
