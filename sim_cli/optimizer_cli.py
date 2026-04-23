@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class OptimizerCLI:
     """模型优化的命令行接口，调用 OptimizerEngine 进行参数优化。"""
     
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化命令行接口。
         :param mods_directory: 模型目录路径。
@@ -129,8 +129,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
     
     # 定义通用参数。
-    parser.add_argument('--mods-dir', default='mods', 
-                       help='模型目录（默认: mods）')
+    parser.add_argument('--mods-dir', default='models',
+                       help='模型目录（默认: models）')
     parser.add_argument('--lang', default='en', 
                        choices=['en', 'zhhans', 'zhhant', 'fr'], 
                        help='输出语言')

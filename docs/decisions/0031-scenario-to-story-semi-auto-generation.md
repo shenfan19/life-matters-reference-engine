@@ -7,8 +7,8 @@ Status: Accepted
 
 The B·Matter project maintains two parallel artifacts for each historical scenario:
 
-1. **Scenario YAML** (`mods/scenarios/`): A system-dynamics simulation model used in the Simulator GUI. It defines continuous-time ODEs/difference equations, input variables, and optimizer targets.
-2. **Story package** (`mods/stories/`): A card-game representation used in the Game GUI. It defines a turn-based deck-building experience with the same narrative content.
+1. **Scenario YAML** (`models/scenarios/`): A system-dynamics simulation model used in the Simulator GUI. It defines continuous-time ODEs/difference equations, input variables, and optimizer targets.
+2. **Story package** (`models/stories/`): A card-game representation used in the Game GUI. It defines a turn-based deck-building experience with the same narrative content.
 
 As the number of historical characters grows, it becomes impractical to design each game story independently from scratch. We need a **repeatable workflow** that derives game card effects directly from scenario formula coefficients, keeping the two representations consistent.
 
@@ -56,7 +56,7 @@ Verify that win condition is achievable:
 - Ensure there are meaningful trade-offs (e.g., high-output cards that also increase risk)
 
 ### Step 6 — Write `_mapping.json`
-Document in `mods/stories/<id>/_mapping.json`:
+Document in `models/stories/<id>/_mapping.json`:
 - `time_mapping`: turn duration and total
 - `variable_mapping`: scenario var → game var
 - `input_mapping`: scenario input → player card
@@ -94,7 +94,7 @@ The pattern works across orders-of-magnitude differences in time scale because c
 ## File Structure
 
 ```
-mods/
+models/
   scenarios/social/
     ad0228_cn_zhuge_liang.yaml       ← sim model (source of truth)
     ad1847_hu_semmelweis.yaml

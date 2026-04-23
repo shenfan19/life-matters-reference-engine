@@ -21,7 +21,7 @@ import sys
 import logging
 from typing import Dict, Any, List, Optional
 from sim_engine.src.loader_engine import LoaderEngine
-from sim_engine.src.mod_structure import ModStructure, ModelMetadata, merge_dicts
+from sim_engine.src.model_structure import ModStructure, ModelMetadata, merge_dicts
 from sim_engine.src.babel_manager import BabelLanguageManager
 import os
 
@@ -33,7 +33,7 @@ class LoaderCLI:
     LifeMatters 模型加载器命令行接口。
     负责处理用户输入、调用加载引擎并格式化输出。
     """
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化 LoaderCLI 实例。
         :param mods_directory: 包含模型文件的目录路径。
@@ -159,7 +159,7 @@ class LoaderCLI:
                 if not output_path.endswith('.yaml'):
                     output_path = output_path + '.yaml'
                 
-                # 如果是相对路径，放到 mods/_output/merged/ 下
+                # 如果是相对路径，放到 models/_output/merged/ 下
                 if not os.path.isabs(output_path):
                     final_output_path = os.path.join(self.engine.mods_directory, "_output", "merged", output_path)
                 else:
@@ -188,7 +188,7 @@ class LoaderCLI:
         :return: 包含拆分结果的字典。
         """
         try:
-            # 构建完整的输出路径：mods/_output/splited/output_dir/
+            # 构建完整的输出路径：models/_output/splited/output_dir/
             full_output_dir = os.path.join(self.engine.mods_directory, "_output", "splited", output_dir)
             
             result = self.engine.split_model(model_name, full_output_dir, folder)
@@ -220,7 +220,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter  # 使用原始描述格式器
     )
     # 添加各种命令行参数
-    parser.add_argument('--mods-dir', default='mods', help='模型目录 (默认: mods)')  # 模型根目录参数
+    parser.add_argument('--mods-dir', default='models', help='模型目录 (默认: models)')  # 模型根目录参数
     parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='输出语言')  # 语言选择参数
     parser.add_argument('--folder', nargs='*', help='模型目录中的子文件夹（支持多个）')  # 修改为 nargs='*', 返回列表，支持0或多个
     parser.add_argument('--list', action='store_true', help='列出可用模型')  # 列出模型标志

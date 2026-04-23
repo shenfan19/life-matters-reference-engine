@@ -75,9 +75,10 @@ docs/
 sim_gui/      前端仿真界面（React + Vite，端口 5173）
 game/         前端游戏界面（React + Vite，端口 5174）
 sim_engine/   Python 仿真引擎 + API server
-mods/
-  models/     纯动力学模型（可复用）
-  stories/    预配置游戏场景（组合 model + patches）
+models/
+  components/  纯动力学模型（可复用）
+  stories/     预配置游戏场景（组合 model + patches）
+  scenarios/   仿真场景配置
 ```
 
 ---
@@ -85,6 +86,6 @@ mods/
 ## 跨模块规范
 
 - **前端编码规范**（响应式、颜色 token、i18n、字体、间距等）：`global_prompt.md`
-- **建模数据规范**（强制 `description`、`reference` 溯源与 `comments` 决策记录）：`mod_requirements.md`
+- **建模数据规范**（强制 `description`、`reference` 溯源与 `comments` 决策记录）：`model_requirements.md`
 - **目录与文件命名规范**（优先使用 `snake_case` 下划线）：见 `decisions/0041-*.md`
 - **架构决策历史**：`decisions/README.md`

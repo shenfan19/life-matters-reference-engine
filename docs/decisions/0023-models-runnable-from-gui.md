@@ -8,7 +8,7 @@
 
 ## 背景
 
-过去，仿真器 GUI 的文件树（左侧 Scenarios 面板）只展示 `mods/scenarios/` 下的场景文件。如果想测试一个独立的 model 文件（如 `running.yaml`），必须为它单独建一个空壳 scenario。
+过去，仿真器 GUI 的文件树（左侧 Scenarios 面板）只展示 `models/scenarios/` 下的场景文件。如果想测试一个独立的 model 文件（如 `running.yaml`），必须为它单独建一个空壳 scenario。
 
 这导致两个问题：
 1. 测试新模型时需要写冗余的 scenario wrapper，阻碍快速迭代；

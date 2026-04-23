@@ -1,6 +1,6 @@
 // game/src/core/fetchYaml.ts
 // Fetch a YAML file from /stories/ and parse it client-side.
-// cleanPath is relative to mods/, e.g. "stories/marie_curie/game_story.yaml"
+// cleanPath is relative to models/, e.g. "stories/marie_curie/game_story.yaml"
 
 import yaml from 'js-yaml';
 

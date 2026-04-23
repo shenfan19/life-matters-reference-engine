@@ -8,7 +8,7 @@
 
 ## 背景
 
-随着模型库（`mods/models/`）规模扩大，原有的扁平或浅层目录结构难以维护。主要问题：
+随着模型库（`models/components/`）规模扩大，原有的扁平或浅层目录结构难以维护。主要问题：
 - `nutrition/`、`fitness/` 等二级目录缺乏进一步分类
 - `social/` 下 `panic/` 目录语义不清晰
 - 新建模型无明确"归属"位置，贡献者难以判断放在哪里
@@ -28,7 +28,7 @@
 ## 结构快照（实施时）
 
 ```
-mods/models/
+models/components/
 ├── medical/
 │   ├── physiology/           (扁平，库组件，暂不细分)
 │   ├── nutrition/
@@ -82,13 +82,13 @@ mods/models/
 
 ## 文件路径规范
 
-所有 `imports:` 中的跨目录引用，必须使用从 `mods/` 根目录出发的完整路径：
+所有 `imports:` 中的跨目录引用，必须使用从 `models/` 根目录出发的完整路径：
 
 ```yaml
 imports:
-  - models/medical/physiology/glucose_regulation   # ✅ 正确
-  - glucose_regulation                             # ⚠️ 仅在同目录下可用
-  - medical/physiology/glucose_regulation          # ❌ 不含 models/ 前缀，会解析失败
+  - components/medical/physiology/glucose_regulation   # ✅ 正确
+  - glucose_regulation                                 # ⚠️ 仅在同目录下可用
+  - medical/physiology/glucose_regulation              # ❌ 不含 components/ 前缀，会解析失败
 ```
 
 ## 后续影响

@@ -569,10 +569,10 @@ const Simulator: React.FC<SimulatorProps> = ({
             titleStr, mod_type: item.mod_type,
           };
         });
-        const modsNode = result.data.find((n: any) => n.key === 'mods');
+        const modsNode = result.data.find((n: any) => n.key === 'models');
         if (modsNode?.children) {
           const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
-          const mNode = modsNode.children.find((n: any) => n.key === 'models');
+          const mNode = modsNode.children.find((n: any) => n.key === 'components');
           const scenarioItems: DataNode[] = sNode ? convert(sNode.children || []) : [];
           const modelItems: DataNode[] = mNode ? convert(mNode.children || []) : [];
           const combined: DataNode[] = [

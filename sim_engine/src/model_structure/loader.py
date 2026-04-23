@@ -38,11 +38,11 @@ class Loader:
             # 获取 mods 根目录（用于解析新格式的导入路径）
             mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
             if not mods_root:
-                # 尝试从文件路径推断 mods 根目录
-                # 假设文件在 mods/ 或 mods/models/ 或 mods/stories/ 下
+                # 尝试从文件路径推断 models 根目录
+                # 假设文件在 models/ 或 models/components/ 或 models/stories/ 下
                 path_parts = os.path.normpath(file_path).split(os.sep)
-                if 'mods' in path_parts:
-                    mods_idx = path_parts.index('mods')
+                if 'models' in path_parts:
+                    mods_idx = path_parts.index('models')
                     mods_root = os.sep.join(path_parts[:mods_idx + 1])
             
             for imp_name in imports:

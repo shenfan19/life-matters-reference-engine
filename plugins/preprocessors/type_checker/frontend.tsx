@@ -212,7 +212,7 @@ const PluginComponent = () => {
             setSaveModalVisible(false);
             setSaving(false);
             if (result.success) {
-                setOpAlert({ type: 'success', message: '保存成功', description: `已保存至 mods/${path}` });
+                setOpAlert({ type: 'success', message: '保存成功', description: `已保存至 models/${path}` });
             } else {
                 setOpAlert({ type: 'error', message: '保存失败', description: result.error || result.detail || '未知错误' });
             }

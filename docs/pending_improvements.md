@@ -56,6 +56,6 @@
 
 - `sim_engine/src/simulator_engine.py` — Regimen 调度已在 `_apply_regimens` 方法
 - `sim_engine/src/api_server.py` — `SimulationStartRequest` 已加 `regimens` 字段
-- `mods/scenarios/social/ad1666_uk_issac_newton.yaml` — Newton 场景（需修公式）
-- `mods/stories/to_game/ad1910_po_marie_curie/` — Curie 场景（需检查）
-- `mods/stories/to_game/*/cards/sys_*.yaml` — 系统卡定义文件
+- `models/scenarios/social/ad1666_uk_issac_newton.yaml` — Newton 场景（需修公式）
+- `models/stories/to_game/ad1910_po_marie_curie/` — Curie 场景（需检查）
+- `models/stories/to_game/*/cards/sys_*.yaml` — 系统卡定义文件

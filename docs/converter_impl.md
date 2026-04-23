@@ -14,7 +14,7 @@ Converter 功能分两个部分：前端 UI（`Converter.tsx`，stub）和游戏
 async function loadNewFormatStory(cleanPath: string, rawStory: any): Promise<GameStory>
 ```
 
-- `cleanPath`: 相对于 `mods/` 的路径，例如 `stories/social/ad1910_po_marie_curie/game_story.yaml`
+- `cleanPath`: 相对于 `models/` 的路径，例如 `stories/social/ad1910_po_marie_curie/game_story.yaml`
 - `rawStory`: 已解析的 `game_story.yaml` 内容
 
 ### 转换步骤
@@ -56,7 +56,7 @@ interface GameStory {
 **实际采用的半手动工作流**（ADR 0031）：
 
 ```
-1. 编写 scenario YAML（mods/scenarios/）
+1. 编写 scenario YAML（models/scenarios/）
 2. 计算 days_per_turn = 总时长 / 游戏回合数
 3. 将 scenario variables(io_role=output) → game_story initial_state
 4. 推导卡牌效果：card_delta = input_rate × days_per_turn × efficiency_factor
@@ -117,6 +117,6 @@ interface GameStory {
 | `game/src/core/storyI18n.ts` | i18n overlay 加载 |
 | `sim_gui/src/components/Converter.tsx` | 转换器 UI (stub) |
 | `sim_gui/src/components/StoryEditor.tsx` | 故事编辑器（含 Converter tab）|
-| `mods/stories/social/ad1910_po_marie_curie/` | 典型完整故事包参考 |
-| `mods/stories/medical/banister_fitness_fatigue/` | 典型医学建模故事参考 |
+| `models/stories/social/ad1910_po_marie_curie/` | 典型完整故事包参考 |
+| `models/stories/medical/banister_fitness_fatigue/` | 典型医学建模故事参考 |
 | `docs/decisions/0031-*.md` | 转换工作流 ADR |

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class SimulatorCLI:
     """Simulator 命令行接口，调用 SimulatorEngine 运行仿真并显示状态。"""
     
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化命令行接口。
         :param mods_directory: 模型目录路径。
@@ -165,8 +165,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
     
     # 定义通用参数。
-    parser.add_argument('--mods-dir', default='mods', 
-                       help='模型目录（默认: mods）')
+    parser.add_argument('--mods-dir', default='models',
+                       help='模型目录（默认: models）')
     parser.add_argument('--lang', default='en', 
                        choices=['en', 'zhhans', 'zhhant', 'fr'], 
                        help='输出语言')
@@ -188,7 +188,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--interactive', action='store_true', 
                        help='启用交互式暂停（CLI 输入）')
     parser.add_argument('--output', 
-                       help='CSV 输出文件路径（默认: mods/output/<model_name>_simulation.csv）')
+                       help='CSV 输出文件路径（默认: models/output/<model_name>_simulation.csv）')
     
     # 定义状态显示相关参数。
     parser.add_argument('--format', choices=['table', 'yaml'], default='table', 

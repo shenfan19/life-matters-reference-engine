@@ -1029,11 +1029,11 @@ SIM <---> OPT 的数据流
 
 ## Loader 模块（数据加载与组装）
 
-Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `mods/models/` 和 `mods/stories/` 中的模型，处理依赖导入，在内存中组装完整可执行的 `ModStructure`。
+Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `models/components/` 和 `models/stories/` 中的模型，处理依赖导入，在内存中组装完整可执行的 `ModelStructure`。
 
 ### 跨模型数据调用原则
 
-- **`models/` 层**：只声明自己的变量和公式，不引用其他模型。
+- **`components/` 层**：只声明自己的变量和公式，不引用其他模型。
 - **`stories/` 层**：`imports` 多个 model，通过 `patches` 覆写参数。
 
 这避免模型间耦合，符合单一职责原则。

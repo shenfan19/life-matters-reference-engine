@@ -15,7 +15,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 class ModStructure(Loader, Validator, Simulation):
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         # 初始化元数据
         self.metadata = None
         # 初始化变量字典
@@ -69,7 +69,7 @@ class ModStructure(Loader, Validator, Simulation):
     def split_model(self, output_dir: str):
         """
         将模型分解为独立公式文件和剩余文件，所有文件生成在 output_dir 目录下。
-        :param output_dir: 输出目录（如 mods/splited/bcd/）
+        :param output_dir: 输出目录（如 models/splited/bcd/）
         """
         # 确保输出目录存在
         if not os.path.exists(output_dir):

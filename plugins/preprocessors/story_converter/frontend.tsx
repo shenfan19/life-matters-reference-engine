@@ -411,7 +411,7 @@ const PluginComponent = () => {
       <div style={{ ...panelStyle, marginBottom: 12 }}>
         <SectionHead>模型文件</SectionHead>
         <Select
-          placeholder="选择 mods/models/…/*.yaml"
+          placeholder="选择 models/components/…/*.yaml"
           style={{ width: '100%' }}
           options={modelFiles}
           onChange={loadModel}

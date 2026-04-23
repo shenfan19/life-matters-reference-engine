@@ -5,7 +5,7 @@
 
 ## 背景
 
-`mods/stories/` 下存在两种不兼容的 story 格式：
+`models/stories/` 下存在两种不兼容的 story 格式：
 
 - **旧单文件格式**（`black_death`、`somme` 等）：所有卡牌内联在一个 `game_story.yaml` 中，字段为 `player_cards` / `environment_cards`，effect 字段名为 `variable + delta`。
 - **新文件夹格式**（`marie_curie`、`issac_newton`、`dracula`）：`game_story.yaml` 仅保存 meta 和牌组引用（`env_deck` / `player_deck` 内含 `path:` 指向 `cards/` 子目录中的独立 YAML），effect 字段名为 `target + delta`，卡牌展示信息嵌套在 `display` 下。
@@ -44,7 +44,7 @@ StorySelect.tsx 同步修复：回合数读取兼容新格式的 `turns.total`�
 | `location` | string | ✅ | 地理位置，用于排序和显示 |
 | `author` | string | — | 作者，可为空字符串 |
 | `version` | string | — | 版本号（如 `"0.1"`） |
-| `created_on` | `YYYY-MM-DD` | ✅ | Story 首次创建日期，取 `mods/stories/` 中文件的 git 首次提交日期；新建 story 填当天日期 |
+| `created_on` | `YYYY-MM-DD` | ✅ | Story 首次创建日期，取 `models/stories/` 中文件的 git 首次提交日期；新建 story 填当天日期 |
 | `source_scenario` | string | — | 来源场景名（从仿真场景转换时填写） |
 
 `created_on` 不在前端渲染，仅用于文档追踪与维护。格式为裸 ISO 日期（无引号），例如：

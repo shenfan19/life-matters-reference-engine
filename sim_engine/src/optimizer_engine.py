@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class OptimizerEngine:
     """优化引擎，负责参数优化，支持多种优化模式和方法。"""
     
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
         初始化优化引擎。
         :param mods_directory: 模型目录路径。
@@ -192,7 +192,7 @@ class OptimizerEngine:
         :return: 优化结果字典。
         """
         # 获取模型中输入类型的变量。
-        from mod_structure import VariableType
+        from model_structure import VariableType
         input_vars = {
             name: var for name, var in self.current_model.variables.items() 
             if var.type == VariableType.input
@@ -267,7 +267,7 @@ class OptimizerEngine:
         :return: 优化结果字典。
         """
         # 获取模型中输入类型的变量。
-        from mod_structure import VariableType
+        from model_structure import VariableType
         input_vars = {
             name: var for name, var in self.current_model.variables.items() 
             if var.type == VariableType.input

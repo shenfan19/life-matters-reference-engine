@@ -4,8 +4,8 @@
 
 Converter 是 LM 系统的桥梁层：将 LM-Sim 的 YAML 仿真模型自动（或半自动）转换为 LM-Game 的游戏关卡格式。
 
-**输入**: `mods/scenarios/{category}/model.yaml` — 仿真模型  
-**输出**: `mods/stories/{category}/{id}/game_story.yaml` + `cards/*.yaml` + `_mapping.json`
+**输入**: `models/scenarios/{category}/model.yaml` — 仿真模型  
+**输出**: `models/stories/{category}/{id}/game_story.yaml` + `cards/*.yaml` + `_mapping.json`
 
 ## 依赖关系
 

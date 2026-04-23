@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class GeneratorCLI:
     """模型生成命令行接口，基于 GeneratorEngine 生成 YAML 模型文件。"""
-    def __init__(self, mods_directory: str = "mods", language: str = "en"):
+    def __init__(self, mods_directory: str = "models", language: str = "en"):
         self.lang_manager = BabelLanguageManager(default_language=language)
         self.engine = GeneratorEngine(mods_directory)
         self.setup_logging()
@@ -55,7 +55,7 @@ Examples:
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('--mods-dir', default='mods', help='Models directory (default: mods)')
+    parser.add_argument('--mods-dir', default='models', help='Models directory (default: models)')
     parser.add_argument('--lang', default='en', choices=['en', 'zhhans', 'zhhant', 'fr'], help='Language for output')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--list-templates', action='store_true', help='List available templates')

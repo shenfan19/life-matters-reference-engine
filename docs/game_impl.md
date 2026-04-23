@@ -65,7 +65,7 @@
 每个故事对应一个文件夹，`game_story.yaml` 是唯一入口（所有卡牌内联其中）。
 
 ```
-mods/
+models/
   stories/
     cholera_london_1854/
       game_story.yaml            ← 故事入口（元信息 + 变量 + 卡牌 + 胜负条件）
@@ -84,7 +84,7 @@ mods/
         background.jpg
 ```
 
-关联规则（未来 Converter）：`scenarios/{name}/` ↔ `stories/{name}/`
+关联规则（未来 Converter）：`scenarios/{name}/` ↔ `models/stories/{name}/`
 文件夹名一一对应，Converter 左侧选中 scenario 后右侧自动锁定对应 stories 文件夹。
 
 ## game_story.yaml Schema
@@ -347,3 +347,26 @@ environment_cards:
 5. 检查胜负条件
 
 > `system_effect` 字段当前引擎未完整实现，详见 `pending_improvements.md` 问题 3。
+
+---
+
+## MOD 系统实现状态
+
+### 当前状态
+
+MOD 系统尚未独立实现。当前所有"MOD"内容均为官方内嵌场景（`models/stories/` 目录下的 YAML 包），没有用户上传/审核/分发机制。
+
+### 已有基础
+
+- `models/` 目录结构已确立，场景作为文件夹包存在
+- `game_story.yaml` + `cards/*.yaml` 格式已稳定（见本文档）
+- 文件系统加载已通过 `newFormatLoader.ts` 实现
+
+### 待实现
+
+- [ ] MOD 上传入口（用户提交 ZIP/文件夹）
+- [ ] MOD 浏览/下载页面
+- [ ] 举报机制 UI
+- [ ] MOD 元数据校验（格式合规性检查）
+- [ ] 内容分级标注系统
+- [ ] 角色邀请信提交入口

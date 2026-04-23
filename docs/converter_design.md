@@ -3,8 +3,8 @@
 ## 架构概览
 
 ```
-mods/scenarios/{category}/      ← 仿真模型 (源数据)
-mods/stories/{category}/{id}/   ← 游戏故事包 (目标格式)
+models/scenarios/{category}/      ← 仿真模型 (源数据)
+models/stories/{category}/{id}/   ← 游戏故事包 (目标格式)
     game_story.yaml
     cards/
         player_*.yaml
@@ -188,8 +188,8 @@ H = clamp(AP + 2, 3, 6)
 
 | 层 | 目录 | 职责 |
 |----|------|------|
-| **Model 层** | `mods/models/` | 纯科学动力学：药理参数、生理方程、可调参数 |
-| **Story 层** | `mods/stories/` | 预配置剧情：组合 model、覆写参数、添加叙事元素 |
+| **Model 层** | `models/components/` | 纯科学动力学：药理参数、生理方程、可调参数 |
+| **Story 层** | `models/stories/` | 预配置剧情：组合 model、覆写参数、添加叙事元素 |
 
 Story 是"一键运行"的预配置关卡，让用户无需手动设置即可体验完整场景。
 
@@ -237,4 +237,4 @@ def merge_patches(base_model, patches):
 
 ### 单包封装原则
 
-每个 Story 是一个独立文件夹，包含所有元数据、逻辑与资源，不允许在 `mods/stories/` 根目录放外部索引文件。文件夹名与对应 scenario 文件夹名一致，Converter 据此自动关联。
+每个 Story 是一个独立文件夹，包含所有元数据、逻辑与资源，不允许在 `models/stories/` 根目录放外部索引文件。文件夹名与对应 scenario 文件夹名一致，Converter 据此自动关联。

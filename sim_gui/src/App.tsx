@@ -324,7 +324,7 @@ function App() {
 
   // Loader states lifted so Simulator keeps them across re-renders
   const [storyTree, setStoryTree] = useState<DataNode[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['mods', 'scenarios']);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['models', 'scenarios']);
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
   const [storyFilter, setStoryFilter] = useState('');
   const [loadedMods, setLoadedMods] = useState<Record<string, ModelFile>>({});
