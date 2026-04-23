@@ -1,7 +1,7 @@
 metadata:
   name: ad1847_hu_semmelweis
-  version: "1.0.0"
-  author: ""
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     塞麦尔维斯洗手倡导仿真场景（1847–1865，维也纳产科医院）。
     sim模式：模拟医学证据积累与机构接受度之间的动力学，

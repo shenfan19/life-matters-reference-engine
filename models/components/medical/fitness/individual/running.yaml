@@ -1,12 +1,11 @@
 metadata:
   name: running
-  version: "1.0.0"
-  author: "Life Matters"
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     跑步训练模型（单次训练课，60分钟）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。
     公式基于 Fick 原理与 Borg RPE 量表。
   tags: [sport, running, aerobic, endurance]
-  standalone: true
 
 variables:
   training_intensity:

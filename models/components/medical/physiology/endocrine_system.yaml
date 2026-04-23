@@ -1,7 +1,6 @@
 metadata:
   name: endocrine_system
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: Minghui Wu
   description: 胰高血糖素、皮质醇、生长激素等
   conflicts: []

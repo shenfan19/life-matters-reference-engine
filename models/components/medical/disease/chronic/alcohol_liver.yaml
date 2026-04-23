@@ -1,7 +1,7 @@
 metadata:
   name: "alcohol_liver_disease_model"
-  version: "1.0.0"
-  author: "AI Assisted Generator"
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: "酒精剂量响应导致肝病模型，基于医学论文中的剂量依赖和肝损伤动态。效果随剂量累积。"
   conflicts: []
   tags: [alcohol, liver_disease, dose_response]

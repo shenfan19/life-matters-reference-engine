@@ -3,7 +3,7 @@ category: demo_story
 
 metadata:
   name: simple_banana_story
-  version: "1.0.0"
+  updated: 2026-04-23
   author: "Antigravity"
   description: "简化的香蕉摄入演示故事。主角摄入150g香蕉，验证其营养成分正确转移至胃部。"
   tags: [demo, simple, banana]

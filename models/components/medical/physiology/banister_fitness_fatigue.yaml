@@ -1,7 +1,7 @@
 metadata:
   name: banister_fitness_fatigue
-  version: 1.0.0
-  author: LifeMatters Academic Team
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     Banister双分量适应-疲劳模型（场景B3）：量化运动训练对运动表现的动态影响。
     适应分量（Fitness）与疲劳分量（Fatigue）均由训练负荷驱动，但以不同时间常数衰减。
@@ -49,7 +49,6 @@ variables:
     unit: "day"
     type: parameter
     bounds: [20.0, 80.0]
-    optimizable: false
 
   tau_fatigue:
     description: "疲劳分量衰减时间常数τ₂（推荐值15天）。来源：Morton 1990, Table 1。"
@@ -57,7 +56,6 @@ variables:
     unit: "day"
     type: parameter
     bounds: [5.0, 30.0]
-    optimizable: false
 
   k1:
     description: "适应分量权重系数k₁（推荐值1.0）。来源：Morton 1990。"
@@ -65,7 +63,6 @@ variables:
     unit: "系数"
     type: parameter
     bounds: [0.3, 3.0]
-    optimizable: true
 
   k2:
     description: "疲劳分量权重系数k₂（推荐值2.0，约为k₁的2倍）。来源：Morton 1990。"
@@ -73,7 +70,6 @@ variables:
     unit: "系数"
     type: parameter
     bounds: [0.5, 5.0]
-    optimizable: true
 
   baseline_performance:
     description: "未训练时的基线运动表现p₀（设为100分）。"
@@ -81,7 +77,6 @@ variables:
     unit: "分"
     type: parameter
     bounds: [50.0, 200.0]
-    optimizable: false
 
   # P1: Input — Daily Training Load (TRIMP)
   # TRIMP（训练冲量）= 训练时长(min) × 心率加权系数
@@ -96,7 +91,6 @@ variables:
     unit: "TRIMP"
     type: input
     bounds: [0.0, 150.0]
-    optimizable: true
 
 formulas:
   # F1: Fitness Dynamics（一阶线性系统，训练输入驱动，τ₁衰减）

@@ -1,7 +1,6 @@
 metadata:
   name: physiology
-  version: 2.1.0
-  standalone: false  # library component, use via imports or combined model
+  updated: 2026-04-23
   author: Minghui Wu
   description: 肝、胰腺、胃、小肠等器官功能系数及恢复机制
   conflicts: []

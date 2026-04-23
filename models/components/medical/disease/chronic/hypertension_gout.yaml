@@ -1,7 +1,7 @@
 metadata:
   name: hypertension_gout
-  version: 1.0.0
-  author: LifeMatters Academic Team
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     高血压合并痛风联合动力学模型（场景A5）。
     核心学术案例：ESC降压指南与ACR痛风指南是两套独立存在、互相矛盾的临床指南。
@@ -94,7 +94,6 @@ variables:
     unit: "mg/day"
     type: input
     bounds: [0.0, 25.0]
-    optimizable: true
 
   # P2: Dietary Purine Intake
   purine_intake:
@@ -108,7 +107,6 @@ variables:
     unit: "mg/day"
     type: input
     bounds: [0.0, 3000.0]
-    optimizable: true
 
   # P3: Weight Loss Rate — 双刃剑输入
   weight_loss_rate:
@@ -123,7 +121,6 @@ variables:
     unit: "kg/week"
     type: input
     bounds: [0.0, 1.0]
-    optimizable: true
 
 formulas:
   # F1: Blood Pressure Dynamics（一阶趋向平衡动力学）

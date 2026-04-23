@@ -1,8 +1,7 @@
 metadata:
   name: obesity
-  version: 1.0.0
-  standalone: false  # library component, use via imports or combined model
-  author: AI Assisted Generator
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: 肥胖增加糖尿病风险的动态模型
   conflicts: []
   tags:

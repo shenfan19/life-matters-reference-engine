@@ -1,12 +1,11 @@
 metadata:
   name: basketball
-  version: "1.0.0"
-  author: "Life Matters"
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     篮球训练/比赛模型（单场，48分钟）。间歇性高强度运动：爆发冲刺与中低强度交替。
     核心特征：短时爆发（冲刺/跳跃）累积乳酸，间歇期部分清除。
   tags: [sport, basketball, interval, explosive]
-  standalone: true
 
 variables:
   game_intensity:

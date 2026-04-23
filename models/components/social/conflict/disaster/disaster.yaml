@@ -1,7 +1,7 @@
 metadata:
   name: disaster111
-  version: 1.0.0
-  author: Universal Dynamics System
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: 自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。1111
   tags:
   - environmental

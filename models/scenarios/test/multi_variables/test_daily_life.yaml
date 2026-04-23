@@ -1,7 +1,7 @@
 metadata:
   name: daily_life
-  version: 1.0.0
-  author: Universal Dynamics System
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: "日常生活仿真：展示每日规律饮食与水分补充对能量和健康的影响。利用计划表实现批处理自动化。"
   tags: [lifestyle, daily, simulation]
 

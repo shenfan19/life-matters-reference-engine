@@ -1,7 +1,7 @@
 metadata:
   name: ad1910_po_marie_curie
-  version: "1.0.0"
-  author: "Life Matters"
+  updated: 2026-04-23
+  author: TODO:AUTHOR
   description: >
     居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。
     sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
@@ -25,7 +25,6 @@ variables:
     value: 0.6
     unit: "强度"
     bounds: [0.0, 1.0]
-    optimizable: true
     description: "实验室研究强度（0=不做实验, 1=全力投入）；辐射主要来源"
 
   rest_time:
@@ -33,7 +32,6 @@ variables:
     value: 0.2
     unit: "强度"
     bounds: [0.0, 1.0]
-    optimizable: true
     description: "休养与郊外疗养时间比例；降低辐射，恢复健康"
 
   teaching_load:
@@ -41,7 +39,6 @@ variables:
     value: 0.3
     unit: "强度"
     bounds: [0.0, 0.8]
-    optimizable: true
     description: "授课负荷（巴黎高等师范学校）；主要稳定收入来源，消耗健康"
 
   fundraise_effort:
@@ -49,7 +46,6 @@ variables:
     value: 0.1
     unit: "强度"
     bounds: [0.0, 0.6]
-    optimizable: true
     description: "经费申请投入（撰写报告、游说委员会）；大额收入但成功率低"
 
   # 状态变量
