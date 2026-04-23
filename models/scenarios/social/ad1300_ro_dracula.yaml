@@ -48,6 +48,8 @@ schedules:
       - { time: 86400, value: 0.0 }  # 24:00 Next day
 
 simulation:
-  step_size: 600
-  total_time: 86400
+  start_date: "1462-06-01"
+  end_date: "1562-05-31"
+  step: 1
+  step_unit: hour
   output_variables: [blood_reserve, thirst_level, sun_exposure]

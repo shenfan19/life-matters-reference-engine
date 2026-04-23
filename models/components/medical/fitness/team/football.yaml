@@ -182,11 +182,11 @@ formulas:
     dynamics:
       performance: max(0, min(100, technical_performance * 0.5 + (1 - fatigue) * 30 + (muscle_glycogen / 100) * 20))
     priority: 11
-simulator:
-  step_size: 1
-  time_unit: minute
-  total_time: 90
-  output_format: csv
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
   - heart_rate
   - vo2

@@ -63,12 +63,12 @@ formulas:
       health_score: "max(0, 100 - complication_score - abs(blood_glucose - 95) * 0.2 - (5 - inflammation_level * 10))"
     priority: 1
 
-simulator:
-  step_size: 1
-  time_unit: minute   # 1440 步 = 24 小时
-  total_time: 1440
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables: [blood_glucose, plasma_insulin, health_score, complication_score]
-
 optimizer:
   method: grid
   duration: 60.0

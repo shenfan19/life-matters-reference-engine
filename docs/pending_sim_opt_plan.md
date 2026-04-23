@@ -105,31 +105,31 @@ Opt 模式（方案 B）
 ---
 
 ## 实现任务清单
-- [ ] sim和opt核心 [priority:: medium] 
+- [x] sim和opt核心 [priority:: medium]  [completion:: 2026-04-23]
 
 ### T1：仿真引擎支持随机参数采样
-- [ ] `parameter` 变量的 `value` 字段支持分布表达式：`normal(μ, σ)` / `uniform(a, b)` / `lognormal(μ, σ)`；Loader 解析时检测字符串形式，静态数字走原有路径
-- [ ] 确定性模式 / opt 模式：自动取均值（分布第一参数），目标函数稳定
-- [ ] MC 模式：每次 run 开始时对所有分布型 `parameter` 独立采样一次，整条 run 用采样值跑
-- [ ] 支持随机种子注入（`run_with_seed(seed)`）
+- [x] `parameter` 变量的 `value` 字段支持分布表达式：`normal(μ, σ)` / `uniform(a, b)` / `lognormal(μ, σ)`；Loader 解析时检测字符串形式，静态数字走原有路径  [completion:: 2026-04-23]
+- [x] 确定性模式：`_collect_param_distributions` 初始化时取均值；`_get_mean_value` 静态工具方法  [completion:: 2026-04-23]
+- [x] MC 模式：每条 run 开始时用独立 `np.random.default_rng(seed)` 采样，整条 run 用采样值跑  [completion:: 2026-04-23]
+- [x] 支持随机种子注入：`fitness_func_with_seed(seed=...)`  [completion:: 2026-04-23]
 - [ ] 单元测试：相同种子 → 相同结果；不同种子 → 不同结果
 
 ### T2：Sim 模式 Monte Carlo 多条运行
-- [ ] `api_server.py`：`SimulationStartRequest` 加 `sim_runs: int = 1`
-- [ ] `simulator_engine.py`：`start_session` / `batch_steps` 支持 N 条并行（或顺序）运行，返回 N 组轨迹数据
-- [ ] 前端 `Simulator.tsx`：sim 配置区加 `sim_runs` 输入（默认 1，范围 1~50）
-- [ ] 前端 Plot 渲染：N=1 时单线；N>1 时 N 条半透明线 + 均值线（利用现有 Recharts 渲染逻辑扩展）
+- [x] `api_server.py`：`SimulationStartRequest` 加 `sim_runs: int = 1`  [completion:: 2026-04-23]
+- [x] `simulator_engine.py`：`start_session` / `batch_steps` 支持 N 条顺序运行，返回 N 组 + 均值  [completion:: 2026-04-23]
+- [x] 前端 `Simulator.tsx`：工具栏加 `MC×` 输入（默认 1，范围 1~50，运行中禁用）  [completion:: 2026-04-23]
+- [x] 前端 Plot 渲染：N=1 时单线；N>1 时 N 条半透明细线 + 均值粗线（canvas 直接绘制）  [completion:: 2026-04-23]
 
 ### T3：Opt 模式方案 B —— 多条期望目标函数
-- [ ] `optimizer.py`（或对应优化逻辑）：每次参数评估运行 N_inner 条，聚合目标值
-- [ ] opt 配置界面：加 `opt_inner_runs`（默认 5）和 `opt_aggregation`（默认 mean）选项
-- [ ] 最终验证流程：优化结束后自动以 `opt_verify_runs` 条触发 sim Monte Carlo 展示
-- [ ] 进度反馈：优化进度条显示"迭代 k/K，当前期望目标分 = X.XX"
+- [x] `optimizer_engine.py`：`_multi_eval_objective` 每次评估运行 `opt_inner_runs` 条，聚合目标值  [completion:: 2026-04-23]
+- [x] opt 配置界面：加 `opt_inner_runs`（默认 5）、`opt_aggregation`（默认 mean）、`opt_verify_runs`  [completion:: 2026-04-23]
+- [x] 最终验证流程：`_run_verification` 以 `opt_verify_runs` 条运行，返回均值/std/min/max  [completion:: 2026-04-23]
+- [x] 进度反馈：迭代动态卡显示当前期望目标分、std；验证结果内联展示  [completion:: 2026-04-23]
 
 ### T4：Session 级种子管理
-- [ ] `simulator_engine.py`：session 创建时生成 `seed_list[0..N_max-1]`，存入 session dict
-- [ ] 每条 run 从 `seed_list[run_idx]` 取种子，保证 session 内可复现
-- [ ] 前端：session 信息面板中显示 session seed（供用户复现记录）
+- [x] `simulator_engine.py`：session 创建时生成 `session_seed` + `seed_list`，存入 session dict  [completion:: 2026-04-23]
+- [x] 每条 run 从 `seed_list[run_idx]` 取种子，保证 session 内可复现  [completion:: 2026-04-23]
+- [x] 前端：`MC×` 输入的 tooltip 显示 seed 值（`sessionSeed` 从 start API 返回写入 state）  [completion:: 2026-04-23]
 
 ### T5：文档与测试
 - [ ] 在 `sim_design.md` 中更新随机参数语法示例

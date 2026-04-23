@@ -48,8 +48,9 @@ formulas:
       savings: "savings - skill_training * 50 * step_size"
     priority: 3
 
-simulator:
-  step_size: 1
-  time_unit: week   # 52 步 = 52 周 = 1 年
-  total_time: 52
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-12-31"
+  step: 1
+  step_unit: week
   output_variables: [savings, fatigue_level, productivity]

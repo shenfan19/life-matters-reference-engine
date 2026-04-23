@@ -8,14 +8,11 @@ python_envs:
   - matplotlib: ">=3.5.0"  # Pareto 前沿可视化
   - scipy: ">=1.10.0"  # 可选：单目标优化
 
-simulator:
-  total_time: 100
-  step_size: 1
-  time_unit: day
-  pause_every: 5  # 每 5 步暂停，触发钩子
-  hooks:
-    - post_step: interactive_input  # 用户输入压力水平
-
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-04-11"
+  step: 1
+  step_unit: day
 optimizer:
   method: nsga2  # MOO 算法
   targets_of_optimization:

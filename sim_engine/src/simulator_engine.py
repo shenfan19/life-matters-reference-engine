@@ -8,10 +8,12 @@ import logging
 import numpy as np
 import csv
 import os
+import re
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from scipy.integrate import solve_ivp
 from .model_structure import ModStructure
+from .model_structure.base import Variable, InputSchedule, SchedulePoint, Accumulator, TIME_UNIT_SECONDS
 from .loader_engine import LoaderEngine
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
@@ -233,7 +235,8 @@ class SimulatorEngine:
 
     def start_session(self, model_name: str, time_hours: float, folder: Optional[str] = None,
                      step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None,
-                     regimens: Optional[List[Dict]] = None) -> Dict[str, Any]:
+                     regimens: Optional[List[Dict]] = None,
+                     sim_runs: int = 1) -> Dict[str, Any]:
         """
         开始一个新的仿真会话（GUI 使用）。
         :param model_name: 模型名称。
@@ -241,38 +244,70 @@ class SimulatorEngine:
         :param folder: 子文件夹名称。
         :param step_size: 时间步长（秒），如果为 None 则使用模型默认值。
         :param input_params: 初始输入参数（可选）。
+        :param regimens: Regimen K×4 计划表（可选）。
+        :param sim_runs: Monte Carlo 运行条数（默认 1=单条）。
         :return: 会话信息字典。
         """
         try:
-            # 加载模型
+            # 加载模型（作为所有 run 的基础模型）
             if not self.load_models([model_name], folder):
                 return {"success": False, "error": f"无法加载模型：{model_name}"}
-            
+
+            base_model = self.current_model
+
+            # 收集含分布的 parameter 变量，并将 value 设置为均值
+            param_distributions = self._collect_param_distributions(base_model)
+            base_model.param_distributions = param_distributions
+
             # 应用输入参数
             if input_params:
                 for var_name, value in input_params.items():
-                    if var_name in self.current_model.variables:
-                        self.current_model.set_variable_value(var_name, value)
-            
-            # 生成会话 ID
+                    if var_name in base_model.variables:
+                        base_model.set_variable_value(var_name, value)
+
+            # 生成会话 ID 和种子列表（T4）
             session_id = str(uuid.uuid4())
-            
+            session_seed = int(np.random.randint(0, 2**31))
+            master_rng = np.random.default_rng(session_seed)
+            n_runs = max(1, int(sim_runs))
+            seed_list = [int(master_rng.integers(0, 2**31)) for _ in range(n_runs)]
+
             # 获取配置
             if step_size is None:
-                step_size = self.current_model.simulator.get('step_size', 3600.0)
-            
+                step_size = base_model.simulator.get('step_size', 3600.0)
+
             total_time = time_hours * 3600.0
             total_steps = int(total_time / step_size)
-            output_variables = self.current_model.simulator.get('output_variables', [])
+            output_variables = base_model.simulator.get('output_variables', [])
             input_variables = [
-                name for name, var in self.current_model.variables.items()
+                name for name, var in base_model.variables.items()
                 if var.type.value == 'input'
             ]
             capture_variables = output_variables + [v for v in input_variables if v not in output_variables]
-            
+
+            # 为每条 run 创建独立模型副本并应用分布采样
+            runs = []
+            for run_idx in range(n_runs):
+                # run 0 直接用 base_model；其余 run 用手动克隆（不用 deepcopy）
+                run_model = base_model if run_idx == 0 else self._clone_model(base_model)
+
+                if param_distributions:
+                    run_rng = np.random.default_rng(seed_list[run_idx])
+                    self._apply_parameter_sampling(run_model, param_distributions, rng=run_rng)
+
+                runs.append({
+                    'run_idx': run_idx,
+                    'seed': seed_list[run_idx],
+                    'model': run_model,
+                    'current_step': 0,
+                    'time': 0.0,
+                    'data': [],
+                    'completed': False,
+                })
+
             # 创建会话
             self.sessions[session_id] = {
-                'model': self.current_model,
+                'model': runs[0]['model'],      # 兼容旧代码
                 'model_name': model_name,
                 'folder': folder,
                 'step_size': step_size,
@@ -282,112 +317,200 @@ class SimulatorEngine:
                 'time': 0.0,
                 'running': True,
                 'output_variables': capture_variables,
-                'data': [],  # 存储仿真数据
-                'regimens': regimens or [],  # Regimen K×4 计划表
+                'data': [],
+                'regimens': regimens or [],
+                'sim_runs': n_runs,
+                'session_seed': session_seed,
+                'seed_list': seed_list,
+                'runs': runs,
+                'param_distributions': param_distributions,
+                'input_params': input_params or {},
             }
-            
-            logger.info(f"会话已创建: {session_id}, 模型: {model_name}, 总步数: {total_steps}")
-            
+
+            logger.info(f"会话已创建: {session_id}, 模型: {model_name}, 总步数: {total_steps}, runs: {n_runs}, seed: {session_seed}")
+
             return {
                 "success": True,
                 "data": {
                     "session_id": session_id,
                     "model_name": model_name,
-                    "initial_state": self.current_model.get_current_state(),
+                    "initial_state": runs[0]['model'].get_current_state(),
                     "step_size": step_size,
                     "total_time": total_time,
                     "total_steps": total_steps,
-                    "output_variables": output_variables
+                    "output_variables": output_variables,
+                    "sim_runs": n_runs,
+                    "session_seed": session_seed,
                 }
             }
-        
+
         except Exception as e:
             logger.error(f"创建会话失败: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
     
-    def batch_steps(self, session_id: str, steps: int = 10, 
+    def batch_steps(self, session_id: str, steps: int = 10,
                    input_changes: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
         """
-        批量执行多步仿真（GUI 使用）。
+        批量执行多步仿真（GUI 使用）。支持单条（sim_runs=1）和 Monte Carlo 多条运行。
         :param session_id: 会话 ID。
         :param steps: 要执行的步数。
         :param input_changes: 动态修改的输入参数（可选）。
-        :return: 执行结果字典。
+        :return: 执行结果字典，多条时额外包含 outputs_per_run。
         """
         try:
-            # 检查会话是否存在
             if session_id not in self.sessions:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
-            
+
             session = self.sessions[session_id]
-            
-            # 检查会话是否已暂停
+
             if not session['running']:
                 return {"success": False, "error": "会话已暂停"}
-            
-            model = session['model']
+
             step_size = session['step_size']
             output_variables = session['output_variables']
-            
-            # 应用输入变化
-            if input_changes:
-                for var_name, value in input_changes.items():
-                    if var_name in model.variables:
-                        model.set_variable_value(var_name, value)
-                        # 记录为手动覆盖，防止被计划表自动覆盖
-                        model.manual_overrides[var_name] = value
-                        logger.info(f"手动覆盖输入: {var_name} = {value}")
-            
-            # 批量执行
-            outputs = []
-            remaining_steps = session['total_steps'] - session['current_step']
-            actual_steps = min(steps, remaining_steps)
-            
-            for i in range(actual_steps):
-                # 应用 Regimen 计划（时刻触发）
-                prev_time = session['time']
-                next_time = prev_time + step_size
-                self._apply_regimens(model, session['regimens'], prev_time, next_time)
+            sim_runs = session.get('sim_runs', 1)
+            runs = session.get('runs', [])
 
-                # 执行单步
-                model.step(step_size)
-                session['current_step'] += 1
-                session['time'] += step_size
-                
-                # 收集输出数据
-                output_data = {
-                    'step': session['current_step'],
-                    'time': session['time']
+            # ── 单条路径（兼容原有逻辑）──────────────────────────────────────
+            if sim_runs == 1 or not runs:
+                model = session['model']
+
+                if input_changes:
+                    for var_name, value in input_changes.items():
+                        if var_name in model.variables:
+                            model.set_variable_value(var_name, value)
+                            model.manual_overrides[var_name] = value
+
+                outputs = []
+                remaining = session['total_steps'] - session['current_step']
+                actual_steps = min(steps, remaining)
+
+                # step_size 是秒；step() 期望原生时间单位，需要先除以 unit_sec
+                _unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
+                _native_step = step_size / _unit_sec
+
+                for i in range(actual_steps):
+                    prev_time = session['time']
+                    next_time = prev_time + step_size
+                    self._apply_regimens(model, session['regimens'], prev_time, next_time)
+                    model.step(_native_step)
+                    session['current_step'] += 1
+                    session['time'] += step_size
+
+                    output_data = {'step': session['current_step'], 'time': session['time']}
+                    for var_name in output_variables:
+                        output_data[var_name] = model.variables[var_name].value if var_name in model.variables else 0.0
+                    outputs.append(output_data)
+                    session['data'].append(output_data)
+
+                completed = session['current_step'] >= session['total_steps']
+                progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+
+                logger.info(f"单条批量执行: session={session_id}, steps={actual_steps}, total={session['current_step']}/{session['total_steps']}")
+
+                return {
+                    "success": True,
+                    "data": {
+                        "session_id": session_id,
+                        "current_step": session['current_step'],
+                        "progress": round(progress, 2),
+                        "final_state": model.get_current_state(),
+                        "outputs": outputs,
+                        "outputs_per_run": [outputs],
+                        "sim_runs": 1,
+                        "session_seed": session.get('session_seed', 0),
+                        "completed": completed,
+                        "steps_executed": len(outputs),
+                    }
                 }
-                
+
+            # ── 多条路径（Monte Carlo）─────────────────────────────────────────
+            all_run_outputs: List[List[Dict]] = []
+
+            for run in runs:
+                if run['completed']:
+                    all_run_outputs.append([])
+                    continue
+
+                run_model = run['model']
+                run_outputs: List[Dict] = []
+
+                if input_changes:
+                    for var_name, value in input_changes.items():
+                        if var_name in run_model.variables:
+                            run_model.set_variable_value(var_name, value)
+                            run_model.manual_overrides[var_name] = value
+
+                remaining = session['total_steps'] - run['current_step']
+                actual_steps = min(steps, remaining)
+
+                # 转换 step_size（秒）→ 原生时间单位
+                _unit_sec = TIME_UNIT_SECONDS.get(getattr(run_model, 'time_unit', 'second'), 1.0)
+                _native_step = step_size / _unit_sec
+
+                for i in range(actual_steps):
+                    prev_time = run['time']
+                    next_time = prev_time + step_size
+                    self._apply_regimens(run_model, session['regimens'], prev_time, next_time)
+                    run_model.step(_native_step)
+                    run['current_step'] += 1
+                    run['time'] += step_size
+
+                    output_data = {'step': run['current_step'], 'time': run['time']}
+                    for var_name in output_variables:
+                        output_data[var_name] = run_model.variables[var_name].value if var_name in run_model.variables else 0.0
+                    run_outputs.append(output_data)
+                    run['data'].append(output_data)
+
+                if run['current_step'] >= session['total_steps']:
+                    run['completed'] = True
+
+                all_run_outputs.append(run_outputs)
+
+            # 计算均值轨迹（向后兼容）
+            n_steps = max((len(ro) for ro in all_run_outputs), default=0)
+            mean_outputs: List[Dict] = []
+            for step_i in range(n_steps):
+                base = {}
+                valid_runs = [ro for ro in all_run_outputs if step_i < len(ro)]
+                if not valid_runs:
+                    continue
+                base['step'] = valid_runs[0][step_i]['step']
+                base['time'] = valid_runs[0][step_i]['time']
                 for var_name in output_variables:
-                    if var_name in model.variables:
-                        output_data[var_name] = model.variables[var_name].value
-                    else:
-                        output_data[var_name] = 0.0
-                
-                outputs.append(output_data)
-                session['data'].append(output_data)
-            
-            # 检查是否完成
-            completed = session['current_step'] >= session['total_steps']
-            progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
-            
-            logger.info(f"批量执行完成: session={session_id}, steps={actual_steps}/{steps}, total={session['current_step']}/{session['total_steps']}")
-            
+                    vals = [ro[step_i].get(var_name, 0.0) for ro in valid_runs]
+                    base[var_name] = float(np.mean(vals))
+                mean_outputs.append(base)
+
+            # 用 run 0 的进度代表会话级别进度
+            run0 = runs[0]
+            session['current_step'] = run0['current_step']
+            session['time'] = run0['time']
+            session['model'] = run0['model']
+            for pt in mean_outputs:
+                session['data'].append(pt)
+
+            completed = all(r['completed'] for r in runs)
+            progress = (run0['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+
+            logger.info(f"多条批量执行: session={session_id}, steps={n_steps}, runs={sim_runs}, progress={progress:.1f}%")
+
             return {
                 "success": True,
                 "data": {
                     "session_id": session_id,
-                    "current_step": session['current_step'],
+                    "current_step": run0['current_step'],
                     "progress": round(progress, 2),
-                    "final_state": model.get_current_state(),
-                    "outputs": outputs,
+                    "final_state": run0['model'].get_current_state(),
+                    "outputs": mean_outputs,
+                    "outputs_per_run": all_run_outputs,
+                    "sim_runs": sim_runs,
+                    "session_seed": session.get('session_seed', 0),
                     "completed": completed,
-                    "steps_executed": len(outputs)
+                    "steps_executed": n_steps,
                 }
             }
-        
+
         except Exception as e:
             logger.error(f"批量执行失败: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
@@ -778,6 +901,210 @@ class SimulatorEngine:
             logger.error(f"ODE 求解失败: {e}")
             # 返回错误信息。
             return {"success": False, "error": str(e)}
+
+    # ==================== 模型克隆（MC多条运行用）====================
+
+    @staticmethod
+    def _clone_model(base: ModStructure) -> ModStructure:
+        """
+        为 Monte Carlo 多条运行创建模型的独立副本。
+        不使用 deepcopy（BabelLanguageManager 含文件句柄，不可 pickle），
+        而是手动复制只读数据，让 asteval / lang_manager 各自全新初始化。
+        """
+        fresh = ModStructure(
+            mods_directory=base.mods_directory,
+            language='en',
+        )
+
+        # 只读元数据（共享引用即可）
+        fresh.metadata         = base.metadata
+        fresh.formulas         = base.formulas          # 公式只读，可共享
+        fresh.simulator        = dict(base.simulator)
+        fresh.optimizer        = dict(base.optimizer)
+        fresh.time_unit        = base.time_unit
+        fresh.current_filename = base.current_filename
+        fresh.mods_directory   = base.mods_directory
+
+        # 每条 run 需要独立的 variable 实例（含当前值）
+        fresh.variables = {
+            name: Variable(
+                description=var.description,
+                value=var.value,        # 基础模型应用 input_params 后的值
+                type=var.type,
+                unit=var.unit,
+                bounds=list(var.bounds) if var.bounds else None,
+            )
+            for name, var in base.variables.items()
+        }
+
+        # schedule 的 points 列表在仿真中只读，可共享；但 InputSchedule 本身需独立
+        fresh.schedules = {
+            name: InputSchedule(
+                variable=sched.variable,
+                points=sched.points,            # points 列表只读，共享
+                interpolation=sched.interpolation,
+            )
+            for name, sched in base.schedules.items()
+        }
+
+        # accumulator 有运行时可变状态，需独立且重置
+        fresh.accumulators = {
+            name: Accumulator(
+                variable=acc.variable,
+                source=acc.source,
+                window=acc.window,
+                operation=acc.operation,
+                unit=acc.unit,
+                description=acc.description,
+                running_sum=0.0,
+                window_start_time=0.0,
+            )
+            for name, acc in base.accumulators.items()
+        }
+
+        # 重置运行时状态
+        fresh.variable_history = {n: [v.value] for n, v in fresh.variables.items()}
+        fresh.manual_overrides = {}
+        fresh.current_step     = 0
+        fresh.time             = 0.0
+
+        # 将变量值注入全新的 asteval 符号表
+        fresh._initialize_asteval()
+
+        # 继承分布表达式字典（loader 解析的原始字符串，MC 采样用）
+        fresh._param_dist_raw    = getattr(base, '_param_dist_raw', {})
+        fresh.param_distributions = getattr(base, 'param_distributions', {})
+
+        return fresh
+
+    # ==================== 分布参数工具 ====================
+
+    @staticmethod
+    def _parse_distribution(value) -> Optional[tuple]:
+        """解析分布表达式字符串，如 'normal(70,5)'。返回 (dist_type, (p1,p2)) 或 None。"""
+        if not isinstance(value, str):
+            return None
+        m = re.match(
+            r'\s*(normal|uniform|lognormal)\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)\s*$',
+            value.strip()
+        )
+        if m:
+            try:
+                return m.group(1), (float(m.group(2)), float(m.group(3)))
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _get_mean_value(value) -> float:
+        """返回分布表达式的均值（第一参数），或直接返回数值。"""
+        parsed = SimulatorEngine._parse_distribution(value)
+        if parsed:
+            return parsed[1][0]
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(value)
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _sample_value(value, rng: np.random.Generator) -> float:
+        """用 rng 从分布字符串采样，或直接返回数值。"""
+        parsed = SimulatorEngine._parse_distribution(value)
+        if parsed:
+            dist_type, (p1, p2) = parsed
+            if dist_type == 'normal':
+                return float(rng.normal(p1, p2))
+            elif dist_type == 'uniform':
+                return float(rng.uniform(p1, p2))
+            elif dist_type == 'lognormal':
+                return float(rng.lognormal(p1, p2))
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(value)
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _apply_parameter_sampling(model, param_distributions: dict, rng=None):
+        """
+        对模型中所有含分布的 parameter 变量应用采样（MC）或取均值（确定性）。
+        :param param_distributions: {var_name: value_str} 含分布的参数字典
+        :param rng: 如果为 None 则取均值（确定性），否则用 rng 采样（MC）
+        """
+        for var_name, value_str in param_distributions.items():
+            if var_name not in model.variables:
+                continue
+            val = (SimulatorEngine._sample_value(value_str, rng)
+                   if rng is not None
+                   else SimulatorEngine._get_mean_value(value_str))
+            model.variables[var_name].value = val
+            model.asteval.symtable[var_name] = val
+
+    @staticmethod
+    def _collect_param_distributions(model) -> dict:
+        """
+        收集所有含分布表达式的 parameter 变量，返回 {var_name: dist_str}。
+
+        优先从 model._param_dist_raw（loader 阶段解析并存储的原始字符串）读取；
+        兜底仍扫描 Variable.value（兼容直接构造的模型）。
+        loader 已将分布字符串的 value 替换为均值，无需再次转换。
+        """
+        dist_map = {}
+
+        # 来源 1：loader 存储的原始分布字符串
+        raw = getattr(model, '_param_dist_raw', {})
+        for var_name, dist_str in raw.items():
+            if var_name in model.variables:
+                dist_map[var_name] = dist_str
+
+        # 来源 2：Variable.value 仍是字符串（直接构造或旧版 loader）
+        for var_name, var in model.variables.items():
+            if var_name in dist_map:
+                continue
+            if var.type.value == 'parameter' and isinstance(var.value, str):
+                if SimulatorEngine._parse_distribution(var.value) is not None:
+                    dist_map[var_name] = var.value
+                    mean_val = SimulatorEngine._get_mean_value(var.value)
+                    var.value = mean_val
+                    model.asteval.symtable[var_name] = mean_val
+
+        return dist_map
+
+    def fitness_func_with_seed(self, parameters: Optional[List[float]] = None,
+                               seed: Optional[int] = None,
+                               time_hours: float = 720.0) -> float:
+        """
+        带随机种子的黑盒评估：对含分布的 parameter 变量进行 MC 采样后运行仿真。
+        用于优化器的 N_inner 多次评估。
+        """
+        if not self.current_model:
+            logger.error("fitness_func_with_seed: 未加载模型")
+            return float('inf')
+
+        self.current_model.reset_simulation()
+
+        # 从分布采样
+        param_distributions = getattr(self.current_model, 'param_distributions', {})
+        if param_distributions:
+            rng = np.random.default_rng(seed) if seed is not None else None
+            self._apply_parameter_sampling(self.current_model, param_distributions, rng=rng)
+
+        if parameters is not None:
+            self.current_model.set_parameters(parameters)
+
+        step_size = self.current_model.simulator.get('step_size', 3600.0)
+        total_steps = int(time_hours * 3600.0 / step_size)
+
+        try:
+            self.current_model.run_steps(total_steps, step_size)
+            target = self.current_model.optimizer.get('targets', ['min_error'])[0]
+            return self.current_model.get_objective(target)
+        except Exception as e:
+            logger.error(f"fitness_func_with_seed 评估失败: {e}")
+            return float('inf')
 
     def _interactive_pause(self):
         """

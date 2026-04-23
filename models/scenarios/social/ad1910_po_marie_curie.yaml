@@ -82,15 +82,15 @@ variables:
     description: "研究经费（<10时无法维持实验室运转）"
 
 simulation:
-  step_size: 1
-  time_unit: month
-  total_time: 96
+  start_date: "1910-01-01"
+  end_date: "1918-01-01"
+  step: 1
+  step_unit: month
   output_variables:
     - health
     - radiation
     - research_progress
     - money
-
 formulas:
   # 研究产出洞见，同时积累辐射
   research_gain:

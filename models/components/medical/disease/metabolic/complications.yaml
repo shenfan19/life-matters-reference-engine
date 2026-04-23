@@ -69,11 +69,11 @@ formulas:
     dynamics:
       cardiovascular_risk: min(1.0, cardiovascular_risk + 0.0002 * step_size)
     priority: 7
-simulator:
-  step_size: 1
-  time_unit: minute   # 1440 步 = 24 小时
-  total_time: 1440
-  output_format: csv
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
   - neuropathy_severity
   - nephropathy_severity

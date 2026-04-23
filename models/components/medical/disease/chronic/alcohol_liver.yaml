@@ -70,7 +70,8 @@ formulas:
       liver_health_score: "max(0.2, 100 - (liver_damage_effect * 100))"
       
 simulation:
-  step_size: 1
-  time_unit: day
-  total_time: 90
+  start_date: "2026-01-01"
+  end_date: "2026-04-01"
+  step: 1
+  step_unit: day
   output_variables: [alcohol_dose, liver_damage_effect, liver_health_score]

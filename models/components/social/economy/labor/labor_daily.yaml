@@ -39,7 +39,8 @@ schedules:
       - { time: 86400, value: 0.0 }  # END
 
 simulation:
-  step_size: 3600   # 1小时/步（以秒计）；公式中用 /3600 换算为小时
-  time_unit: second
-  total_time: 86400  # 24小时 = 86400秒
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: hour
   output_variables: [savings, fatigue, work_intensity]

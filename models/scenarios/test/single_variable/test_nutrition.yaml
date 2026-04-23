@@ -22,15 +22,16 @@ imports:
   - models/interventions/diet/banana
 
 simulation:
-  duration: 43200 # 12 hours (in seconds, assuming engine uses seconds)
-  time_step: 60    # 1 minute steps
+  start_date: "2026-01-01"
+  end_date: "2026-01-02"
+  step: 1
+  step_unit: minute
   output_variables:
     - blood_glucose
     - gastric_carbohydrate
     - food_carbohydrate
     - banana_intake
     - nutritional_status
-
 # 初始输入
 variables:
   banana_intake:

@@ -16,6 +16,9 @@ const API_BASE = '/api';
 
 const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, isLocked = false, isDarkMode }) => {
   const [internalSubPage, setInternalSubPage] = useState('4-1');
+  const [optInnerRuns, setOptInnerRuns] = useState(5);
+  const [optAggregation, setOptAggregation] = useState<'mean' | 'min' | 'median'>('mean');
+  const [optVerifyRuns, setOptVerifyRuns] = useState(20);
   const {
     status, progress, optimizationData,
     inputParams,
@@ -72,6 +75,46 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
     let newValue = seconds / (STEP_UNITS[newUnit] || 1);
     setStepValue(Number(newValue.toFixed(2)));
     setStepUnit(newUnit);
+  };
+
+  const [optResult, setOptResult] = useState<any>(null);
+
+  const startNSGAOptimization = async () => {
+    if (!selectedModel) return;
+    try {
+      setStatus('running'); setProgress(0); setCurrentStep(0); setOptimizationData([]);
+      isRunningRef.current = true;
+      const finalTimeHours = dateToHours(simStartDate, simEndDate);
+      const resp = await fetch(`${API_BASE}/optimizer/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model_names: [selectedModel.content?.metadata?.name || selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '')],
+          folder: selectedModel.folder,
+          mode: 'full_params',
+          method: 'pymoo',
+          time_hours: finalTimeHours,
+          opt_inner_runs: optInnerRuns,
+          opt_aggregation: optAggregation,
+          opt_verify_runs: optVerifyRuns,
+        }),
+      });
+      const result = await resp.json();
+      isRunningRef.current = false;
+      if (result.success) {
+        setStatus('completed');
+        setProgress(100);
+        setOptResult(result);
+        if (result.history) setOptimizationData(result.history);
+        message.success(`优化完成，迭代 ${result.history?.length || 0} 次`);
+      } else {
+        setStatus('idle');
+        message.error(result.error || '优化失败');
+      }
+    } catch (e: any) {
+      setStatus('idle'); isRunningRef.current = false;
+      message.error(e.message);
+    }
   };
 
   const startOptimization = async () => {
@@ -171,13 +214,28 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
               <div style={{ fontSize: '12px', marginBottom: 4 }}>强度</div>
               <InputNumber size="small" value={batchSize} onChange={v => setBatchSize(v || 1)} style={{ width: 70 }} />
             </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>MC内评估次数 N_inner</div>
+              <InputNumber size="small" value={optInnerRuns} min={1} max={20} onChange={v => setOptInnerRuns(v || 1)} style={{ width: 70 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>聚合方式</div>
+              <Select size="small" value={optAggregation} onChange={v => setOptAggregation(v)} style={{ width: 80 }}
+                options={[{ label: '均值', value: 'mean' }, { label: '最坏', value: 'min' }, { label: '中位数', value: 'median' }]} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: 4 }}>验证条数 N_verify</div>
+              <InputNumber size="small" value={optVerifyRuns} min={1} max={50} onChange={v => setOptVerifyRuns(v || 1)} style={{ width: 70 }} />
+            </div>
           </div>
-          <Space>
-            <Button type="primary" icon={<PlayCircleOutlined />} onClick={startOptimization} disabled={!isLocked || status === 'running'}>开始优化</Button>
+          <Space wrap>
+            <Button type="primary" icon={<PlayCircleOutlined />} onClick={startOptimization} disabled={!isLocked || status === 'running'}>仿真优化</Button>
+            <Button type="primary" icon={<ThunderboltOutlined />} onClick={startNSGAOptimization} disabled={!isLocked || status === 'running'}
+              style={{ background: '#722ed1', borderColor: '#722ed1' }}>NSGA-II 参数搜索</Button>
             <Button onClick={() => { isRunningRef.current = false; setStatus('paused'); }} disabled={status !== 'running'}>暂停</Button>
-            <Button danger onClick={() => { isRunningRef.current = false; setStatus('idle'); setProgress(0); setOptimizationData([]); }}>重置</Button>
+            <Button danger onClick={() => { isRunningRef.current = false; setStatus('idle'); setProgress(0); setOptimizationData([]); setOptResult(null); }}>重置</Button>
           </Space>
-          <Progress percent={progress} strokeColor={isDarkMode ? '#52c41a' : '#007A33'} />
+          <Progress percent={progress} strokeColor={isDarkMode ? '#52c41a' : '#007A33'} status={status === 'running' ? 'active' : undefined} />
         </Space>
       </Card>
 
@@ -196,7 +254,23 @@ const Optimizer: React.FC<OptimizerProps> = ({ selectedModel, state, setState, i
 
       {optimizationData.length > 0 && (
         <Card title={<span style={{ fontWeight: 600, fontSize: '13px' }}>迭代动态</span>} size="small" style={{ borderRadius: 4, border: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`, background: isDarkMode ? '#111f16' : '#ffffff' }}>
-          <Statistic title="已探索解空间" value={optimizationData.length} prefix={<ThunderboltOutlined />} valueStyle={{ fontSize: '20px' }} />
+          <Row gutter={16}>
+            <Col span={8}><Statistic title="迭代次数" value={optimizationData.length} prefix={<ThunderboltOutlined />} valueStyle={{ fontSize: '18px' }} /></Col>
+            {optimizationData[optimizationData.length - 1]?.fitness != null && (
+              <Col span={8}><Statistic title="当前期望目标分" value={(optimizationData[optimizationData.length - 1].fitness as number).toFixed(4)} valueStyle={{ fontSize: '18px', color: isDarkMode ? '#52c41a' : '#007A33' }} /></Col>
+            )}
+            {optimizationData[optimizationData.length - 1]?.fitness_std != null && (
+              <Col span={8}><Statistic title="std (N_inner)" value={(optimizationData[optimizationData.length - 1].fitness_std as number).toFixed(4)} valueStyle={{ fontSize: '18px', color: '#faad14' }} /></Col>
+            )}
+          </Row>
+          {optResult?.verification && (
+            <div style={{ marginTop: 12, padding: '8px 12px', background: isDarkMode ? '#1a2a1a' : '#f6ffed', borderRadius: 4, fontSize: 12, color: isDarkMode ? '#95de64' : '#389e0d' }}>
+              最终验证（N={optResult.verification.verify_runs} 条）：
+              均值={optResult.verification.mean.toFixed(4)}，
+              std={optResult.verification.std.toFixed(4)}，
+              范围=[{optResult.verification.min.toFixed(4)}, {optResult.verification.max.toFixed(4)}]
+            </div>
+          )}
         </Card>
       )}
     </Space>

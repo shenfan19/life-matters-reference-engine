@@ -206,6 +206,7 @@ class SimulationStartRequest(BaseModel):
     step_size: Optional[float] = None
     input_params: Optional[Dict[str, float]] = None
     regimens: Optional[List[RegimenData]] = None
+    sim_runs: int = 1   # Monte Carlo 运行条数（1=单条，>1=MC多条）
 
 
 class SimulationStepRequest(BaseModel):
@@ -224,6 +225,9 @@ class OptimizationRequest(BaseModel):
     mode: str = "full_params"
     method: str = "grid"
     time_hours: float = 720.0
+    opt_inner_runs: int = 5        # 每次迭代的 MC 评估次数（方案 B）
+    opt_aggregation: str = "mean"  # 聚合方式: mean / min / median
+    opt_verify_runs: int = 20      # 最终验证运行条数
 
 
 # ========== 基础端点 ==========
@@ -1115,6 +1119,7 @@ async def start_simulation(request: SimulationStartRequest):
             step_size=request.step_size,
             input_params=request.input_params,
             regimens=regimens_raw,
+            sim_runs=max(1, request.sim_runs),
         )
         
         if result['success']:
@@ -1220,7 +1225,10 @@ async def run_optimization(request: OptimizationRequest):
         result = optimizer_engine.optimize(
             mode=request.mode,
             method=request.method,
-            time_hours=request.time_hours
+            time_hours=request.time_hours,
+            opt_inner_runs=max(1, request.opt_inner_runs),
+            opt_aggregation=request.opt_aggregation,
+            opt_verify_runs=max(1, request.opt_verify_runs),
         )
         
         if result['success']:

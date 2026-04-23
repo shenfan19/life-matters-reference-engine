@@ -82,6 +82,7 @@ export interface SimulationState {
     currentStep: number;
     totalSteps: number;
     simulationData: SimulationDataPoint[];
+    dataPerRun: SimulationDataPoint[][];   // per-run trajectories for MC display
     inputParams: Record<string, number>;
     stateVariables: Record<string, number>;
     sessionId: string;
@@ -91,6 +92,8 @@ export interface SimulationState {
     stepUnit: StepUnit;
     batchSize: number;
     updateInterval: number;
+    simRuns: number;        // Monte Carlo 运行条数 (1~50)
+    sessionSeed: number;    // session seed for reproducibility display
 }
 
 export interface OptimizerState {

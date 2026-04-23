@@ -84,9 +84,10 @@ variables:
     description: "心理健康状态（0=精神崩溃送入精神病院；每次驳斥都在消耗）"
 
 simulation:
-  step_size: 1
-  time_unit: month
-  total_time: 216
+  start_date: "1847-01-01"
+  end_date: "1865-01-01"
+  step: 1
+  step_unit: month
   output_variables:
     - mental_health
     - acceptance
@@ -95,7 +96,6 @@ simulation:
     - patient_mortality
     - research_effort
     - advocacy_intensity
-
 formulas:
 
   # 1. 研究积累证据

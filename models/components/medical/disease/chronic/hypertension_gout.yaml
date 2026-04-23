@@ -173,12 +173,12 @@ formulas:
       goal_score: "max(0.0, min(50.0, (bp_baseline - systolic_bp) / (bp_baseline - 120.0) * 50.0)) + max(0.0, min(50.0, (ua_baseline - uric_acid) / (ua_baseline - 250.0) * 50.0))"
     priority: 1
 
-simulator:
-  step_size: 1      # 1天/步
-  time_unit: day    # 90 步 = 3 个月
-  total_time: 90    # 3个月仿真（临床复查周期）
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-04-01"
+  step: 1
+  step_unit: day
   output_variables: [systolic_bp, uric_acid, body_weight, goal_score, diuretic_dose, purine_intake, weight_loss_rate]
-
 optimizer:
   method: grid
   duration: 120.0

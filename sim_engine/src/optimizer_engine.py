@@ -78,110 +78,142 @@ class OptimizerEngine:
         # 记录日志。
         logger.info("已注入 SimulatorEngine 实例")
 
-    def optimize(self, mode: str = 'full_params', method: str = 'grid', 
-                time_hours: float = 720.0) -> Dict[str, Any]:
+    def optimize(self, mode: str = 'full_params', method: str = 'grid',
+                time_hours: float = 720.0,
+                opt_inner_runs: int = 5,
+                opt_aggregation: str = 'mean',
+                opt_verify_runs: int = 20) -> Dict[str, Any]:
         """
-        执行优化任务。
+        执行优化任务（外环 Regimen/参数搜索，方案 B：每次迭代用 N_inner 条取期望）。
         :param mode: 优化模式 (real_time/full_inputs/full_params)。
         :param method: 优化方法 (grid/pymoo/rl)。
         :param time_hours: 优化时长（小时）。
+        :param opt_inner_runs: 每次参数评估运行的 MC 仿真条数（方案 B）。
+        :param opt_aggregation: 聚合方式：mean / min / median。
+        :param opt_verify_runs: 优化完成后最终验证运行条数。
         :return: 优化结果字典。
         """
-        # 检查是否已加载模型。
         if not self.current_model:
             return {"success": False, "error": "未加载模型"}
-        
-        # 检查是否已注入仿真器。
+
         if not self.simulator:
             return {"success": False, "error": "未注入 SimulatorEngine"}
-        
-        # 从模型配置中读取优化目标（必需）。
+
         if 'targets' not in self.config or not self.config['targets']:
             return {"success": False, "error": "模型配置中未定义优化目标 (optimizer.targets)"}
+
         target = self.config['targets'][0]
-        
-        # 从模型配置中读取优化方法（如果未指定）。
+
         if 'method' in self.config and method == 'grid':
             method = self.config['method']
-        
-        # 重置优化历史。
+
         self.iteration = 0
         self.history = []
-        
-        # 根据优化模式调用对应的优化方法。
+        self.opt_inner_runs = max(1, opt_inner_runs)
+        self.opt_aggregation = opt_aggregation
+        self.opt_verify_runs = max(1, opt_verify_runs)
+
         if mode == 'real_time':
-            # 内环实时 input 优化。
             return self._optimize_real_time(target, method, time_hours)
         elif mode == 'full_inputs':
-            # 外环全程 input 序列优化。
             return self._optimize_full_inputs(target, method, time_hours)
         elif mode == 'full_params':
-            # 外环 parameters 定值优化。
             return self._optimize_full_params(target, method, time_hours)
         else:
-            # 不支持的优化模式。
             return {"success": False, "error": f"不支持的优化模式: {mode}"}
+
+    def _multi_eval_objective(self, params, time_hours: float) -> float:
+        """
+        方案 B：运行 opt_inner_runs 条仿真，聚合目标值。
+        每条使用独立随机种子，使目标函数对随机参数分布取期望。
+        同时记录进度到 history。
+        """
+        fitnesses = []
+        for _ in range(self.opt_inner_runs):
+            seed = int(np.random.randint(0, 2**31))
+            f = self.simulator.fitness_func_with_seed(
+                parameters=params.tolist() if isinstance(params, np.ndarray) else params,
+                seed=seed,
+                time_hours=time_hours,
+            )
+            fitnesses.append(f)
+
+        arr = np.array(fitnesses)
+        if self.opt_aggregation == 'min':
+            agg = float(np.min(arr))
+        elif self.opt_aggregation == 'median':
+            agg = float(np.median(arr))
+        else:
+            agg = float(np.mean(arr))
+
+        self.iteration += 1
+        self.history.append({
+            'iteration': self.iteration,
+            'params': params.tolist() if isinstance(params, np.ndarray) else list(params),
+            'fitness': agg,
+            'fitness_std': float(np.std(arr)) if self.opt_inner_runs > 1 else 0.0,
+        })
+        return agg
+
+    def _run_verification(self, best_params: list, time_hours: float) -> Dict[str, Any]:
+        """
+        优化完成后，用 opt_verify_runs 条仿真验证最优解，返回分布统计。
+        """
+        verify_fitnesses = []
+        for _ in range(self.opt_verify_runs):
+            seed = int(np.random.randint(0, 2**31))
+            f = self.simulator.fitness_func_with_seed(
+                parameters=best_params,
+                seed=seed,
+                time_hours=time_hours,
+            )
+            verify_fitnesses.append(f)
+        arr = np.array(verify_fitnesses)
+        return {
+            'verify_runs': self.opt_verify_runs,
+            'mean': float(np.mean(arr)),
+            'std': float(np.std(arr)),
+            'min': float(np.min(arr)),
+            'max': float(np.max(arr)),
+        }
 
     def _optimize_full_params(self, target: str, method: str, time_hours: float) -> Dict[str, Any]:
         """
-        外环 parameters 定值优化。
-        :param target: 优化目标。
-        :param method: 优化方法。
-        :param time_hours: 仿真时长（小时）。
-        :return: 优化结果字典。
+        外环 parameters 定值优化（方案 B：每次评估运行 opt_inner_runs 条取期望）。
         """
-        # 获取模型中可控制的变量（参数类型）。
         controllable_vars = self.current_model.get_controllable_variables()
-        # 如果没有可控制变量，返回错误。
         if not controllable_vars:
             return {"success": False, "error": "没有可优化的参数"}
-        
-        # 从模型配置中读取参数边界。
+
         if 'bounds' in self.config:
             bounds = self.config['bounds']
         else:
-            # 如果未配置边界，使用变量的默认边界。
             bounds = [
-                (var.bounds if var.bounds else (0.0, 1.0)) 
+                (var.bounds if var.bounds else (0.0, 1.0))
                 for var in controllable_vars.values()
             ]
-        
-        # 定义目标函数（黑盒评估）。
+
+        # 方案 B 目标函数：N_inner 次 MC 评估后聚合
         def objective(params):
-            """
-            目标函数，调用 SimulatorEngine.fitness_func 评估参数组合。
-            :param params: 参数值列表。
-            :return: 适应度值。
-            """
-            # 调用仿真器的 fitness_func 评估参数。
-            fitness = self.simulator.fitness_func(
-                parameters=params.tolist() if isinstance(params, np.ndarray) else params,
-                inputs_sequence=None,
-                time_hours=time_hours
-            )
-            # 记录优化迭代。
-            self.iteration += 1
-            self.history.append({
-                'iteration': self.iteration, 
-                'params': params.tolist() if isinstance(params, np.ndarray) else params, 
-                'fitness': fitness
-            })
-            # 返回适应度值。
-            return fitness
-        
-        # 根据优化方法执行优化。
+            return self._multi_eval_objective(params, time_hours)
+
         if method == 'grid':
-            # 使用网格搜索优化。
-            return self._grid_search(objective, bounds)
+            result = self._grid_search(objective, bounds)
         elif method == 'pymoo':
-            # 使用 pymoo 多目标优化。
-            return self._pymoo_optimize(objective, bounds, time_hours)
+            result = self._pymoo_optimize(objective, bounds, time_hours)
         elif method == 'rl':
-            # 使用强化学习优化（暂未实现）。
             return {"success": False, "error": "RL 优化方法暂未实现"}
         else:
-            # 不支持的优化方法。
             return {"success": False, "error": f"不支持的优化方法: {method}"}
+
+        # 最终验证（T3：N_verify 条触发 MC 验证展示）
+        if result.get('success') and 'params' in result:
+            verification = self._run_verification(result['params'], time_hours)
+            result['verification'] = verification
+            result['history'] = self.history
+            logger.info(f"优化验证完成: mean={verification['mean']:.4f}, std={verification['std']:.4f}")
+
+        return result
 
     def _optimize_full_inputs(self, target: str, method: str, time_hours: float) -> Dict[str, Any]:
         """
@@ -211,38 +243,20 @@ class OptimizerEngine:
             for var in input_vars.values():
                 bounds.append(var.bounds if var.bounds else (0.0, 1.0))
         
-        # 定义目标函数（黑盒评估）。
         def objective(flat_sequence):
-            """
-            目标函数，将扁平化的序列转换为输入序列并评估。
-            :param flat_sequence: 扁平化的输入序列。
-            :return: 适应度值。
-            """
-            # 将扁平化序列转换为输入序列字典列表。
             inputs_sequence = []
             for step_idx in range(sequence_length):
                 step_inputs = {}
                 for var_idx, var_name in enumerate(input_vars.keys()):
-                    # 计算当前变量在扁平化序列中的索引。
                     flat_idx = step_idx * len(input_vars) + var_idx
                     step_inputs[var_name] = flat_sequence[flat_idx]
                 inputs_sequence.append(step_inputs)
-            
-            # 调用仿真器的 fitness_func 评估输入序列。
-            fitness = self.simulator.fitness_func(
-                parameters=None,
-                inputs_sequence=inputs_sequence,
-                time_hours=time_hours
+
+            # 方案 B：N_inner 次评估聚合（full_inputs 模式下 seed 影响 parameter 采样）
+            return self._multi_eval_objective(
+                np.array([v for step in inputs_sequence for v in step.values()]),
+                time_hours
             )
-            # 记录优化迭代。
-            self.iteration += 1
-            self.history.append({
-                'iteration': self.iteration, 
-                'sequence': inputs_sequence[:5],  # 仅记录前 5 步
-                'fitness': fitness
-            })
-            # 返回适应度值。
-            return fitness
         
         # 根据优化方法执行优化（目前仅支持网格搜索）。
         if method == 'grid':

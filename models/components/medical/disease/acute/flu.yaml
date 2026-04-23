@@ -47,8 +47,9 @@ formulas:
       vitality: "vitality + (rest_hours * 5 + water_intake * 0.01 - viral_load * 0.1) * step_size"
     priority: 3
 
-simulator:
-  step_size: 1
-  time_unit: day    # 24 步 = 24 天（急性感冒病程）
-  total_time: 24
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-25"
+  step: 1
+  step_unit: day
   output_variables: [viral_load, body_temperature, vitality]

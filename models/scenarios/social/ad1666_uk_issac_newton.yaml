@@ -61,6 +61,21 @@ variables:
     bounds: [0, 250]
     description: "苹果每次摄入量（庄园自产免费，维生素C来源，0.53kcal/g）"
 
+  # ── parameter：模型系数（MC采样用）────────────────────────────────────────────
+  cognitive_efficiency:
+    type: parameter
+    value: "normal(1.0, 0.15)"
+    unit: "系数"
+    bounds: [0.5, 1.5]
+    description: "认知效率个体差异（MC仿真：均值1.0，标准差0.15，代表不同平行世界的牛顿）"
+
+  plague_susceptibility:
+    type: parameter
+    value: "normal(1.0, 0.25)"
+    unit: "系数"
+    bounds: [0.3, 2.0]
+    description: "鼠疫易感性个体差异（MC仿真：均值1.0，标准差0.25，高值更易受1665年大瘟疫影响）"
+
   # 行为输入（强度/系数，schedules 驱动，非速率）
   study_intensity:
     type: input
@@ -252,9 +267,10 @@ schedules:
 
 # ── 仿真配置 ──────────────────────────────────────────────────────────────────
 simulation:
-  step_size: 1          # 1分钟/步
-  time_unit: minute     # 声明单位；引擎内部时间仍为秒
-  total_time: 1440      # 1440分钟 = 24小时
+  start_date: "1666-09-01"
+  end_date: "1666-09-02"
+  step: 1
+  step_unit: minute
   output_variables:
     - health
     - fatigue
@@ -268,7 +284,6 @@ simulation:
     - study_intensity
     - candle_study
     - plague_risk
-
 # ── 核心动力学公式（完全内联）────────────────────────────────────────────────
 # 重要：公式计算结果为变量的新值（非增量），step_size=1（分钟）
 formulas:
@@ -363,7 +378,7 @@ formulas:
     condition: study_intensity > 0
     priority: 10
     dynamics:
-      insight: "min(100, insight + study_intensity * 0.069 * max(0.2, 1 - fatigue / 120) * max(0.4, nutrition / 80))"
+      insight: "min(100, insight + study_intensity * 0.069 * cognitive_efficiency * max(0.2, 1 - fatigue / 120) * max(0.4, nutrition / 80))"
       fatigue: "min(100, fatigue + study_intensity * 0.036)"
 
   # 9. 睡眠恢复（夜间：0:00-6:00 和 22:00-24:00）
@@ -418,7 +433,7 @@ formulas:
     condition: true
     priority: 4
     dynamics:
-      health:      "max(0, health - plague_risk * 0.0001)"
+      health:      "max(0, health - plague_risk * plague_susceptibility * 0.0001)"
       plague_risk: "max(5, plague_risk - 0.001)"
 
   # 14. 营养不良削弱健康（nutrition < 30 时激活）

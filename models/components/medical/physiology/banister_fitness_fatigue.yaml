@@ -123,12 +123,12 @@ formulas:
       performance: "max(0, baseline_performance + k1 * fitness_component - k2 * fatigue_component)"
     priority: 1
 
-simulator:
-  step_size: 1      # 1天/步
-  time_unit: day    # 180 步 = 6 个月
-  total_time: 180   # 6个月仿真
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-07-01"
+  step: 1
+  step_unit: day
   output_variables: [fitness_component, fatigue_component, performance, training_load]
-
 optimizer:
   method: grid
   duration: 120.0
