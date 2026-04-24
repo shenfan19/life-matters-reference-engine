@@ -64,7 +64,7 @@ variables:
   # ── parameter：模型系数（MC采样用）────────────────────────────────────────────
   cognitive_efficiency:
     type: parameter
-    value: "normal(1.0, 0.15)"
+    value: "normal(1.0, 0.5)"
     unit: "系数"
     bounds: [0.5, 1.5]
     description: "认知效率个体差异（MC仿真：均值1.0，标准差0.15，代表不同平行世界的牛顿）"
