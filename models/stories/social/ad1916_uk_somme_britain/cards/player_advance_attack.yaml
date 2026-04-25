@@ -17,6 +17,9 @@ effects:
 - target: pay_savings
   delta: 5
   condition: null
+- target: battle_progress
+  delta: 15
+  condition: null
 channel: tactical
 tags:
 - player

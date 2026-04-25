@@ -26,23 +26,39 @@ initial_state:
   morale: 65
   rations: 75
   pay_savings: 15
+  battle_progress: 0
+  danger_accumulation: 0
 variable_display:
   health:
     label: 生存指数
     color: '#52c41a'
     max: 100
+    origin: sim
   morale:
     label: 士气
     color: '#1677ff'
     max: 100
+    origin: sim
   rations:
     label: 口粮储备
     color: '#faad14'
     max: 100
+    origin: sim
   pay_savings:
     label: 军饷积蓄
     color: '#722ed1'
     max: 100
+    origin: sim
+  battle_progress:
+    label: 战局推进
+    color: '#ff4d4f'
+    max: 100
+    origin: native
+  danger_accumulation:
+    label: 危险累积
+    color: '#fa8c16'
+    max: 100
+    origin: native
 health_mapping:
   source_variable: health
   scale:
@@ -65,19 +81,33 @@ lose_condition:
   type: custom
   description: 你在索姆河的泥泞中倒下。数以万计的战友与你同一命运——历史不会记住每一个名字，但这片土地记得。
 endings:
+- grade: S
+  condition: health > 50 and battle_progress >= 60
+  title: 幸存的突击兵
+  description: 你不仅活了下来，更是亲眼见证了战线向前推进的那一刻。十四周的地狱，换来了一寸又一寸的土地，而你还在。
 - grade: A
-  condition: health > 30 and pay_savings >= 50
-  title: 目标达成
-  description: 你活过了索姆河，带着积蓄和伤疤回到家乡。大多数人没有这样的运气。
+  condition: health > 30 and battle_progress >= 40
+  title: 使命完成
+  description: 你活过了索姆河，带着积蓄和伤疤回到家乡。战线推进了，大多数战友没有这样的运气。
+- grade: B
+  condition: health > 0 and battle_progress < 40
+  title: 苟活
+  description: 你活下来了，但战线几乎没有推进。每一条活下来的命都有代价——那些牺牲，换来了什么？
+- grade: C
+  condition: health <= 0 and battle_progress >= 60
+  title: 以命换地
+  description: 你在索姆河倒下了，但防线在你们的血肉之上向前推进。历史不记名字，但这片土地记得每一寸。
 - grade: D
-  condition: health <= 0
-  title: 失败
-  description: 你在索姆河的泥泞中倒下。数以万计的战友与你同一命运——历史不会记住每一个名字，但这片土地记得。
+  condition: health <= 0 and battle_progress < 40
+  title: 无谓的牺牲
+  description: 你在索姆河的泥泞中倒下，战线却几乎纹丝未动。那一天的意义，史学家争论了一个世纪。
 - grade: D
   condition: morale <= 0
-  title: 失败
+  title: 军事法庭
   description: 精神彻底崩溃。军事法庭以懦夫罪将你处决——这在1916年的英国陆军并不罕见。
 env_deck:
+- path: cards/env_danger_increases.yaml
+  weight: 200
 - path: cards/env_artillery_barrage.yaml
   weight: 200
 - path: cards/env_gas_attack.yaml
@@ -94,6 +124,16 @@ env_deck:
   weight: 80
 - path: cards/env_autumn_cold.yaml
   weight: 120
+- path: cards/env_battle_stalls.yaml
+  weight: 100
+- path: cards/env_sector_advance.yaml
+  weight: 120
+- path: cards/env_tactical_withdrawal.yaml
+  weight: 100
+- path: cards/env_battle_breakthrough.yaml
+  weight: 80
+- path: cards/env_sector_collapse.yaml
+  weight: 80
 player_deck:
 - path: cards/player_hold_position.yaml
   copies: 3
@@ -111,6 +151,8 @@ player_deck:
   copies: 3
 - path: cards/player_rum_ration_trade.yaml
   copies: 3
+- path: cards/player_sacrifice_charge.yaml
+  copies: 2
 generic_cards:
   inject:
   - rest

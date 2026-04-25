@@ -1,0 +1,26 @@
+id: env_spartan_pressure
+type: env
+category: social
+display:
+  name: 斯巴达军再度入侵
+  description: 斯巴达人再次蹂躏了阿提卡。更多难民涌入城中。驻军已捉襟见肘。
+  flavor: "斯巴达在阿基达米亚战争（前431-421年）期间每年入侵阿提卡"
+  icon: "🛡️"
+effects:
+- target: city_resistance
+  delta: -15
+  condition: null
+- target: battle_progress
+  delta: -5
+  condition: null
+always_active: false
+probability: 0.4
+channel: medical
+tags:
+- env
+- social
+weight: 80
+source:
+  variable: military_pressure
+  formula: city_capacity -= military_pressure * 0.15
+  pattern_detected: P5

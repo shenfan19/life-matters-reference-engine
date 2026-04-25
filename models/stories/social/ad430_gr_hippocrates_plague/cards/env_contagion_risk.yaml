@@ -1,0 +1,23 @@
+id: env_contagion_risk
+type: env
+category: state
+display:
+  name: 传染风险加深
+  description: 你在病人之间穿行。你的双手携带着眼睛看不见的东西。每一天，风险都在复利积累。
+  flavor: "修昔底德记录：大量治疗瘟疫病人的医者本人相继病倒（修昔底德，卷二·51）"
+  icon: "⚠️"
+effects:
+- target: danger_accumulation
+  delta: 8
+  condition: null
+- target: health
+  delta: -8
+  condition: "danger_accumulation > 40"
+always_active: true
+channel: medical
+tags:
+- env
+weight: 200
+source:
+  formula: 接触传染的累积风险（P2 累积 + P4 阈值触发）
+  pattern_detected: P2

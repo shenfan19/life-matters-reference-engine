@@ -1,0 +1,27 @@
+id: env_tactical_withdrawal
+type: env
+category: social
+display:
+  name: 战术撤退
+  description: 命令传来：后撤至第二道防线。你活下来了——但用鲜血换来的那片土地，必须放弃。
+  flavor: "索姆河期间英军多次短暂后退以重整阵线，每次撤退都伴随士气的深度打击（Sheffield, 2001）"
+  icon: "↩️"
+effects:
+- target: battle_progress
+  delta: -10
+  condition: null
+- target: danger_accumulation
+  delta: -12
+  condition: null
+- target: morale
+  delta: -18
+  condition: null
+always_active: false
+probability: 0.25
+channel: tactical
+tags:
+- env
+weight: 100
+source:
+  formula: 撤退降低战局进度同时减少个人危险——安全的代价是失地
+  pattern_detected: P1

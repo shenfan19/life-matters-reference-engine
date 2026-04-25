@@ -1,0 +1,25 @@
+id: player_find_transport
+type: player
+category: goal
+display:
+  name: 寻找车马
+  description: 有人的骡车被遗弃在街上，主人已经跑了。你驾车不太熟，但比用腿快。
+  flavor: "庞贝遗址中发现多辆弃置的四轮马车和两轮战车，部分装有未带走的财物——车主显然临时起意徒步逃走了"
+  icon: "🐴"
+cost: 2
+effects:
+- target: escape_progress
+  delta: 28
+  condition: null
+- target: health
+  delta: -5
+  condition: null
+channel: tactical
+tags:
+- player
+- goal
+weight: 100
+source:
+  variable: movement_speed
+  formula: escape_distance += movement_speed * 5.0 * step_size
+  pattern_detected: P1

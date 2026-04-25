@@ -1,0 +1,25 @@
+id: env_bureaucratic_block
+type: env
+category: social
+display:
+  name: 官僚阻力
+  description: 陆军医疗部拒绝了你的物资申请。表格填错了。权限不明确。文件还在处理中，病人还在死去。
+  flavor: "南丁格尔的初期物资申请屡遭拒绝，最终自掏腰包用私人捐款购买补给"
+  icon: "🗂️"
+effects:
+- target: ward_mortality
+  delta: 10
+  condition: null
+- target: battle_progress
+  delta: -8
+  condition: null
+always_active: false
+probability: 0.55
+channel: medical
+tags:
+- env
+weight: 120
+source:
+  variable: bureaucratic_resistance
+  formula: sanitation_progress -= bureaucratic_resistance * 0.10
+  pattern_detected: P5

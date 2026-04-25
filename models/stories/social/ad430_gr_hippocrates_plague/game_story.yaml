@@ -1,0 +1,158 @@
+meta:
+  name: "Hippocrates — Athens, 430 BC"
+  description: |
+    Athens, summer 430 BC. Sparta's army has returned to ravage Attica for the second year.
+    The city walls are packed with refugees from the countryside. Then something worse arrives:
+    a plague of unknown origin, unlike anything in living memory.
+
+    You are a physician trained in the new tradition of observation and reason. The priests
+    say it is divine punishment. The herbalists have their potions. You have only your eyes,
+    your records, and the conviction that what can be observed can be understood.
+
+    Every patient you treat risks infecting you. Every day you survive, you learn more.
+    Every case you document may save the next generation — if Athens survives this one.
+  difficulty: hard
+  period_start: "430 BC"
+  period_end: "426 BC"
+  country: Greece (Athens)
+  science_note: |
+    The Plague of Athens (430–426 BC) killed an estimated 25% of the city's population,
+    including the general Pericles. Thucydides' clinical account (History of the Peloponnesian
+    War, II.47–54) remains one of the most precise ancient disease descriptions. The Hippocratic
+    Corpus established observation-based medicine; treatments emphasizing rest, clean water and
+    diet showed markedly better outcomes than contemporary ritual alternatives.
+    Sources: Thucydides, History of the Peloponnesian War, Book II §47–54;
+    Papagrigorakis MJ et al. (2006) DNA examination of ancient dental pulp incriminates
+    typhoid fever as a probable cause of the Plague of Athens. Int J Infect Dis 10(3):206–14;
+    Nutton V (2004) Ancient Medicine. Routledge.
+  card_back_fate: assets/card_back_fate.jpg
+  card_back_player: assets/card_back_player.jpg
+  version: "0.1"
+  created_on: 2026-04-25
+  tags: [History, Medicine, Ancient, Epidemic, War]
+  era: "Ancient"
+  themes:
+    - Medicine
+    - War
+    - Science
+  medical:
+    - Epidemic
+    - Public Health
+
+initial_state:
+  health: 100
+  patient_survival: 35     # 归一化初始存活率（历史真实约25-30%），目标提升至70+
+  city_resistance: 70      # 雅典对抗斯巴达的能力，受瘟疫影响逐步下降
+  danger_accumulation: 0
+  battle_progress: 0       # 积累的医学知识与救治成果，代表对瘟疫的掌控
+
+variable_display:
+  health:
+    label: 医者健康
+    color: '#52c41a'
+    max: 100
+    origin: sim
+  patient_survival:
+    label: 患者存活率
+    color: '#1677ff'
+    max: 100
+    origin: sim
+  city_resistance:
+    label: 城邦抗力
+    color: '#faad14'
+    max: 100
+    origin: sim
+  danger_accumulation:
+    label: 传染风险
+    color: '#fa8c16'
+    max: 100
+    origin: native
+  battle_progress:
+    label: 医学积累
+    color: '#722ed1'
+    max: 100
+    origin: native
+
+health_mapping:
+  source_variable: health
+  scale: [0, 100, 0, 100]
+  display: Physician's Health
+
+turns:
+  total: 12
+  time_per_turn: 2 months
+  env_cards_per_turn: 2
+  player_hand_size: 4
+  action_points: 2
+  draw_per_turn: 2
+
+win_condition:
+  type: custom
+  description: 瘟疫退去了。你的记录，被人抄写、传播。一代又一代的医者将以你今日的观察为基础。
+
+lose_condition:
+  type: custom
+  description: 雅典已失去太多。你也在其中。
+
+endings:
+- grade: S
+  condition: health > 50 and patient_survival > 70 and battle_progress >= 70
+  title: 医学之父
+  description: "瘟疫消退了。你留下的记录描述了前人从未命名的症状。一代医者将以你在此地的观察为训练基础。雅典存活了。"
+- grade: A
+  condition: health > 0 and patient_survival > 55 and battle_progress >= 50
+  title: 理性的医者
+  description: "你的方式救活的病人，比祭司的仪式多出数倍。证据太明显，已无法忽视。希波克拉底传统由此开始。"
+- grade: B
+  condition: health > 0 and city_resistance > 40
+  title: 雅典endures
+  description: "瘟疫夺走了它该夺走的。你治愈了你能治愈的，学到了你能学到的。雅典削弱了，但没有倒下。"
+- grade: C
+  condition: health <= 0 and battle_progress >= 60
+  title: 以身殉道
+  description: "传染病找上了你。但你的案例记录已被复制传播。你的观察不会随你而消失。"
+- grade: D
+  condition: health <= 0 and battle_progress < 30
+  title: 被瘟疫吞噬
+  description: "雅典失去了太多人。其中有一位籍籍无名的医者，他的笔记在房屋被焚烧以防传染时化为灰烬。"
+
+env_deck:
+- path: cards/env_contagion_risk.yaml
+  weight: 200
+- path: cards/env_plague_spreads.yaml
+  weight: 180
+- path: cards/env_spartan_pressure.yaml
+  weight: 80
+- path: cards/env_superstition_resistance.yaml
+  weight: 100
+- path: cards/env_patient_dies.yaml
+  weight: 120
+- path: cards/env_unexpected_recovery.yaml
+  weight: 60
+- path: cards/env_athens_offensive.yaml
+  weight: 100
+- path: cards/env_spartan_withdrawal.yaml
+  weight: 80
+- path: cards/env_military_plague_death.yaml
+  weight: 100
+- path: cards/env_immune_survivor.yaml
+  weight: 60
+
+player_deck:
+- path: cards/player_observe_patient.yaml
+  copies: 3
+- path: cards/player_prescribe_rest.yaml
+  copies: 3
+- path: cards/player_clean_water.yaml
+  copies: 3
+- path: cards/player_document_case.yaml
+  copies: 3
+- path: cards/player_treat_soldiers.yaml
+  copies: 2
+- path: cards/player_rest.yaml
+  copies: 2
+
+generic_cards:
+  inject:
+  - interrupt
+  - rest

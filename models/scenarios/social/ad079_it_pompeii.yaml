@@ -1,0 +1,271 @@
+metadata:
+  name: ad079_it_pompeii
+  updated: 2026-04-25
+  author: TODO:AUTHOR
+  description: >
+    庞贝逃离仿真（公元79年8月24日-25日，维苏威火山喷发）。
+    sim模式：模拟普通市民在火山喷发后的逃离轨迹——灰层累积、岩浆涌风险随时间演变，
+    体能在逃离过程中持续消耗。
+    opt模式：在不同体能与时间约束下，找到最优逃离策略：
+    何时加速？何时就地掩蔽？移速与耐力如何权衡？
+  tags: [historical, disaster, volcanic, survival, ancient-rome, 1st-century]
+  period: "79-08-24 13:00 ~ 79-08-25 08:00"
+  location: "Pompeii, Roman Empire (modern-day Campania, Italy)"
+  science_note: >
+    基于维苏威火山79年喷发的火山学重建研究。
+    灰层累积速率：庞贝城区约15-20cm/小时（Sigurdsson et al. 1985）；
+    屋顶坍塌阈值：典型罗马建筑约30-40cm（Luongo et al. 2003b）；
+    岩浆涌（pyroclastic density current）首次抵达庞贝：约公元79年8月25日6:30am（喷发后约18小时）；
+    致命温度阈值：300°C以上，接触即死（Mastrolorenzo et al. 2010）；
+    步行逃离速度：成人4-6 km/h，灰雨中降至约3 km/h；
+    庞贝至Stabiae（Pliny小普林尼幸存地）约8km，至Nuceria约10km。
+    Sources:
+      Sigurdsson H et al. (1985) The eruption of Vesuvius in AD 79. National Geographic Research 1(3):332-387.
+      Luongo G et al. (2003a) Impact of the AD 79 explosive eruption on Pompeii. J Volcanol Geotherm Res 126(3):169-183.
+      Luongo G et al. (2003b) Impact of the AD 79 explosive eruption on Pompeii, II. J Volcanol Geotherm Res 126(3):185-203.
+      Mastrolorenzo G et al. (2010) Lethal thermal impact at periphery of pyroclastic surges. PLoS ONE 5(6):e11127.
+      Zanella E et al. (2007) Deposition of the AD 79 Pompeii tephra. J Volcanol Geotherm Res 160(3-4):316-336.
+
+variables:
+
+  # ── 行为输入 ─────────────────────────────────────────────────────────────────
+  movement_speed:
+    type: input
+    value: 1.5
+    unit: "级"
+    bounds: [0.0, 3.0]
+    description: >
+      移动速度：0=原地掩蔽, 1=谨慎步行(~3km/h), 2=快步(~5km/h), 3=奔跑(~7km/h)。
+      速度越高，逃离越快，但体能消耗越大，且在灰雨中呼吸更急促（吸入更多灰）。
+
+  shelter_use:
+    type: input
+    value: 0.0
+    unit: "系数"
+    bounds: [0.0, 1.0]
+    description: >
+      就地掩蔽程度（0=全程移动, 1=原地不动躲避灰雨）。
+      掩蔽减少体能消耗和灰吸入，但停止逃离且面临屋顶坍塌风险。
+
+  # ── 状态变量 ─────────────────────────────────────────────────────────────────
+  health:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0, 100]
+    io_role: output
+    description: >
+      体能与生理状态。受灰吸入、高温、体力消耗影响。归零即死亡。
+      历史参考：庞贝约2000具遗骸中，大多数死于岩浆涌的热冲击，
+      部分死于灰层压垮的建筑（Luongo et al. 2003a）。
+
+  escape_distance:
+    type: state
+    value: 0.0
+    unit: "km"
+    bounds: [0, 30]
+    io_role: output
+    description: >
+      距庞贝城中心的逃离距离（km）。
+      安全阈值：>8km（可达Stabiae）；>12km（接近Nuceria，更安全）。
+      Pliny小普林尼由Misenum方向逃离（约30km），历史上得以幸存。
+
+  ash_depth:
+    type: state
+    value: 0.0
+    unit: "危险指数"
+    bounds: [0, 100]
+    io_role: output
+    description: >
+      灰层累积危险指数（归一化，100=极高危）。
+      映射自真实灰层厚度（约0-100cm），35以上开始威胁罗马建筑结构，
+      60以上使户外移动极度困难。
+
+  pyroclastic_intensity:
+    type: state
+    value: 0.0
+    unit: "危险指数"
+    bounds: [0, 100]
+    io_role: output
+    description: >
+      岩浆涌强度（归一化）。公元79年8月25日凌晨开始快速上升，
+      约6:30am（喷发后~17小时）首次岩浆涌抵达庞贝城区。
+      >80时城区内无人幸存（Mastrolorenzo et al. 2010）。
+
+  hours_elapsed:
+    type: state
+    value: 0.0
+    unit: "小时"
+    bounds: [0, 20]
+    description: >
+      自喷发开始（13:00）起经过的小时数，用于分阶段激活岩浆涌动力学。
+      不作为游戏输出变量，仅驱动公式时序。
+
+formulas:
+
+  # 1. 时间推进（每步+1小时）
+  time_advance:
+    description: "自动计时，驱动岩浆涌分阶段公式"
+    condition: "hours_elapsed < 20"
+    priority: 10
+    dynamics:
+      hours_elapsed: "min(20, hours_elapsed + step_size)"
+
+  # 2. 灰层累积（全程，速率分两阶段）
+  # 前12小时（下午+夜晚前段）：灰雨较密集，约+8/小时
+  # 12小时后（凌晨至晨晓）：灰层趋于稳定，+3/小时
+  # 历史：庞贝城区最终灰层约280cm（Sigurdsson 1985），前12小时累积约70%
+  ash_accumulation_phase1:
+    description: "喷发前12小时：浮岩和灰雨密集阶段（下午至午夜）"
+    condition: "hours_elapsed <= 12"
+    priority: 9
+    dynamics:
+      ash_depth: "min(100, ash_depth + 8 * step_size)"
+
+  ash_accumulation_phase2:
+    description: "12小时后：灰雨减弱，岩浆涌接管威胁（凌晨至清晨）"
+    condition: "hours_elapsed > 12"
+    priority: 9
+    dynamics:
+      ash_depth: "min(100, ash_depth + 3 * step_size)"
+
+  # 3. 岩浆涌强度：凌晨后快速累积
+  # 历史：第一次岩浆涌约凌晨1am抵达Herculaneum（小镇），6:30am抵达庞贝
+  # 用分段线性模型近似
+  pyroclastic_buildup:
+    description: "凌晨后（hour>12）岩浆涌强度开始累积"
+    condition: "hours_elapsed > 12"
+    priority: 8
+    dynamics:
+      pyroclastic_intensity: "min(100, pyroclastic_intensity + 6 * step_size)"
+
+  pyroclastic_peak:
+    description: "清晨（hour>16）岩浆涌进入峰值期，速率翻倍"
+    condition: "hours_elapsed > 16"
+    priority: 8
+    dynamics:
+      pyroclastic_intensity: "min(100, pyroclastic_intensity + 8 * step_size)"
+
+  # 4. 逃离动力学
+  # 移速1=3km/h，2=5km/h，3=7km/h（在灰层中打折：ash_depth系数）
+  # 掩蔽时停止移动
+  escape_dynamics:
+    description: "逃离距离随移速推进，灰层加深时行进减缓"
+    condition: "movement_speed > 0 and shelter_use < 0.8"
+    priority: 7
+    dynamics:
+      escape_distance: >
+        min(30, escape_distance
+          + movement_speed * (3.0 - ash_depth * 0.02)
+          * (1 - shelter_use * 0.9)
+          * step_size)
+
+  # 5. 体能消耗
+  # 灰吸入：health -= ash_depth * 0.04/hour（P3：灰越深，损耗越快）
+  # 体力消耗：movement_speed越高，消耗越大
+  # 高温：pyroclastic_intensity > 30后开始贡献热伤害
+  health_ash_inhalation:
+    description: "灰吸入导致持续呼吸道损伤（P3：灰层越深伤害越重）"
+    condition: "ash_depth > 0 and shelter_use < 0.5"
+    priority: 6
+    dynamics:
+      health: "max(0, health - ash_depth * 0.04 * step_size)"
+
+  health_exertion:
+    description: "高速逃跑的体力消耗（movement_speed=3时最重）"
+    condition: "movement_speed > 1"
+    priority: 6
+    dynamics:
+      health: "max(0, health - (movement_speed - 1) * 2.5 * step_size)"
+
+  health_heat_damage:
+    description: "岩浆涌热辐射：intensity>30后开始远程热伤害"
+    condition: "pyroclastic_intensity > 30"
+    priority: 5
+    dynamics:
+      health: "max(0, health - (pyroclastic_intensity - 30) * 0.08 * step_size)"
+
+  # 6. 灾难性事件
+  # 屋顶坍塌：ash_depth>60且掩蔽时，有持续健康惩罚（模拟概率性坍塌）
+  roof_collapse_risk:
+    description: "灰层过深时建筑开始坍塌，掩蔽反成威胁（Luongo 2003b）"
+    condition: "ash_depth > 60 and shelter_use > 0.5"
+    priority: 5
+    dynamics:
+      health: "max(0, health - (ash_depth - 60) * 0.15 * step_size)"
+
+  # 岩浆涌直接杀伤：pyroclastic_intensity>70且仍在危险区（escape_distance<8）
+  pyroclastic_kill_zone:
+    description: "岩浆涌抵达城区：逃离不足8km者遭受致命热冲击"
+    condition: "pyroclastic_intensity > 70 and escape_distance < 8"
+    priority: 4
+    dynamics:
+      health: "max(0, health - (pyroclastic_intensity - 70) * 2.0 * step_size)"
+
+  # 7. 掩蔽的保护效果（减少灰吸入和体力消耗）
+  shelter_protection:
+    description: "掩蔽于坚固建筑中减少灰吸入（但停止逃离）"
+    condition: "shelter_use > 0.3 and ash_depth < 60"
+    priority: 6
+    dynamics:
+      health: "min(100, health + shelter_use * 1.5 * step_size)"
+
+simulation:
+  start_date: "0079-08-24"
+  end_date:   "0079-08-25"
+  step: 1
+  step_unit: hour
+  output_variables:
+    - health
+    - escape_distance
+    - ash_depth
+    - pyroclastic_intensity
+
+optimizer:
+  method: multi_objective
+  algorithm: nsga2
+  population_size: 60
+  generations: 100
+
+  objectives:
+    - variable: escape_distance
+      direction: maximize
+      weight: 1.0
+      description: "首要目标：活着离开庞贝"
+    - variable: health
+      direction: maximize
+      weight: 0.6
+      description: "次要目标：保留体能（体能耗尽等于死亡）"
+
+  constraints:
+    - expression: "health > 0"
+      description: "不能在逃离途中体力耗尽"
+    - expression: "pyroclastic_intensity < 80 OR escape_distance >= 8"
+      description: "岩浆涌抵达时必须已离开城区"
+
+  variables_to_optimize:
+    - name: early_speed
+      default: 1.5
+      bounds: [0.5, 3.0]
+      maps_to: "movement_speed @ [0, 8]"
+      description: "喷发后前8小时的移动策略（此时尚无岩浆涌威胁）"
+
+    - name: late_speed
+      default: 2.5
+      bounds: [1.0, 3.0]
+      maps_to: "movement_speed @ [8, 19]"
+      description: "凌晨后的移动策略（岩浆涌逼近，必须加速）"
+
+    - name: shelter_phase
+      default: 0.0
+      bounds: [0.0, 0.8]
+      maps_to: "shelter_use @ [0, 10]"
+      description: "前期是否选择短暂掩蔽等待灰雨减弱（有时比立即跑更有效）"
+
+  analysis:
+    pareto_description: >
+      关键发现（预期）：最优策略通常是"早期适度步行（movement_speed≈1.5），
+      凌晨后立即加速至3.0"，而非全程奔跑（health耗尽）或过早掩蔽（被困）。
+      历史上小普林尼的记录与此一致：他在下午先观察，傍晚开始有序撤离，
+      最终从Misenum方向逃脱。老普林尼则反向出发去救人，在Stabiae因呼吸困难死亡——
+      这正是"救人 vs 逃离"权衡的真实历史结局，也是游戏层的核心叙事张力。

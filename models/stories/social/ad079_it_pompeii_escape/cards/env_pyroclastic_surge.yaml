@@ -1,0 +1,26 @@
+id: env_pyroclastic_surge
+type: env
+category: state
+display:
+  name: 岩浆涌
+  description: 300°C的气体和灰云以时速100公里扫过街道。如果你还在城区，没有任何东西能保护你。
+  flavor: "Mastrolorenzo et al. (2010) 测量庞贝岩浆涌外围温度：250-300°C，接触时间0.1秒即致命"
+  icon: "💥"
+effects:
+- target: health
+  delta: -60
+  condition: "pyroclastic_risk > 60 and escape_progress < 60"
+- target: health
+  delta: -20
+  condition: "pyroclastic_risk > 60 and escape_progress >= 60"
+always_active: false
+condition: "pyroclastic_risk > 60"
+probability: 0.6
+channel: tactical
+tags:
+- env
+weight: 80
+source:
+  variable: pyroclastic_intensity
+  formula: health -= (pyroclastic_intensity - 70) * 2.0 * step_size when escape_distance < 8
+  pattern_detected: P4

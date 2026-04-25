@@ -1,0 +1,24 @@
+id: lobby_war_office
+type: player
+category: goal
+display:
+  name: 游说战争办公室
+  description: 写信。提出要求。让官僚机构因尴尬而行动。消耗精力，但有时这是唯一有效的工具。
+  flavor: "南丁格尔致战争大臣西德尼·赫伯特的信件是推动卫生改革的关键（McDonald, 2010）"
+  icon: "✉️"
+cost: 1
+effects:
+- target: battle_progress
+  delta: 15
+  condition: null
+- target: fatigue_accumulation
+  delta: 7
+  condition: null
+channel: medical
+tags:
+- player
+- goal
+weight: 100
+source:
+  formula: 政治压力推动改革进度（game-native 贡献路径）
+  pattern_detected: P1

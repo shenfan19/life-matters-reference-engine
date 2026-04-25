@@ -1,0 +1,26 @@
+id: env_patient_dies
+type: env
+category: disease
+display:
+  name: 夜间病逝
+  description: 清晨你发现了他。已经没有更多你能做的——但疑虑仍然留下。
+  flavor: "未经干预的雅典瘟疫病例，死亡率估计在25%至75%之间（修昔底德，卷二）"
+  icon: "💀"
+effects:
+- target: patient_survival
+  delta: -14
+  condition: null
+- target: health
+  delta: -3
+  condition: null
+always_active: false
+probability: 0.5
+channel: medical
+tags:
+- env
+- disease
+weight: 120
+source:
+  variable: plague_severity
+  formula: survival_rate -= plague_severity * 0.14
+  pattern_detected: P5

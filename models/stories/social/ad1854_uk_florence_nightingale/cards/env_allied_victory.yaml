@@ -1,0 +1,24 @@
+id: env_allied_victory
+type: env
+category: social
+display:
+  name: 前线捷报
+  description: 一场英军胜利的消息传入病房。病人们互相传告，眼神里出现了你很久没见过的东西——希望。士气对康复有真实的生理影响。
+  flavor: "心理与生理状态的相关性在Nightingale的护理观察中多次被记录（Cook, 1913）"
+  icon: "🏳️"
+effects:
+- target: ward_mortality
+  delta: -8
+  condition: null
+- target: battle_progress
+  delta: 12
+  condition: null
+always_active: false
+probability: 0.25
+channel: medical
+tags:
+- env
+weight: 80
+source:
+  formula: 战场胜利 → 伤员心理改善 → 死亡率下降（士气的临床效应）
+  pattern_detected: P5

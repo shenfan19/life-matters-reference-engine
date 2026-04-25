@@ -1,0 +1,26 @@
+id: env_cholera_ward
+type: env
+category: disease
+display:
+  name: 霍乱爆发
+  description: 新一波霍乱席卷病房。病人死亡速度快过你的行动速度。
+  flavor: "霍乱是克里米亚战争18,058名英国阵亡者中绝大多数的死因（Cook, 1913）"
+  icon: "☠️"
+effects:
+- target: ward_mortality
+  delta: 22
+  condition: null
+- target: battle_progress
+  delta: -5
+  condition: null
+always_active: false
+probability: 0.5
+channel: medical
+tags:
+- env
+- disease
+weight: 160
+source:
+  variable: cholera_incidence
+  formula: ward_mortality += cholera_incidence * 0.22
+  pattern_detected: P5

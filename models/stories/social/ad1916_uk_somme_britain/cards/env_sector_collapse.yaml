@@ -1,0 +1,30 @@
+id: env_sector_collapse
+type: env
+category: social
+display:
+  name: 阵线崩溃
+  description: 左翼溃了。德军从缺口涌入。你的连队陷入包围。混乱中没有人知道撤往何处。
+  flavor: "溃退中的伤亡率是有序撤退的3-5倍（Prior & Wilson, 2005）"
+  icon: "💥"
+effects:
+- target: battle_progress
+  delta: -18
+  condition: null
+- target: danger_accumulation
+  delta: 22
+  condition: null
+- target: health
+  delta: -10
+  condition: null
+- target: morale
+  delta: -22
+  condition: null
+always_active: false
+probability: 0.2
+channel: tactical
+tags:
+- env
+weight: 80
+source:
+  formula: 溃败：战局倒退 + 个人危险骤增 + 直接健康伤害（三重负面叠加）
+  pattern_detected: P1

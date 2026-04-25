@@ -1,0 +1,28 @@
+id: env_immune_survivor
+type: env
+category: social
+display:
+  name: 免疫幸存者
+  description: 一批曾经感染并痊愈的市民自愿照料新病人——他们不会再次得病。修昔底德记录了这个现象，但没有人能解释它。你的笔记里正在积累一个新的观察。
+  flavor: "修昔底德注意到幸存者获得了免疫力，并将其记录为一个可观察但无法解释的事实（卷二·51）"
+  icon: "🛡️"
+effects:
+- target: patient_survival
+  delta: 10
+  condition: null
+- target: city_resistance
+  delta: 8
+  condition: null
+- target: battle_progress
+  delta: 12
+  condition: null
+always_active: false
+probability: 0.2
+channel: medical
+tags:
+- env
+weight: 60
+source:
+  variable: natural_immunity_rate
+  formula: survival_rate += natural_immunity_rate * 0.10
+  pattern_detected: P5

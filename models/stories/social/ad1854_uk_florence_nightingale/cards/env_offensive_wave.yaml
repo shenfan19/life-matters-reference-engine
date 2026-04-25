@@ -1,0 +1,27 @@
+id: env_offensive_wave
+type: env
+category: social
+display:
+  name: 大规模进攻，伤员激增
+  description: 前线发动了进攻。数百名新伤员在24小时内抵达Scutari。你的床位已经不够了。
+  flavor: "因克尔曼战役（1854年11月）后，Scutari在单日内接收伤员超过500人（McDonald, 2010）"
+  icon: "🏥"
+effects:
+- target: ward_mortality
+  delta: 18
+  condition: null
+- target: fatigue_accumulation
+  delta: 14
+  condition: null
+- target: battle_progress
+  delta: 4
+  condition: null
+always_active: false
+probability: 0.35
+channel: medical
+tags:
+- env
+weight: 120
+source:
+  formula: 前线进攻 → 伤员激增 → 病房压力升高（战场宏观事件对医护的间接传导）
+  pattern_detected: P5

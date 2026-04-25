@@ -1,0 +1,27 @@
+id: write_statistics
+type: player
+category: goal
+display:
+  name: 绘制玫瑰图
+  description: 按死亡原因统计数字，制作极坐标图表。数字是战争办公室唯一无法忽视的论据。
+  flavor: "南丁格尔的统计图表呈递给维多利亚女王和首相帕默斯顿，开创了数据驱动政策的先例"
+  icon: "📊"
+cost: 2
+effects:
+- target: battle_progress
+  delta: 22
+  condition: null
+- target: health
+  delta: -3
+  condition: null
+- target: fatigue_accumulation
+  delta: 10
+  condition: null
+channel: medical
+tags:
+- player
+- goal
+weight: 100
+source:
+  formula: 统计报告推动改革进度（game-native 贡献路径）
+  pattern_detected: P1

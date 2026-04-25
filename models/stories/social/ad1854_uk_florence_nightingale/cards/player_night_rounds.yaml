@@ -1,0 +1,29 @@
+id: night_rounds
+type: player
+category: goal
+display:
+  name: 夜间巡查
+  description: 提着灯走过病房。看谁发烧，谁需要水，谁已经放弃希望。你救不了所有人，但你可以看见他们。
+  flavor: "南丁格尔在危机高峰期每晚步行约6公里查房（Cook, 1913）"
+  icon: "🕯️"
+cost: 1
+effects:
+- target: ward_mortality
+  delta: -6
+  condition: null
+- target: battle_progress
+  delta: 5
+  condition: null
+- target: fatigue_accumulation
+  delta: 5
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+- goal
+weight: 100
+source:
+  variable: nursing_intensity
+  formula: ward_mortality -= nursing_intensity * 0.06
+  pattern_detected: P1

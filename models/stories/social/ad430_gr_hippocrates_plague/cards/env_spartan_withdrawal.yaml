@@ -1,0 +1,28 @@
+id: env_spartan_withdrawal
+type: env
+category: social
+display:
+  name: 斯巴达军撤退
+  description: 斯巴达人收兵了——据说是因为他们也害怕感染瘟疫。围城压力暂时解除。城内稍稍喘了口气。
+  flavor: "修昔底德记载斯巴达军队在得知雅典瘟疫后提前撤军，不愿靠近受感染的城市（卷二·57）"
+  icon: "🕊️"
+effects:
+- target: city_resistance
+  delta: 14
+  condition: null
+- target: battle_progress
+  delta: 10
+  condition: null
+- target: danger_accumulation
+  delta: -8
+  condition: null
+always_active: false
+probability: 0.25
+channel: medical
+tags:
+- env
+- social
+weight: 80
+source:
+  formula: 敌军撤退 → 城邦压力减轻 + 医学知识传播机会改善
+  pattern_detected: P5

@@ -1,0 +1,28 @@
+id: env_athens_offensive
+type: env
+category: social
+display:
+  name: 雅典军事出击
+  description: 伯利克里决定出击。军队出城了。他们带着希望离开，带着伤亡回来。现在你要在新伤员和瘟疫之间两线作战。
+  flavor: "伯利克里在瘟疫肆虐期间仍维持军事行动，导致更多士兵感染——修昔底德视之为错误决策（卷二·58）"
+  icon: "⚔️"
+effects:
+- target: city_resistance
+  delta: 8
+  condition: null
+- target: danger_accumulation
+  delta: 10
+  condition: null
+- target: patient_survival
+  delta: -8
+  condition: null
+always_active: false
+probability: 0.3
+channel: medical
+tags:
+- env
+- social
+weight: 100
+source:
+  formula: 军事出击 → 城邦抵抗力增加但伤员带来新的传染风险（双向传导）
+  pattern_detected: P5
