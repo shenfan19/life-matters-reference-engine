@@ -1,0 +1,29 @@
+id: clean_water
+type: player
+category: goal
+display:
+  name: 迁离河区，取泉水
+  description: 将病人搬离河流区域。从山泉取水。你不知道为何有效——但你见过它奏效的结果。
+  flavor: "希波克拉底文集记录了水源与疾病发生率的相关性，早于细菌理论两千余年"
+  icon: "💧"
+cost: 2
+effects:
+- target: patient_survival
+  delta: 14
+  condition: null
+- target: city_resistance
+  delta: 6
+  condition: null
+- target: battle_progress
+  delta: 10
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+- goal
+weight: 100
+source:
+  variable: water_purity
+  formula: infection_rate -= water_purity * 0.14
+  pattern_detected: P1

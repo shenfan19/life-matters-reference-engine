@@ -1,0 +1,25 @@
+id: player_cover_face
+type: player
+category: health
+display:
+  name: 以布掩鼻
+  description: 把湿布绑在脸上。你看起来很蠢。但呼吸稍微好了一点。
+  flavor: "老普林尼在Stabiae用枕头绑在头上防灰——在没有防毒面具的时代，这是文献记载的真实操作（小普林尼致Tacitus信，106AD）"
+  icon: "🧣"
+cost: 1
+effects:
+- target: health
+  delta: 12
+  condition: null
+- target: ash_depth
+  delta: -8
+  condition: null
+channel: medical
+tags:
+- player
+- health
+weight: 100
+source:
+  variable: shelter_use
+  formula: health += shelter_use * 1.5 * step_size
+  pattern_detected: P1

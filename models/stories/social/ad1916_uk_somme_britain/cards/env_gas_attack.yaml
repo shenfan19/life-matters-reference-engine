@@ -13,6 +13,9 @@ effects:
 - target: morale
   delta: -20
   condition: null
+- target: battle_progress
+  delta: -10
+  condition: null
 channel: medical
 tags:
 - env

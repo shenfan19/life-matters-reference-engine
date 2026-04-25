@@ -1,0 +1,25 @@
+id: player_cautious_move
+type: player
+category: goal
+display:
+  name: 谨慎行进
+  description: 靠墙走，护着头，找有遮蔽的路段。慢，但你还撑得住。
+  flavor: "多数庞贝幸存者的路线重建显示，他们走的是有门廊的街道，而非开阔广场（Luongo 2003b）"
+  icon: "🚶"
+cost: 1
+effects:
+- target: escape_progress
+  delta: 10
+  condition: null
+- target: health
+  delta: -5
+  condition: null
+channel: tactical
+tags:
+- player
+- goal
+weight: 100
+source:
+  variable: movement_speed
+  formula: escape_distance += movement_speed * 1.5 * step_size
+  pattern_detected: P1

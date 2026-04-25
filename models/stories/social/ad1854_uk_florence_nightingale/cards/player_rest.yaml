@@ -1,0 +1,25 @@
+id: player_rest
+type: player
+category: health
+display:
+  name: 休息
+  description: 你不是无懈可击的。现在休息一天，也许意味着之后还能工作一个月。
+  flavor: "南丁格尔无视医嘱继续工作；1855年5月她感染了布鲁氏菌病（克里米亚热），此后终身未能完全康复"
+  icon: "🛏️"
+cost: 1
+effects:
+- target: health
+  delta: 18
+  condition: null
+- target: fatigue_accumulation
+  delta: -25
+  condition: null
+channel: medical
+tags:
+- player
+- health
+weight: 100
+source:
+  variable: rest_quality
+  formula: health += rest_quality * 0.18
+  pattern_detected: P1

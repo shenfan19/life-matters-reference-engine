@@ -1,0 +1,32 @@
+id: treat_soldiers
+type: player
+category: risk
+display:
+  name: 治疗守城士兵
+  description: 驻军正在生病。他们倒下，城墙就会倒下。你推开自己的疲惫。
+  flavor: "雅典瘟疫夺走了大量士兵，城邦曾认真考虑与斯巴达议和（修昔底德，卷二）"
+  icon: "⚔️"
+cost: 2
+effects:
+- target: city_resistance
+  delta: 18
+  condition: null
+- target: battle_progress
+  delta: 14
+  condition: null
+- target: health
+  delta: -12
+  condition: null
+- target: danger_accumulation
+  delta: 14
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+- risk
+weight: 100
+source:
+  variable: soldier_recovery_rate
+  formula: city_resistance += soldier_recovery_rate * 0.18
+  pattern_detected: P1

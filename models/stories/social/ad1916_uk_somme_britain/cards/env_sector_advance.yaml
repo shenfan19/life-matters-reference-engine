@@ -1,0 +1,27 @@
+id: env_sector_advance
+type: env
+category: social
+display:
+  name: 全线突进
+  description: 哨声吹响，上级命令全线推进。这是你一直等待的——也是你一直恐惧的。
+  flavor: "索姆河战役中英军突进命令通常伴随当日伤亡率激增，平均推进距离不足500米（Prior & Wilson, 2005）"
+  icon: "⚔️"
+effects:
+- target: battle_progress
+  delta: 14
+  condition: null
+- target: danger_accumulation
+  delta: 16
+  condition: null
+- target: morale
+  delta: 8
+  condition: null
+always_active: false
+probability: 0.35
+channel: tactical
+tags:
+- env
+weight: 120
+source:
+  formula: 进攻命令同时推进战局与增加个人危险（战场张力核心机制）
+  pattern_detected: P1

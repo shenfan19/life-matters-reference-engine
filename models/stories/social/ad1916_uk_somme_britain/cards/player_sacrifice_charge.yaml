@@ -1,0 +1,28 @@
+id: sacrifice_charge
+type: player
+category: risk
+display:
+  name: 决死冲锋
+  description: 放弃自保，全力突破敌线。你可能不会回来——但那个缺口将由你的战友们填满。
+  flavor: "索姆河战役每推进1英里约付出17,000人伤亡（Sheffield, 2001）"
+  icon: "⚡"
+cost: 2
+effects:
+- target: health
+  delta: -50
+  condition: null
+- target: battle_progress
+  delta: 35
+  condition: null
+- target: morale
+  delta: 20
+  condition: null
+channel: tactical
+tags:
+- player
+- tactical
+- risk
+weight: 100
+source:
+  formula: 战场突击的极高代价与极高战局贡献权衡
+  pattern_detected: P1

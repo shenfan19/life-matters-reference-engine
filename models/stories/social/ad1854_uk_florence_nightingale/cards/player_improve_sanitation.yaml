@@ -1,0 +1,32 @@
+id: improve_sanitation
+type: player
+category: goal
+display:
+  name: 改善卫生条件
+  description: 刷洗地板，疏通排水沟，焚烧污染的床铺。医生们会抵制。结果会说话。
+  flavor: "Scutari卫生条件改善后，死亡率在5个月内从42.7%降至2.2%（McDonald, 2010）"
+  icon: "🧹"
+cost: 2
+effects:
+- target: ward_mortality
+  delta: -18
+  condition: null
+- target: health
+  delta: -5
+  condition: null
+- target: fatigue_accumulation
+  delta: 8
+  condition: null
+- target: battle_progress
+  delta: 12
+  condition: null
+channel: medical
+tags:
+- player
+- medical
+- goal
+weight: 100
+source:
+  variable: sanitation_level
+  formula: ward_mortality -= sanitation_level * 0.18
+  pattern_detected: P1

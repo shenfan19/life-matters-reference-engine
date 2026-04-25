@@ -48,3 +48,4 @@
 | [0040](0040-2026-04-22_sim_医学证据类型与变量映射.md) | Sim 医学证据类型与变量映射（evidence 8 子类型） | ✅ 已实施 | 2026-04-22 |
 | [0041](0041-2026-04-22_project_命名规范下划线优先.md) | 项目命名规范：snake_case 下划线优先 | ✅ 已实施 | 2026-04-22 |
 | [0042](0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名；保留 sim_xxx 不改 | ✅ 已实施 | 2026-04-23 |
+| [0043](0043-2026-04-25_game_battlefield-tension-framework.md) | 战场张力框架：battle_progress/danger_accumulation 归 Game-native；origin 字段；命运牌模式；南丁格尔 + 希波克拉底首次实现 | ✅ 已实施 | 2026-04-25 |

@@ -180,6 +180,57 @@ environment_cards:
 ```
 变量名必须与 `variables` 中的键名一致。`turn` 是内置变量，表示当前回合数。
 
+---
+
+## 变量溯源标注（`origin` 字段）
+
+`variable_display` 下的每个变量可通过可选字段 `origin` 声明其来源，供 Converter 决定是否处理：
+
+| `origin` 值 | 含义 | Converter 行为 |
+|---|---|---|
+| `sim`（默认） | 变量派生自 Sim 动力学模型，有文献溯源 | 正常映射、处理 |
+| `native` | Story 层直接定义，无 Sim 对应物 | 完全跳过，不尝试映射，不报警 |
+
+省略 `origin` 字段时，默认按 `sim` 处理（向后兼容）。
+
+### 战场场景的标准 native 变量
+
+按照 `game_requirements.md § 6` 的战场张力框架，以下两个变量是战场场景的必须 native 变量：
+
+```yaml
+variable_display:
+  battle_progress:
+    label: "战局进度"
+    color: "#ff4d4f"
+    max: 100
+    origin: native      # 无 Sim 对应物，Converter 跳过
+  danger_accumulation:
+    label: "危险累积"
+    color: "#fa8c16"
+    max: 100
+    origin: native      # P2 累积模式，由 env 卡驱动，非 Sim 变量
+```
+
+### 典型 env 卡实现（danger_accumulation P2 模式）
+
+```yaml
+id: env_danger_increases
+type: env
+always_active: true
+effects:
+  - target: danger_accumulation
+    delta: 8             # 每回合+8，P2 累积
+    condition: null
+  - target: health
+    delta: -5
+    condition: "danger_accumulation > 40"   # P4 阈值：累积超过40才触发真实伤害
+```
+
+### 为什么不放进 Sim
+
+`battle_progress` 没有文献意义上的"效应量"——不存在一篇 meta-analysis 告诉你"个人牺牲行为的战局进度 hazard ratio 是多少"。这是叙事构造，不是动力学事实。放进 Sim 会破坏其"所有变量均有文献溯源"的纯粹性约束。详见架构讨论：`sim` 层只建模医疗/生理/社会动力学（南丁格尔的护理死亡率曲线、居里夫人的辐射积累），战局叙事层留在 story-native。
+
+---
 
 ## Card Schema
 ### 环境牌（系统出牌）

@@ -17,6 +17,9 @@ effects:
 - target: rations
   delta: -8
   condition: null
+- target: battle_progress
+  delta: 3
+  condition: null
 channel: tactical
 tags:
 - player

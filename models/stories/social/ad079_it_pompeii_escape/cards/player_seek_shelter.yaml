@@ -1,0 +1,29 @@
+id: player_seek_shelter
+type: player
+category: health
+display:
+  name: 就地掩蔽
+  description: 躲进最近的建筑，等灰雨稍缓再跑。门廊和地窖是最好的选择。但灰还在积。
+  flavor: "许多庞贝遇难者发现于建筑室内——他们并非没有机会逃，而是选择等待灰雨停止，结果屋顶先坍塌了（Luongo 2003b）"
+  icon: "🏛️"
+cost: 1
+effects:
+- target: health
+  delta: 20
+  condition: null
+- target: ash_depth
+  delta: -5
+  condition: null
+- target: escape_progress
+  delta: -2
+  condition: null
+channel: tactical
+tags:
+- player
+- health
+- risk
+weight: 100
+source:
+  variable: shelter_use
+  formula: health += shelter_use * 1.5 * step_size
+  pattern_detected: P1

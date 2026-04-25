@@ -1,0 +1,23 @@
+id: env_fatigue_accumulates
+type: env
+category: state
+display:
+  name: 疲惫加深
+  description: 时间无休无止。病房永不停歇。你的身体在记录每一个不眠之夜，即使你的意志拒绝承认。
+  flavor: "南丁格尔在1855年危机高峰期平均每天工作20小时"
+  icon: "⚠️"
+effects:
+- target: fatigue_accumulation
+  delta: 8
+  condition: null
+- target: health
+  delta: -6
+  condition: "fatigue_accumulation > 50"
+always_active: true
+channel: medical
+tags:
+- env
+weight: 200
+source:
+  formula: 战场医护人员疲劳累积与健康损耗（P2 累积 + P4 阈值触发）
+  pattern_detected: P2

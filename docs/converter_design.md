@@ -238,3 +238,39 @@ def merge_patches(base_model, patches):
 ### 单包封装原则
 
 每个 Story 是一个独立文件夹，包含所有元数据、逻辑与资源，不允许在 `models/stories/` 根目录放外部索引文件。文件夹名与对应 scenario 文件夹名一致，Converter 据此自动关联。
+
+### Game-native 变量的 Converter 透明性
+
+Story 层可以定义没有任何 Sim 对应物的变量（`variable_display` 中标注 `origin: native`）。这类变量**完全由 Story 层自行管理**，Converter 对其保持透明：
+
+**Converter 处理规则**：
+- 读取 `variable_display` 时，跳过所有 `origin: native` 条目
+- `_mapping.json` 中不为 native 变量生成映射记录
+- 若某张卡片的 `effects` 引用了 native 变量，Converter 不报"未找到 Sim 来源"警告
+- 自动生成骨架时，native 变量不出现在左侧 Scenario 摘要的变量列表中
+
+**典型 native 变量**：战场故事的 `battle_progress`、`danger_accumulation`；角色故事的第三资源（如辐射层数、疲劳累积）。
+
+**双层变量的共存示例**：
+
+```yaml
+variable_display:
+  health:
+    label: "生命值"
+    max: 100
+    origin: sim        # Converter 从 Sim physiological 模型映射
+  ward_mortality:
+    label: "病房死亡率"
+    max: 100
+    origin: sim        # Converter 从 Sim 流行病学模型映射
+  battle_progress:
+    label: "战局进度"
+    max: 100
+    origin: native     # Converter 跳过；story 层通过玩家卡和 env 卡直接控制
+  danger_accumulation:
+    label: "危险累积"
+    max: 100
+    origin: native     # Converter 跳过；每回合由 always_active env 卡驱动
+```
+
+这一设计的架构意图：Sim 保持科学纯粹性（只建模有文献溯源的动力学），战场叙事张力由 story-native 层承载，Converter 作为桥接工具不需要扩展"手动补充变量"功能。
