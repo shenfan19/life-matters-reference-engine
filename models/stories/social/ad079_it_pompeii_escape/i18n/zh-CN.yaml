@@ -1,0 +1,93 @@
+meta:
+  name: "庞贝 — 公元79年8月24日"
+  description: |
+    公元79年8月24日，正午刚过。维苏威已经开始喷发。
+
+    火山灰和岩石形成的柱子已经高达20公里。浮岩如冰雹般降落。你是庞贝的一名普通市民——不是将军，不是元老，不是普林尼。没有人告诉你这次喷发会持续19小时。也没有人告诉那2000个明天早上还留在这里的人。
+
+    你每等一个小时，灰层就更厚一分。每一小时的迟疑，通向安全的道路就更窄一分。
+
+    但有些人跑不了。你会留下来吗？
+  science_note: |
+    维苏威火山于公元79年8月24日喷发。考古与火山学证据精确重建了事件时间线：
+    - 第一阶段（下午1时至午夜）：浮岩降落，庞贝地区灰层累积速率约15cm/小时
+    - 第二阶段（午夜至上午8时）：6次岩浆涌（PDC），最终岩浆涌具有致命性
+    - 庞贝约发现2000具遇难者遗骸（估计人口11,000-20,000，大多数提前逃离）
+    - 屋顶坍塌阈值：典型罗马建筑约35cm灰层（Luongo et al. 2003）
+    - 岩浆涌抵达庞贝：约上午6:30，致命温度>300°C（Mastrolorenzo et al. 2010）
+    小普林尼（约30公里外的Misenum）幸存。老普林尼试图乘船救援，死于Stabiae附近。
+    文献来源：Sigurdsson H等（1985）National Geographic Research 1(3):332-387；Mastrolorenzo G等（2010）PLoS ONE 5(6):e11127。
+
+variable_display:
+  health:
+    label: "体力"
+  escape_progress:
+    label: "逃离进度"
+  ash_depth:
+    label: "灰层危险"
+  pyroclastic_risk:
+    label: "岩浆涌风险"
+  rescue_score:
+    label: "救助得分"
+
+win_conditions:
+  - message: "【老普林尼的选择】你到达了安全的地方，而且不是一个人。那些你帮助的人活着讲述了你帮助写就的故事。老普林尼做出了同样的选择——却死了。你活了下来。"
+  - message: "【逃出庞贝】灰烬覆身，肺部灼痛，你在岩浆涌抵达前跨过了最后一块里程碑。你的大多数邻居没能做到。"
+  - message: "【侥幸逃生】你在城外的路边倒下了。一位农夫在黎明时分发现了你。你不记得自己是怎么到那里的。"
+  - message: "【留守之人】你死在庞贝。你的遗骸被发现时，旁边是一群没有你就活不下来的人们。火山灰把你们永远保存在了一起。"
+
+lose_conditions:
+  - message: "【被掩埋】灰层先于岩浆涌带走了你。十八个世纪后，考古学家发现了你的铸件，一只手臂高举，抵挡着无法被阻止的东西。"
+  - message: "【岩浆涌】你还没有离开城区，岩浆涌就已经到来。死亡是瞬间的——Mastrolorenzo et al.（2010）测量了外围温度：300°C。"
+
+cards:
+  player_run:
+    name: "全力奔跑"
+    flavor: "成人在灰雨和碎石中的实际奔跑速度约5-6 km/h，远低于正常水平（Luongo et al. 2003a）"
+  player_cautious_move:
+    name: "谨慎行进"
+    flavor: "多数庞贝幸存者的路线重建显示，他们走的是有门廊的街道，而非开阔广场（Luongo 2003b）"
+  player_cover_face:
+    name: "以布掩鼻"
+    flavor: "老普林尼在Stabiae用枕头绑在头上防灰——在没有防毒面具的时代，这是文献记载的真实操作（小普林尼致Tacitus信，106AD）"
+  player_seek_shelter:
+    name: "就地掩蔽"
+    flavor: "许多庞贝遇难者发现于建筑室内——他们并非没有机会逃，而是选择等待灰雨停止，结果屋顶先坍塌了（Luongo 2003b）"
+  player_rescue_others:
+    name: "救助他人"
+    flavor: "老普林尼死于Stabiae湾，死前一直在安抚他试图救援的人们——小普林尼在信中记录了这一幕"
+  player_find_transport:
+    name: "寻找车马"
+    flavor: "庞贝遗址中发现多辆弃置的四轮马车和两轮战车，部分装有未带走的财物——车主显然临时起意徒步逃走了"
+  env_ash_falls:
+    name: "灰雨不停"
+    description: "浮岩和火山灰不间断地落下。每一小时街道都更难走，房屋都更危险。这是维苏威的常态，不是高潮。"
+    science: "庞贝灰层累积速率约15-20cm/小时，约8小时即可超过屋顶承重极限（Sigurdsson et al. 1985）"
+  env_ash_inhalation:
+    name: "灰尘吸入"
+    description: "每一口气都带着硫磺和灰粒。你的肺在记录每一次呼吸。灰层越深，每次呼吸的代价越大。"
+    science: "老普林尼最终死于窒息，而非岩浆涌——呼吸道损伤是庞贝部分遇难者的真实死因（Sigurdsson 1985）"
+  env_surge_builds:
+    name: "岩浆涌逼近"
+    description: "凌晨之后，山的轰鸣换了一种声调。那不是灰在落，那是别的什么。岩浆涌还没到，但正在来的路上。"
+    science: "第一次PDC于凌晨约1am抵达Herculaneum，约6:30am抵达庞贝——这是你的时间窗口（Sigurdsson 1985）"
+  env_pyroclastic_surge:
+    name: "岩浆涌"
+    description: "300°C的气体和灰云以时速100公里扫过街道。如果你还在城区，没有任何东西能保护你。"
+    science: "Mastrolorenzo et al.（2010）测量庞贝岩浆涌外围温度：250-300°C，接触时间0.1秒即致命"
+  env_roof_collapse:
+    name: "屋顶坍塌"
+    description: "你听到了，然后整条街都听到了。灰层的重量超过了这栋建筑一千年前设计时所能承受的极限。"
+    science: "庞贝约三分之一的遇难者死于建筑坍塌而非岩浆涌，大多数在室内避灰时遭遇（Luongo et al. 2003b）"
+  env_road_blocked:
+    name: "道路堵塞"
+    description: "弃置的货物，倒塌的门廊，惊慌的牲畜，还有站在原地不知道往哪走的人们。你只能绕道。"
+    science: "庞贝出口道路在喷发后数小时内即因逃难人群和坠落碎石而严重拥堵"
+  env_rescue_opportunity:
+    name: "有人需要帮助"
+    description: "一个女人抱着孩子在门廊下发抖，不知道该跑还是留。她看向你。你也不知道答案。"
+    science: "庞贝遗址中多处发现成人与儿童紧靠的遗骸——考古学家推测其中一些是陌生人互相陪伴（Luongo 2003a）"
+  env_sea_route_closed:
+    name: "海路封闭"
+    description: "港口已经乱了。石块不断落入海面，海浪涌向岸边。船只在没有锚点的情况下漂走了，或者根本没人敢出海。"
+    science: "老普林尼的船队出发时，他的舵手建议返航，但老普林尼坚持前进——结果再也无法登船离开"

@@ -1,0 +1,112 @@
+meta:
+  name: "Somme — A British Soldier, 1916"
+  description: "July 1, 1916. The British Army launches a massive offensive on the Somme. On the first day alone, 57,470 casualties and 19,240 dead — one of the bloodiest single days in history. As an ordinary private, your weekly pay is 1 shilling, and your choices are never simply attack or defend: do you join the assault? How do you treat your wounds? When rations run short, do you barter with the locals? Staying at the front means fighting for your life; requesting a transfer means being branded a coward. There are no safe options — only trade-offs with different costs."
+
+variable_display:
+  health:
+    label: "Survival"
+  morale:
+    label: "Morale"
+  rations:
+    label: "Rations"
+  pay_savings:
+    label: "Savings"
+  battle_progress:
+    label: "Battle Progress"
+  danger_accumulation:
+    label: "Danger"
+
+win_conditions:
+  - message: "【The Surviving Soldier】You not only survived — you watched the front line push forward. Fourteen weeks of hell, one inch of ground at a time. You're still standing."
+  - message: "【Mission Complete】You survived the Somme, returning home with savings and scars. Most of your comrades were not so lucky."
+  - message: "【Barely Alive】You survived, but the front barely moved. Every life that made it out came at a price — what did those sacrifices buy?"
+  - message: "【Life for Land】You fell at the Somme, but the line advanced over your blood and bones. History won't remember every name, but this land remembers every inch."
+
+lose_conditions:
+  - message: "【A Pointless Death】You fell in the Somme mud while the front barely moved. Historians have argued for a century about what that day meant."
+  - message: "【Court Martial】Complete mental collapse. Court-martialled for cowardice — not uncommon in the British Army of 1916."
+
+cards:
+  advance_attack:
+    name: "Charge"
+    flavor: "British assault casualty rate 7–15%/day on the Somme (first-day actual data, Prior & Wilson 2005)"
+  hold_position:
+    name: "Hold the Trench"
+    flavor: "Defensive casualty rates were approximately 1/3 of offensive rates (pre-WWII historical average)"
+  treat_wounds:
+    name: "Treat Wounds"
+    flavor: "WWI front-line wound infection (gas gangrene) mortality: ~12% (Scott 1986)"
+  ration_conservation:
+    name: "Conserve Rations"
+    flavor: ""
+  write_home:
+    name: "Write Home"
+    flavor: ""
+  barter_locals:
+    name: "Barter with Villagers"
+    flavor: "Extensive records of British–civilian informal supply exchanges in Somme rear villages (Albert, Pozières)"
+  seek_medical_transfer:
+    name: "Request Medical Transfer"
+    flavor: ""
+  rum_ration_trade:
+    name: "Share the Rum Ration"
+    flavor: "British Army rum ration system (1914–1918, per QR&O Article 1516) was a key morale-maintenance mechanism"
+  sacrifice_charge:
+    name: "Death Charge"
+    flavor: "Every mile advanced at the Somme cost approximately 17,000 casualties (Sheffield, 2001)"
+  env_danger_increases:
+    name: "Danger Accumulating"
+    description: "Every day at the front, the shelling intensifies, the nerves fray. Danger is everywhere. Your body remembers every near miss."
+    science: "Long-term battlefield exposure PTSD rates grow exponentially over time (American Journal of Psychiatry, 1994)"
+  artillery_barrage:
+    name: "Artillery Barrage"
+    description: "German artillery pounds the front line continuously. This happens every turn — it is the constant background of the Somme."
+    science: "German forces fired over a million rounds per day during the Somme (Prior & Wilson 2005)"
+  gas_attack:
+    name: "Gas Attack"
+    description: "German forces release phosgene or mustard gas. In 1916, gas masks were in short supply. The consequences are severe."
+    science: "WWI gas casualties: ~5% of total, but the terror effect amplified morale damage (Haber 1986)"
+  mud_conditions:
+    name: "The Somme Mud"
+    description: "Relentless rain has turned the Somme valley into a muddy hell. Advance is impossible; supplies barely get through."
+    science: "Aug–Nov 1916 rainfall at the Somme was 40% above historical average (UK Met Office historical records)"
+  supply_convoy_arrives:
+    name: "Supply Convoy Arrives"
+    description: "A rear-area supply convoy has broken through, bringing food and ammunition."
+    science: ""
+  officer_casualty:
+    name: "Officer Down"
+    description: "The company officer has been shot. Command confusion sets in; morale collapses."
+    science: "Somme officer casualty rate (23%) exceeded enlisted rate (17%) — officers led charges (Sheffield 2001)"
+  comrade_rescue:
+    name: "A Comrade's Help"
+    description: "A fellow soldier drags you away from the barrage, or tends your wound. A human moment in the trenches."
+    science: "WWI mutual aid among soldiers was a critical morale-maintenance mechanism (Holmes R, 2004, Tommy)"
+  propaganda_leaflet:
+    name: "Victory Leaflet"
+    description: "HQ distributes propaganda claiming the offensive is going well. The front-line men know it's a lie."
+    science: ""
+  autumn_cold:
+    name: "Autumn Cold Sets In"
+    description: "After October, temperatures plunge. Trench foot spreads; physical reserves drain rapidly."
+    science: "Trench foot affected ~74,000 British soldiers during WWI (RAMC Archive)"
+  env_battle_stalls:
+    name: "The Line Stalls"
+    description: "Both sides are exhausted. Nobody is advancing. Just mud and waiting. Battle progress slowly slips away."
+    science: "The Somme lasted 141 days, averaging less than 100 metres gained per day (Prior & Wilson, 2005)"
+  env_sector_advance:
+    name: "Push Forward"
+    description: "The whistle blows. Orders come to advance across the line. This is what you've been waiting for — and dreading."
+    science: "British advance orders on the Somme typically came with immediate casualty spikes, gaining less than 500m (Prior & Wilson, 2005)"
+  env_tactical_withdrawal:
+    name: "Tactical Withdrawal"
+    description: "Orders come to fall back to the second line. You survive — but the ground bought with blood must be abandoned."
+    science: "British forces made multiple short retreats to regroup during the Somme, each with deep morale cost (Sheffield, 2001)"
+  env_battle_breakthrough:
+    name: "Breakthrough"
+    description: "The unit beside you has opened a gap. German lines collapsed in that sector. This is rare on the Western Front — and brief."
+    science: "Actual line breakthroughs during the Somme could be counted on one hand (Keegan, 1998)"
+  env_sector_collapse:
+    name: "Sector Collapse"
+    description: "The left flank broke. Germans are pouring through. Your unit is cut off. In the chaos, no one knows which way to run."
+    science: "Casualty rates in rout are 3–5× those of ordered withdrawal (Prior & Wilson, 2005)"

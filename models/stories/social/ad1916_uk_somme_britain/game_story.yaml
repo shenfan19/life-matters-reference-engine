@@ -21,6 +21,7 @@ meta:
     - assets/sonatas_k-006_(c)sankey.mid
   version: '0.1'
   created_on: 2026-03-23
+  languages: [zh-CN, en]
 initial_state:
   health: 100
   morale: 65

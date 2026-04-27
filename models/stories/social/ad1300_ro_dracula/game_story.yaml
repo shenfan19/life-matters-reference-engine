@@ -44,6 +44,7 @@ meta:
   tags: [Culture]
   version: '0.1'
   created_on: 2026-04-03
+  languages: [zh-CN, en]
   card_back_fate: ""
   card_back_player: ""
   music: []

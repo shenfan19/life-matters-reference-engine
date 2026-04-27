@@ -1,34 +1,25 @@
 meta:
-  name: "Hippocrates — Athens, 430 BC"
+  name: "希波克拉底 — 雅典，公元前430年"
   description: |
-    Athens, summer 430 BC. Sparta's army has returned to ravage Attica for the second year.
-    The city walls are packed with refugees from the countryside. Then something worse arrives:
-    a plague of unknown origin, unlike anything in living memory.
+    公元前430年，夏。斯巴达军队已连续第二年蹂躏阿提卡。城墙之内挤满了从乡村逃难而来的人们。然后更糟糕的事情到来了：一场来源不明的瘟疫，是任何人记忆中从未见过的疾病。
 
-    You are a physician trained in the new tradition of observation and reason. The priests
-    say it is divine punishment. The herbalists have their potions. You have only your eyes,
-    your records, and the conviction that what can be observed can be understood.
+    你是一位受过新式观察与理性传统训练的医者。祭司说这是神罚，草药师有他们的方剂，而你只有你的眼睛、你的记录，以及一个信念——能被观察到的，就能被理解。
 
-    Every patient you treat risks infecting you. Every day you survive, you learn more.
-    Every case you document may save the next generation — if Athens survives this one.
+    你治疗的每一个病人都可能让你感染。你熬过的每一天，你学到的越多。你记录下的每一个病例，也许能拯救下一代人——如果雅典能撑过这一代。
   difficulty: hard
   period_start: "430 BC"
   period_end: "426 BC"
   country: Greece (Athens)
   science_note: |
-    The Plague of Athens (430–426 BC) killed an estimated 25% of the city's population,
-    including the general Pericles. Thucydides' clinical account (History of the Peloponnesian
-    War, II.47–54) remains one of the most precise ancient disease descriptions. The Hippocratic
-    Corpus established observation-based medicine; treatments emphasizing rest, clean water and
-    diet showed markedly better outcomes than contemporary ritual alternatives.
-    Sources: Thucydides, History of the Peloponnesian War, Book II §47–54;
-    Papagrigorakis MJ et al. (2006) DNA examination of ancient dental pulp incriminates
-    typhoid fever as a probable cause of the Plague of Athens. Int J Infect Dis 10(3):206–14;
-    Nutton V (2004) Ancient Medicine. Routledge.
+    雅典瘟疫（公元前430-426年）造成约25%的城市人口死亡，包括名将伯利克里。修昔底德的临床记述（《伯罗奔尼撒战争史》第二卷第47-54节）至今仍是最精确的古代疾病描述之一。希波克拉底文集确立了以观察为基础的医学；强调休息、清洁水源和饮食调节的治疗方案，相较于同期以仪式为主的替代疗法，显示出明显更好的疗效。
+    文献来源：修昔底德《伯罗奔尼撒战争史》第二卷第47-54节；
+    Papagrigorakis MJ等（2006）古代牙髓DNA检测指向伤寒为雅典瘟疫的可能病因，《国际感染病学杂志》10(3):206-14；
+    Nutton V（2004）《古代医学》，Routledge出版社。
   card_back_fate: assets/card_back_fate.jpg
   card_back_player: assets/card_back_player.jpg
   version: "0.1"
   created_on: 2026-04-25
+  languages: [zh-CN, en]
   tags: [History, Medicine, Ancient, Epidemic, War]
   era: "Ancient"
   themes:
@@ -76,7 +67,7 @@ variable_display:
 health_mapping:
   source_variable: health
   scale: [0, 100, 0, 100]
-  display: Physician's Health
+  display: 医者健康
 
 turns:
   total: 12
@@ -105,7 +96,7 @@ endings:
   description: "你的方式救活的病人，比祭司的仪式多出数倍。证据太明显，已无法忽视。希波克拉底传统由此开始。"
 - grade: B
   condition: health > 0 and city_resistance > 40
-  title: 雅典endures
+  title: 雅典坚守
   description: "瘟疫夺走了它该夺走的。你治愈了你能治愈的，学到了你能学到的。雅典削弱了，但没有倒下。"
 - grade: C
   condition: health <= 0 and battle_progress >= 60

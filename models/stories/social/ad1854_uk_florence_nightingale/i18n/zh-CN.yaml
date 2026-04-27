@@ -1,0 +1,96 @@
+meta:
+  name: "弗洛伦斯·南丁格尔 — 斯库台，1854年"
+  description: |
+    1854年11月。你是弗洛伦斯·南丁格尔，刚刚抵达斯库台的营房医院。
+
+    病房里弥漫着死亡的气息。老鼠在病床底下穿行。人们正在死去——不是因为伤口，而是因为霍乱、痢疾、伤寒——可以预防的疾病，源于污秽与忽视。
+
+    军医们怨恨你的到来。补给链已经断裂。战争办公室漠然不管。但你有笔记本，有提灯，还有那沉默的证词——每100个入院的人中，有42个死去。
+
+    你每多待一天，就多消耗一分。你推行的每一项改革，都在拯救你永远不会知道名字的生命。你愿意给出多少？
+  science_note: |
+    南丁格尔在斯库台的卫生改革将病房死亡率从42.7%（1855年2月）降至2.2%（1856年1月），在5个月内降低了约20倍。她的极坐标图（"玫瑰图"）是历史上最早使用统计可视化推动公共卫生政策的案例之一。
+    文献来源：McDonald L（2010）《弗洛伦斯·南丁格尔：克里米亚战争》，Wilfrid Laurier大学出版社；Cook ET（1913）《弗洛伦斯·南丁格尔传》，Macmillan；Nightingale F（1858）《关于英国陆军卫生、效率及医院管理事务的说明》，Harrison & Sons。
+
+variable_display:
+  health:
+    label: Florence
+  ward_mortality:
+    label: 病房死亡率
+  fatigue_accumulation:
+    label: 疲劳累积
+  battle_progress:
+    label: 改革进度
+
+win_conditions:
+  - message: "【提灯女神】死亡率从42%降至5%以下。玫瑰图已递交议会。你将用余生继续改革护理制度——但你活着看到了它的开始。"
+  - message: "【战争悄然被赢下】病房变干净了，死亡减少了。你带着残破的健康回到英国，目的未竟，但门已打开。"
+  - message: "【播下的种子】你活下来了。改革尚不完整，但方向已定。你的后继者会完成你开始的事。"
+  - message: "【为改革而献身】克里米亚热带走了你的健康，但你的统计报告已到达正确的人手中。你永远无法完全康复，但你改变的体制将拯救数以千计的生命。"
+
+lose_conditions:
+  - message: "【被病房吞噬】你将一切给予了这里，但官僚机器太慢，物资太少。死亡率几乎没有变化。弗洛伦斯·南丁格尔这个名字历史不会遗忘——但病房记住了代价。"
+
+cards:
+  improve_sanitation:
+    name: "改善卫生条件"
+    flavor: "Scutari卫生条件改善后，死亡率在5个月内从42.7%降至2.2%（McDonald, 2010）"
+  night_rounds:
+    name: "夜间巡查"
+    flavor: "南丁格尔在危机高峰期每晚步行约6公里查房（Cook, 1913）"
+  write_statistics:
+    name: "绘制玫瑰图"
+    flavor: "南丁格尔的统计图表呈递给维多利亚女王和首相帕默斯顿，开创了数据驱动政策的先例"
+  train_nurses:
+    name: "培训护士"
+    flavor: "南丁格尔在Scutari第一个月内培训了15名护士；1856年前已重组克里米亚全境护理体系"
+  lobby_war_office:
+    name: "游说战争办公室"
+    flavor: "南丁格尔致战争大臣西德尼·赫伯特的信件是推动卫生改革的关键（McDonald, 2010）"
+  player_rest:
+    name: "休息"
+    flavor: "南丁格尔无视医嘱继续工作；1855年5月她感染了布鲁氏菌病（克里米亚热），此后终身未能完全康复"
+  env_fatigue_accumulates:
+    name: "疲惫加深"
+    description: "时间无休无止。病房永不停歇。你的身体在记录每一个不眠之夜，即使你的意志拒绝承认。"
+    science: "南丁格尔在1855年危机高峰期平均每天工作20小时"
+  env_cholera_ward:
+    name: "霍乱爆发"
+    description: "新一波霍乱席卷病房。病人死亡速度快过你的行动速度。"
+    science: "霍乱是克里米亚战争18,058名英国阵亡者中绝大多数的死因（Cook, 1913）"
+  env_bureaucratic_block:
+    name: "官僚阻力"
+    description: "陆军医疗部拒绝了你的物资申请。表格填错了。权限不明确。文件还在处理中，病人还在死去。"
+    science: "南丁格尔的初期物资申请屡遭拒绝，最终自掏腰包用私人捐款购买补给"
+  env_supply_shortage:
+    name: "物资短缺"
+    description: "补给车延误了。绷带、食物、药品——全都不够。现有的必须撑得更久。"
+    science: "英军克里米亚后勤混乱至极，士兵直到1855年2月才收到冬季大衣（Keegan, 1998）"
+  env_crimean_fever_risk:
+    name: "克里米亚热"
+    description: "清晨醒来，发烧，关节疼痛。你一直在对抗的疾病，也找上了你。"
+    science: "南丁格尔于1855年5月感染布鲁氏菌病（'克里米亚热'），此后终身未能完全康复"
+  env_war_escalates:
+    name: "战事升级"
+    description: "一场大规模战斗后，数百名伤员涌入Scutari。病房已经超载。"
+    science: "因克尔曼战役（1854年11月）后，Scutari单日接收伤员超过500人"
+  env_government_inspection:
+    name: "政府视察"
+    description: "一位战争办公室官员来视察病房。这是你一直在等待的机会。"
+    science: "1855年3月派驻Scutari的卫生委员会确认了南丁格尔的发现，开启了全面改革"
+  env_offensive_wave:
+    name: "大规模进攻，伤员激增"
+    description: "前线发动了进攻。数百名新伤员在24小时内抵达Scutari。你的床位已经不够了。"
+    science: "因克尔曼战役（1854年11月）后，Scutari在单日内接收伤员超过500人（McDonald, 2010）"
+  env_battle_lull:
+    name: "战场平静"
+    description: "前线进入短暂的相持阶段。新伤员的涌入减缓了。病房终于有了一点喘息空间。"
+    science: "克里米亚战争中的相持期为南丁格尔争取了推行卫生改革的关键窗口"
+  env_allied_victory:
+    name: "前线捷报"
+    description: "一场英军胜利的消息传入病房。病人们互相传告，眼神里出现了你很久没见过的东西——希望。士气对康复有真实的生理影响。"
+    science: "心理与生理状态的相关性在南丁格尔的护理观察中多次被记录（Cook, 1913）"
+  env_allied_defeat:
+    name: "前线失守"
+    description: "失败的消息和新一批伤员同时抵达。绝望像第二波瘟疫一样蔓延——有时比子弹更难医治。"
+    science: "大规模败退后的伤员潮和绝望情绪是Scutari最难处理的复合危机（McDonald, 2010）"
