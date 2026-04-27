@@ -12,6 +12,7 @@ meta:
   science_note: 本场景基于历史流行病学SIR模型（R₀≈2.5）的回合制离散化简化。每回合约代表两周时间，疫情烈度对应感染率，保留了传播–死亡–社会应激的核心动力学，舍弃了空间扩散维度。
   version: '0.1'
   created_on: 2026-03-23
+  languages: [zh-CN, en]
 initial_state:
   health: 100
   epidemic: 8

@@ -1,0 +1,30 @@
+meta:
+  name: "Dracula — Romania, 1456"
+  description: "A vampire survival model: blood reserve management and the day–night cycle. A demonstration of time-dependent sun exposure and resource consumption."
+
+variable_display:
+  health:
+    label: "Blood Reserve"
+  money:
+    label: "Resources"
+  status:
+    label: "Status"
+
+win_conditions:
+  - message: "【Excellent】You have mastered the balance of shadow and hunger. The night is yours."
+  - message: "【Survived】You endured. The hunger was great, but you are still here."
+
+lose_conditions:
+  - message: "【Failure】The blood reserve is exhausted. Even immortality has its limits."
+
+cards:
+  player_sun_exposure:
+    name: "Sun Exposure"
+    flavor: ""
+  player_hunt_intensity:
+    name: "Hunt Intensity"
+    flavor: ""
+  env_thirst_level:
+    name: "Blood Thirst"
+    description: "The hunger grows. Without blood, strength fades."
+    science: ""

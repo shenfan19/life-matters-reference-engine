@@ -1,0 +1,65 @@
+meta:
+  name: "Frances Kelsey — The Gatekeeper"
+  description: "1960. Frances Kelsey joins the FDA and takes her first case: the marketing application for thalidomide (Contergan). Pressure from the pharmaceutical company arrives in waves, but she insists on more safety evidence. In this battle against time, power, and interests, scientific conscience is the only weapon."
+
+variable_display:
+  health:
+    label: "Willpower"
+  evidence:
+    label: "Evidence Quality"
+  pressure:
+    label: "External Pressure"
+  approval_risk:
+    label: "Approval Risk"
+
+win_conditions:
+  - message: "【The Victory of Science】With steadfast will and solid evidence, thalidomide is rejected. Thousands of babies are spared birth defects. President Kennedy presents her with the Distinguished Federal Civilian Service Award."
+  - message: "【The Wounded Guardian】Exhausted in body and spirit, but the scientific evidence is finally sufficient. The application is rejected; the US becomes one of the few countries spared."
+  - message: "【Proof Still Building】Evidence continues to accumulate; the application remains on hold. Time passes; European reports are arriving one by one. The truth is about to emerge."
+
+lose_conditions:
+  - message: "【The Gatekeeper Overwhelmed】Under relentless pressure, her resolve finally breaks. Thalidomide is approved. Months later, news from Europe about infants born with deformities arrives — leaving no one able to sleep."
+
+cards:
+  player_review_files:
+    name: "Review the Application Files"
+    flavor: "The devil is in the details. Kelsey identified fundamental flaws in the data submission on her first review."
+  player_demand_data:
+    name: "Demand Additional Data"
+    flavor: "The law requires applicants to respond to every FDA query. Kelsey used this right to its fullest extent."
+  player_consult_expert:
+    name: "Consult an Expert"
+    flavor: "Independent scientific assessment is the most powerful shield against pressure from vested interests."
+  player_document_concerns:
+    name: "Document Safety Concerns"
+    flavor: "When fighting inside a bureaucracy, documentation is your weapon."
+  player_rest:
+    name: "Return to Family"
+    flavor: "Kelsey's husband Fremont Kelsey was also a physician — her most steadfast supporter throughout."
+  player_write_report:
+    name: "Write the Rejection Report"
+    flavor: "A rigorous report is harder to ignore than any verbal argument."
+  env_company_pressure:
+    name: "Pharmaceutical Pressure"
+    description: "Richardson-Merrell representatives arrive again with a lawyer's letter and a complaint to her superiors, demanding immediate FDA approval."
+    science: "\"Dr. Kelsey, you are obstructing progress and making countless pregnant women suffer unnecessarily.\""
+  env_superior_pressure:
+    name: "Pressure from Above"
+    description: "Word comes from the FDA Director's office: the company has friends in Congress. This review has dragged on too long — consider your career."
+    science: "Resistance from within the institution is sometimes harder to resist than external pressure."
+  env_media_scrutiny:
+    name: "Media Scrutiny"
+    description: "The pharmaceutical company leaks to the media: 'FDA bureaucracy blocks innovative drug, denies pregnant women access to effective anti-nausea treatment'."
+    science: "Public opinion is a double-edged sword — before the truth is known, it may stand on the wrong side."
+  env_nerve_damage_report:
+    name: "Peripheral Nerve Damage Report"
+    description: "The British Medical Journal publishes a clinical report on peripheral neuropathy caused by thalidomide — patients experience numbness and tingling in hands and feet."
+    science: "Scientific evidence does not lie; it just needs time to be heard."
+  env_european_withdrawal:
+    name: "European Withdrawal"
+    description: "In November 1961, West Germany and the UK announce the withdrawal of thalidomide, citing links to hundreds of cases of congenital limb defects."
+    science: "When the news from Europe came, Kelsey knew: her insistence was not stubbornness — it was foresight."
+  env_birth_defect_news:
+    name: "Phocomelia Reports"
+    description: "Detailed reports from Europe reveal that babies born to mothers who took thalidomide have phocomelia — severely shortened or absent limbs. Over 10,000 children affected."
+    science: "Behind these numbers are innocent faces. Kelsey was only doing what she was supposed to do."

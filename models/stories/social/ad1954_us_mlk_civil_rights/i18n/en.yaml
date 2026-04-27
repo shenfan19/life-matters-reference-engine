@@ -1,0 +1,65 @@
+meta:
+  name: "Martin Luther King Jr. — I Have a Dream"
+  description: "1955. The Montgomery Bus Boycott ignites the torch of the American civil rights movement. As the Reverend Martin Luther King Jr., with nonviolent resistance as your only weapon, you lead African Americans in the fight for equal rights — navigating FBI surveillance, violent threats, and relentless political pressure."
+
+variable_display:
+  health:
+    label: "Health"
+  morale:
+    label: "Movement Morale"
+  influence:
+    label: "Political Influence"
+  stress:
+    label: "Stress"
+
+win_conditions:
+  - message: "【I Have a Dream】Reaching victory in full health and resolve — the Civil Rights Act becomes a landmark in history. Freedom has arrived, but this is only the beginning of a long journey."
+  - message: "【A Victory Worn Down】Exhausted in body and spirit, but the torch of the civil rights movement has lit the national conscience. History will remember this costly struggle."
+  - message: "【Change Unfinished】The movement has come far — the Act's passage is within sight. The seeds are planted; history's fruit will be harvested by those who come after."
+
+lose_conditions:
+  - message: "【The Pioneer Falls Silent】Cut down by gunfire and harassment before the dream is realized — the seeds of the dream are scattered across the southern land, waiting for the next sower."
+
+cards:
+  player_speech:
+    name: "Deliver a Speech"
+    flavor: "\"Darkness cannot drive out darkness; only light can do that. Hate cannot drive out hate; only love can do that.\""
+  player_march:
+    name: "Organise a March"
+    flavor: "In 1963, 250,000 people gathered on the National Mall — the largest political rally in American history."
+  player_negotiate:
+    name: "Negotiate with Authorities"
+    flavor: "In 1963, President Kennedy received civil rights leaders in the Oval Office."
+  player_community:
+    name: "Engage the Community"
+    flavor: "The civil rights movement was not one person's cause — it lived on every street and in every church."
+  player_rest:
+    name: "Rest and Prayer"
+    flavor: "\"I know I am tired, but I also know that tomorrow is a new day.\""
+  player_letter:
+    name: "Letter from Birmingham Jail"
+    flavor: "In 1963, Dr. King wrote his Letter from Birmingham Jail on newspaper margins and toilet paper, refuting the accusation that 'your actions are untimely'."
+  env_fbi_harassment:
+    name: "FBI Surveillance"
+    description: "Director Hoover authorises full surveillance of Dr. King — phones tapped, letters intercepted, agents spreading rumours to destroy his reputation."
+    science: "\"He is the most dangerous Negro in America.\" — J. Edgar Hoover"
+  env_political_opposition:
+    name: "Political Obstruction"
+    description: "Southern senators unite in Congress to block civil rights legislation; local governments seal off protests."
+    science: "\"Segregation is not discrimination — it is the tradition of the South.\""
+  env_violent_crackdown:
+    name: "Violent Crackdown"
+    description: "Police use fire hoses and dogs to disperse protesters; demonstrators are beaten and arrested; churches are bombed."
+    science: "In 1963 Birmingham, Commissioner 'Bull' Connor ordered water cannons turned on child protesters."
+  env_church_solidarity:
+    name: "Church Solidarity"
+    description: "Southern Christian Leadership Conference ministers take to the streets; white churches begin issuing joint statements."
+    science: "\"Not only the law, but the eyes of God are watching the South.\""
+  env_media_coverage:
+    name: "National Media Coverage"
+    description: "Television broadcasts the violent crackdown of demonstrators into millions of American homes, bringing the civil rights movement into full national view."
+    science: "Television brought the true face of racism into American living rooms for the first time."
+  env_bombing_threat:
+    name: "Bombing Threats and Assassination Plots"
+    description: "A bomb is placed outside his home; death threats come by phone; assassination plots force King and his family to live in constant fear."
+    science: "\"If you don't stop, your family will pay the price.\""

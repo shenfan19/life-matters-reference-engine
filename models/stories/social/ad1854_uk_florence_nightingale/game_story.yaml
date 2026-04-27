@@ -28,6 +28,8 @@ meta:
   card_back_player: assets/card_back_player.jpg
   version: "0.1"
   created_on: 2026-04-25
+  base_language: en
+  languages: [en, zh-CN]
   tags: [History, Medicine, War, 19th Century]
   era: "19th century"
   themes:
