@@ -35,28 +35,22 @@ formulas:
       hydration: "hydration + (water_sip / 10)"
     priority: 7
 
-schedules:
-  meal_size:
-    interpolation: step
-    points:
-      - { time: 25200, value: 300 }  # 07:00 Breakfast
-      - { time: 28800, value: 0 }    # 08:00 Done
-      - { time: 43200, value: 600 }  # 12:00 Lunch
-      - { time: 46800, value: 0 }    # 13:00 Done
-      - { time: 64800, value: 500 }  # 18:00 Dinner
-      - { time: 68400, value: 0 }    # 19:00 Done
-  water_sip:
-    interpolation: linear
-    points:
-      - { time: 0, value: 0 }
-      - { time: 36000, value: 100 }  # 10:00 Sip
-      - { time: 39600, value: 0 }
-      - { time: 54000, value: 150 }  # 15:00 Sip
-      - { time: 57600, value: 0 }
-
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   step: 10
   step_unit: minute
   output_variables: [energy, hydration, meal_size]
+  schedules:
+    meal_size:
+      interpolation: step
+      points:
+        - { time: 25200, value: 300 }  # 07:00 Breakfast
+        - { time: 43200, value: 600 }  # 12:00 Lunch
+        - { time: 64800, value: 500 }  # 18:00 Dinner
+    water_sip:
+      interpolation: linear
+      points:
+        - { time: 0, value: 0 }
+        - { time: 36000, value: 100 }  # 10:00 Sip
+        - { time: 54000, value: 150 }  # 15:00 Sip

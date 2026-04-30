@@ -137,11 +137,18 @@ formulas:
     description: "说明"
     reference: "文献来源"
 
-simulator:
-  step_size: 1
-  time_unit: minute               # second | minute | hour | day | week | month | year
-  total_time: 1440
+simulation:
+  start_date: "YYYY-MM-DD"
+  end_date: "YYYY-MM-DD"
+  step: 10
+  step_unit: minute               # second | minute | hour | day | week | month | year
   output_variables: [var1, var2]
+  schedules:                      # 可选；每个 key 必须是 variables 中 type: input 的变量名
+    var_name:
+      interpolation: step | linear
+      points:
+        - {time: 25200, value: 1.5}   # time 单位：秒，从仿真起点累计
+        - {time: 43200, value: 1.8}
 ```
 
 ---
@@ -171,6 +178,54 @@ dynamics:
 ```
 
 理由：生理/社会模型参数不确定性 ±10–50%，Euler 截断误差远低于此；离散事件（进餐、用药）破坏高阶积分器精度优势；明文表达所见即所得。
+
+---
+
+## simulation.schedules — 时间驱动的 input 序列
+
+`simulation.schedules` 是 `type: input` 变量的子类型，表示"随仿真时间自动变化的输入量"。
+
+```yaml
+simulation:
+  schedules:
+    carb_intake:
+      interpolation: step    # step（阶梯保持）| linear（线性插值）
+      points:
+        - {time: 25200, value: 1.5}   # 07:00 早餐
+        - {time: 43200, value: 1.8}   # 12:00 午餐
+        - {time: 66600, value: 1.6}   # 18:30 晚餐
+```
+
+**使用规则：**
+
+- `schedules` 必须在 `simulation` 下，与 `start_date` 同级，**不能放在顶层**。
+- 每个 key 必须对应 `variables` 中存在且 `type: input` 的变量。
+- `time` 单位为秒，从仿真起点（`start_date 00:00:00`）累计。
+- GUI 加载模型时会自动将 schedule points 预填入对应输入变量的 Regimen 卡片（可编辑）。
+
+**离散输入不写零值点（重要规则）：**
+
+> `type: input` 变量（进食量、给药剂量、摄入/消耗等瞬时量）在 Euler 离散步进模式下是**逐步瞬时量**，不是连续保持量。因此 schedule 中只需列出有实际输入的时刻，**不需要插入 `value: 0` 的关闭点**。
+
+```yaml
+# ✅ 正确：只写非零时刻
+schedules:
+  carb_intake:
+    points:
+      - {time: 25200, value: 1.5}   # 早餐
+      - {time: 43200, value: 1.8}   # 午餐
+
+# ❌ 错误：多余的 0 值点使 schedule 臃肿且含义模糊
+schedules:
+  carb_intake:
+    points:
+      - {time: 25200, value: 1.5}
+      - {time: 28800, value: 0.0}   # 不需要
+      - {time: 43200, value: 1.8}
+      - {time: 46800, value: 0.0}   # 不需要
+```
+
+此规则仅适用于瞬时量（进食、给药等）。连续速率类变量（如持续泵药 `infusion_rate`，预期在一段时间内保持非零）可视需要保留关闭点。
 
 ---
 

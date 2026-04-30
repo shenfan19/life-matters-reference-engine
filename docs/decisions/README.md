@@ -49,3 +49,4 @@
 | [0041](0041-2026-04-22_project_命名规范下划线优先.md) | 项目命名规范：snake_case 下划线优先 | ✅ 已实施 | 2026-04-22 |
 | [0042](0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名；保留 sim_xxx 不改 | ✅ 已实施 | 2026-04-23 |
 | [0043](0043-2026-04-25_game_battlefield-tension-framework.md) | 战场张力框架：battle_progress/danger_accumulation 归 Game-native；origin 字段；命运牌模式；南丁格尔 + 希波克拉底首次实现 | ✅ 已实施 | 2026-04-25 |
+| [0044](0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；GUI 自动预填 Regimen；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |

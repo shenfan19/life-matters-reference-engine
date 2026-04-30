@@ -1,0 +1,100 @@
+metadata:
+  name: test_glucose_meal
+  updated: 2026-04-30
+  author: LM Test
+  description: >
+    血糖 MC 测试：三日三餐脉冲式摄入→胃缓冲→血糖波动。
+    两个正态分布参数（insulin_sensitivity + absorption_efficiency）在 MC 多条曲线间产生可见差异。
+  tags: [test, glucose, mc, schedule, pulse]
+
+# ── 变量 ───────────────────────────────────────────────────────────────────────
+variables:
+  blood_glucose:
+    description: 血糖浓度
+    value: 90.0
+    unit: mg/dL
+    type: state
+    bounds: [40, 400]
+
+  stomach_carbs:
+    description: 胃内碳水缓冲（吸收前）
+    value: 0.0
+    unit: g
+    type: state
+    bounds: [0, 500]
+
+  carb_intake:
+    description: 一次进食摄入碳水总量（脉冲式，simulation.schedules pulse 模式驱动）
+    value: 0.0
+    unit: g
+    type: input
+
+  insulin_sensitivity:
+    description: 胰岛素敏感性，MC 时各条曲线不同，影响餐后清除速率
+    value: "normal(1.0, 0.25)"
+    unit: 无量纲
+    type: parameter
+    bounds: [0.2, 2.5]
+
+  absorption_efficiency:
+    description: 胃肠吸收效率，MC 时各条曲线不同，影响餐后血糖峰值高度
+    value: "normal(1.0, 0.2)"
+    unit: 无量纲
+    type: parameter
+    bounds: [0.3, 2.0]
+
+# ── 动力学公式 ─────────────────────────────────────────────────────────────────
+# step_size 单位 = 10 分钟（本模型 step_unit: minute）
+# carb_intake 是脉冲总量（g），不需乘以 step_size
+# 吸收速率 2.0 g/min × step_size(min) = 20 g/step
+formulas:
+  meal_absorption:
+    description: >
+      carb_intake（脉冲总量）一次性加入胃缓冲；
+      胃内碳水以 2 g/min 速率吸收，吸收量受 absorption_efficiency 调节（MC 可见）。
+    condition: true
+    priority: 5
+    dynamics:
+      stomach_carbs: max(0, stomach_carbs + carb_intake - 2.0 * step_size)
+      blood_glucose: blood_glucose + min(stomach_carbs, 2.0 * step_size) * absorption_efficiency * 1.8
+
+  glucose_clearance:
+    description: 胰岛素驱动血糖向基线（90）回落，速率受 insulin_sensitivity 调节（MC 可见）
+    condition: blood_glucose > 90
+    priority: 4
+    dynamics:
+      blood_glucose: blood_glucose - (blood_glucose - 90) * insulin_sensitivity * 0.02 * step_size
+
+  hepatic_output:
+    description: 低血糖时肝糖原补充防护
+    condition: blood_glucose < 85
+    priority: 3
+    dynamics:
+      blood_glucose: blood_glucose + (85 - blood_glucose) * 0.05 * step_size
+
+# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-04"      # 3 天
+  step: 10
+  step_unit: minute
+  output_variables:
+    - blood_glucose
+    - stomach_carbs
+    - carb_intake
+  schedules:
+    carb_intake:
+      interpolation: pulse     # 脉冲模式：仅命中步有效，其余步自动为 0，不需零值关闭点
+      points:
+        # ── 第 1 天 ──
+        - {time: 25200,  value: 50}   # 07:00 早餐 50g
+        - {time: 43200,  value: 80}   # 12:00 午餐 80g
+        - {time: 66600,  value: 60}   # 18:30 晚餐 60g
+        # ── 第 2 天 ──
+        - {time: 111600, value: 50}
+        - {time: 129600, value: 80}
+        - {time: 153000, value: 60}
+        # ── 第 3 天 ──
+        - {time: 198000, value: 50}
+        - {time: 216000, value: 80}
+        - {time: 239400, value: 60}

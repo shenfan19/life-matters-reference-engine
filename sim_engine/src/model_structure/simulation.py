@@ -13,43 +13,47 @@ logger = logging.getLogger(__name__)
 
 class Simulation:
     # Simulation
-    def _apply_schedules(self):
+    def _apply_schedules(self, step_size_sec: float = 0.0):
         """
-        应用计划表，根据当前仿真时间 self.time 更新变量值
+        应用计划表，根据当前仿真时间 self.time 更新变量值。
+        step_size_sec: 当前步长（秒），供 pulse 模式使用。
         """
-        # 获取手动覆盖列表 (如果有)
         manual_overrides = getattr(self, 'manual_overrides', {})
-        
+
         for var_name, schedule in getattr(self, 'schedules', {}).items():
-            # 如果变量被手动覆盖，则跳过计划表应用
             if var_name in manual_overrides:
                 continue
-                
+
             if not schedule.points:
                 continue
-            
-            # 找到当前时刻对应的点
+
             points = schedule.points
-            if self.time <= points[0].time:
-                target_value = points[0].value
-            elif self.time >= points[-1].time:
-                target_value = points[-1].value
-            else:
-                # 在中间，查找对应区间
-                for i in range(len(points) - 1):
-                    p1 = points[i]
-                    p2 = points[i+1]
-                    if p1.time <= self.time < p2.time:
-                        if schedule.interpolation == 'linear':
-                            # 线性插值
-                            t_ratio = (self.time - p1.time) / (p2.time - p1.time)
-                            target_value = p1.value + t_ratio * (p2.value - p1.value)
-                        else:
-                            # 阶梯式 (Step)
-                            target_value = p1.value
+
+            if schedule.interpolation == 'pulse':
+                # pulse 模式：仅在事件时间落入本步窗口 [self.time, self.time+step_size_sec) 时生效，其余步为 0
+                target_value = 0.0
+                for pt in points:
+                    if self.time <= pt.time < self.time + step_size_sec:
+                        target_value = pt.value
                         break
-            
-            # 设置变量值
+            else:
+                # step / linear 模式（保持向后兼容）
+                # 首点之前和末点之后均返回 0，不做 hold
+                if self.time < points[0].time or self.time >= points[-1].time:
+                    target_value = 0.0
+                else:
+                    target_value = 0.0
+                    for i in range(len(points) - 1):
+                        p1 = points[i]
+                        p2 = points[i + 1]
+                        if p1.time <= self.time < p2.time:
+                            if schedule.interpolation == 'linear':
+                                t_ratio = (self.time - p1.time) / (p2.time - p1.time)
+                                target_value = p1.value + t_ratio * (p2.value - p1.value)
+                            else:
+                                target_value = p1.value
+                            break
+
             self.set_variable_value(var_name, target_value)
 
     def _update_accumulators(self, step_size: float):
@@ -103,19 +107,19 @@ class Simulation:
         执行单步仿真
         :param step_size: 时间步长(秒) - TODO: 未来支持动态 dt (自适应步长)
         """
-        # 新增：应用计划表
-        self._apply_schedules()
-
         # 新增：执行 pre_step 钩子
         for hook in self.hooks.get('pre_step', []):
             try:
                 hook(self)
             except Exception as e:
                 logger.warning(f"Pre-step hook failed: {e}")
-        
+
         # 将 step_size（time_unit 单位）转换为秒，供内部时钟和 accumulator 使用
         unit_sec = TIME_UNIT_SECONDS.get(getattr(self, 'time_unit', 'second'), 1.0)
         step_size_sec = step_size * unit_sec
+
+        # 应用计划表（传入秒步长供 pulse 模式使用）
+        self._apply_schedules(step_size_sec)
 
         # 公式中 dt/step_size = 声明单位下的步长（作者直觉单位）
         self.asteval.symtable['dt'] = step_size

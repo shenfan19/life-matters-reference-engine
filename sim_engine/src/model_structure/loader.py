@@ -214,8 +214,8 @@ class Loader:
             time_unit_raw = 'second'
         self.time_unit = time_unit_raw
 
-        # 应用计划表 (Schedules)
-        schedules_raw = data.get('schedules', {})
+        # 应用计划表 (Schedules) — 从 simulation.schedules 读取
+        schedules_raw = simulator_data.get('schedules', {})
         for var_name, sched_data in schedules_raw.items():
             points = []
             for pt in sched_data.get('points', []):
