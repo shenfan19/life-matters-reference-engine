@@ -26,6 +26,9 @@ metadata:
       Mastrolorenzo G et al. (2010) Lethal thermal impact at periphery of pyroclastic surges. PLoS ONE 5(6):e11127.
       Zanella E et al. (2007) Deposition of the AD 79 Pompeii tephra. J Volcanol Geotherm Res 160(3-4):316-336.
 
+  step_size:
+    value: 1
+    unit: hour
 variables:
 
   # ── 行为输入 ─────────────────────────────────────────────────────────────────
@@ -109,7 +112,7 @@ formulas:
     condition: "hours_elapsed < 20"
     priority: 10
     dynamics:
-      hours_elapsed: "min(20, hours_elapsed + step_size)"
+      hours_elapsed: "min(20, hours_elapsed + step)"
 
   # 2. 灰层累积（全程，速率分两阶段）
   # 前12小时（下午+夜晚前段）：灰雨较密集，约+8/小时
@@ -120,14 +123,14 @@ formulas:
     condition: "hours_elapsed <= 12"
     priority: 9
     dynamics:
-      ash_depth: "min(100, ash_depth + 8 * step_size)"
+      ash_depth: "min(100, ash_depth + 8 * step)"
 
   ash_accumulation_phase2:
     description: "12小时后：灰雨减弱，岩浆涌接管威胁（凌晨至清晨）"
     condition: "hours_elapsed > 12"
     priority: 9
     dynamics:
-      ash_depth: "min(100, ash_depth + 3 * step_size)"
+      ash_depth: "min(100, ash_depth + 3 * step)"
 
   # 3. 岩浆涌强度：凌晨后快速累积
   # 历史：第一次岩浆涌约凌晨1am抵达Herculaneum（小镇），6:30am抵达庞贝
@@ -137,14 +140,14 @@ formulas:
     condition: "hours_elapsed > 12"
     priority: 8
     dynamics:
-      pyroclastic_intensity: "min(100, pyroclastic_intensity + 6 * step_size)"
+      pyroclastic_intensity: "min(100, pyroclastic_intensity + 6 * step)"
 
   pyroclastic_peak:
     description: "清晨（hour>16）岩浆涌进入峰值期，速率翻倍"
     condition: "hours_elapsed > 16"
     priority: 8
     dynamics:
-      pyroclastic_intensity: "min(100, pyroclastic_intensity + 8 * step_size)"
+      pyroclastic_intensity: "min(100, pyroclastic_intensity + 8 * step)"
 
   # 4. 逃离动力学
   # 移速1=3km/h，2=5km/h，3=7km/h（在灰层中打折：ash_depth系数）
@@ -158,7 +161,7 @@ formulas:
         min(30, escape_distance
           + movement_speed * (3.0 - ash_depth * 0.02)
           * (1 - shelter_use * 0.9)
-          * step_size)
+          * step)
 
   # 5. 体能消耗
   # 灰吸入：health -= ash_depth * 0.04/hour（P3：灰越深，损耗越快）
@@ -169,21 +172,21 @@ formulas:
     condition: "ash_depth > 0 and shelter_use < 0.5"
     priority: 6
     dynamics:
-      health: "max(0, health - ash_depth * 0.04 * step_size)"
+      health: "max(0, health - ash_depth * 0.04 * step)"
 
   health_exertion:
     description: "高速逃跑的体力消耗（movement_speed=3时最重）"
     condition: "movement_speed > 1"
     priority: 6
     dynamics:
-      health: "max(0, health - (movement_speed - 1) * 2.5 * step_size)"
+      health: "max(0, health - (movement_speed - 1) * 2.5 * step)"
 
   health_heat_damage:
     description: "岩浆涌热辐射：intensity>30后开始远程热伤害"
     condition: "pyroclastic_intensity > 30"
     priority: 5
     dynamics:
-      health: "max(0, health - (pyroclastic_intensity - 30) * 0.08 * step_size)"
+      health: "max(0, health - (pyroclastic_intensity - 30) * 0.08 * step)"
 
   # 6. 灾难性事件
   # 屋顶坍塌：ash_depth>60且掩蔽时，有持续健康惩罚（模拟概率性坍塌）
@@ -192,7 +195,7 @@ formulas:
     condition: "ash_depth > 60 and shelter_use > 0.5"
     priority: 5
     dynamics:
-      health: "max(0, health - (ash_depth - 60) * 0.15 * step_size)"
+      health: "max(0, health - (ash_depth - 60) * 0.15 * step)"
 
   # 岩浆涌直接杀伤：pyroclastic_intensity>70且仍在危险区（escape_distance<8）
   pyroclastic_kill_zone:
@@ -200,7 +203,7 @@ formulas:
     condition: "pyroclastic_intensity > 70 and escape_distance < 8"
     priority: 4
     dynamics:
-      health: "max(0, health - (pyroclastic_intensity - 70) * 2.0 * step_size)"
+      health: "max(0, health - (pyroclastic_intensity - 70) * 2.0 * step)"
 
   # 7. 掩蔽的保护效果（减少灰吸入和体力消耗）
   shelter_protection:
@@ -208,18 +211,16 @@ formulas:
     condition: "shelter_use > 0.3 and ash_depth < 60"
     priority: 6
     dynamics:
-      health: "min(100, health + shelter_use * 1.5 * step_size)"
+      health: "min(100, health + shelter_use * 1.5 * step)"
 
 simulation:
   start_date: "0079-08-24"
-  end_date:   "0079-08-25"
-  step: 1
-  step_unit: hour
+  end_date: "0079-08-25"
   output_variables:
-    - health
-    - escape_distance
-    - ash_depth
-    - pyroclastic_intensity
+  - health
+  - escape_distance
+  - ash_depth
+  - pyroclastic_intensity
 
 optimizer:
   method: multi_objective
@@ -228,39 +229,39 @@ optimizer:
   generations: 100
 
   objectives:
-    - variable: escape_distance
-      direction: maximize
-      weight: 1.0
-      description: "首要目标：活着离开庞贝"
-    - variable: health
-      direction: maximize
-      weight: 0.6
-      description: "次要目标：保留体能（体能耗尽等于死亡）"
+  - variable: escape_distance
+    direction: maximize
+    weight: 1.0
+    description: "首要目标：活着离开庞贝"
+  - variable: health
+    direction: maximize
+    weight: 0.6
+    description: "次要目标：保留体能（体能耗尽等于死亡）"
 
   constraints:
-    - expression: "health > 0"
-      description: "不能在逃离途中体力耗尽"
-    - expression: "pyroclastic_intensity < 80 OR escape_distance >= 8"
-      description: "岩浆涌抵达时必须已离开城区"
+  - expression: "health > 0"
+    description: "不能在逃离途中体力耗尽"
+  - expression: "pyroclastic_intensity < 80 OR escape_distance >= 8"
+    description: "岩浆涌抵达时必须已离开城区"
 
   variables_to_optimize:
-    - name: early_speed
-      default: 1.5
-      bounds: [0.5, 3.0]
-      maps_to: "movement_speed @ [0, 8]"
-      description: "喷发后前8小时的移动策略（此时尚无岩浆涌威胁）"
+  - name: early_speed
+    default: 1.5
+    bounds: [0.5, 3.0]
+    maps_to: "movement_speed @ [0, 8]"
+    description: "喷发后前8小时的移动策略（此时尚无岩浆涌威胁）"
 
-    - name: late_speed
-      default: 2.5
-      bounds: [1.0, 3.0]
-      maps_to: "movement_speed @ [8, 19]"
-      description: "凌晨后的移动策略（岩浆涌逼近，必须加速）"
+  - name: late_speed
+    default: 2.5
+    bounds: [1.0, 3.0]
+    maps_to: "movement_speed @ [8, 19]"
+    description: "凌晨后的移动策略（岩浆涌逼近，必须加速）"
 
-    - name: shelter_phase
-      default: 0.0
-      bounds: [0.0, 0.8]
-      maps_to: "shelter_use @ [0, 10]"
-      description: "前期是否选择短暂掩蔽等待灰雨减弱（有时比立即跑更有效）"
+  - name: shelter_phase
+    default: 0.0
+    bounds: [0.0, 0.8]
+    maps_to: "shelter_use @ [0, 10]"
+    description: "前期是否选择短暂掩蔽等待灰雨减弱（有时比立即跑更有效）"
 
   analysis:
     pareto_description: >

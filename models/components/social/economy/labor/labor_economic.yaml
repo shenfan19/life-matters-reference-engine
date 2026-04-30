@@ -4,23 +4,23 @@ metadata:
   author: TODO:AUTHOR
   description: "劳动力与经济动力学模型：包含工作量（R1）、收入与储蓄（R2）与疲劳度（R3）。"
   tags: [social, socio_economic, labor]
+  step_size:
+    value: 1
+    unit: week
 
 variables:
   # R1: Labor Output
-  work_load: { description: "工作负荷", value: 40, unit: "h/week", type: state, bounds: [0, 100] }
-  productivity: { description: "生产力系数", value: 1.0, unit: "系数", type: state, bounds: [0.1, 2.0] }
-  
+  work_load: {description: "工作负荷", value: 40, unit: "h/week", type: state, bounds: [0, 100]}
+  productivity: {description: "生产力系数", value: 1.0, unit: "系数", type: state, bounds: [0.1, 2.0]}
   # R2: Economy
-  income_rate: { description: "时薪收入", value: 20, unit: "元/h", type: state, bounds: [0, 1000] }
-  savings: { description: "存款储蓄", value: 5000, unit: "元", type: state, bounds: [0, 1000000] }
-  
+  income_rate: {description: "时薪收入", value: 20, unit: "元/h", type: state, bounds: [0, 1000]}
+  savings: {description: "存款储蓄", value: 5000, unit: "元", type: state, bounds: [0, 1000000]}
   # R3: Physiological Cost
-  fatigue_level: { description: "疲劳度", value: 0, unit: "分", type: state, bounds: [0, 100] }
-  
+  fatigue_level: {description: "疲劳度", value: 0, unit: "分", type: state, bounds: [0, 100]}
   # P1: Inputs (Card Inputs)
-  overtime_hours: { description: "加班时数", value: 0, unit: "h", type: input }
-  vacation_days: { description: "休假天数", value: 0, unit: "d", type: input }
-  skill_training: { description: "技能培训", value: 0, unit: "h", type: input }
+  overtime_hours: {description: "加班时数", value: 0, unit: "h", type: input}
+  vacation_days: {description: "休假天数", value: 0, unit: "d", type: input}
+  skill_training: {description: "技能培训", value: 0, unit: "h", type: input}
 
 formulas:
   # F1: Economic Dynamics
@@ -28,7 +28,7 @@ formulas:
     description: "周薪与支出计算"
     condition: true
     dynamics:
-      savings: "savings + (work_load + overtime_hours) * income_rate * step_size - 1000 * step_size"
+      savings: "savings + (work_load + overtime_hours) * income_rate * step - 1000 * step"
     priority: 5
 
   # F2: Fatigue Dynamics
@@ -36,7 +36,7 @@ formulas:
     description: "工作导致疲劳累积"
     condition: true
     dynamics:
-      fatigue_level: "max(0, fatigue_level + (overtime_hours * 2 - vacation_days * 10) * step_size)"
+      fatigue_level: "max(0, fatigue_level + (overtime_hours * 2 - vacation_days * 10) * step)"
     priority: 5
 
   # F3: Productivity Impact
@@ -44,13 +44,11 @@ formulas:
     description: "培训提升生产力"
     condition: skill_training > 0
     dynamics:
-      productivity: "min(2.0, productivity + skill_training * 0.01 * step_size)"
-      savings: "savings - skill_training * 50 * step_size"
+      productivity: "min(2.0, productivity + skill_training * 0.01 * step)"
+      savings: "savings - skill_training * 50 * step"
     priority: 3
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-12-31"
-  step: 1
-  step_unit: week
   output_variables: [savings, fatigue_level, productivity]

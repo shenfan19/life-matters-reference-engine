@@ -529,12 +529,19 @@ const Simulator: React.FC<SimulatorProps> = ({
       return 'day';   // week/month/year → show as day in UI
     };
     if (sim) {
-      // ── new format: start_date / end_date / step / step_unit ──
+      // ── new format: start_date / end_date; step from metadata.step_size ──
       if (sim.start_date && sim.end_date) {
         set('simStartDate', String(sim.start_date));
         set('simEndDate',   String(sim.end_date));
-        set('stepValue', sim.step ?? 1);
-        set('stepUnit',  toStepUnit(String(sim.step_unit || 'day')));
+        // metadata.step_size 优先；向后兼容 simulation.step / step_unit
+        const metaStep = selectedModel?.content?.metadata?.step_size;
+        if (metaStep?.unit) {
+          set('stepValue', metaStep.value ?? 1);
+          set('stepUnit',  toStepUnit(String(metaStep.unit)));
+        } else {
+          set('stepValue', sim.step ?? 1);
+          set('stepUnit',  toStepUnit(String(sim.step_unit || 'minute')));
+        }
       } else {
         // ── legacy fallback: step_size / time_unit / total_time ──
         const UNIT_SEC: Record<string, number> = {
@@ -1483,13 +1490,31 @@ const Simulator: React.FC<SimulatorProps> = ({
             style={{ width: 100, fontFamily: 'monospace' }} />
         </div>
 
-        {/* Step size */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
-          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: 58 }} min={0} />
-          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 62, flexShrink: 0 }}
-            options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
-        </div>
+        {/* Step size — canonical from metadata.step_size, coarsening via multiplier */}
+        {(() => {
+          const metaStep = selectedModel?.content?.metadata?.step_size;
+          const canonUnit = metaStep?.unit ?? stepUnit;
+          const canonVal  = metaStep?.value ?? 1;
+          const coarseOptions = [
+            { label: '1×', value: 1 }, { label: '2×', value: 2 },
+            { label: '5×', value: 5 }, { label: '10×', value: 10 },
+            { label: '30×', value: 30 }, { label: '60×', value: 60 },
+          ];
+          const currentCoarse = Math.round(stepValue / canonVal) || 1;
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <Tooltip title={`${t('sim.step.label')}（${canonVal} ${canonUnit}）`}>
+                <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                  {stepValue} {stepUnit}
+                </span>
+              </Tooltip>
+              <Select size="small" value={coarseOptions.find(o => o.value === currentCoarse) ? currentCoarse : 1}
+                onChange={v => { set('stepValue', canonVal * v); set('stepUnit', toStepUnit(String(canonUnit))); }}
+                style={{ width: 58, flexShrink: 0 }}
+                options={coarseOptions} />
+            </div>
+          );
+        })()}
 
         {/* MC runs */}
         <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '–'}` : 'Monte Carlo 运行条数（1=单条）'}>

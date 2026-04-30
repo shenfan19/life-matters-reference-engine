@@ -121,9 +121,11 @@ class Simulation:
         # 应用计划表（传入秒步长供 pulse 模式使用）
         self._apply_schedules(step_size_sec)
 
-        # 公式中 dt/step_size = 声明单位下的步长（作者直觉单位）
-        self.asteval.symtable['dt'] = step_size
+        # 公式中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
+        # step 是规范符号；step_size/dt 保留为向后兼容别名
+        self.asteval.symtable['step'] = step_size
         self.asteval.symtable['step_size'] = step_size
+        self.asteval.symtable['dt'] = step_size
         # 公式中 t/time = 当前时间（声明单位），修复 time 未定义 bug
         self.asteval.symtable['t'] = self.time / unit_sec
         self.asteval.symtable['time'] = self.time / unit_sec

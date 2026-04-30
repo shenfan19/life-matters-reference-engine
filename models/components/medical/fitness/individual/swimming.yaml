@@ -6,6 +6,9 @@ metadata:
     游泳训练模型（单次训练课，60分钟）。技术效率主导：划水效率与体能共同决定速度。
     低冲击有氧运动，核心特征是技术衰减—疲劳越高效率越低。
   tags: [sport, swimming, aerobic, technique]
+  step_size:
+    value: 1
+    unit: minute
 
 variables:
   training_intensity:
@@ -110,6 +113,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [heart_rate, distance, stroke_efficiency, calories_burned, fatigue, technique_score, performance]

@@ -7,6 +7,9 @@ metadata:
   author: "Antigravity"
   description: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
   tags: [nutrition, simple, demo]
+  step_size:
+    value: 1
+    unit: minute
 
 variables:
   # ========== 来自食物模型的输入 (匹配 banana.yaml 的输出) ==========
@@ -85,6 +88,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]

@@ -7,6 +7,9 @@ metadata:
   tags:
   - complications
   - diabetes
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - glucose_regulation
 - inflammation
@@ -48,32 +51,30 @@ formulas:
     description: 高血糖导致神经病变进展
     condition: blood_glucose > 150
     dynamics:
-      neuropathy_severity: min(100, neuropathy_severity + (blood_glucose - 150) * 0.001 * step_size)
+      neuropathy_severity: min(100, neuropathy_severity + (blood_glucose - 150) * 0.001 * step)
     priority: 7
   nephropathy_progression:
     description: 高血糖导致肾病变进展
     condition: blood_glucose > 160
     dynamics:
-      nephropathy_severity: min(100, nephropathy_severity + (blood_glucose - 160) * 0.0008 * step_size)
-      kidney_function: max(0.1, kidney_function - 0.0001 * step_size)
+      nephropathy_severity: min(100, nephropathy_severity + (blood_glucose - 160) * 0.0008 * step)
+      kidney_function: max(0.1, kidney_function - 0.0001 * step)
     priority: 7
   retinopathy_progression:
     description: 高血糖导致视网膜病变进展
     condition: blood_glucose > 140
     dynamics:
-      retinopathy_severity: min(100, retinopathy_severity + (blood_glucose - 140) * 0.0005 * step_size)
+      retinopathy_severity: min(100, retinopathy_severity + (blood_glucose - 140) * 0.0005 * step)
     priority: 7
   cardiovascular_risk_increase:
     description: 高血糖和炎症增加心血管风险
     condition: blood_glucose > 130 or inflammation_level > 2.0
     dynamics:
-      cardiovascular_risk: min(1.0, cardiovascular_risk + 0.0002 * step_size)
+      cardiovascular_risk: min(1.0, cardiovascular_risk + 0.0002 * step)
     priority: 7
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - neuropathy_severity
   - nephropathy_severity

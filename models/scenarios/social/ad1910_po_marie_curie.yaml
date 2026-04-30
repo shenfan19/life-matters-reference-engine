@@ -18,6 +18,9 @@ metadata:
     经费约束：每回合固定支出；授课和经费申请是主要收入来源。
     步长=1月，总时长=96月（8年）。
 
+  step_size:
+    value: 1
+    unit: month
 variables:
   # 输入变量（玩家每月可调整）
   research_intensity:
@@ -84,13 +87,11 @@ variables:
 simulation:
   start_date: "1910-01-01"
   end_date: "1918-01-01"
-  step: 1
-  step_unit: month
   output_variables:
-    - health
-    - radiation
-    - research_progress
-    - money
+  - health
+  - radiation
+  - research_progress
+  - money
 formulas:
   # 研究产出洞见，同时积累辐射
   research_gain:
@@ -170,39 +171,39 @@ optimizer:
   generations: 60
 
   objectives:
-    - variable: research_progress
-      direction: maximize
-      weight: 1.0
-    - variable: health
-      direction: maximize
-      weight: 0.8
-    - variable: radiation
-      direction: minimize
-      weight: 0.6
+  - variable: research_progress
+    direction: maximize
+    weight: 1.0
+  - variable: health
+    direction: maximize
+    weight: 0.8
+  - variable: radiation
+    direction: minimize
+    weight: 0.6
 
   constraints:
-    - expression: "health >= 30"
-      description: "健康不能低于30（历史约束：居里夫人坚持工作至生命最后阶段）"
-    - expression: "money >= 5"
-      description: "最低经费维持实验室基本运转"
+  - expression: "health >= 30"
+    description: "健康不能低于30（历史约束：居里夫人坚持工作至生命最后阶段）"
+  - expression: "money >= 5"
+    description: "最低经费维持实验室基本运转"
 
   variables_to_optimize:
-    - name: research_fraction
-      default: 0.6
-      bounds: [0.0, 1.0]
-      maps_to: research_intensity
+  - name: research_fraction
+    default: 0.6
+    bounds: [0.0, 1.0]
+    maps_to: research_intensity
 
-    - name: rest_fraction
-      default: 0.2
-      bounds: [0.0, 0.5]
-      maps_to: rest_time
+  - name: rest_fraction
+    default: 0.2
+    bounds: [0.0, 0.5]
+    maps_to: rest_time
 
-    - name: teaching_fraction
-      default: 0.3
-      bounds: [0.0, 0.7]
-      maps_to: teaching_load
+  - name: teaching_fraction
+    default: 0.3
+    bounds: [0.0, 0.7]
+    maps_to: teaching_load
 
-    - name: fundraise_fraction
-      default: 0.1
-      bounds: [0.0, 0.5]
-      maps_to: fundraise_effort
+  - name: fundraise_fraction
+    default: 0.1
+    bounds: [0.0, 0.5]
+    maps_to: fundraise_effort

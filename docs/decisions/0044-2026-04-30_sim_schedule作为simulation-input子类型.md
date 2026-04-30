@@ -89,6 +89,25 @@ Schedule 的语义是"驱动某个输入量"，因此每个 schedule key 必须�
 
 例外：连续速率类变量（如持续泵药 `infusion_rate`，预期在一段时间内保持非零）可视需要保留关闭点。
 
+### 决策五：新增 `pulse` 插值模式
+
+为支持瞬时量（进食、给药等一次性脉冲事件）不写零值点，新增 `interpolation: pulse` 模式：
+
+- 在每步开始时检查是否有 schedule 事件时间落入 `[self.time, self.time + step_size_sec)` 窗口
+- 命中则应用该点的值；未命中（步间）自动为 0
+- `step` / `linear` 模式同步修正：首点之前和末点之后均返回 0（原行为保持首/末点值，会导致仿真开始即有非零输入）
+
+```yaml
+schedules:
+  carb_intake:
+    interpolation: pulse   # 每餐仅命中步有效，其余步自动为 0
+    points:
+      - {time: 25200, value: 50}   # 07:00 早餐 50g
+      - {time: 43200, value: 80}   # 12:00 午餐 80g
+```
+
+`step_size_sec` 通过 `step()` 方法参数传入 `_apply_schedules(step_size_sec)`。
+
 ---
 
 ## 结果
@@ -97,17 +116,21 @@ Schedule 的语义是"驱动某个输入量"，因此每个 schedule key 必须�
 sim_engine/src/model_structure/loader.py
   schedules 从 simulator_data.get('schedules') 读取（原 data.get('schedules')）
 
+sim_engine/src/model_structure/simulation.py
+  _apply_schedules(step_size_sec)：新增 pulse 模式；step/linear 修正首末点行为
+  step()：计算 step_size_sec 并传入 _apply_schedules
+
 sim_gui/src/components/Simulator.tsx
   schedules 读取路径：content.simulation.schedules
   useEffect：有 schedule 的 input 变量自动预填 Regimen events
   移除：只读 schedules 展示块
 
 models/scenarios/test/
-  test_glucose_meal.yaml   schedules 移入 simulation 块（重建）
+  test_glucose_meal.yaml   重建：pulse 模式，两个 MC 参数，正确动力学公式
   test_daily_life.yaml     schedules 移入 simulation 块
   test_schedule.yaml       schedules 移入 simulation 块
 
 docs/model_design.md
   Schema 更新：simulator → simulation，新增 schedules 字段
-  新增：simulation.schedules 规范节（含离散输入规则）
+  新增：simulation.schedules 规范节（含离散输入规则与 pulse 说明）
 ```

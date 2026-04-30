@@ -7,6 +7,9 @@ metadata:
   tags:
   - glucose
   - regulation
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - digestive_system
 - insulin_system
@@ -49,33 +52,33 @@ formulas:
     description: 血糖浓度更新
     condition: true
     dynamics:
-      blood_glucose: max(30, min(600, blood_glucose + (glucose_uptake - glucose_utilization - renal_glucose_excretion) * step_size))
+      blood_glucose: max(30, min(600, blood_glucose + (glucose_uptake - glucose_utilization - renal_glucose_excretion) * step))
     priority: 4
   hepatic_glycogen_synthesis:
     description: 高血糖时肝糖原合成
     condition: blood_glucose > 140 and liver_function > 0.5
     dynamics:
-      liver_glycogen: min(100, liver_glycogen + (blood_glucose - 140) * liver_function * 0.01 * step_size)
-      blood_glucose: blood_glucose - (blood_glucose - 140) * liver_function * 0.005 * step_size
+      liver_glycogen: min(100, liver_glycogen + (blood_glucose - 140) * liver_function * 0.01 * step)
+      blood_glucose: blood_glucose - (blood_glucose - 140) * liver_function * 0.005 * step
     priority: 4
   hepatic_glycogenolysis:
     description: 低血糖时肝糖原分解
     condition: blood_glucose < 80 and liver_glycogen > 0
     dynamics:
-      liver_glycogen: max(0, liver_glycogen - (80 - blood_glucose) * 0.02 * step_size)
-      blood_glucose: blood_glucose + (80 - blood_glucose) * 0.02 * step_size
+      liver_glycogen: max(0, liver_glycogen - (80 - blood_glucose) * 0.02 * step)
+      blood_glucose: blood_glucose + (80 - blood_glucose) * 0.02 * step
     priority: 5
   renal_glucose_excretion:
     description: 高血糖时肾脏排泄葡萄糖
     condition: blood_glucose > 180 and kidney_function > 0.5
     dynamics:
-      blood_glucose: max(180, blood_glucose - (blood_glucose - 180) * kidney_function * 0.005 * step_size)
+      blood_glucose: max(180, blood_glucose - (blood_glucose - 180) * kidney_function * 0.005 * step)
     priority: 4
   tissue_glucose_uptake:
     description: 组织葡萄糖摄取，受胰岛素影响
     condition: true
     dynamics:
-      blood_glucose: max(30, blood_glucose - blood_glucose * insulin_sensitivity * plasma_insulin * 0.0005 * step_size)
+      blood_glucose: max(30, blood_glucose - blood_glucose * insulin_sensitivity * plasma_insulin * 0.0005 * step)
     priority: 4
   glucose_variability_calculation:
     description: 计算血糖变异性
@@ -107,8 +110,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - blood_glucose
   - fasting_glucose

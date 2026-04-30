@@ -4,22 +4,22 @@ metadata:
   author: TODO:AUTHOR
   description: "感冒动力学模型：包含病毒载量（R1）、免疫响应（R2）与体能状态（R3）。"
   tags: [medical, physiological, flu]
+  step_size:
+    value: 1
+    unit: day
 
 variables:
   # R1: Pathogen
-  viral_load: { description: "病毒载量", value: 1.0, unit: "相对单位", type: state, bounds: [0, 1000] }
-  
+  viral_load: {description: "病毒载量", value: 1.0, unit: "相对单位", type: state, bounds: [0, 1000]}
   # R2: Immune System
-  immune_activity: { description: "免疫活性", value: 10, unit: "指数", type: state, bounds: [0, 100] }
-  body_temperature: { description: "体温", value: 37.0, unit: "°C", type: state, bounds: [35, 42] }
-  
+  immune_activity: {description: "免疫活性", value: 10, unit: "指数", type: state, bounds: [0, 100]}
+  body_temperature: {description: "体温", value: 37.0, unit: "°C", type: state, bounds: [35, 42]}
   # R3: Systemic State
-  vitality: { description: "体能/活力", value: 100, unit: "分", type: state, bounds: [0, 100] }
-  
+  vitality: {description: "体能/活力", value: 100, unit: "分", type: state, bounds: [0, 100]}
   # P1: Inputs (Card Inputs)
-  rest_hours: { description: "休息时间", value: 0, unit: "h", type: input }
-  medicine_intake: { description: "药物干预", value: 0, unit: "mg", type: input }
-  water_intake: { description: "饮水量", value: 0, unit: "ml", type: input }
+  rest_hours: {description: "休息时间", value: 0, unit: "h", type: input}
+  medicine_intake: {description: "药物干预", value: 0, unit: "mg", type: input}
+  water_intake: {description: "饮水量", value: 0, unit: "ml", type: input}
 
 formulas:
   # F1: Viral Replication vs Immune Kill
@@ -27,7 +27,7 @@ formulas:
     description: "病毒增殖与免疫对抗"
     condition: viral_load > 0
     dynamics:
-      viral_load: "viral_load + (viral_load * 0.1 - immune_activity * 0.05 - medicine_intake * 0.2) * step_size"
+      viral_load: "viral_load + (viral_load * 0.1 - immune_activity * 0.05 - medicine_intake * 0.2) * step"
     priority: 5
 
   # F2: Immune Response (Fever)
@@ -35,7 +35,7 @@ formulas:
     description: "免疫系统激活"
     condition: viral_load > 10
     dynamics:
-      immune_activity: "immune_activity + viral_load * 0.01 * step_size"
+      immune_activity: "immune_activity + viral_load * 0.01 * step"
       body_temperature: "37.0 + viral_load * 0.005"
     priority: 5
 
@@ -44,12 +44,10 @@ formulas:
     description: "体能恢复与损耗"
     condition: true
     dynamics:
-      vitality: "vitality + (rest_hours * 5 + water_intake * 0.01 - viral_load * 0.1) * step_size"
+      vitality: "vitality + (rest_hours * 5 + water_intake * 0.01 - viral_load * 0.1) * step"
     priority: 3
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-25"
-  step: 1
-  step_unit: day
   output_variables: [viral_load, body_temperature, vitality]

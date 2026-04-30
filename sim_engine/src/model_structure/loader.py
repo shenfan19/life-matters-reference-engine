@@ -174,13 +174,19 @@ class Loader:
         # 支持新的 'simulation' 字段（向后兼容 'simulator'）
         simulator_data = data.get('simulation', data.get('simulator', {}))
 
-        # ── 新格式：start_date / end_date / step / step_unit → 转换为内部字段 ──
+        # ── 新格式：start_date / end_date，步长从 metadata.step_size 读取 ──
+        # 优先级：metadata.step_size > simulation.step_unit/step（向后兼容）
         if 'start_date' in simulator_data and 'end_date' in simulator_data:
-            step_unit_raw = str(simulator_data.get('step_unit', 'hour')).lower()
+            meta_step = data.get('metadata', {}).get('step_size', {})
+            if isinstance(meta_step, dict) and 'unit' in meta_step:
+                step_unit_raw = str(meta_step.get('unit', 'minute')).lower()
+                raw_step = float(meta_step.get('value', 1))
+            else:
+                step_unit_raw = str(simulator_data.get('step_unit', 'minute')).lower()
+                raw_step = float(simulator_data.get('step', 1))
             if step_unit_raw not in TIME_UNIT_SECONDS:
-                step_unit_raw = 'hour'
+                step_unit_raw = 'minute'
             unit_sec = TIME_UNIT_SECONDS[step_unit_raw]
-            raw_step  = float(simulator_data.get('step', 1))
             step_sec  = raw_step * unit_sec  # 换算为秒
 
             # 计算 total_time（秒数）= end_date - start_date

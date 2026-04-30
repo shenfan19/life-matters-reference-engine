@@ -52,6 +52,9 @@ metadata:
   version: "1.0.0"
   tags: [tag1, tag2]
   references: ["Author et al. (Year) Title. Journal."]
+  step_size:           # 必填：模型时钟分辨率
+    value: 1           # canonical 步长，建议保持 1
+    unit: minute       # second | minute | hour | day；决定公式中 step 的含义
 
 imports:
   - components/medical/physiology/glucose_regulation   # 从 models/ 根出发加 components/ 前缀
@@ -140,12 +143,11 @@ formulas:
 simulation:
   start_date: "YYYY-MM-DD"
   end_date: "YYYY-MM-DD"
-  step: 10
-  step_unit: minute               # second | minute | hour | day | week | month | year
+  # step / step_unit 已移至 metadata.step_size，此处不再声明
   output_variables: [var1, var2]
   schedules:                      # 可选；每个 key 必须是 variables 中 type: input 的变量名
     var_name:
-      interpolation: step | linear
+      interpolation: step | linear | pulse
       points:
         - {time: 25200, value: 1.5}   # time 单位：秒，从仿真起点累计
         - {time: 43200, value: 1.8}
@@ -155,14 +157,38 @@ simulation:
 
 ## 时间与步长
 
-`time_unit` 消除步长歧义；公式中 `dt` 和 `t` 单位均为 `time_unit`：
+步长由 `metadata.step_size` 声明，公式中使用 `step` 符号：
 
-| 变量 | 含义 |
-|------|------|
-| `dt` / `step_size` | 当前步长（= YAML 中的 `step_size`） |
-| `t` / `time` | 当前仿真时间 |
+| 符号 | 含义 | 说明 |
+|------|------|------|
+| `step` | 当前步长（`step_size.value × 粗化倍率`，单位 = `step_size.unit`） | **规范符号** |
+| `step_size` / `dt` | 同 `step` | 向后兼容别名 |
+| `t` / `time` | 当前仿真时间（单位 = `step_size.unit`） | |
 
-`time_unit: second` 时可用预定义常量：`SECOND=1`、`MINUTE=60`、`HOUR=3600`、`DAY=86400`。
+预定义单位常量（`step_size.unit: second` 时有效）：`SECOND=1`、`MINUTE=60`、`HOUR=3600`、`DAY=86400`。
+
+---
+
+## 公式步长规则
+
+**根据变量类型决定是否乘 `step`：**
+
+| 变量类型 | 公式类型 | 是否乘 step | 原因 |
+|---------|---------|-----------|------|
+| `state` | 速率（连续动力学） | **必须乘** | 效果与时间成比例 |
+| `input` | 脉冲（pulse 驱动） | **不乘** | 一次性量，与步长无关 |
+| `parameter` | 乘数系数 | 不适用 | 本身是系数 |
+
+```yaml
+# ✅ 速率类：state 更新必须乘 step
+dynamics:
+  insight:   insight + 0.069 * cognitive_efficiency * step
+  nutrition: max(0, nutrition - 0.010 * step)
+
+# ✅ 瞬时类：input 脉冲不乘 step
+dynamics:
+  stomach_carbs: stomach_carbs + carb_intake
+```
 
 ---
 
@@ -172,9 +198,9 @@ simulation:
 
 ```yaml
 dynamics:
-  blood_glucose: blood_glucose + (uptake - utilization) * dt
-  position: position + velocity * dt
-  velocity: velocity + (force - damping * velocity) * dt
+  blood_glucose: blood_glucose + (uptake - utilization) * step
+  position:      position + velocity * step
+  velocity:      velocity + (force - damping * velocity) * step
 ```
 
 理由：生理/社会模型参数不确定性 ±10–50%，Euler 截断误差远低于此；离散事件（进餐、用药）破坏高阶积分器精度优势；明文表达所见即所得。

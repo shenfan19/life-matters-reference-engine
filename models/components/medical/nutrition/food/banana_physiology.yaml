@@ -4,30 +4,31 @@ metadata:
   author: TODO:AUTHOR
   description: "香蕉生长与采摘模型：单文件通用动力学演示。"
   tags: [agricultural, simple]
+  step_size:
+    value: 1
+    unit: day
 
 variables:
-  ripeness: { description: "成熟度", value: 0, unit: "%", type: state, bounds: [0, 100] }
-  freshness: { description: "新鲜度", value: 100, unit: "分", type: state, bounds: [0, 100] }
-  water_input: { description: "浇水", value: 0, unit: "L", type: input }
-  harvest_action: { description: "采摘", value: 0, unit: "次", type: input }
+  ripeness: {description: "成熟度", value: 0, unit: "%", type: state, bounds: [0, 100]}
+  freshness: {description: "新鲜度", value: 100, unit: "分", type: state, bounds: [0, 100]}
+  water_input: {description: "浇水", value: 0, unit: "L", type: input}
+  harvest_action: {description: "采摘", value: 0, unit: "次", type: input}
 
 formulas:
   growing:
     description: "自然生长"
     condition: ripeness < 100
     dynamics:
-      ripeness: "ripeness + (1 + water_input * 0.5) * step_size"
+      ripeness: "ripeness + (1 + water_input * 0.5) * step"
     priority: 5
   rotting:
     description: "过熟腐烂"
     condition: ripeness >= 100
     dynamics:
-      freshness: "freshness - 5 * step_size"
+      freshness: "freshness - 5 * step"
     priority: 3
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-15"
-  step: 1
-  step_unit: day
   output_variables: [ripeness, freshness]

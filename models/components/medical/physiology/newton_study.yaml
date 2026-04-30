@@ -12,6 +12,9 @@ metadata:
     Stukeley W (1752) Memoirs of Sir Isaac Newton's Life.
     认知负荷理论 (Sweller 1988); 睡眠剥夺与认知 (Harrison & Horne 2000).
 
+  step_size:
+    value: 1
+    unit: minute
 variables:
   # ── 从食物模型引入 ─────────────────────────────────────────────────────────
   nutrition:
@@ -120,8 +123,8 @@ formulas:
           * max(0.2, (1 - fatigue / 120))
           * max(0.4, nutrition / 80)
           * 0.08
-          * step_size)
-      fatigue: "min(100, fatigue + study_intensity * 0.05 * step_size)"
+          * step)
+      fatigue: "min(100, fatigue + study_intensity * 0.05 * step)"
 
   # 2. 眼部疲劳（烛光工作）
   eye_strain_accumulate:
@@ -137,8 +140,8 @@ formulas:
     condition: eye_strain >= 60
     priority: 7
     dynamics:
-      health:   "max(0, health - (eye_strain - 60) * 0.002 * step_size)"
-      insight:  "max(0, insight - (eye_strain - 60) * 0.0005 * step_size)"
+      health: "max(0, health - (eye_strain - 60) * 0.002 * step)"
+      insight: "max(0, insight - (eye_strain - 60) * 0.0005 * step)"
 
   # 4. 户外活动恢复
   outdoor_recovery:
@@ -146,8 +149,8 @@ formulas:
     condition: outdoor_time > 0
     priority: 9
     dynamics:
-      fatigue:     "max(0, fatigue - outdoor_time * 5)"
-      eye_strain:  "max(0, eye_strain - outdoor_time * 3)"
+      fatigue: "max(0, fatigue - outdoor_time * 5)"
+      eye_strain: "max(0, eye_strain - outdoor_time * 3)"
       plague_risk: "max(5, plague_risk - outdoor_time * 1)"
 
   # 5. 睡眠恢复（每日结算）
@@ -156,9 +159,9 @@ formulas:
     condition: sleep_quality > 0
     priority: 6
     dynamics:
-      fatigue:    "max(0, fatigue - sleep_quality * 30)"
+      fatigue: "max(0, fatigue - sleep_quality * 30)"
       eye_strain: "max(0, eye_strain - sleep_quality * 10)"
-      health:     "min(100, health + sleep_quality * 2)"
+      health: "min(100, health + sleep_quality * 2)"
 
   # 6. 营养不良削弱健康
   malnutrition_penalty:
@@ -166,7 +169,7 @@ formulas:
     condition: nutrition < 30
     priority: 5
     dynamics:
-      health: "max(0, health - (30 - nutrition) * 0.003 * step_size)"
+      health: "max(0, health - (30 - nutrition) * 0.003 * step)"
 
   # 7. 脱水影响
   dehydration_penalty:
@@ -174,8 +177,8 @@ formulas:
     condition: hydration < 25
     priority: 5
     dynamics:
-      health:  "max(0, health - 0.005 * step_size)"
-      fatigue: "min(100, fatigue + 0.003 * step_size)"
+      health: "max(0, health - 0.005 * step)"
+      fatigue: "min(100, fatigue + 0.003 * step)"
 
   # 8. 鼠疫威胁（基础健康损耗）
   plague_pressure:
@@ -183,8 +186,8 @@ formulas:
     condition: true
     priority: 4
     dynamics:
-      health:      "max(0, health - plague_risk * 0.0002 * step_size)"
-      plague_risk: "max(5, plague_risk - 0.001 * step_size)"
+      health: "max(0, health - plague_risk * 0.0002 * step)"
+      plague_risk: "max(5, plague_risk - 0.001 * step)"
 
   # 9. 过度疲劳崩溃
   exhaustion_collapse:
@@ -192,7 +195,7 @@ formulas:
     condition: fatigue >= 85
     priority: 11
     dynamics:
-      health: "max(0, health - 0.008 * step_size)"
+      health: "max(0, health - 0.008 * step)"
 
   # 10. 健康影响学习效率（循环）
   health_cognitive_link:
@@ -200,11 +203,9 @@ formulas:
     condition: health < 40
     priority: 3
     dynamics:
-      insight: "max(0, insight - (40 - health) * 0.0003 * step_size)"
+      insight: "max(0, insight - (40 - health) * 0.0003 * step)"
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [fatigue, eye_strain, insight, health]
