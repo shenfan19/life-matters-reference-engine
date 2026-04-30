@@ -26,17 +26,15 @@ formulas:
     dynamics:
       glucose: "glucose - (decay * glucose) - (insulin_infusion * 10)"
 
-schedules:
-  insulin_infusion:
-    interpolation: "step"
-    points:
-      - { time: 0, value: 0.0 }
-      - { time: 3600, value: 2.0 }  # At 1 hour, set to 2.0
-      - { time: 7200, value: 0.5 }  # At 2 hours, set to 0.5
-
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   step: 10
   step_unit: minute
   output_variables: ["glucose", "insulin_infusion"]
+  schedules:
+    insulin_infusion:
+      interpolation: "step"
+      points:
+        - { time: 3600, value: 2.0 }  # At 1 hour, set to 2.0
+        - { time: 7200, value: 0.5 }  # At 2 hours, set to 0.5

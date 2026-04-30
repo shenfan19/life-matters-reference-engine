@@ -161,15 +161,15 @@ function drawChartOnCtx(
     ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
   }
 
-  // Draw semi-transparent individual run lines (MC fan)
+  // Draw semi-transparent individual run lines (MC fan) — each run gets a distinct hue
   if (runsData && runsData.length > 1) {
-    const runAlpha = Math.max(0.12, Math.min(0.35, 1.8 / runsData.length));
+    const runAlpha = Math.max(0.25, Math.min(0.6, 3.0 / runsData.length));
     ctx.save();
-    ctx.globalAlpha = runAlpha;
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 0.8;
-    for (const rd of runsData) {
-      if (rd.length === 0) continue;
+    ctx.lineWidth = 1.2;
+    runsData.forEach((rd, runIdx) => {
+      if (rd.length === 0) return;
+      const hue = (runIdx * 360 / runsData.length + 30) % 360;
+      ctx.strokeStyle = `hsla(${hue}, 75%, ${isDark ? 65 : 45}%, ${runAlpha})`;
       ctx.beginPath();
       rd.forEach((d, i) => {
         const x = toX(d.time ?? 0);
@@ -178,7 +178,7 @@ function drawChartOnCtx(
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
-    }
+    });
     ctx.restore();
   }
 
@@ -253,11 +253,19 @@ const SimChart: React.FC<{
   };
 
   const exportCSV = () => {
-    const rows = ['time_s,time_h,' + varName,
-      ...data.map(d => `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${((d[varName] as number) ?? 0)}`)];
+    const hasMC = runsData && runsData.length > 1;
+    const runCols = hasMC ? runsData!.map((_, i) => `${varName}_run${i}`).join(',') : '';
+    const header = hasMC ? `time_s,time_h,${varName}_mean,${runCols}` : `time_s,time_h,${varName}`;
+    const rows = [header,
+      ...data.map((d, idx) => {
+        const base = `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${(d[varName] as number) ?? 0}`;
+        if (!hasMC) return base;
+        const runVals = runsData!.map(rd => (rd[idx]?.[varName] as number) ?? '').join(',');
+        return `${base},${runVals}`;
+      })];
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${varName}.csv`; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = hasMC ? `${varName}_mc.csv` : `${varName}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -456,16 +464,35 @@ const Simulator: React.FC<SimulatorProps> = ({
       const states: Record<string, number> = {};
       const newRegimens: Regimen[] = [];
       const newRegimenOpts: Record<string, RegimenOpt> = {};
+      const schedData: Record<string, any> = selectedModel.content?.simulation?.schedules ?? {};
+
+      const secsToHHMM = (sec: number): string => {
+        const s = sec % 86400;
+        const hh = String(Math.floor(s / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
+          const sched = schedData[name];
+          let events: RegimenEvent[];
+          if (sched?.points?.length) {
+            const seen = new Set<string>();
+            events = (sched.points as any[])
+              .map((pt, i) => ({ id: `${name}-ev${i}`, time: secsToHHMM(pt.time ?? 0), value: pt.value ?? 0 }))
+              .filter(ev => { if (seen.has(ev.time)) return false; seen.add(ev.time); return true; });
+          } else {
+            events = [{ id: `${name}-ev0`, time: '08:00', value: data.value ?? 0 }];
+          }
           newRegimens.push({
             id: `${name}-0`,
             variable: name,
             validRangeEnabled: false,
             validStart: '',
             validEnd: '',
-            events: [{ id: `${name}-ev0`, time: '08:00', value: data.value ?? 0 }],
+            events,
             daysEnabled: false,
             days: [true, true, true, true, true, true, true],
           });
@@ -733,12 +760,16 @@ const Simulator: React.FC<SimulatorProps> = ({
         .filter(([, d]: [string, any]) => d.type === 'state')
         .map(([name, d]: [string, any]) => ({ name, ...d }))
     : [];
+  const DIST_RE = /^\s*(normal|uniform|lognormal)\s*\(/;
   const probConsts = selectedModel?.content?.variables
     ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) => d.type === 'probability_constant' || d.type === 'probability')
+        .filter(([, d]: [string, any]) =>
+          d.type === 'probability_constant' ||
+          d.type === 'probability' ||
+          (d.type === 'parameter' && typeof d.value === 'string' && DIST_RE.test(d.value))
+        )
         .map(([name, d]: [string, any]) => ({ name, ...d }))
     : [];
-  const schedules = selectedModel?.content?.schedules || {};
   const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
   const outputVars: string[] = selectedModel?.content?.simulator?.output_variables
     || selectedModel?.content?.simulation?.output_variables
@@ -917,7 +948,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setRegimenOpts(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }));
 
   const renderInputsContent = () => {
-    if (inputVars.length === 0 && Object.keys(schedules).length === 0)
+    if (inputVars.length === 0)
       return <div style={{ padding: '8px 0' }}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} /></div>;
 
     const isOpt = mode === 'opt';
@@ -1068,37 +1099,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           );
         })}
 
-        {/* ── YAML-defined schedules (read-only) ── */}
-        {Object.entries(schedules).length > 0 && (
-          <>
-            <div style={{ height: 1, background: c.border, margin: '4px 0 10px' }} />
-            <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, fontSize: 11 }}>
-              {t('sim.tabs.schedules')}
-            </div>
-            {Object.entries(schedules).map(([name, sched]: [string, any]) => (
-              <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px', background: c.sectionHd, marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <strong style={{ color: c.text }}>{name}</strong>
-                  <Tag>{sched.interpolation || 'step'}</Tag>
-                </div>
-                {sched.recurrence && (
-                  <div style={{ color: c.textMute, marginBottom: 4 }}>
-                    {sched.recurrence}{sched.days_of_week ? ` · ${sched.days_of_week.join(' ')}` : ''}
-                  </div>
-                )}
-                {sched.points?.map((pt: any, i: number) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, fontFamily: 'monospace', color: c.text, marginBottom: 2 }}>
-                    <span style={{ color: c.textMute, width: 46 }}>
-                      {typeof pt.time === 'number' ? `${(pt.time / 3600).toFixed(1)}h` : pt.time}
-                    </span>
-                    <span style={{ color: c.textMute }}>→</span>
-                    <span>{typeof pt.value === 'number' ? pt.value.toFixed(3) : pt.value}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </>
-        )}
       </div>
     );
   };
@@ -1269,11 +1269,19 @@ const Simulator: React.FC<SimulatorProps> = ({
   // CENTER PANEL
   // ─────────────────────────────────────────────────────────────────────────────
   const exportVarCSV = (varName: string) => {
-    const rows = ['time_s,time_h,' + varName,
-      ...simulationData.map(d => `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${((d[varName] as number) ?? 0)}`)];
+    const hasMC = dataPerRun.length > 1;
+    const runCols = hasMC ? dataPerRun.map((_, i) => `${varName}_run${i}`).join(',') : '';
+    const header = hasMC ? `time_s,time_h,${varName}_mean,${runCols}` : `time_s,time_h,${varName}`;
+    const rows = [header,
+      ...simulationData.map((d, idx) => {
+        const base = `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${(d[varName] as number) ?? 0}`;
+        if (!hasMC) return base;
+        const runVals = dataPerRun.map(rd => (rd[idx]?.[varName] as number) ?? '').join(',');
+        return `${base},${runVals}`;
+      })];
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${varName}.csv`; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = hasMC ? `${varName}_mc.csv` : `${varName}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -2002,14 +2010,28 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             function downloadTrajectoryCsv() {
               if (!hasData) return;
-              const allCols = Object.keys(simulationData[0]).filter(k => k !== 'step');
-              const header = allCols.map(k => {
-                const desc = allV[k]?.description;
-                return desc ? `${k}(${desc})` : k;
-              }).join(',');
-              const rows = simulationData.map(row =>
-                allCols.map(k => row[k] != null ? String(row[k]) : '').join(',')
-              );
+              const hasMC = dataPerRun.length > 1;
+              const baseCols = Object.keys(simulationData[0]).filter(k => k !== 'step');
+              const varCols = baseCols.filter(k => k !== 'time');
+              // header: base columns, then run columns for each variable
+              const mcRunCols = hasMC
+                ? varCols.flatMap(k => dataPerRun.map((_, i) => `${k}_run${i}`))
+                : [];
+              const header = [
+                ...baseCols.map(k => {
+                  const desc = allV[k]?.description;
+                  return desc ? `${k}(${desc})` : k;
+                }),
+                ...mcRunCols,
+              ].join(',');
+              const rows = simulationData.map((row, idx) => {
+                const base = baseCols.map(k => row[k] != null ? String(row[k]) : '').join(',');
+                if (!hasMC) return base;
+                const mcVals = varCols.flatMap(k =>
+                  dataPerRun.map(rd => (rd[idx]?.[k] as number) ?? '')
+                ).join(',');
+                return `${base},${mcVals}`;
+              });
               const csv = [header, ...rows].join('\n');
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
               const url = URL.createObjectURL(blob);
