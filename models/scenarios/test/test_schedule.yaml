@@ -17,7 +17,7 @@ variables:
     description: "Insulin infusion rate"
     value: 0.0
     type: "input"
-    unit: "U/h"
+    unit: "U"
   decay:
     description: "Natural decay"
     value: 0.1
