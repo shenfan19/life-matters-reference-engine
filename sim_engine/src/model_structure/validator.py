@@ -252,10 +252,10 @@ class Validator:
                 
                 # 排除常见的函数和关键字
                 exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs',
-                        'max', 'min', 'sum', 'pow', 'round',
-                        'True', 'False', 'None', 'and', 'or', 'not',
+                        'max', 'min', 'sum', 'pow', 'round', 'floor', 'ceil',
+                        'True', 'False', 'None', 'and', 'or', 'not', 'if', 'else',
                         'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
-                        'dt', 'step_size', 't', 'time', 'pi', 'e'}
+                        'step', 'step_size', 'dt', 't', 'time', 'pi', 'e'}
                 
                 return vars_found - exclude
             
