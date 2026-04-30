@@ -28,5 +28,12 @@ def extract_vars_from_expr(expr: str) -> Set[str]:
         logger.warning(f"Failed to extract vars from expr '{expr}': {e}")
         return set()
     # 排除内置符号和函数
-    builtin_symbols = {'dt', 'time', 'sin', 'cos', 'max', 'min', 'abs', 'True', 'False', 'and', 'or', 'not'}
+    builtin_symbols = {
+        # 引擎注入的时间/步长符号
+        'step', 'step_size', 'dt', 't', 'time',
+        # 数学函数
+        'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs', 'max', 'min', 'round', 'floor', 'ceil',
+        # Python 关键字
+        'True', 'False', 'None', 'and', 'or', 'not', 'if', 'else',
+    }
     return vars - builtin_symbols
