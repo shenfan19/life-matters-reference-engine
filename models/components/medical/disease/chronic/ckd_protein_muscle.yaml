@@ -13,12 +13,15 @@ metadata:
     抗质疑强度：⭐⭐⭐⭐⭐
   tags: [nephrology, ckd, protein, muscle, sarcopenia, optimization, physiological, A4]
   references:
-    - "KDIGO (2021) KDIGO 2020 CKD Clinical Practice Guideline. Kidney Int Suppl 11(1):1-169. [Section 3.1.3 低蛋白建议与肌少症权衡]"
-    - "Klahr S et al. (1994) The effects of dietary protein restriction and blood-pressure control on the progression of CKD (MDRD Study). NEJM 330(13):877-884. [低蛋白可减缓35%GFR下降]"
-    - "Kalantar-Zadeh K et al. (2017) Dietary restrictions in dialysis patients. JASN 28(8):2354-2368. [透析患者高蛋白需求]"
-    - "Fouque D, Aparicio M (2007) Eleven reasons to control protein intake of patients with CKD. Nat Clin Pract Nephrol 3(7):383-392. [蛋白限制临床依据]"
-    - "Carrero JJ et al. (2013) Etiology of the protein-energy wasting syndrome in CKD. J Ren Nutr 23(2):77-90. [CKD蛋白-能量消耗综合征]"
+  - "KDIGO (2021) KDIGO 2020 CKD Clinical Practice Guideline. Kidney Int Suppl 11(1):1-169. [Section 3.1.3 低蛋白建议与肌少症权衡]"
+  - "Klahr S et al. (1994) The effects of dietary protein restriction and blood-pressure control on the progression of CKD (MDRD Study). NEJM 330(13):877-884. [低蛋白可减缓35%GFR下降]"
+  - "Kalantar-Zadeh K et al. (2017) Dietary restrictions in dialysis patients. JASN 28(8):2354-2368. [透析患者高蛋白需求]"
+  - "Fouque D, Aparicio M (2007) Eleven reasons to control protein intake of patients with CKD. Nat Clin Pract Nephrol 3(7):383-392. [蛋白限制临床依据]"
+  - "Carrero JJ et al. (2013) Etiology of the protein-energy wasting syndrome in CKD. J Ren Nutr 23(2):77-90. [CKD蛋白-能量消耗综合征]"
 
+  step_size:
+    value: 1
+    unit: day
 variables:
   # R1: Renal Function
   gfr:
@@ -106,7 +109,7 @@ formulas:
       来源：MDRD Study (Klahr 1994)。
     condition: gfr > 2.0
     dynamics:
-      gfr: "gfr - (gfr_base_decline / 365.0) * (0.65 + 0.35 * min(1.0, max(0.0, (protein_intake - 0.6) / 0.6))) * step_size"
+      gfr: "gfr - (gfr_base_decline / 365.0) * (0.65 + 0.35 * min(1.0, max(0.0, (protein_intake - 0.6) / 0.6))) * step"
     priority: 7
 
   # F2: BUN Steady-State Approximation
@@ -136,15 +139,13 @@ formulas:
       来源：Carrero et al. (2013)。
     condition: true
     dynamics:
-      muscle_mass: "muscle_mass + ((protein_intake - 0.8) * 0.05 - max(0.0, (30.0 - gfr) / 30.0) * 0.003) * step_size"
+      muscle_mass: "muscle_mass + ((protein_intake - 0.8) * 0.05 - max(0.0, (30.0 - gfr) / 30.0) * 0.003) * step"
       muscle_synthesis_rate: "(protein_intake - 0.8) * 0.05 * body_weight - max(0.0, (30.0 - gfr) / 30.0) * 0.3"
     priority: 5
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-12-31"
-  step: 1
-  step_unit: day
   output_variables: [gfr, muscle_mass, bun, protein_intake, muscle_synthesis_rate]
 optimizer:
   method: grid

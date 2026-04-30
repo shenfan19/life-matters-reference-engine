@@ -7,6 +7,9 @@ metadata:
   author: "Antigravity"
   description: "生浆果营养模型。每100g含：碳水化合物 14g, 蛋白质 1.5g, 脂肪 0.5g, 水分 84g。"
   tags: [food, diet, fruit, berry]
+  step_size:
+    value: 1
+    unit: minute
 
 variables:
   # ========== 输入变量 ==========
@@ -24,7 +27,7 @@ variables:
     value: 0
     unit: "g"
     io_role: output
-  
+
   food_protein:
     type: state
     value: 0
@@ -57,6 +60,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [food_carbohydrate, food_protein, food_fat, water_intake]

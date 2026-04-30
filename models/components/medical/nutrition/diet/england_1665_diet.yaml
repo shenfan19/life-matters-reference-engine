@@ -13,6 +13,9 @@ metadata:
     17th century household accounts, Lincolnshire records.
 
 # ── 食物输入变量（由 schedules 或手动注入驱动）──────────────────────────────
+  step_size:
+    value: 1
+    unit: minute
 variables:
   # 食物类型输入（克/份，触发后归零）
   bread_intake:
@@ -104,9 +107,9 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + bread_intake * 2.1"    # ~250kcal/120g
-      protein_today:  "protein_today + bread_intake * 0.059"   # ~7g protein/120g
-      nutrition:      "nutrition + bread_intake * 0.08"        # 较弱营养提升
-      bread_intake:   0
+      protein_today: "protein_today + bread_intake * 0.059"    # ~7g protein/120g
+      nutrition: "nutrition + bread_intake * 0.08"             # 较弱营养提升
+      bread_intake: 0
 
   pottage_eaten:
     description: "浓粥汤消化：谷物+蔬菜炖汤，1665年英国最营养的日常食物"
@@ -114,10 +117,10 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + pottage_intake * 1.0"  # ~300kcal/300g
-      protein_today:  "protein_today + pottage_intake * 0.027" # ~8g protein/300g
-      vitamin_score:  "min(100, vitamin_score + pottage_intake * 0.05)"
-      nutrition:      "nutrition + pottage_intake * 0.12"      # 较好营养提升
-      hydration:      "hydration + pottage_intake * 0.05"
+      protein_today: "protein_today + pottage_intake * 0.027"  # ~8g protein/300g
+      vitamin_score: "min(100, vitamin_score + pottage_intake * 0.05)"
+      nutrition: "nutrition + pottage_intake * 0.12"           # 较好营养提升
+      hydration: "hydration + pottage_intake * 0.05"
       pottage_intake: 0
 
   ale_drunk:
@@ -126,9 +129,9 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + ale_intake * 0.6"      # ~150kcal/250ml
-      hydration:      "hydration + ale_intake * 0.08"
-      nutrition:      "nutrition + ale_intake * 0.02"
-      ale_intake:     0
+      hydration: "hydration + ale_intake * 0.08"
+      nutrition: "nutrition + ale_intake * 0.02"
+      ale_intake: 0
 
   meat_eaten:
     description: "咸猪肉/培根：高蛋白高脂肪，补充体力，但盐分高"
@@ -136,9 +139,9 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + meat_intake * 2.5"     # ~200kcal/80g
-      protein_today:  "protein_today + meat_intake * 0.22"     # ~18g protein/80g
-      nutrition:      "nutrition + meat_intake * 0.18"
-      meat_intake:    0
+      protein_today: "protein_today + meat_intake * 0.22"      # ~18g protein/80g
+      nutrition: "nutrition + meat_intake * 0.18"
+      meat_intake: 0
 
   cheese_eaten:
     description: "农家奶酪：热量密集，蛋白质和脂肪，方便携带储存"
@@ -146,9 +149,9 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + cheese_intake * 3.0"   # ~120kcal/40g
-      protein_today:  "protein_today + cheese_intake * 0.2"
-      nutrition:      "nutrition + cheese_intake * 0.15"
-      cheese_intake:  0
+      protein_today: "protein_today + cheese_intake * 0.2"
+      nutrition: "nutrition + cheese_intake * 0.15"
+      cheese_intake: 0
 
   apple_eaten:
     description: "苹果：伍尔斯索普庄园特产，维生素C来源，防坏血病"
@@ -156,9 +159,9 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + apple_intake * 0.53"   # ~80kcal/150g
-      vitamin_score:  "min(100, vitamin_score + apple_intake * 0.15)"
-      nutrition:      "nutrition + apple_intake * 0.06"
-      apple_intake:   0
+      vitamin_score: "min(100, vitamin_score + apple_intake * 0.15)"
+      nutrition: "nutrition + apple_intake * 0.06"
+      apple_intake: 0
 
   # 营养状态随时间自然消耗（饥饿感上升）
   nutrition_decay:
@@ -166,9 +169,9 @@ formulas:
     condition: true
     priority: 5
     dynamics:
-      nutrition:  "max(0, nutrition - 0.012 * step_size)"   # ~17分/day自然衰减
-      hydration:  "max(0, hydration - 0.008 * step_size)"   # ~12分/day
-      vitamin_score: "max(0, vitamin_score - 0.003 * step_size)"
+      nutrition: "max(0, nutrition - 0.012 * step)"         # ~17分/day自然衰减
+      hydration: "max(0, hydration - 0.008 * step)"         # ~12分/day
+      vitamin_score: "max(0, vitamin_score - 0.003 * step)"
 
   # 综合营养评分：热量充足度是基础，蛋白质和维生素调整
   nutrition_composite:
@@ -187,6 +190,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [calories_today, protein_today, vitamin_score, nutrition, hydration]

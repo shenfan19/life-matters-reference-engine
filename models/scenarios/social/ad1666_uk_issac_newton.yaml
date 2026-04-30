@@ -17,6 +17,9 @@ metadata:
     步长=1分钟，总时长=1440分钟（1天）。食物变量为摄入速率（g/min 或 ml/min）。
 
 # ── 变量定义（完全内联，无需导入模型文件）────────────────────────────────────────
+  step_size:
+    value: 1
+    unit: minute
 variables:
   # 饮食摄入输入（每次摄入量，由 schedules 驱动；仿真引擎按步长累积）
   bread_intake:
@@ -195,95 +198,93 @@ schedules:
   bread_intake:
     interpolation: step
     points:
-      - { time: 25200, value: 2.0 }   # 07:00 早餐：120g / 60min = 2.0 g/min
-      - { time: 28800, value: 0   }
-      - { time: 43200, value: 1.0 }   # 12:00 午餐：60g / 60min = 1.0 g/min
-      - { time: 46800, value: 0   }
+    - {time: 25200, value: 2.0}       # 07:00 早餐：120g / 60min = 2.0 g/min
+    - {time: 28800, value: 0}
+    - {time: 43200, value: 1.0}       # 12:00 午餐：60g / 60min = 1.0 g/min
+    - {time: 46800, value: 0}
 
   pottage_intake:
     interpolation: step
     points:
-      - { time: 43200, value: 5.0 }   # 12:00 午餐：300g / 60min = 5.0 g/min（主餐）
-      - { time: 46800, value: 0   }
-      - { time: 68400, value: 3.3 }   # 19:00 晚餐：200g / 60min ≈ 3.3 g/min
-      - { time: 72000, value: 0   }
+    - {time: 43200, value: 5.0}       # 12:00 午餐：300g / 60min = 5.0 g/min（主餐）
+    - {time: 46800, value: 0}
+    - {time: 68400, value: 3.3}       # 19:00 晚餐：200g / 60min ≈ 3.3 g/min
+    - {time: 72000, value: 0}
 
   ale_intake:
     interpolation: step
     points:
-      - { time: 25200, value: 4.2 }   # 07:00 早餐：250ml / 60min ≈ 4.2 ml/min
-      - { time: 28800, value: 0   }
-      - { time: 43200, value: 4.2 }   # 12:00 午餐：250ml / 60min
-      - { time: 46800, value: 0   }
-      - { time: 68400, value: 4.2 }   # 19:00 晚餐：250ml / 60min
-      - { time: 72000, value: 0   }
+    - {time: 25200, value: 4.2}       # 07:00 早餐：250ml / 60min ≈ 4.2 ml/min
+    - {time: 28800, value: 0}
+    - {time: 43200, value: 4.2}       # 12:00 午餐：250ml / 60min
+    - {time: 46800, value: 0}
+    - {time: 68400, value: 4.2}       # 19:00 晚餐：250ml / 60min
+    - {time: 72000, value: 0}
 
   cheese_intake:
     interpolation: step
     points:
-      - { time: 25200, value: 0.67 }  # 07:00 早餐：40g / 60min ≈ 0.67 g/min
-      - { time: 28800, value: 0    }
+    - {time: 25200, value: 0.67}      # 07:00 早餐：40g / 60min ≈ 0.67 g/min
+    - {time: 28800, value: 0}
 
   apple_intake:
     interpolation: step
     points:
-      - { time: 50400, value: 2.5 }   # 14:00 苹果园：150g / 60min = 2.5 g/min
-      - { time: 54000, value: 0   }
+    - {time: 50400, value: 2.5}       # 14:00 苹果园：150g / 60min = 2.5 g/min
+    - {time: 54000, value: 0}
 
   # 研究分为2块：上午（09:00-12:00）和下午（14:00-22:00 含棱镜+写作）
   # 14:00-16:00 同时有 outdoor_time（苹果园），两者共存，户外沉思 study_intensity=1
   study_intensity:
     interpolation: step
     points:
-      - { time: 0,     value: 0 }     # 00:00-09:00 睡眠+早晨准备
-      - { time: 32400, value: 2 }     # 09:00 上午研究（微积分，集中推导）
-      - { time: 43200, value: 0 }     # 12:00 午餐休息
-      - { time: 50400, value: 1 }     # 14:00 苹果园沉思（散步中思考引力）
-      - { time: 57600, value: 3 }     # 16:00 下午实验（棱镜分光，高强度）
-      - { time: 68400, value: 0 }     # 19:00 晚餐休息
-      - { time: 72000, value: 2 }     # 20:00 烛光写作（整理推导）
-      - { time: 79200, value: 0 }     # 22:00 就寝
-      - { time: 86400, value: 0 }
+    - {time: 0, value: 0}             # 00:00-09:00 睡眠+早晨准备
+    - {time: 32400, value: 2}         # 09:00 上午研究（微积分，集中推导）
+    - {time: 43200, value: 0}         # 12:00 午餐休息
+    - {time: 50400, value: 1}         # 14:00 苹果园沉思（散步中思考引力）
+    - {time: 57600, value: 3}         # 16:00 下午实验（棱镜分光，高强度）
+    - {time: 68400, value: 0}         # 19:00 晚餐休息
+    - {time: 72000, value: 2}         # 20:00 烛光写作（整理推导）
+    - {time: 79200, value: 0}         # 22:00 就寝
+    - {time: 86400, value: 0}
 
   candle_study:
     interpolation: step
     points:
-      - { time: 72000, value: 2 }     # 20:00-22:00 烛光写作（眼部疲劳来源）
-      - { time: 79200, value: 0 }
+    - {time: 72000, value: 2}         # 20:00-22:00 烛光写作（眼部疲劳来源）
+    - {time: 79200, value: 0}
 
   outdoor_time:
     interpolation: step
     points:
-      - { time: 50400, value: 2 }     # 14:00-16:00 苹果园散步（帕累托改进点）
-      - { time: 57600, value: 0 }
+    - {time: 50400, value: 2}         # 14:00-16:00 苹果园散步（帕累托改进点）
+    - {time: 57600, value: 0}
 
   sleep_quality:
     interpolation: step
     points:
-      - { time: 0,     value: 0.75 }  # 00:00-09:00 夜间睡眠（乡间安静）
-      - { time: 32400, value: 0    }  # 09:00 起床入书房
-      - { time: 79200, value: 0.75 }  # 22:00 入睡
-      - { time: 86400, value: 0.75 }
+    - {time: 0, value: 0.75}          # 00:00-09:00 夜间睡眠（乡间安静）
+    - {time: 32400, value: 0}         # 09:00 起床入书房
+    - {time: 79200, value: 0.75}      # 22:00 入睡
+    - {time: 86400, value: 0.75}
 
 # ── 仿真配置 ──────────────────────────────────────────────────────────────────
 simulation:
   start_date: "1666-09-01"
   end_date: "1666-09-02"
-  step: 1
-  step_unit: minute
   output_variables:
-    - health
-    - fatigue
-    - insight
-    - nutrition
-    - hydration
-    - eye_strain
-    - calories_today
-    - protein_today
-    - vitamin_score
-    - study_intensity
-    - candle_study
-    - plague_risk
+  - health
+  - fatigue
+  - insight
+  - nutrition
+  - hydration
+  - eye_strain
+  - calories_today
+  - protein_today
+  - vitamin_score
+  - study_intensity
+  - candle_study
+  - plague_risk
 # ── 核心动力学公式（完全内联）────────────────────────────────────────────────
 # 重要：公式计算结果为变量的新值（非增量），step_size=1（分钟）
 formulas:
@@ -296,8 +297,8 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + bread_intake * 2.1"
-      protein_today:  "protein_today + bread_intake * 0.059"
-      nutrition:      "min(100, nutrition + bread_intake * 0.08)"
+      protein_today: "protein_today + bread_intake * 0.059"
+      nutrition: "min(100, nutrition + bread_intake * 0.08)"
 
   # 2. 浓粥汤消化
   # 30分钟 × 10g/min × 0.12 = 36 nutrition（午餐主食，效果显著）
@@ -307,10 +308,10 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + pottage_intake * 1.0"
-      protein_today:  "protein_today + pottage_intake * 0.027"
-      vitamin_score:  "min(100, vitamin_score + pottage_intake * 0.05)"
-      nutrition:      "min(100, nutrition + pottage_intake * 0.12)"
-      hydration:      "min(100, hydration + pottage_intake * 0.05)"
+      protein_today: "protein_today + pottage_intake * 0.027"
+      vitamin_score: "min(100, vitamin_score + pottage_intake * 0.05)"
+      nutrition: "min(100, nutrition + pottage_intake * 0.12)"
+      hydration: "min(100, hydration + pottage_intake * 0.05)"
 
   # 3. 小啤酒饮用
   # 主要补水效果；ale_intake = ml/min
@@ -320,8 +321,8 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + ale_intake * 0.6"
-      hydration:      "min(100, hydration + ale_intake * 0.08)"
-      nutrition:      "min(100, nutrition + ale_intake * 0.02)"
+      hydration: "min(100, hydration + ale_intake * 0.08)"
+      nutrition: "min(100, nutrition + ale_intake * 0.02)"
 
   # 4. 咸猪肉消化（基线无肉，opt可发现其价值）
   meat_eaten:
@@ -330,8 +331,8 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + meat_intake * 2.5"
-      protein_today:  "protein_today + meat_intake * 0.22"
-      nutrition:      "min(100, nutrition + meat_intake * 0.18)"
+      protein_today: "protein_today + meat_intake * 0.22"
+      nutrition: "min(100, nutrition + meat_intake * 0.18)"
 
   # 5. 奶酪消化
   cheese_eaten:
@@ -340,8 +341,8 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + cheese_intake * 3.0"
-      protein_today:  "protein_today + cheese_intake * 0.2"
-      nutrition:      "min(100, nutrition + cheese_intake * 0.15)"
+      protein_today: "protein_today + cheese_intake * 0.2"
+      nutrition: "min(100, nutrition + cheese_intake * 0.15)"
 
   # 6. 苹果消化（庄园自产，免费）
   apple_eaten:
@@ -350,8 +351,8 @@ formulas:
     priority: 10
     dynamics:
       calories_today: "calories_today + apple_intake * 0.53"
-      vitamin_score:  "min(100, vitamin_score + apple_intake * 0.15)"
-      nutrition:      "min(100, nutrition + apple_intake * 0.06)"
+      vitamin_score: "min(100, vitamin_score + apple_intake * 0.15)"
+      nutrition: "min(100, nutrition + apple_intake * 0.06)"
 
   # 7. 自然消耗（每分钟持续）
   # nutrition: -0.010/min × 1440 ≈ -14.4/天；靠进餐补偿
@@ -362,8 +363,8 @@ formulas:
     condition: true
     priority: 5
     dynamics:
-      nutrition:     "max(0, nutrition - 0.010)"
-      hydration:     "max(0, hydration - 0.008)"
+      nutrition: "max(0, nutrition - 0.010)"
+      hydration: "max(0, hydration - 0.008)"
       vitamin_score: "max(0, vitamin_score - 0.003)"
 
   # 8. 研究产生洞见（核心公式）
@@ -389,9 +390,9 @@ formulas:
     condition: sleep_quality > 0
     priority: 6
     dynamics:
-      fatigue:    "max(0, fatigue - sleep_quality * 0.111)"
+      fatigue: "max(0, fatigue - sleep_quality * 0.111)"
       eye_strain: "max(0, eye_strain - sleep_quality * 0.042)"
-      health:     "min(100, health + sleep_quality * 0.004)"
+      health: "min(100, health + sleep_quality * 0.004)"
 
   # 10. 户外活动恢复（14:00-16:00 苹果园）
   # 2小时窗口：120步 × outdoor_time=2 × 0.0625 = 15 fatigue 恢复
@@ -401,8 +402,8 @@ formulas:
     condition: outdoor_time > 0
     priority: 9
     dynamics:
-      fatigue:     "max(0, fatigue - outdoor_time * 0.0625)"
-      eye_strain:  "max(0, eye_strain - outdoor_time * 0.042)"
+      fatigue: "max(0, fatigue - outdoor_time * 0.0625)"
+      eye_strain: "max(0, eye_strain - outdoor_time * 0.042)"
       plague_risk: "max(5, plague_risk - outdoor_time * 0.0042)"
 
   # 11. 烛光工作积累眼部疲劳（20:00-22:00）
@@ -422,7 +423,7 @@ formulas:
     condition: eye_strain >= 60
     priority: 7
     dynamics:
-      health:  "max(0, health - (eye_strain - 60) * 0.00011)"
+      health: "max(0, health - (eye_strain - 60) * 0.00011)"
       insight: "max(0, insight - (eye_strain - 60) * 0.000028)"
 
   # 13. 鼠疫背景性健康威胁（持续，优先级低）
@@ -433,7 +434,7 @@ formulas:
     condition: true
     priority: 4
     dynamics:
-      health:      "max(0, health - plague_risk * plague_susceptibility * 0.0001)"
+      health: "max(0, health - plague_risk * plague_susceptibility * 0.0001)"
       plague_risk: "max(5, plague_risk - 0.001)"
 
   # 14. 营养不良削弱健康（nutrition < 30 时激活）
@@ -453,7 +454,7 @@ formulas:
     condition: hydration < 25
     priority: 5
     dynamics:
-      health:  "max(0, health - 0.005)"
+      health: "max(0, health - 0.005)"
       fatigue: "min(100, fatigue + 0.003)"
 
   # 16. 过度疲劳崩溃（fatigue >= 85 时激活）
@@ -482,66 +483,66 @@ optimizer:
   generations: 80
 
   objectives:
-    - variable: insight
-      direction: maximize
-      weight: 1.0
-    - variable: health
-      direction: maximize
-      weight: 0.6
-    - variable: fatigue
-      direction: minimize
-      weight: 0.4
+  - variable: insight
+    direction: maximize
+    weight: 1.0
+  - variable: health
+    direction: maximize
+    weight: 0.6
+  - variable: fatigue
+    direction: minimize
+    weight: 0.4
 
   constraints:
-    - expression: "health >= 50"
-      description: "健康不能低于50（历史约束：牛顿需维持基本劳动能力）"
-    - expression: "nutrition >= 20"
-      description: "营养不能严重不足"
-    - expression: "calories_today >= 1200"
-      description: "至少摄入1200kcal（1665年成年男性最低生存线）"
+  - expression: "health >= 50"
+    description: "健康不能低于50（历史约束：牛顿需维持基本劳动能力）"
+  - expression: "nutrition >= 20"
+    description: "营养不能严重不足"
+  - expression: "calories_today >= 1200"
+    description: "至少摄入1200kcal（1665年成年男性最低生存线）"
 
   # 决策变量：opt模式下覆盖schedules中对应时段的值
   # default值与schedules基线一致
   variables_to_optimize:
-    - name: morning_study_intensity
-      default: 2.0          # 09:00-12:00 集中推导强度
-      bounds: [0.0, 3.0]
-      maps_to: "study_intensity @ [32400, 43200]"
+  - name: morning_study_intensity
+    default: 2.0            # 09:00-12:00 集中推导强度
+    bounds: [0.0, 3.0]
+    maps_to: "study_intensity @ [32400, 43200]"
 
-    - name: afternoon_experiment_intensity
-      default: 3.0          # 16:00-19:00 棱镜实验强度
-      bounds: [0.0, 3.0]
-      maps_to: "study_intensity @ [57600, 68400]"
+  - name: afternoon_experiment_intensity
+    default: 3.0            # 16:00-19:00 棱镜实验强度
+    bounds: [0.0, 3.0]
+    maps_to: "study_intensity @ [57600, 68400]"
 
-    - name: evening_candle_intensity
-      default: 2.0          # 20:00-22:00 烛光写作强度
-      bounds: [0.0, 4.0]
-      maps_to: "candle_study @ 72000"
+  - name: evening_candle_intensity
+    default: 2.0            # 20:00-22:00 烛光写作强度
+    bounds: [0.0, 4.0]
+    maps_to: "candle_study @ 72000"
 
-    - name: breakfast_bread_rate
-      default: 2.0          # 120g / 60min = 2 g/min
-      bounds: [0.0, 5.0]    # 0-300g/早餐
-      maps_to: "bread_intake @ 25200"
+  - name: breakfast_bread_rate
+    default: 2.0            # 120g / 60min = 2 g/min
+    bounds: [0.0, 5.0]      # 0-300g/早餐
+    maps_to: "bread_intake @ 25200"
 
-    - name: lunch_pottage_rate
-      default: 5.0          # 300g / 60min = 5 g/min
-      bounds: [1.7, 8.3]    # 100g-500g/午餐
-      maps_to: "pottage_intake @ 43200"
+  - name: lunch_pottage_rate
+    default: 5.0            # 300g / 60min = 5 g/min
+    bounds: [1.7, 8.3]      # 100g-500g/午餐
+    maps_to: "pottage_intake @ 43200"
 
-    - name: dinner_meat_rate
-      default: 0.0          # 基线无肉（经济限制），opt可发现吃肉的收益
-      bounds: [0.0, 2.0]    # 0-120g/晚餐
-      maps_to: "meat_intake @ 68400"
+  - name: dinner_meat_rate
+    default: 0.0            # 基线无肉（经济限制），opt可发现吃肉的收益
+    bounds: [0.0, 2.0]      # 0-120g/晚餐
+    maps_to: "meat_intake @ 68400"
 
-    - name: outdoor_intensity
-      default: 2.0          # 苹果园2小时等效强度（帕累托改进点）
-      bounds: [0.0, 4.0]
-      maps_to: "outdoor_time @ 50400"
+  - name: outdoor_intensity
+    default: 2.0            # 苹果园2小时等效强度（帕累托改进点）
+    bounds: [0.0, 4.0]
+    maps_to: "outdoor_time @ 50400"
 
-    - name: sleep_start_hour
-      default: 22.0         # 22:00就寝
-      bounds: [20.0, 24.0]
-      maps_to: "sleep_quality @ bedtime"
+  - name: sleep_start_hour
+    default: 22.0           # 22:00就寝
+    bounds: [20.0, 24.0]
+    maps_to: "sleep_quality @ bedtime"
 
   budget:
     unit: "便士/天"

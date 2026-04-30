@@ -10,6 +10,9 @@ metadata:
   - interval
   - endurance
   updated: 2026-04-23
+  step_size:
+    value: 1
+    unit: minute
 variables:
   game_intensity:
     bounds:
@@ -185,8 +188,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - heart_rate
   - vo2

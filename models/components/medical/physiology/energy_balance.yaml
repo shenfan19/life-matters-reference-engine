@@ -6,6 +6,9 @@ metadata:
   tags:
   - metabolism
   - energy
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - nutrition_intake
 - glucose_regulation
@@ -73,9 +76,9 @@ formulas:
     condition: exercise_intensity > 0
     description: 运动增加葡萄糖利用和胰岛素敏感性
     dynamics:
-      energy_expenditure: min(3.0, energy_expenditure + exercise_intensity * 0.1 * step_size)
-      glucose_utilization: glucose_utilization + exercise_intensity * 0.2 * step_size
-      insulin_sensitivity: min(1.0, insulin_sensitivity + exercise_intensity * 0.005 * step_size)
+      energy_expenditure: min(3.0, energy_expenditure + exercise_intensity * 0.1 * step)
+      glucose_utilization: glucose_utilization + exercise_intensity * 0.2 * step
+      insulin_sensitivity: min(1.0, insulin_sensitivity + exercise_intensity * 0.005 * step)
     priority: 3
   metabolic_efficiency:
     condition: true
@@ -86,8 +89,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - energy
   - metabolism_rate

@@ -4,29 +4,29 @@ metadata:
   author: TODO:AUTHOR
   description: "综合糖尿病动力学模型：包含血糖调节（R1）、胰岛素响应（R2）、并发症进展（R3）与系统炎症（R4）。单文件封装标准。"
   tags: [medical, physiological, core]
+  step_size:
+    value: 1
+    unit: minute
 
 variables:
   # R1: Glucose Regulation
-  blood_glucose: { description: "血糖浓度", value: 95, unit: "mg/dL", type: state, bounds: [30, 600] }
-  fasting_glucose: { description: "空腹血糖", value: 85, unit: "mg/dL", type: state, bounds: [50, 300] }
-  
+  blood_glucose: {description: "血糖浓度", value: 95, unit: "mg/dL", type: state, bounds: [30, 600]}
+  fasting_glucose: {description: "空腹血糖", value: 85, unit: "mg/dL", type: state, bounds: [50, 300]}
   # R2: Insulin & Beta Cells
-  plasma_insulin: { description: "血浆胰岛素", value: 8, unit: "μU/mL", type: state, bounds: [1, 300] }
-  insulin_sensitivity: { description: "胰岛素敏感性", value: 0.75, unit: "指数", type: state, bounds: [0.1, 1.0] }
-  beta_cell_function: { description: "β细胞功能", value: 0.8, unit: "系数", type: state, bounds: [0, 1.0] }
-  
+  plasma_insulin: {description: "血浆胰岛素", value: 8, unit: "μU/mL", type: state, bounds: [1, 300]}
+  insulin_sensitivity: {description: "胰岛素敏感性", value: 0.75, unit: "指数", type: state, bounds: [0.1, 1.0]}
+  beta_cell_function: {description: "β细胞功能", value: 0.8, unit: "系数", type: state, bounds: [0, 1.0]}
   # R3: Complications (Indices)
-  complication_score: { description: "并发症综合指数", value: 0, unit: "分", type: state, bounds: [0, 100] }
-  kidney_function: { description: "肾功能", value: 1.0, unit: "系数", type: state, bounds: [0.1, 1.0] }
+  complication_score: {description: "并发症综合指数", value: 0, unit: "分", type: state, bounds: [0, 100]}
+  kidney_function: {description: "肾功能", value: 1.0, unit: "系数", type: state, bounds: [0.1, 1.0]}
 
   # R4: Systemic State
-  inflammation_level: { description: "炎症水平", value: 1.0, unit: "指数", type: state, bounds: [0.5, 5.0] }
-  health_score: { description: "总体健康评估", value: 100, unit: "分", type: state, bounds: [0, 100] }
-  
+  inflammation_level: {description: "炎症水平", value: 1.0, unit: "指数", type: state, bounds: [0.5, 5.0]}
+  health_score: {description: "总体健康评估", value: 100, unit: "分", type: state, bounds: [0, 100]}
   # P1: External Inputs (Card Inputs)
-  carb_intake: { description: "碳水摄入", value: 0, unit: "g", type: input }
-  insulin_injection: { description: "胰岛素注射", value: 0, unit: "U", type: input }
-  exercise_intensity: { description: "运动强度", value: 0, unit: "MET", type: input }
+  carb_intake: {description: "碳水摄入", value: 0, unit: "g", type: input}
+  insulin_injection: {description: "胰岛素注射", value: 0, unit: "U", type: input}
+  exercise_intensity: {description: "运动强度", value: 0, unit: "MET", type: input}
 
 formulas:
   # Dynamics Equations
@@ -35,7 +35,7 @@ formulas:
     description: "血糖受摄入与代谢影响"
     condition: true
     dynamics:
-      blood_glucose: "blood_glucose + (carb_intake * 2 - blood_glucose * insulin_sensitivity * plasma_insulin * 0.001 - exercise_intensity * 0.5) * step_size"
+      blood_glucose: "blood_glucose + (carb_intake * 2 - blood_glucose * insulin_sensitivity * plasma_insulin * 0.001 - exercise_intensity * 0.5) * step"
     priority: 5
 
   # F2: Insulin Secretion
@@ -43,7 +43,7 @@ formulas:
     description: "胰岛素随血糖升高而分泌"
     condition: blood_glucose > 100
     dynamics:
-      plasma_insulin: "plasma_insulin + (blood_glucose - 100) * beta_cell_function * 0.05 * step_size - plasma_insulin * 0.1 * step_size"
+      plasma_insulin: "plasma_insulin + (blood_glucose - 100) * beta_cell_function * 0.05 * step - plasma_insulin * 0.1 * step"
     priority: 5
 
   # F3: Systemic Damage
@@ -51,8 +51,8 @@ formulas:
     description: "高血糖累积损伤"
     condition: blood_glucose > 180
     dynamics:
-      complication_score: "complication_score + (blood_glucose - 180) * 0.01 * step_size"
-      inflammation_level: "inflammation_level + 0.005 * step_size"
+      complication_score: "complication_score + (blood_glucose - 180) * 0.01 * step"
+      inflammation_level: "inflammation_level + 0.005 * step"
     priority: 3
 
   # F4: Health Calculation
@@ -66,8 +66,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [blood_glucose, plasma_insulin, health_score, complication_score]
 optimizer:
   method: grid

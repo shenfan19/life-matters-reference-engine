@@ -11,10 +11,13 @@ metadata:
     推荐作为Paper 1的验证案例（有经典模型对照，抗质疑强度⭐⭐⭐⭐⭐）。
   tags: [sports_science, training, optimization, physiological, banister, B3]
   references:
-    - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61."
-    - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177."
-    - "Busso T (2003) Variable dose-response relationship between exercise training and performance. Med Sci Sports Exerc 35(7):1188-1195."
+  - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61."
+  - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177."
+  - "Busso T (2003) Variable dose-response relationship between exercise training and performance. Med Sci Sports Exerc 35(7):1188-1195."
 
+  step_size:
+    value: 1
+    unit: day
 variables:
   # R1: Fitness Component (Positive Training Effect, PTE)
   # 适应分量：训练驱动增加，τ₁=45天缓慢衰减（Banister 1975, Table 1）
@@ -100,7 +103,7 @@ formulas:
     description: "适应分量一阶动力学：dFitness/dt = -Fitness/τ₁ + training_load（Banister 1975, Eq.2）"
     condition: true
     dynamics:
-      fitness_component: "fitness_component + (-fitness_component / tau_fitness + training_load) * step_size"
+      fitness_component: "fitness_component + (-fitness_component / tau_fitness + training_load) * step"
     priority: 5
 
   # F2: Fatigue Dynamics（一阶线性系统，训练输入驱动，τ₂衰减，比适应快3倍）
@@ -110,7 +113,7 @@ formulas:
     description: "疲劳分量一阶动力学：dFatigue/dt = -Fatigue/τ₂ + training_load（Banister 1975, Eq.3）"
     condition: true
     dynamics:
-      fatigue_component: "fatigue_component + (-fatigue_component / tau_fatigue + training_load) * step_size"
+      fatigue_component: "fatigue_component + (-fatigue_component / tau_fatigue + training_load) * step"
     priority: 5
 
   # F3: Performance Calculation
@@ -126,8 +129,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-07-01"
-  step: 1
-  step_unit: day
   output_variables: [fitness_component, fatigue_component, performance, training_load]
 optimizer:
   method: grid

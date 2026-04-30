@@ -7,9 +7,12 @@ metadata:
   author: "Minghui Wu, Antigravity"
   description: "胃肠道状态、营养吸收、激素酶和小肠大肠动力学模型。"
   tags: [digestion, gastrointestinal]
+  step_size:
+    value: 1
+    unit: minute
 
 imports:
-  - nutrition_intake
+- nutrition_intake
 
 variables:
   amino_acids:
@@ -235,7 +238,6 @@ formulas:
     priority: 3
     dynamics:
       gastric_ph: "max(1.0, gastric_ph - 0.1 * dt)"
-  
   gastric_emptying:
     condition: gastric_volume > 200
     description: "胃排空过程"
@@ -245,28 +247,24 @@ formulas:
       gastric_fat: "max(0, gastric_fat - gastric_fat * 0.015 * dt)"
       gastric_protein: "max(0, gastric_protein - gastric_protein * 0.025 * dt)"
       gastric_volume: "max(50, gastric_volume - gastric_volume * 0.02 * dt)"
-  
   gastric_ulcer_risk_update:
     condition: gastric_ph < 2.0
     description: "更新胃溃疡风险"
     priority: 6
     dynamics:
       gastric_ulcer_risk: "min(1.0, gastric_ulcer_risk + 0.001 * dt)"
-  
   gastric_function_update:
     condition: gastric_function < 0.7
     description: "胃功能更新"
     priority: 1
     dynamics:
       gastric_function: "max(0.3, gastric_function - 0.02 * dt)"
-  
   cholecystokinin_secretion:
     condition: gastric_fat > 20 or gastric_protein > 30
     description: "脂肪和蛋白质刺激胆囊收缩素分泌"
     priority: 3
     dynamics:
       cholecystokinin_level: "min(100, cholecystokinin_level + (gastric_fat / 20 + gastric_protein / 30) * 5 * dt)"
-  
   bile_secretion:
     condition: cholecystokinin_level > 20
     description: "胆囊收缩素刺激胆汁分泌"
@@ -274,7 +272,6 @@ formulas:
     dynamics:
       bile_acids: "min(50, bile_acids + cholecystokinin_level * 0.2 * dt)"
       cholecystokinin_level: "max(0, cholecystokinin_level - 5 * dt)"
-  
   fat_digestion:
     condition: bile_acids > 5 and gastric_fat > 0
     description: "胆汁酸辅助脂肪消化"
@@ -283,7 +280,6 @@ formulas:
       fatty_acids: "fatty_acids + gastric_fat * bile_function * 0.05 * dt"
       gastric_fat: "max(0, gastric_fat - gastric_fat * bile_function * 0.05 * dt)"
       bile_acids: "max(0, bile_acids - 1 * dt)"
-  
   intestinal_absorption:
     condition: intestinal_function > 0 and (amino_acids > 0 or glucose > 0 or fatty_acids > 0)
     description: "小肠吸收过程"
@@ -296,54 +292,46 @@ formulas:
       residue_protein: "residue_protein + amino_acids * (1 - intestinal_function) * 0.05 * dt"
       residue_glucose: "residue_glucose + glucose * (1 - intestinal_function) * 0.05 * dt"
       residue_fats: "residue_fats + fatty_acids * (1 - intestinal_function) * 0.05 * dt"
-  
   malnutrition_risk_update:
     condition: amino_acids < 1.0 and glucose < 3.0 and fatty_acids < 0.5
     description: "更新营养不良风险"
     priority: 6
     dynamics:
       malnutrition_risk: "min(1.0, malnutrition_risk + 0.005 * dt)"
-  
   nutritional_status_calc:
     description: "营养状态评分"
     dynamics:
       nutritional_status: "min(100, (amino_acids * 20 + glucose) / 2)"
-  
   pepsin_activation:
     condition: gastric_ph < 3.0 and gastric_protein > 0
     description: "胃酸激活胃蛋白酶"
     priority: 2
     dynamics:
       pepsin_level: "min(100, pepsin_level + (3.0 - gastric_ph) * 5 * dt)"
-  
   secretin_secretion:
     condition: gastric_ph < 4.5 and (gastric_carbohydrate > 0 or gastric_fat > 0)
     description: "酸性食糜刺激分泌素分泌"
     priority: 2
     dynamics:
       secretin_level: "min(100, secretin_level + (4.5 - gastric_ph) * 10 * dt)"
-  
   intestinal_motility_update:
     condition: "true"
     description: "小肠蠕动速度更新"
     priority: 2
     dynamics:
       intestinal_motility: "12 + (glucose + fatty_acids) / 100"
-  
   absorption_rate_update:
     condition: "true"
     description: "小肠吸收率更新"
     priority: 2
     dynamics:
       absorption_rate: "min(90, max(70, 70 + 0.1 * (intestinal_fluid - 200)))"
-  
   colonic_motility_update:
     condition: "true"
     description: "大肠蠕动速度更新"
     priority: 2
     dynamics:
       colonic_motility: "8 + (residue_protein + residue_glucose + residue_fats) / 100"
-  
   water_absorption_update:
     condition: water_intake > 0
     description: "大肠水分吸收更新"
@@ -354,6 +342,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, digestive_efficiency, amino_acids, fatty_acids]

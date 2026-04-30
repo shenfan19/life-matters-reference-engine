@@ -19,6 +19,9 @@ metadata:
     （即越不被接受，越难推动接受，与历史上的"抵触惯性"吻合）。
     步长=1月，总时长=216月（18年）。
 
+  step_size:
+    value: 1
+    unit: month
 variables:
   # ── 行为输入 ─────────────────────────────────────────────────────────────────
   research_effort:
@@ -86,16 +89,14 @@ variables:
 simulation:
   start_date: "1847-01-01"
   end_date: "1865-01-01"
-  step: 1
-  step_unit: month
   output_variables:
-    - mental_health
-    - acceptance
-    - evidence
-    - isolation
-    - patient_mortality
-    - research_effort
-    - advocacy_intensity
+  - mental_health
+  - acceptance
+  - evidence
+  - isolation
+  - patient_mortality
+  - research_effort
+  - advocacy_intensity
 formulas:
 
   # 1. 研究积累证据
@@ -105,7 +106,7 @@ formulas:
     condition: research_effort > 0
     priority: 10
     dynamics:
-      evidence:      "min(100, evidence + research_effort * 2.5)"
+      evidence: "min(100, evidence + research_effort * 2.5)"
       mental_health: "max(0, mental_health - research_effort * 0.5)"
 
   # 2. 倡导推动接受度（核心公式）
@@ -119,12 +120,9 @@ formulas:
     condition: advocacy_intensity > 0
     priority: 9
     dynamics:
-      acceptance: "min(100, acceptance + advocacy_intensity
-                    * min(1, evidence / 60)
-                    * (1 - (0.4 + 0.4 * (1 - acceptance / 100))))"
+      acceptance: "min(100, acceptance + advocacy_intensity * min(1, evidence / 60) * (1 - (0.4 + 0.4 * (1 - acceptance / 100))))"
       mental_health: "max(0, mental_health - advocacy_intensity * 1.2)"
-      isolation: "min(100, isolation + advocacy_intensity
-                    * (1 - min(1, acceptance / 50)) * 0.8)"
+      isolation: "min(100, isolation + advocacy_intensity * (1 - min(1, acceptance / 50)) * 0.8)"
 
   # 3. 自我照护恢复心理健康
   self_care_recovery:
@@ -133,7 +131,7 @@ formulas:
     priority: 8
     dynamics:
       mental_health: "min(100, mental_health + self_care * 5)"
-      isolation:     "max(0, isolation - self_care * 2)"
+      isolation: "max(0, isolation - self_care * 2)"
 
   # 4. 孤立加速心理崩溃
   isolation_damage:
@@ -157,7 +155,7 @@ formulas:
     condition: "evidence < 30 and advocacy_intensity > 1.5"
     priority: 8
     dynamics:
-      isolation:     "min(100, isolation + 2)"
+      isolation: "min(100, isolation + 2)"
       mental_health: "max(0, mental_health - 2)"
 
   # 7. 心理崩溃影响研究产出
@@ -166,7 +164,7 @@ formulas:
     condition: mental_health < 25
     priority: 9
     dynamics:
-      evidence:   "max(0, evidence - 1)"
+      evidence: "max(0, evidence - 1)"
       acceptance: "max(0, acceptance - 0.5)"
 
 optimizer:
@@ -176,37 +174,37 @@ optimizer:
   generations: 80
 
   objectives:
-    - variable: acceptance
-      direction: maximize
-      weight: 1.0
-    - variable: mental_health
-      direction: maximize
-      weight: 0.8
-    - variable: patient_mortality
-      direction: minimize
-      weight: 0.6
+  - variable: acceptance
+    direction: maximize
+    weight: 1.0
+  - variable: mental_health
+    direction: maximize
+    weight: 0.8
+  - variable: patient_mortality
+    direction: minimize
+    weight: 0.6
 
   constraints:
-    - expression: "mental_health >= 20"
-      description: "心理健康不能完全崩溃（送入精神病院）"
-    - expression: "evidence >= 40"
-      description: "需积累足够证据再大力倡导"
+  - expression: "mental_health >= 20"
+    description: "心理健康不能完全崩溃（送入精神病院）"
+  - expression: "evidence >= 40"
+    description: "需积累足够证据再大力倡导"
 
   variables_to_optimize:
-    - name: research_phase_effort
-      default: 2.0
-      bounds: [0.0, 3.0]
-      maps_to: "research_effort @ [0, 24]"
+  - name: research_phase_effort
+    default: 2.0
+    bounds: [0.0, 3.0]
+    maps_to: "research_effort @ [0, 24]"
 
-    - name: advocacy_phase_intensity
-      default: 1.5
-      bounds: [0.0, 3.0]
-      maps_to: "advocacy_intensity @ [24, 216]"
+  - name: advocacy_phase_intensity
+    default: 1.5
+    bounds: [0.0, 3.0]
+    maps_to: "advocacy_intensity @ [24, 216]"
 
-    - name: self_care_level
-      default: 0.4
-      bounds: [0.0, 1.0]
-      maps_to: "self_care"
+  - name: self_care_level
+    default: 0.4
+    bounds: [0.0, 1.0]
+    maps_to: "self_care"
 
   analysis:
     pareto_description: >

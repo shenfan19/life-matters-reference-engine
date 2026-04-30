@@ -7,6 +7,9 @@ metadata:
   tags:
   - organs
   - function
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - insulin_system
 - glucose_regulation
@@ -59,7 +62,7 @@ variables:
     bounds:
     - 0.0
     - 1.0
-  
+
   body_water:
     description: Placeholder for body_water
     value: 0.0
@@ -147,8 +150,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - liver_function
   - pancreatic_function

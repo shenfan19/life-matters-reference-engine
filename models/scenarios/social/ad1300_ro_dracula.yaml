@@ -4,27 +4,30 @@ metadata:
   author: TODO:AUTHOR
   description: "德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。"
   tags: [mythical, physiological, dracula]
+  step_size:
+    value: 1
+    unit: hour
 
 variables:
-  blood_reserve: { description: "血液储备", value: 80.0, unit: "%", type: state, bounds: [0, 100] }
-  thirst_level: { description: "饥渴度", value: 10.0, unit: "分", type: state, bounds: [0, 100] }
-  sun_exposure: { description: "日照暴露", value: 0.0, unit: "强度", type: input, bounds: [0, 1] }
-  hunt_intensity: { description: "狩猎强度", value: 0.0, unit: "次", type: input }
+  blood_reserve: {description: "血液储备", value: 80.0, unit: "%", type: state, bounds: [0, 100]}
+  thirst_level: {description: "饥渴度", value: 10.0, unit: "分", type: state, bounds: [0, 100]}
+  sun_exposure: {description: "日照暴露", value: 0.0, unit: "强度", type: input, bounds: [0, 1]}
+  hunt_intensity: {description: "狩猎强度", value: 0.0, unit: "次", type: input}
 
 formulas:
   metabolism:
     description: "基础代谢：随时间增加饥渴，减少血液储备"
     condition: true
     dynamics:
-      thirst_level: "thirst_level + 0.5 * step_size"
-      blood_reserve: "blood_reserve - 0.1 * step_size"
+      thirst_level: "thirst_level + 0.5 * step"
+      blood_reserve: "blood_reserve - 0.1 * step"
     priority: 5
 
   sun_damage:
     description: "紫外线伤害：日光暴露会导致血液储备迅速下降"
     condition: sun_exposure > 0.5
     dynamics:
-      blood_reserve: "blood_reserve - sun_exposure * 5 * step_size"
+      blood_reserve: "blood_reserve - sun_exposure * 5 * step"
     priority: 10
 
   feeding:
@@ -39,17 +42,15 @@ schedules:
   sun_exposure:
     interpolation: linear
     points:
-      - { time: 0, value: 0.0 }      # 00:00 Night
-      - { time: 21600, value: 0.0 }  # 06:00 Dawn begins
-      - { time: 28800, value: 0.8 }  # 08:00 Full Sun
-      - { time: 43200, value: 1.0 }  # 12:00 Noon
-      - { time: 64800, value: 0.5 }  # 18:00 Sunset
-      - { time: 72000, value: 0.0 }  # 20:00 Night
-      - { time: 86400, value: 0.0 }  # 24:00 Next day
+    - {time: 0, value: 0.0}          # 00:00 Night
+    - {time: 21600, value: 0.0}      # 06:00 Dawn begins
+    - {time: 28800, value: 0.8}      # 08:00 Full Sun
+    - {time: 43200, value: 1.0}      # 12:00 Noon
+    - {time: 64800, value: 0.5}      # 18:00 Sunset
+    - {time: 72000, value: 0.0}      # 20:00 Night
+    - {time: 86400, value: 0.0}      # 24:00 Next day
 
 simulation:
   start_date: "1462-06-01"
   end_date: "1562-05-31"
-  step: 1
-  step_unit: hour
   output_variables: [blood_reserve, thirst_level, sun_exposure]

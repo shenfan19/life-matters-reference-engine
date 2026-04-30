@@ -49,4 +49,6 @@
 | [0041](0041-2026-04-22_project_命名规范下划线优先.md) | 项目命名规范：snake_case 下划线优先 | ✅ 已实施 | 2026-04-22 |
 | [0042](0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名；保留 sim_xxx 不改 | ✅ 已实施 | 2026-04-23 |
 | [0043](0043-2026-04-25_game_battlefield-tension-framework.md) | 战场张力框架：battle_progress/danger_accumulation 归 Game-native；origin 字段；命运牌模式；南丁格尔 + 希波克拉底首次实现 | ✅ 已实施 | 2026-04-25 |
-| [0044](0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；GUI 自动预填 Regimen；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
+| [0044](0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；pulse 插值模式；GUI 自动预填 Regimen；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
+| [0045](0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | MC 概率仿真架构：parameter 分布表达式、多 run 引擎、半透明曲线渲染、Opt 内环均值评估、种子管理 | ✅ 已实施 | 2026-04-30 |
+| [0046](0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；公式用 `step`；simulation 去掉 step/step_unit；GUI 粗化倍率控件 | ✅ 已实施 | 2026-04-30 |

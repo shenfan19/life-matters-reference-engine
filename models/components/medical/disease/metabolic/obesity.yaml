@@ -8,6 +8,9 @@ metadata:
   - obesity
   - diabetes
   - risk_model
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - glucose_regulation
 - insulin_system
@@ -33,26 +36,24 @@ formulas:
     description: 高血糖和胰岛素促进脂肪储存
     condition: blood_glucose > 120 or plasma_insulin > 20
     dynamics:
-      obesity_index: min(1.0, obesity_index + 0.0003 * step_size)
+      obesity_index: min(1.0, obesity_index + 0.0003 * step)
     priority: 3
   risk_accumulation:
     description: 肥胖指数导致糖尿病风险累积增加，受时间影响
     condition: obesity_index > 0
     dynamics:
-      diabetes_risk: min(1.0, diabetes_risk + (0.0002 * obesity_index * exposure_duration / 1000) * step_size)
-      exposure_duration: exposure_duration + step_size
+      diabetes_risk: min(1.0, diabetes_risk + (0.0002 * obesity_index * exposure_duration / 1000) * step)
+      exposure_duration: exposure_duration + step
     priority: 100
   risk_decay:
     description: 正常体重时风险缓慢衰减（模拟减肥效果）
     condition: obesity_index == 0 and diabetes_risk > 0
     dynamics:
-      diabetes_risk: max(0.01, diabetes_risk - 0.0001 * step_size)
+      diabetes_risk: max(0.01, diabetes_risk - 0.0001 * step)
     priority: 90
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - obesity_index
   - exposure_duration

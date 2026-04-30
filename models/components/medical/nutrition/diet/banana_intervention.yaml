@@ -9,6 +9,9 @@ metadata:
   - food
   - diet
   - fruit
+  step_size:
+    value: 1
+    unit: minute
 imports: []
 variables:
   banana_intake:
@@ -24,25 +27,25 @@ variables:
     value: 0
     unit: g
     type: state
-    bounds: null
+    bounds:
   food_protein:
     description: 产生的蛋白质摄入量
     value: 0
     unit: g
     type: state
-    bounds: null
+    bounds:
   food_fat:
     description: 产生的脂肪摄入量
     value: 0
     unit: g
     type: state
-    bounds: null
+    bounds:
   water_intake:
     description: 产生的水分摄入量
     value: 0
     unit: ml
     type: state
-    bounds: null
+    bounds:
 formulas:
   calculate_nutrition_impact:
     description: ''
@@ -60,6 +63,4 @@ schedules: {}
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [food_carbohydrate, food_protein, food_fat, water_intake]

@@ -7,6 +7,9 @@ metadata:
   tags:
   - hormones
   - glucagon
+  step_size:
+    value: 1
+    unit: minute
 imports:
 - glucose_regulation
 variables:
@@ -39,8 +42,8 @@ formulas:
     description: 低血糖时胰高血糖素分泌
     condition: blood_glucose < 70
     dynamics:
-      glucagon_level: min(250, glucagon_level + (70 - blood_glucose) * 2 * step_size)
-      blood_glucose: blood_glucose + glucagon_level * 0.01 * step_size
+      glucagon_level: min(250, glucagon_level + (70 - blood_glucose) * 2 * step)
+      blood_glucose: blood_glucose + glucagon_level * 0.01 * step
     priority: 6
   hypoglycemia_counter_regulation:
     description: 低血糖时的反调节激素反应
@@ -53,8 +56,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables:
   - glucagon_level
   - cortisol_level

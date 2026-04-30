@@ -12,14 +12,17 @@ metadata:
     抗质疑强度：⭐⭐⭐⭐（两套指南互相矛盾是事实，不可否认）
   tags: [cardiology, rheumatology, hypertension, gout, uric_acid, optimization, physiological, A5]
   references:
-    - "Williams B et al. (ESC/ESH 2018) 2018 ESC/ESH Guidelines for the management of arterial hypertension. Eur Heart J 39(33):3021-3104. [噻嗪类一线降压，目标<130/80]"
-    - "FitzGerald JD et al. (ACR 2020) 2020 American College of Rheumatology Guideline for the Management of Gout. Arthritis Rheumatol 72(6):879-895. [尿酸目标<360 μmol/L]"
-    - "Law MR, Wald NJ, Morris JK (2003) Use of blood pressure lowering drugs in the prevention of cardiovascular disease. BMJ 326(7403):1427. [HCTZ 25mg降压约8-10 mmHg]"
-    - "Gurwitz JH et al. (1992) Hydrochlorothiazide and the risk of gout. J Clin Epidemiol 45(9):989-996. [HCTZ升高尿酸约60-80 μmol/L per 25mg]"
-    - "Neter JE et al. (2003) Influence of weight reduction on blood pressure. Hypertension 42(5):878-884. [减重1kg降压约1 mmHg]"
-    - "Choi HK, Liu S, Curhan G (2005) Intake of purine-rich foods, protein, and dairy products. Arthritis Rheum 52(1):283-289. [嘌呤摄入与尿酸关系]"
-    - "Fam AG (2005) Gout, diet, and the insulin resistance syndrome. J Rheumatol 32(4):608-610. [快速减重促进尿酸升高机制]"
+  - "Williams B et al. (ESC/ESH 2018) 2018 ESC/ESH Guidelines for the management of arterial hypertension. Eur Heart J 39(33):3021-3104. [噻嗪类一线降压，目标<130/80]"
+  - "FitzGerald JD et al. (ACR 2020) 2020 American College of Rheumatology Guideline for the Management of Gout. Arthritis Rheumatol 72(6):879-895. [尿酸目标<360 μmol/L]"
+  - "Law MR, Wald NJ, Morris JK (2003) Use of blood pressure lowering drugs in the prevention of cardiovascular disease. BMJ 326(7403):1427. [HCTZ 25mg降压约8-10 mmHg]"
+  - "Gurwitz JH et al. (1992) Hydrochlorothiazide and the risk of gout. J Clin Epidemiol 45(9):989-996. [HCTZ升高尿酸约60-80 μmol/L per 25mg]"
+  - "Neter JE et al. (2003) Influence of weight reduction on blood pressure. Hypertension 42(5):878-884. [减重1kg降压约1 mmHg]"
+  - "Choi HK, Liu S, Curhan G (2005) Intake of purine-rich foods, protein, and dairy products. Arthritis Rheum 52(1):283-289. [嘌呤摄入与尿酸关系]"
+  - "Fam AG (2005) Gout, diet, and the insulin resistance syndrome. J Rheumatol 32(4):608-610. [快速减重促进尿酸升高机制]"
 
+  step_size:
+    value: 1
+    unit: day
 variables:
   # R1: Blood Pressure
   systolic_bp:
@@ -134,7 +137,7 @@ formulas:
       来源：Law 2003 (HCTZ); Neter 2003 (减重)。
     condition: true
     dynamics:
-      systolic_bp: "systolic_bp + ((bp_baseline - diuretic_dose * 0.4 - max(0.0, body_weight_ref - body_weight) * 1.0) - systolic_bp) * (1.0/14.0) * step_size"
+      systolic_bp: "systolic_bp + ((bp_baseline - diuretic_dose * 0.4 - max(0.0, body_weight_ref - body_weight) * 1.0) - systolic_bp) * (1.0/14.0) * step"
     priority: 7
 
   # F2: Uric Acid Dynamics（一阶趋向平衡动力学）
@@ -149,7 +152,7 @@ formulas:
       来源：Gurwitz 1992 (HCTZ); Choi 2005 (饮食); Fam 2005 (减重)。
     condition: true
     dynamics:
-      uric_acid: "uric_acid + ((ua_baseline + diuretic_dose * 2.8 + (purine_intake - 1000.0) * 0.06 + max(0.0, weight_loss_rate - 0.5) * 50.0) - uric_acid) * (1.0/14.0) * step_size"
+      uric_acid: "uric_acid + ((ua_baseline + diuretic_dose * 2.8 + (purine_intake - 1000.0) * 0.06 + max(0.0, weight_loss_rate - 0.5) * 50.0) - uric_acid) * (1.0/14.0) * step"
     priority: 7
 
   # F3: Body Weight Dynamics
@@ -158,7 +161,7 @@ formulas:
     description: "体重按目标减重速率线性下降（安全约束：0-1.0 kg/week）。"
     condition: weight_loss_rate > 0.0
     dynamics:
-      body_weight: "max(50.0, body_weight - weight_loss_rate / 7.0 * step_size)"
+      body_weight: "max(50.0, body_weight - weight_loss_rate / 7.0 * step)"
     priority: 5
 
   # F4: Composite Goal Score
@@ -176,8 +179,6 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-04-01"
-  step: 1
-  step_unit: day
   output_variables: [systolic_bp, uric_acid, body_weight, goal_score, diuretic_dose, purine_intake, weight_loss_rate]
 optimizer:
   method: grid

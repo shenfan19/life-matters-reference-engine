@@ -7,6 +7,9 @@ metadata:
   - environmental
   - disaster
   - risk
+  step_size:
+    value: 1
+    unit: hour
 variables:
   hazard_intensity:
     description: 灾害强度
@@ -60,27 +63,25 @@ formulas:
     description: 灾害导致损毁
     condition: hazard_intensity > 3
     dynamics:
-      damage_index: min(100, damage_index + (hazard_intensity - 3) * 5 * step_size)
-      population_safety: max(0, population_safety - hazard_intensity * 2 * step_size)
+      damage_index: min(100, damage_index + (hazard_intensity - 3) * 5 * step)
+      population_safety: max(0, population_safety - hazard_intensity * 2 * step)
     priority: 5
   rescue_dynamics:
     description: 救援提升安全并修复设施
     condition: supplies_delivery > 0
     dynamics:
-      rescue_progress: min(100, rescue_progress + supplies_delivery * 0.5 * step_size)
-      population_safety: min(100, population_safety + supplies_delivery * 0.2 * step_size)
+      rescue_progress: min(100, rescue_progress + supplies_delivery * 0.5 * step)
+      population_safety: min(100, population_safety + supplies_delivery * 0.2 * step)
     priority: 5
   repair_dynamics:
     description: 灾后重建
     condition: infrastructure_repair > 0 and hazard_intensity < 5
     dynamics:
-      damage_index: max(0, damage_index - infrastructure_repair * 0.1 * step_size)
+      damage_index: max(0, damage_index - infrastructure_repair * 0.1 * step)
     priority: 3
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-03"
-  step: 1
-  step_unit: hour
   output_variables:
   - damage_index
   - population_safety

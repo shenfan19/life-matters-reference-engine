@@ -3,24 +3,25 @@ metadata:
   updated: 2026-04-23
   description: 高压环境下糖分摄入与运动的健康权衡优化
 
+  step_size:
+    value: 1
+    unit: day
 python_envs:
-  - pymoo: ">=0.6.0"  # 用于 MOO
-  - matplotlib: ">=3.5.0"  # Pareto 前沿可视化
-  - scipy: ">=1.10.0"  # 可选：单目标优化
+- pymoo: ">=0.6.0"    # 用于 MOO
+- matplotlib: ">=3.5.0"    # Pareto 前沿可视化
+- scipy: ">=1.10.0"    # 可选：单目标优化
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-04-11"
-  step: 1
-  step_unit: day
 optimizer:
   method: nsga2  # MOO 算法
   targets_of_optimization:
-    - max_happiness
-    - min_health_risk
+  - max_happiness
+  - min_health_risk
   pop_size: 50  # 种群大小
   n_gen: 100  # 迭代次数
   bounds: [[0, 100], [0, 60]]  # 参数边界：sugar_intake, exercise_time
   variables_to_optimize:
-    - insulin_sensitivity
-    - energy_expenditure
+  - insulin_sensitivity
+  - energy_expenditure

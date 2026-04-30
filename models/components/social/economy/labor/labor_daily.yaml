@@ -4,43 +4,44 @@ metadata:
   author: TODO:AUTHOR
   description: "工作与劳动动力学：模拟每日工作时间对储蓄和疲劳度的影响。展示了计划表如何驱动复杂的经济与生理平衡。"
   tags: [economic, social, labor]
+  step_size:
+    value: 1
+    unit: hour
 
 variables:
-  savings: { description: "个人储蓄", value: 500, unit: "元", type: state, bounds: [0, 1000000] }
-  fatigue: { description: "疲劳度", value: 0, unit: "分", type: state, bounds: [0, 100] }
-  work_intensity: { description: "工作强度", value: 0.0, unit: "系数", type: input, bounds: [0, 1] }
-  hourly_wage: { description: "时薪", value: 50, unit: "元/h", type: parameter }
+  savings: {description: "个人储蓄", value: 500, unit: "元", type: state, bounds: [0, 1000000]}
+  fatigue: {description: "疲劳度", value: 0, unit: "分", type: state, bounds: [0, 100]}
+  work_intensity: {description: "工作强度", value: 0.0, unit: "系数", type: input, bounds: [0, 1]}
+  hourly_wage: {description: "时薪", value: 50, unit: "元/h", type: parameter}
 
 formulas:
   earning:
     description: "劳动所得：根据工作强度和时薪增加储蓄"
     condition: work_intensity > 0
     dynamics:
-      savings: "savings + work_intensity * hourly_wage * (step_size / 3600)"
-      fatigue: "fatigue + work_intensity * 10 * (step_size / 3600)"
+      savings: "savings + work_intensity * hourly_wage * (step / 3600)"
+      fatigue: "fatigue + work_intensity * 10 * (step / 3600)"
     priority: 7
 
   resting:
     description: "自然恢复：非工作时间疲劳度缓慢下降"
     condition: work_intensity == 0
     dynamics:
-      fatigue: "fatigue - 2 * (step_size / 3600)"
+      fatigue: "fatigue - 2 * (step / 3600)"
     priority: 5
 
 schedules:
   work_intensity:
     interpolation: step
     points:
-      - { time: 0, value: 0.0 }      # 00:00 (Sleeping)
-      - { time: 32400, value: 1.0 }  # 09:00 (Start Work)
-      - { time: 43200, value: 0.2 }  # 12:00 (Lunch Break)
-      - { time: 46800, value: 1.0 }  # 13:00 (Resume Work)
-      - { time: 61200, value: 0.0 }  # 17:00 (Off Work)
-      - { time: 86400, value: 0.0 }  # END
+    - {time: 0, value: 0.0}          # 00:00 (Sleeping)
+    - {time: 32400, value: 1.0}      # 09:00 (Start Work)
+    - {time: 43200, value: 0.2}      # 12:00 (Lunch Break)
+    - {time: 46800, value: 1.0}      # 13:00 (Resume Work)
+    - {time: 61200, value: 0.0}      # 17:00 (Off Work)
+    - {time: 86400, value: 0.0}      # END
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: hour
   output_variables: [savings, fatigue, work_intensity]

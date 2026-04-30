@@ -17,6 +17,9 @@ metadata:
     疲劳、士气、营养三重调制战略效率；与史载"食少事烦，其能久乎"吻合。
     步长=1天，总时长=180天（一次北伐季）。
 
+  step_size:
+    value: 1
+    unit: day
 variables:
   # ── 行为输入（玩家/优化器控制）────────────────────────────────────────────────
   work_intensity:
@@ -106,17 +109,15 @@ variables:
 simulation:
   start_date: "0228-03-01"
   end_date: "0228-09-01"
-  step: 1
-  step_unit: day
   output_variables:
-    - health
-    - fatigue
-    - strategy
-    - nutrition
-    - supply_level
-    - morale
-    - court_stability
-    - work_intensity
+  - health
+  - fatigue
+  - strategy
+  - nutrition
+  - supply_level
+  - morale
+  - court_stability
+  - work_intensity
 formulas:
 
   # 1. 饮食消化：食物→营养
@@ -147,10 +148,7 @@ formulas:
     condition: work_intensity > 0
     priority: 10
     dynamics:
-      strategy: "min(100, strategy + work_intensity * 8.0
-                  * max(0.2, 1 - fatigue / 100)
-                  * max(0.3, morale / 80)
-                  * max(0.3, nutrition / 70))"
+      strategy: "min(100, strategy + work_intensity * 8.0 * max(0.2, 1 - fatigue / 100) * max(0.3, morale / 80) * max(0.3, nutrition / 70))"
       fatigue: "min(100, fatigue + work_intensity * 3.5)"
 
   # 4. 休息恢复（睡眠/静养）
@@ -161,7 +159,7 @@ formulas:
     priority: 8
     dynamics:
       fatigue: "max(0, fatigue - rest_quality * 12)"
-      health:  "min(100, health + rest_quality * 0.8)"
+      health: "min(100, health + rest_quality * 0.8)"
 
   # 5. 供给自然消耗
   supply_consumption:
@@ -218,8 +216,8 @@ formulas:
     condition: work_intensity >= 3
     priority: 9
     dynamics:
-      morale:  "min(100, morale + 3)"
-      health:  "max(0, health - 0.5)"
+      morale: "min(100, morale + 3)"
+      health: "max(0, health - 0.5)"
 
   # 12. 士气低落影响战略执行
   low_morale_penalty:
@@ -236,44 +234,44 @@ optimizer:
   generations: 60
 
   objectives:
-    - variable: strategy
-      direction: maximize
-      weight: 1.0
-    - variable: health
-      direction: maximize
-      weight: 0.8
-    - variable: morale
-      direction: maximize
-      weight: 0.4
+  - variable: strategy
+    direction: maximize
+    weight: 1.0
+  - variable: health
+    direction: maximize
+    weight: 0.8
+  - variable: morale
+    direction: maximize
+    weight: 0.4
 
   constraints:
-    - expression: "health >= 40"
-      description: "丞相健康不能低于40（历史约束：需维持基本军务能力）"
-    - expression: "supply_level >= 10"
-      description: "军粮不能完全耗尽"
-    - expression: "morale >= 20"
-      description: "军心不能崩溃"
+  - expression: "health >= 40"
+    description: "丞相健康不能低于40（历史约束：需维持基本军务能力）"
+  - expression: "supply_level >= 10"
+    description: "军粮不能完全耗尽"
+  - expression: "morale >= 20"
+    description: "军心不能崩溃"
 
   variables_to_optimize:
-    - name: daily_work_intensity
-      default: 2.0
-      bounds: [0.5, 3.0]
-      maps_to: "work_intensity"
+  - name: daily_work_intensity
+    default: 2.0
+    bounds: [0.5, 3.0]
+    maps_to: "work_intensity"
 
-    - name: daily_rest_quality
-      default: 0.6
-      bounds: [0.3, 1.0]
-      maps_to: "rest_quality"
+  - name: daily_rest_quality
+    default: 0.6
+    bounds: [0.3, 1.0]
+    maps_to: "rest_quality"
 
-    - name: daily_food_intake
-      default: 120.0
-      bounds: [60.0, 300.0]
-      maps_to: "food_intake"
+  - name: daily_food_intake
+    default: 120.0
+    bounds: [60.0, 300.0]
+    maps_to: "food_intake"
 
-    - name: political_effort
-      default: 0.5
-      bounds: [0.0, 1.5]
-      maps_to: "political_address"
+  - name: political_effort
+    default: 0.5
+    bounds: [0.0, 1.5]
+    maps_to: "political_address"
 
   analysis:
     pareto_description: >

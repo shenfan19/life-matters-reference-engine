@@ -6,6 +6,9 @@ metadata:
     篮球训练/比赛模型（单场，48分钟）。间歇性高强度运动：爆发冲刺与中低强度交替。
     核心特征：短时爆发（冲刺/跳跃）累积乳酸，间歇期部分清除。
   tags: [sport, basketball, interval, explosive]
+  step_size:
+    value: 1
+    unit: minute
 
 variables:
   game_intensity:
@@ -110,6 +113,4 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
-  step: 1
-  step_unit: minute
   output_variables: [heart_rate, calories_burned, fatigue, lactate, agility, shot_accuracy, performance]

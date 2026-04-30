@@ -4,22 +4,22 @@ metadata:
   author: TODO:AUTHOR
   description: "战争风险动力学模型：包含区域紧张度（R1）、武装冲突（R2）与社会动荡（R3）。"
   tags: [risk, war, social]
+  step_size:
+    value: 1
+    unit: month
 
 variables:
   # R1: Tension
-  geopolitical_tension: { description: "地缘政治紧张度", value: 10, unit: "分", type: state, bounds: [0, 100] }
-  
+  geopolitical_tension: {description: "地缘政治紧张度", value: 10, unit: "分", type: state, bounds: [0, 100]}
   # R2: Conflict
-  conflict_intensity: { description: "冲突烈度", value: 0, unit: "级", type: state, bounds: [0, 10] }
-  
+  conflict_intensity: {description: "冲突烈度", value: 0, unit: "级", type: state, bounds: [0, 10]}
   # R3: Consequence
-  social_stability: { description: "社会稳定性", value: 100, unit: "分", type: state, bounds: [0, 100] }
-  resource_scarcity: { description: "资源匮乏程度", value: 0, unit: "分", type: state, bounds: [0, 100] }
-  
+  social_stability: {description: "社会稳定性", value: 100, unit: "分", type: state, bounds: [0, 100]}
+  resource_scarcity: {description: "资源匮乏程度", value: 0, unit: "分", type: state, bounds: [0, 100]}
   # P1: Inputs (Card Inputs)
-  diplomatic_talks: { description: "外交谈判投入", value: 0, unit: "级", type: input }
-  defense_spending: { description: "国防支出增量", value: 0, unit: "亿", type: input }
-  propaganda_campaign: { description: "宣传攻势强度", value: 0, unit: "级", type: input }
+  diplomatic_talks: {description: "外交谈判投入", value: 0, unit: "级", type: input}
+  defense_spending: {description: "国防支出增量", value: 0, unit: "亿", type: input}
+  propaganda_campaign: {description: "宣传攻势强度", value: 0, unit: "级", type: input}
 
 formulas:
   # F1: Escalation
@@ -27,8 +27,8 @@ formulas:
     description: "紧张度转化为冲突"
     condition: geopolitical_tension > 50
     dynamics:
-      conflict_intensity: "min(10, conflict_intensity + (geopolitical_tension - 50) * 0.1 * step_size)"
-      social_stability: "social_stability - conflict_intensity * 2 * step_size"
+      conflict_intensity: "min(10, conflict_intensity + (geopolitical_tension - 50) * 0.1 * step)"
+      social_stability: "social_stability - conflict_intensity * 2 * step"
     priority: 5
 
   # F2: De-escalation
@@ -36,7 +36,7 @@ formulas:
     description: "外交手段降低紧张度"
     condition: diplomatic_talks > 0
     dynamics:
-      geopolitical_tension: "max(0, geopolitical_tension - diplomatic_talks * 5 * step_size)"
+      geopolitical_tension: "max(0, geopolitical_tension - diplomatic_talks * 5 * step)"
     priority: 5
 
   # F3: War Economy
@@ -44,12 +44,10 @@ formulas:
     description: "冲突导致的资源损耗"
     condition: conflict_intensity > 2
     dynamics:
-      resource_scarcity: "min(100, resource_scarcity + conflict_intensity * 3 * step_size)"
+      resource_scarcity: "min(100, resource_scarcity + conflict_intensity * 3 * step)"
     priority: 3
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-12-31"
-  step: 1
-  step_unit: month
   output_variables: [geopolitical_tension, conflict_intensity, social_stability]
