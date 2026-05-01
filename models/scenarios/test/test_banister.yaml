@@ -1,0 +1,282 @@
+metadata:
+  name: test_banister
+  updated: 2026-05-01
+  author: LM Test
+  description: >
+    Banister 运动适应 MC + Opt 测试场景（Paper 1 B3 验证案例）。
+    经典 fitness-fatigue 双室模型（Morton 1990）。
+    MC 参数：g（适应增益）和 h（疲劳增益）在个体间服从正态分布，
+    多条 MC 曲线在第 4–8 周可见明显分叉。
+    16 周训练块 + 2 周减量期，仿真 126 天，日步长。
+    Opt 目标：双目标 Pareto（最大化末期表现 × 最小化峰值疲劳），
+    决策变量为各周训练负荷分配。
+  tags: [test, banister, mc, opt, exercise, fitness, fatigue, paper1-b3]
+  references:
+    - "Morton RH et al. (1990) Modeling human performance in running. J Appl Physiol 69(3):1171–1177"
+    - "Mujika I et al. (1996) Effects of training on performance in competitive swimming. Can J Appl Physiol 21(5):395–406"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ───────────────────────────────────────────────────────────────────────
+variables:
+  fitness:
+    description: 体能分量（运动适应积累，时间常数45天）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 2000]
+
+  fatigue:
+    description: 疲劳分量（训练负荷累积，时间常数15天）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 3000]
+
+  performance:
+    description: 综合表现 = 基础 + fitness - fatigue
+    value: 494.0
+    unit: AU
+    type: state
+    bounds: [0, 1000]
+
+  training_load:
+    description: 当日训练负荷（任意单位，由 schedule/opt 驱动）
+    value: 0.0
+    unit: AU
+    type: input
+
+  # ── MC 概率参数 ──────────────────────────────────────────────────────────────
+  g:
+    description: 体能增益系数，个体差异±15%。MC 时各条曲线采样不同值
+    value: "normal(1.0, 0.15)"
+    unit: 无量纲
+    type: parameter
+    bounds: [0.4, 2.0]
+
+  h:
+    description: 疲劳增益系数，个体差异±15%。MC 时决定疲劳积累速率
+    value: "normal(2.0, 0.30)"
+    unit: 无量纲
+    type: parameter
+    bounds: [0.8, 4.0]
+
+  k1:
+    description: 体能衰减速率（1/45 per day，Morton 1990）
+    value: 0.02222
+    unit: 1/day
+    type: parameter
+    bounds: [0.01, 0.05]
+
+  k2:
+    description: 疲劳衰减速率（1/15 per day，Morton 1990）
+    value: 0.06667
+    unit: 1/day
+    type: parameter
+    bounds: [0.03, 0.15]
+
+  p0:
+    description: 基础表现（无训练基准）
+    value: 494.0
+    unit: AU
+    type: parameter
+
+# ── 动力学公式 ─────────────────────────────────────────────────────────────────
+# step_size = 1 day（native unit），所有系数均为 per-day 速率
+formulas:
+  fitness_dynamics:
+    description: "体能分量 Euler 更新：增益 − 自然衰减"
+    condition: true
+    priority: 5
+    dynamics:
+      fitness: fitness + (g * training_load - k1 * fitness) * step
+
+  fatigue_dynamics:
+    description: "疲劳分量 Euler 更新：增益 − 自然衰减"
+    condition: true
+    priority: 5
+    dynamics:
+      fatigue: fatigue + (h * training_load - k2 * fatigue) * step
+
+  performance_update:
+    description: "瞬时表现 = 基础 + 体能 − 疲劳（不含 step，静态指标计算）"
+    condition: true
+    priority: 3
+    dynamics:
+      performance: p0 + fitness - fatigue
+
+# ── 优化设置 ──────────────────────────────────────────────────────────────────
+# Opt：双目标 Pareto — 最大化第16周末表现 × 最小化峰值疲劳
+optimizer:
+  enabled: true
+  method: "nsga2"                 # 双目标用 NSGA-II
+
+  objectives:
+    - variable: performance
+      metric: final               # 仿真结束时的值
+      direction: maximize
+      description: "最大化16周训练结束时的表现"
+    - variable: fatigue
+      metric: max                 # 仿真过程中的最大值
+      direction: minimize
+      description: "最小化峰值疲劳（防止过度训练）"
+
+  constraints:
+    - variable: fatigue
+      condition: "<= 900"
+      type: hard
+      description: "疲劳硬约束：防止过度训练（Morton 1990 建议上限）"
+    - variable: performance
+      condition: ">= 400"
+      type: soft
+      description: "表现下限：减量期不得低于基准值"
+
+  regimen:
+    variable: training_load
+    description: "以周为单位安排训练负荷，每天一个事件，周内统一负荷"
+    events:
+      - time: "09:00"
+        dose_bounds: [0, 140]
+        days: [Mon, Wed, Fri]
+        label: "主训练日"
+      - time: "09:00"
+        dose_bounds: [0, 60]
+        days: [Tue, Thu]
+        label: "辅助训练日"
+      - time: "09:00"
+        dose_bounds: [0, 20]
+        days: [Sat, Sun]
+        label: "恢复/休息日"
+
+  mc:
+    enabled: true
+    sim_runs: 8
+    description: "MC 采样 g（适应增益）和 h（疲劳增益）的个体差异，观察最优训练方案对个体变异的稳健性"
+
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+
+# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+# 16 周训练 + 2 周减量 = 126 天
+# 默认训练块：渐进负荷（周1-10）+ 减量（周11-12）
+# schedule 提供默认值；opt 可覆盖
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-05-06"        # 126 天
+  output_variables:
+    - fitness
+    - fatigue
+    - performance
+    - training_load
+  schedules:
+    training_load:
+      interpolation: pulse        # 每天只训练一次（脉冲）
+      points:
+        # ── 第 1–4 周：基础期，负荷 50 AU/day，每天训练 ──
+        - {time: 0,     value: 50}   # Day 1
+        - {time: 86400, value: 50}   # Day 2
+        - {time: 172800, value: 50}  # Day 3
+        - {time: 259200, value: 50}  # Day 4
+        - {time: 345600, value: 50}  # Day 5
+        - {time: 432000, value: 30}  # Day 6 恢复
+        - {time: 518400, value: 0}   # Day 7 休息
+        # ── 第 2 周（重复模式） ──
+        - {time: 604800,  value: 55}
+        - {time: 691200,  value: 55}
+        - {time: 777600,  value: 55}
+        - {time: 864000,  value: 55}
+        - {time: 950400,  value: 55}
+        - {time: 1036800, value: 30}
+        - {time: 1123200, value: 0}
+        # ── 第 3 周 ──
+        - {time: 1209600, value: 65}
+        - {time: 1296000, value: 65}
+        - {time: 1382400, value: 65}
+        - {time: 1468800, value: 65}
+        - {time: 1555200, value: 65}
+        - {time: 1641600, value: 30}
+        - {time: 1728000, value: 0}
+        # ── 第 4 周 ──
+        - {time: 1814400, value: 70}
+        - {time: 1900800, value: 70}
+        - {time: 1987200, value: 70}
+        - {time: 2073600, value: 70}
+        - {time: 2160000, value: 70}
+        - {time: 2246400, value: 35}
+        - {time: 2332800, value: 0}
+        # ── 第 5–8 周：强化期，负荷 80–100 AU/day ──
+        - {time: 2419200, value: 80}
+        - {time: 2505600, value: 80}
+        - {time: 2592000, value: 80}
+        - {time: 2678400, value: 80}
+        - {time: 2764800, value: 80}
+        - {time: 2851200, value: 40}
+        - {time: 2937600, value: 0}
+        - {time: 3024000, value: 85}
+        - {time: 3110400, value: 85}
+        - {time: 3196800, value: 85}
+        - {time: 3283200, value: 85}
+        - {time: 3369600, value: 85}
+        - {time: 3456000, value: 40}
+        - {time: 3542400, value: 0}
+        - {time: 3628800, value: 90}
+        - {time: 3715200, value: 90}
+        - {time: 3801600, value: 90}
+        - {time: 3888000, value: 90}
+        - {time: 3974400, value: 90}
+        - {time: 4060800, value: 45}
+        - {time: 4147200, value: 0}
+        - {time: 4233600, value: 100}
+        - {time: 4320000, value: 100}
+        - {time: 4406400, value: 100}
+        - {time: 4492800, value: 100}
+        - {time: 4579200, value: 100}
+        - {time: 4665600, value: 50}
+        - {time: 4752000, value: 0}
+        # ── 第 9–12 周：维持期，负荷 85 AU/day ──
+        - {time: 4838400, value: 85}
+        - {time: 4924800, value: 85}
+        - {time: 5011200, value: 85}
+        - {time: 5097600, value: 85}
+        - {time: 5184000, value: 85}
+        - {time: 5270400, value: 40}
+        - {time: 5356800, value: 0}
+        - {time: 5443200, value: 85}
+        - {time: 5529600, value: 85}
+        - {time: 5616000, value: 85}
+        - {time: 5702400, value: 85}
+        - {time: 5788800, value: 85}
+        - {time: 5875200, value: 40}
+        - {time: 5961600, value: 0}
+        - {time: 6048000, value: 85}
+        - {time: 6134400, value: 85}
+        - {time: 6220800, value: 85}
+        - {time: 6307200, value: 85}
+        - {time: 6393600, value: 85}
+        - {time: 6480000, value: 40}
+        - {time: 6566400, value: 0}
+        - {time: 6652800, value: 85}
+        - {time: 6739200, value: 85}
+        - {time: 6825600, value: 85}
+        - {time: 6912000, value: 85}
+        - {time: 6998400, value: 85}
+        - {time: 7084800, value: 40}
+        - {time: 7171200, value: 0}
+        # ── 第 13–14 周：减量期，负荷 30 AU/day ──
+        - {time: 7257600, value: 30}
+        - {time: 7344000, value: 30}
+        - {time: 7430400, value: 30}
+        - {time: 7516800, value: 30}
+        - {time: 7603200, value: 30}
+        - {time: 7689600, value: 15}
+        - {time: 7776000, value: 0}
+        - {time: 7862400, value: 30}
+        - {time: 7948800, value: 30}
+        - {time: 8035200, value: 30}
+        - {time: 8121600, value: 30}
+        - {time: 8208000, value: 30}
+        - {time: 8294400, value: 15}
+        - {time: 8380800, value: 0}

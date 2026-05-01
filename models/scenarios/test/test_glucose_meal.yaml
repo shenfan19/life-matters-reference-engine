@@ -3,9 +3,10 @@ metadata:
   updated: 2026-04-30
   author: LM Test
   description: >
-    血糖 MC 测试：三日三餐脉冲式摄入→胃缓冲→血糖波动。
-    两个正态分布参数（insulin_sensitivity + absorption_efficiency）在 MC 多条曲线间产生可见差异。
-  tags: [test, glucose, mc, schedule, pulse]
+    血糖 MC + Opt 测试场景。三日三餐脉冲式摄入→胃缓冲→血糖波动。
+    两个正态分布参数（insulin_sensitivity + absorption_efficiency）在 MC 多条曲线间产生可见分叉。
+    Opt 目标：调整每餐碳水量，在满足每日总量≥150g 的前提下最小化餐后血糖峰值。
+  tags: [test, glucose, mc, schedule, pulse, opt]
   step_size:
     value: 1
     unit: minute
@@ -74,6 +75,49 @@ formulas:
     priority: 3
     dynamics:
       blood_glucose: blood_glucose + (85 - blood_glucose) * 0.05 * step
+
+# ── 优化设置 ──────────────────────────────────────────────────────────────────
+# Opt 目标：最小化三日平均餐后血糖峰值，决策变量为每餐碳水量
+optimizer:
+  enabled: true
+  method: "l-bfgs-b"             # 单目标：l-bfgs-b | nelder-mead | nsga2
+
+  objective:
+    variable: blood_glucose
+    metric: max                   # max | mean | final | time_above
+    direction: minimize
+    description: "最小化三日仿真期间的血糖峰值"
+
+  constraints:
+    - variable: blood_glucose
+      condition: "<= 160"
+      type: hard
+      description: "餐后血糖上限 160 mg/dL（正常餐后范围）"
+
+  regimen:
+    variable: carb_intake
+    description: "优化每餐碳水摄入量（g），时间固定，剂量可调"
+    events:
+      - time: "07:00"
+        dose_bounds: [20, 80]
+        label: "早餐碳水"
+      - time: "12:00"
+        dose_bounds: [30, 100]
+        label: "午餐碳水"
+      - time: "18:30"
+        dose_bounds: [20, 80]
+        label: "晚餐碳水"
+    daily_total_min: 150          # g/day，每日最低碳水摄入约束
+
+  mc:
+    enabled: true
+    sim_runs: 10
+    description: "MC 采样 insulin_sensitivity 与 absorption_efficiency 的个体差异"
+
+  algorithm:
+    population_size: 40
+    n_generations: 60
+    seed: 42
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
 simulation:
