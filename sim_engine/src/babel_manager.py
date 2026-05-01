@@ -29,7 +29,9 @@ class BabelLanguageManager:
                 # domain 默认为 'messages'
                 return Translations.load(self.locales_dir, [self.current_language])
             else:
-                logger.warning(f"Locale {self.current_language} not found at {locale_path}, using NullTranslations")
+                # 'en' 是源语言，NullTranslations 是预期行为，无需警告
+                if self.current_language not in ('en', 'en_US'):
+                    logger.warning(f"Locale {self.current_language} not found at {locale_path}, using NullTranslations")
                 return NullTranslations()
         except Exception as e:
             logger.error(f"Failed to load translations for {self.current_language}: {e}")

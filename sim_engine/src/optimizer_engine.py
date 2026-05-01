@@ -82,7 +82,8 @@ class OptimizerEngine:
                 time_hours: float = 720.0,
                 opt_inner_runs: int = 5,
                 opt_aggregation: str = 'mean',
-                opt_verify_runs: int = 20) -> Dict[str, Any]:
+                opt_verify_runs: int = 20,
+                history_out=None) -> Dict[str, Any]:
         """
         执行优化任务（外环 Regimen/参数搜索，方案 B：每次迭代用 N_inner 条取期望）。
         :param mode: 优化模式 (real_time/full_inputs/full_params)。
@@ -108,7 +109,7 @@ class OptimizerEngine:
             method = self.config['method']
 
         self.iteration = 0
-        self.history = []
+        self.history = history_out if history_out is not None else []
         self.opt_inner_runs = max(1, opt_inner_runs)
         self.opt_aggregation = opt_aggregation
         self.opt_verify_runs = max(1, opt_verify_runs)
@@ -402,7 +403,7 @@ class OptimizerEngine:
         try:
             # 导入 pymoo 库。
             from pymoo.algorithms.soo.nonconvex.ga import GA
-            from pymoo.dynamics.problem import Problem
+            from pymoo.core.problem import Problem
             from pymoo.optimize import minimize
             
             # 定义优化问题类。

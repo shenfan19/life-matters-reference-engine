@@ -345,6 +345,146 @@ const SimChart: React.FC<{
   );
 };
 
+// ─── ParetoChart component ────────────────────────────────────────────────────
+const ParetoChart: React.FC<{
+  result: any;
+  isDarkMode: boolean;
+  c: ReturnType<typeof getC>;
+}> = ({ result, isDarkMode, c }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hover, setHover] = useState<{ x: number; y: number; pt: any } | null>(null);
+
+  const PAD = { l: 52, r: 16, t: 16, b: 44 };
+  const pts: Array<{x: number; y: number}> = (result.pareto_front || []).map((p: any) => ({
+    x: p.f[0], y: p.f.length > 1 ? p.f[1] : 0,
+  }));
+
+  const obj0 = result.objectives?.[0];
+  const obj1 = result.objectives?.[1];
+  const labelX = obj0 ? `${obj0.variable} (${obj0.direction === 'maximize' ? 'max' : 'min'})` : 'Obj 1';
+  const labelY = obj1 ? `${obj1.variable} (${obj1.direction === 'maximize' ? 'max' : 'min'})` : 'Obj 2';
+
+  const draw = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || pts.length === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = isDarkMode ? '#111' : '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
+    const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
+    const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
+    const toCanvasY = (v: number) => PAD.t + plotH - ((v - yMin) / yRange) * plotH;
+
+    // grid
+    ctx.strokeStyle = isDarkMode ? '#222' : '#eee';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const x = PAD.l + (plotW / 4) * i;
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
+      const y = PAD.t + (plotH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + plotW, y); ctx.stroke();
+    }
+
+    // axes labels
+    ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+    ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    for (let i = 0; i <= 4; i++) {
+      const v = xMin + (xRange / 4) * i;
+      ctx.fillText(v.toFixed(2), PAD.l + (plotW / 4) * i, H - 4);
+    }
+    ctx.save(); ctx.translate(10, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= 4; i++) {
+      const v = yMin + (yRange / 4) * i;
+      ctx.fillText(v.toFixed(2), -(plotH / 4) * i + plotH / 2, 8);
+    }
+    ctx.restore();
+
+    // axis names
+    ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+    ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(labelX, PAD.l + plotW / 2, H - 28);
+    ctx.save(); ctx.translate(12, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText(labelY, 0, 0); ctx.restore();
+
+    // Pareto front line
+    const sorted = [...pts].sort((a, b) => a.x - b.x);
+    ctx.strokeStyle = isDarkMode ? '#52c41a' : '#007A33';
+    ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    sorted.forEach((p, i) => {
+      const cx = toCanvasX(p.x), cy = toCanvasY(p.y);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // points
+    pts.forEach((p, i) => {
+      const cx = toCanvasX(p.x), cy = toCanvasY(p.y);
+      ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = isDarkMode ? '#52c41a' : '#007A33';
+      ctx.fill();
+      ctx.strokeStyle = isDarkMode ? '#111' : '#fff';
+      ctx.lineWidth = 1.5; ctx.stroke();
+    });
+  };
+
+  useEffect(() => { draw(); }, [result, isDarkMode]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || pts.length === 0) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
+    const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
+    const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
+    const toCanvasY = (v: number) => PAD.t + plotH - ((v - yMin) / yRange) * plotH;
+    let best: any = null, bestD = 15;
+    (result.pareto_front || []).forEach((p: any) => {
+      const cx = toCanvasX(p.f[0]), cy = toCanvasY(p.f.length > 1 ? p.f[1] : 0);
+      const d = Math.hypot(mx - cx, my - cy);
+      if (d < bestD) { bestD = d; best = { x: mx, y: my, pt: p }; }
+    });
+    setHover(best);
+  };
+
+  if (pts.length === 0) return null;
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 280 }}>
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }}
+        onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)} />
+      {hover && (
+        <div style={{
+          position: 'absolute', left: hover.x + 10, top: Math.max(0, hover.y - 10),
+          background: isDarkMode ? '#1a1a1a' : '#fff',
+          border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px',
+          fontSize: 11, color: c.text, pointerEvents: 'none', whiteSpace: 'pre',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)', zIndex: 10,
+        }}>
+          {(result.objectives || []).map((o: any, i: number) => (
+            `${o.variable}: ${hover.pt.f[i]?.toFixed(4) ?? '-'}`
+          )).join('\n')}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── localStorage persistence helpers ────────────────────────────────────────
 const SIM_PERSIST_KEY = 'sim_persist';
 const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
@@ -413,9 +553,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
   const [objectives, setObjectives] = useState<Array<{ variable: string; direction: 'minimize' | 'maximize' }>>([]);
   const [constraints, setConstraints] = useState<Array<{ variable: string; op: '≤' | '≥'; value: number }>>([]);
-  const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D'>('NSGA-II');
+  const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead'>('NSGA-II');
   const [optPop, setOptPop] = useState(100);
   const [optGen, setOptGen] = useState(200);
+  const [optResult, setOptResult] = useState<any>(null);
+  const [optRunning, setOptRunning] = useState(false);
 
   // ── regimen K×4 state ───────────────────────────────────────────────────────
   const [regimens, setRegimens] = useState<Regimen[]>(() => {
@@ -560,6 +702,60 @@ const Simulator: React.FC<SimulatorProps> = ({
       set('stepUnit', 'hour');
       set('simStartDate', DEFAULT_START);
       set('simEndDate', DEFAULT_END);
+    }
+
+    // ── 读取 optimizer 块，预填 objectives / constraints / algorithm ──────────
+    const optBlock: any = selectedModel?.content?.optimizer;
+    if (optBlock && optBlock.enabled !== false) {
+      // 解析 objectives（支持单目标 objective:{} 和多目标 objectives:[]）
+      const parseDir = (d: string): 'minimize' | 'maximize' =>
+        d === 'maximize' ? 'maximize' : 'minimize';
+
+      const rawObjs: Array<{ variable: string; direction: 'minimize' | 'maximize' }> = [];
+      if (optBlock.objective) {
+        rawObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir(optBlock.objective.direction || 'minimize') });
+      }
+      if (Array.isArray(optBlock.objectives)) {
+        optBlock.objectives.forEach((o: any) => {
+          rawObjs.push({ variable: o.variable || '', direction: parseDir(o.direction || 'minimize') });
+        });
+      }
+      if (rawObjs.length > 0) setObjectives(rawObjs);
+
+      // 解析 constraints（condition: "<= 160" → op + value）
+      const parseCondition = (cond: string): { op: '≤' | '≥'; value: number } | null => {
+        const m = cond.trim().match(/^([<>]=?)\s*(-?\d+(?:\.\d+)?)/);
+        if (!m) return null;
+        return { op: m[1] === '>=' || m[1] === '>' ? '≥' : '≤', value: parseFloat(m[2]) };
+      };
+      if (Array.isArray(optBlock.constraints)) {
+        const parsedCons: Array<{ variable: string; op: '≤' | '≥'; value: number }> = [];
+        optBlock.constraints.forEach((con: any) => {
+          const parsed = parseCondition(String(con.condition || ''));
+          if (parsed && con.variable) parsedCons.push({ variable: con.variable, ...parsed });
+        });
+        if (parsedCons.length > 0) setConstraints(parsedCons);
+      }
+
+      // 解析算法参数
+      const methodMap: Record<string, string> = {
+        'nsga2': 'NSGA-II', 'nsga-2': 'NSGA-II', 'nsga_2': 'NSGA-II',
+        'moead': 'MOEA/D', 'moea/d': 'MOEA/D',
+        'l-bfgs-b': 'l-bfgs-b', 'lbfgsb': 'l-bfgs-b',
+        'nelder-mead': 'nelder-mead', 'nelder_mead': 'nelder-mead',
+      };
+      const rawMethod = String(optBlock.method || '').toLowerCase();
+      const mappedMethod = methodMap[rawMethod];
+      if (mappedMethod) setOptAlgo(mappedMethod as any);
+
+      const algoBlock = optBlock.algorithm || {};
+      if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
+      if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
+
+      // MC 运行次数
+      if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) {
+        set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
+      }
     }
   }, [selectedModel]);
 
@@ -900,6 +1096,34 @@ const Simulator: React.FC<SimulatorProps> = ({
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
+    setOptResult(null);
+  };
+
+  const startOptimization = async () => {
+    if (!selectedModel) return;
+    const modelKey = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name;
+    try {
+      setOptRunning(true); setOptResult(null);
+      set('status', 'running'); set('progress', 0);
+      const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_name: modelKey, folder: selectedModel.folder }),
+      });
+      const result = await resp.json();
+      if (resp.ok && result.success) {
+        setOptResult(result);
+        set('status', 'completed'); set('progress', 100);
+        message.success(`优化完成，${result.n_solutions} 个 Pareto 解`);
+      } else {
+        message.error(result.detail || result.error || '优化失败');
+        set('status', 'idle');
+      }
+    } catch (e: any) {
+      message.error(e.message);
+      set('status', 'idle');
+    } finally {
+      setOptRunning(false);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1182,8 +1406,16 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
 
-  const renderOptContent = () => (
+  const renderOptContent = () => {
+    const hasModelOpt = !!(selectedModel?.content?.optimizer?.enabled !== false && selectedModel?.content?.optimizer);
+    return (
     <div style={{ padding: '8px 0' }}>
+      {/* 模型内置 optimizer 提示 */}
+      {hasModelOpt && (
+        <div style={{ background: c.sectionHd, border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px', marginBottom: 10, fontSize: 11, color: c.textSec }}>
+          已从模型 <code style={{ fontFamily: 'monospace' }}>optimizer:</code> 块读取配置，可在下方修改
+        </div>
+      )}
       {/* Objectives */}
       <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.objectives')}</div>
       {objectives.map((obj, i) => (
@@ -1230,7 +1462,12 @@ const Simulator: React.FC<SimulatorProps> = ({
       {/* Algorithm */}
       <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.algorithm')}</div>
       <Select size="small" value={optAlgo}
-        options={[{ label: 'NSGA-II', value: 'NSGA-II' }, { label: 'MOEA/D', value: 'MOEA/D' }]}
+        options={[
+          { label: 'NSGA-II（多目标 Pareto）', value: 'NSGA-II' },
+          { label: 'MOEA/D（多目标分解）',     value: 'MOEA/D' },
+          { label: 'L-BFGS-B（单目标梯度）',   value: 'l-bfgs-b' },
+          { label: 'Nelder-Mead（单目标无梯度）', value: 'nelder-mead' },
+        ]}
         onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 8 }} />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
@@ -1243,7 +1480,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // LEFT PANEL SECTION RESIZE
@@ -1403,12 +1641,47 @@ const Simulator: React.FC<SimulatorProps> = ({
               </>
             )}
             {mode === 'opt' && (
-              <div style={{
-                marginTop: 8, padding: 12,
-                border: `1px dashed ${c.border}`, borderRadius: 6,
-                textAlign: 'center', color: c.textMute,
-              }}>
-                {t('sim.opt.pareto')}
+              <div style={{ marginTop: 8 }}>
+                {optRunning && (
+                  <div style={{ textAlign: 'center', padding: 24 }}>
+                    <Spin indicator={<LoadingOutlined style={{ fontSize: 28 }} spin />} />
+                    <div style={{ marginTop: 8, color: c.textMute, fontSize: 12 }}>优化运行中...</div>
+                  </div>
+                )}
+                {!optRunning && optResult && optResult.pareto_front?.length > 0 && (
+                  <div style={{ border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{
+                      padding: '4px 10px', background: c.sectionHd,
+                      borderBottom: `1px solid ${c.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: c.text }}>
+                        Pareto 前沿 — {optResult.n_solutions} 个解
+                      </span>
+                      <span style={{ fontSize: 11, color: c.textMute, fontFamily: 'monospace' }}>
+                        {optResult.method}
+                      </span>
+                    </div>
+                    <div style={{ padding: 8 }}>
+                      <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} />
+                    </div>
+                    {optResult.pareto_front.length === 1 && (
+                      <div style={{ padding: '4px 10px 8px', fontSize: 12, color: c.textSec }}>
+                        最优解：{(optResult.objectives || []).map((o: any, i: number) =>
+                          `${o.variable} = ${optResult.best_f?.[i]?.toFixed(4)}`
+                        ).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!optRunning && !optResult && (
+                  <div style={{
+                    padding: 12, border: `1px dashed ${c.border}`, borderRadius: 6,
+                    textAlign: 'center', color: c.textMute,
+                  }}>
+                    {t('sim.opt.pareto')}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1454,20 +1727,25 @@ const Simulator: React.FC<SimulatorProps> = ({
         <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
         <Button
           type="primary" size="small"
-          icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
-          onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation}
-          disabled={!isLocked || status === 'completed'}
+          icon={(status === 'running' || optRunning) ? <PauseOutlined /> : <PlayCircleOutlined />}
+          onClick={
+            mode === 'opt'
+              ? (optRunning ? undefined : startOptimization)
+              : status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation
+          }
+          loading={optRunning}
+          disabled={!isLocked || (mode === 'sim' && status === 'completed') || (mode === 'opt' && (optRunning || status === 'completed'))}
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
         >
-          {status === 'running'
-            ? t('sim.control.pause')
-            : status === 'paused'
-              ? t('sim.control.continue')
-              : t('sim.control.run')}
+          {mode === 'opt'
+            ? (optRunning ? '优化中...' : t('sim.control.run'))
+            : status === 'running' ? t('sim.control.pause')
+            : status === 'paused' ? t('sim.control.continue')
+            : t('sim.control.run')}
         </Button>
         <Button size="small" icon={<StepForwardOutlined />}
           onClick={runSingleStep}
-          disabled={!isLocked || !sessionId || status === 'running' || status === 'completed'}
+          disabled={mode === 'opt' || !isLocked || !sessionId || status === 'running' || status === 'completed'}
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
         >{t('sim.control.step')}</Button>
         <Button size="small" icon={<StopOutlined />}
