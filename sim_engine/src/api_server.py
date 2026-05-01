@@ -15,6 +15,10 @@ import logging
 import sys
 import os
 import yaml
+import uuid
+import asyncio
+import functools
+from time import time as _time
 
 # ========== 路径配置 ==========
 CURRENT_FILE = Path(__file__).resolve()
@@ -41,6 +45,7 @@ plugin_manager = None
 loader_engine = None
 simulator_engine = None
 optimizer_engine = None
+optimizer_jobs: Dict[str, Dict[str, Any]] = {}
 
 
 # ========== 寿命周期事件 ==========
@@ -135,6 +140,28 @@ async def lifespan(app: FastAPI):
     yield
     
     logger.info("Shutting down LifeMatters Backend...")
+
+
+def _add_log(job: dict, msg: str):
+    job['logs'].append({'t': _time(), 'msg': msg})
+
+
+async def _run_optimizer_job(job_id: str, fn):
+    job = optimizer_jobs[job_id]
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, fn)
+        job['result'] = result
+        job['status'] = 'completed' if result.get('success') else 'failed'
+        if not result.get('success'):
+            job['error'] = result.get('error', 'Unknown error')
+            _add_log(job, f"Failed: {job['error']}")
+        else:
+            _add_log(job, "Optimization completed.")
+    except Exception as e:
+        job['status'] = 'failed'
+        job['error'] = str(e)
+        _add_log(job, f"Error: {e}")
 
 
 # 创建 FastAPI 应用
@@ -1209,36 +1236,129 @@ async def export_simulation(request: SessionRequest):
 
 
 # ========== Optimizer 端点 ==========
+
+class YamlOptRequest(BaseModel):
+    model_name: str
+    folder: Optional[str] = None
+
+
+@app.post("/api/optimizer/run_yaml")
+async def run_yaml_optimization(request: YamlOptRequest):
+    """Run optimizer using YAML optimizer: block (NSGA-II / L-BFGS-B / Nelder-Mead)."""
+    if simulator_engine is None:
+        raise HTTPException(status_code=503, detail="Simulator engine not initialized")
+    try:
+        from src.yaml_optimizer import run_yaml_optimizer
+        job_id = str(uuid.uuid4())
+        job_history: List[Dict[str, Any]] = []
+        job: Dict[str, Any] = {
+            'status': 'running',
+            'history': job_history,
+            'logs': [{'t': _time(), 'msg': f"Loading model: {request.model_name}"}],
+            'result': None,
+            'error': None,
+            'start_time': _time(),
+            'job_type': 'yaml',
+            'method': 'nsga2',
+        }
+        optimizer_jobs[job_id] = job
+
+        def progress_cb(entry: dict):
+            job_history.append(entry)
+            it = entry.get('iteration', len(job_history))
+            f = entry.get('fitness')
+            ne = entry.get('n_eval')
+            if it % 5 == 0 or it == 1:
+                parts = [f"Gen {it}"]
+                if f is not None:
+                    parts.append(f"best={f:.4f}")
+                if ne:
+                    parts.append(f"eval={ne}")
+                _add_log(job, "  ".join(parts))
+
+        _add_log(job, "Starting optimizer...")
+        fn = functools.partial(run_yaml_optimizer, simulator_engine,
+                               request.model_name, request.folder, progress_cb)
+        asyncio.create_task(_run_optimizer_job(job_id, fn))
+        return {'success': True, 'job_id': job_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"run_yaml_optimization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/optimizer/run")
 async def run_optimization(request: OptimizationRequest):
     """运行优化"""
     if optimizer_engine is None:
         raise HTTPException(status_code=503, detail="Optimizer engine not initialized")
-    
     try:
-        # 加载模型
         success = optimizer_engine.load_models(request.model_names, request.folder)
         if not success:
             raise HTTPException(status_code=400, detail="Failed to load models for optimization")
-        
-        # 执行优化
-        result = optimizer_engine.optimize(
+
+        job_id = str(uuid.uuid4())
+        job_history: List[Dict[str, Any]] = []
+        job: Dict[str, Any] = {
+            'status': 'running',
+            'history': job_history,
+            'logs': [{'t': _time(), 'msg': f"Starting {request.method.upper()} optimizer ({request.mode}, {request.time_hours:.0f}h)..."}],
+            'result': None,
+            'error': None,
+            'start_time': _time(),
+            'job_type': 'standard',
+            'method': request.method,
+        }
+        optimizer_jobs[job_id] = job
+
+        fn = functools.partial(
+            optimizer_engine.optimize,
             mode=request.mode,
             method=request.method,
             time_hours=request.time_hours,
             opt_inner_runs=max(1, request.opt_inner_runs),
             opt_aggregation=request.opt_aggregation,
             opt_verify_runs=max(1, request.opt_verify_runs),
+            history_out=job_history,
         )
-        
-        if result['success']:
-            return result
-        else:
-            raise HTTPException(status_code=500, detail=result.get('error', 'Optimization failed'))
-            
+        asyncio.create_task(_run_optimizer_job(job_id, fn))
+        return {'success': True, 'job_id': job_id}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/optimizer/status/{job_id}")
+async def get_optimizer_status(job_id: str):
+    """轮询优化任务进度"""
+    if job_id not in optimizer_jobs:
+        raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
+    job = optimizer_jobs[job_id]
+    return {
+        'job_id': job_id,
+        'status': job['status'],
+        'history': list(job['history']),
+        'logs': list(job['logs']),
+        'result': job.get('result'),
+        'error': job.get('error'),
+        'elapsed': _time() - job.get('start_time', _time()),
+        'iteration': len(job['history']),
+        'method': job.get('method', ''),
+        'job_type': job.get('job_type', ''),
+    }
+
+
+@app.delete("/api/optimizer/job/{job_id}")
+async def cancel_optimizer_job(job_id: str):
+    """标记优化任务为已取消"""
+    if job_id not in optimizer_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    optimizer_jobs[job_id]['status'] = 'cancelled'
+    _add_log(optimizer_jobs[job_id], "Cancelled by user.")
+    return {'success': True}
 
 
 # ========== Converter 端点 ==========

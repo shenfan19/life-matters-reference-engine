@@ -343,7 +343,7 @@ function App() {
 
   useEffect(() => {
     const check = () => {
-      fetch(`/api/plugins?v=${Date.now()}`, { signal: AbortSignal.timeout(2500) })
+      fetch(`/api/health?v=${Date.now()}`, { signal: AbortSignal.timeout(5000) })
         .then(() => setBackendStatus('online'))
         .catch(() => setBackendStatus('offline'));
     };

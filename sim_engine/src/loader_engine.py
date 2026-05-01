@@ -201,13 +201,14 @@ class LoaderEngine:
             model = ModStructure(self.mods_directory, self.language)
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
-            
+
             # 验证合并后的模型（如果需要）。
             if validate:
                 model.validate_model()
-            
-            # 将加载的模型存入缓存。
+
+            # 将加载的模型存入缓存（同时用绝对路径和 (name,folder) 两种 key）。
             self.models_cache[cache_key] = model
+            self.models_cache[(model_name, folder or "")] = model
             return model
             
         except Exception as e:
