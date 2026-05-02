@@ -1,0 +1,104 @@
+metadata:
+  name: l1_drug_single_obj
+  description: >
+    L1 优化测试模型 — 单目标，30天日步长，预估完成 < 1分钟。
+
+    用途：调试优化链路是否通畅（endpoint → job → Pareto 结果）。
+
+    场景：单一口服药物，每日给药。优化目标：最大化第30天血浆浓度，
+    同时满足肝脏累积负荷约束。
+
+    优化参数：
+      pop_size=10, n_gen=15 → 150次评估 × 30步 ≈ 1秒完成
+
+    含 MC 参数（个体清除率差异 normal(0.3, 0.05)）供蒙特卡洛仿真测试。
+  tags: [test, L1, single-objective, pharmacokinetics, debug]
+  references:
+    - "Simplified first-order PK model for optimizer unit test"
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  plasma_level:
+    description: 血浆药物浓度（mg/L），一阶吸收-清除动力学
+    value: 0.0
+    unit: mg/L
+    type: state
+    bounds: [0.0, 120.0]
+
+  liver_load:
+    description: 肝脏累积代谢负荷（mg/L·day），越高副作用风险越大
+    value: 0.0
+    unit: mg/L·day
+    type: state
+    bounds: [0.0, 1200.0]
+
+  clearance_rate:
+    description: >
+      药物清除率（个体差异）。
+      MC 参数：normal(0.3, 0.05) /day。
+      均值 0.3：即半衰期 ≈ 2.3天。
+    value: "normal(0.3, 0.05)"
+    unit: per_day
+    type: parameter
+    bounds: [0.1, 0.6]
+
+  dose_mg:
+    description: 每日口服给药剂量（mg），优化决策变量
+    value: 10.0
+    unit: mg
+    type: input
+    bounds: [0.0, 50.0]
+
+formulas:
+  drug_kinetics:
+    description: >
+      一阶药代动力学。吸收率 60%，清除率 clearance_rate。
+      稳态：plasma_level_ss = dose_mg * 0.6 / clearance_rate
+      （dose=10 → ss≈20; dose=42 → ss≈84，约为约束上限）
+    condition: true
+    dynamics:
+      plasma_level: "plasma_level + (dose_mg * 0.6 - plasma_level * clearance_rate) * step"
+    priority: 10
+
+  liver_accumulation:
+    description: 肝脏负荷累积（每日 plasma_level 的 20%）
+    condition: true
+    dynamics:
+      liver_load: "liver_load + plasma_level * 0.2 * step"
+    priority: 5
+
+simulation:
+  start_date: "2025-01-01"
+  end_date: "2025-01-31"
+  output_variables: [plasma_level, liver_load, dose_mg]
+
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: plasma_level
+      metric: final
+      direction: maximize
+
+  constraints:
+    - variable: liver_load
+      condition: "<= 250"
+
+  inputs:
+    - variable: dose_mg
+      time: "08:00"
+      value: 10.0
+      label: "Daily dose (mg)"
+      optimize:
+        value: [0.0, 50.0]
+
+  algorithm:
+    population_size: 10
+    n_generations: 15
+    seed: 42
+
+  mc:
+    enabled: false
+    sim_runs: 1
