@@ -609,56 +609,82 @@ const Simulator: React.FC<SimulatorProps> = ({
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
       const newInputEvents: InputEvent[] = [];
-      const schedData: Record<string, any> = selectedModel.content?.simulation?.schedules ?? {};
+      const rawSchedules = selectedModel.content?.simulation?.schedules;
 
-      const secsToHHMM = (sec: number): string => {
-        const s = sec % 86400;
-        const hh = String(Math.floor(s / 3600)).padStart(2, '0');
-        const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-        return `${hh}:${mm}`;
+      // Parse "Mon","Tue"... strings → boolean[7] mask (0=Mon … 6=Sun)
+      const DAY_STR_MAP: Record<string, number> = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 };
+      const parseDaysMask = (days?: string[]): boolean[] => {
+        if (!days?.length) return [true,true,true,true,true,true,true];
+        const m = [false,false,false,false,false,false,false];
+        days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0,3)]; if (i !== undefined) m[i] = true; });
+        return m;
       };
+
+      // Canonical flat-list format: simulation.schedules = [{variable, time, value, days?, valid_start?, valid_end?}]
+      const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
+      // Legacy dict format: simulation.schedules = {varName: {points: [{time_secs, value}]}}
+      const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
+
+      const varBounds = (data: any): [number, number] => [
+        (data.bounds as any)?.[0] ?? 0,
+        (data.bounds as any)?.[1] ?? (data.value ?? 0) * 2 || 1,
+      ];
 
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
         if (data.type === 'input') {
           inputs[name] = data.value;
-          const sched = schedData[name];
-          if (sched?.points?.length) {
-            const seen = new Set<string>();
-            (sched.points as any[])
-              .map((pt, i) => ({ time: secsToHHMM(pt.time ?? 0), value: pt.value ?? 0, idx: i }))
-              .filter(ev => { if (seen.has(ev.time)) return false; seen.add(ev.time); return true; })
-              .forEach(ev => {
-                newInputEvents.push({
-                  id: `${name}-ev${ev.idx}`,
-                  variable: name,
-                  time: ev.time,
-                  timeEnabled: true,
-                  value: ev.value,
-                  label: '',
-                  daysEnabled: false,
-                  days: [true, true, true, true, true, true, true],
-                  validRangeEnabled: false,
-                  validStart: '',
-                  validEnd: '',
-                  optimizeValue: false,
-                  valueBounds: [0, (data.value ?? 0) * 2 || 1],
-                });
+          const flatEntries = schedList.filter(s => s.variable === name);
+
+          if (flatEntries.length > 0) {
+            // New canonical format: one InputEvent per flat schedule entry
+            flatEntries.forEach((s, i) => {
+              const daysList: string[] = Array.isArray(s.days) ? s.days : [];
+              const hasDays = daysList.length > 0 && daysList.length < 7;
+              newInputEvents.push({
+                id: `${name}-sched${i}`,
+                variable: name,
+                time: s.time ?? '08:00',
+                timeEnabled: !!s.time,
+                value: s.value ?? data.value ?? 0,
+                label: s.label ?? '',
+                daysEnabled: hasDays,
+                days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
+                validRangeEnabled: !!(s.valid_start || s.valid_end),
+                validStart: s.valid_start ?? '',
+                validEnd: s.valid_end ?? '',
+                optimizeValue: false,
+                valueBounds: varBounds(data),
               });
+            });
+          } else if (schedDict[name]?.points?.length) {
+            // Legacy seconds-based format (backward compat, deduplicated by time)
+            const seen = new Set<string>();
+            const secsToHHMM = (sec: number) => {
+              const s2 = sec % 86400;
+              return `${String(Math.floor(s2/3600)).padStart(2,'0')}:${String(Math.floor((s2%3600)/60)).padStart(2,'0')}`;
+            };
+            (schedDict[name].points as any[]).forEach((pt: any, idx: number) => {
+              const t = secsToHHMM(pt.time ?? 0);
+              if (seen.has(t)) return;
+              seen.add(t);
+              newInputEvents.push({
+                id: `${name}-ev${idx}`,
+                variable: name, time: t, timeEnabled: true,
+                value: pt.value ?? 0, label: '',
+                daysEnabled: false, days: [true,true,true,true,true,true,true],
+                validRangeEnabled: false, validStart: '', validEnd: '',
+                optimizeValue: false, valueBounds: varBounds(data),
+              });
+            });
           } else {
+            // No schedule: single event with variable default
             newInputEvents.push({
               id: `${name}-ev0`,
-              variable: name,
-              time: '08:00',
-              timeEnabled: false,
-              value: data.value ?? 0,
-              label: '',
-              daysEnabled: false,
-              days: [true, true, true, true, true, true, true],
-              validRangeEnabled: false,
-              validStart: '',
-              validEnd: '',
-              optimizeValue: false,
-              valueBounds: [0, (data.value ?? 0) * 2 || 1],
+              variable: name, time: '08:00', timeEnabled: false,
+              value: data.value ?? 0, label: '',
+              daysEnabled: false, days: [true,true,true,true,true,true,true],
+              validRangeEnabled: false, validStart: '', validEnd: '',
+              optimizeValue: false, valueBounds: varBounds(data),
             });
           }
         } else if (data.type === 'state') states[name] = data.value;
@@ -780,8 +806,10 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       }
 
-      // Apply optimizer.inputs optimize flags — always (even on restore, in case YAML changed)
+      // Apply optimizer decision-variable flags — handle both inputs: (new) and regimen: (legacy)
+      // Also carries over time, timeEnabled, label so events match the YAML optimizer definition.
       if (Array.isArray(optBlock.inputs)) {
+        // New inputs: format — each entry with optimize.value is a decision variable
         const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
           e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
         );
@@ -789,9 +817,33 @@ const Simulator: React.FC<SimulatorProps> = ({
           setInputEvents(prev => prev.map(ev => {
             const inp = withOpt.find((e: any) => e.variable === ev.variable);
             if (!inp) return ev;
-            return { ...ev, optimizeValue: true, valueBounds: [inp.optimize.value[0], inp.optimize.value[1]] };
+            return {
+              ...ev,
+              time: inp.time ?? ev.time,
+              timeEnabled: inp.time ? true : ev.timeEnabled,
+              label: inp.label ?? ev.label,
+              optimizeValue: true,
+              valueBounds: [inp.optimize.value[0], inp.optimize.value[1]],
+            };
           }));
         }
+      } else if (optBlock.regimen?.variable && Array.isArray(optBlock.regimen?.events)) {
+        // Legacy regimen: format — single variable, events list, dose_bounds per event
+        const regVar: string = optBlock.regimen.variable;
+        const regEvs: any[] = optBlock.regimen.events;
+        setInputEvents(prev => prev.map(ev => {
+          if (ev.variable !== regVar) return ev;
+          const regEv = regEvs.find((e: any) => e.time === ev.time) ?? regEvs[0];
+          if (!regEv?.dose_bounds) return ev;
+          return {
+            ...ev,
+            time: regEv.time ?? ev.time,
+            timeEnabled: regEv.time ? true : ev.timeEnabled,
+            label: regEv.label ?? ev.label,
+            optimizeValue: true,
+            valueBounds: [regEv.dose_bounds[0], regEv.dose_bounds[1]],
+          };
+        }));
       }
     }
   }, [selectedModel]);

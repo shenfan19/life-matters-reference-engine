@@ -2,103 +2,106 @@ type: model
 
 metadata:
   name: l3_two_drug_mc
-  title: "[TEST L3] 五周用药方案 · 双目标 + MC"
+  title: "[TEST L3] 五时段给药 · 双目标 + MC"
   description: >
     【调试用 TEST L3】5 决策变量 · 双目标 Pareto · MC 启用 · 预估完成 3–8分钟
 
     ── 用途 ──────────────────────────────────────────────
     验证高维决策变量 + 蒙特卡洛积分的完整优化链路。
-    5 个决策变量对应5个每周用药时段，测试 NSGA-II 在高维空间的寻优能力。
+    5 个决策变量对应每日5个给药时段，测试 NSGA-II 在高维空间的寻优能力。
 
     ── 场景 ──────────────────────────────────────────────
-    慢性病患者每周5天用药（工作日），优化各天剂量。
+    每日5次给药，各时段生物利用度不同（空腹/餐后/代谢节律）。
       · 目标1：最大化 plasma_level 均值（维持治疗窗口）
       · 目标2：最小化 liver_load 终值（减少毒性累积）
-    MC 扰动：个体清除率差异（normal分布），pop × 2 次仿真。
+    时段及吸收率：06:00(72%) 08:00(60%) 12:00(55%) 17:00(50%) 22:00(65%)
+    MC 扰动：个体清除率差异（normal分布），每候选解评估2次取均值。
 
     ── 参数规模 ──────────────────────────────────────────
     pop=25, gen=30 → 750次评估 × 2 MC × 35步 ≈ 3–8分钟
-    决策变量: 5（Mon/Tue/Wed/Thu/Fri 各天剂量: 0–25 mg）
+    决策变量: 5（各时段剂量: 0–20 mg）
     MC: 启用（sim_runs=2）
-  tags: [test, L3, multi-objective, pareto, 5-variable, mc, chronic]
+  tags: [test, L3, multi-objective, pareto, 5-variable, mc, pharmacokinetics]
   references:
-    - "TEST L3: Five-day weekly schedule optimizer with MC integration test"
+    - "TEST L3: Five-slot daily schedule optimizer with MC integration test"
   step_size:
     value: 1
     unit: day
 
 variables:
   plasma_level:
-    description: 血浆药物浓度（mg/L），工作日给药+周末自然消退
+    description: 血浆药物浓度（mg/L），五次给药叠加，日步长动力学
     value: 0.0
     unit: mg/L
     type: state
-    bounds: [0.0, 120.0]
+    bounds: [0.0, 150.0]
 
   liver_load:
     description: 肝脏35天累积代谢负荷
     value: 0.0
     unit: mg/L·day
     type: state
-    bounds: [0.0, 1500.0]
+    bounds: [0.0, 1800.0]
 
   clearance_rate:
     description: >
       药物日清除率（MC参数，个体差异）。
-      normal(0.30, 0.04)：均值半衰期 ≈ 2.3天。
-    value: "normal(0.30, 0.04)"
+      normal(0.28, 0.04)：均值半衰期 ≈ 2.5天。
+    value: "normal(0.28, 0.04)"
     unit: per_day
     type: parameter
-    bounds: [0.15, 0.55]
+    bounds: [0.12, 0.52]
 
-  mon_dose:
-    description: 周一剂量（mg）
-    value: 10.0
+  slot_6am:
+    description: 06:00 给药剂量（mg），空腹晨醒，吸收率72%
+    value: 5.0
     unit: mg
     type: input
-    bounds: [0.0, 25.0]
+    bounds: [0.0, 20.0]
 
-  tue_dose:
-    description: 周二剂量（mg）
-    value: 10.0
+  slot_8am:
+    description: 08:00 给药剂量（mg），早餐后，吸收率60%
+    value: 5.0
     unit: mg
     type: input
-    bounds: [0.0, 25.0]
+    bounds: [0.0, 20.0]
 
-  wed_dose:
-    description: 周三剂量（mg）
-    value: 10.0
+  slot_12pm:
+    description: 12:00 给药剂量（mg），午餐后，吸收率55%
+    value: 5.0
     unit: mg
     type: input
-    bounds: [0.0, 25.0]
+    bounds: [0.0, 20.0]
 
-  thu_dose:
-    description: 周四剂量（mg）
-    value: 10.0
+  slot_5pm:
+    description: 17:00 给药剂量（mg），晚餐后，吸收率50%
+    value: 5.0
     unit: mg
     type: input
-    bounds: [0.0, 25.0]
+    bounds: [0.0, 20.0]
 
-  fri_dose:
-    description: 周五剂量（mg）
-    value: 10.0
+  slot_10pm:
+    description: 22:00 给药剂量（mg），就寝前空腹，吸收率65%
+    value: 5.0
     unit: mg
     type: input
-    bounds: [0.0, 25.0]
+    bounds: [0.0, 20.0]
 
 formulas:
   drug_kinetics:
     description: >
-      工作日给药（吸收率65%），周末停药。
-      day_of_week = (step_index % 7): 0=Mon, 1=Tue, ... 4=Fri, 5=Sat, 6=Sun
-      使用 mon_dose 等按日激活（通过 optimizer.inputs.days 控制）。
+      日步长动力学：每日五次给药总吸收量 - 当日清除量。
+      daily_absorbed = slot_6am*0.72 + slot_8am*0.60 + slot_12pm*0.55
+                     + slot_5pm*0.50 + slot_10pm*0.65
     condition: true
     dynamics:
-      plasma_level: "plasma_level + (mon_dose * 0.65 + tue_dose * 0.65 + wed_dose * 0.65 + thu_dose * 0.65 + fri_dose * 0.65 - plasma_level * clearance_rate) * step"
+      plasma_level: >
+        plasma_level + (slot_6am * 0.72 + slot_8am * 0.60 + slot_12pm * 0.55
+        + slot_5pm * 0.50 + slot_10pm * 0.65 - plasma_level * clearance_rate) * step
     priority: 10
 
   liver_accumulation:
-    description: 日肝脏负荷（plasma_level的16%）
+    description: 日肝脏负荷（plasma_level 的 16%）
     condition: true
     dynamics:
       liver_load: "liver_load + plasma_level * 0.16 * step"
@@ -107,7 +110,28 @@ formulas:
 simulation:
   start_date: "2025-01-01"
   end_date: "2025-02-04"
-  output_variables: [plasma_level, liver_load, mon_dose, tue_dose, wed_dose, thu_dose, fri_dose]
+  schedules:
+    - variable: slot_6am
+      time: "06:00"
+      value: 5.0
+      label: "06:00 dose (mg)"
+    - variable: slot_8am
+      time: "08:00"
+      value: 5.0
+      label: "08:00 dose (mg)"
+    - variable: slot_12pm
+      time: "12:00"
+      value: 5.0
+      label: "12:00 dose (mg)"
+    - variable: slot_5pm
+      time: "17:00"
+      value: 5.0
+      label: "17:00 dose (mg)"
+    - variable: slot_10pm
+      time: "22:00"
+      value: 5.0
+      label: "22:00 dose (mg)"
+  output_variables: [plasma_level, liver_load, slot_6am, slot_8am, slot_12pm, slot_5pm, slot_10pm]
 
 optimizer:
   method: nsga2
@@ -123,43 +147,43 @@ optimizer:
 
   constraints:
     - variable: liver_load
-      condition: "<= 450"
+      condition: "<= 500"
 
   inputs:
-    - variable: mon_dose
-      time: "08:00"
-      value: 10.0
-      label: "Monday dose (mg)"
+    - variable: slot_6am
+      time: "06:00"
+      value: 5.0
+      label: "06:00 dose (mg)"
       optimize:
-        value: [0.0, 25.0]
+        value: [0.0, 20.0]
 
-    - variable: tue_dose
+    - variable: slot_8am
       time: "08:00"
-      value: 10.0
-      label: "Tuesday dose (mg)"
+      value: 5.0
+      label: "08:00 dose (mg)"
       optimize:
-        value: [0.0, 25.0]
+        value: [0.0, 20.0]
 
-    - variable: wed_dose
-      time: "08:00"
-      value: 10.0
-      label: "Wednesday dose (mg)"
+    - variable: slot_12pm
+      time: "12:00"
+      value: 5.0
+      label: "12:00 dose (mg)"
       optimize:
-        value: [0.0, 25.0]
+        value: [0.0, 20.0]
 
-    - variable: thu_dose
-      time: "08:00"
-      value: 10.0
-      label: "Thursday dose (mg)"
+    - variable: slot_5pm
+      time: "17:00"
+      value: 5.0
+      label: "17:00 dose (mg)"
       optimize:
-        value: [0.0, 25.0]
+        value: [0.0, 20.0]
 
-    - variable: fri_dose
-      time: "08:00"
-      value: 10.0
-      label: "Friday dose (mg)"
+    - variable: slot_10pm
+      time: "22:00"
+      value: 5.0
+      label: "22:00 dose (mg)"
       optimize:
-        value: [0.0, 25.0]
+        value: [0.0, 20.0]
 
   algorithm:
     population_size: 25
