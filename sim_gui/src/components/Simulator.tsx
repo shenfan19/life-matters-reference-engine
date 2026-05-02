@@ -627,7 +627,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
       const varBounds = (data: any): [number, number] => [
         (data.bounds as any)?.[0] ?? 0,
-        (data.bounds as any)?.[1] ?? (data.value ?? 0) * 2 || 1,
+        (data.bounds as any)?.[1] ?? (((data.value ?? 0) * 2) || 1),
       ];
 
       Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
@@ -1334,7 +1334,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       value: firstInputVar.value ?? 0, label: '',
       daysEnabled: false, days: [true,true,true,true,true,true,true],
       validRangeEnabled: false, validStart: '', validEnd: '',
-      optimizeValue: false, valueBounds: [0, (firstInputVar.value ?? 1) * 2 || 1],
+      optimizeValue: false, valueBounds: [0, ((firstInputVar.value ?? 1) * 2) || 1],
     }]);
   };
 
@@ -1434,7 +1434,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                         onChange={e => updateInputEvent(ev.id, {
                           optimizeValue: e.target.checked,
                           valueBounds: ev.valueBounds[0] === 0 && ev.valueBounds[1] === 1
-                            ? [bounds?.[0] ?? 0, bounds?.[1] ?? (ev.value * 2 || 1)]
+                            ? [bounds?.[0] ?? 0, bounds?.[1] ?? ((ev.value * 2) || 1)]
                             : ev.valueBounds,
                         })}
                         style={{ accentColor: c.primary, width: 11, height: 11 }}
