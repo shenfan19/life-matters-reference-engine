@@ -128,18 +128,21 @@ simulation:
   - stomach_carbs
   - carb_intake
   schedules:
-    carb_intake:
-      interpolation: pulse     # 脉冲模式：仅命中步有效，其余步自动为 0，不需零值关闭点
-      points:
-        # ── 第 1 天 ──
-      - {time: 25200, value: 50}      # 07:00 早餐 50g
-      - {time: 43200, value: 80}      # 12:00 午餐 80g
-      - {time: 66600, value: 60}      # 18:30 晚餐 60g
-        # ── 第 2 天 ──
-      - {time: 111600, value: 50}
-      - {time: 129600, value: 80}
-      - {time: 153000, value: 60}
-        # ── 第 3 天 ──
-      - {time: 198000, value: 50}
-      - {time: 216000, value: 80}
-      - {time: 239400, value: 60}
+    - variable: carb_intake
+      time: "07:00"
+      value: 50.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-03"
+      label: "早餐碳水"
+    - variable: carb_intake
+      time: "12:00"
+      value: 80.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-03"
+      label: "午餐碳水"
+    - variable: carb_intake
+      time: "18:30"
+      value: 60.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-03"
+      label: "晚餐碳水"

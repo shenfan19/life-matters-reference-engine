@@ -212,46 +212,22 @@ simulation:
     - BUN
     - dietary_protein
   schedules:
-    dietary_protein:
-      interpolation: pulse        # 每日三次进食，脉冲式摄入
-      points:
-        # 默认方案：0.8 g/kg/day，分三餐（等效每次约 0.267 g/kg/day）
-        # 重复 52 周（每天 = 86400s 一个周期，列出前 7 天代表，引擎循环读取）
-        # Day 1
-        - {time: 28800,   value: 0.27}   # 08:00 早餐
-        - {time: 43200,   value: 0.27}   # 12:00 午餐
-        - {time: 64800,   value: 0.26}   # 18:00 晚餐
-        # Day 2
-        - {time: 115200,  value: 0.27}
-        - {time: 129600,  value: 0.27}
-        - {time: 151200,  value: 0.26}
-        # Day 3
-        - {time: 201600,  value: 0.27}
-        - {time: 216000,  value: 0.27}
-        - {time: 237600,  value: 0.26}
-        # Day 4
-        - {time: 288000,  value: 0.27}
-        - {time: 302400,  value: 0.27}
-        - {time: 324000,  value: 0.26}
-        # Day 5
-        - {time: 374400,  value: 0.27}
-        - {time: 388800,  value: 0.27}
-        - {time: 410400,  value: 0.26}
-        # Day 6
-        - {time: 460800,  value: 0.27}
-        - {time: 475200,  value: 0.27}
-        - {time: 496800,  value: 0.26}
-        # Day 7
-        - {time: 547200,  value: 0.27}
-        - {time: 561600,  value: 0.27}
-        - {time: 583200,  value: 0.26}
-        # Week 2–4（继续 0.8 g/kg/day 基线）
-        - {time: 633600,  value: 0.27}
-        - {time: 648000,  value: 0.27}
-        - {time: 669600,  value: 0.26}
-        - {time: 720000,  value: 0.27}
-        - {time: 734400,  value: 0.27}
-        - {time: 756000,  value: 0.26}
-        - {time: 806400,  value: 0.27}
-        - {time: 820800,  value: 0.27}
-        - {time: 842400,  value: 0.26}
+    # 每日三餐，52 周全程。三餐脉冲相加 = 0.80 g/kg/day（日步长引擎累加）
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "早餐蛋白质"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "午餐蛋白质"
+    - variable: dietary_protein
+      time: "18:00"
+      value: 0.26
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "晚餐蛋白质"

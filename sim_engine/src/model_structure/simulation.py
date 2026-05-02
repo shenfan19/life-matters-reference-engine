@@ -30,12 +30,11 @@ class Simulation:
             points = schedule.points
 
             if schedule.interpolation == 'pulse':
-                # pulse 模式：仅在事件时间落入本步窗口 [self.time, self.time+step_size_sec) 时生效，其余步为 0
+                # pulse 模式：累加本步窗口 [self.time, self.time+step_size_sec) 内所有事件值
                 target_value = 0.0
                 for pt in points:
                     if self.time <= pt.time < self.time + step_size_sec:
-                        target_value = pt.value
-                        break
+                        target_value += pt.value
             else:
                 # step / linear 模式（保持向后兼容）
                 # 首点之前和末点之后均返回 0，不做 hold

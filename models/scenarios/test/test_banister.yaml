@@ -160,123 +160,25 @@ optimizer:
     seed: 42
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
-# 16 周训练 + 2 周减量 = 126 天
-# 默认训练块：渐进负荷（周1-10）+ 减量（周11-12）
-# schedule 提供默认值；opt 可覆盖
+# 测试用：1 周训练模式验证 Fitness-Fatigue 动力学，7 步快速完成
 simulation:
   start_date: "2026-01-01"
-  end_date:   "2026-05-06"        # 126 天
+  end_date:   "2026-01-07"        # 7 天（1 周）
   output_variables:
     - fitness
     - fatigue
     - performance
     - training_load
   schedules:
-    training_load:
-      interpolation: pulse        # 每天只训练一次（脉冲）
-      points:
-        # ── 第 1–4 周：基础期，负荷 50 AU/day，每天训练 ──
-        - {time: 0,     value: 50}   # Day 1
-        - {time: 86400, value: 50}   # Day 2
-        - {time: 172800, value: 50}  # Day 3
-        - {time: 259200, value: 50}  # Day 4
-        - {time: 345600, value: 50}  # Day 5
-        - {time: 432000, value: 30}  # Day 6 恢复
-        - {time: 518400, value: 0}   # Day 7 休息
-        # ── 第 2 周（重复模式） ──
-        - {time: 604800,  value: 55}
-        - {time: 691200,  value: 55}
-        - {time: 777600,  value: 55}
-        - {time: 864000,  value: 55}
-        - {time: 950400,  value: 55}
-        - {time: 1036800, value: 30}
-        - {time: 1123200, value: 0}
-        # ── 第 3 周 ──
-        - {time: 1209600, value: 65}
-        - {time: 1296000, value: 65}
-        - {time: 1382400, value: 65}
-        - {time: 1468800, value: 65}
-        - {time: 1555200, value: 65}
-        - {time: 1641600, value: 30}
-        - {time: 1728000, value: 0}
-        # ── 第 4 周 ──
-        - {time: 1814400, value: 70}
-        - {time: 1900800, value: 70}
-        - {time: 1987200, value: 70}
-        - {time: 2073600, value: 70}
-        - {time: 2160000, value: 70}
-        - {time: 2246400, value: 35}
-        - {time: 2332800, value: 0}
-        # ── 第 5–8 周：强化期，负荷 80–100 AU/day ──
-        - {time: 2419200, value: 80}
-        - {time: 2505600, value: 80}
-        - {time: 2592000, value: 80}
-        - {time: 2678400, value: 80}
-        - {time: 2764800, value: 80}
-        - {time: 2851200, value: 40}
-        - {time: 2937600, value: 0}
-        - {time: 3024000, value: 85}
-        - {time: 3110400, value: 85}
-        - {time: 3196800, value: 85}
-        - {time: 3283200, value: 85}
-        - {time: 3369600, value: 85}
-        - {time: 3456000, value: 40}
-        - {time: 3542400, value: 0}
-        - {time: 3628800, value: 90}
-        - {time: 3715200, value: 90}
-        - {time: 3801600, value: 90}
-        - {time: 3888000, value: 90}
-        - {time: 3974400, value: 90}
-        - {time: 4060800, value: 45}
-        - {time: 4147200, value: 0}
-        - {time: 4233600, value: 100}
-        - {time: 4320000, value: 100}
-        - {time: 4406400, value: 100}
-        - {time: 4492800, value: 100}
-        - {time: 4579200, value: 100}
-        - {time: 4665600, value: 50}
-        - {time: 4752000, value: 0}
-        # ── 第 9–12 周：维持期，负荷 85 AU/day ──
-        - {time: 4838400, value: 85}
-        - {time: 4924800, value: 85}
-        - {time: 5011200, value: 85}
-        - {time: 5097600, value: 85}
-        - {time: 5184000, value: 85}
-        - {time: 5270400, value: 40}
-        - {time: 5356800, value: 0}
-        - {time: 5443200, value: 85}
-        - {time: 5529600, value: 85}
-        - {time: 5616000, value: 85}
-        - {time: 5702400, value: 85}
-        - {time: 5788800, value: 85}
-        - {time: 5875200, value: 40}
-        - {time: 5961600, value: 0}
-        - {time: 6048000, value: 85}
-        - {time: 6134400, value: 85}
-        - {time: 6220800, value: 85}
-        - {time: 6307200, value: 85}
-        - {time: 6393600, value: 85}
-        - {time: 6480000, value: 40}
-        - {time: 6566400, value: 0}
-        - {time: 6652800, value: 85}
-        - {time: 6739200, value: 85}
-        - {time: 6825600, value: 85}
-        - {time: 6912000, value: 85}
-        - {time: 6998400, value: 85}
-        - {time: 7084800, value: 40}
-        - {time: 7171200, value: 0}
-        # ── 第 13–14 周：减量期，负荷 30 AU/day ──
-        - {time: 7257600, value: 30}
-        - {time: 7344000, value: 30}
-        - {time: 7430400, value: 30}
-        - {time: 7516800, value: 30}
-        - {time: 7603200, value: 30}
-        - {time: 7689600, value: 15}
-        - {time: 7776000, value: 0}
-        - {time: 7862400, value: 30}
-        - {time: 7948800, value: 30}
-        - {time: 8035200, value: 30}
-        - {time: 8121600, value: 30}
-        - {time: 8208000, value: 30}
-        - {time: 8294400, value: 15}
-        - {time: 8380800, value: 0}
+    - variable: training_load
+      time: "09:00"
+      value: 70.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-01 ~ 2026-01-07"
+      label: "主训练日"
+    - variable: training_load
+      time: "09:00"
+      value: 35.0
+      days: [Sat]
+      date_range: "2026-01-01 ~ 2026-01-07"
+      label: "恢复日"
