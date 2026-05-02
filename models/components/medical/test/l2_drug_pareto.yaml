@@ -1,0 +1,114 @@
+metadata:
+  name: l2_drug_pareto
+  description: >
+    L2 优化测试模型 — 双目标 Pareto，26周步长，预估完成 2–5分钟。
+
+    用途：验证 Pareto 前沿可视化与多目标优化。
+
+    场景：药物效果 vs 副作用权衡。高剂量提高疗效（plasma_level均值），
+    但同时增加肝脏负荷（liver_load终值）。经典权衡问题，Pareto前沿
+    应呈现清晰的单调权衡曲线。
+
+    优化参数：
+      pop_size=15, n_gen=20 → 300次评估 × 26步 ≈ 30–60秒完成
+
+    含 MC 参数（清除率和吸收率个体差异）供蒙特卡洛测试。
+    step_size=7天（周步长）加速计算，仍保留足够动力学细节。
+  tags: [test, L2, multi-objective, pareto, pharmacokinetics]
+  references:
+    - "Two-objective PK model for Pareto visualization test"
+  step_size:
+    value: 7
+    unit: day
+
+variables:
+  plasma_level:
+    description: 血浆药物浓度（mg/L），周稳态近似
+    value: 0.0
+    unit: mg/L
+    type: state
+    bounds: [0.0, 120.0]
+
+  liver_load:
+    description: 肝脏累积代谢负荷（26周累积值）
+    value: 0.0
+    unit: mg/L·week
+    type: state
+    bounds: [0.0, 2000.0]
+
+  clearance_rate:
+    description: >
+      药物周清除率（MC 参数，个体差异）。
+      normal(0.85, 0.08)：均值约 15%/day 折合为周。
+    value: "normal(0.85, 0.08)"
+    unit: per_week
+    type: parameter
+    bounds: [0.5, 1.0]
+
+  absorption_rate:
+    description: >
+      药物吸收率（MC 参数）。
+      normal(0.65, 0.05)：约 65% 口服生物利用度。
+    value: "normal(0.65, 0.05)"
+    unit: fraction
+    type: parameter
+    bounds: [0.4, 0.85]
+
+  dose_mg:
+    description: 每日给药剂量（mg），优化决策变量
+    value: 15.0
+    unit: mg/day
+    type: input
+    bounds: [0.0, 60.0]
+
+formulas:
+  drug_kinetics:
+    description: >
+      周步长药代动力学（step=7天）。
+      每周吸收 = dose_mg * absorption_rate * 7（一周总量）。
+      周内清除 = plasma_level * clearance_rate。
+    condition: true
+    dynamics:
+      plasma_level: "plasma_level + (dose_mg * absorption_rate * 7 - plasma_level * clearance_rate) * step"
+    priority: 10
+
+  liver_accumulation:
+    description: 肝脏周累积负荷（plasma_level × 0.15 per week）
+    condition: true
+    dynamics:
+      liver_load: "liver_load + plasma_level * 0.15 * step"
+    priority: 5
+
+simulation:
+  start_date: "2025-01-01"
+  end_date: "2025-06-30"
+  output_variables: [plasma_level, liver_load, dose_mg]
+
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: plasma_level
+      metric: mean
+      direction: maximize
+
+    - variable: liver_load
+      metric: final
+      direction: minimize
+
+  inputs:
+    - variable: dose_mg
+      time: "08:00"
+      value: 15.0
+      label: "Daily dose (mg/day)"
+      optimize:
+        value: [0.0, 60.0]
+
+  algorithm:
+    population_size: 15
+    n_generations: 20
+    seed: 42
+
+  mc:
+    enabled: false
+    sim_runs: 1

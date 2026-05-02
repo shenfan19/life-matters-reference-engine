@@ -24,8 +24,8 @@ function useResize(initial: number, min = 150, max = 700, direction: 'right' | '
 
 
 import {
-  Button, Select, InputNumber, Tooltip, Tag, Switch,
-  message, Spin, Alert, Empty, Input, Tree,
+  Button, Select, InputNumber, Tooltip, Tag,
+  message, Spin, Empty, Input, Tree,
   Segmented, Collapse, Popover,
 } from 'antd';
 import {
@@ -44,45 +44,19 @@ import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
 
-// Legacy flat entry — kept only for localStorage migration
-interface InputEntry {
+interface InputEvent {
   id: string;
-  variable: string;
+  variable: string;        // from model's input-type variables
+  time: string;            // "HH:mm"
   value: number;
-  time: string;
-}
-
-// Regimen K×4: one scheduled behaviour (one model input variable)
-interface RegimenEvent {
-  id: string;
-  time: string;   // 'HH:mm'
-  value: number;
-}
-
-interface Regimen {
-  id: string;
-  variable: string;
-  // valid_range: off = 永久有效
-  validRangeEnabled: boolean;
-  validStart: string;   // 'YYYY-MM-DD'
-  validEnd: string;
-  // events: (time, value) pairs
-  events: RegimenEvent[];
-  // days: off = 每天; on = custom weekdays
+  label: string;
   daysEnabled: boolean;
-  days: boolean[];      // [Mon,Tue,Wed,Thu,Fri,Sat,Sun]
-}
-
-// Per-regimen opt config (lock vs optimize per dimension)
-interface RegimenOpt {
-  timeLocked: boolean;
-  timeMin: string;
-  timeMax: string;
-  valueLocked: boolean;
-  valueMin: number;
-  valueMax: number;
-  daysLocked: boolean;
-  daysMin: number;
+  days: boolean[];         // [Mon,Tue,Wed,Thu,Fri,Sat,Sun]
+  validRangeEnabled: boolean;
+  validStart: string;      // "YYYY-MM-DD"
+  validEnd: string;
+  optimizeValue: boolean;
+  valueBounds: [number, number];  // [min, max]
 }
 
 function getC(dark: boolean) {
@@ -521,7 +495,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
 
   // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<'setup' | 'plot' | 'report'>('setup');
+  const [centerTab, setCenterTab] = useState<'setup' | 'plot' | 'opt' | 'report'>('setup');
 
   // ── report tab ───────────────────────────────────────────────────────────────
   const ALL_REPORT_SECTIONS = [
@@ -561,30 +535,50 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optCurGen, setOptCurGen] = useState(0);
   const [optTotalGen, setOptTotalGen] = useState(0);
   const [optLogs, setOptLogs] = useState<Array<{t: number; msg: string}>>([]);
+  const [optHistory, setOptHistory] = useState<Array<{iteration: number; fitness: number | null; n_eval?: number}>>([]);
+  const [optElapsed, setOptElapsed] = useState(0);
+  const [optLogOpen, setOptLogOpen] = useState(true);
   const [optJobId, setOptJobId] = useState<string | null>(null);
   const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  // optMethod is auto-read from status polling, not hardcoded
+  const [optMethod, setOptMethod] = useState('');
 
-  // ── regimen K×4 state ───────────────────────────────────────────────────────
-  const [regimens, setRegimens] = useState<Regimen[]>(() => {
+  // ── inputEvents state ────────────────────────────────────────────────────────
+  const [inputEvents, setInputEvents] = useState<InputEvent[]>(() => {
     const saved = readSP();
-    // migrate legacy inputEntries if present
-    if (saved?.regimens) return saved.regimens;
-    if (saved?.inputEntries?.length) {
-      return (saved.inputEntries as InputEntry[]).map(e => ({
-        id: e.id, variable: e.variable,
-        validRangeEnabled: false, validStart: '', validEnd: '',
-        events: [{ id: `${e.id}-ev`, time: e.time, value: e.value }],
-        daysEnabled: false, days: [true, true, true, true, true, true, true],
-      }));
+    // Migrate from old regimen format if present
+    if (saved?.inputEvents) return saved.inputEvents;
+    if (saved?.regimens) {
+      const events: InputEvent[] = [];
+      for (const r of (saved.regimens || [])) {
+        for (const ev of (r.events || [])) {
+          const opt = saved?.regimenOpts?.[r.id];
+          events.push({
+            id: `${r.id}-${ev.id}`,
+            variable: r.variable,
+            time: ev.time,
+            value: ev.value,
+            label: ev.time,
+            daysEnabled: r.daysEnabled ?? false,
+            days: r.days ?? [true,true,true,true,true,true,true],
+            validRangeEnabled: r.validRangeEnabled ?? false,
+            validStart: r.validStart ?? '',
+            validEnd: r.validEnd ?? '',
+            optimizeValue: !(opt?.valueLocked ?? true),
+            valueBounds: [opt?.valueMin ?? 0, opt?.valueMax ?? 1],
+          });
+        }
+      }
+      return events;
     }
     return [];
   });
-  const [regimenOpts, setRegimenOpts] = useState<Record<string, RegimenOpt>>({});
 
   const isRunningRef = useRef(false);
   // refs for restore flow
   const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
-  const skipInputInitRef = useRef<boolean>(!!(readSP()?.inputEntries?.length));
+  const skipInputInitRef = useRef<boolean>(!!(readSP()?.inputEvents?.length || readSP()?.regimens?.length));
   const isInitialMount = useRef(true);
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
@@ -606,11 +600,11 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── init on model load ───────────────────────────────────────────────────────
   useEffect(() => {
+    let freshInputInit = false;  // tracks whether we initialized inputEvents from scratch
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
-      const newRegimens: Regimen[] = [];
-      const newRegimenOpts: Record<string, RegimenOpt> = {};
+      const newInputEvents: InputEvent[] = [];
       const schedData: Record<string, any> = selectedModel.content?.simulation?.schedules ?? {};
 
       const secsToHHMM = (sec: number): string => {
@@ -624,31 +618,43 @@ const Simulator: React.FC<SimulatorProps> = ({
         if (data.type === 'input') {
           inputs[name] = data.value;
           const sched = schedData[name];
-          let events: RegimenEvent[];
           if (sched?.points?.length) {
             const seen = new Set<string>();
-            events = (sched.points as any[])
-              .map((pt, i) => ({ id: `${name}-ev${i}`, time: secsToHHMM(pt.time ?? 0), value: pt.value ?? 0 }))
-              .filter(ev => { if (seen.has(ev.time)) return false; seen.add(ev.time); return true; });
+            (sched.points as any[])
+              .map((pt, i) => ({ time: secsToHHMM(pt.time ?? 0), value: pt.value ?? 0, idx: i }))
+              .filter(ev => { if (seen.has(ev.time)) return false; seen.add(ev.time); return true; })
+              .forEach(ev => {
+                newInputEvents.push({
+                  id: `${name}-ev${ev.idx}`,
+                  variable: name,
+                  time: ev.time,
+                  value: ev.value,
+                  label: '',
+                  daysEnabled: false,
+                  days: [true, true, true, true, true, true, true],
+                  validRangeEnabled: false,
+                  validStart: '',
+                  validEnd: '',
+                  optimizeValue: false,
+                  valueBounds: [0, (data.value ?? 0) * 2 || 1],
+                });
+              });
           } else {
-            events = [{ id: `${name}-ev0`, time: '08:00', value: data.value ?? 0 }];
+            newInputEvents.push({
+              id: `${name}-ev0`,
+              variable: name,
+              time: '08:00',
+              value: data.value ?? 0,
+              label: '',
+              daysEnabled: false,
+              days: [true, true, true, true, true, true, true],
+              validRangeEnabled: false,
+              validStart: '',
+              validEnd: '',
+              optimizeValue: false,
+              valueBounds: [0, (data.value ?? 0) * 2 || 1],
+            });
           }
-          newRegimens.push({
-            id: `${name}-0`,
-            variable: name,
-            validRangeEnabled: false,
-            validStart: '',
-            validEnd: '',
-            events,
-            daysEnabled: false,
-            days: [true, true, true, true, true, true, true],
-          });
-          const v = data.value as number;
-          newRegimenOpts[`${name}-0`] = {
-            timeLocked: true, timeMin: '06:00', timeMax: '22:00',
-            valueLocked: true, valueMin: 0, valueMax: v * 2 || 1,
-            daysLocked: true, daysMin: 3,
-          };
         } else if (data.type === 'state') states[name] = data.value;
       });
       set('inputParams', inputs);
@@ -656,8 +662,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (skipInputInitRef.current) {
         skipInputInitRef.current = false;
       } else {
-        setRegimens(newRegimens);
-        setRegimenOpts(newRegimenOpts);
+        setInputEvents(newInputEvents);
+        freshInputInit = true;
       }
       const ranges: typeof optRanges = {};
       Object.entries(inputs).forEach(([name, val]) => {
@@ -761,19 +767,32 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) {
         set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       }
+
+      // Apply optimizer.inputs optimize flags to input events (fresh load only)
+      if (freshInputInit && Array.isArray(optBlock.inputs)) {
+        const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
+          e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
+        );
+        if (withOpt.length > 0) {
+          setInputEvents(prev => prev.map(ev => {
+            const inp = withOpt.find((e: any) => e.variable === ev.variable);
+            if (!inp) return ev;
+            return { ...ev, optimizeValue: true, valueBounds: [inp.optimize.value[0], inp.optimize.value[1]] };
+          }));
+        }
+      }
     }
   }, [selectedModel]);
 
-  // ── sync regimens → inputParams ─────────────────────────────────────────────
+  // ── sync inputEvents → inputParams ──────────────────────────────────────────
   // Simple aggregation: sum all event values per variable (backend gets totals per step)
   useEffect(() => {
     const params: Record<string, number> = {};
-    regimens.forEach(r => {
-      const total = r.events.reduce((s, e) => s + e.value, 0);
-      params[r.variable] = (params[r.variable] ?? 0) + total;
+    inputEvents.forEach(ev => {
+      params[ev.variable] = (params[ev.variable] ?? 0) + ev.value;
     });
     set('inputParams', params);
-  }, [regimens]);
+  }, [inputEvents]);
 
   // ── load tree on mount + restore selected model ──────────────────────────────
   useEffect(() => {
@@ -821,8 +840,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── persist config to localStorage ───────────────────────────────────────────
   useEffect(() => {
     const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, regimens, regimenOpts, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit });
-  }, [selectedKey, mode, regimens, regimenOpts, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit]);
+    writeSP({ ...current, selectedKey, mode, inputEvents, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit });
+  }, [selectedKey, mode, inputEvents, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit]);
 
   // ── persist simulation results on status settle ───────────────────────────────
   useEffect(() => {
@@ -840,6 +859,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   useEffect(() => {
     return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
   }, []);
+
+  // ── log auto-scroll ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (optLogOpen) logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [optLogs.length, optLogOpen]);
 
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
@@ -1009,6 +1033,18 @@ const Simulator: React.FC<SimulatorProps> = ({
       setSimData([]);
       setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
       isRunningRef.current = true;
+      // Build regimens from inputEvents for simulation
+      const regimenPayload = inputEvents
+        .filter(ev => inputVars.some(v => v.name === ev.variable))
+        .map(ev => ({
+          variable: ev.variable,
+          events: [{ id: ev.id, time: ev.time, value: ev.value }],
+          days_enabled: ev.daysEnabled,
+          days: ev.days,
+          valid_range_enabled: ev.validRangeEnabled,
+          valid_start: ev.validStart,
+          valid_end: ev.validEnd,
+        }));
       const resp = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1017,15 +1053,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           time_hours: dateToHours(simStartDate, simEndDate),
           step_size: stepValue * STEP_UNITS[stepUnit],
           input_params: inputParams,
-          regimens: regimens.map(r => ({
-            variable: r.variable,
-            events: r.events,
-            days_enabled: r.daysEnabled,
-            days: r.days,
-            valid_range_enabled: r.validRangeEnabled,
-            valid_start: r.validStart,
-            valid_end: r.validEnd,
-          })),
+          regimens: regimenPayload,
           sim_runs: simRuns,
         }),
       });
@@ -1113,17 +1141,65 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedModel) return;
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
+    // Build regimen from inputEvents where optimizeValue === true
+    const optimizeEvents = inputEvents.filter(ev => ev.optimizeValue);
+    if (optimizeEvents.length === 0) {
+      message.warning('请先勾选至少一个优化变量（☑ 优化）');
+      return;
+    }
+
     const modelKey = selectedModel.key || selectedModel.content?.metadata?.name || '';
     const totalGen = (selectedModel.content?.optimizer?.algorithm?.n_generations) || optGen;
 
     setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
+    setOptHistory([]); setOptElapsed(0); setOptMethod('');
     setOptTotalGen(totalGen); setOptJobId(null);
     set('status', 'running'); set('progress', 0);
 
+    // Build optimizer config from GUI state
+    // Group by variable (for backend compatibility, use first variable's events)
+    const firstVar = optimizeEvents[0].variable;
+    const varEvents = optimizeEvents.filter(ev => ev.variable === firstVar);
+
+    const optimizerOverride = {
+      regimen: {
+        variable: firstVar,
+        events: varEvents.map(ev => ({
+          time: ev.time,
+          dose_bounds: ev.valueBounds,
+          label: ev.label || `${ev.variable} ${ev.time}`,
+          days_enabled: ev.daysEnabled,
+          days: ev.days,
+          valid_range_enabled: ev.validRangeEnabled,
+          valid_start: ev.validStart,
+          valid_end: ev.validEnd,
+        })),
+      },
+      objectives: objectives.map(o => ({
+        variable: o.variable,
+        metric: 'final',
+        direction: o.direction,
+      })),
+      constraints: constraints.map(con => ({
+        variable: con.variable,
+        condition: `${con.op === '≤' ? '<=' : '>='} ${con.value}`,
+      })),
+      algorithm: {
+        population_size: optPop,
+        n_generations: optGen,
+        seed: 42,
+      },
+    };
+
     try {
       const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_name: modelKey, folder: null }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model_name: modelKey,
+          folder: null,
+          optimizer_override: optimizerOverride,
+        }),
       });
       const data = await resp.json();
 
@@ -1141,7 +1217,10 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (!sr.ok) return;
           const sd = await sr.json();
           setOptLogs(sd.logs || []);
+          setOptHistory(sd.history || []);
           setOptCurGen(sd.iteration || 0);
+          setOptElapsed(sd.elapsed || 0);
+          if (sd.method) setOptMethod(sd.method);
           set('progress', Math.min(99, Math.round(((sd.iteration || 0) / totalGen) * 100)));
 
           if (sd.status === 'completed') {
@@ -1149,6 +1228,8 @@ const Simulator: React.FC<SimulatorProps> = ({
             setOptRunning(false);
             setOptResult(sd.result);
             set('status', 'completed'); set('progress', 100);
+            // Auto-switch to opt tab to show results
+            setCenterTab('opt');
             message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
@@ -1179,206 +1260,173 @@ const Simulator: React.FC<SimulatorProps> = ({
   // LEFT PANEL TAB CONTENT RENDERERS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // ── Regimen helpers ───────────────────────────────────────────────────────────
-  const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
-
-  const updateRegimen = (id: string, patch: Partial<Regimen>) =>
-    setRegimens(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
-
-  const addNewRegimen = () => {
-    const firstVar = inputVars[0];
-    if (!firstVar) return;
-    const id = `reg-${Date.now()}`;
-    setRegimens(prev => [...prev, {
-      id, variable: firstVar.name,
+  // ── InputEvent helpers ────────────────────────────────────────────────────────
+  const addInputEvent = () => {
+    const firstInputVar = inputVars[0];
+    if (!firstInputVar) return;
+    const id = `ev-${Date.now()}`;
+    setInputEvents(prev => [...prev, {
+      id, variable: firstInputVar.name, time: '08:00',
+      value: firstInputVar.value ?? 0, label: '',
+      daysEnabled: false, days: [true,true,true,true,true,true,true],
       validRangeEnabled: false, validStart: '', validEnd: '',
-      events: [{ id: `${id}-ev0`, time: '08:00', value: firstVar.value ?? 0 }],
-      daysEnabled: false, days: [true, true, true, true, true, true, true],
+      optimizeValue: false, valueBounds: [0, (firstInputVar.value ?? 1) * 2 || 1],
     }]);
-    setRegimenOpts(prev => ({
-      ...prev,
-      [id]: { timeLocked: true, timeMin: '06:00', timeMax: '22:00', valueLocked: true, valueMin: 0, valueMax: (firstVar.value ?? 0) * 2 || 1, daysLocked: true, daysMin: 3 },
-    }));
   };
 
-  const removeRegimen = (id: string) => {
-    setRegimens(prev => prev.filter(r => r.id !== id));
-    setRegimenOpts(prev => { const n = { ...prev }; delete n[id]; return n; });
-  };
+  const updateInputEvent = (id: string, patch: Partial<InputEvent>) =>
+    setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
 
-  const addEvent = (regimenId: string) =>
-    setRegimens(prev => prev.map(r => {
-      if (r.id !== regimenId || r.events.length >= 6) return r;
-      const times = ['08:00', '12:00', '18:00', '20:00', '22:00', '06:00'];
-      const varDef = inputVars.find(v => v.name === r.variable);
-      return { ...r, events: [...r.events, { id: `${regimenId}-ev${Date.now()}`, time: times[r.events.length % times.length], value: varDef?.value ?? 0 }] };
-    }));
-
-  const updateEvent = (regimenId: string, evId: string, patch: Partial<RegimenEvent>) =>
-    setRegimens(prev => prev.map(r => r.id !== regimenId ? r : {
-      ...r, events: r.events.map(e => e.id === evId ? { ...e, ...patch } : e),
-    }));
-
-  const removeEvent = (regimenId: string, evId: string) =>
-    setRegimens(prev => prev.map(r => r.id !== regimenId ? r : {
-      ...r, events: r.events.filter(e => e.id !== evId),
-    }));
-
-  const updateRegimenOpt = (id: string, patch: Partial<RegimenOpt>) =>
-    setRegimenOpts(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }));
+  const removeInputEvent = (id: string) =>
+    setInputEvents(prev => prev.filter(ev => ev.id !== id));
 
   const renderInputsContent = () => {
-    if (inputVars.length === 0)
-      return <div style={{ padding: '8px 0' }}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.inputs.empty')} /></div>;
-
-    const isOpt = mode === 'opt';
-    const blockBase: React.CSSProperties = {
-      flex: '3 1 150px', minWidth: 130,
-      border: `1px solid ${c.border}`, borderRadius: 6,
-      padding: '6px 8px', background: c.sectionHd,
-    };
-    const blockLabel: React.CSSProperties = { color: c.textMute, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 };
-
+    const DAY_LABELS = ['一','二','三','四','五','六','日'];
     return (
       <div style={{ padding: '4px 0' }}>
-
-        {/* ── Add new Regimen ── */}
-        {inputVars.length > 0 && (
-          <Button size="small" icon={<PlusOutlined />} block type="dashed"
-            onClick={addNewRegimen}
-            style={{ borderColor: c.primary, color: c.primary, marginBottom: 10 }}>
-            新增摄入计划
-          </Button>
+        {inputEvents.length === 0 && (
+          <div style={{ textAlign: 'center', color: c.textMute, fontSize: 11, padding: 8 }}>
+            暂无输入事件
+          </div>
         )}
-
-        {/* ── Regimen cards ── */}
-        {regimens.map(r => {
-          const varDef = inputVars.find(v => v.name === r.variable);
-          const opt: RegimenOpt = regimenOpts[r.id] || { timeLocked: true, timeMin: '06:00', timeMax: '22:00', valueLocked: true, valueMin: 0, valueMax: 1, daysLocked: true, daysMin: 3 };
-          const unit = varDef?.unit ?? '';
-
+        {inputEvents.map((ev) => {
+          const varDef = inputVars.find(v => v.name === ev.variable);
+          const bounds = varDef?.bounds as [number,number] | undefined;
           return (
-            <div key={r.id} style={{ border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 10, background: c.inputBg, overflow: 'hidden' }}>
-
-              {/* ── Header: variable selector ── */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: c.sectionHd, borderBottom: `1px solid ${c.border}` }}>
+            <div key={ev.id} style={{
+              marginBottom: 6, border: `1px solid ${ev.optimizeValue ? c.primary : c.border}`,
+              borderRadius: 5, padding: '5px 7px',
+              background: ev.optimizeValue
+                ? (isDarkMode ? '#0d1f10' : '#f0faf0')
+                : c.panel,
+            }}>
+              {/* Row 1: variable selector + time + delete */}
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
                 <Select
-                  size="small" value={r.variable} style={{ flex: 1 }}
-                  options={inputVars.map(v => ({ label: `${v.name}${v.unit ? ` (${v.unit})` : ''}`, value: v.name }))}
-                  onChange={val => {
-                    const vd = inputVars.find(v => v.name === val);
-                    updateRegimen(r.id, { variable: val, events: [{ id: `${r.id}-ev${Date.now()}`, time: '08:00', value: vd?.value ?? 0 }] });
-                  }}
+                  size="small" value={ev.variable}
+                  style={{ flex: 1, minWidth: 0 }}
+                  options={inputVars.map(v => ({ label: v.name, value: v.name }))}
+                  onChange={val => updateInputEvent(ev.id, {
+                    variable: val,
+                    valueBounds: [
+                      (inputVars.find(v => v.name === val)?.bounds as any)?.[0] ?? 0,
+                      (inputVars.find(v => v.name === val)?.bounds as any)?.[1] ?? 1,
+                    ],
+                  })}
                 />
-                <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
-                  onClick={() => removeRegimen(r.id)} style={{ padding: '0 4px', flexShrink: 0 }} />
+                <Input
+                  size="small" value={ev.time} placeholder="HH:mm"
+                  style={{ width: 60, fontFamily: 'monospace' }}
+                  onChange={e => updateInputEvent(ev.id, { time: e.target.value })}
+                />
+                <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
+                  onClick={() => removeInputEvent(ev.id)} />
               </div>
 
-              {/* ── Body: 3 blocks in a flex-wrap row ── */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px' }}>
+              {/* Row 2: value + optimize checkbox */}
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: ev.optimizeValue ? 4 : 0 }}>
+                <span style={{ fontSize: 10, color: c.textMute, flexShrink: 0 }}>值</span>
+                <InputNumber
+                  size="small" value={ev.value}
+                  style={{ flex: 1 }}
+                  onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })}
+                />
+                {varDef?.unit && (
+                  <span style={{ fontSize: 10, color: c.textMute }}>{varDef.unit}</span>
+                )}
+                <Tooltip title={ev.optimizeValue ? '取消优化此变量' : '将此变量加入优化'}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, fontSize: 11 }}>
+                    <input
+                      type="checkbox"
+                      checked={ev.optimizeValue}
+                      onChange={e => updateInputEvent(ev.id, {
+                        optimizeValue: e.target.checked,
+                        valueBounds: ev.valueBounds[0] === 0 && ev.valueBounds[1] === 1
+                          ? [bounds?.[0] ?? 0, bounds?.[1] ?? (ev.value * 2 || 1)]
+                          : ev.valueBounds,
+                      })}
+                      style={{ accentColor: c.primary }}
+                    />
+                    <span style={{ color: ev.optimizeValue ? c.primary : c.textMute }}>
+                      {ev.optimizeValue ? '⚙ 优化' : '□ 常值'}
+                    </span>
+                  </label>
+                </Tooltip>
+              </div>
 
-                {/* Block 1: 时刻 / 摄入量 */}
-                <div style={blockBase}>
-                  <div style={{ ...blockLabel, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>时刻 → 摄入量{unit ? ` (${unit})` : ''}</span>
-                    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                      {isOpt && (
-                        <Tag style={{ cursor: 'pointer', userSelect: 'none', fontSize: 10, margin: 0 }}
-                          color={opt.valueLocked ? undefined : 'processing'}
-                          onClick={() => updateRegimenOpt(r.id, { valueLocked: !opt.valueLocked })}>
-                          {opt.valueLocked ? '🔒' : '🔀'}
-                        </Tag>
-                      )}
-                      {r.events.length < 6 && (
-                        <Button size="small" type="text" icon={<PlusOutlined />}
-                          onClick={() => addEvent(r.id)}
-                          style={{ color: c.primary, padding: '0 2px', height: 16, lineHeight: '16px' }} />
-                      )}
-                    </div>
-                  </div>
-                  {r.events.map(ev => (
-                    <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
-                      <Input size="small" value={ev.time} placeholder="08:00"
-                        onChange={e => updateEvent(r.id, ev.id, { time: e.target.value })}
-                        style={{ width: 62, fontFamily: 'monospace' }} />
-                      <span style={{ color: c.textMute, fontSize: 11 }}>→</span>
-                      {isOpt && !opt.valueLocked ? (
-                        <>
-                          <InputNumber size="small" value={opt.valueMin} placeholder="min"
-                            onChange={v => updateRegimenOpt(r.id, { valueMin: v ?? 0 })}
-                            min={varDef?.bounds?.[0] ?? 0} style={{ width: 52 }} />
-                          <span style={{ color: c.textMute, fontSize: 10 }}>~</span>
-                          <InputNumber size="small" value={opt.valueMax} placeholder="max"
-                            onChange={v => updateRegimenOpt(r.id, { valueMax: v ?? 1 })}
-                            max={varDef?.bounds?.[1]} style={{ width: 52 }} />
-                        </>
-                      ) : (
-                        <InputNumber size="small" value={ev.value}
-                          onChange={v => updateEvent(r.id, ev.id, { value: v ?? 0 })}
-                          min={varDef?.bounds?.[0] ?? 0} max={varDef?.bounds?.[1]}
-                          style={{ flex: 1, minWidth: 60 }} />
-                      )}
-                      {r.events.length > 1 && (
-                        <Button size="small" type="text" danger icon={<MinusCircleOutlined />}
-                          onClick={() => removeEvent(r.id, ev.id)}
-                          style={{ padding: '0 1px', flexShrink: 0 }} />
-                      )}
-                    </div>
-                  ))}
+              {/* Optimize bounds (only when optimizeValue checked) */}
+              {ev.optimizeValue && (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', paddingLeft: 2 }}>
+                  <span style={{ fontSize: 10, color: c.primary, flexShrink: 0 }}>范围</span>
+                  <InputNumber
+                    size="small" value={ev.valueBounds[0]}
+                    style={{ flex: 1 }} placeholder="min"
+                    onChange={v => updateInputEvent(ev.id, { valueBounds: [v ?? 0, ev.valueBounds[1]] })}
+                  />
+                  <span style={{ color: c.textMute, fontSize: 10 }}>~</span>
+                  <InputNumber
+                    size="small" value={ev.valueBounds[1]}
+                    style={{ flex: 1 }} placeholder="max"
+                    onChange={v => updateInputEvent(ev.id, { valueBounds: [ev.valueBounds[0], v ?? 1] })}
+                  />
                 </div>
+              )}
 
-                {/* Block 2: days 执行日（靠左，tag compact） */}
-                <div style={{ ...blockBase, flex: '3 1 130px', minWidth: 120 }}>
-                  <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>执行日</span>
-                    <Switch size="small" checked={r.daysEnabled}
-                      onChange={v => updateRegimen(r.id, { daysEnabled: v })} />
+              {/* Days selector (collapsible) */}
+              <div style={{ marginTop: 3 }}>
+                <label style={{ fontSize: 10, color: c.textMute, cursor: 'pointer', userSelect: 'none' }}>
+                  <input type="checkbox" checked={ev.daysEnabled}
+                    onChange={e => updateInputEvent(ev.id, { daysEnabled: e.target.checked })}
+                    style={{ marginRight: 3 }} />
+                  指定执行日
+                </label>
+                {ev.daysEnabled && (
+                  <div style={{ display: 'flex', gap: 2, marginTop: 3 }}>
+                    {DAY_LABELS.map((d, i) => (
+                      <button key={i}
+                        onClick={() => updateInputEvent(ev.id, {
+                          days: ev.days.map((v, j) => j === i ? !v : v)
+                        })}
+                        style={{
+                          width: 22, height: 22, border: `1px solid ${c.border}`,
+                          borderRadius: 3, fontSize: 10, cursor: 'pointer',
+                          background: ev.days[i] ? c.primary : c.panel,
+                          color: ev.days[i] ? '#fff' : c.textMute,
+                        }}>{d}</button>
+                    ))}
                   </div>
-                  {r.daysEnabled ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                      {DAY_LABELS.map((label, i) => (
-                        <Tag key={i}
-                          style={{ cursor: 'pointer', userSelect: 'none', margin: 0, padding: '1px 5px', fontSize: 11 }}
-                          color={r.days[i] ? 'success' : undefined}
-                          onClick={() => {
-                            const nd = [...r.days]; nd[i] = !nd[i];
-                            updateRegimen(r.id, { days: nd });
-                          }}>
-                          {label}
-                        </Tag>
-                      ))}
-                    </div>
-                  ) : (
-                    <span style={{ color: c.textMute, fontSize: 11 }}>每天</span>
-                  )}
-                </div>
+                )}
+              </div>
 
-                {/* Block 3: valid_range 有效期（日期框常显，switch 控制启用） */}
-                <div style={{ ...blockBase, flex: '4 1 180px', minWidth: 160 }}>
-                  <div style={{ ...blockLabel, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>有效期</span>
-                    <Switch size="small" checked={r.validRangeEnabled}
-                      onChange={v => updateRegimen(r.id, { validRangeEnabled: v })} />
-                    {!r.validRangeEnabled && <span style={{ color: c.textMute, fontSize: 10 }}>永久有效</span>}
+              {/* Valid range (collapsible) */}
+              <div style={{ marginTop: 3 }}>
+                <label style={{ fontSize: 10, color: c.textMute, cursor: 'pointer', userSelect: 'none' }}>
+                  <input type="checkbox" checked={ev.validRangeEnabled}
+                    onChange={e => updateInputEvent(ev.id, { validRangeEnabled: e.target.checked })}
+                    style={{ marginRight: 3 }} />
+                  指定有效期
+                </label>
+                {ev.validRangeEnabled && (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
+                    <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
+                      style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                      onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
+                    <span style={{ color: c.textMute, fontSize: 10 }}>~</span>
+                    <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
+                      style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                      onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Input size="small" value={r.validStart} placeholder="YYYY-MM-DD"
-                      disabled={!r.validRangeEnabled}
-                      onChange={e => updateRegimen(r.id, { validStart: e.target.value })}
-                      style={{ flex: 1, minWidth: 80, opacity: r.validRangeEnabled ? 1 : 0.45 }} />
-                    <span style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}>~</span>
-                    <Input size="small" value={r.validEnd} placeholder="YYYY-MM-DD"
-                      disabled={!r.validRangeEnabled}
-                      onChange={e => updateRegimen(r.id, { validEnd: e.target.value })}
-                      style={{ flex: 1, minWidth: 80, opacity: r.validRangeEnabled ? 1 : 0.45 }} />
-                  </div>
-                </div>
-
+                )}
               </div>
             </div>
           );
         })}
-
+        <Button size="small" icon={<PlusOutlined />} block
+          onClick={addInputEvent}
+          disabled={inputVars.length === 0}
+          style={{ borderColor: c.border, color: c.textSec, marginTop: 4 }}>
+          添加输入事件
+        </Button>
       </div>
     );
   };
@@ -1579,25 +1627,211 @@ const Simulator: React.FC<SimulatorProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // ── Opt center tab: full Pareto result view ──────────────────────────────────
+  const renderOptTab = () => {
+    const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        {!hasPareto && (
+          <div style={{ textAlign: 'center', color: c.textMute, padding: 40, fontSize: 13 }}>
+            {optRunning ? '优化运行中，请等待结果...' : '运行优化后在此查看 Pareto 结果'}
+          </div>
+        )}
+        {hasPareto && (
+          <>
+            {/* Header - auto from result */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, color: c.text }}>Pareto 前沿</span>
+              {(optResult.objectives || []).map((o: any, i: number) => (
+                <span key={i} style={{
+                  padding: '1px 6px', borderRadius: 3, fontSize: 11,
+                  fontFamily: 'monospace', color: c.primary,
+                  background: isDarkMode ? '#1e3824' : '#f0f7f0',
+                  border: `1px solid ${c.border}`,
+                }}>
+                  {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}
+                  {o.metric && o.metric !== 'final' ? ` (${o.metric})` : ''}
+                </span>
+              ))}
+              <span style={{ color: c.textMute, fontSize: 12 }}>
+                {optResult.n_solutions} 解 · {optResult.method}
+                {optElapsed > 0 ? ` · ${optElapsed.toFixed(1)}s` : ''}
+              </span>
+            </div>
+
+            {/* Full-size Pareto chart */}
+            <div style={{ height: 320, border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+              <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} />
+            </div>
+
+            {/* Best solution */}
+            {optResult.best_x != null && (
+              <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, border: `1px solid ${c.border}`, background: c.panel }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: c.textSec, marginBottom: 6 }}>最优解（Pareto 第一点）</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 12 }}>
+                  {/* Decision variables */}
+                  {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i}`))
+                    .map((label: string, i: number) => (
+                      <div key={i}>
+                        <span style={{ color: c.textMute }}>{label}: </span>
+                        <span style={{ color: c.primary, fontWeight: 600 }}>{optResult.best_x?.[i]?.toFixed(3)}</span>
+                      </div>
+                    ))
+                  }
+                  {/* Objective values */}
+                  {(optResult.objectives || []).map((o: any, i: number) => (
+                    <div key={`obj-${i}`}>
+                      <span style={{ color: c.textMute }}>{o.variable}: </span>
+                      <span style={{ color: c.text }}>{optResult.best_f?.[i]?.toFixed(4)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="small" type="primary" style={{ marginTop: 8, background: c.primary, borderColor: c.primary }}
+                  onClick={async () => {
+                    if (!selectedModel || !optResult?.best_x) return;
+                    // Build input_params from best_x + regimen_variable
+                    const regVar = optResult.regimen_variable;
+                    const bestVal = optResult.best_x?.[0]; // first decision var
+                    const inputParams2: Record<string, number> = {};
+                    if (regVar && bestVal != null) inputParams2[regVar] = bestVal;
+                    // Start simulation with these params
+                    const modelKey = selectedModel.key || selectedModel.content?.metadata?.name || '';
+                    try {
+                      const resp = await fetch(`${API_BASE}/simulation/start`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          model_name: modelKey, folder: null,
+                          time_hours: dateToHours(simStartDate, simEndDate),
+                          step_size: stepValue * STEP_UNITS[stepUnit],
+                          input_params: inputParams2,
+                        }),
+                      });
+                      const result = await resp.json();
+                      if (result.success && result.data) {
+                        set('sessionId', result.data.session_id);
+                        set('totalSteps', result.data.total_steps);
+                        setCenterTab('plot');
+                        runBatch(result.data.session_id);
+                      } else {
+                        message.error(result.error || '启动失败');
+                      }
+                    } catch (e: any) { message.error(e.message); }
+                  }}
+                >
+                  以此解运行仿真 →
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // ── Opt section: persistent log console ──────────────────────────────────────
+  const renderOptSection = () => {
+    const latestHist = optHistory.length > 0 ? optHistory[optHistory.length - 1] : null;
+    const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
+    const hasLogs = optLogs.length > 0;
+    if (!optRunning && !hasLogs) return null;
+
+    // Auto status line — everything derived from runtime state, nothing hardcoded
+    const parts: string[] = [];
+    if (optRunning) {
+      if (optMethod) parts.push(optMethod);
+      if (optCurGen > 0) parts.push(`Gen ${optCurGen}${optTotalGen > 0 ? `/${optTotalGen}` : ''}`);
+      if (latestHist?.fitness != null) parts.push(`best ${latestHist.fitness.toFixed(4)}`);
+      if (latestHist?.n_eval != null) parts.push(`eval ${latestHist.n_eval}`);
+      if (optElapsed > 0) parts.push(`${optElapsed.toFixed(1)}s`);
+    } else if (optResult) {
+      if (optResult.method) parts.push(optResult.method);
+      if (optResult.n_solutions != null) parts.push(`${optResult.n_solutions} 解`);
+      if (optElapsed > 0) parts.push(`${optElapsed.toFixed(1)}s`);
+    } else if (hasLogs) {
+      parts.push('已结束');
+    }
+    const statusLine = parts.join('  ·  ');
+
+    const dotColor = optRunning ? c.primary : hasPareto ? '#52c41a' : '#ff7875';
+
+    return (
+      <div style={{ borderTop: `1px solid ${c.border}`, background: c.panel, flexShrink: 0 }}>
+        {/* ── Log console: collapsible, persistent ── */}
+        {(optRunning || hasLogs) && (
+          <div>
+            {/* Header row — click to toggle */}
+            <div
+              onClick={() => setOptLogOpen(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '3px 8px', cursor: 'pointer',
+                background: c.sectionHd, userSelect: 'none',
+              }}
+            >
+              <span style={{ fontSize: 9, color: c.textMute }}>{optLogOpen ? '▾' : '▸'}</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {statusLine || (optRunning ? '启动中...' : 'Log')}
+              </span>
+              {optRunning && (
+                <Button size="small" danger
+                  onClick={e => { e.stopPropagation(); cancelOptimization(); }}
+                  style={{ height: 20, fontSize: 11, padding: '0 6px', lineHeight: '20px' }}>
+                  停止
+                </Button>
+              )}
+            </div>
+            {/* Log body */}
+            {optLogOpen && (
+              <div style={{
+                maxHeight: 140, overflowY: 'auto',
+                fontFamily: 'monospace', fontSize: 11, color: c.text,
+                background: isDarkMode ? '#0d1710' : '#f0f7f0',
+                padding: '3px 8px',
+              }}>
+                {optLogs.length === 0 && (
+                  <span style={{ color: c.textMute }}>等待...</span>
+                )}
+                {optLogs.map((l, i) => {
+                  const d = new Date(l.t * 1000);
+                  const ts = [d.getHours(), d.getMinutes(), d.getSeconds()]
+                    .map(n => String(n).padStart(2, '0')).join(':');
+                  return (
+                    <div key={i} style={{ lineHeight: 1.5 }}>
+                      <span style={{ color: c.textMute }}>{ts}</span>{' '}{l.msg}
+                    </div>
+                  );
+                })}
+                <div ref={logEndRef} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── Center panel ──────────────────────────────────────────────────────────────
   const renderCenterPanel = () => {
+    const hasSimData = simulationData.length > 0;
+    const optHasContent = optRunning || optLogs.length > 0 || (optResult?.pareto_front?.length ?? 0) > 0;
+
+    if (centerTab === 'opt') {
+      return (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {renderOptTab()}
+          {mode === 'opt' && renderOptSection()}
+        </div>
+      );
+    }
+
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {simulationData.length === 0 ? (
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: c.textMute, flexDirection: 'column', gap: 8,
-          }}>
-            {!selectedKey
-              ? <><span style={{ fontSize: 18 }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
-              : !isLocked
-                ? <><span style={{ fontSize: 18 }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
-                : status === 'idle'
-                  ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
-                  : <span>{t('sim.scene.calculating')}</span>
-            }
-          </div>
-        ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+
+        {/* Charts area (or empty-state hint) */}
+        {hasSimData ? (
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
             <Collapse
               defaultActiveKey={outputVars}
               size="small"
@@ -1615,23 +1849,14 @@ const Simulator: React.FC<SimulatorProps> = ({
                     </span>
                   ),
                   extra: (
-                    <Button
-                      size="small" type="text" icon={<DownloadOutlined />}
+                    <Button size="small" type="text" icon={<DownloadOutlined />}
                       onClick={e => { e.stopPropagation(); exportVarCSV(varName); }}
-                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}
-                    />
+                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
                   ),
                   children: (
-                    <SimChart
-                      varName={varName}
-                      unit={varInfo?.unit}
-                      data={simulationData}
-                      isDarkMode={isDarkMode}
-                      c={c}
-                      colorIndex={idx}
-                      hideTitleBar
-                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
-                    />
+                    <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
+                      isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
+                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined} />
                   ),
                   styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
                 };
@@ -1639,11 +1864,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             />
             {inputVars.length > 0 && (
               <>
-                <div style={{
-                  margin: '6px 0 2px', padding: '2px 8px',
-                  fontSize: 11, color: c.textMute, letterSpacing: '0.05em',
-                  borderLeft: `2px solid ${c.border}`,
-                }}>
+                <div style={{ margin: '6px 0 2px', padding: '2px 8px', fontSize: 11, color: c.textMute, letterSpacing: '0.05em', borderLeft: `2px solid ${c.border}` }}>
                   {t('sim.tabs.inputs')}
                 </div>
                 <Collapse
@@ -1665,23 +1886,14 @@ const Simulator: React.FC<SimulatorProps> = ({
                         );
                       })(),
                       extra: (
-                        <Button
-                          size="small" type="text" icon={<DownloadOutlined />}
+                        <Button size="small" type="text" icon={<DownloadOutlined />}
                           onClick={e => { e.stopPropagation(); exportVarCSV(v.name); }}
-                          style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}
-                        />
+                          style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
                       ),
                       children: (
-                        <SimChart
-                          varName={v.name}
-                          unit={v.unit}
-                          data={simulationData}
-                          isDarkMode={isDarkMode}
-                          c={c}
-                          colorIndex={outputVars.length + idx}
-                          hideTitleBar
-                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
-                        />
+                        <SimChart varName={v.name} unit={v.unit} data={simulationData}
+                          isDarkMode={isDarkMode} c={c} colorIndex={outputVars.length + idx} hideTitleBar
+                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined} />
                       ),
                       styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
                     };
@@ -1689,74 +1901,29 @@ const Simulator: React.FC<SimulatorProps> = ({
                 />
               </>
             )}
-            {mode === 'opt' && (
-              <div style={{ marginTop: 8 }}>
-                {optRunning && (
-                  <div style={{ border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{
-                      padding: '6px 10px', background: c.sectionHd,
-                      borderBottom: `1px solid ${c.border}`,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <Spin indicator={<LoadingOutlined style={{ fontSize: 14 }} spin />} />
-                      <span style={{ fontSize: 12, color: c.text }}>
-                        NSGA-II 优化中 — Gen <span style={{ fontFamily: 'monospace', color: c.primary }}>{optCurGen}</span>
-                        {optTotalGen > 0 && <> / {optTotalGen}</>}
-                      </span>
-                      <Button size="small" danger style={{ marginLeft: 'auto' }} onClick={cancelOptimization}>停止</Button>
-                    </div>
-                    <div style={{
-                      height: 120, overflowY: 'auto', padding: '4px 8px',
-                      fontFamily: 'monospace', fontSize: 11, color: c.text,
-                      background: isDarkMode ? '#0d1710' : '#f0f7f0',
-                    }}>
-                      {optLogs.length === 0 && <span style={{ color: c.textMute }}>启动中...</span>}
-                      {optLogs.map((l, i) => {
-                        const d = new Date(l.t * 1000);
-                        const ts = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-                        return <div key={i}><span style={{ color: c.textMute }}>{ts}</span> {l.msg}</div>;
-                      })}
-                    </div>
-                  </div>
-                )}
-                {!optRunning && optResult && optResult.pareto_front?.length > 0 && (
-                  <div style={{ border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{
-                      padding: '4px 10px', background: c.sectionHd,
-                      borderBottom: `1px solid ${c.border}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: c.text }}>
-                        Pareto 前沿 — {optResult.n_solutions} 个解
-                      </span>
-                      <span style={{ fontSize: 11, color: c.textMute, fontFamily: 'monospace' }}>
-                        {optResult.method}
-                      </span>
-                    </div>
-                    <div style={{ padding: 8 }}>
-                      <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} />
-                    </div>
-                    {optResult.pareto_front.length === 1 && (
-                      <div style={{ padding: '4px 10px 8px', fontSize: 12, color: c.textSec }}>
-                        最优解：{(optResult.objectives || []).map((o: any, i: number) =>
-                          `${o.variable} = ${optResult.best_f?.[i]?.toFixed(4)}`
-                        ).join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!optRunning && !optResult && (
-                  <div style={{
-                    padding: 12, border: `1px dashed ${c.border}`, borderRadius: 6,
-                    textAlign: 'center', color: c.textMute,
-                  }}>
-                    {t('sim.opt.pareto')}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+        ) : (
+          /* Empty-state: show hint in sim mode; spacer in opt mode (opt section is at bottom) */
+          mode === 'opt' && optHasContent
+            ? <div style={{ flex: 1 }} />
+            : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute, flexDirection: 'column', gap: 8 }}>
+                {!selectedKey
+                  ? <><span style={{ fontSize: 18 }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
+                  : !isLocked
+                    ? <><span style={{ fontSize: 18 }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
+                    : mode === 'opt'
+                      ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.control.run')}</span></>
+                      : status === 'idle'
+                        ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
+                        : <span>{t('sim.scene.calculating')}</span>
+                }
+              </div>
+            )
         )}
+
+        {/* Opt section — always at bottom in opt mode, regardless of sim data */}
+        {mode === 'opt' && renderOptSection()}
       </div>
     );
   };
@@ -1771,7 +1938,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
-  const inputsVarCount = regimens.length;
+  const inputsVarCount = inputEvents.length;
   const leftTabs = [
     { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`,                    content: renderInputsContent() },
     { key: 'vars',     label: `${t('sim.tabs.variables')}${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`,              content: renderVarsContent() },
@@ -1790,7 +1957,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       }}>
         <Segmented
           size="small" value={mode}
-          onChange={v => setMode(v as 'sim' | 'opt')}
+          onChange={v => {
+            const newMode = v as 'sim' | 'opt';
+            setMode(newMode);
+            if (newMode === 'sim' && centerTab === 'opt') setCenterTab('plot');
+          }}
           options={[{ label: t('sim.mode.simulation'), value: 'sim' }, { label: t('sim.mode.optimization'), value: 'opt' }]}
           disabled={status === 'running' || status === 'paused' || status === 'completed'}
           style={{ flexShrink: 0 }}
@@ -2002,9 +2173,10 @@ const Simulator: React.FC<SimulatorProps> = ({
           }}>
             {([
               { key: 'setup',  label: t('sim.tab.setup')   || '⚙ 配置' },
-              { key: 'plot',   label: t('sim.tab.plot')    || '📈 图表' },
-              { key: 'report', label: t('sim.tab.report')  || '📄 报告' },
-            ] as { key: 'setup' | 'plot' | 'report'; label: string }[]).map(tab => (
+              { key: 'plot',   label: t('sim.tab.plot')    || '图表' },
+              ...(mode === 'opt' ? [{ key: 'opt', label: 'Opt' }] : []),
+              { key: 'report', label: t('sim.tab.report')  || '报告' },
+            ] as { key: 'setup' | 'plot' | 'opt' | 'report'; label: string }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setCenterTab(tab.key)}
@@ -2074,6 +2246,9 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {/* Plot tab content */}
           {centerTab === 'plot' && renderCenterPanel()}
+
+          {/* Opt tab content */}
+          {centerTab === 'opt' && renderCenterPanel()}
 
           {/* Report tab content */}
           {centerTab === 'report' && (() => {

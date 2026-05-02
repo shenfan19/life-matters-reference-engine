@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
@@ -250,8 +250,14 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c, t }: {
   c: typeof C.light;
   t: (k: string) => string;
 }) {
-  const dotColor = backendStatus === 'online' ? '#52c41a'
+  const dotColor = isSimulating ? '#faad14'
+    : backendStatus === 'online' ? '#52c41a'
     : backendStatus === 'offline' ? '#f5222d' : '#faad14';
+
+  const statusLabel = isSimulating ? 'running'
+    : backendStatus === 'online' ? t('statusBar.backend')
+    : backendStatus === 'offline' ? t('statusBar.offline')
+    : t('statusBar.connecting');
 
   return (
     <div style={{
@@ -267,9 +273,9 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c, t }: {
         <span style={{
           width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
           background: dotColor,
-          boxShadow: backendStatus === 'online' ? `0 0 5px ${dotColor}` : 'none',
+          boxShadow: (backendStatus === 'online' || isSimulating) ? `0 0 5px ${dotColor}` : 'none',
         }} />
-        {backendStatus === 'online' ? t('statusBar.backend') : backendStatus === 'offline' ? t('statusBar.offline') : t('statusBar.connecting')}
+        {statusLabel}
       </span>
       <span style={{ opacity: 0.25 }}>│</span>
       <span style={{ color: model ? c.text : c.textMute, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -341,8 +347,12 @@ function App() {
     } catch {}
   }, [isDarkMode, fontSize, page, simMode]);
 
+  const simStateRef = useRef(simState);
+  simStateRef.current = simState;
+
   useEffect(() => {
     const check = () => {
+      if (simStateRef.current.status === 'running') return; // skip while sim/opt active
       fetch(`/api/health?v=${Date.now()}`, { signal: AbortSignal.timeout(5000) })
         .then(() => setBackendStatus('online'))
         .catch(() => setBackendStatus('offline'));

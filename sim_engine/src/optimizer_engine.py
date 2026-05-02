@@ -144,11 +144,17 @@ def _eval_G(history: Dict[str, List[float]], constraints: List[Dict]) -> List[fl
 # ── main entry ─────────────────────────────────────────────────────────────────
 
 def run_optimizer(simulator_engine, model_name: str,
-                  folder: Optional[str] = None, progress_callback=None) -> Dict[str, Any]:
+                  folder: Optional[str] = None, progress_callback=None,
+                  optimizer_override: Optional[Dict] = None) -> Dict[str, Any]:
     """
     Run the optimizer defined in YAML optimizer: block.
     Returns {success, method, objectives, pareto_front, best_x, best_f, n_solutions}.
     pareto_front is a list of {x: [...], f: [...]} dicts (raw, not sign-flipped).
+
+    optimizer_override: if provided, merges into the YAML optimizer: block (GUI overrides YAML).
+    Supports two input-variable formats:
+      - inputs: [{variable, time, optimize: {value: [lo, hi]}, ...}]  (new, multi-var)
+      - regimen: {variable, events: [{time, dose_bounds, ...}]}        (legacy, single-var)
     """
     from .simulator_engine import SimulatorEngine
 
@@ -162,6 +168,12 @@ def run_optimizer(simulator_engine, model_name: str,
     if not opt_block:
         return {"success": False, "error": "No optimizer: block in YAML"}
 
+    # Apply frontend override (GUI state takes precedence over YAML defaults)
+    if optimizer_override:
+        for key in ('regimen', 'inputs', 'objectives', 'constraints', 'algorithm', 'method'):
+            if key in optimizer_override:
+                opt_block[key] = optimizer_override[key]
+
     # ── parse objectives ──────────────────────────────────────────────────────
     objectives: List[Dict] = []
     if 'objectives' in opt_block:
@@ -174,17 +186,63 @@ def run_optimizer(simulator_engine, model_name: str,
     # ── parse constraints ─────────────────────────────────────────────────────
     constraints: List[Dict] = list(opt_block.get('constraints', []))
 
-    # ── parse regimen (decision variables) ───────────────────────────────────
-    regimen_def = opt_block.get('regimen', {})
-    reg_variable = regimen_def.get('variable', '')
-    reg_events = regimen_def.get('events', [])
+    # ── parse decision variables: inputs: (new) or regimen: (legacy) ─────────
+    inputs_def = opt_block.get('inputs', [])
+    if inputs_def:
+        # New format: each entry with 'optimize' sub-block is a decision variable
+        opt_entries = [e for e in inputs_def if 'optimize' in e]
+        fixed_entries = [e for e in inputs_def if 'optimize' not in e]
+        if not opt_entries:
+            return {"success": False, "error": "No inputs with optimize: sub-block defined"}
 
-    if not reg_variable or not reg_events:
-        return {"success": False, "error": "No regimen variable/events defined"}
+        decisions = [{
+            'variable': e.get('variable', ''),
+            'time': e.get('time', '08:00'),
+            'label': e.get('label', f"{e.get('variable','')} {e.get('time','')}"),
+            'dose_bounds': e.get('optimize', {}).get('value', [0.0, 1.0]),
+        } for e in opt_entries]
 
-    bounds_lo = np.array([e.get('dose_bounds', [0.0, 1.0])[0] for e in reg_events], dtype=float)
-    bounds_hi = np.array([e.get('dose_bounds', [0.0, 1.0])[1] for e in reg_events], dtype=float)
-    n_var = len(reg_events)
+        reg_variable = decisions[0]['variable']  # primary var (for result field)
+        reg_events = decisions  # used for labels at result
+
+        bounds_lo = np.array([d['dose_bounds'][0] for d in decisions], dtype=float)
+        bounds_hi = np.array([d['dose_bounds'][1] for d in decisions], dtype=float)
+        n_var = len(decisions)
+
+        # Pre-build fixed inputs (not decision vars, fire every step)
+        fixed_events_map: Dict[str, List[Dict]] = {}
+        for e in fixed_entries:
+            v = e.get('variable', '')
+            if v:
+                fixed_events_map.setdefault(v, []).append(
+                    {'time': e.get('time', '08:00'), 'value': float(e.get('value', 0))}
+                )
+
+        def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+            events_map: Dict[str, List[Dict]] = {k: list(v) for k, v in fixed_events_map.items()}
+            for i, d in enumerate(decisions):
+                events_map.setdefault(d['variable'], []).append(
+                    {'time': d['time'], 'value': float(x[i])}
+                )
+            return events_map
+    else:
+        # Legacy regimen: format (single variable)
+        regimen_def = opt_block.get('regimen', {})
+        reg_variable = regimen_def.get('variable', '')
+        reg_events = regimen_def.get('events', [])
+
+        if not reg_variable or not reg_events:
+            return {"success": False, "error": "No decision variables defined (use inputs: or regimen:)"}
+
+        bounds_lo = np.array([e.get('dose_bounds', [0.0, 1.0])[0] for e in reg_events], dtype=float)
+        bounds_hi = np.array([e.get('dose_bounds', [0.0, 1.0])[1] for e in reg_events], dtype=float)
+        n_var = len(reg_events)
+
+        def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+            return {reg_variable: [
+                {'time': reg_events[i].get('time', '08:00'), 'value': float(x[i])}
+                for i in range(n_var)
+            ]}
 
     # ── simulation parameters ─────────────────────────────────────────────────
     step_size: float = float(base_model.simulator.get('step_size', 86400.0))
@@ -229,12 +287,6 @@ def run_optimizer(simulator_engine, model_name: str,
 
     # ── evaluation function ───────────────────────────────────────────────────
     rng_master = np.random.default_rng(mc_seed)
-
-    def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
-        return {reg_variable: [
-            {'time': reg_events[i].get('time', '08:00'), 'value': float(x[i])}
-            for i in range(n_var)
-        ]}
 
     def _clone(m):
         return simulator_engine._clone_model(m)

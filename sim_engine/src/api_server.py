@@ -253,6 +253,7 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """详细健康检查"""
+    active_jobs = sum(1 for j in optimizer_jobs.values() if j.get('status') == 'running')
     return {
         "status": "healthy",
         "components": {
@@ -261,7 +262,8 @@ async def health_check():
         },
         "plugins_loaded": len(plugin_manager.plugins) if plugin_manager else 0,
         "mods_directory": str(PROJECT_ROOT / "models"),
-        "mods_exists": (PROJECT_ROOT / "models").exists()
+        "mods_exists": (PROJECT_ROOT / "models").exists(),
+        "active_opt_jobs": active_jobs,
     }
 
 
@@ -1222,11 +1224,14 @@ async def export_simulation(request: SessionRequest):
 class YamlOptRequest(BaseModel):
     model_name: str
     folder: Optional[str] = None
+    optimizer_override: Optional[Dict[str, Any]] = None
 
 
 @app.post("/api/optimizer/run_yaml")
 async def run_yaml_optimization(request: YamlOptRequest):
-    """Run optimizer using YAML optimizer: block (NSGA-II / L-BFGS-B / Nelder-Mead)."""
+    """Run optimizer using YAML optimizer: block (NSGA-II / L-BFGS-B / Nelder-Mead).
+    optimizer_override merges GUI state into the YAML block before running.
+    """
     if simulator_engine is None:
         raise HTTPException(status_code=503, detail="Simulator engine not initialized")
     try:
@@ -1260,7 +1265,8 @@ async def run_yaml_optimization(request: YamlOptRequest):
 
         _add_log(job, "Starting optimizer...")
         fn = functools.partial(run_optimizer, simulator_engine,
-                               request.model_name, request.folder, progress_cb)
+                               request.model_name, request.folder, progress_cb,
+                               request.optimizer_override)
         asyncio.create_task(_run_optimizer_job(job_id, fn))
         return {'success': True, 'job_id': job_id}
     except HTTPException:
