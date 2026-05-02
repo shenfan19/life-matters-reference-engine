@@ -1,5 +1,5 @@
 # Optimizer 实现细节文档
-> 供复查与调试使用。版本 2026-05-02（已移除路径 B）。
+> 供复查与调试使用。版本 2026-05-02（已移除路径 B）；2026-05-04 更新：inputs: 格式、optimizer_override、三态指示器。
 
 ---
 
@@ -74,48 +74,71 @@ _run_optimizer_job(job_id, fn)  [async coroutine, event loop 不阻塞]
 
 ## 3. YAML 模型 optimizer 块规范
 
-**最小必要字段**：
+两种输入变量格式均受支持，**优先使用 `inputs:` 格式（新）**。
+
+### 3.1 inputs: 格式（新，推荐）
 
 ```yaml
 optimizer:
-  method: nsga2          # 'nsga2' | 'l-bfgs-b' | 'nelder-mead'
+  method: nsga2
 
-  objectives:            # 至少一个
-    - variable: output_var_name   # model.variables 中存在的变量名
+  objectives:
+    - variable: output_var_name
       metric: final               # 'final' | 'max' | 'min' | 'mean'
-      direction: maximize         # 'minimize' | 'maximize'
+      direction: maximize
 
-  regimen:               # 必须存在且非空
-    variable: input_var_name      # model.variables 中 type: input 的变量
-    events:                       # 至少一个，n_events = n_var（决策变量维度）
-      - time: "08:00"             # HH:mm，每步触发时刻
-        dose_bounds: [0.0, 10.0]  # [min, max]，NSGA-II 搜索范围
-        label: "Morning dose"     # 可选标签（前端展示用）
+  inputs:                         # 替代 regimen:，支持多变量
+    - variable: input_var_name    # type: input 变量
+      time: "08:00"               # HH:mm
+      value: 10.0                 # 默认值（仅在不优化时使用）
+      label: "Morning dose"       # 前端展示用标签
+      optimize:
+        value: [0.0, 50.0]        # [min, max]，有 optimize: 则为决策变量
+
+    - variable: another_var       # 无 optimize: → 固定输入，始终取 value
+      time: "20:00"
+      value: 5.0
 
   algorithm:
-    population_size: 20   # 小值快速测试，正式 50-100
-    n_generations: 40     # 小值快速测试，正式 100-200
+    population_size: 10
+    n_generations: 15
     seed: 42
-```
 
-**可选字段**：
-
-```yaml
   constraints:
     - variable: constraint_var
-      condition: "<= 80"   # 支持 >=, <=, >, <
+      condition: "<= 250"
 
   mc:
     enabled: false
     sim_runs: 1
 ```
 
-**变量类型约束**：
-- `regimen.variable` → 必须是 `type: input`（存在于 model.variables）
-- `objectives[*].variable` → 任意已定义变量（通过历史序列计算 metric）
-- `constraints[*].variable` → 同上
+- 有 `optimize:` 子块的条目是**决策变量**（加入 x 向量）
+- 无 `optimize:` 的条目是**固定输入**（每步按 value 触发）
+- 可跨多个变量（多变量优化）
 
-**参考实现**：`models/components/medical/disease/chronic/ckd_protein_muscle.yaml`
+### 3.2 regimen: 格式（旧，向后兼容）
+
+```yaml
+optimizer:
+  method: nsga2
+  objectives: [...]
+  regimen:
+    variable: input_var_name
+    events:
+      - time: "08:00"
+        dose_bounds: [0.0, 10.0]
+        label: "Morning dose"
+  algorithm:
+    population_size: 20
+    n_generations: 40
+```
+
+优先读取 `inputs:`，不存在时回退到 `regimen:`。
+
+**参考实现**：
+- `inputs:` 格式：`models/components/medical/test/l1_drug_single_obj.yaml`
+- `regimen:` 格式：`models/components/medical/disease/chronic/ckd_protein_muscle.yaml`
 
 ---
 
@@ -174,11 +197,23 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 ```
 POST /api/optimizer/run_yaml
-Body: {model_name: str, folder: null}
+Body: {
+  model_name: str,
+  folder: null,
+  optimizer_override: null | {     # GUI 状态覆盖 YAML 默认值（可选）
+    regimen?: {...} | inputs?: [...],
+    objectives?: [...],
+    constraints?: [...],
+    algorithm?: {...},
+    method?: str,
+  }
+}
 返回: {success: true, job_id: "uuid"}
 ```
 
 `model_name` 使用 `selectedModel.key`（完整相对路径，如 `components/medical/disease/chronic/ckd_protein_muscle.yaml`）。`find_model_file` 对含 `/` 的路径做直接查找，无需 folder。
+
+`optimizer_override` 字段覆盖 YAML `optimizer:` 块中的对应字段（GUI → YAML 优先级）。不提供时完全使用 YAML 配置。前端 `startOptimization()` 当前发送 `regimen:` 格式的 override（从勾选的 `inputEvents` 构建）。
 
 ### 轮询
 
