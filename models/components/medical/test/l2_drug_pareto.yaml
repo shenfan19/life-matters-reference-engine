@@ -2,93 +2,96 @@ type: model
 
 metadata:
   name: l2_drug_pareto
-  title: "[TEST L2] 双目标 Pareto 优化"
+  title: "[TEST L2] 三剂时段 · 双目标 Pareto"
   description: >
-    【调试用 TEST L2】双目标 Pareto · 26周步长 · 预估完成 30–90秒
+    【调试用 TEST L2】3 决策变量 · 双目标 Pareto · 预估完成 1–3分钟
 
     ── 用途 ──────────────────────────────────────────────
-    验证 Pareto 前沿可视化与多目标 NSGA-II 运行。
-    前沿应呈现单调权衡曲线（高疗效 ↔ 高肝脏负荷）。
+    验证多变量优化 + Pareto 前沿可视化。
+    Pareto 前沿应呈现疗效与毒性的单调权衡曲线。
 
     ── 场景 ──────────────────────────────────────────────
-    药物疗效 vs 副作用权衡：
-      · 目标1：最大化 plasma_level 均值（26周平均疗效）
-      · 目标2：最小化 liver_load 终值（累积毒性）
-    step_size=7天（周步长）压缩计算量。
+    每日三次给药（早/中/晚），优化各时段剂量分配。
+      · 目标1：最大化 plasma_level 均值（疗效）
+      · 目标2：最小化 liver_load 终值（毒性）
+    三个时段吸收率不同：早晨最高（空腹），中午次之，晚上最低。
 
     ── 参数规模 ──────────────────────────────────────────
-    pop=15, gen=20 → 300次评估 × 26步 ≈ 30–90秒
-    决策变量: 1（dose_mg: 0–60 mg/day）
-    MC: 未启用（clearance_rate/absorption_rate 固定）
-  tags: [test, L2, multi-objective, pareto, pharmacokinetics]
+    pop=20, gen=20 → 400次评估 × 30步 ≈ 1–3分钟
+    决策变量: 3（morning_dose, noon_dose, evening_dose: 0–30 mg each）
+    MC: 未启用
+  tags: [test, L2, multi-objective, pareto, 3-variable, pharmacokinetics]
   references:
-    - "TEST L2: Two-objective PK model for Pareto visualization test"
+    - "TEST L2: Three-dose schedule optimization for Pareto front test"
   step_size:
-    value: 7
+    value: 1
     unit: day
 
 variables:
   plasma_level:
-    description: 血浆药物浓度（mg/L），周稳态近似
+    description: 血浆药物浓度（mg/L），三次给药叠加
     value: 0.0
     unit: mg/L
     type: state
-    bounds: [0.0, 120.0]
+    bounds: [0.0, 150.0]
 
   liver_load:
-    description: 肝脏累积代谢负荷（26周累积值）
+    description: 肝脏累积代谢负荷（30天）
     value: 0.0
-    unit: mg/L·week
+    unit: mg/L·day
     type: state
     bounds: [0.0, 2000.0]
 
   clearance_rate:
-    description: >
-      药物周清除率（MC 参数，个体差异）。
-      normal(0.85, 0.08)：均值约 15%/day 折合为周。
-    value: "normal(0.85, 0.08)"
-    unit: per_week
+    description: 药物日清除率（固定），0.28 /day，半衰期 ≈ 2.5天
+    value: 0.28
+    unit: per_day
     type: parameter
-    bounds: [0.5, 1.0]
+    bounds: [0.1, 0.5]
 
-  absorption_rate:
-    description: >
-      药物吸收率（MC 参数）。
-      normal(0.65, 0.05)：约 65% 口服生物利用度。
-    value: "normal(0.65, 0.05)"
-    unit: fraction
-    type: parameter
-    bounds: [0.4, 0.85]
-
-  dose_mg:
-    description: 每日给药剂量（mg），优化决策变量
-    value: 15.0
-    unit: mg/day
+  morning_dose:
+    description: 早晨给药剂量（mg），吸收率 70%（空腹最佳）
+    value: 10.0
+    unit: mg
     type: input
-    bounds: [0.0, 60.0]
+    bounds: [0.0, 30.0]
+
+  noon_dose:
+    description: 中午给药剂量（mg），吸收率 55%（餐后）
+    value: 5.0
+    unit: mg
+    type: input
+    bounds: [0.0, 30.0]
+
+  evening_dose:
+    description: 晚上给药剂量（mg），吸收率 45%（代谢降低）
+    value: 5.0
+    unit: mg
+    type: input
+    bounds: [0.0, 30.0]
 
 formulas:
   drug_kinetics:
     description: >
-      周步长药代动力学（step=7天）。
-      每周吸收 = dose_mg * absorption_rate * 7（一周总量）。
-      周内清除 = plasma_level * clearance_rate。
+      三次给药日步长动力学。
+      daily_absorbed = morning*0.70 + noon*0.55 + evening*0.45
+      每日清除 plasma_level * clearance_rate。
     condition: true
     dynamics:
-      plasma_level: "plasma_level + (dose_mg * absorption_rate * 7 - plasma_level * clearance_rate) * step"
+      plasma_level: "plasma_level + (morning_dose * 0.70 + noon_dose * 0.55 + evening_dose * 0.45 - plasma_level * clearance_rate) * step"
     priority: 10
 
   liver_accumulation:
-    description: 肝脏周累积负荷（plasma_level × 0.15 per week）
+    description: 肝脏日负荷（plasma_level 的 18%）
     condition: true
     dynamics:
-      liver_load: "liver_load + plasma_level * 0.15 * step"
+      liver_load: "liver_load + plasma_level * 0.18 * step"
     priority: 5
 
 simulation:
   start_date: "2025-01-01"
-  end_date: "2025-06-30"
-  output_variables: [plasma_level, liver_load, dose_mg]
+  end_date: "2025-01-31"
+  output_variables: [plasma_level, liver_load, morning_dose, noon_dose, evening_dose]
 
 optimizer:
   method: nsga2
@@ -102,16 +105,34 @@ optimizer:
       metric: final
       direction: minimize
 
+  constraints:
+    - variable: liver_load
+      condition: "<= 600"
+
   inputs:
-    - variable: dose_mg
+    - variable: morning_dose
       time: "08:00"
-      value: 15.0
-      label: "Daily dose (mg/day)"
+      value: 10.0
+      label: "Morning dose (mg)"
       optimize:
-        value: [0.0, 60.0]
+        value: [0.0, 30.0]
+
+    - variable: noon_dose
+      time: "12:00"
+      value: 5.0
+      label: "Noon dose (mg)"
+      optimize:
+        value: [0.0, 30.0]
+
+    - variable: evening_dose
+      time: "20:00"
+      value: 5.0
+      label: "Evening dose (mg)"
+      optimize:
+        value: [0.0, 30.0]
 
   algorithm:
-    population_size: 15
+    population_size: 20
     n_generations: 20
     seed: 42
 
