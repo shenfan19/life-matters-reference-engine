@@ -146,6 +146,11 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-12-31"
+  schedules:
+    - variable: protein_intake
+      time: "08:00"
+      value: 0.8
+      label: "Daily protein intake (g/kg/day)"
   output_variables: [gfr, muscle_mass, bun, protein_intake, muscle_synthesis_rate]
 optimizer:
   # 双目标 Pareto：寻找每日蛋白摄入量使 muscle_mass 与 gfr 同时尽可能大。
