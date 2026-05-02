@@ -1,455 +1,401 @@
-# -*- coding: utf-8 -*-
-# 文件名: optimizer_engine.py
-# 描述: LifeMatters 框架的优化引擎，负责模型参数优化，支持三种优化模式：
-#       - real_time: 内环实时 input 优化
-#       - full_inputs: 外环全程 input 序列优化
-#       - full_params: 外环 parameters 定值优化
-#       通过调用 SimulatorEngine 的 fitness_func 作为黑盒评估。
+"""
+LifeMatters Optimizer Engine.
+
+YAML-driven optimizer: reads model.optimizer block and runs NSGA-II or scipy.
+All optimization parameters (objectives, constraints, regimen, algorithm) come
+from the YAML file — no hardcoded targets or search spaces.
+
+Replaces the former optimizer_engine.py (hardcoded grid/GA approach, deleted
+in refactor 2026-05-02). Entry point: run_optimizer().
+"""
 
 import logging
+import re
 import numpy as np
-from typing import Dict, Any, List, Optional, Union
-from .loader_engine import LoaderEngine
+from typing import Dict, Any, List, Optional, Tuple
 
-# 初始化模块的日志记录器，用于记录优化过程中的信息和错误。
 logger = logging.getLogger(__name__)
 
-class OptimizerEngine:
-    """优化引擎，负责参数优化，支持多种优化模式和方法。"""
-    
-    def __init__(self, mods_directory: str = "models", language: str = "en"):
-        """
-        初始化优化引擎。
-        :param mods_directory: 模型目录路径。
-        :param language: 语言设置（如 "en", "zhhans"）。
-        """
-        # 初始化 LoaderEngine 以加载模型。
-        self.loader = LoaderEngine(mods_directory, language)
-        # 初始化当前模型为 None。
-        self.current_model = None
-        # 初始化 SimulatorEngine 引用（外部注入）。
-        self.simulator = None
-        # 记录优化迭代次数。
-        self.iteration = 0
-        # 存储优化历史，包括每次迭代的参数和目标值。
-        self.history = []
-        # 初始化优化配置。
-        self.config = {}
 
-    def load_models(self, model_names: List[str], folder: Optional[str] = None) -> bool:
-        """
-        加载指定名称的模型。
-        :param model_names: 模型名称列表。
-        :param folder: 子文件夹名称。
-        :return: 加载是否成功。
-        """
-        # 如果模型列表为空，返回失败。
-        if not model_names:
-            logger.error("load_models: 模型名称列表为空")
-            return False
-        
-        # 如果只有一个模型，直接加载。
-        if len(model_names) == 1:
-            self.current_model = self.loader.fetch(model_names[0], folder)
-        else:
-            # 如果有多个模型，使用 merge_models 合并。
-            result = self.loader.merge_models(model_names=model_names, folders=None)
-            if result["success"]:
-                self.current_model = result["data"]
+# ── helpers ────────────────────────────────────────────────────────────────────
+
+def _parse_condition(cond: str) -> Tuple[str, float]:
+    m = re.match(r'^([<>]=?)\s*(-?\d+(?:\.\d+)?)', cond.strip())
+    if m:
+        return m.group(1), float(m.group(2))
+    return ('<=', 0.0)
+
+
+_DAY_MAP = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+
+
+def _apply_regimen_events(model, regimen_events_by_var: Dict[str, List[Dict]],
+                          prev_time: float, step_size: float):
+    """Fire regimen events whose time falls in [prev_time, prev_time+step_size).
+
+    Respects optional 'days' list on each event (e.g. ['Mon', 'Wed', 'Fri']).
+    When step_size >= 86400, ev_sec is always within the window so the only
+    filter is the days mask.
+    """
+    next_time = prev_time + step_size
+    prev_sod = prev_time % 86400
+    next_sod = next_time % 86400
+    day_crossed = int(next_time / 86400) > int(prev_time / 86400)
+    day_idx = int(prev_time / 86400)
+    dow = day_idx % 7  # 0=Mon … 6=Sun
+
+    for var_name, events in regimen_events_by_var.items():
+        if var_name not in model.variables:
+            continue
+        for ev in events:
+            # Days-of-week filter (absent = every day)
+            days_filter = ev.get('days', [])
+            if days_filter:
+                allowed = {_DAY_MAP[d.lower()[:3]] for d in days_filter
+                           if d.lower()[:3] in _DAY_MAP}
+                if dow not in allowed:
+                    continue
+
+            try:
+                hh, mm = map(int, ev['time'].split(':'))
+            except Exception:
+                continue
+            ev_sec = hh * 3600 + mm * 60
+
+            if step_size >= 86400:
+                # Daily step: event always fires (time filter already covered by days)
+                fires = True
             else:
-                logger.error(f"合并模型失败: {result.get('error', '未知错误')}")
-                return False
-        
-        # 如果模型加载成功，从模型的 optimizer 配置中读取优化参数。
-        if self.current_model:
-            self.config = self.current_model.optimizer
-            logger.info(f"已加载模型并读取优化配置: {self.config.get('method', 'grid')}")
-        
-        # 返回加载是否成功的布尔值。
-        return self.current_model is not None
+                fires = (ev_sec >= prev_sod or ev_sec < next_sod) if day_crossed \
+                    else (prev_sod <= ev_sec < next_sod)
 
-    def set_simulator(self, simulator):
-        """
-        注入 SimulatorEngine 实例。
-        :param simulator: SimulatorEngine 实例。
-        """
-        # 设置仿真器引用。
-        self.simulator = simulator
-        # 记录日志。
-        logger.info("已注入 SimulatorEngine 实例")
+            if fires:
+                model.set_variable_value(var_name, float(ev['value']))
 
-    def optimize(self, mode: str = 'full_params', method: str = 'grid',
-                time_hours: float = 720.0,
-                opt_inner_runs: int = 5,
-                opt_aggregation: str = 'mean',
-                opt_verify_runs: int = 20,
-                history_out=None) -> Dict[str, Any]:
-        """
-        执行优化任务（外环 Regimen/参数搜索，方案 B：每次迭代用 N_inner 条取期望）。
-        :param mode: 优化模式 (real_time/full_inputs/full_params)。
-        :param method: 优化方法 (grid/pymoo/rl)。
-        :param time_hours: 优化时长（小时）。
-        :param opt_inner_runs: 每次参数评估运行的 MC 仿真条数（方案 B）。
-        :param opt_aggregation: 聚合方式：mean / min / median。
-        :param opt_verify_runs: 优化完成后最终验证运行条数。
-        :return: 优化结果字典。
-        """
-        if not self.current_model:
-            return {"success": False, "error": "未加载模型"}
 
-        if not self.simulator:
-            return {"success": False, "error": "未注入 SimulatorEngine"}
+def _eval_metric(history: List[float], metric: str) -> float:
+    if not history:
+        return 0.0
+    if metric == 'final':
+        return history[-1]
+    elif metric == 'max':
+        return max(history)
+    elif metric == 'min':
+        return min(history)
+    elif metric == 'mean':
+        return sum(history) / len(history)
+    return history[-1]
 
-        if 'targets' not in self.config or not self.config['targets']:
-            return {"success": False, "error": "模型配置中未定义优化目标 (optimizer.targets)"}
 
-        target = self.config['targets'][0]
+def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
+             step_size_sec: float, total_steps: int) -> Dict[str, List[float]]:
+    """Run a full simulation and return per-variable history lists.
 
-        if 'method' in self.config and method == 'grid':
-            method = self.config['method']
+    step_size_sec: step size in SECONDS (from model.simulator['step_size']).
+    model.step() expects native units, so we divide by unit_sec internally.
+    Adds regimen variables to model.manual_overrides so the built-in YAML
+    schedule does not override the optimizer's chosen doses.
+    """
+    from .model_structure.base import TIME_UNIT_SECONDS
+    unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
+    native_step = step_size_sec / unit_sec  # e.g. 86400/86400 = 1.0 for day-step model
 
-        self.iteration = 0
-        self.history = history_out if history_out is not None else []
-        self.opt_inner_runs = max(1, opt_inner_runs)
-        self.opt_aggregation = opt_aggregation
-        self.opt_verify_runs = max(1, opt_verify_runs)
+    model.reset_simulation()
 
-        if mode == 'real_time':
-            return self._optimize_real_time(target, method, time_hours)
-        elif mode == 'full_inputs':
-            return self._optimize_full_inputs(target, method, time_hours)
-        elif mode == 'full_params':
-            return self._optimize_full_params(target, method, time_hours)
+    # Suppress YAML schedules for variables the optimizer controls
+    if not hasattr(model, 'manual_overrides'):
+        model.manual_overrides = {}
+    for var_name in regimen_events_by_var:
+        model.manual_overrides[var_name] = True
+
+    history: Dict[str, List[float]] = {n: [] for n in model.variables}
+    for i in range(total_steps):
+        prev_t = i * step_size_sec   # seconds-based timeline for regimen timing
+        _apply_regimen_events(model, regimen_events_by_var, prev_t, step_size_sec)
+        model.step(native_step)      # native units for formula 'step' symbol
+        for n, v in model.variables.items():
+            history[n].append(v.value)
+
+    return history
+
+
+def _eval_F(history: Dict[str, List[float]], objectives: List[Dict]) -> List[float]:
+    """Objective vector (pymoo convention: all minimized)."""
+    F = []
+    for obj in objectives:
+        raw = _eval_metric(history.get(obj['variable'], [0.0]), obj.get('metric', 'final'))
+        F.append(-raw if obj.get('direction', 'minimize') == 'maximize' else raw)
+    return F
+
+
+def _eval_G(history: Dict[str, List[float]], constraints: List[Dict]) -> List[float]:
+    """Constraint violations (G[i] > 0 = violated)."""
+    G = []
+    for con in constraints:
+        vals = history.get(con['variable'], [0.0])
+        op, threshold = _parse_condition(con.get('condition', '<= 0'))
+        if op in ('<=', '<'):
+            G.append(max(vals) - threshold)
         else:
-            return {"success": False, "error": f"不支持的优化模式: {mode}"}
+            G.append(threshold - min(vals))
+    return G
 
-    def _multi_eval_objective(self, params, time_hours: float) -> float:
-        """
-        方案 B：运行 opt_inner_runs 条仿真，聚合目标值。
-        每条使用独立随机种子，使目标函数对随机参数分布取期望。
-        同时记录进度到 history。
-        """
-        fitnesses = []
-        for _ in range(self.opt_inner_runs):
-            seed = int(np.random.randint(0, 2**31))
-            f = self.simulator.fitness_func_with_seed(
-                parameters=params.tolist() if isinstance(params, np.ndarray) else params,
-                seed=seed,
-                time_hours=time_hours,
-            )
-            fitnesses.append(f)
 
-        arr = np.array(fitnesses)
-        if self.opt_aggregation == 'min':
-            agg = float(np.min(arr))
-        elif self.opt_aggregation == 'median':
-            agg = float(np.median(arr))
+# ── main entry ─────────────────────────────────────────────────────────────────
+
+def run_optimizer(simulator_engine, model_name: str,
+                  folder: Optional[str] = None, progress_callback=None) -> Dict[str, Any]:
+    """
+    Run the optimizer defined in YAML optimizer: block.
+    Returns {success, method, objectives, pareto_front, best_x, best_f, n_solutions}.
+    pareto_front is a list of {x: [...], f: [...]} dicts (raw, not sign-flipped).
+    """
+    from .simulator_engine import SimulatorEngine
+
+    # ── load model ────────────────────────────────────────────────────────────
+    if not simulator_engine.load_models([model_name], folder):
+        return {"success": False, "error": f"Cannot load model: {model_name}"}
+
+    base_model = simulator_engine.current_model
+    opt_block: Dict = dict(base_model.optimizer)
+
+    if not opt_block:
+        return {"success": False, "error": "No optimizer: block in YAML"}
+
+    # ── parse objectives ──────────────────────────────────────────────────────
+    objectives: List[Dict] = []
+    if 'objectives' in opt_block:
+        objectives = list(opt_block['objectives'])
+    elif 'objective' in opt_block:
+        objectives = [opt_block['objective']]
+    if not objectives:
+        return {"success": False, "error": "No objectives defined"}
+
+    # ── parse constraints ─────────────────────────────────────────────────────
+    constraints: List[Dict] = list(opt_block.get('constraints', []))
+
+    # ── parse regimen (decision variables) ───────────────────────────────────
+    regimen_def = opt_block.get('regimen', {})
+    reg_variable = regimen_def.get('variable', '')
+    reg_events = regimen_def.get('events', [])
+
+    if not reg_variable or not reg_events:
+        return {"success": False, "error": "No regimen variable/events defined"}
+
+    bounds_lo = np.array([e.get('dose_bounds', [0.0, 1.0])[0] for e in reg_events], dtype=float)
+    bounds_hi = np.array([e.get('dose_bounds', [0.0, 1.0])[1] for e in reg_events], dtype=float)
+    n_var = len(reg_events)
+
+    # ── simulation parameters ─────────────────────────────────────────────────
+    step_size: float = float(base_model.simulator.get('step_size', 86400.0))
+    # time_hours from start_date / end_date stored in simulator block
+    sim_data = base_model.simulator
+    try:
+        from datetime import date as _date
+        sd = str(sim_data.get('start_date', ''))
+        ed = str(sim_data.get('end_date', ''))
+        if not sd or not ed:
+            raise ValueError("no start/end date")
+        sy, sm, sdd_ = [int(x) for x in sd.split('-')]
+        ey, em, edd_ = [int(x) for x in ed.split('-')]
+        if sy >= 1 and ey >= 1:
+            total_days = (_date(ey, em, edd_) - _date(sy, sm, sdd_)).days
         else:
-            agg = float(np.mean(arr))
+            total_days = (ey - sy) * 365 + (em - sm) * 30 + (edd_ - sdd_)
+        time_hours = max(1.0, total_days * 24.0)
+    except Exception:
+        time_hours = float(base_model.simulator.get('total_time', 1)) * step_size / 3600.0
+    total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
-        self.iteration += 1
-        self.history.append({
-            'iteration': self.iteration,
-            'params': params.tolist() if isinstance(params, np.ndarray) else list(params),
-            'fitness': agg,
-            'fitness_std': float(np.std(arr)) if self.opt_inner_runs > 1 else 0.0,
-        })
-        return agg
+    # ── MC settings ───────────────────────────────────────────────────────────
+    mc_cfg = opt_block.get('mc', {})
+    mc_enabled = mc_cfg.get('enabled', False)
+    mc_runs = max(1, int(mc_cfg.get('sim_runs', 1))) if mc_enabled else 1
+    mc_seed = int(opt_block.get('algorithm', {}).get('seed', 42))
 
-    def _run_verification(self, best_params: list, time_hours: float) -> Dict[str, Any]:
-        """
-        优化完成后，用 opt_verify_runs 条仿真验证最优解，返回分布统计。
-        """
-        verify_fitnesses = []
-        for _ in range(self.opt_verify_runs):
-            seed = int(np.random.randint(0, 2**31))
-            f = self.simulator.fitness_func_with_seed(
-                parameters=best_params,
-                seed=seed,
-                time_hours=time_hours,
-            )
-            verify_fitnesses.append(f)
-        arr = np.array(verify_fitnesses)
-        return {
-            'verify_runs': self.opt_verify_runs,
-            'mean': float(np.mean(arr)),
-            'std': float(np.std(arr)),
-            'min': float(np.min(arr)),
-            'max': float(np.max(arr)),
-        }
+    # Collect MC distributions once
+    param_distributions = SimulatorEngine._collect_param_distributions(base_model)
+    base_model.param_distributions = param_distributions
 
-    def _optimize_full_params(self, target: str, method: str, time_hours: float) -> Dict[str, Any]:
-        """
-        外环 parameters 定值优化（方案 B：每次评估运行 opt_inner_runs 条取期望）。
-        """
-        controllable_vars = self.current_model.get_controllable_variables()
-        if not controllable_vars:
-            return {"success": False, "error": "没有可优化的参数"}
+    # ── algo settings ─────────────────────────────────────────────────────────
+    algo_cfg = opt_block.get('algorithm', {})
+    pop_size = int(algo_cfg.get('population_size', 50))
+    n_gen = int(algo_cfg.get('n_generations', 80))
+    seed = int(algo_cfg.get('seed', 42))
+    method_raw = str(opt_block.get('method', 'nsga2')).lower()
 
-        if 'bounds' in self.config:
-            bounds = self.config['bounds']
-        else:
-            bounds = [
-                (var.bounds if var.bounds else (0.0, 1.0))
-                for var in controllable_vars.values()
-            ]
+    n_obj = len(objectives)
+    n_con = len(constraints)
 
-        # 方案 B 目标函数：N_inner 次 MC 评估后聚合
-        def objective(params):
-            return self._multi_eval_objective(params, time_hours)
+    # ── evaluation function ───────────────────────────────────────────────────
+    rng_master = np.random.default_rng(mc_seed)
 
-        if method == 'grid':
-            result = self._grid_search(objective, bounds)
-        elif method == 'pymoo':
-            result = self._pymoo_optimize(objective, bounds, time_hours)
-        elif method == 'rl':
-            return {"success": False, "error": "RL 优化方法暂未实现"}
-        else:
-            return {"success": False, "error": f"不支持的优化方法: {method}"}
+    def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+        return {reg_variable: [
+            {'time': reg_events[i].get('time', '08:00'), 'value': float(x[i])}
+            for i in range(n_var)
+        ]}
 
-        # 最终验证（T3：N_verify 条触发 MC 验证展示）
-        if result.get('success') and 'params' in result:
-            verification = self._run_verification(result['params'], time_hours)
-            result['verification'] = verification
-            result['history'] = self.history
-            logger.info(f"优化验证完成: mean={verification['mean']:.4f}, std={verification['std']:.4f}")
+    def _clone(m):
+        return simulator_engine._clone_model(m)
 
-        return result
+    def evaluate(x: np.ndarray) -> Tuple[List[float], List[float]]:
+        """Return (F_mean, G_mean) averaged over mc_runs."""
+        events_map = _build_regimen_events(x)
+        F_accum = np.zeros(n_obj)
+        G_accum = np.zeros(max(n_con, 1))
 
-    def _optimize_full_inputs(self, target: str, method: str, time_hours: float) -> Dict[str, Any]:
-        """
-        外环全程 input 序列优化。
-        :param target: 优化目标。
-        :param method: 优化方法。
-        :param time_hours: 仿真时长（小时）。
-        :return: 优化结果字典。
-        """
-        # 获取模型中输入类型的变量。
-        from model_structure import VariableType
-        input_vars = {
-            name: var for name, var in self.current_model.variables.items() 
-            if var.type == VariableType.input
-        }
-        # 如果没有输入变量，返回错误。
-        if not input_vars:
-            return {"success": False, "error": "没有输入变量可优化"}
-        
-        # 计算输入序列的长度（基于时间步长）。
-        dt = self.current_model.simulator.get('step_size', 3600.0)
-        sequence_length = int(time_hours * 3600.0 / dt)
-        
-        # 定义输入序列的边界（每个时间步的每个输入变量）。
-        bounds = []
-        for _ in range(sequence_length):
-            for var in input_vars.values():
-                bounds.append(var.bounds if var.bounds else (0.0, 1.0))
-        
-        def objective(flat_sequence):
-            inputs_sequence = []
-            for step_idx in range(sequence_length):
-                step_inputs = {}
-                for var_idx, var_name in enumerate(input_vars.keys()):
-                    flat_idx = step_idx * len(input_vars) + var_idx
-                    step_inputs[var_name] = flat_sequence[flat_idx]
-                inputs_sequence.append(step_inputs)
+        for _ in range(mc_runs):
+            m = _clone(base_model)
+            if param_distributions:
+                run_rng = np.random.default_rng(int(rng_master.integers(0, 2**31)))
+                SimulatorEngine._apply_parameter_sampling(m, param_distributions, rng=run_rng)
+            hist = _run_sim(m, events_map, step_size, total_steps)
+            F_accum += np.array(_eval_F(hist, objectives))
+            if n_con:
+                G_accum += np.array(_eval_G(hist, constraints))
 
-            # 方案 B：N_inner 次评估聚合（full_inputs 模式下 seed 影响 parameter 采样）
-            return self._multi_eval_objective(
-                np.array([v for step in inputs_sequence for v in step.values()]),
-                time_hours
-            )
-        
-        # 根据优化方法执行优化（目前仅支持网格搜索）。
-        if method == 'grid':
-            # 由于输入序列维度过高，网格搜索不适用，返回错误。
-            return {"success": False, "error": "输入序列优化不支持 grid 方法，请使用 pymoo 或 rl"}
-        elif method == 'pymoo':
-            # 使用 pymoo 多目标优化。
-            return self._pymoo_optimize(objective, bounds, time_hours)
-        elif method == 'rl':
-            # 使用强化学习优化（暂未实现）。
-            return {"success": False, "error": "RL 优化方法暂未实现"}
-        else:
-            # 不支持的优化方法。
-            return {"success": False, "error": f"不支持的优化方法: {method}"}
+        F_mean = (F_accum / mc_runs).tolist()
+        G_mean = (G_accum / mc_runs).tolist() if n_con else []
+        return F_mean, G_mean
 
-    def _optimize_real_time(self, target: str, method: str, time_hours: float) -> Dict[str, Any]:
-        """
-        内环实时 input 优化（每步优化当前输入）。
-        :param target: 优化目标。
-        :param method: 优化方法。
-        :param time_hours: 仿真时长（小时）。
-        :return: 优化结果字典。
-        """
-        # 获取模型中输入类型的变量。
-        from model_structure import VariableType
-        input_vars = {
-            name: var for name, var in self.current_model.variables.items() 
-            if var.type == VariableType.input
-        }
-        # 如果没有输入变量，返回错误。
-        if not input_vars:
-            return {"success": False, "error": "没有输入变量可优化"}
-        
-        # 获取时间步长和总步数。
-        dt = self.current_model.simulator.get('step_size', 3600.0)
-        total_steps = int(time_hours * 3600.0 / dt)
-        
-        # 初始化仿真器的模型（与优化器使用同一模型）。
-        self.simulator.current_model = self.current_model
-        self.simulator.current_model.reset_simulation()
-        
-        # 存储每步的优化结果。
-        step_results = []
-        
-        # 逐步执行仿真并优化当前步的输入。
-        for step_idx in range(total_steps):
-            # 定义单步目标函数。
-            def step_objective(inputs):
-                """
-                单步目标函数，评估当前步的输入。
-                :param inputs: 当前步的输入值列表。
-                :return: 单步适应度值。
-                """
-                # 应用输入值到模型。
-                for var_idx, var_name in enumerate(input_vars.keys()):
-                    self.simulator.current_model.set_variable_value(var_name, inputs[var_idx])
-                
-                # 执行单步仿真。
-                self.simulator.current_model.step(dt)
-                
-                # 计算单步目标值（基于当前状态）。
-                step_fitness = self.simulator.current_model.get_objective(target)
-                
-                # 返回适应度值。
-                return step_fitness
-            
-            # 定义输入边界。
-            bounds = [
-                (var.bounds if var.bounds else (0.0, 1.0)) 
-                for var in input_vars.values()
-            ]
-            
-            # 使用快速方法优化当前步（网格搜索，低分辨率）。
-            if method in ['grid', 'pymoo']:
-                result = self._grid_search(step_objective, bounds, n_points=3)
-                if result["success"]:
-                    # 记录当前步的优化结果。
-                    step_results.append({
-                        'step': step_idx,
-                        'optimal_inputs': result['params'],
-                        'fitness': result['value']
+    # ── run optimizer ─────────────────────────────────────────────────────────
+    if n_obj >= 2 or method_raw in ('nsga2', 'nsga-ii', 'moea/d'):
+        result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
+                            pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
+    elif method_raw in ('l-bfgs-b', 'l_bfgs_b'):
+        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, method='L-BFGS-B',
+                            progress_callback=progress_callback)
+    elif method_raw == 'nelder-mead':
+        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, method='Nelder-Mead',
+                            progress_callback=progress_callback)
+    else:
+        result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
+                            pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
+
+    result['objectives'] = objectives
+    result['regimen_variable'] = reg_variable
+    result['regimen_event_labels'] = [e.get('label', f'Event {i+1}') for i, e in enumerate(reg_events)]
+    result['time_hours'] = time_hours
+    return result
+
+
+# ── NSGA-II ────────────────────────────────────────────────────────────────────
+
+def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, objectives,
+               progress_callback=None):
+    try:
+        from pymoo.algorithms.moo.nsga2 import NSGA2
+        from pymoo.core.problem import Problem
+        from pymoo.optimize import minimize as pymoo_minimize
+        from pymoo.termination import get_termination
+        from pymoo.core.callback import Callback as _PymooCallback
+
+        class LMProblem(Problem):
+            def __init__(self):
+                super().__init__(n_var=n_var, n_obj=n_obj, n_ieq_constr=n_con,
+                                 xl=xl, xu=xu)
+
+            def _evaluate(self, X, out, *args, **kwargs):
+                F_list, G_list = [], []
+                for x in X:
+                    f, g = evaluate(x)
+                    F_list.append(f)
+                    G_list.append(g)
+                out['F'] = np.array(F_list)
+                if n_con:
+                    out['G'] = np.array(G_list)
+
+        class _ProgressCb(_PymooCallback):
+            def notify(self, algorithm):
+                if progress_callback is not None and algorithm.opt is not None:
+                    F = algorithm.opt.get('F')
+                    best_f = float(np.min(F)) if F is not None and len(F) > 0 else None
+                    progress_callback({
+                        'iteration': algorithm.n_gen,
+                        'fitness': best_f,
+                        'n_eval': algorithm.evaluator.n_eval,
                     })
-            else:
-                # 不支持的方法，使用默认输入。
-                logger.warning(f"实时优化不支持 {method} 方法，使用默认输入")
-                step_results.append({
-                    'step': step_idx,
-                    'optimal_inputs': [var.value for var in input_vars.values()],
-                    'fitness': step_objective([var.value for var in input_vars.values()])
-                })
-        
-        # 返回实时优化结果。
+
+        _cb = _ProgressCb() if progress_callback else None
+
+        problem = LMProblem()
+        algo = NSGA2(pop_size=pop_size)
+        termination = get_termination("n_gen", n_gen)
+        res = pymoo_minimize(problem, algo, termination, seed=seed, verbose=False, callback=_cb)
+
+        if res.X is None:
+            return {"success": False, "error": "NSGA-II returned no solutions"}
+
+        X = np.atleast_2d(res.X)
+        F = np.atleast_2d(res.F)  # pymoo signs (minimize convention)
+
+        # Build pareto front (restore signs for display)
+        pareto_front = []
+        for i in range(len(X)):
+            f_display = []
+            for j, obj in enumerate(objectives):
+                raw = -F[i][j] if obj.get('direction', 'minimize') == 'maximize' else F[i][j]
+                f_display.append(float(raw))
+            pareto_front.append({'x': X[i].tolist(), 'f': f_display})
+
+        # Best solution: first on Pareto front (sorted by first objective)
+        best = pareto_front[0]
+
         return {
             "success": True,
-            "mode": "real_time",
-            "step_results": step_results[:10],  # 仅返回前 10 步结果
-            "total_steps": len(step_results),
-            "final_state": self.simulator.current_model.get_current_state()
+            "method": "nsga2",
+            "pareto_front": pareto_front,
+            "n_solutions": len(pareto_front),
+            "best_x": best['x'],
+            "best_f": best['f'],
         }
 
-    def _grid_search(self, objective, bounds, n_points: int = 10) -> Dict[str, Any]:
-        """
-        网格搜索优化方法。
-        :param objective: 目标函数。
-        :param bounds: 参数边界列表。
-        :param n_points: 每个维度的网格点数。
-        :return: 优化结果字典。
-        """
-        try:
-            # 导入 SciPy 网格搜索函数。
-            from scipy.optimize import brute
-            
-            # 执行网格搜索。
-            result = brute(
-                objective, 
-                ranges=bounds, 
-                Ns=n_points, 
-                full_output=True,
-                finish=None  # 不进行局部优化
-            )
-            
-            # 返回优化结果。
-            return {
-                'success': True, 
-                'params': result[0].tolist(), 
-                'value': float(result[1]),
-                'history': self.history
-            }
-        except Exception as e:
-            # 记录优化失败错误。
-            logger.error(f"网格搜索失败: {e}")
-            # 返回错误信息。
-            return {'success': False, 'error': str(e)}
+    except ImportError:
+        return {"success": False, "error": "pymoo not installed. Run: pip install pymoo"}
+    except Exception as e:
+        logger.exception("NSGA-II failed")
+        return {"success": False, "error": str(e)}
 
-    def _pymoo_optimize(self, objective, bounds, time_hours: float) -> Dict[str, Any]:
-        """
-        使用 pymoo 进行多目标优化。
-        :param objective: 目标函数。
-        :param bounds: 参数边界列表。
-        :param time_hours: 优化时长（小时）。
-        :return: 优化结果字典。
-        """
-        try:
-            # 导入 pymoo 库。
-            from pymoo.algorithms.soo.nonconvex.ga import GA
-            from pymoo.core.problem import Problem
-            from pymoo.optimize import minimize
-            
-            # 定义优化问题类。
-            class OptimizationProblem(Problem):
-                def __init__(self):
-                    # 初始化问题维度和边界。
-                    super().__init__(
-                        n_var=len(bounds),
-                        n_obj=1,
-                        xl=np.array([b[0] for b in bounds]),
-                        xu=np.array([b[1] for b in bounds])
-                    )
-                
-                def _evaluate(self, x, out, *args, **kwargs):
-                    # 评估每个个体。
-                    out["F"] = np.array([objective(xi) for xi in x])
-            
-            # 创建问题实例。
-            problem = OptimizationProblem()
-            
-            # 从模型配置中读取种群大小和代数。
-            pop_size = self.config.get('pop_size', 20)
-            n_gen = self.config.get('n_gen', 50)
-            
-            # 初始化遗传算法。
-            algorithm = GA(pop_size=pop_size)
-            
-            # 执行优化。
-            res = minimize(
-                problem,
-                algorithm,
-                ('n_gen', n_gen)
-            )
-            
-            # 返回优化结果。
-            return {
-                'success': True,
-                'params': res.X.tolist(),
-                'value': float(res.F[0]),
-                'history': self.history
-            }
-        except ImportError:
-            # pymoo 库未安装。
-            return {'success': False, 'error': 'pymoo 库未安装，请运行: pip install pymoo'}
-        except Exception as e:
-            # 记录优化失败错误。
-            logger.error(f"pymoo 优化失败: {e}")
-            # 返回错误信息。
-            return {'success': False, 'error': str(e)}
+
+# ── Single-objective scipy ─────────────────────────────────────────────────────
+
+def _run_scipy(evaluate, n_var, n_obj, n_con, xl, xu, method='L-BFGS-B', progress_callback=None):
+    try:
+        from scipy.optimize import minimize as sp_minimize
+
+        _iters = [0]
+
+        def _scalar(x):
+            f, _ = evaluate(np.array(x))
+            val = float(f[0]) if f else float('inf')
+            _iters[0] += 1
+            if progress_callback:
+                progress_callback({'iteration': _iters[0], 'fitness': val})
+            return val
+
+        x0 = (xl + xu) / 2.0
+        bounds = list(zip(xl, xu))
+
+        if method == 'Nelder-Mead':
+            res = sp_minimize(_scalar, x0, method='Nelder-Mead')
+        else:
+            res = sp_minimize(_scalar, x0, method='L-BFGS-B', bounds=bounds)
+
+        if not res.success and res.fun == float('inf'):
+            return {"success": False, "error": f"scipy {method} failed: {res.message}"}
+
+        x_opt = res.x.tolist()
+        f_opt, _ = evaluate(np.array(x_opt))
+
+        return {
+            "success": True,
+            "method": method,
+            "pareto_front": [{"x": x_opt, "f": f_opt}],
+            "n_solutions": 1,
+            "best_x": x_opt,
+            "best_f": f_opt,
+        }
+    except Exception as e:
+        logger.exception(f"scipy {method} failed")
+        return {"success": False, "error": str(e)}

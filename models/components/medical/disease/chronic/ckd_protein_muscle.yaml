@@ -148,12 +148,34 @@ simulation:
   end_date: "2026-12-31"
   output_variables: [gfr, muscle_mass, bun, protein_intake, muscle_synthesis_rate]
 optimizer:
-  method: grid
-  duration: 120.0
-  targets_of_optimization: [muscle_mass]
-  variables_to_optimize: [protein_intake]
-  # 优化目标：在365天内，寻找使肌肉质量最大化同时GFR不跌破阈值（BUN不超80）的蛋白摄入策略。
-  # 约束（需在Story层配置）：
-  #   - gfr 不低于 30（避免进入CKD 4期）
-  #   - bun 不超过 80 mg/dL
-  # Pareto前沿：muscle_mass vs gfr（不同CKD分期的权衡曲线）
+  # 双目标 Pareto：寻找每日蛋白摄入量使 muscle_mass 与 gfr 同时尽可能大。
+  # 核心冲突：高蛋白保肌肉，低蛋白护肾——KDIGO 2020 指南自承无统一建议。
+  method: nsga2
+
+  objectives:
+    - variable: muscle_mass
+      metric: final       # 仿真结束时的肌肉质量（kg）
+      direction: maximize
+    - variable: gfr
+      metric: final       # 仿真结束时的 GFR（mL/min/1.73m²）
+      direction: maximize
+
+  constraints:
+    - variable: bun
+      condition: "<= 80"  # BUN 全程不超 80 mg/dL（避免尿毒症）
+
+  regimen:
+    variable: protein_intake   # 每日蛋白摄入量（g/kg/day）
+    events:
+      - time: "08:00"
+        dose_bounds: [0.3, 2.0]   # KDIGO 建议范围 0.6-0.8，允许探索更宽范围
+        label: "Daily protein intake (g/kg/day)"
+
+  algorithm:
+    population_size: 20   # 小种群，快速测试用；正式运行可调至 50
+    n_generations: 40     # 正式运行可调至 100
+    seed: 42
+
+  mc:
+    enabled: false
+    sim_runs: 1

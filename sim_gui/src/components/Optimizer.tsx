@@ -6,7 +6,7 @@ import {
   message, Alert, Select, Tabs, Tag, Tooltip,
 } from 'antd';
 import {
-  PlayCircleOutlined, ThunderboltOutlined, StopOutlined,
+  ThunderboltOutlined, StopOutlined,
   ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined,
   LoadingOutlined,
 } from '@ant-design/icons';
@@ -313,13 +313,13 @@ const Optimizer: React.FC<OptimizerProps> = ({
     setElapsed(0); setJobResult(null); setJobError(null);
     setState(prev => ({ ...prev, progress: 0, optimizationData: [] }));
 
-    const modelName = selectedModel.content?.metadata?.name
-      || selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || '';
+    // 优先用完整相对路径，find_model_file 支持带 / 的路径直接查找
+    const modelName = selectedModel.key || selectedModel.content?.metadata?.name || '';
     try {
       const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder }),
+        body: JSON.stringify({ model_name: modelName, folder: null }),
       });
       const data = await resp.json();
       if (data.success && data.job_id) {
@@ -332,40 +332,6 @@ const Optimizer: React.FC<OptimizerProps> = ({
     } catch (e: any) { message.error(e.message); setStatus('idle'); }
   };
 
-  const startStandardOpt = async () => {
-    if (!selectedModel) { message.warning('请先选择模型'); return; }
-    stopPolling();
-    setStatus('running'); setLiveHistory([]); setLiveLogs([]);
-    setElapsed(0); setJobResult(null); setJobError(null);
-    setState(prev => ({ ...prev, progress: 0, optimizationData: [] }));
-
-    const modelName = selectedModel.content?.metadata?.name
-      || selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || '';
-    const finalTimeHours = dateToHours(simStartDate, simEndDate);
-    try {
-      const resp = await fetch(`${API_BASE}/optimizer/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model_names: [modelName],
-          folder: selectedModel.folder,
-          mode: 'full_params', method: 'grid',
-          time_hours: finalTimeHours,
-          opt_inner_runs: optInnerRuns,
-          opt_aggregation: optAggregation,
-          opt_verify_runs: optVerifyRuns,
-        }),
-      });
-      const data = await resp.json();
-      if (data.success && data.job_id) {
-        setJobId(data.job_id);
-        startPolling(data.job_id);
-      } else {
-        message.error(data.detail || data.error || '启动失败');
-        setStatus('idle');
-      }
-    } catch (e: any) { message.error(e.message); setStatus('idle'); }
-  };
 
   const handleCancel = async () => {
     stopPolling();
@@ -444,12 +410,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
             onClick={startYamlOpt}
             disabled={!isLocked || isRunning}
             style={{ background: isRunning ? undefined : '#007A33', borderColor: '#007A33' }}>
-            NSGA-II 优化 (YAML)
-          </Button>
-          <Button icon={<PlayCircleOutlined />}
-            onClick={startStandardOpt}
-            disabled={!isLocked || isRunning}>
-            网格搜索
+            NSGA-II 优化
           </Button>
           {isRunning && (
             <Button danger icon={<StopOutlined />} onClick={handleCancel}>停止</Button>

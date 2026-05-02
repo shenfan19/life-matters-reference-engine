@@ -243,13 +243,9 @@ class Simulation:
                 self.set_variable_value(var_name, params[i])
 
     def get_objective(self, target: str) -> float:
-        """获取目标函数值，根据目标类型计算"""
-        state = self.get_current_state()
-        if target == 'min_error':
-            target_values = {'blood_glucose': 100}
-            return sum((state.get(k, {'value': 0})['value'] - v) ** 2 for k, v in target_values.items())
-        elif target == 'max_lifespan':
-            return -len(self.variable_history[list(self.variables.keys())[0]])
+        """返回指定变量的当前值作为目标函数（越小越好的约定）"""
+        if target in self.variables:
+            return float(self.variables[target].value)
         return float('inf')
 
     def reset_simulation(self):
