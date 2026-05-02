@@ -198,8 +198,11 @@ class Loader:
                 # 处理 0228-03-01 这类古代日期（Python date 不支持年份 < 1，但可支持到 1 年）
                 sy, sm, sdd = [int(x) for x in str(sd).split('-')]
                 ey, em, edd = [int(x) for x in str(ed).split('-')]
-                # 近似计算天数
-                total_days = (ey - sy) * 365 + (em - sm) * 30 + (edd - sdd)
+                if sy >= 1 and ey >= 1:
+                    total_days = (_date(ey, em, edd) - _date(sy, sm, sdd)).days
+                else:
+                    # 古代日期（年份 < 1），Python date 不支持，用近似算法
+                    total_days = (ey - sy) * 365 + (em - sm) * 30 + (edd - sdd)
                 total_sec = max(0, total_days * 86400)
             except Exception:
                 total_sec = 86400  # fallback 1 day

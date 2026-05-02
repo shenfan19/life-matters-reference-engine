@@ -558,6 +558,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optGen, setOptGen] = useState(200);
   const [optResult, setOptResult] = useState<any>(null);
   const [optRunning, setOptRunning] = useState(false);
+  const [optCurGen, setOptCurGen] = useState(0);
+  const [optTotalGen, setOptTotalGen] = useState(0);
+  const [optLogs, setOptLogs] = useState<Array<{t: number; msg: string}>>([]);
+  const [optJobId, setOptJobId] = useState<string | null>(null);
+  const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── regimen K×4 state ───────────────────────────────────────────────────────
   const [regimens, setRegimens] = useState<Regimen[]>(() => {
@@ -831,6 +836,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (status === 'running' || status === 'completed') setCenterTab('plot');
   }, [status]);
 
+  // ── cleanup opt poll on unmount ───────────────────────────────────────────────
+  useEffect(() => {
+    return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
+  }, []);
+
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
     setTreeLoading(true);
@@ -1101,29 +1111,68 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const startOptimization = async () => {
     if (!selectedModel) return;
-    const modelKey = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name;
+    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
+
+    const modelKey = selectedModel.key || selectedModel.content?.metadata?.name || '';
+    const totalGen = (selectedModel.content?.optimizer?.algorithm?.n_generations) || optGen;
+
+    setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
+    setOptTotalGen(totalGen); setOptJobId(null);
+    set('status', 'running'); set('progress', 0);
+
     try {
-      setOptRunning(true); setOptResult(null);
-      set('status', 'running'); set('progress', 0);
       const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_name: modelKey, folder: selectedModel.folder }),
+        body: JSON.stringify({ model_name: modelKey, folder: null }),
       });
-      const result = await resp.json();
-      if (resp.ok && result.success) {
-        setOptResult(result);
-        set('status', 'completed'); set('progress', 100);
-        message.success(`优化完成，${result.n_solutions} 个 Pareto 解`);
-      } else {
-        message.error(result.detail || result.error || '优化失败');
-        set('status', 'idle');
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success || !data.job_id) {
+        message.error(data.detail || data.error || '优化启动失败');
+        setOptRunning(false); set('status', 'idle'); return;
       }
+
+      const jobId: string = data.job_id;
+      setOptJobId(jobId);
+
+      optPollRef.current = setInterval(async () => {
+        try {
+          const sr = await fetch(`${API_BASE}/optimizer/status/${jobId}`);
+          if (!sr.ok) return;
+          const sd = await sr.json();
+          setOptLogs(sd.logs || []);
+          setOptCurGen(sd.iteration || 0);
+          set('progress', Math.min(99, Math.round(((sd.iteration || 0) / totalGen) * 100)));
+
+          if (sd.status === 'completed') {
+            clearInterval(optPollRef.current!); optPollRef.current = null;
+            setOptRunning(false);
+            setOptResult(sd.result);
+            set('status', 'completed'); set('progress', 100);
+            message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
+          } else if (sd.status === 'failed') {
+            clearInterval(optPollRef.current!); optPollRef.current = null;
+            setOptRunning(false); set('status', 'idle');
+            message.error(sd.error || '优化失败');
+          } else if (sd.status === 'cancelled') {
+            clearInterval(optPollRef.current!); optPollRef.current = null;
+            setOptRunning(false); set('status', 'idle');
+          }
+        } catch { /* ignore transient poll errors */ }
+      }, 1500);
+
     } catch (e: any) {
+      setOptRunning(false); set('status', 'idle');
       message.error(e.message);
-      set('status', 'idle');
-    } finally {
-      setOptRunning(false);
     }
+  };
+
+  const cancelOptimization = async () => {
+    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
+    if (optJobId) {
+      try { await fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }); } catch {}
+    }
+    setOptRunning(false); set('status', 'idle');
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1643,9 +1692,31 @@ const Simulator: React.FC<SimulatorProps> = ({
             {mode === 'opt' && (
               <div style={{ marginTop: 8 }}>
                 {optRunning && (
-                  <div style={{ textAlign: 'center', padding: 24 }}>
-                    <Spin indicator={<LoadingOutlined style={{ fontSize: 28 }} spin />} />
-                    <div style={{ marginTop: 8, color: c.textMute, fontSize: 12 }}>优化运行中...</div>
+                  <div style={{ border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{
+                      padding: '6px 10px', background: c.sectionHd,
+                      borderBottom: `1px solid ${c.border}`,
+                      display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <Spin indicator={<LoadingOutlined style={{ fontSize: 14 }} spin />} />
+                      <span style={{ fontSize: 12, color: c.text }}>
+                        NSGA-II 优化中 — Gen <span style={{ fontFamily: 'monospace', color: c.primary }}>{optCurGen}</span>
+                        {optTotalGen > 0 && <> / {optTotalGen}</>}
+                      </span>
+                      <Button size="small" danger style={{ marginLeft: 'auto' }} onClick={cancelOptimization}>停止</Button>
+                    </div>
+                    <div style={{
+                      height: 120, overflowY: 'auto', padding: '4px 8px',
+                      fontFamily: 'monospace', fontSize: 11, color: c.text,
+                      background: isDarkMode ? '#0d1710' : '#f0f7f0',
+                    }}>
+                      {optLogs.length === 0 && <span style={{ color: c.textMute }}>启动中...</span>}
+                      {optLogs.map((l, i) => {
+                        const d = new Date(l.t * 1000);
+                        const ts = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+                        return <div key={i}><span style={{ color: c.textMute }}>{ts}</span> {l.msg}</div>;
+                      })}
+                    </div>
                   </div>
                 )}
                 {!optRunning && optResult && optResult.pareto_front?.length > 0 && (

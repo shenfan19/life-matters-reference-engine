@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 plugin_manager = None
 loader_engine = None
 simulator_engine = None
-optimizer_engine = None
 optimizer_jobs: Dict[str, Dict[str, Any]] = {}
 
 
@@ -52,7 +51,7 @@ optimizer_jobs: Dict[str, Dict[str, Any]] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用寿命周期管理：包含启动初始化逻辑"""
-    global plugin_manager, loader_engine, simulator_engine, optimizer_engine
+    global plugin_manager, loader_engine, simulator_engine
     
     logger.info("=" * 60)
     logger.info("Initializing LifeMatters Backend (via Lifespan Handler)...")
@@ -115,23 +114,15 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Error initializing mods: {e}")
         loader_engine = None
     
-    # 初始化仿真与优化引擎
+    # 初始化仿真引擎
     try:
         from src.simulator_engine import SimulatorEngine
-        from src.optimizer_engine import OptimizerEngine
-        
         mods_dir = PROJECT_ROOT / "models"
         simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
-        optimizer_engine = OptimizerEngine(mods_directory=str(mods_dir))
-        
-        # 注入仿真器到优化器
-        optimizer_engine.set_simulator(simulator_engine)
-        
-        logger.info(f"✅ Simulation & Optimization systems initialized")
+        logger.info(f"✅ Simulation system initialized")
     except Exception as e:
-        logger.error(f"❌ Error initializing simulation/optimization: {e}")
+        logger.error(f"❌ Error initializing simulation: {e}")
         simulator_engine = None
-        optimizer_engine = None
     
     logger.info("=" * 60)
     logger.info("Backend initialization complete")
@@ -246,15 +237,6 @@ class SessionRequest(BaseModel):
     session_id: str
 
 
-class OptimizationRequest(BaseModel):
-    model_names: List[str]
-    folder: Optional[str] = None
-    mode: str = "full_params"
-    method: str = "grid"
-    time_hours: float = 720.0
-    opt_inner_runs: int = 5        # 每次迭代的 MC 评估次数（方案 B）
-    opt_aggregation: str = "mean"  # 聚合方式: mean / min / median
-    opt_verify_runs: int = 20      # 最终验证运行条数
 
 
 # ========== 基础端点 ==========
@@ -1248,7 +1230,7 @@ async def run_yaml_optimization(request: YamlOptRequest):
     if simulator_engine is None:
         raise HTTPException(status_code=503, detail="Simulator engine not initialized")
     try:
-        from src.yaml_optimizer import run_yaml_optimizer
+        from src.optimizer_engine import run_optimizer
         job_id = str(uuid.uuid4())
         job_history: List[Dict[str, Any]] = []
         job: Dict[str, Any] = {
@@ -1277,7 +1259,7 @@ async def run_yaml_optimization(request: YamlOptRequest):
                 _add_log(job, "  ".join(parts))
 
         _add_log(job, "Starting optimizer...")
-        fn = functools.partial(run_yaml_optimizer, simulator_engine,
+        fn = functools.partial(run_optimizer, simulator_engine,
                                request.model_name, request.folder, progress_cb)
         asyncio.create_task(_run_optimizer_job(job_id, fn))
         return {'success': True, 'job_id': job_id}
@@ -1287,48 +1269,6 @@ async def run_yaml_optimization(request: YamlOptRequest):
         logger.error(f"run_yaml_optimization error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/api/optimizer/run")
-async def run_optimization(request: OptimizationRequest):
-    """运行优化"""
-    if optimizer_engine is None:
-        raise HTTPException(status_code=503, detail="Optimizer engine not initialized")
-    try:
-        success = optimizer_engine.load_models(request.model_names, request.folder)
-        if not success:
-            raise HTTPException(status_code=400, detail="Failed to load models for optimization")
-
-        job_id = str(uuid.uuid4())
-        job_history: List[Dict[str, Any]] = []
-        job: Dict[str, Any] = {
-            'status': 'running',
-            'history': job_history,
-            'logs': [{'t': _time(), 'msg': f"Starting {request.method.upper()} optimizer ({request.mode}, {request.time_hours:.0f}h)..."}],
-            'result': None,
-            'error': None,
-            'start_time': _time(),
-            'job_type': 'standard',
-            'method': request.method,
-        }
-        optimizer_jobs[job_id] = job
-
-        fn = functools.partial(
-            optimizer_engine.optimize,
-            mode=request.mode,
-            method=request.method,
-            time_hours=request.time_hours,
-            opt_inner_runs=max(1, request.opt_inner_runs),
-            opt_aggregation=request.opt_aggregation,
-            opt_verify_runs=max(1, request.opt_verify_runs),
-            history_out=job_history,
-        )
-        asyncio.create_task(_run_optimizer_job(job_id, fn))
-        return {'success': True, 'job_id': job_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in optimization: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/optimizer/status/{job_id}")
