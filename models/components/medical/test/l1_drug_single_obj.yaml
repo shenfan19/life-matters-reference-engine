@@ -1,20 +1,26 @@
+type: model
+
 metadata:
   name: l1_drug_single_obj
+  title: "[TEST L1] 单目标快速优化"
   description: >
-    L1 优化测试模型 — 单目标，30天日步长，预估完成 < 1分钟。
+    【调试用 TEST L1】单目标优化 · 30天日步长 · 预估完成 < 1分钟
 
-    用途：调试优化链路是否通畅（endpoint → job → Pareto 结果）。
+    ── 用途 ──────────────────────────────────────────────
+    调试优化链路：endpoint → job 系统 → 结果回传。
+    最快验证路径，出现问题首先用此模型排查。
 
-    场景：单一口服药物，每日给药。优化目标：最大化第30天血浆浓度，
-    同时满足肝脏累积负荷约束。
+    ── 场景 ──────────────────────────────────────────────
+    单一口服药物，每日早晨给药（08:00）。
+    目标：最大化第30天血浆浓度，约束肝脏累积负荷 ≤ 250 mg/L·day。
 
-    优化参数：
-      pop_size=10, n_gen=15 → 150次评估 × 30步 ≈ 1秒完成
-
-    含 MC 参数（个体清除率差异 normal(0.3, 0.05)）供蒙特卡洛仿真测试。
+    ── 参数规模 ──────────────────────────────────────────
+    pop=10, gen=15 → 150次评估 × 30步 ≈ 1–3秒
+    决策变量: 1（dose_mg: 0–50 mg）
+    MC: 未启用（clearance_rate 固定为均值）
   tags: [test, L1, single-objective, pharmacokinetics, debug]
   references:
-    - "Simplified first-order PK model for optimizer unit test"
+    - "TEST L1: Simplified first-order PK model for optimizer unit test"
   step_size:
     value: 1
     unit: day

@@ -29,6 +29,54 @@
 - **禁止**：同一页面使用超过 5 种不同颜色的 Tag/Badge；不要用颜色区分"平级"内容，用位置和排版区分。
 - **背景/边框/文字** 使用 token 变量（`c.panel`、`c.border`、`c.text`、`c.textMute`、`c.textSec`），禁止硬编码颜色字符串。
 
+### 2.1 交互状态颜色规则（Interactive State Color Rule）
+
+**核心原则：绿色 = 激活/选中，灰色 = 未选中，红色 = 危险**
+
+| 状态 | 前景色 | 背景色 | 边框/下划线 |
+|------|--------|--------|------------|
+| 激活/选中（active/selected） | `c.primary` | `c.activeBg` | `c.primary` |
+| 悬停但未选中（hover） | `c.text` | `c.navHover` | 无 |
+| 未选中（inactive） | `c.textSec` | transparent | 无或 `c.border` |
+| 禁用（disabled） | `c.textMute` | transparent | `c.border`（透明度降低） |
+
+**token 对应值**（在 `getC(isDark)` / `C` 对象中定义）：
+
+| token | 暗色 dark | 浅色 light |
+|-------|-----------|------------|
+| `c.primary` | `#52c41a` | `#007A33` |
+| `c.activeBg` | `#1a3a22` | `#e8f5e9` |
+| `c.navHover` | `rgba(82,196,26,0.08)` | `rgba(0,122,51,0.06)` |
+
+**适用范围（凡表示"当前激活"的元素均须遵守）**：
+- 顶部导航 Tab（当前页面）
+- 模式切换控件（Sim / Opt Segmented）
+- 左侧树节点选中（Tree `nodeSelectedBg`）
+- 左侧 Tab 选中（Inputs / Vars / Formulas）
+- 小型 pill 开关按钮（时/日/范 toggle）
+- 中央面板 Tab（Setup / Plot / Opt / Report）
+
+**禁止**：
+- 用灰色背景（如 `#2a2a2a`）表示"选中"状态
+- 用绿色表示危险/删除操作（保留给 `danger` 红色）
+- 在 antd ConfigProvider 之外直接写死选中色
+
+**antd ConfigProvider 对应配置**（`academicTheme.components`）：
+```js
+Segmented: {
+  itemSelectedBg:    isDark ? '#1a3a22' : '#e8f5e9',  // c.activeBg
+  itemSelectedColor: isDark ? '#52c41a' : '#007A33',  // c.primary
+  trackBg:           isDark ? '#1a1a1a' : '#f0f0f0',
+},
+Tree: {
+  nodeSelectedBg:  isDark ? '#1a3a22' : '#e8f5e9',    // c.activeBg
+  nodeHoverBg:     isDark ? 'rgba(82,196,26,0.08)' : 'rgba(0,122,51,0.06)',
+},
+Tabs: {
+  itemSelectedColor: c.primary, inkBarColor: c.primary,
+},
+```
+
 ---
 
 ## 3. 明暗模式 —— 全面兼容，禁止硬编码颜色

@@ -1,22 +1,28 @@
+type: model
+
 metadata:
   name: l2_drug_pareto
+  title: "[TEST L2] 双目标 Pareto 优化"
   description: >
-    L2 优化测试模型 — 双目标 Pareto，26周步长，预估完成 2–5分钟。
+    【调试用 TEST L2】双目标 Pareto · 26周步长 · 预估完成 30–90秒
 
-    用途：验证 Pareto 前沿可视化与多目标优化。
+    ── 用途 ──────────────────────────────────────────────
+    验证 Pareto 前沿可视化与多目标 NSGA-II 运行。
+    前沿应呈现单调权衡曲线（高疗效 ↔ 高肝脏负荷）。
 
-    场景：药物效果 vs 副作用权衡。高剂量提高疗效（plasma_level均值），
-    但同时增加肝脏负荷（liver_load终值）。经典权衡问题，Pareto前沿
-    应呈现清晰的单调权衡曲线。
+    ── 场景 ──────────────────────────────────────────────
+    药物疗效 vs 副作用权衡：
+      · 目标1：最大化 plasma_level 均值（26周平均疗效）
+      · 目标2：最小化 liver_load 终值（累积毒性）
+    step_size=7天（周步长）压缩计算量。
 
-    优化参数：
-      pop_size=15, n_gen=20 → 300次评估 × 26步 ≈ 30–60秒完成
-
-    含 MC 参数（清除率和吸收率个体差异）供蒙特卡洛测试。
-    step_size=7天（周步长）加速计算，仍保留足够动力学细节。
+    ── 参数规模 ──────────────────────────────────────────
+    pop=15, gen=20 → 300次评估 × 26步 ≈ 30–90秒
+    决策变量: 1（dose_mg: 0–60 mg/day）
+    MC: 未启用（clearance_rate/absorption_rate 固定）
   tags: [test, L2, multi-objective, pareto, pharmacokinetics]
   references:
-    - "Two-objective PK model for Pareto visualization test"
+    - "TEST L2: Two-objective PK model for Pareto visualization test"
   step_size:
     value: 7
     unit: day

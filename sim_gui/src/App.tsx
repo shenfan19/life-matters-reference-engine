@@ -391,9 +391,14 @@ function App() {
       Table: { colorBgContainer: isDarkMode ? '#1a1a1a' : '#ffffff', headerBg: isDarkMode ? '#222222' : '#f5f5f5' },
       Tree: {
         colorBgContainer: 'transparent',
-        nodeSelectedBg: isDarkMode ? '#2a2a2a' : '#ebebeb',
-        nodeHoverBg: isDarkMode ? '#222222' : '#f0f0f0',
+        nodeSelectedBg: isDarkMode ? '#1a3a22' : '#e8f5e9',
+        nodeHoverBg: isDarkMode ? 'rgba(82,196,26,0.08)' : 'rgba(0,122,51,0.06)',
         colorText: isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22',
+      },
+      Segmented: {
+        itemSelectedBg: isDarkMode ? '#1a3a22' : '#e8f5e9',
+        itemSelectedColor: isDarkMode ? '#52c41a' : '#007A33',
+        trackBg: isDarkMode ? '#1a1a1a' : '#f0f0f0',
       },
     },
   };

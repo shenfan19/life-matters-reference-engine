@@ -1341,6 +1341,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 <Tog label="时" active={ev.timeEnabled} title="指定触发时刻" onToggle={() => updateInputEvent(ev.id, { timeEnabled: !ev.timeEnabled })} />
                 <Tog label="日" active={ev.daysEnabled} title="指定执行日" onToggle={() => updateInputEvent(ev.id, { daysEnabled: !ev.daysEnabled })} />
                 <Tog label="范" active={ev.validRangeEnabled} title="指定有效期" onToggle={() => updateInputEvent(ev.id, { validRangeEnabled: !ev.validRangeEnabled })} />
+                <div style={{ flex: 1 }} />
                 <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
                   style={{ padding: '0 2px' }} onClick={() => removeInputEvent(ev.id)} />
               </div>
