@@ -580,8 +580,10 @@ const Simulator: React.FC<SimulatorProps> = ({
   const isRunningRef = useRef(false);
   // refs for restore flow
   const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
-  const skipInputInitRef = useRef<boolean>(!!(readSP()?.inputEvents?.length || readSP()?.regimens?.length));
+  // Only restore saved inputEvents on the very first mount if model key matches saved key.
+  // Any model change resets inputEvents from YAML so old events don't bleed into new models.
   const isInitialMount = useRef(true);
+  const savedKeyForRestore = readSP()?.selectedKey || null;
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
 
@@ -663,8 +665,14 @@ const Simulator: React.FC<SimulatorProps> = ({
       });
       set('inputParams', inputs);
       set('stateVariables', states);
-      if (skipInputInitRef.current) {
-        skipInputInitRef.current = false;
+      // Restore saved events only on first mount with the same model key; always reinit otherwise.
+      const restoreFromSaved = isInitialMount.current &&
+        selectedModel.key === savedKeyForRestore &&
+        (readSP()?.inputEvents?.length ?? 0) > 0;
+      isInitialMount.current = false;
+
+      if (restoreFromSaved) {
+        // Keep saved inputEvents; optimizer.inputs flags applied below regardless
       } else {
         setInputEvents(newInputEvents);
         freshInputInit = true;
@@ -772,8 +780,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       }
 
-      // Apply optimizer.inputs optimize flags to input events (fresh load only)
-      if (freshInputInit && Array.isArray(optBlock.inputs)) {
+      // Apply optimizer.inputs optimize flags — always (even on restore, in case YAML changed)
+      if (Array.isArray(optBlock.inputs)) {
         const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
           e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
         );
@@ -1306,14 +1314,25 @@ const Simulator: React.FC<SimulatorProps> = ({
       </Tooltip>
     );
 
+    // In opt mode: show only events that will be optimized (from optimizer.inputs);
+    // in sim mode: show all events.
+    const optVars = new Set<string>(
+      ((selectedModel?.content?.optimizer?.inputs ?? []) as any[])
+        .filter((e: any) => e.optimize?.value)
+        .map((e: any) => e.variable)
+    );
+    const visibleEvents = mode === 'opt' && optVars.size > 0
+      ? inputEvents.filter(ev => optVars.has(ev.variable))
+      : inputEvents;
+
     return (
       <div style={{ padding: '4px 0' }}>
-        {inputEvents.length === 0 && (
+        {visibleEvents.length === 0 && (
           <div style={{ textAlign: 'center', color: c.textMute, fontSize: 11, padding: 8 }}>
-            暂无输入事件
+            {mode === 'opt' ? '未定义优化变量（检查 YAML optimizer.inputs 块）' : '暂无输入事件'}
           </div>
         )}
-        {inputEvents.map((ev) => {
+        {visibleEvents.map((ev) => {
           const varDef = inputVars.find(v => v.name === ev.variable);
           const bounds = varDef?.bounds as [number,number] | undefined;
           const hasDetails = ev.timeEnabled || ev.daysEnabled || ev.validRangeEnabled;
@@ -1978,7 +1997,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               : status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation
           }
           loading={optRunning}
-          disabled={mode === 'opt' ? optRunning : (!isLocked || status === 'completed')}
+          disabled={!isLocked || (mode === 'opt' ? optRunning : status === 'completed')}
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
         >
           {mode === 'opt'

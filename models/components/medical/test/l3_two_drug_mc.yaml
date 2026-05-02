@@ -2,121 +2,120 @@ type: model
 
 metadata:
   name: l3_two_drug_mc
-  title: "[TEST L3] 双药双目标 + MC 优化"
+  title: "[TEST L3] 五周用药方案 · 双目标 + MC"
   description: >
-    【调试用 TEST L3】双决策变量 · 双目标 Pareto · MC 启用 · 预估完成 2–5分钟
+    【调试用 TEST L3】5 决策变量 · 双目标 Pareto · MC 启用 · 预估完成 3–8分钟
 
     ── 用途 ──────────────────────────────────────────────
-    验证多变量优化 + 蒙特卡洛积分：
-      · 2个决策变量（drug_a_dose, drug_b_dose）
-      · 2个目标（联合疗效最大化 / 肝脏毒性最小化）
-      · MC启用（clearance_rate个体差异）
+    验证高维决策变量 + 蒙特卡洛积分的完整优化链路。
+    5 个决策变量对应5个每周用药时段，测试 NSGA-II 在高维空间的寻优能力。
 
     ── 场景 ──────────────────────────────────────────────
-    两种药物同时给药，各有清除动力学。
-    联合使用提高疗效（plasma_a + plasma_b），
-    但肝脏同时处理两种药物代谢，毒性叠加。
+    慢性病患者每周5天用药（工作日），优化各天剂量。
+      · 目标1：最大化 plasma_level 均值（维持治疗窗口）
+      · 目标2：最小化 liver_load 终值（减少毒性累积）
+    MC 扰动：个体清除率差异（normal分布），pop × 2 次仿真。
 
     ── 参数规模 ──────────────────────────────────────────
-    pop=20, gen=25 → 500次评估 × 2个MC × 30步 ≈ 2–5分钟
-    决策变量: 2（drug_a: 0–40mg, drug_b: 0–40mg）
-    MC: 启用（sim_runs=2，个体clearance差异）
-  tags: [test, L3, multi-variable, multi-objective, mc, pharmacokinetics]
+    pop=25, gen=30 → 750次评估 × 2 MC × 35步 ≈ 3–8分钟
+    决策变量: 5（Mon/Tue/Wed/Thu/Fri 各天剂量: 0–25 mg）
+    MC: 启用（sim_runs=2）
+  tags: [test, L3, multi-objective, pareto, 5-variable, mc, chronic]
   references:
-    - "TEST L3: Two-drug multi-variable optimizer + MC integration test"
+    - "TEST L3: Five-day weekly schedule optimizer with MC integration test"
   step_size:
     value: 1
     unit: day
 
 variables:
-  plasma_a:
-    description: 药物A血浆浓度（mg/L），一阶动力学
+  plasma_level:
+    description: 血浆药物浓度（mg/L），工作日给药+周末自然消退
     value: 0.0
     unit: mg/L
     type: state
-    bounds: [0.0, 100.0]
-
-  plasma_b:
-    description: 药物B血浆浓度（mg/L），一阶动力学（清除更快）
-    value: 0.0
-    unit: mg/L
-    type: state
-    bounds: [0.0, 100.0]
+    bounds: [0.0, 120.0]
 
   liver_load:
-    description: 肝脏总代谢负荷（两药之和）
+    description: 肝脏35天累积代谢负荷
     value: 0.0
     unit: mg/L·day
     type: state
-    bounds: [0.0, 2000.0]
+    bounds: [0.0, 1500.0]
 
-  clearance_a:
+  clearance_rate:
     description: >
-      药物A清除率（MC参数，个体差异）。
-      normal(0.25, 0.04)：均值半衰期 ≈ 2.8天。
-    value: "normal(0.25, 0.04)"
+      药物日清除率（MC参数，个体差异）。
+      normal(0.30, 0.04)：均值半衰期 ≈ 2.3天。
+    value: "normal(0.30, 0.04)"
     unit: per_day
     type: parameter
-    bounds: [0.1, 0.5]
+    bounds: [0.15, 0.55]
 
-  clearance_b:
-    description: >
-      药物B清除率（MC参数，比A快约50%）。
-      normal(0.40, 0.05)：均值半衰期 ≈ 1.7天。
-    value: "normal(0.40, 0.05)"
-    unit: per_day
-    type: parameter
-    bounds: [0.2, 0.6]
-
-  drug_a_dose:
-    description: 药物A每日给药剂量（mg），决策变量
+  mon_dose:
+    description: 周一剂量（mg）
     value: 10.0
     unit: mg
     type: input
-    bounds: [0.0, 40.0]
+    bounds: [0.0, 25.0]
 
-  drug_b_dose:
-    description: 药物B每日给药剂量（mg），决策变量
+  tue_dose:
+    description: 周二剂量（mg）
     value: 10.0
     unit: mg
     type: input
-    bounds: [0.0, 40.0]
+    bounds: [0.0, 25.0]
+
+  wed_dose:
+    description: 周三剂量（mg）
+    value: 10.0
+    unit: mg
+    type: input
+    bounds: [0.0, 25.0]
+
+  thu_dose:
+    description: 周四剂量（mg）
+    value: 10.0
+    unit: mg
+    type: input
+    bounds: [0.0, 25.0]
+
+  fri_dose:
+    description: 周五剂量（mg）
+    value: 10.0
+    unit: mg
+    type: input
+    bounds: [0.0, 25.0]
 
 formulas:
-  kinetics_a:
-    description: 药物A一阶动力学，吸收率65%
+  drug_kinetics:
+    description: >
+      工作日给药（吸收率65%），周末停药。
+      day_of_week = (step_index % 7): 0=Mon, 1=Tue, ... 4=Fri, 5=Sat, 6=Sun
+      使用 mon_dose 等按日激活（通过 optimizer.inputs.days 控制）。
     condition: true
     dynamics:
-      plasma_a: "plasma_a + (drug_a_dose * 0.65 - plasma_a * clearance_a) * step"
+      plasma_level: "plasma_level + (mon_dose * 0.65 + tue_dose * 0.65 + wed_dose * 0.65 + thu_dose * 0.65 + fri_dose * 0.65 - plasma_level * clearance_rate) * step"
     priority: 10
 
-  kinetics_b:
-    description: 药物B一阶动力学，吸收率70%（更高生物利用度但清除也快）
+  liver_accumulation:
+    description: 日肝脏负荷（plasma_level的16%）
     condition: true
     dynamics:
-      plasma_b: "plasma_b + (drug_b_dose * 0.70 - plasma_b * clearance_b) * step"
-    priority: 10
-
-  liver_total:
-    description: 肝脏总负荷：两药各贡献其血浆浓度的15%
-    condition: true
-    dynamics:
-      liver_load: "liver_load + (plasma_a + plasma_b) * 0.15 * step"
+      liver_load: "liver_load + plasma_level * 0.16 * step"
     priority: 5
 
 simulation:
   start_date: "2025-01-01"
-  end_date: "2025-01-31"
-  output_variables: [plasma_a, plasma_b, liver_load, drug_a_dose, drug_b_dose]
+  end_date: "2025-02-04"
+  output_variables: [plasma_level, liver_load, mon_dose, tue_dose, wed_dose, thu_dose, fri_dose]
 
 optimizer:
   method: nsga2
 
   objectives:
-    - variable: plasma_a
+    - variable: plasma_level
       metric: mean
       direction: maximize
-      # 注: 联合疗效用 plasma_a mean 作为主代理（两药协同）
 
     - variable: liver_load
       metric: final
@@ -124,26 +123,47 @@ optimizer:
 
   constraints:
     - variable: liver_load
-      condition: "<= 400"
+      condition: "<= 450"
 
   inputs:
-    - variable: drug_a_dose
+    - variable: mon_dose
       time: "08:00"
       value: 10.0
-      label: "Drug A morning dose (mg)"
+      label: "Monday dose (mg)"
       optimize:
-        value: [0.0, 40.0]
+        value: [0.0, 25.0]
 
-    - variable: drug_b_dose
+    - variable: tue_dose
       time: "08:00"
       value: 10.0
-      label: "Drug B morning dose (mg)"
+      label: "Tuesday dose (mg)"
       optimize:
-        value: [0.0, 40.0]
+        value: [0.0, 25.0]
+
+    - variable: wed_dose
+      time: "08:00"
+      value: 10.0
+      label: "Wednesday dose (mg)"
+      optimize:
+        value: [0.0, 25.0]
+
+    - variable: thu_dose
+      time: "08:00"
+      value: 10.0
+      label: "Thursday dose (mg)"
+      optimize:
+        value: [0.0, 25.0]
+
+    - variable: fri_dose
+      time: "08:00"
+      value: 10.0
+      label: "Friday dose (mg)"
+      optimize:
+        value: [0.0, 25.0]
 
   algorithm:
-    population_size: 20
-    n_generations: 25
+    population_size: 25
+    n_generations: 30
     seed: 42
 
   mc:
