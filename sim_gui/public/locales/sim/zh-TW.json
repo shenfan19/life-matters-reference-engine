@@ -55,7 +55,7 @@
     "sim.step.minute": "分",
     "sim.step.hour": "時",
     "sim.step.day": "天",
-    "sim.scene.header": "場景",
+    "sim.scene.header": "模型庫",
     "sim.scene.search": "搜索",
     "sim.scene.toggle_list": "切換列表",
     "sim.scene.toggle_tree": "切換樹形",

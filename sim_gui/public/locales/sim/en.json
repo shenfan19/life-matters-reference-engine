@@ -54,7 +54,7 @@
     "sim.step.minute": "min",
     "sim.step.hour": "hr",
     "sim.step.day": "day",
-    "sim.scene.header": "Scenarios",
+    "sim.scene.header": "Models",
     "sim.scene.search": "Search",
     "sim.scene.toggle_list": "Switch to List",
     "sim.scene.toggle_tree": "Switch to Tree",
