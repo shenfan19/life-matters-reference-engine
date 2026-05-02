@@ -224,17 +224,81 @@ class Loader:
         self.time_unit = time_unit_raw
 
         # 应用计划表 (Schedules) — 从 simulation.schedules 读取
+        # 支持两种格式：
+        #   新格式（list）：[{variable, time:"HH:MM", value, days:[...], date_range:"YYYY-MM-DD ~ YYYY-MM-DD"}]
+        #   旧格式（dict）：{var_name: {interpolation, points:[{time:秒数, value}]}}
         schedules_raw = simulator_data.get('schedules', {})
-        for var_name, sched_data in schedules_raw.items():
-            points = []
-            for pt in sched_data.get('points', []):
-                points.append(SchedulePoint(time=float(pt['time']), value=float(pt['value'])))
 
-            self.schedules[var_name] = InputSchedule(
-                variable=var_name,
-                points=sorted(points, key=lambda p: p.time),
-                interpolation=sched_data.get('interpolation', 'step')
-            )
+        if isinstance(schedules_raw, list):
+            from datetime import date as _sdate, timedelta as _std
+            from collections import defaultdict as _dd
+            _DAY_MAP = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
+
+            sd_str = str(simulator_data.get('start_date', '2000-01-01'))
+            ed_str = str(simulator_data.get('end_date', sd_str))
+            try:
+                sy, sm, sdd = [int(x) for x in sd_str.split('-')]
+                ey, em, edd = [int(x) for x in ed_str.split('-')]
+                sim_start = _sdate(sy, sm, sdd)
+                sim_end   = _sdate(ey, em, edd)
+            except Exception:
+                logger.warning("新格式 schedules 需要 start_date/end_date，跳过展开")
+                sim_start = sim_end = None
+
+            if sim_start is not None:
+                var_points_map = _dd(list)
+                for entry in schedules_raw:
+                    var_name = entry.get('variable')
+                    if not var_name:
+                        continue
+                    time_str = str(entry.get('time', '00:00'))
+                    hh, mm = [int(x) for x in time_str.split(':')]
+                    tod_sec = hh * 3600 + mm * 60
+                    value = float(entry.get('value', 0.0))
+
+                    days_raw = entry.get('days')
+                    valid_days = (
+                        {_DAY_MAP[d] for d in days_raw if d in _DAY_MAP}
+                        if days_raw else set(range(7))
+                    )
+
+                    dr = entry.get('date_range')
+                    if dr:
+                        parts = dr.split('~')
+                        rs, re_ = parts[0].strip(), parts[1].strip()
+                        ry, rm, rd = [int(x) for x in rs.split('-')]
+                        ry2, rm2, rd2 = [int(x) for x in re_.split('-')]
+                        range_start = max(sim_start, _sdate(ry, rm, rd))
+                        range_end   = min(sim_end,   _sdate(ry2, rm2, rd2))
+                    else:
+                        range_start, range_end = sim_start, sim_end
+
+                    cur = range_start
+                    while cur <= range_end:
+                        if cur.weekday() in valid_days:
+                            offset_sec = (cur - sim_start).days * 86400 + tod_sec
+                            var_points_map[var_name].append(
+                                SchedulePoint(time=float(offset_sec), value=value)
+                            )
+                        cur += _std(days=1)
+
+                for var_name, pts in var_points_map.items():
+                    self.schedules[var_name] = InputSchedule(
+                        variable=var_name,
+                        points=sorted(pts, key=lambda p: p.time),
+                        interpolation='pulse'
+                    )
+        else:
+            # 旧格式（dict）
+            for var_name, sched_data in schedules_raw.items():
+                points = []
+                for pt in sched_data.get('points', []):
+                    points.append(SchedulePoint(time=float(pt['time']), value=float(pt['value'])))
+                self.schedules[var_name] = InputSchedule(
+                    variable=var_name,
+                    points=sorted(points, key=lambda p: p.time),
+                    interpolation=sched_data.get('interpolation', 'step')
+                )
 
         # 应用每日输入 (daily_inputs) — 转换为 schedules，day 从 1 开始
         daily_inputs_raw = data.get('daily_inputs', {})

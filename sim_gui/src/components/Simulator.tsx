@@ -640,6 +640,13 @@ const Simulator: React.FC<SimulatorProps> = ({
             flatEntries.forEach((s, i) => {
               const daysList: string[] = Array.isArray(s.days) ? s.days : [];
               const hasDays = daysList.length > 0 && daysList.length < 7;
+              // Support both explicit valid_start/valid_end and compact date_range "YYYY-MM-DD ~ YYYY-MM-DD"
+              let validStart: string = s.valid_start ?? '';
+              let validEnd: string   = s.valid_end   ?? '';
+              if (!validStart && !validEnd && s.date_range) {
+                const parts = String(s.date_range).split('~');
+                if (parts.length === 2) { validStart = parts[0].trim(); validEnd = parts[1].trim(); }
+              }
               newInputEvents.push({
                 id: `${name}-sched${i}`,
                 variable: name,
@@ -649,9 +656,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                 label: s.label ?? '',
                 daysEnabled: hasDays,
                 days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
-                validRangeEnabled: !!(s.valid_start || s.valid_end),
-                validStart: s.valid_start ?? '',
-                validEnd: s.valid_end ?? '',
+                validRangeEnabled: !!(validStart || validEnd),
+                validStart,
+                validEnd,
                 optimizeValue: false,
                 valueBounds: varBounds(data),
               });

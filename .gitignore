@@ -2,29 +2,29 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+啊
 # Build artifacts
 build/
 dist/
 *.egg-info/
 *.so
 
-# IDE specific
-.vscode/
-
 # Environment files
 .env
 .venv/
 venv/
 
+# IDE specific
+.vscode/
+
 # Node
 node_modules
+
+# AI
+.claude/
+CLAUDE.md
 
 # Personal
 go/
 _saved_/
 messages.mo
-
-# AI
-.claude/
-CLAUDE.md

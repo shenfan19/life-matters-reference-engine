@@ -169,19 +169,23 @@ class SimulatorEngine:
     # ==================== 新增：GUI 会话管理功能 ====================
 
     @staticmethod
-    def _apply_regimens(model, regimens: list, prev_time: float, next_time: float):
+    def _apply_regimens(model, regimens: list, prev_time: float, next_time: float,
+                        sim_start_date: str = ''):
         """在 [prev_time, next_time) 窗口内触发 Regimen 事件，将 value 写入模型变量。
 
         时间约定：
           - prev_time / next_time 单位为秒（仿真已流逝时间）
           - 事件时刻 "HH:mm" 以每日周期判断（模 86400）
           - days [Mon..Sun] 以 int(prev_time/86400) % 7 判断星期
-          - valid_range 以天数偏移 int(day) 与起止日期解析后比较
+          - valid_range 以 sim_start_date + 天数偏移 与起止日期比较
         """
         from datetime import date, timedelta, datetime
 
-        # 仿真起始日（固定为 1900-01-01，仅用于相对比较）
-        _EPOCH = date(1900, 1, 1)
+        # 仿真起始日：优先使用模型的 start_date，回退到 1900-01-01
+        try:
+            _EPOCH = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
+        except ValueError:
+            _EPOCH = date(1900, 1, 1)
 
         prev_day_idx = int(prev_time / 86400)
         prev_sec_of_day = prev_time % 86400
@@ -325,6 +329,7 @@ class SimulatorEngine:
                 'runs': runs,
                 'param_distributions': param_distributions,
                 'input_params': input_params or {},
+                'sim_start_date': str(base_model.simulator.get('start_date', '')),
             }
 
             logger.info(f"会话已创建: {session_id}, 模型: {model_name}, 总步数: {total_steps}, runs: {n_runs}, seed: {session_seed}")
@@ -371,6 +376,8 @@ class SimulatorEngine:
             sim_runs = session.get('sim_runs', 1)
             runs = session.get('runs', [])
 
+            sim_start_date = session.get('sim_start_date', '')
+
             # ── 单条路径（兼容原有逻辑）──────────────────────────────────────
             if sim_runs == 1 or not runs:
                 model = session['model']
@@ -379,7 +386,8 @@ class SimulatorEngine:
                     for var_name, value in input_changes.items():
                         if var_name in model.variables:
                             model.set_variable_value(var_name, value)
-                            model.manual_overrides[var_name] = value
+                            # 不写入 manual_overrides：YAML schedule 优先；
+                            # 用户值作为初始值，schedule 会在 step() 中按时序覆盖
 
                 outputs = []
                 remaining = session['total_steps'] - session['current_step']
@@ -392,7 +400,8 @@ class SimulatorEngine:
                 for i in range(actual_steps):
                     prev_time = session['time']
                     next_time = prev_time + step_size
-                    self._apply_regimens(model, session['regimens'], prev_time, next_time)
+                    self._apply_regimens(model, session['regimens'], prev_time, next_time,
+                                         sim_start_date=sim_start_date)
                     model.step(_native_step)
                     session['current_step'] += 1
                     session['time'] += step_size
@@ -439,7 +448,6 @@ class SimulatorEngine:
                     for var_name, value in input_changes.items():
                         if var_name in run_model.variables:
                             run_model.set_variable_value(var_name, value)
-                            run_model.manual_overrides[var_name] = value
 
                 remaining = session['total_steps'] - run['current_step']
                 actual_steps = min(steps, remaining)
@@ -451,7 +459,8 @@ class SimulatorEngine:
                 for i in range(actual_steps):
                     prev_time = run['time']
                     next_time = prev_time + step_size
-                    self._apply_regimens(run_model, session['regimens'], prev_time, next_time)
+                    self._apply_regimens(run_model, session['regimens'], prev_time, next_time,
+                                         sim_start_date=sim_start_date)
                     run_model.step(_native_step)
                     run['current_step'] += 1
                     run['time'] += step_size
