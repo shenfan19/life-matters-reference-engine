@@ -1,4 +1,4 @@
-# 全局 UI/UX 设计规范（Vibe Coding 参考）
+# 全局 UI/UX 设计规范
 
 > 本文件是 sim_gui 和 game 两个前端应用的全局设计准则。  
 > 所有新组件、新页面、新功能均应遵循以下规则。  
@@ -56,10 +56,15 @@
 - 小型 pill 开关按钮（时/日/范 toggle）
 - 中央面板 Tab（Setup / Plot / Opt / Report）
 
+**不适用范围（以下元素不使用 primary 颜色，统一用 `c.border` / `c.panel`）**：
+- 列表项 / 数据行（如 input event card、变量行、公式行）——这些是数据展示，不是导航状态
+- 数据行内某个字段的值（如 `optimizeValue=true`）不应让整行变绿；opt 状态由行内的 checkbox 自身表达
+
 **禁止**：
 - 用灰色背景（如 `#2a2a2a`）表示"选中"状态
 - 用绿色表示危险/删除操作（保留给 `danger` 红色）
 - 在 antd ConfigProvider 之外直接写死选中色
+- 用 primary 色高亮数据行/列表项（数据行一律 `c.border` + `c.panel`）
 
 **antd ConfigProvider 对应配置**（`academicTheme.components`）：
 ```js

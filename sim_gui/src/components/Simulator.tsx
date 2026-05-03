@@ -1397,9 +1397,9 @@ const Simulator: React.FC<SimulatorProps> = ({
           const hasDetails = ev.timeEnabled || ev.daysEnabled || ev.validRangeEnabled;
           return (
             <div key={ev.id} style={{
-              marginBottom: 5, border: `1px solid ${ev.optimizeValue ? c.primary : c.border}`,
+              marginBottom: 5, border: `1px solid ${c.border}`,
               borderRadius: 5, padding: '4px 6px',
-              background: ev.optimizeValue ? (isDarkMode ? '#0d1f10' : '#f0faf0') : c.panel,
+              background: c.panel,
             }}>
               {/* Row 1: variable + 4 toggles + delete */}
               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
