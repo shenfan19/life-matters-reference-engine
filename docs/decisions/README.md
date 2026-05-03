@@ -52,3 +52,10 @@
 | [0044](0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；pulse 插值模式；GUI 自动预填 Regimen；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
 | [0045](0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | MC 概率仿真架构：parameter 分布表达式、多 run 引擎、半透明曲线渲染、Opt 内环均值评估、种子管理 | ✅ 已实施 | 2026-04-30 |
 | [0046](0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；公式用 `step`；simulation 去掉 step/step_unit；GUI 粗化倍率控件 | ✅ 已实施 | 2026-04-30 |
+| [0047](0047-2026-05-02_sim_后端健康检查与非阻塞修复.md) | 后端健康检查与非阻塞修复 | ✅ 已实施 | 2026-05-02 |
+| [0048](0048-2026-05-02_sim_BabelManager英文Locale警告消除.md) | BabelManager 英文 Locale 警告消除 | ✅ 已实施 | 2026-05-02 |
+| [0049](0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | Optimizer 异步 Job 系统设计 | ✅ 已实施 | 2026-05-02 |
+| [0050](0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | InputEvent 扁平化与交互状态颜色规则 | ✅ 已实施 | 2026-05-04 |
+| [0051](0051-2026-05-04_sim_inputs初始化修复与模式感知.md) | inputs 初始化修复与模式感知 | ✅ 已实施 | 2026-05-04 |
+| [0052](0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 格式统一（扁平列表）& optimizer.regimen 支持；L3 重设计为五时段给药 | ✅ 已实施 | 2026-05-04 |
+| [0053](0053-2026-05-03_sim_date_range调度字段与YAML-schedule优先级修复.md) | `date_range` 日期区间字段；YAML Schedule 优先于 GUI Regimen；`_apply_regimens` 历元修复；test_banister 简化为 1 周 | ✅ 已实施 | 2026-05-03 |

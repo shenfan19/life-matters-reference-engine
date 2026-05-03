@@ -141,16 +141,17 @@ formulas:
     reference: "文献来源"
 
 simulation:
-  start_date: "YYYY-MM-DD"
-  end_date: "YYYY-MM-DD"
+  start_date: "YYYY-MM-DD"        # 仿真起始日
+  end_date:   "YYYY-MM-DD"        # 仿真结束日（含）
   # step / step_unit 已移至 metadata.step_size，此处不再声明
   output_variables: [var1, var2]
-  schedules:                      # 可选；每个 key 必须是 variables 中 type: input 的变量名
-    var_name:
-      interpolation: step | linear | pulse
-      points:
-        - {time: 25200, value: 1.5}   # time 单位：秒，从仿真起点累计
-        - {time: 43200, value: 1.8}
+  schedules:                      # 可选；扁平列表，每条对应一个 input 变量的时间事件
+    - variable: var_name          # 必须是 variables 中 type: input 的变量
+      time: "HH:MM"               # 24 小时制，触发时刻
+      value: 1.5                  # 触发时写入变量的值（pulse 模式：其他步自动为 0）
+      days: [Mon, Wed, Fri]       # 可选；三字母缩写 Mon–Sun；缺席 = 每天
+      date_range: "YYYY-MM-DD ~ YYYY-MM-DD"  # 可选；条目仅在此区间生效；缺席 = 全程
+      label: "说明"               # 可选；GUI 展示用
 ```
 
 ---
@@ -209,49 +210,110 @@ dynamics:
 
 ## simulation.schedules — 时间驱动的 input 序列
 
-`simulation.schedules` 是 `type: input` 变量的子类型，表示"随仿真时间自动变化的输入量"。
+`simulation.schedules` 是 `type: input` 变量的子类型，表示"随仿真时间自动变化的输入量"。引擎以 **pulse** 模式处理：命中时间窗口的步写入 `value`，其余步自动为 0。
+
+### 标准格式（扁平列表）
 
 ```yaml
 simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-04"
   schedules:
-    carb_intake:
-      interpolation: step    # step（阶梯保持）| linear（线性插值）
-      points:
-        - {time: 25200, value: 1.5}   # 07:00 早餐
-        - {time: 43200, value: 1.8}   # 12:00 午餐
-        - {time: 66600, value: 1.6}   # 18:30 晚餐
+    - variable: carb_intake
+      time: "07:00"
+      value: 50.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]   # 可省略，缺席 = 每天
+      date_range: "2026-01-01 ~ 2026-01-04"        # 可省略，缺席 = 全程
+      label: "早餐碳水"
+    - variable: carb_intake
+      time: "12:00"
+      value: 80.0
+      label: "午餐碳水"
+    - variable: carb_intake
+      time: "18:30"
+      value: 60.0
+      label: "晚餐碳水"
 ```
 
-**使用规则：**
+### 字段说明
 
-- `schedules` 必须在 `simulation` 下，与 `start_date` 同级，**不能放在顶层**。
-- 每个 key 必须对应 `variables` 中存在且 `type: input` 的变量。
-- `time` 单位为秒，从仿真起点（`start_date 00:00:00`）累计。
-- GUI 加载模型时会自动将 schedule points 预填入对应输入变量的 Regimen 卡片（可编辑）。
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `variable` | string | ✅ | 必须是 `variables` 中 `type: input` 的变量名 |
+| `time` | `"HH:MM"` | ✅ | 触发时刻（24 小时制） |
+| `value` | number | ✅ | 触发时写入的值 |
+| `days` | `[Mon…Sun]` | — | 三字母缩写列表；缺席 = 每天都触发 |
+| `date_range` | `"YYYY-MM-DD ~ YYYY-MM-DD"` | — | 条目仅在此日历区间内生效；缺席 = 从 `start_date` 到 `end_date` 全程 |
+| `label` | string | — | GUI 展示用说明文字 |
 
-**离散输入不写零值点（重要规则）：**
+### 多条目 vs 多周期
 
-> `type: input` 变量（进食量、给药剂量、摄入/消耗等瞬时量）在 Euler 离散步进模式下是**逐步瞬时量**，不是连续保持量。因此 schedule 中只需列出有实际输入的时刻，**不需要插入 `value: 0` 的关闭点**。
+同一变量**可以有多个条目**（如三餐），pulse 引擎在同一步内累加所有命中事件：
 
 ```yaml
-# ✅ 正确：只写非零时刻
-schedules:
-  carb_intake:
-    points:
-      - {time: 25200, value: 1.5}   # 早餐
-      - {time: 43200, value: 1.8}   # 午餐
-
-# ❌ 错误：多余的 0 值点使 schedule 臃肿且含义模糊
-schedules:
-  carb_intake:
-    points:
-      - {time: 25200, value: 1.5}
-      - {time: 28800, value: 0.0}   # 不需要
-      - {time: 43200, value: 1.8}
-      - {time: 46800, value: 0.0}   # 不需要
+# 三餐：每步最多命中一个，累加结果 = 单餐值（不同时段错开）
+# 步长 1 天时：三个条目在同一步内全部命中 → dietary_protein = 0.27+0.27+0.26 = 0.80
 ```
 
-此规则仅适用于瞬时量（进食、给药等）。连续速率类变量（如持续泵药 `infusion_rate`，预期在一段时间内保持非零）可视需要保留关闭点。
+`date_range` 用于表达**分阶段方案**（如训练周期渐进），不要用"每周重复列条目"替代：
+
+```yaml
+# ✅ 正确：用 date_range 区分阶段
+schedules:
+  - variable: training_load
+    time: "09:00"
+    value: 50.0
+    days: [Mon, Tue, Wed, Thu, Fri]
+    date_range: "2026-01-01 ~ 2026-01-28"   # 基础期 4 周
+  - variable: training_load
+    time: "09:00"
+    value: 100.0
+    days: [Mon, Tue, Wed, Thu, Fri]
+    date_range: "2026-01-29 ~ 2026-02-25"   # 强化期 4 周
+
+# ❌ 错误：逐周罗列（冗余，条目数 = 周数 × 2）
+schedules:
+  - variable: training_load
+    value: 50.0
+    date_range: "2026-01-01 ~ 2026-01-07"   # 第1周
+  - variable: training_load
+    value: 50.0
+    date_range: "2026-01-08 ~ 2026-01-14"   # 第2周（与第1周相同，无意义）
+```
+
+### 优先级规则
+
+YAML Schedule 的优先级**高于** GUI Regimen（用户在界面上填写的值）。
+
+| 来源 | 优先级 | 用途 |
+|------|--------|------|
+| `simulation.schedules`（YAML） | **最高** | 模型行为定义，作者决策 |
+| GUI Regimen（`inputEvents`） | 中（被覆盖） | 用户交互预览 |
+| 优化器 Regimen | 最高（显式抑制 schedule） | 优化搜索空间 |
+
+**建模者须知**：如果模型已在 `simulation.schedules` 定义了某变量的时序，GUI 上对该变量的手动调整仅在优化模式下（optimizeValue=true）生效。
+
+### 离散输入不写零值点
+
+> `type: input` 的瞬时量（进食、给药等）在 pulse 模式下无需插入 `value: 0` 的关闭点——未命中步自动为 0。
+
+```yaml
+# ✅ 只写非零时刻
+- variable: carb_intake
+  time: "07:00"
+  value: 50.0
+
+# ❌ 冗余的 0 值点
+- variable: carb_intake
+  time: "07:30"
+  value: 0.0    # 不需要，pulse 模式自动补零
+```
+
+例外：连续速率类变量（如持续泵药 `infusion_rate`）需要保留明确的关闭点。
+
+### 向后兼容：旧字典格式
+
+旧版 dict 格式（`{varName: {interpolation, points: [{time: 秒数, value}]}}`）在引擎中仍可解析，但不再推荐，新模型应使用扁平列表格式。
 
 ---
 
