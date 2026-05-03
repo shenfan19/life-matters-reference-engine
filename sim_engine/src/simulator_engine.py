@@ -171,17 +171,24 @@ class SimulatorEngine:
     @staticmethod
     def _apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                         sim_start_date: str = ''):
-        """在 [prev_time, next_time) 窗口内触发 Regimen 事件，将 value 写入模型变量。
+        """在 [prev_time, next_time) 窗口内触发 Regimen 事件，pulse 语义累加写入模型变量。
 
         时间约定：
           - prev_time / next_time 单位为秒（仿真已流逝时间）
-          - 事件时刻 "HH:mm" 以每日周期判断（模 86400）
-          - days [Mon..Sun] 以 int(prev_time/86400) % 7 判断星期
-          - valid_range 以 sim_start_date + 天数偏移 与起止日期比较
-        """
-        from datetime import date, timedelta, datetime
+          - 事件时刻 "HH:MM" 以每日周期判断（模 86400）
+          - days [Mon..Sun] 支持两种格式：
+              regimen 级 boolean mask（GUI 路径）
+              event 级 string list，如 ['Mon','Wed']（optimizer 路径）
+          - valid_range 以 sim_start_date + 天数偏移与起止日期比较
 
-        # 仿真起始日：优先使用模型的 start_date，回退到 1900-01-01
+        Pulse 语义：每步开始先将所有受控变量归零，再累加本步命中的事件值。
+        这与 _apply_schedules 的 pulse 模式完全一致，消除了"最后赋值覆盖"问题。
+        optimizer 路径直接调用本函数（传入 list 格式），无需独立实现。
+        """
+        from datetime import date, timedelta
+
+        _DAY_STR = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+
         try:
             _EPOCH = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
         except ValueError:
@@ -191,13 +198,21 @@ class SimulatorEngine:
         prev_sec_of_day = prev_time % 86400
         next_sec_of_day = next_time % 86400
         day_boundary_crossed = int(next_time / 86400) > prev_day_idx
+        dow = prev_day_idx % 7  # 0=Mon … 6=Sun
 
+        # ── Pulse 重置：所有受控变量本步归零 ──────────────────────────────
+        for reg in regimens:
+            var = reg.get('variable', '')
+            if var in model.variables:
+                model.set_variable_value(var, 0.0)
+
+        # ── 累加命中事件 ───────────────────────────────────────────────────
         for reg in regimens:
             variable = reg.get('variable', '')
             if variable not in model.variables:
                 continue
 
-            # 有效期检查
+            # 有效期检查（regimen 级）
             if reg.get('valid_range_enabled'):
                 sim_date = _EPOCH + timedelta(days=prev_day_idx)
                 vs, ve = reg.get('valid_start', ''), reg.get('valid_end', '')
@@ -207,16 +222,22 @@ class SimulatorEngine:
                     if ve and sim_date > date.fromisoformat(ve):
                         continue
                 except ValueError:
-                    pass  # 日期格式错误则忽略限制
+                    pass
 
-            # 执行日检查（0=Mon … 6=Sun）
+            # 执行日检查（regimen 级 boolean mask，GUI 路径）
             if reg.get('days_enabled'):
-                dow = prev_day_idx % 7
-                days_mask = reg.get('days', [True]*7)
+                days_mask = reg.get('days', [True] * 7)
                 if not (days_mask[dow] if dow < len(days_mask) else True):
                     continue
 
             for ev in reg.get('events', []):
+                # 执行日检查（event 级 string list，optimizer 路径）
+                ev_days = ev.get('days', [])
+                if ev_days:
+                    allowed = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
+                    if dow not in allowed:
+                        continue
+
                 time_str = ev.get('time', '08:00')
                 try:
                     hh, mm = map(int, time_str.split(':'))
@@ -224,18 +245,13 @@ class SimulatorEngine:
                     continue
                 ev_sec = hh * 3600 + mm * 60
 
-                # 事件是否落在当前步的时间窗口内
-                fires = False
-                if day_boundary_crossed:
-                    # 跨天：两段均检查
-                    fires = ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day
-                else:
-                    fires = prev_sec_of_day <= ev_sec < next_sec_of_day
+                fires = (ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day) \
+                    if day_boundary_crossed else (prev_sec_of_day <= ev_sec < next_sec_of_day)
 
                 if fires:
-                    value = float(ev.get('value', 0))
-                    model.set_variable_value(variable, value)
-                    logger.debug(f"Regimen 触发: {variable}={value} @ t={prev_time:.0f}s (事件时刻 {time_str})")
+                    current = model.variables[variable].value
+                    model.set_variable_value(variable, current + float(ev.get('value', 0)))
+                    logger.debug(f"Regimen 触发: {variable}+={ev.get('value',0)} @ t={prev_time:.0f}s ({time_str})")
 
     def start_session(self, model_name: str, time_hours: float, folder: Optional[str] = None,
                      step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None,

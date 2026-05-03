@@ -26,51 +26,6 @@ def _parse_condition(cond: str) -> Tuple[str, float]:
     return ('<=', 0.0)
 
 
-_DAY_MAP = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
-
-
-def _apply_regimen_events(model, regimen_events_by_var: Dict[str, List[Dict]],
-                          prev_time: float, step_size: float):
-    """Fire regimen events whose time falls in [prev_time, prev_time+step_size).
-
-    Respects optional 'days' list on each event (e.g. ['Mon', 'Wed', 'Fri']).
-    When step_size >= 86400, ev_sec is always within the window so the only
-    filter is the days mask.
-    """
-    next_time = prev_time + step_size
-    prev_sod = prev_time % 86400
-    next_sod = next_time % 86400
-    day_crossed = int(next_time / 86400) > int(prev_time / 86400)
-    day_idx = int(prev_time / 86400)
-    dow = day_idx % 7  # 0=Mon … 6=Sun
-
-    for var_name, events in regimen_events_by_var.items():
-        if var_name not in model.variables:
-            continue
-        for ev in events:
-            # Days-of-week filter (absent = every day)
-            days_filter = ev.get('days', [])
-            if days_filter:
-                allowed = {_DAY_MAP[d.lower()[:3]] for d in days_filter
-                           if d.lower()[:3] in _DAY_MAP}
-                if dow not in allowed:
-                    continue
-
-            try:
-                hh, mm = map(int, ev['time'].split(':'))
-            except Exception:
-                continue
-            ev_sec = hh * 3600 + mm * 60
-
-            if step_size >= 86400:
-                # Daily step: event always fires (time filter already covered by days)
-                fires = True
-            else:
-                fires = (ev_sec >= prev_sod or ev_sec < next_sod) if day_crossed \
-                    else (prev_sod <= ev_sec < next_sod)
-
-            if fires:
-                model.set_variable_value(var_name, float(ev['value']))
 
 
 def _eval_metric(history: List[float], metric: str) -> float:
@@ -88,31 +43,38 @@ def _eval_metric(history: List[float], metric: str) -> float:
 
 
 def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
-             step_size_sec: float, total_steps: int) -> Dict[str, List[float]]:
+             step_size_sec: float, total_steps: int,
+             sim_start_date: str = '') -> Dict[str, List[float]]:
     """Run a full simulation and return per-variable history lists.
 
-    step_size_sec: step size in SECONDS (from model.simulator['step_size']).
-    model.step() expects native units, so we divide by unit_sec internally.
-    Adds regimen variables to model.manual_overrides so the built-in YAML
-    schedule does not override the optimizer's chosen doses.
+    Uses SimulatorEngine._apply_regimens (pulse reset + accumulate) — same
+    kernel as the GUI sim path, eliminating the duplicate implementation.
     """
     from .model_structure.base import TIME_UNIT_SECONDS
+    from .simulator_engine import SimulatorEngine
+
     unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
-    native_step = step_size_sec / unit_sec  # e.g. 86400/86400 = 1.0 for day-step model
+    native_step = step_size_sec / unit_sec
 
     model.reset_simulation()
 
-    # Suppress YAML schedules for variables the optimizer controls
     if not hasattr(model, 'manual_overrides'):
         model.manual_overrides = {}
     for var_name in regimen_events_by_var:
         model.manual_overrides[var_name] = True
 
+    # Convert dict format → list format expected by the shared _apply_regimens
+    regimens_list = [
+        {'variable': var_name, 'events': evts}
+        for var_name, evts in regimen_events_by_var.items()
+    ]
+
     history: Dict[str, List[float]] = {n: [] for n in model.variables}
     for i in range(total_steps):
-        prev_t = i * step_size_sec   # seconds-based timeline for regimen timing
-        _apply_regimen_events(model, regimen_events_by_var, prev_t, step_size_sec)
-        model.step(native_step)      # native units for formula 'step' symbol
+        prev_t = i * step_size_sec
+        SimulatorEngine._apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec,
+                                        sim_start_date)
+        model.step(native_step)
         for n, v in model.variables.items():
             history[n].append(v.value)
 
@@ -246,11 +208,11 @@ def run_optimizer(simulator_engine, model_name: str,
 
     # ── simulation parameters ─────────────────────────────────────────────────
     step_size: float = float(base_model.simulator.get('step_size', 86400.0))
-    # time_hours from start_date / end_date stored in simulator block
     sim_data = base_model.simulator
+    sim_start_date: str = str(sim_data.get('start_date', ''))
     try:
         from datetime import date as _date
-        sd = str(sim_data.get('start_date', ''))
+        sd = sim_start_date
         ed = str(sim_data.get('end_date', ''))
         if not sd or not ed:
             raise ValueError("no start/end date")
@@ -302,7 +264,7 @@ def run_optimizer(simulator_engine, model_name: str,
             if param_distributions:
                 run_rng = np.random.default_rng(int(rng_master.integers(0, 2**31)))
                 SimulatorEngine._apply_parameter_sampling(m, param_distributions, rng=run_rng)
-            hist = _run_sim(m, events_map, step_size, total_steps)
+            hist = _run_sim(m, events_map, step_size, total_steps, sim_start_date)
             F_accum += np.array(_eval_F(hist, objectives))
             if n_con:
                 G_accum += np.array(_eval_G(hist, constraints))
