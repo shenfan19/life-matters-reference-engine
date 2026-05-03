@@ -217,17 +217,17 @@ simulation:
       time: "08:00"
       value: 0.27
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: "2026-01-01 ~ 2026-10-31"
       label: "早餐蛋白质"
     - variable: dietary_protein
       time: "12:00"
       value: 0.27
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: "2026-01-01 ~ 2026-10-31"
       label: "午餐蛋白质"
     - variable: dietary_protein
       time: "18:00"
       value: 0.26
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: "2026-01-01 ~ 2026-10-31"
       label: "晚餐蛋白质"
