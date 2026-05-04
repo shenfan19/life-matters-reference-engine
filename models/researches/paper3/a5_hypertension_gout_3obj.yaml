@@ -1,0 +1,74 @@
+metadata:
+  name: a5_hypertension_gout_3obj
+  paper: Paper 3 (JBI)
+  case_id: A5-P3
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    高血压+痛风 三目标扩展版（A5）——Paper 3 优化方法对照实验。
+
+    在 Paper 2 A5 基础上扩展为三目标（BP × UA × 体重），
+    用于展示 K×4 Pareto 面 vs 加权和标量优化的差异。
+
+    扩展内容：
+    - 增加第三目标：body_weight（最小化26周末体重）
+    - 对照：equal-weight 加权和（w=[1/3,1/3,1/3]）单点 vs K×4 Pareto面
+    - 展示非凸区域：同时达标（BP<130 + UA<360 + BW降>3kg）只在Pareto面特定区域
+
+    # TODO [scheduled:: 2027-06-01]
+    # 1. 运行三目标 K×4 NSGA-II
+    # 2. 运行加权和（L-BFGS-B，equal weights）
+    # 3. 3D 散点图：BP × UA × BW，标出加权和落点
+    # 4. 验证：加权和落点是否遗漏了三目标同时达标的可行区域
+  tags: [paper3, hypertension, gout, 3obj, pareto, A5, comparison]
+  references:
+    - "参见 paper2/a5_hypertension_gout.yaml 完整引用"
+  step_size:
+    value: 1
+    unit: day
+
+# TODO: 继承 paper2/a5_hypertension_gout.yaml，增加第三目标
+variables: {}
+formulas: {}
+
+optimizer:
+  enabled: true
+  method: "nsga2"
+  objectives:
+    - variable: blood_pressure
+      metric: final
+      direction: minimize
+      description: "最小化26周末收缩压"
+    - variable: uric_acid
+      metric: final
+      direction: minimize
+      description: "最小化26周末血尿酸"
+    - variable: body_weight
+      metric: final
+      direction: minimize
+      description: "最小化26周末体重（减重目标）"
+  constraints:
+    - variable: blood_pressure
+      condition: "<= 130"
+      type: hard
+    - variable: uric_acid
+      condition: "<= 360"
+      type: hard
+    - variable: caloric_deficit
+      condition: "<= 700"
+      type: hard
+  regimen:
+    variable: thiazide_dose
+    events:
+      - time: "08:00"
+        dose_bounds: [6.25, 50]
+  algorithm:
+    population_size: 150
+    n_generations: 300
+    seed: 42
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"
+  output_variables: [blood_pressure, uric_acid, body_weight]
+  schedules: []    # TODO: 从 paper2 版本复制

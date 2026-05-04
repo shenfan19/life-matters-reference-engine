@@ -120,17 +120,24 @@ class LoaderEngine:
     
     def scan_models(self, folders: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
         """
-        扫描指定文件夹中的所有模型文件（不递归），并返回它们的元数据。
+        扫描模型文件并返回元数据。
+        未指定 folders 时递归扫描整个 models 目录；指定时只扫该目录（非递归）。
         :param folders: 可选的子文件夹列表。
         :return: 一个字典，键是模型名称，值是包含模型元数据的字典。
         """
         models = {}
         base_dir = self.mods_directory
-        
-        # 如果没有提供文件夹，扫描根目录
+        _skip = {'merged', 'splited', 'output', '__pycache__', '.git', '_output'}
+
+        # 未指定文件夹时，递归收集整个 models 目录下的所有子目录
         if not folders:
             folders = [None]
-        
+            for root, dirs, _ in os.walk(base_dir):
+                dirs[:] = [d for d in dirs if d not in _skip]
+                for d in dirs:
+                    rel = os.path.relpath(os.path.join(root, d), base_dir).replace('\\', '/')
+                    folders.append(rel)
+
         # 遍历每个文件夹
         for folder in folders:
             search_dir = os.path.join(base_dir, folder) if folder else base_dir

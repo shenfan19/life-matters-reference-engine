@@ -189,8 +189,6 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   const visible = useMemo(() => {
     const q = search.toLowerCase();
     return allNodes.filter(n => {
-      // Only show components/ and scenarios/ subtrees
-      if (!n.key.startsWith('components') && !n.key.startsWith('scenarios')) return false;
       // Collapse check
       const parts = n.key.split('/');
       for (let i = 1; i < parts.length; i++)

@@ -1,0 +1,76 @@
+metadata:
+  name: a4_ckd_protein_pareto
+  paper: Paper 3 (JBI)
+  case_id: A4-P3
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    CKD 蛋白质-肌肉权衡 深化版（A4）——Paper 3 优化方法对照实验。
+
+    在 Paper 2 A4 基础上扩展，用于 K×4 vs step-by-step vs 静态指南的三方法比较。
+
+    扩展内容（相比 paper2/a4_ckd_protein.yaml）：
+    - 增大种群和代数（population=150, generations=300）提供完整 Pareto 前沿
+    - 加入 CKD 4期变体（GFR_initial=25）用于分期对比
+    - 对照组配置：step-by-step（T×N，d=364）在注释中说明
+    - 层3验证点：指南静态方案（0.7 g/kg/day）标注在前沿图上
+
+    # TODO [scheduled:: 2027-06-01]
+    # 1. 运行本文件，获得 K×4 Pareto 前沿（hypervolume = HV_k4）
+    # 2. 配置 step-by-step 对照（d=364），在相同时间预算内运行
+    # 3. 比较 HV 指标（预期 K×4 HV > 2× step-by-step HV）
+    # 4. 输出 CKD 3期 + 4期分层 Pareto 前沿图
+  tags: [paper3, ckd, protein, muscle, A4, pareto, comparison, K4]
+  references:
+    - "参见 paper2/a4_ckd_protein.yaml 完整引用"
+    - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 继承 paper2/a4_ckd_protein.yaml，仅修改优化配置 ──────────────────────────
+# TODO: 实现 imports: 机制后改为 imports: [paper2/a4_ckd_protein]
+# 当前：复制变量和公式，仅优化配置不同
+
+variables: {}   # TODO: 从 paper2/a4_ckd_protein.yaml 继承
+formulas: {}    # TODO: 从 paper2/a4_ckd_protein.yaml 继承
+
+optimizer:
+  enabled: true
+  method: "nsga2"
+  objectives:
+    - variable: muscle_mass
+      metric: final
+      direction: maximize
+    - variable: GFR
+      metric: final
+      direction: maximize
+  constraints:
+    - variable: BUN
+      condition: "<= 20"
+      type: hard
+    - variable: GFR
+      condition: ">= 30"
+      type: hard
+  regimen:
+    variable: dietary_protein
+    events:
+      - time: "08:00"
+        dose_bounds: [0.2, 0.4]
+      - time: "12:00"
+        dose_bounds: [0.2, 0.4]
+      - time: "18:00"
+        dose_bounds: [0.2, 0.4]
+  mc:
+    enabled: true
+    sim_runs: 30
+  algorithm:
+    population_size: 150       # 更大种群，获得更完整 Pareto 前沿
+    n_generations: 300
+    seed: 42
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables: [GFR, muscle_mass, BUN, dietary_protein]
+  schedules: []                # TODO: 从 paper2 版本复制

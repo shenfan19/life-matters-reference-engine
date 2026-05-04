@@ -126,6 +126,12 @@ function drawChartOnCtx(
     const lbl = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
     ctx.fillText(lbl, PAD.l - 4, y + 3);
   }
+  const fmtX = (t: number): string => {
+    if (tRange <= 172800)  return `${Math.round(t / 3600)}h`;       // ≤ 2d → hours
+    if (tRange <= 1209600) return `${Math.round(t / 86400)}d`;      // ≤ 14d → days
+    if (tRange <= 31536000) return `${Math.round(t / 604800)}w`;    // ≤ 1yr → weeks
+    return `${Math.round(t / 2592000)}mo`;                           // > 1yr → months
+  };
   for (let i = 0; i <= 6; i++) {
     const x = PAD.l + (plotW / 6) * i;
     ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
@@ -133,7 +139,7 @@ function drawChartOnCtx(
     const t = tMin + (tRange / 6) * i;
     ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
     ctx.font = '9px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(`${(t / 3600).toFixed(0)}h`, x, H - 6);
+    ctx.fillText(fmtX(t), x, H - 6);
   }
 
   // Draw semi-transparent individual run lines (MC fan) — each run gets a distinct hue
@@ -496,7 +502,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
 
   // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<'setup' | 'plot' | 'opt' | 'report'>('setup');
+  const [centerTab, setCenterTab] = useState<'intro' | 'setup' | 'opt' | 'plot' | 'report'>('intro');
 
   // ── report tab ───────────────────────────────────────────────────────────────
   const ALL_REPORT_SECTIONS = [
@@ -520,7 +526,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['scene', 'inputs']));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
@@ -969,22 +975,16 @@ const Simulator: React.FC<SimulatorProps> = ({
         });
         const modsNode = result.data.find((n: any) => n.key === 'models');
         if (modsNode?.children) {
-          const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
-          const mNode = modsNode.children.find((n: any) => n.key === 'components');
-          const scenarioItems: DataNode[] = sNode ? convert(sNode.children || []) : [];
-          const modelItems: DataNode[] = mNode ? convert(mNode.children || []) : [];
-          const combined: DataNode[] = [
-            ...(modelItems.length ? [{
-              key: '__group_components',
-              title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>COMPONENTS</span>,
-              isLeaf: false, selectable: false, icon: null, children: modelItems,
-            } as DataNode] : []),
-            ...(scenarioItems.length ? [{
-              key: '__group_scenarios',
-              title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>SCENARIOS</span>,
-              isLeaf: false, selectable: false, icon: null, children: scenarioItems,
-            } as DataNode] : []),
-          ];
+          const combined: DataNode[] = modsNode.children
+            .flatMap((child: any) => {
+              const items = convert(child.children || []);
+              if (!items.length) return [];
+              return [{
+                key: `__group_${child.key}`,
+                title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>{child.key.toUpperCase()}</span>,
+                isLeaf: false, selectable: false, icon: null, children: items,
+              } as DataNode];
+            });
           setStoryTree(combined);
         }
       }
@@ -1015,6 +1015,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       setLoadedMods(prev => ({ ...prev, [filePath]: model }));
       setConfirmedModel(model);
       onModelSelect(model);
+      setCenterTab('intro');
     } catch (e: any) {
       message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
     } finally {
@@ -1583,6 +1584,69 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
 
+  const renderIntroTab = () => {
+    const meta = selectedModel?.content?.metadata;
+    const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+        {!selectedModel ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty') || '请选择一个模型'} style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            {/* Model header */}
+            <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${c.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: c.text, marginBottom: 6 }}>
+                {meta?.name || selectedKey?.split('/').pop()?.replace(/\.ya?ml$/i, '')}
+              </div>
+              {meta?.description && (
+                <div style={{ color: c.textSec, lineHeight: 1.6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                  {String(meta.description).trim()}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+                {meta?.updated && <span style={{ color: c.textMute, fontSize: 11, fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
+                {meta?.author && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.author}</span>}
+                {meta?.case_id && <span style={{ color: c.primary, fontSize: 11, fontFamily: 'monospace' }}>{meta.case_id}</span>}
+              </div>
+            </div>
+
+            {/* Variables */}
+            <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, marginBottom: 8 }}>
+              {t('sim.tabs.variables') || 'Variables'}
+            </div>
+            {renderVarsContent()}
+
+            {/* Formulas */}
+            {Object.keys(formulas).length > 0 && (
+              <>
+                <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, margin: '14px 0 8px' }}>
+                  {t('sim.tabs.formulas') || 'Formulas'}
+                </div>
+                {renderFormulasContent()}
+              </>
+            )}
+
+            {/* References */}
+            {refs.length > 0 && (
+              <>
+                <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, margin: '14px 0 8px' }}>
+                  References
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {refs.map((r, i) => (
+                    <div key={i} style={{ fontSize: 12, color: c.textSec, lineHeight: 1.5, paddingLeft: 10, borderLeft: `2px solid ${c.border}` }}>
+                      {r}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   const renderOptContent = () => {
     const hasModelOpt = !!(selectedModel?.content?.optimizer?.enabled !== false && selectedModel?.content?.optimizer);
     return (
@@ -1668,7 +1732,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const startY = e.clientY;
     const container = leftPanelRef.current;
     if (!container) return;
-    const allKeys = ['inputs', 'vars', 'formulas', ...(mode === 'opt' ? ['opt'] : [])];
+    const allKeys = ['inputs', ...(mode === 'opt' ? ['opt'] : [])];
     const availableH = container.clientHeight - SECTION_H * allKeys.length;
     const openArr = allKeys.filter(k => openSections.has(k));
     const totalW = openArr.reduce((s, k) => s + (sectionWeights[k] || 1), 0);
@@ -1768,35 +1832,22 @@ const Simulator: React.FC<SimulatorProps> = ({
                 </div>
                 <Button
                   size="small" type="primary" style={{ marginTop: 8, background: c.primary, borderColor: c.primary }}
-                  onClick={async () => {
-                    if (!selectedModel || !optResult?.best_x) return;
-                    // Build input_params from best_x + regimen_variable
-                    const regVar = optResult.regimen_variable;
-                    const bestVal = optResult.best_x?.[0]; // first decision var
-                    const inputParams2: Record<string, number> = {};
-                    if (regVar && bestVal != null) inputParams2[regVar] = bestVal;
-                    // Start simulation with these params
-                    const modelKey = selectedModel.key || selectedModel.content?.metadata?.name || '';
-                    try {
-                      const resp = await fetch(`${API_BASE}/simulation/start`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          model_name: modelKey, folder: null,
-                          time_hours: dateToHours(simStartDate, simEndDate),
-                          step_size: stepValue * STEP_UNITS[stepUnit],
-                          input_params: inputParams2,
-                        }),
-                      });
-                      const result = await resp.json();
-                      if (result.success && result.data) {
-                        set('sessionId', result.data.session_id);
-                        set('totalSteps', result.data.total_steps);
-                        setCenterTab('plot');
-                        runBatch(result.data.session_id);
-                      } else {
-                        message.error(result.error || '启动失败');
+                  onClick={() => {
+                    if (!optResult?.best_x?.length) return;
+                    // Map best_x values back into the optimized inputEvents (sequential match)
+                    const regVar: string | undefined = optResult.regimen_variable;
+                    const bestX: number[] = optResult.best_x;
+                    let xIdx = 0;
+                    setInputEvents((prev: InputEvent[]) => prev.map(ev => {
+                      if (regVar && ev.variable === regVar && ev.optimizeValue) {
+                        const val = bestX[xIdx++];
+                        return val != null ? { ...ev, value: Number(val.toFixed(4)) } : ev;
                       }
-                    } catch (e: any) { message.error(e.message); }
+                      return ev;
+                    }));
+                    setMode('sim');
+                    setCenterTab('setup');
+                    message.success('已填入最优解，请检查参数后运行仿真');
                   }}
                 >
                   以此解运行仿真 →
@@ -2020,9 +2071,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const inputsVarCount = inputEvents.length;
   const leftTabs = [
-    { key: 'inputs',   label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`,                    content: renderInputsContent() },
-    { key: 'vars',     label: `${t('sim.tabs.variables')}${stateVars.length > 0 ? ` (${stateVars.length})` : ''}`,              content: renderVarsContent() },
-    { key: 'formulas', label: `${t('sim.tabs.formulas')}${Object.keys(formulas).length > 0 ? ` (${Object.keys(formulas).length})` : ''}`, content: renderFormulasContent() },
+    { key: 'inputs', label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`, content: renderInputsContent() },
     ...(mode === 'opt' ? [{ key: 'opt', label: t('sim.tabs.optimizer'), content: renderOptContent() }] : []),
   ];
 
@@ -2040,7 +2089,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           onChange={v => {
             const newMode = v as 'sim' | 'opt';
             setMode(newMode);
-            if (newMode === 'sim' && centerTab === 'opt') setCenterTab('plot');
           }}
           options={[{ label: t('sim.mode.simulation'), value: 'sim' }, { label: t('sim.mode.optimization'), value: 'opt' }]}
           disabled={status === 'running' || status === 'paused' || status === 'completed'}
@@ -2252,29 +2300,46 @@ const Simulator: React.FC<SimulatorProps> = ({
             flexShrink: 0, paddingLeft: 8,
           }}>
             {([
-              { key: 'setup',  label: t('sim.tab.setup')   || '⚙ 配置' },
+              { key: 'intro',  label: t('sim.tab.intro')   || '模型' },
+              { key: 'setup',  label: t('sim.tab.setup')   || '配置' },
+              { key: 'opt',    label: t('sim.tab.opt')     || 'Pareto' },
               { key: 'plot',   label: t('sim.tab.plot')    || '图表' },
-              ...(mode === 'opt' ? [{ key: 'opt', label: 'Opt' }] : []),
               { key: 'report', label: t('sim.tab.report')  || '报告' },
-            ] as { key: 'setup' | 'plot' | 'opt' | 'report'; label: string }[]).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setCenterTab(tab.key)}
-                style={{
-                  padding: '6px 16px', border: 'none', cursor: 'pointer',
-                  background: 'transparent',
-                  color: centerTab === tab.key ? c.primary : c.textMute,
-                  fontWeight: centerTab === tab.key ? 600 : 400,
-                  borderBottom: centerTab === tab.key ? `2px solid ${c.primary}` : '2px solid transparent',
-                  marginBottom: -1,
-                  outline: 'none',
-                  transition: 'all 0.12s',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            ] as { key: 'intro' | 'setup' | 'opt' | 'plot' | 'report'; label: string }[]).map(tab => {
+              const isActive = centerTab === tab.key;
+              // opt tab in sim mode: visible but muted (review-only, not interactive for opt ops)
+              const isOptReview = tab.key === 'opt' && mode === 'sim';
+              const color = isActive
+                ? (isOptReview ? c.textSec : c.primary)
+                : c.textMute;
+              const underline = isActive
+                ? (isOptReview ? `2px solid ${c.border}` : `2px solid ${c.primary}`)
+                : '2px solid transparent';
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setCenterTab(tab.key)}
+                  style={{
+                    padding: '6px 16px', border: 'none', cursor: 'pointer',
+                    background: 'transparent',
+                    color, fontWeight: isActive ? (isOptReview ? 500 : 600) : 400,
+                    borderBottom: underline,
+                    marginBottom: -1, outline: 'none', transition: 'all 0.12s',
+                    opacity: tab.key === 'opt' && mode === 'sim' && !isActive ? 0.45 : 1,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Intro tab content */}
+          {centerTab === 'intro' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {renderIntroTab()}
+            </div>
+          )}
 
           {/* Setup tab content */}
           {centerTab === 'setup' && (

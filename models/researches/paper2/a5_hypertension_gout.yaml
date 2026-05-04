@@ -1,0 +1,206 @@
+metadata:
+  name: a5_hypertension_gout
+  paper: Paper 2 (JAMIA)
+  case_id: A5
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    高血压合并痛风药物冲突（A5）——Paper 2 核心临床验证案例。
+
+    临床冲突：ESC高血压指南（Williams 2018）推荐噻嗪类利尿剂（HCTZ）一线用药，
+    ACR痛风指南（FitzGerald 2020）指出HCTZ是痛风发作最常见的可改变风险因素。
+    同时，减重（两个指南均推荐）在快速脂肪动员期间经酮体竞争机制升高尿酸。
+
+    三个耦合状态变量：血压（BP）× 尿酸（UA）× 体重（BW）。
+    Opt：双目标 Pareto（BP < 130 mmHg × UA < 360 μmol/L），
+    决策变量为 HCTZ剂量 + 别嘌醇剂量（可选）+ 热量缺口。
+
+    # TODO [scheduled:: 2026-12-01] 公式和参数待完整填入，参照 Law 2009 / Choi 2012
+  tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt]
+  references:
+    - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"
+    - "FitzGerald JD et al. (2020) 2020 ACR Guideline for Management of Gout. Arthritis Care Res 72(6):744-760"
+    - "Law MR et al. (2009) Blood pressure lowering drugs meta-analysis. BMJ 338:b1665"
+    - "Choi HK et al. (2012) Diuretics and risk of gout in women. Ann Rheum Dis 71(5):723-727"
+    - "Dessein PH et al. (2000) Weight loss and serum urate. Ann Rheum Dis 59(7):539-543"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ── TODO: 参数值待从文献精确提取 ────────────────────────────────────────
+variables:
+  blood_pressure:
+    description: 收缩压（mmHg），目标 <130（ESC 2018）
+    value: 155.0
+    unit: mmHg
+    type: state
+    bounds: [80, 220]
+
+  uric_acid:
+    description: 血尿酸（μmol/L），痛风发作阈值 360，目标 <360（ACR 2020）
+    value: 420.0
+    unit: μmol/L
+    type: state
+    bounds: [100, 800]
+
+  body_weight:
+    description: 体重（kg），减重目标影响尿酸瞬时峰值
+    value: 85.0
+    unit: kg
+    type: state
+    bounds: [40, 200]
+
+  thiazide_dose:
+    description: HCTZ 日剂量（mg/day），决策变量
+    value: 25.0
+    unit: mg/day
+    type: input
+
+  caloric_deficit:
+    description: 每日热量缺口（kcal/day），约束 ≤700 防止尿酸峰值
+    value: 500.0
+    unit: kcal/day
+    type: input
+
+  allopurinol_dose:
+    description: 别嘌醇日剂量（mg/day），可选用药，决策变量
+    value: 0.0
+    unit: mg/day
+    type: input
+
+  # ── 参数 ─────────────────────────────────────────────────────────────────────
+  lambda_T:
+    description: HCTZ 降压效力（Law 2009 meta-analysis）
+    value: 0.32
+    unit: mmHg/mg/day
+    type: parameter
+
+  lambda_W:
+    description: 体重每减1kg对应BP降幅（Neter 2003）
+    value: 1.1
+    unit: mmHg/kg
+    type: parameter
+
+  gamma_T:
+    description: HCTZ 对尿酸清除的抑制系数（Choi 2012）
+    value: 0.0018
+    unit: 1/mg
+    type: parameter
+
+  psi_ketone:
+    description: 快速减重引发尿酸峰值系数（Dessein 2000）
+    value: 30.0
+    unit: "μmol/L per kg/wk"
+    type: parameter
+
+  kappa_A:
+    description: 别嘌醇降尿酸系数
+    value: 0.6
+    unit: "μmol/L per mg/day"
+    type: parameter
+
+  ua_baseline_prod:
+    description: 尿酸基础产生率
+    value: 200.0
+    unit: μmol/day
+    type: parameter
+
+# ── 动力学公式 ── TODO: 完整公式待填入 ────────────────────────────────────────
+formulas:
+  bp_dynamics:
+    description: "血压：HCTZ降压 + 体重减轻降压 - 自然反弹"
+    condition: true
+    priority: 6
+    dynamics:
+      blood_pressure: >
+        blood_pressure - (lambda_T * thiazide_dose + lambda_W * (caloric_deficit / 7700)) * step
+        - 0.04 * (blood_pressure - 155) * step
+
+  ua_dynamics:
+    description: >
+      尿酸：基础产生 + HCTZ抑制清除 - 别嘌醇抑制产生 - 自然清除。
+      TODO: 加入减重酮体峰值效应（暂缺）
+    condition: true
+    priority: 5
+    dynamics:
+      uric_acid: >
+        uric_acid + (ua_baseline_prod
+        - 0.001 * uric_acid * (1 - gamma_T * thiazide_dose)
+        - kappa_A * allopurinol_dose) * step
+
+  weight_dynamics:
+    description: "体重：热量缺口驱动减重（7700 kcal/kg）"
+    condition: true
+    priority: 4
+    dynamics:
+      body_weight: body_weight - (caloric_deficit / 7700) * step
+
+# ── 优化设置 ──────────────────────────────────────────────────────────────────
+optimizer:
+  enabled: true
+  method: "nsga2"
+
+  objectives:
+    - variable: blood_pressure
+      metric: final
+      direction: minimize
+      description: "最小化26周末收缩压"
+    - variable: uric_acid
+      metric: final
+      direction: minimize
+      description: "最小化26周末血尿酸"
+
+  constraints:
+    - variable: blood_pressure
+      condition: "<= 130"
+      type: hard
+      description: "ESC目标：收缩压 ≤ 130 mmHg"
+    - variable: uric_acid
+      condition: "<= 360"
+      type: hard
+      description: "ACR目标：尿酸 ≤ 360 μmol/L"
+    - variable: caloric_deficit
+      condition: "<= 700"
+      type: hard
+      description: "减重速率约束：≤700 kcal/day 防尿酸峰值"
+
+  regimen:
+    variable: thiazide_dose
+    description: "优化 HCTZ 剂量（+别嘌醇+热量缺口）"
+    events:
+      - time: "08:00"
+        dose_bounds: [6.25, 50]
+        label: "HCTZ 晨服剂量（mg）"
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    description: "MC 采样个体尿酸清除能力（FEUA），识别哪类患者需要别嘌醇"
+
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42
+
+# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"        # 26 周 = 182 天
+  output_variables:
+    - blood_pressure
+    - uric_acid
+    - body_weight
+    - thiazide_dose
+  schedules:
+    - variable: thiazide_dose
+      time: "08:00"
+      value: 25.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "HCTZ 25mg 晨服（标准剂量基线）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 500.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "每日热量缺口"

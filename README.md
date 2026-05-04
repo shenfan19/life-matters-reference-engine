@@ -104,6 +104,7 @@ cd game && npm install && npm run dev       # http://localhost:5174
 | [docs/model_requirements.md](docs/model_requirements.md) | 建模数据标准（description、reference 强制要求） |
 | [docs/sim_design.md](docs/sim_design.md) | Simulator 软件设计（Regimen K×4、会话管理） |
 | [docs/sim_impl.md](docs/sim_impl.md) | Simulator 实现细节 |
+| [docs/validation.md](docs/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
 | [docs/opt_impl.md](docs/opt_impl.md) | Optimizer 实现细节（NSGA-II、scipy、MC 内嵌） |
 | [docs/game_design.md](docs/game_design.md) | 游戏机制设计 |
 | [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
