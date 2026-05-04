@@ -1,0 +1,222 @@
+metadata:
+  name: a6_smoking_stress
+  paper: Paper 3 (JBI)
+  case_id: A6
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    工作压力 × 吸烟 × 精神健康（A6）——Paper 3 新增三目标跨域案例。
+
+    临床冲突：吸烟短期通过尼古丁-多巴胺机制缓解工作压力，维持效率；
+    但戒烟触发戒断期（2–4周）皮质醇升高、专注力下降，工作产出降低15–25%；
+    长期积累肺损伤（FEV1下降）和心血管风险。
+
+    四子模型（跨尺度）：
+    - 尼古丁-多巴胺（小时级）：吸烟→多巴胺→即时压力缓解
+    - 皮质醇-工作产出（天级）：工作压力→皮质醇→工作效率；尼古丁抑制皮质醇
+    - 肺损伤（年级）：累积吸烟→FEV1下降；戒烟后部分恢复
+    - 健康-经济综合指数（月级）：整合工作产出+肺功能+心血管风险
+
+    Opt 目标（三目标 K×4）：
+    - 最大化5年健康-经济综合指数
+    - 最大化戒断期最低工作产出（不可低于阈值）
+    - 最大化5年末FEV1
+
+    决策变量（K×4 Regimen）：
+    - 吸烟计划（每日时刻×支数×执行日）
+    - 戒断日期（有效期结束日 = 戒烟时机）
+    - 减量方式（阶梯减量 vs 直接戒断）
+
+    # TODO [scheduled:: 2027-06-01]
+    # 参数来源待收集：
+    # - 尼古丁药代动力学：Feyerabend 1985（血浆尼古丁半衰期 6h）
+    # - 肺功能下降：Fletcher & Peto 1977（每日1包烟FEV1下降0.008L/年）
+    # - 戒断期工作损失：Hughes 2003（15–25%工作产出降低，2–4周持续）
+    # - 皮质醇-尼古丁：Heishman 2010（meta-analysis）
+  tags: [paper3, smoking, stress, mental_health, A6, 3obj, multimodel, TODO]
+  references:
+    - "Feyerabend C et al. (1985) Nicotine absorption and metabolism. Clin Pharmacol Ther 38(1):113-121"
+    - "Fletcher CM & Peto R (1977) Natural history of chronic airflow obstruction. BMJ 1(6077):1645-1648"
+    - "Heishman SJ, Kleykamp BA, Singleton EG (2010) Meta-analysis: acute effects of nicotine. Psychopharmacology 210(4):453-469"
+    - "Hughes JR et al. (2003) DSM/ICD nicotine dependence. Drug Alcohol Depend 70(3):323-335"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ── TODO: 所有参数值待文献确认 ─────────────────────────────────────────
+variables:
+  nicotine_plasma:
+    description: 血浆尼古丁浓度（ng/mL），t½ ≈ 6h（Feyerabend 1985）
+    value: 0.0
+    unit: ng/mL
+    type: state
+    bounds: [0, 50]
+
+  dopamine_level:
+    description: 多巴胺相对水平（归一化，基线=1.0）
+    value: 1.0
+    unit: AU
+    type: state
+    bounds: [0, 3]
+
+  cortisol_level:
+    description: 皮质醇水平（相对于基线，基线=1.0）
+    value: 1.0
+    unit: AU
+    type: state
+    bounds: [0, 5]
+
+  work_output:
+    description: 日工作产出（基线=1.0，戒断期降至0.75–0.85）
+    value: 1.0
+    unit: AU
+    type: state
+    bounds: [0, 2]
+
+  fev1:
+    description: 第一秒用力呼气量（L，正常成年男性约3.5L）
+    value: 3.5
+    unit: L
+    type: state
+    bounds: [0.5, 6]
+
+  health_economic_index:
+    description: 5年健康-经济综合指数（工作产出+肺功能+心血管风险加权）
+    value: 1.0
+    unit: AU
+    type: state
+    bounds: [0, 2]
+
+  cigarettes_per_day:
+    description: 每日吸烟支数（由 Regimen 驱动，戒烟后=0）
+    value: 20.0
+    unit: 支/day
+    type: input
+
+  work_pressure:
+    description: 工作压力指数（外部输入，0–1，由场景设定）
+    value: 0.7
+    unit: AU
+    type: parameter
+
+  # ── 参数 ── TODO: 精确值待填入 ─────────────────────────────────────────────
+  k_nic:
+    description: 尼古丁清除速率常数（t½=6h → k = ln2/6 ≈ 0.115/h，换算为/day）
+    value: 2.77
+    unit: 1/day
+    type: parameter
+
+  eta_abs:
+    description: 每支烟尼古丁吸收量（Feyerabend 1985）
+    value: 1.8
+    unit: ng/mL
+    type: parameter
+
+  alpha_DA:
+    description: 尼古丁诱导多巴胺升高系数（TODO）
+    value: 0.45
+    unit: AU/(ng/mL)
+    type: parameter
+
+  delta_fev1_smk:
+    description: 每日每包烟FEV1下降量（Fletcher & Peto 1977）
+    value: 0.0002
+    unit: L/day
+    type: parameter
+
+  delta_fev1_age:
+    description: 年龄性自然FEV1下降（0.025L/year → per day）
+    value: 0.0000685
+    unit: L/day
+    type: parameter
+
+# ── 动力学公式 ── TODO: 公式待细化，跨尺度耦合待实现 ───────────────────────────
+formulas:
+  nicotine_dynamics:
+    description: "尼古丁：吸烟摄入 - 自然清除（t½=6h，日步长近似）"
+    condition: true
+    priority: 7
+    dynamics:
+      nicotine_plasma: nicotine_plasma + (eta_abs * cigarettes_per_day - k_nic * nicotine_plasma) * step
+
+  dopamine_dynamics:
+    description: "多巴胺：尼古丁刺激升高 - 自然回落至基线"
+    condition: true
+    priority: 6
+    dynamics:
+      dopamine_level: dopamine_level + (alpha_DA * nicotine_plasma / (4 + nicotine_plasma) - 0.5 * (dopamine_level - 1.0)) * step
+
+  cortisol_dynamics:
+    description: "皮质醇：工作压力驱动升高 - 多巴胺抑制 - 自然回落"
+    condition: true
+    priority: 5
+    dynamics:
+      cortisol_level: cortisol_level + (0.3 * work_pressure - 0.2 * dopamine_level - 0.1 * (cortisol_level - 1.0)) * step
+
+  work_output_dynamics:
+    description: "工作产出：受皮质醇压制（戒断期皮质醇高）"
+    condition: true
+    priority: 4
+    dynamics:
+      work_output: 1.0 - 0.3 * max(0, cortisol_level - 1.5)
+
+  fev1_decline:
+    description: "FEV1：吸烟加速下降 + 年龄性下降（戒烟后只剩年龄性下降）"
+    condition: true
+    priority: 3
+    dynamics:
+      fev1: fev1 - (delta_fev1_smk * cigarettes_per_day + delta_fev1_age) * step
+
+# ── 优化设置 ──────────────────────────────────────────────────────────────────
+optimizer:
+  enabled: true
+  method: "nsga2"
+  objectives:
+    - variable: fev1
+      metric: final
+      direction: maximize
+      description: "最大化5年末FEV1（肺功能保留）"
+    - variable: work_output
+      metric: min
+      direction: maximize
+      description: "最大化戒断期最低工作产出"
+    - variable: health_economic_index
+      metric: final
+      direction: maximize
+      description: "最大化5年健康-经济综合指数"
+  constraints:
+    - variable: work_output
+      condition: ">= 0.75"
+      type: hard
+      description: "戒断期工作产出不低于75%基线"
+  regimen:
+    variable: cigarettes_per_day
+    description: "优化戒烟时机和减量策略"
+    events:
+      - time: "08:00"
+        dose_bounds: [0, 20]
+        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        label: "每日吸烟量（戒烟后归零）"
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42
+
+# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+# 5年 = 1826 天（日步长对年级肺功能仍合理，跨尺度近似）
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2030-12-31"
+  output_variables:
+    - nicotine_plasma
+    - work_output
+    - fev1
+    - cigarettes_per_day
+  schedules:
+    # 基线：每天20支（1包），在某个日期戒断（由 opt 决定有效期结束）
+    - variable: cigarettes_per_day
+      time: "09:00"
+      value: 20.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"   # TODO: opt 决定结束日期
+      label: "吸烟计划（Regimen有效期结束=戒烟日）"

@@ -1,17 +1,19 @@
 metadata:
-  name: test_ckd_protein
-  updated: 2026-05-01
-  author: LM Test
+  name: a4_ckd_protein
+  paper: Paper 2 (JAMIA)
+  case_id: A4
+  updated: 2026-05-04
+  author: TODO:AUTHOR
   description: >
-    CKD 蛋白质-肌肉权衡 MC + Opt 测试场景（简化版）。
+    CKD 蛋白质-肌肉权衡（A4）——Paper 2 核心临床验证案例。
     三个耦合状态变量（GFR、肌肉质量、血尿素氮）+ 饮食蛋白质输入。
     MC 参数：alpha（蛋白质对 GFR 的损伤敏感性）和 mu_s（肌肉合成效率），
     个体差异±25%，多条曲线在第 10–20 周显著分叉。
     52 周仿真，日步长，展示 KDIGO 2020 指南已承认的临床空白：
     低蛋白保护肾功能但加速肌少症，低到一定程度后 GFR 仍无法阻止下降。
     Opt 目标：双目标 Pareto（最大化52周末肌肉质量 × 最大化GFR），
-    决策变量为每日蛋白质分配方案（三餐分配比例及总量）。
-  tags: [test, ckd, protein, muscle, GFR, mc, opt]
+    决策变量为每日蛋白质三餐分配方案。
+  tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4]
   references:
     - "KDIGO 2020 Clinical Practice Guideline §3.1.13 Grade 2C"
     - "Carrero JJ et al. (2013) Etiology of PEW in CKD. J Ren Nutr 23(2):77-90"
@@ -111,8 +113,6 @@ variables:
     type: parameter
 
 # ── 动力学公式 ─────────────────────────────────────────────────────────────────
-# step_size = 1 day，所有系数均为 per-day 速率
-# 蛋白质安全阈值：KDIGO 下限 0.6 g/kg/day
 formulas:
   gfr_decline:
     description: >
@@ -145,19 +145,17 @@ formulas:
       BUN: BUN + (sigma_urea * dietary_protein * body_weight - 0.0015 * GFR * BUN) * step
 
 # ── 优化设置 ──────────────────────────────────────────────────────────────────
-# Opt：双目标 Pareto
-# 模拟 KDIGO 2020 §3.1.13 指南空白：低蛋白 vs 保肌肉的权衡
 optimizer:
   enabled: true
   method: "nsga2"
 
   objectives:
     - variable: muscle_mass
-      metric: final               # 52 周末肌肉质量
+      metric: final
       direction: maximize
       description: "最大化52周末骨骼肌质量（防肌少症）"
     - variable: GFR
-      metric: final               # 52 周末 GFR
+      metric: final
       direction: maximize
       description: "最大化52周末 GFR（减缓肾功能衰退）"
 
@@ -165,11 +163,11 @@ optimizer:
     - variable: BUN
       condition: "<= 20"
       type: hard
-      description: "血尿素氮约束：BUN ≤ 20 mg/dL（蛋白质不过量）"
+      description: "血尿素氮约束：BUN ≤ 20 mg/dL"
     - variable: GFR
       condition: ">= 30"
       type: hard
-      description: "GFR 下限：不得进入 CKD 4 期（<30 mL/min/1.73m²）"
+      description: "GFR 下限：不得进入 CKD 4 期"
     - variable: dietary_protein
       condition: ">= 0.6"
       type: hard
@@ -177,11 +175,11 @@ optimizer:
 
   regimen:
     variable: dietary_protein
-    description: "优化每日蛋白质摄入量（g/kg/day），KDIGO 推荐范围内搜索"
+    description: "优化每日三餐蛋白质分配（g/kg/day）"
     events:
       - time: "08:00"
         dose_bounds: [0.2, 0.4]
-        label: "早餐蛋白质（g/kg/day 等效）"
+        label: "早餐蛋白质"
       - time: "12:00"
         dose_bounds: [0.2, 0.4]
         label: "午餐蛋白质"
@@ -191,43 +189,39 @@ optimizer:
 
   mc:
     enabled: true
-    sim_runs: 12
-    description: >
-      MC 采样 alpha（GFR 对蛋白质损伤敏感性）、mu_s（肌肉合成效率）、mu_u（尿毒症分解系数）。
-      三参数同时变化，展示最优蛋白质方案在不同个体中的差异（敏感型 vs 耐受型肾功能）。
+    sim_runs: 20
+    description: "MC 采样 alpha、mu_s、mu_u，展示个体间最优蛋白质方案的差异"
 
   algorithm:
-    population_size: 80
-    n_generations: 150
+    population_size: 100
+    n_generations: 200
     seed: 42
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
-# 52 周 = 364 天，日步长，展示慢性进展与权衡
 simulation:
   start_date: "2026-01-01"
-  end_date:   "2026-12-31"        # 364 天
+  end_date:   "2026-12-31"        # 52 周 = 364 天
   output_variables:
     - GFR
     - muscle_mass
     - BUN
     - dietary_protein
   schedules:
-    # 每日三餐，52 周全程。三餐脉冲相加 = 0.80 g/kg/day（日步长引擎累加）
     - variable: dietary_protein
       time: "08:00"
       value: 0.27
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-10-31"
+      date_range: "2026-01-01 ~ 2026-12-31"
       label: "早餐蛋白质"
     - variable: dietary_protein
       time: "12:00"
       value: 0.27
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-10-31"
+      date_range: "2026-01-01 ~ 2026-12-31"
       label: "午餐蛋白质"
     - variable: dietary_protein
       time: "18:00"
       value: 0.26
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-10-31"
+      date_range: "2026-01-01 ~ 2026-12-31"
       label: "晚餐蛋白质"

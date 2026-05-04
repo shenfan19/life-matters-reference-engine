@@ -1,0 +1,151 @@
+metadata:
+  name: a1_fatty_liver
+  paper: Paper 1 (JOSS)
+  case_id: A1
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    脂肪肝运动 Regimen 优化（A1）——Paper 1 框架演示案例。
+
+    临床问题：相同总运动量（150分钟/周，符合EASL指南）下，
+    HIIT（3×50分钟/周）vs 每日低强度步行（7×21.4分钟/天），
+    哪种 Regimen 结构在 ALT 约束（≤40 IU/L）下减脂最优？
+
+    三子模型：运动疲劳（小时-天级）× 肝脂肪代谢（天级）× ALT动力学（天级）。
+    Opt：最大化12周后肝脂肪减少量，约束 ALT≤40 IU/L，总运动量固定。
+
+    # TODO [scheduled:: 2026-08-01] 模型参数待填入，参照 Keating 2015 / Promrat 2010
+  tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT]
+  references:
+    - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"
+    - "Younossi ZM et al. (2018) Global epidemiology of NAFLD. Hepatology 64(1):73-84"
+    - "EASL-EASD-EASO Clinical Practice Guidelines (2016) NAFLD. J Hepatol 64(6):1388-1402"
+    - "# TODO: Promrat K et al. (2010) Randomized controlled trial of NASH exercise. Hepatology 51(1):121-129"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ── TODO: 参数值待从文献填入 ────────────────────────────────────────────
+variables:
+  liver_fat_pct:
+    description: 肝脏脂肪含量（%，MRI-PDFF测量，NAFLD典型初值15%）
+    value: 15.0
+    unit: "%"
+    type: state
+    bounds: [0, 60]
+
+  alt_level:
+    description: 丙氨酸氨基转移酶（IU/L，正常上限40，约束变量）
+    value: 32.0
+    unit: IU/L
+    type: state
+    bounds: [0, 200]
+
+  fatigue_score:
+    description: 运动疲劳评分（影响次日运动强度和ALT反应）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 100]
+
+  exercise_intensity:
+    description: 当日运动强度（MET，由Regimen驱动）
+    value: 0.0
+    unit: MET
+    type: input
+
+  # ── 参数（TODO: 从文献提取精确值） ──────────────────────────────────────────
+  alpha_fat:
+    description: 运动对肝脂肪的消耗系数（Keating 2015，TODO: 精确值）
+    value: 0.003
+    unit: "% per MET·day"
+    type: parameter
+
+  beta_hiit:
+    description: HIIT额外减脂系数（间歇训练相对有氧步行的优势，TODO: 精确值）
+    value: 0.4
+    unit: dimensionless
+    type: parameter
+
+  delta_alt:
+    description: 运动对ALT的急性升高系数（TODO: 精确值）
+    value: 2.1
+    unit: "IU/L per MET·day"
+    type: parameter
+
+  epsilon_alt:
+    description: ALT自然回落速率（TODO: 精确值）
+    value: 0.15
+    unit: 1/day
+    type: parameter
+
+  alt_baseline:
+    description: ALT基线值
+    value: 28.0
+    unit: IU/L
+    type: parameter
+
+# ── 动力学公式 ── TODO: 公式待根据参数文献细化 ────────────────────────────────
+formulas:
+  fat_mobilization:
+    description: "肝脂肪：运动消耗（含HIIT bonus）+ 热量盈余积累（简化为0）"
+    condition: true
+    priority: 5
+    dynamics:
+      liver_fat_pct: liver_fat_pct - alpha_fat * exercise_intensity * (1 + beta_hiit) * step
+
+  alt_dynamics:
+    description: "ALT：运动急性升高 - 自然回落至基线"
+    condition: true
+    priority: 4
+    dynamics:
+      alt_level: alt_level + (delta_alt * exercise_intensity - epsilon_alt * (alt_level - alt_baseline)) * step
+
+# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+# TODO: 区分 HIIT（3×50分钟）和每日步行（7×21.4分钟）两个方案，分别运行
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-27"        # 12 周 = 84 天
+  output_variables:
+    - liver_fat_pct
+    - alt_level
+    - exercise_intensity
+  schedules:
+    # 默认方案：每日低强度步行（MET≈3.5，21.4分钟 ≈ 1.25 MET·hour）
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 3.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "每日低强度步行"
+
+# ── 优化设置 ──────────────────────────────────────────────────────────────────
+optimizer:
+  enabled: true
+  method: "nsga2"
+  objectives:
+    - variable: liver_fat_pct
+      metric: final
+      direction: minimize
+      description: "最小化12周末肝脂肪百分比"
+  constraints:
+    - variable: alt_level
+      condition: "<= 40"
+      type: hard
+      description: "ALT 不超过正常上限（EASL标准）"
+  regimen:
+    variable: exercise_intensity
+    description: "优化 HIIT vs 步行的强度/频率分配"
+    events:
+      - time: "07:00"
+        dose_bounds: [0, 10]
+        days: [Mon, Wed, Fri]
+        label: "主训练日强度（MET）"
+      - time: "07:00"
+        dose_bounds: [0, 5]
+        days: [Tue, Thu, Sat, Sun]
+        label: "辅助日强度（MET）"
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42

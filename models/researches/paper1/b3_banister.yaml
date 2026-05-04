@@ -1,0 +1,148 @@
+metadata:
+  name: b3_banister
+  paper: Paper 1 (JOSS)
+  case_id: B3
+  updated: 2026-05-04
+  author: TODO:AUTHOR
+  description: >
+    Banister 双室适应-疲劳模型（B3）——Paper 1 数值验证案例。
+    经典 fitness-fatigue 模型（Morton 1990），用于验证 LM Euler 积分器精度。
+
+    协议 V1（解析解对比）：恒定负荷 w=50 AU/day，60天，解析解误差 < 2%。
+    协议 V2（Morton 1990 复现）：16周渐进训练 + 2周减量，末期表现 520–560 AU。
+    协议 V3（超量恢复）：减量后第 5–10 天出现表现峰值。
+
+    本文件配置 V2 协议：10周渐进（75 AU/day）+ 2周减量（30 AU/day）+ 4周维持（60 AU/day）。
+  tags: [paper1, banister, B3, validation, fitness, fatigue]
+  references:
+    - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177"
+    - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61"
+    - "Mujika I et al. (1996) Effects of training on performance in competitive swimming. Can J Appl Physiol 21(5):395-406"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ───────────────────────────────────────────────────────────────────────
+variables:
+  fitness:
+    description: 体能分量（运动适应积累，时间常数45天，Morton 1990）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 2000]
+
+  fatigue:
+    description: 疲劳分量（训练负荷累积，时间常数15天，Morton 1990）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 3000]
+
+  performance:
+    description: 综合表现 = 基础 + fitness - fatigue（Morton 1990 eq.3）
+    value: 494.0
+    unit: AU
+    type: state
+    bounds: [0, 1000]
+
+  training_load:
+    description: 当日训练负荷（任意单位，由 schedule 驱动）
+    value: 0.0
+    unit: AU
+    type: input
+
+  g:
+    description: 体能增益系数（Morton 1990 Table 1，标准值 1.0）
+    value: 1.0
+    unit: dimensionless
+    type: parameter
+    bounds: [0.4, 2.0]
+
+  h:
+    description: 疲劳增益系数（Morton 1990 Table 1，标准值 2.0）
+    value: 2.0
+    unit: dimensionless
+    type: parameter
+    bounds: [0.8, 4.0]
+
+  k1:
+    description: 体能衰减速率 = 1/45 per day（Morton 1990）
+    value: 0.02222
+    unit: 1/day
+    type: parameter
+    bounds: [0.01, 0.05]
+
+  k2:
+    description: 疲劳衰减速率 = 1/15 per day（Morton 1990）
+    value: 0.06667
+    unit: 1/day
+    type: parameter
+    bounds: [0.03, 0.15]
+
+  p0:
+    description: 基础表现（无训练基准，Mujika 1996）
+    value: 494.0
+    unit: AU
+    type: parameter
+
+# ── 动力学公式 ─────────────────────────────────────────────────────────────────
+formulas:
+  fitness_dynamics:
+    description: "体能 Euler 更新：dA/dt = g·w - k1·A"
+    condition: true
+    priority: 5
+    dynamics:
+      fitness: fitness + (g * training_load - k1 * fitness) * step
+
+  fatigue_dynamics:
+    description: "疲劳 Euler 更新：df/dt = h·w - k2·f"
+    condition: true
+    priority: 5
+    dynamics:
+      fatigue: fatigue + (h * training_load - k2 * fatigue) * step
+
+  performance_update:
+    description: "瞬时表现 = p0 + fitness - fatigue（Morton 1990 eq.3，静态计算无step）"
+    condition: true
+    priority: 3
+    dynamics:
+      performance: p0 + fitness - fatigue
+
+# ── 仿真设置（V2 协议：Morton 1990 Figure 3 复现）──────────────────────────────
+# 16 周 = 112 天：10周渐进(75 AU) + 2周减量(30 AU) + 4周维持(60 AU)
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-04-22"
+  output_variables:
+    - fitness
+    - fatigue
+    - performance
+    - training_load
+  schedules:
+    # 第 1–10 周（1月1日–3月11日）：渐进训练，平均 75 AU/day
+    - variable: training_load
+      time: "09:00"
+      value: 75.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-11"
+      label: "渐进训练期"
+
+    # 第 11–12 周（3月12日–3月25日）：减量期 30 AU/day（Morton taper）
+    - variable: training_load
+      time: "09:00"
+      value: 30.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-12 ~ 2026-03-25"
+      label: "减量期（taper）"
+
+    # 第 13–16 周（3月26日–4月22日）：维持期 60 AU/day
+    - variable: training_load
+      time: "09:00"
+      value: 60.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-26 ~ 2026-04-22"
+      label: "维持期"
+
+# ── 验证目标 ──────────────────────────────────────────────────────────────────
+# V2 通过标准：第 16 周末（4月22日）performance 在 520–560 AU 范围内
+# V3 通过标准：减量开始后（3月12日起）5–10天内出现 performance 峰值
