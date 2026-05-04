@@ -8,7 +8,6 @@ metadata:
     表现 = 基线 + k₁·适应 - k₂·疲劳。
     核心冲突：高训练负荷快速积累适应，但同时积累的疲劳会掩盖表现提升甚至造成过度训练。
     最优训练分配（强度×频率×恢复）不是直觉可得的。
-    推荐作为Paper 1的验证案例（有经典模型对照，抗质疑强度⭐⭐⭐⭐⭐）。
   tags: [sports_science, training, optimization, physiological, banister, B3]
   references:
   - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61."

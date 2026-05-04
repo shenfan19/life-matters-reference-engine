@@ -65,7 +65,7 @@ $$\tau_i = \sum_{k=1}^{i} \text{softmax}(\alpha)_k \cdot T_{\text{day}}, \quad \
 优化器对 $\alpha$ 搜索，仿真前先转换回 $\tau_i$，保证时序自动满足。
 
 ### iCal双向转换工具
-iCal对应关系详见 c_matter_task_3 §1.2。**工具价值**：用户可以在手机日历App里直接设计自己的行为计划，导出iCal后一键导入LM仿真。这是一个独立的易用性贡献，适合放在Paper 1的附录或作为开源工具。
+**工具价值**：用户可以在手机日历App里直接设计自己的行为计划，导出iCal后一键导入LM仿真。
 
 ### Evidence 变量：文献直接来源的值
 
