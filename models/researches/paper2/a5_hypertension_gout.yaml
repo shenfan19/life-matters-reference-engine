@@ -15,7 +15,7 @@ metadata:
     Opt：双目标 Pareto（BP < 130 mmHg × UA < 360 μmol/L），
     决策变量为 HCTZ剂量 + 别嘌醇剂量（可选）+ 热量缺口。
 
-    # TODO [scheduled:: 2026-12-01] 公式和参数待完整填入，参照 Law 2009 / Choi 2012
+    公式和参数待完整填入，参照 Law 2009 / Choi 2012（scheduled 2026-12-01）。
   tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt]
   references:
     - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"

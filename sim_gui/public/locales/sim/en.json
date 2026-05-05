@@ -66,7 +66,7 @@
     "sim.scene.calculating": "Calculating...",
     "sim.tab.intro": "Model",
     "sim.tab.setup": "Setup",
-    "sim.tab.opt": "Pareto",
+    "sim.tab.opt": "Optimize",
     "sim.tab.plot": "Plot",
     "sim.tab.report": "Report",
     "sim.tabs.inputs": "Inputs",

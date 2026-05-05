@@ -527,6 +527,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
+  const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'formulas', 'refs']));
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
@@ -1585,64 +1586,151 @@ const Simulator: React.FC<SimulatorProps> = ({
 
 
   const renderIntroTab = () => {
-    const meta = selectedModel?.content?.metadata;
+    const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
+    const allV: Record<string, any> = selectedModel?.content?.variables || {};
     const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
+
+    const toggleIntro = (key: string) => setIntroOpen(prev => {
+      const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n;
+    });
+
+    const thS: React.CSSProperties = {
+      padding: '3px 8px', fontSize: 10, fontWeight: 700, color: c.textMute,
+      textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd,
+    };
+    const tdS: React.CSSProperties = {
+      padding: '4px 8px', fontSize: 11, borderBottom: `1px solid ${c.border}`, verticalAlign: 'top',
+    };
+
+    const IntroSection = ({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) => {
+      const open = introOpen.has(id);
+      return (
+        <div style={{ borderBottom: `1px solid ${c.border}` }}>
+          <div onClick={() => toggleIntro(id)} style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+            cursor: 'pointer', background: c.sectionHd, userSelect: 'none',
+          }}>
+            <span style={{ color: c.textMute, fontSize: 9, display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 12 }}>{title}</span>
+            {badge && <span style={{ color: c.textMute, fontSize: 11 }}>{badge}</span>}
+          </div>
+          {open && <div style={{ padding: '8px 12px 12px' }}>{children}</div>}
+        </div>
+      );
+    };
+
+    if (!selectedModel) return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty') || '请选择一个模型'} />
+      </div>
+    );
+
+    const varTypeBadge = (type: string) => {
+      const map: Record<string, string> = { state: '状态', input: '输入', parameter: '参数', evidence: '证据' };
+      return map[type] || type || '—';
+    };
+
     return (
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-        {!selectedModel ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty') || '请选择一个模型'} style={{ marginTop: 40 }} />
-        ) : (
-          <>
-            {/* Model header */}
-            <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${c.border}` }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: c.text, marginBottom: 6 }}>
-                {meta?.name || selectedKey?.split('/').pop()?.replace(/\.ya?ml$/i, '')}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+        {/* ── 1. 模型简介 ── */}
+        <IntroSection id="meta"
+          title={t('sim.tab.intro') || '模型'}
+          badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}
+        >
+          {meta.description
+            ? <div style={{ fontSize: 12, color: c.text, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+                {String(meta.description).trim()}
               </div>
-              {meta?.description && (
-                <div style={{ color: c.textSec, lineHeight: 1.6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                  {String(meta.description).trim()}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-                {meta?.updated && <span style={{ color: c.textMute, fontSize: 11, fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
-                {meta?.author && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.author}</span>}
-                {meta?.case_id && <span style={{ color: c.primary, fontSize: 11, fontFamily: 'monospace' }}>{meta.case_id}</span>}
-              </div>
-            </div>
+            : <div style={{ color: c.textMute, fontSize: 12 }}>暂无描述</div>
+          }
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+            {meta.updated && <span style={{ color: c.textMute, fontSize: 11, fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
+            {meta.author && meta.author !== 'TODO:AUTHOR' && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.author}</span>}
+            {meta.paper && <span style={{ color: c.primary, fontSize: 11 }}>{meta.paper}</span>}
+            {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.tags.join(' · ')}</span>}
+          </div>
+        </IntroSection>
 
-            {/* Variables */}
-            <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, marginBottom: 8 }}>
-              {t('sim.tabs.variables') || 'Variables'}
-            </div>
-            {renderVarsContent()}
-
-            {/* Formulas */}
-            {Object.keys(formulas).length > 0 && (
-              <>
-                <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, margin: '14px 0 8px' }}>
-                  {t('sim.tabs.formulas') || 'Formulas'}
-                </div>
-                {renderFormulasContent()}
-              </>
-            )}
-
-            {/* References */}
-            {refs.length > 0 && (
-              <>
-                <div style={{ fontWeight: 600, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10, margin: '14px 0 8px' }}>
-                  References
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {refs.map((r, i) => (
-                    <div key={i} style={{ fontSize: 12, color: c.textSec, lineHeight: 1.5, paddingLeft: 10, borderLeft: `2px solid ${c.border}` }}>
-                      {r}
-                    </div>
+        {/* ── 2. 变量 ── */}
+        <IntroSection id="variables"
+          title={t('sim.tabs.variables') || '变量'}
+          badge={`${Object.keys(allV).length} 个`}
+        >
+          {Object.keys(allV).length === 0
+            ? <span style={{ color: c.textMute, fontSize: 12 }}>无变量</span>
+            : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  <th style={thS}>描述 / 内部名</th>
+                  <th style={thS}>类型</th>
+                  <th style={thS}>初始值</th>
+                  <th style={thS}>单位</th>
+                </tr></thead>
+                <tbody>
+                  {Object.entries(allV).map(([name, d]: [string, any]) => (
+                    <tr key={name}>
+                      <td style={tdS}>
+                        {d.description
+                          ? <><div style={{ color: c.text }}>{d.description}</div>
+                              <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 10, marginTop: 1 }}>{name}</div></>
+                          : <div style={{ color: c.text, fontFamily: 'monospace' }}>{name}</div>
+                        }
+                      </td>
+                      <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
+                      <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
+                      <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
+                    </tr>
                   ))}
-                </div>
-              </>
-            )}
-          </>
+                </tbody>
+              </table>
+          }
+        </IntroSection>
+
+        {/* ── 3. 公式 ── */}
+        {Object.keys(formulas).length > 0 && (
+          <IntroSection id="formulas"
+            title={t('sim.tabs.formulas') || '公式'}
+            badge={`${Object.keys(formulas).length} 个`}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Object.entries(formulas).map(([name, fd]: [string, any]) => {
+                const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : null;
+                const expr = typeof fd.dynamics === 'object' && fd.dynamics
+                  ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('\n')
+                  : String(fd.dynamics ?? '');
+                return (
+                  <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '7px 10px', background: c.sectionHd }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{fd.description || name}</span>
+                      {fd.description && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 10 }}>{name}</span>}
+                      {cond && <span style={{ color: c.textMute, fontSize: 10, fontFamily: 'monospace' }}>| 条件: {cond}</span>}
+                    </div>
+                    {expr && (
+                      <code style={{ display: 'block', whiteSpace: 'pre-wrap', color: isDarkMode ? '#86efac' : '#007A33', fontSize: 11, lineHeight: 1.6 }}>
+                        {expr}
+                      </code>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </IntroSection>
         )}
+
+        {/* ── 4. 参考文献 ── */}
+        {refs.length > 0 && (
+          <IntroSection id="refs" title="References" badge={`${refs.length} 条`}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {refs.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
+                  <span style={{ color: c.primary, fontFamily: 'monospace', flexShrink: 0, minWidth: 24 }}>[{i + 1}]</span>
+                  <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r}</span>
+                </div>
+              ))}
+            </div>
+          </IntroSection>
+        )}
+
       </div>
     );
   };
