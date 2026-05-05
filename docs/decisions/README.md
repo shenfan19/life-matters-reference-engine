@@ -62,5 +62,5 @@
 | [0054](0054-2026-05-04_sim_unified-apply-regimens.md) | 仿真/优化 Regimen 执行函数统一：删除 `_apply_regimen_events`，优化器改用 `SimulatorEngine._apply_regimens`；脉冲重置+累加语义 | ✅ 已实施 | 2026-05-04 |
 | [0055](0055-2026-05-04_project_docs-go-public-private-split.md) | `docs/` 公开发布 / `go/` 内部不发布 分界规则；清除 docs 中的内部引用 | ✅ 已实施 | 2026-05-04 |
 | [0056](0056-2026-05-04_project_three-tier-validation-framework.md) | 三层验证框架：层1数值精度（解析解）/ 层2文献对标（效应量范围）/ 层3优化合理性；报告格式规范 | ✅ 框架已实施，脚本待写 | 2026-05-04 |
-| [0057](0057-2026-05-04_project_models-paper-directory.md) | `models/researches/paper1-3/` 论文专用场景目录；按案例ID命名；与 `temp/` 快速调试场景分离 | ✅ 已实施 | 2026-05-04 |
+| [0057](0057-2026-05-04_project_models-paper-directory.md) | `models/papers/paper1-3/` 论文专用场景目录（原 `researches/`，2026-05-05 更名）；按案例ID命名；发表后改为论文标题 | ✅ 已实施 | 2026-05-04 |
 | [0058](0058-2026-05-04_sim_scan-models-recursive.md) | `scan_models` 未指定文件夹时递归发现所有子目录（`os.walk`），前端改为动态分组而非硬编码 comp/scen | ✅ 已实施 | 2026-05-04 |

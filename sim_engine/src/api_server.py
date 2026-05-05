@@ -402,10 +402,12 @@ async def call_plugin_backend(plugin_id: str, endpoint: str, payload: dict):
         
     try:
         if endpoint == 'run':
+            from src.plugin_context import PluginContext
+            ctx = PluginContext(simulator_engine=simulator_engine)
             result = plugin_manager.run_plugin(
                 plugin_id=plugin_id,
                 inputs=payload.get('inputs', {}),
-                context=None
+                context=ctx
             )
             return result
         else:

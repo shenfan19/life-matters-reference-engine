@@ -91,8 +91,8 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
   onAbout: () => void;
 }) {
   const tabs = [
-    { id: 'simulator', label: page === 'simulator' && simMode === 'opt' ? t('menu.simulator.opt') : t('menu.simulator'), icon: <HeartPulseIcon /> },
     { id: 'tools',     label: t('menu.tools'),     icon: <ToolOutlined /> },
+    { id: 'simulator', label: page === 'simulator' && simMode === 'opt' ? t('menu.simulator.opt') : t('menu.simulator'), icon: <HeartPulseIcon /> },
     { id: 'story',     label: t('menu.story'),     icon: <SwapOutlined /> },
   ];
 
