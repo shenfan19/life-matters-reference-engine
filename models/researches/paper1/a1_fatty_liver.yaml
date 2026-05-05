@@ -13,14 +13,13 @@ metadata:
 
     三子模型：运动疲劳（小时-天级）× 肝脂肪代谢（天级）× ALT动力学（天级）。
     Opt：最大化12周后肝脂肪减少量，约束 ALT≤40 IU/L，总运动量固定。
-
-    # TODO [scheduled:: 2026-08-01] 模型参数待填入，参照 Keating 2015 / Promrat 2010
+    模型参数待填入，参照 Keating 2015 / Promrat 2010（scheduled 2026-08-01）。
   tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"
     - "Younossi ZM et al. (2018) Global epidemiology of NAFLD. Hepatology 64(1):73-84"
     - "EASL-EASD-EASO Clinical Practice Guidelines (2016) NAFLD. J Hepatol 64(6):1388-1402"
-    - "# TODO: Promrat K et al. (2010) Randomized controlled trial of NASH exercise. Hepatology 51(1):121-129"
+    - "Promrat K et al. (2010) Randomized controlled trial of NASH exercise. Hepatology 51(1):121-129"
   step_size:
     value: 1
     unit: day

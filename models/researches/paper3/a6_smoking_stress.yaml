@@ -27,12 +27,9 @@ metadata:
     - 戒断日期（有效期结束日 = 戒烟时机）
     - 减量方式（阶梯减量 vs 直接戒断）
 
-    # TODO [scheduled:: 2027-06-01]
-    # 参数来源待收集：
-    # - 尼古丁药代动力学：Feyerabend 1985（血浆尼古丁半衰期 6h）
-    # - 肺功能下降：Fletcher & Peto 1977（每日1包烟FEV1下降0.008L/年）
-    # - 戒断期工作损失：Hughes 2003（15–25%工作产出降低，2–4周持续）
-    # - 皮质醇-尼古丁：Heishman 2010（meta-analysis）
+    待办（scheduled 2027-06-01）：参数来源待收集：尼古丁药代（Feyerabend 1985，t½=6h）、
+    肺功能下降（Fletcher & Peto 1977）、戒断期工作损失（Hughes 2003，15-25%）、
+    皮质醇-尼古丁（Heishman 2010 meta-analysis）。
   tags: [paper3, smoking, stress, mental_health, A6, 3obj, multimodel, TODO]
   references:
     - "Feyerabend C et al. (1985) Nicotine absorption and metabolism. Clin Pharmacol Ther 38(1):113-121"

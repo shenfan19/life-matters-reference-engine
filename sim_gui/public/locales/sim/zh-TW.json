@@ -67,7 +67,7 @@
     "sim.scene.calculating": "正在計算…",
     "sim.tab.intro": "模型",
     "sim.tab.setup": "配置",
-    "sim.tab.opt": "Pareto",
+    "sim.tab.opt": "優化",
     "sim.tab.plot": "圖表",
     "sim.tab.report": "報告",
     "sim.tabs.inputs": "輸入",

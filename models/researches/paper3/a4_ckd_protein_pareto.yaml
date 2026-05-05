@@ -15,11 +15,10 @@ metadata:
     - 对照组配置：step-by-step（T×N，d=364）在注释中说明
     - 层3验证点：指南静态方案（0.7 g/kg/day）标注在前沿图上
 
-    # TODO [scheduled:: 2027-06-01]
-    # 1. 运行本文件，获得 K×4 Pareto 前沿（hypervolume = HV_k4）
-    # 2. 配置 step-by-step 对照（d=364），在相同时间预算内运行
-    # 3. 比较 HV 指标（预期 K×4 HV > 2× step-by-step HV）
-    # 4. 输出 CKD 3期 + 4期分层 Pareto 前沿图
+    待办（scheduled 2027-06-01）：1) 运行本文件获得 K×4 Pareto 前沿；
+    2) 配置 step-by-step 对照（d=364）在相同时间预算内运行；
+    3) 比较 HV 指标（预期 K×4 HV > 2× step-by-step HV）；
+    4) 输出 CKD 3期 + 4期分层 Pareto 前沿图。
   tags: [paper3, ckd, protein, muscle, A4, pareto, comparison, K4]
   references:
     - "参见 paper2/a4_ckd_protein.yaml 完整引用"

@@ -15,10 +15,9 @@ metadata:
     - 对照：equal-weight 加权和（w=[1/3,1/3,1/3]）单点 vs K×4 Pareto面
     - 展示非凸区域：同时达标（BP<130 + UA<360 + BW降>3kg）只在Pareto面特定区域
 
-    # TODO [scheduled:: 2027-06-01]
-    # 1. 运行三目标 K×4 NSGA-II
-    # 2. 运行加权和（L-BFGS-B，equal weights）
-    # 3. 3D 散点图：BP × UA × BW，标出加权和落点
+    待办（scheduled 2027-06-01）：1) 运行三目标 K×4 NSGA-II；
+    2) 运行加权和（L-BFGS-B，equal weights）；
+    3) 3D 散点图 BP × UA × BW，标出加权和落点。
     # 4. 验证：加权和落点是否遗漏了三目标同时达标的可行区域
   tags: [paper3, hypertension, gout, 3obj, pareto, A5, comparison]
   references:
