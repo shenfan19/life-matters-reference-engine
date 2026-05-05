@@ -1,19 +1,15 @@
-# models/researches — 论文专用仿真场景
+# models/papers — 论文专用仿真场景
 
 ## 定位
 
-`researches/` 存放**与学术论文直接对应的正式仿真场景**，用于复现论文数值、执行对照实验、生成 Pareto 前沿图。
+`papers/` 存放**与学术论文直接对应的正式仿真场景**，用于复现论文数值、执行对照实验、生成 Pareto 前沿图。
 
 每个场景文件经过文献参数校准，包含完整的 MC 和 Opt 配置，可复现论文中报告的定量结果。
-
-与 `scenarios/` 的区别：
-- `scenarios/`：面向演示和教学，无论文绑定
-- `researches/`：面向论文复现，参数有文献出处，结果须通过三层验证
 
 ## 目录结构
 
 ```
-researches/
+papers/
   paper1/   Paper 1 — JOSS 软件工具论文（撰写中）
   paper2/   Paper 2 — JAMIA 临床框架验证（撰写中）
   paper3/   Paper 3 — JBI 优化方法论文（待撰写）

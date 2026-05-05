@@ -1,11 +1,13 @@
 id: post_causal_inference
-name: Causal Inference
+name: 因果推断
 version: '0.1'
 description: >
-  Post-simulation causal analysis. Estimates pairwise causal direction between
-  state variables using Granger causality on the simulated time series.
-  Outputs a directed causal graph as HTML.
+  仿真后因果分析。对仿真时间序列中的状态变量进行 Granger 因果检验，
+  估计变量间的有向因果关系，输出因果图边列表。
 author: LM Team
+type: analysis
+slots:
+  - report
 
 backend:
   entry: causal.py
