@@ -535,6 +535,8 @@ async def list_files():
                                 file_metadata['description'] = data.get('description', '')
                                 file_metadata['difficulty'] = data.get('difficulty', '')
                                 file_metadata['levels'] = data.get('levels', [])
+                                meta = data.get('metadata', {})
+                                file_metadata['tags'] = meta.get('tags', [])
                     except Exception as e:
                         logger.warning(f"Failed to read metadata from {item_path}: {e}")
                     
@@ -1025,13 +1027,24 @@ async def search_files(q: str = ""):
                 
                 if os.path.isdir(item_path):
                     search_in_dir(item_path, relative_path)
-                elif (item.endswith('.yaml') or item.endswith('.yml')) and keyword in item.lower():
-                    results.append({
-                        'title': item,
-                        'key': relative_path,
-                        'path': relative_path,
-                        'type': 'file'
-                    })
+                elif item.endswith('.yaml') or item.endswith('.yml'):
+                    matched = keyword in item.lower()
+                    if not matched:
+                        try:
+                            with open(item_path, 'r', encoding='utf-8') as f:
+                                data = yaml.safe_load(f)
+                                if isinstance(data, dict):
+                                    tags = data.get('metadata', {}).get('tags', [])
+                                    matched = any(keyword in str(t).lower() for t in tags)
+                        except Exception:
+                            pass
+                    if matched:
+                        results.append({
+                            'title': item,
+                            'key': relative_path,
+                            'path': relative_path,
+                            'type': 'file'
+                        })
         except Exception as e:
             logger.error(f"Search error in {directory}: {e}")
     
