@@ -1,12 +1,15 @@
-# Life Matters · 立民
+# Life Matters · 仿真引擎与模型库
 
 > 跨尺度多模型动力学仿真框架，对个体行为（Regimen）进行多目标优化决策。
+
+本仓库包含：仿真后端（FastAPI）、仿真前端 GUI（React）、YAML 模型生态。  
+游戏前端独立维护，见 → **[life-matters-game](https://github.com/shenfan19/life-matters-game)**
 
 ---
 
 ## 免责声明
 
-本项目中的历史与医学场景基于公开学术文献，仅用于健康决策教育目的。所有模拟内容不代表对历史人物的道德评判；历史数据经简化处理，不构成医学建议；游戏结果为模型推演，非历史事实重现。
+本项目中的历史与医学场景基于公开学术文献，仅用于健康决策教育目的。所有模拟内容不代表对历史人物的道德评判；历史数据经简化处理，不构成医学建议；仿真结果为模型推演，非历史事实重现。
 
 ---
 
@@ -17,7 +20,7 @@
 1. 把医学/社会学文献里的统计结论（OR、HR、Cohen's d 等）转化为可运行的 YAML 动力学模型
 2. 在统一框架内同时运行异尺度模型（分钟–小时–天–年）
 3. 对行为干预方案（Regimen）做多目标 Pareto 优化
-4. 把科研模型转化为游戏化场景（LM-Game）供大众体验
+4. 把科研模型输出为游戏化场景，供 [life-matters-game](https://github.com/shenfan19/life-matters-game) 消费
 
 ### 与经典工具的层级关系
 
@@ -32,14 +35,17 @@
 
 ---
 
-## 四个模块
+## 仓库结构
 
-| 模块 | 职责 | 文档 |
-|------|------|------|
-| **Sim** | YAML 模型加载、Euler 仿真引擎、Regimen 外环优化 | `docs/sim_design` · `sim_impl` |
-| **Game** | 卡牌游戏引擎，消费 Sim 的仿真结果 | `docs/game_design` · `game_impl` |
-| **Converter** | Sim 模型 → Game Story 半自动转换工具 | `docs/converter_design` · `converter_impl` |
-| **Model** | YAML 模型生态（目录结构、格式规范、数据要求） | `docs/model_design` · `model_requirements` |
+```
+sim_engine/   Python 仿真引擎 + FastAPI 后端（端口 18080）
+sim_gui/      仿真前端界面（React + Vite，端口 5173）
+models/       YAML 模型生态
+  references/   基于文献的参考组件模型（topic_year_author.yaml）
+  published/    与论文绑定的完整场景（topic_caseId_paperId.yaml）
+  in_process/   开发中的场景与测试固件
+docs/         技术规范与架构决策（ADR）
+```
 
 ---
 
@@ -75,24 +81,21 @@ cd sim_engine && python src/api_server.py   # http://localhost:18080
 
 # 仿真前端
 cd sim_gui && npm install && npm run dev    # http://localhost:5173
-
-# 游戏前端
-cd game && npm install && npm run dev       # http://localhost:5174
 ```
 
-两个前端均通过 Vite proxy 将 `/api` 转发至后端 `:18080`。
+`sim_gui` 通过 Vite proxy 将 `/api` 转发至后端 `:18080`。
+
+如需同时运行游戏前端，克隆 [life-matters-game](https://github.com/shenfan19/life-matters-game) 并按其 README 启动（端口 5174，同样依赖本仓库后端）。
 
 ---
 
 ## 常见问题
 
-**后端端口占用？** 默认 18080。修改 `sim_engine/src/api_server.py`，同步更新 `sim_gui/vite.config.ts` 和 `game/vite.config.ts` 的 proxy 目标。
+**后端端口占用？** 默认 18080。修改 `sim_engine/src/api_server.py`，同步更新 `sim_gui/vite.config.ts` 的 proxy 目标。
 
 **前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
 
-**如何添加模型？** 将 `.yaml` 放入 `models/components/`，格式见 `docs/model_design.md`。
-
-**如何添加游戏场景？** 在 `models/stories/` 下新建子目录，放入 `game_story.yaml`。
+**如何添加模型？** 将 `.yaml` 放入 `models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 `docs/model_design.md`。
 
 ---
 
@@ -106,10 +109,8 @@ cd game && npm install && npm run dev       # http://localhost:5174
 | [docs/sim_impl.md](docs/sim_impl.md) | Simulator 实现细节 |
 | [docs/validation.md](docs/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
 | [docs/opt_impl.md](docs/opt_impl.md) | Optimizer 实现细节（NSGA-II、scipy、MC 内嵌） |
-| [docs/game_design.md](docs/game_design.md) | 游戏机制设计 |
 | [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
-| [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR 0001–0053+） |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
+| [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR） |
 
 ---
 

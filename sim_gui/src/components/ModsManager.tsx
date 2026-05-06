@@ -176,8 +176,8 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       if (d.success) {
         const nodes = flatten(d.data);
         setAllNodes(nodes);
-        // Start fully collapsed
-        setCollapsed(new Set(nodes.filter(n => n.kind === 'folder').map(n => n.key)));
+        // Collapse only depth >= 2 (keep root + top-level folders open)
+        setCollapsed(new Set(nodes.filter(n => n.kind === 'folder' && n.depth >= 2).map(n => n.key)));
       }
     }).catch(() => {});
   }, []);
@@ -189,14 +189,47 @@ export default function ModsManager({ isDarkMode, c }: Props) {
 
   const visible = useMemo(() => {
     const q = search.toLowerCase();
-    return allNodes.filter(n => {
-      // Collapse check
-      const parts = n.key.split('/');
+
+    if (!q) {
+      return allNodes.filter(n => {
+        const parts = n.key.split('/');
+        for (let i = 1; i < parts.length; i++)
+          if (collapsed.has(parts.slice(0, i).join('/'))) return false;
+        return true;
+      });
+    }
+
+    // Search mode: find matching files, derive ancestor folders, ignore collapse
+    // Tag matching: substring OR shared word-root (handles agriculture↔agricultural etc.)
+    const tagMatches = (t: string) => {
+      const tl = t.toLowerCase();
+      if (tl.includes(q)) return true;
+      const minLen = Math.min(q.length, tl.length);
+      return minLen >= 5 && tl.slice(0, minLen - 1) === q.slice(0, minLen - 1);
+    };
+    const matchedKeys = new Set(
+      allNodes
+        .filter(n => n.kind === 'file' && (
+          n.key.toLowerCase().includes(q) ||
+          (n.tags || []).some(t => typeof t === 'string' && tagMatches(t))
+        ))
+        .map(n => n.key)
+    );
+    if (matchedKeys.size === 0) return [];
+
+    // Build ancestor folder paths from matched file keys
+    const relevantFolders = new Set<string>();
+    for (const key of matchedKeys) {
+      const parts = key.split('/');
       for (let i = 1; i < parts.length; i++)
-        if (collapsed.has(parts.slice(0, i).join('/'))) return false;
-      if (q && n.kind === 'file') return n.key.toLowerCase().includes(q) ||
-        (n.tags || []).some(t => t.toLowerCase().includes(q));
-      return true;
+        relevantFolders.add(parts.slice(0, i).join('/'));
+    }
+
+    return allNodes.filter(n => {
+      if (n.kind === 'file') return matchedKeys.has(n.key);
+      // depth-0 root ('models') is a wrapper not reflected in file paths — show if anything matches
+      if (n.depth === 0) return true;
+      return relevantFolders.has(n.key);
     });
   }, [allNodes, collapsed, search]);
 
@@ -517,6 +550,11 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         )}
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+          {search && visible.length === 0 && (
+            <div style={{ padding: '20px 12px', textAlign: 'center', color: mute, fontSize: 12 }}>
+              无匹配结果
+            </div>
+          )}
           {visible.map(n => {
             if (n.kind === 'folder') {
               const open   = !collapsed.has(n.key);
