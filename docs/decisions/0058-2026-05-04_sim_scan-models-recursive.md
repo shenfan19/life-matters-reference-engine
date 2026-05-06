@@ -14,7 +14,7 @@
 
 `models/` 根目录下没有任何直接 YAML 文件，所有文件都在子目录中。因此无参数调用时返回空列表，只有前端明确指定 folder 时才能看到模型。
 
-新增 `models/papers/paper1/`、`paper2/`、`paper3/` 后，问题更突出：不修改代码则这些目录对 GUI 不可见。
+新增 `models/published/paper1/`、`paper2/`、`paper3/` 后，问题更突出：不修改代码则这些目录对 GUI 不可见。
 
 ---
 
@@ -58,4 +58,4 @@ if not folders:
 
 - `models/` 目录应被视为一个统一的模型生态，不需要用户记忆具体子目录路径。
 - `find_model_file()` 本已是递归全树搜索，`scan_models` 保持一致。
-- 新增 `models/papers/` 后无需任何额外配置，自动可见。
+- 新增 `models/published/` 后无需任何额外配置，自动可见。

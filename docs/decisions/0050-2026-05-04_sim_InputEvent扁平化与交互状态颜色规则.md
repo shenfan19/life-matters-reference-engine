@@ -123,7 +123,7 @@ sim_gui/public/locales/sim/{en,zh-CN,zh-TW}.json
 docs/global_prompt.md
   §2.1 交互状态颜色规则（新增）
 
-models/components/medical/test/
+models/source/medical/test/
   l1_drug_single_obj.yaml: 加 type:model，描述增加 [TEST L1] 标注
   l2_drug_pareto.yaml:     加 type:model，描述增加 [TEST L2] 标注
   l3_two_drug_mc.yaml:     新建，双变量双目标+MC，pop=20 gen=25

@@ -134,16 +134,16 @@ sim_gui/src/components/Simulator.tsx
   init useEffect: new schedule parsing (flat list + legacy dict + default)
   init useEffect: opt flags handle regimen: format, carry time/label/timeEnabled
 
-models/components/medical/test/l1_drug_single_obj.yaml
+models/source/medical/test/l1_drug_single_obj.yaml
   simulation.schedules: [{variable: dose_mg, time: "08:00", value: 10.0}]
 
-models/components/medical/test/l2_drug_pareto.yaml
+models/source/medical/test/l2_drug_pareto.yaml
   simulation.schedules: 3 entries with correct times 08:00/12:00/20:00
 
-models/components/medical/test/l3_two_drug_mc.yaml
+models/source/medical/test/l3_two_drug_mc.yaml
   Complete rewrite: 5 time-slot variables + simulation.schedules + optimizer.inputs
 
-models/components/medical/disease/chronic/ckd_protein_muscle.yaml
+models/source/medical/disease/chronic/ckd_protein_muscle.yaml
   simulation.schedules: [{variable: protein_intake, time: "08:00", value: 0.8}]
 ```
 

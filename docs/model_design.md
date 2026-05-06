@@ -356,7 +356,7 @@ accumulators:
 
 ## 模型分类体系
 
-三层目录：`models/components/{L1}/{L2}/{L3}/file.yaml`
+三层目录：`models/source/{L1}/{L2}/{L3}/file.yaml`
 
 | L1 | L2 | 说明 |
 |----|----|----|

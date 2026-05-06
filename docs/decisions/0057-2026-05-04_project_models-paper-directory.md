@@ -1,4 +1,4 @@
-# 0057 — `models/papers/` 论文专用场景目录
+# 0057 — `models/published/` 论文专用场景目录
 
 **日期**：2026-05-04（创建）；2026-05-05（更新：`researches/` → `papers/`）  
 **状态**：✅ 已实施
@@ -20,14 +20,14 @@
 
 ### 目录命名
 
-初始命名为 `models/researches/`，后更名为 `models/papers/`。
+初始命名为 `models/researches/`，后更名为 `models/published/`。
 
 **更名理由**：`papers/` 比 `researches/` 更直接——子目录以论文名命名，发表后可改为论文标题；用户一眼可知这是已调试完成、与论文绑定的模型。
 
 ### 目录结构
 
 ```
-models/papers/
+models/published/
   paper1/    # Paper 1 — JOSS 软件工具论文
     a1_fatty_liver.yaml
     b3_banister.yaml       ← 完整 16 周 V2 协议
@@ -58,6 +58,6 @@ models/papers/
 
 ## 后果
 
-- `models/scenarios/test/test_ckd_protein.yaml` 迁移到 `models/papers/paper2/a4_ckd_protein.yaml`。
-- `docs/validation.md`、`models/components/README.md`、`models/scenarios/README.md` 中路径引用同步更新。
-- `models/papers/` 通过 `scan_models` 递归发现（见 ADR 0058）自动出现在 GUI 模型列表中。
+- `models/scenarios/test/test_ckd_protein.yaml` 迁移到 `models/published/paper2/a4_ckd_protein.yaml`。
+- `docs/validation.md`、`models/source/README.md`、`models/scenarios/README.md` 中路径引用同步更新。
+- `models/published/` 通过 `scan_models` 递归发现（见 ADR 0058）自动出现在 GUI 模型列表中。
