@@ -1,3 +1,5 @@
+REM 导出项目结构到 project_structure.txt，排除 node_modules/.git/__pycache__ 等
+REM 用途：给 LLM（Claude Code 等）提供项目全貌上下文，粘贴到对话开头
 @echo off
 chcp 65001 >nul
 echo 正在导出项目结构（排除 node_modules 等目录）...

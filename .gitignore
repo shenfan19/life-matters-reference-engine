@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-啊
 # Build artifacts
 build/
 dist/
@@ -27,4 +26,5 @@ CLAUDE.md
 # Personal
 go/
 _saved_/
+*.code-workspace
 messages.mo

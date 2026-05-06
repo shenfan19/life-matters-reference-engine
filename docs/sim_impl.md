@@ -1145,6 +1145,26 @@ python sim_engine/src/optimizer_cli.py \
   --method nsga2
 ```
 
+### 中间结果暂存（models/temp/）
+
+opt 和仿真产生的中间文件存入 `models/temp/{job_id}/`，不依赖用户账号体系：
+
+```
+models/temp/
+  {job_id}/
+    input_override.yaml   # opt 写回的 input，可直接喂给 sim
+    charts/               # 图表文件
+    result.csv
+```
+
+**前后端约定：**
+- 后端创建任务时生成 `job_id`（uuid）并返回
+- 前端将 `job_id` 存入 `localStorage`，刷新后可恢复
+- `GET /api/download/result/{job_id}/{filename}` 触发浏览器下载
+- 后端启动时清理超过 24h 的 temp 子目录
+
+详见 ADR 0061。
+
 ### 整合外部工具
 
 ```
