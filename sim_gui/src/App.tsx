@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
-  LoadingOutlined, ToolOutlined, SwapOutlined,
+  LoadingOutlined, ToolOutlined,
   GithubOutlined, MailOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 
@@ -35,8 +35,6 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
 );
 import Simulator from './components/Simulator';
 import ModsManager from './components/ModsManager';
-import StoryEditor from './components/StoryEditor';
-import StoryEngine from './components/StoryEngine';
 import type { SimulationState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
 
@@ -93,7 +91,6 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
   const tabs = [
     { id: 'tools',     label: t('menu.tools'),     icon: <ToolOutlined /> },
     { id: 'simulator', label: page === 'simulator' && simMode === 'opt' ? t('menu.simulator.opt') : t('menu.simulator'), icon: <HeartPulseIcon /> },
-    { id: 'story',     label: t('menu.story'),     icon: <SwapOutlined /> },
   ];
 
   const subtitle = t(simMode === 'opt' ? 'menu.sub.simulator.opt' : 'menu.sub.simulator.sim');
@@ -315,7 +312,7 @@ function readPrefs(): Record<string, any> {
 
 function App() {
   const { t, language, setLanguage } = useI18n();
-  const [page,     setPage]     = useState<'simulator' | 'tools' | 'story'>(() => readPrefs().page     ?? 'simulator');
+  const [page,     setPage]     = useState<'simulator' | 'tools'>(() => readPrefs().page === 'story' ? 'simulator' : (readPrefs().page ?? 'simulator'));
   const [simMode,  setSimMode]  = useState<'sim' | 'opt'>(() => readPrefs().simMode  ?? 'sim');
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
   const [aboutOpen,  setAboutOpen]  = useState(false);
@@ -325,7 +322,6 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
   const [simState, setSimState] = useState<SimulationState>(initialSimulationState);
-  const [playingStoryId, setPlayingStoryId] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   // Loader states lifted so Simulator keeps them across re-renders
@@ -403,15 +399,6 @@ function App() {
     },
   };
 
-  // StoryEngine takes over the whole screen
-  if (playingStoryId) {
-    return (
-      <ConfigProvider theme={academicTheme}>
-        <StoryEngine storyId={playingStoryId} onExit={() => setPlayingStoryId(null)} />
-      </ConfigProvider>
-    );
-  }
-
   return (
     <ConfigProvider theme={academicTheme}>
     <AntdApp>
@@ -457,10 +444,7 @@ function App() {
             <ToolsPage isDarkMode={isDarkMode} c={c} />
           </div>
 
-          {/* Story Editor: always mounted, shown/hidden via CSS */}
-          <div style={{ display: page === 'story' ? 'flex' : 'none', width: '100%', height: '100%' }}>
-            <StoryEditor isDarkMode={isDarkMode} c={c} />
-          </div>
+
         </div>
 
         {/* ── Status bar ── */}

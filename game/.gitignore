@@ -1,4 +1,0 @@
-node_modules
-dist
-# Stories are copied from mods/ at build time — not committed here
-public/stories/

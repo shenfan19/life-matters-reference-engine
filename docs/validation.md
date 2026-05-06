@@ -106,7 +106,7 @@ python scripts/validate_banister.py
 
 ### 案例 A4：CKD 蛋白质-肌肉
 
-运行：`models/papers/paper2/a4_ckd_protein.yaml`，52 周，日步长，蛋白质 0.7 g/kg/day。
+运行：`models/published/paper2/a4_ckd_protein.yaml`，52 周，日步长，蛋白质 0.7 g/kg/day。
 
 | 验证点 | LM 输出目标 | 文献参照范围 | 来源 |
 |--------|------------|------------|------|

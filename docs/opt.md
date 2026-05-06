@@ -224,8 +224,8 @@ optimizer:
 优先读取 `inputs:`，不存在时回退到 `regimen:`。
 
 参考实现：
-- `inputs:` 格式：`models/components/medical/test/l1_drug_single_obj.yaml`
-- `regimen:` 格式：`models/components/medical/disease/chronic/ckd_protein_muscle.yaml`
+- `inputs:` 格式：`models/source/medical/test/l1_drug_single_obj.yaml`
+- `regimen:` 格式：`models/source/medical/disease/chronic/ckd_protein_muscle.yaml`
 
 ### 3.3 仿真时长计算
 

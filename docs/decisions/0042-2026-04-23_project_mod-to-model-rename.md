@@ -39,11 +39,11 @@
 | 旧路径 | 新路径 |
 |--------|--------|
 | `mods/` | `models/` |
-| `mods/models/` | `models/components/` |
+| `mods/models/` | `models/source/` |
 | `mods/stories/` | `models/stories/` |
 | `mods/scenarios/` | `models/scenarios/` |
 
-`mods/models/` → `models/components/` 的原因：内层 `models` 与外层 `mods` 语义重叠；`components` 更准确描述"可复用的动力学组件库"。
+`mods/models/` → `models/source/` 的原因：内层 `models` 与外层 `mods` 语义重叠；`components` 更准确描述"可复用的动力学组件库"。
 
 ### 决策三：代码目录与模块重命名
 
