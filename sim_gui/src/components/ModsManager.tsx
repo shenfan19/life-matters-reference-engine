@@ -53,6 +53,7 @@ interface FlatNode {
   kind: 'folder' | 'file';
   key: string; depth: number; name: string;
   ft?: FTName; fileCount?: number;
+  tags?: string[];
 }
 
 function flatten(nodes: any[], depth = 0, out: FlatNode[] = []): FlatNode[] {
@@ -63,7 +64,7 @@ function flatten(nodes: any[], depth = 0, out: FlatNode[] = []): FlatNode[] {
       flatten(n.children || [], depth + 1, out);
     } else {
       const name = (n.title || n.key).split('/').pop() || n.key;
-      out.push({ kind: 'file', key: n.key, depth, name, ft: fileType(n.key) });
+      out.push({ kind: 'file', key: n.key, depth, name, ft: fileType(n.key), tags: n.tags || [] });
     }
   }
   return out;
@@ -193,7 +194,8 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       const parts = n.key.split('/');
       for (let i = 1; i < parts.length; i++)
         if (collapsed.has(parts.slice(0, i).join('/'))) return false;
-      if (q && n.kind === 'file') return n.key.toLowerCase().includes(q);
+      if (q && n.kind === 'file') return n.key.toLowerCase().includes(q) ||
+        (n.tags || []).some(t => t.toLowerCase().includes(q));
       return true;
     });
   }, [allNodes, collapsed, search]);

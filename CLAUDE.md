@@ -11,7 +11,7 @@ Life Matters（LM）——跨尺度多模型动力学仿真框架。
 sim_gui/      前端仿真界面（React + Vite，端口 5173）
 game/         前端游戏界面（React + Vite，端口 5174）
 sim_engine/   Python 仿真引擎 + API server
-models/       YAML 模型生态（components/ + scenarios/ + stories/）
+models/       YAML 模型生态（references/ + published/ + in_process/）
 docs/         对外公开文档（技术规范、架构决策、建模格式）
 go/           内部文档（策略规划、论文草稿、定位分析）——不随代码发布
 ```

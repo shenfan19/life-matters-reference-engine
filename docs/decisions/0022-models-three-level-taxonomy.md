@@ -8,7 +8,7 @@
 
 ## 背景
 
-随着模型库（`models/source/`）规模扩大，原有的扁平或浅层目录结构难以维护。主要问题：
+随着模型库（`models/references/`）规模扩大，原有的扁平或浅层目录结构难以维护。主要问题：
 - `nutrition/`、`fitness/` 等二级目录缺乏进一步分类
 - `social/` 下 `panic/` 目录语义不清晰
 - 新建模型无明确"归属"位置，贡献者难以判断放在哪里
@@ -28,7 +28,7 @@
 ## 结构快照（实施时）
 
 ```
-models/source/
+models/references/
 ├── medical/
 │   ├── physiology/           (扁平，库组件，暂不细分)
 │   ├── nutrition/

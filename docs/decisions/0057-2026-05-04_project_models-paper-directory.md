@@ -29,18 +29,18 @@
 ```
 models/published/
   paper1/    # Paper 1 — JOSS 软件工具论文
-    a1_fatty_liver.yaml
-    b3_banister.yaml       ← 完整 16 周 V2 协议
+    fatty_liver_a1_p1.yaml
+    banister_b3_p1.yaml        ← 完整 16 周 V2 协议
   paper2/    # Paper 2 — JAMIA 临床验证
-    a4_ckd_protein.yaml    ← 52 周完整版（从 test/ 迁移）
-    a5_hypertension_gout.yaml
+    ckd_protein_a4_p2.yaml     ← 52 周完整版（从 test/ 迁移）
+    hypertension_gout_a5_p2.yaml
   paper3/    # Paper 3 — JBI 优化方法
-    a4_ckd_protein_pareto.yaml
-    a5_hypertension_gout_3obj.yaml
-    a6_smoking_stress.yaml
+    ckd_protein_pareto_a4_p3.yaml
+    hypertension_gout_3obj_a5_p3.yaml
+    smoking_stress_a6_p3.yaml
 ```
 
-**文件命名规则**：`{案例ID}_{描述}.yaml`，从前往后排列（paper 中出现的顺序）。
+**文件命名规则**：`{topic}_{案例ID}_{论文ID}.yaml`，topic 排前使同主题文件（如 `ckd_protein`）在目录列表中自然聚拢。
 
 论文发表后，子目录（`paper1/`）可改名为论文短标题（如 `banister_fitness_2026/`），使 repo 对外部读者自文档化。
 
@@ -58,6 +58,6 @@ models/published/
 
 ## 后果
 
-- `models/scenarios/test/test_ckd_protein.yaml` 迁移到 `models/published/paper2/a4_ckd_protein.yaml`。
+- `models/in_process/test/test_ckd_protein.yaml` 迁移到 `models/published/paper2/ckd_protein_a4_p2.yaml`。
 - `docs/validation.md`、`models/source/README.md`、`models/scenarios/README.md` 中路径引用同步更新。
 - `models/published/` 通过 `scan_models` 递归发现（见 ADR 0058）自动出现在 GUI 模型列表中。
