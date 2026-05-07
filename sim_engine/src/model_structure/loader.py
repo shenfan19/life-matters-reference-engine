@@ -1,7 +1,7 @@
 # src/models/loader.py
 from .base import ModelMetadata, Variable, Formula, VariableType, InputSchedule, SchedulePoint, Accumulator, WINDOW_SECONDS, TIME_UNIT_SECONDS
 from .utils import merge_dicts
-from typing import Dict, Set, Any
+from typing import Dict, Set, Any, List
 from asteval import Interpreter
 import os
 import yaml
@@ -10,6 +10,37 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Loader:
+    def _source_label(self, file_path: str) -> str:
+        mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
+        try:
+            if mods_root:
+                rel = os.path.relpath(file_path, mods_root).replace(os.sep, '/')
+            else:
+                rel = os.path.basename(file_path)
+        except ValueError:
+            rel = os.path.basename(file_path)
+        return rel.rsplit('.', 1)[0] if rel.lower().endswith(('.yaml', '.yml')) else rel
+
+    @staticmethod
+    def _append_unique(items: List[str], values: Any) -> None:
+        if not isinstance(values, list):
+            return
+        for value in values:
+            value = str(value)
+            if value not in items:
+                items.append(value)
+
+    def _merge_sources(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        merged = merge_dicts(base, override)
+        base_imports = list(base.get('imports', [])) if isinstance(base.get('imports'), list) else []
+        override_imports = override.get('imports', []) if isinstance(override.get('imports'), list) else []
+        for item in override_imports:
+            if item not in base_imports:
+                base_imports.append(item)
+        if base_imports:
+            merged['imports'] = base_imports
+        return merged
+
     def _load_model_data(self, file_path: str, module_name: str) -> Dict[str, Any]:
         """
         纯数据加载函数：递归加载 YAML 文件及其 imports，返回合并后的数据字典。
@@ -33,7 +64,23 @@ class Loader:
             # 处理 imports
             merged_data = {}
             imports = data.get('imports', [])
+            if isinstance(imports, str):
+                imports = [imports]
+            elif imports is None:
+                imports = []
+            elif not isinstance(imports, list):
+                raise ValueError("imports 必须是字符串或字符串列表")
             current_dir = os.path.dirname(file_path)
+            source_label = self._source_label(file_path)
+            merged_sources: Dict[str, Any] = {
+                'variables': {},
+                'formulas': {},
+                'simulation': {},
+                'optimizer': {},
+                'imports': [],
+            }
+            imported_output_variables: List[str] = []
+            imported_output_types: List[str] = []
             
             # 获取 mods 根目录（用于解析新格式的导入路径）
             mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
@@ -47,52 +94,90 @@ class Loader:
             
             for imp_name in imports:
                 imp_path = None
+                imp_name = str(imp_name)
+                imp_name_normalized = imp_name.replace('\\', '/')
                 
-                # 新格式：models/xxx/yyy, scenarios/xxx/yyy 或 stories/xxx/yyy（从 mods 根目录解析）
-                if ('models/' in imp_name or 'scenarios/' in imp_name or 'stories/' in imp_name or 
-                    imp_name.startswith('models\\') or imp_name.startswith('scenarios\\') or imp_name.startswith('stories\\')):
-                    if mods_root:
-                        # 标准化路径分隔符
-                        imp_name_normalized = imp_name.replace('/', os.sep)
-                        imp_path = os.path.join(mods_root, imp_name_normalized)
-                        if not imp_path.endswith('.yaml'):
-                            imp_path += '.yaml'
-                
-                # 绝对路径或包含路径分隔符
-                elif os.sep in imp_name or '/' in imp_name or os.path.isabs(imp_name):
-                    # 如果是绝对路径，直接使用
-                    if os.path.isabs(imp_name):
-                        imp_path = imp_name
-                    else:
-                        # 相对于当前文件目录（向后兼容）
-                        imp_path = os.path.join(current_dir, imp_name.replace('/', os.sep))
-                    
-                    if not imp_path.endswith('.yaml'):
-                        imp_path += '.yaml'
-                
-                # 简单名称：先找当前目录（向后兼容），找不到再递归搜索 mods 树
-                else:
-                    local_path = os.path.join(current_dir, imp_name + '.yaml' if not imp_name.endswith('.yaml') else imp_name)
-                    if os.path.exists(local_path):
-                        imp_path = local_path
-                    elif mods_root:
-                        # fallback：在整个 mods 树中递归查找
-                        target = imp_name if imp_name.endswith('.yaml') else imp_name + '.yaml'
-                        for walk_root, _, walk_files in os.walk(mods_root):
-                            if target in walk_files:
-                                imp_path = os.path.join(walk_root, target)
-                                break
-                    if not imp_path:
-                        imp_path = local_path  # 保留原路径用于报错
+                # Rooted model path: relative to the models/ directory.
+                # Accept both "published/foo" and legacy "models/published/foo".
+                if os.path.isabs(imp_name) or imp_name_normalized.startswith('/'):
+                    raise ValueError(
+                        f"导入模型 {imp_name} 使用了文件系统绝对路径。"
+                        "请使用 models 根路径（如 published/paper2/foo）或相对路径（./foo, ../foo）。"
+                    )
 
-                if not os.path.exists(imp_path):
-                    raise FileNotFoundError(f"导入模型 {imp_name} 未找到。尝试路径: {imp_path}")
-                
+                if imp_name_normalized.startswith('.'):
+                    imp_path = os.path.normpath(os.path.join(current_dir, imp_name_normalized.replace('/', os.sep)))
+                    if not imp_path.endswith(('.yaml', '.yml')):
+                        imp_path += '.yaml'
+
+                elif mods_root and '/' in imp_name_normalized:
+                    if imp_name_normalized.startswith('models/'):
+                        imp_name_normalized = imp_name_normalized[len('models/'):]
+                    imp_path = os.path.join(mods_root, imp_name_normalized.replace('/', os.sep))
+                    if not imp_path.endswith(('.yaml', '.yml')):
+                        imp_path += '.yaml'
+
+                else:
+                    raise ValueError(
+                        f"导入模型 {imp_name} 不是显式路径。"
+                        "请写成 models 根路径（如 published/paper2/foo）或相对路径（./foo, ../foo）。"
+                    )
+
+                if imp_path and mods_root:
+                    root_real = os.path.realpath(mods_root)
+                    imp_real = os.path.realpath(imp_path)
+                    if not imp_real.startswith(root_real + os.sep) and imp_real != root_real:
+                        raise ValueError(f"导入模型 {imp_name} 超出 models 目录。解析路径: {imp_path}")
+
+                if not imp_path or not os.path.exists(imp_path):
+                    raise FileNotFoundError(
+                        f"导入模型 {imp_name} 未找到。支持相对路径或 models 根路径（如 published/paper2/foo）。"
+                        f"尝试路径: {imp_path}"
+                    )
+
                 imp_data = self._load_model_data(imp_path, imp_name)  # 递归加载
+                imp_sources = imp_data.get('_sources', {})
+                if isinstance(imp_sources, dict):
+                    merged_sources = self._merge_sources(merged_sources, imp_sources)
+                imp_label = self._source_label(imp_path)
+                if imp_label not in merged_sources['imports']:
+                    merged_sources['imports'].append(imp_label)
+                imp_sim = imp_data.get('simulation') or imp_data.get('simulator') or {}
+                self._append_unique(imported_output_variables, imp_sim.get('output_variables'))
+                self._append_unique(imported_output_types, imp_sim.get('output_types'))
                 merged_data = merge_dicts(merged_data, imp_data)
+
+            if imported_output_variables or imported_output_types:
+                sim_key = 'simulation' if 'simulation' in merged_data or 'simulation' in data else 'simulator'
+                merged_data.setdefault(sim_key, {})
+                if imported_output_variables:
+                    merged_data[sim_key]['output_variables'] = imported_output_variables
+                if imported_output_types:
+                    merged_data[sim_key]['output_types'] = imported_output_types
             
             # 根模型覆盖导入的内容
             merged_data = merge_dicts(merged_data, data)
+            local_sim = data.get('simulation') or data.get('simulator') or {}
+            if isinstance(local_sim, dict) and (
+                'output_variables' in local_sim or 'output_types' in local_sim
+            ):
+                sim_key = 'simulation' if 'simulation' in merged_data else 'simulator'
+                if isinstance(merged_data.get(sim_key), dict):
+                    for output_key in ('output_variables', 'output_types'):
+                        if output_key not in local_sim:
+                            merged_data[sim_key].pop(output_key, None)
+            for var_name in (data.get('variables') or {}).keys():
+                merged_sources['variables'][var_name] = source_label
+            for form_name in (data.get('formulas') or {}).keys():
+                merged_sources['formulas'][form_name] = source_label
+            if isinstance(local_sim, dict):
+                for key in local_sim.keys():
+                    merged_sources['simulation'][key] = source_label
+            local_optimizer = data.get('optimizer') or {}
+            if isinstance(local_optimizer, dict):
+                for key in local_optimizer.keys():
+                    merged_sources['optimizer'][key] = source_label
+            merged_data['_sources'] = merged_sources
             
             logger.debug(f"加载数据从 {file_path}")
             return merged_data
@@ -115,8 +200,10 @@ class Loader:
             self.simulator.clear()
             self.optimizer.clear()
             self.accumulators.clear()
+            self.provenance = {}
             self.current_step = 0
             self.time = 0.0
+        self.provenance = data.get('_sources', {})
         
         # 确保 _param_dist_raw 字典存在（保存分布表达式原始字符串）
         if not hasattr(self, '_param_dist_raw'):

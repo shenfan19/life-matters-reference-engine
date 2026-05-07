@@ -27,6 +27,9 @@ metadata:
     value: 1
     unit: day
 
+# imports:
+#   - published/paper2/ckd_protein_a4_p2
+
 # ── 继承 paper2/a4_ckd_protein.yaml，仅修改优化配置 ──────────────────────────
 # TODO: 实现 imports: 机制后改为 imports: [paper2/a4_ckd_protein]
 # 当前：复制变量和公式，仅优化配置不同

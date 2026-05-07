@@ -10,7 +10,7 @@ import csv
 import os
 import re
 import uuid
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Tuple
 from scipy.integrate import solve_ivp
 from .model_structure import ModStructure
 from .model_structure.base import Variable, InputSchedule, SchedulePoint, Accumulator, TIME_UNIT_SECONDS
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class SimulatorEngine:
     """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
+    VALID_OUTPUT_TYPES = {'input', 'parameter', 'state'}
     
     def __init__(self, mods_directory: str = "models", language: str = "en"):
         """
@@ -48,6 +49,43 @@ class SimulatorEngine:
         # ✅ 新增：GUI 会话管理
         self.sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> session_data
 
+    def _resolve_output_variables(self, model: ModStructure) -> Tuple[List[str], List[str]]:
+        sim = model.simulator or {}
+        raw_vars = sim.get('output_variables')
+        raw_types = sim.get('output_types')
+        vars_selected = isinstance(raw_vars, list) and len(raw_vars) > 0
+        types_selected = isinstance(raw_types, list) and len(raw_types) > 0
+        warnings: List[str] = []
+        output_variables: List[str] = []
+
+        def add_var(name: str) -> None:
+            if name not in output_variables:
+                output_variables.append(name)
+
+        if not vars_selected and not types_selected:
+            return list(model.variables.keys()), warnings
+
+        if vars_selected:
+            for var_name in raw_vars:
+                var_name = str(var_name)
+                if var_name in model.variables:
+                    add_var(var_name)
+                else:
+                    warnings.append(f"output_variables 中的变量不存在，已跳过: {var_name}")
+
+        if types_selected:
+            selected_types = {str(t) for t in raw_types}
+            invalid_types = sorted(selected_types - self.VALID_OUTPUT_TYPES)
+            if invalid_types:
+                warnings.append(f"output_types 包含未知类型，已忽略: {', '.join(invalid_types)}")
+            selected_types &= self.VALID_OUTPUT_TYPES
+            for name, var in model.variables.items():
+                var_type = var.type.value if hasattr(var.type, 'value') else str(var.type)
+                if var_type in selected_types:
+                    add_var(name)
+
+        return output_variables, warnings
+
     def load_models(self, model_names: List[str], folder: Optional[str] = None) -> bool:
         """
         加载指定名称的模型。
@@ -56,7 +94,7 @@ class SimulatorEngine:
         :return: 加载是否成功。
         """
         # 使用 LoaderEngine 的 fetch 方法加载第一个模型。
-        self.current_model = self.loader.fetch(model_names[0], folder)
+        self.current_model = self.loader.fetch(model_names[0], folder, use_cache=False)
         # 返回加载是否成功的布尔值。
         return self.current_model is not None
 
@@ -96,7 +134,7 @@ class SimulatorEngine:
         total_steps = int(total_time / step_size)
         
         # 获取需要输出的变量列表
-        output_variables = self.current_model.simulator.get('output_variables', [])
+        output_variables, output_warnings = self._resolve_output_variables(self.current_model)
         
         # 准备 CSV 数据存储
         csv_data = []
@@ -119,10 +157,7 @@ class SimulatorEngine:
                 # 收集当前步的数据
                 row = [self.current_step, self.time]
                 for var_name in output_variables:
-                    if var_name in self.current_model.variables:
-                        row.append(self.current_model.variables[var_name].value)
-                    else:
-                        row.append(0.0)  # 变量不存在时填充 0
+                    row.append(self.current_model.variables[var_name].value)
                 csv_data.append(row)
                 
                 # 检查是否需要暂停。
@@ -158,7 +193,8 @@ class SimulatorEngine:
                 "steps": self.current_step,
                 "time": self.time,
                 "csv_output": csv_output_path,
-                "output_variables": output_variables
+                "output_variables": output_variables,
+                "warnings": output_warnings,
             }
         except Exception as e:
             # 记录仿真失败错误。
@@ -298,7 +334,7 @@ class SimulatorEngine:
 
             total_time = time_hours * 3600.0
             total_steps = int(total_time / step_size)
-            output_variables = base_model.simulator.get('output_variables', [])
+            output_variables, output_warnings = self._resolve_output_variables(base_model)
             input_variables = [
                 name for name, var in base_model.variables.items()
                 if var.type.value == 'input'
@@ -337,6 +373,7 @@ class SimulatorEngine:
                 'time': 0.0,
                 'running': True,
                 'output_variables': capture_variables,
+                'output_warnings': output_warnings,
                 'data': [],
                 'regimens': regimens or [],
                 'sim_runs': n_runs,
@@ -359,7 +396,9 @@ class SimulatorEngine:
                     "step_size": step_size,
                     "total_time": total_time,
                     "total_steps": total_steps,
-                    "output_variables": output_variables,
+                    "output_variables": capture_variables,
+                    "requested_output_variables": output_variables,
+                    "warnings": output_warnings,
                     "sim_runs": n_runs,
                     "session_seed": session_seed,
                 }
@@ -424,7 +463,7 @@ class SimulatorEngine:
 
                     output_data = {'step': session['current_step'], 'time': session['time']}
                     for var_name in output_variables:
-                        output_data[var_name] = model.variables[var_name].value if var_name in model.variables else 0.0
+                        output_data[var_name] = model.variables[var_name].value
                     outputs.append(output_data)
                     session['data'].append(output_data)
 
@@ -483,7 +522,7 @@ class SimulatorEngine:
 
                     output_data = {'step': run['current_step'], 'time': run['time']}
                     for var_name in output_variables:
-                        output_data[var_name] = run_model.variables[var_name].value if var_name in run_model.variables else 0.0
+                        output_data[var_name] = run_model.variables[var_name].value
                     run_outputs.append(output_data)
                     run['data'].append(output_data)
 
@@ -668,13 +707,23 @@ class SimulatorEngine:
             
             return {
                 "success": True,
-                "session_id": session_id,
-                "model_name": session['model_name'],
-                "current_step": session['current_step'],
-                "total_steps": session['total_steps'],
-                "progress": (session['current_step'] / session['total_steps']) * 100,
-                "running": session['running'],
-                "data_points": len(session['data'])
+                "data": {
+                    "session_id": session_id,
+                    "model_name": session['model_name'],
+                    "folder": session.get('folder'),
+                    "current_step": session['current_step'],
+                    "total_steps": session['total_steps'],
+                    "progress": (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0,
+                    "running": session['running'],
+                    "completed": session['current_step'] >= session['total_steps'],
+                    "data_points": len(session['data']),
+                    "outputs": session['data'],
+                    "outputs_per_run": [run.get('data', []) for run in session.get('runs', [])] or [session['data']],
+                    "output_variables": session.get('output_variables', []),
+                    "warnings": session.get('output_warnings', []),
+                    "sim_runs": session.get('sim_runs', 1),
+                    "session_seed": session.get('session_seed', 0),
+                }
             }
         
         except Exception as e:
@@ -732,7 +781,7 @@ class SimulatorEngine:
                 return {"success": False, "error": "无法加载输入 CSV"}
             
             # 获取输出变量
-            output_variables = self.current_model.simulator.get('output_variables', [])
+            output_variables, output_warnings = self._resolve_output_variables(self.current_model)
             
             # 准备数据存储
             csv_data = []
@@ -757,10 +806,7 @@ class SimulatorEngine:
                 # 收集输出数据
                 row = [idx + 1, input_point['time']]
                 for var_name in output_variables:
-                    if var_name in self.current_model.variables:
-                        row.append(self.current_model.variables[var_name].value)
-                    else:
-                        row.append(0.0)
+                    row.append(self.current_model.variables[var_name].value)
                 
                 csv_data.append(row)
             
@@ -782,7 +828,8 @@ class SimulatorEngine:
                 "state": self.current_model.get_current_state(),
                 "steps": len(csv_data),
                 "csv_output": csv_output_path,
-                "output_variables": output_variables
+                "output_variables": output_variables,
+                "warnings": output_warnings,
             }
         
         except Exception as e:

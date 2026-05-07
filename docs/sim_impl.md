@@ -1165,6 +1165,27 @@ models/temp/
 
 详见 ADR 0061。
 
+### 编辑态刷新与运行态快照
+
+Simulator 的前端状态分为两类：
+
+- **编辑态 UI 状态**：当前选中的 YAML、左侧树展开、tab、面板开合、字号、输入配置等，可以保存在 `localStorage`。
+- **源模型内容**：YAML 原文、resolved imports、变量、方程、`simulation`、`optimizer`，每次选择或手动刷新时都从后端重新读取，不把旧内容作为长期缓存。
+
+仿真运行开始后，后端 session 持有启动时的 resolved model 对象，作为本次运行快照。之后即使 YAML 文件发生变化，已有 session 也不会半路切换模型；新建 session 才会读取新版 YAML。
+
+页面刷新或短暂断开后，前端可用本地保存的 `sessionId` 调用：
+
+```
+GET /api/simulation/session/{session_id}
+```
+
+如果后端 session 仍存在，则恢复已有轨迹、进度、输出变量和随机种子；如果 session 已过期或后端重启，则保留本地最后一次静态结果供查看，但不能继续运行。
+
+Game 派生应用采用同一原则：选关/编辑态刷新 story/card YAML；一旦开局，当前对局固定开局时的 story/card snapshot，恢复页面时恢复对局状态。源文件更新只影响新开局，不污染进行中的牌局。
+
+详见 ADR 0064。
+
 ### 整合外部工具
 
 ```
