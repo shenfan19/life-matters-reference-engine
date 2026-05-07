@@ -57,7 +57,8 @@ metadata:
     unit: minute       # second | minute | hour | day；决定公式中 step 的含义
 
 imports:
-  - components/medical/physiology/glucose_regulation   # 从 models/ 根出发加 components/ 前缀
+  - published/paper2/ckd_protein_a4_p2   # 从 models/ 根出发，不写 .yaml
+  - ./local_component                   # 或从当前 YAML 文件出发的相对路径
 
 variables:
   var_name:
@@ -144,7 +145,8 @@ simulation:
   start_date: "YYYY-MM-DD"        # 仿真起始日
   end_date:   "YYYY-MM-DD"        # 仿真结束日（含）
   # step / step_unit 已移至 metadata.step_size，此处不再声明
-  output_variables: [var1, var2]
+  output_variables: [var1, var2]   # 可选；指定按名字输出的变量
+  output_types: [input, state]     # 可选；input | parameter | state，按类型输出变量
   schedules:                      # 可选；扁平列表，每条对应一个 input 变量的时间事件
     - variable: var_name          # 必须是 variables 中 type: input 的变量
       time: "HH:MM"               # 24 小时制，触发时刻
@@ -153,6 +155,29 @@ simulation:
       date_range: "YYYY-MM-DD ~ YYYY-MM-DD"  # 可选；条目仅在此区间生效；缺席 = 全程
       label: "说明"               # 可选；GUI 展示用
 ```
+
+---
+
+## Imports 与输出选择
+
+`imports` 只支持显式路径：
+
+- `published/paper2/ckd_protein_a4_p2`：从 `models/` 根目录出发，省略 `.yaml`。
+- `models/published/paper2/ckd_protein_a4_p2`：兼容旧写法，等价于上一条。
+- `./local_component`、`../paper2/foo`：从当前 YAML 所在目录出发。
+
+裸名字检索已经禁用，例如 `imports: a4_ckd_protein` 不再递归搜索整个 `models/`。这样可以避免同名模型被意外导入。
+
+GUI 读取模型时会显示 resolved model：变量、方程、输出变量、`simulation` 和 `optimizer` 都包含 imports 合并后的结果。模型页负责结构审阅，会标出变量、方程、输出变量来自哪个 YAML；报告页保持面向结果，不展示 import/source provenance。
+
+输出变量选择规则：
+
+- 如果本模型没有定义 `simulation.output_variables` 和 `simulation.output_types`，则沿用所有 imported models 的输出选择并集。
+- 如果本模型显式定义了任一输出字段，则本模型的定义优先，不再混入 imports 的输出字段。
+- `output_variables` 和 `output_types` 同时存在时，最终输出取并集。
+- 两个字段都不存在或都为空时，输出所有变量。
+- `output_types` 只支持 `input`、`parameter`、`state`。
+- `output_variables` 中不存在的变量会被跳过，并在 API/GUI 中给出 warning；不会再生成零值曲线。
 
 ---
 

@@ -64,3 +64,5 @@
 | [0056](0056-2026-05-04_project_three-tier-validation-framework.md) | 三层验证框架：层1数值精度（解析解）/ 层2文献对标（效应量范围）/ 层3优化合理性；报告格式规范 | ✅ 框架已实施，脚本待写 | 2026-05-04 |
 | [0057](0057-2026-05-04_project_models-paper-directory.md) | `models/published/paper1-3/` 论文专用场景目录（原 `researches/`，2026-05-05 更名）；按案例ID命名；发表后改为论文标题 | ✅ 已实施 | 2026-05-04 |
 | [0058](0058-2026-05-04_sim_scan-models-recursive.md) | `scan_models` 未指定文件夹时递归发现所有子目录（`os.walk`），前端改为动态分组而非硬编码 comp/scen | ✅ 已实施 | 2026-05-04 |
+| [0063](0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | Resolved imports 与仿真输出选择规则 | ✅ 已实施 | 2026-05-07 |
+| [0064](0064-2026-05-07_project-edit-refresh-run-snapshot.md) | 编辑态刷新源文件，运行态固定快照 | ✅ 已实施 | 2026-05-07 |

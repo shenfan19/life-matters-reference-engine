@@ -493,7 +493,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
 
   const {
-    status, progress, currentStep, simulationData, dataPerRun,
+    status, progress, currentStep, totalSteps, simulationData, dataPerRun,
     inputParams, stateVariables, sessionId,
     simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
     simRuns, sessionSeed,
@@ -528,6 +528,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg'])
   );
   const [reportGenerating, setReportGenerating] = useState(false);
+  const [runOutputVars, setRunOutputVars] = useState<string[]>([]);
+  const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const SECTION_H = 26; // header height px
@@ -616,6 +618,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── init on model load ───────────────────────────────────────────────────────
   useEffect(() => {
+    setRunOutputVars([]);
+    setOutputWarnings([]);
     let freshInputInit = false;  // tracks whether we initialized inputEvents from scratch
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
@@ -886,12 +890,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const key = pendingRestoreKey.current;
     if (!key || storyTree.length === 0) return;
     pendingRestoreKey.current = null;
-    if (loadedMods[key]) {
-      setConfirmedModel(loadedMods[key]);
-      onModelSelect(loadedMods[key]);
-    } else {
-      loadFileContent(key);
-    }
+    loadFileContent(key, { preserveTab: true });
   }, [storyTree]);
 
   // ── restore SimulationState from localStorage on mount ───────────────────────
@@ -901,9 +900,13 @@ const Simulator: React.FC<SimulatorProps> = ({
     setState(prev => ({
       ...prev,
       simulationData: saved.simulationData || [],
-      status: saved.status === 'paused' ? 'completed' : (saved.status || 'idle'),
+      dataPerRun: saved.dataPerRun || [],
+      sessionId: saved.sessionId || '',
+      status: saved.status === 'running' ? 'paused' : (saved.status || 'idle'),
       currentStep: saved.currentStep ?? 0,
       progress: saved.progress ?? 0,
+      totalSteps: saved.totalSteps ?? prev.totalSteps,
+      sessionSeed: saved.sessionSeed ?? 0,
       // restore dates — skip legacy '2000-01-01' default so new default kicks in
       ...(saved.simStartDate && saved.simStartDate !== '2000-01-01' && { simStartDate: saved.simStartDate }),
       ...(saved.simEndDate && saved.simEndDate !== '2001-01-01' && { simEndDate: saved.simEndDate }),
@@ -911,6 +914,28 @@ const Simulator: React.FC<SimulatorProps> = ({
       ...(saved.stepUnit && { stepUnit: saved.stepUnit }),
     }));
     if (saved.isLocked) setIsLocked(true);
+    if (saved.sessionId) {
+      fetch(`${API_BASE}/simulation/session/${encodeURIComponent(saved.sessionId)}`)
+        .then(r => r.json())
+        .then(result => {
+          if (!result?.success || !result.data) return;
+          const data = result.data;
+          setState(prev => ({
+            ...prev,
+            sessionId: data.session_id,
+            simulationData: data.outputs || [],
+            dataPerRun: data.outputs_per_run || [],
+            status: data.completed ? 'completed' : (data.running ? 'paused' : 'paused'),
+            currentStep: data.current_step ?? 0,
+            totalSteps: data.total_steps ?? prev.totalSteps,
+            progress: data.progress ?? 0,
+            sessionSeed: data.session_seed ?? prev.sessionSeed,
+          }));
+          if (Array.isArray(data.output_variables)) setRunOutputVars(data.output_variables);
+          if (Array.isArray(data.warnings)) setOutputWarnings(data.warnings);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // ── reset validation on selection change (skip on initial mount) ──────────────
@@ -923,15 +948,18 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── persist config to localStorage ───────────────────────────────────────────
   useEffect(() => {
     const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, inputEvents, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit });
-  }, [selectedKey, mode, inputEvents, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit]);
+    writeSP({ ...current, selectedKey, mode, inputEvents, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit, expandedKeys });
+  }, [selectedKey, mode, inputEvents, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit, expandedKeys]);
 
   // ── persist simulation results on status settle ───────────────────────────────
   useEffect(() => {
-    if (status === 'running') return; // skip during active run to avoid constant writes
     const current = readSP() || {};
-    writeSP({ ...current, simulationData, status, currentStep, progress });
-  }, [status]); // captures simulationData snapshot at the moment status changes
+    if (status === 'running') {
+      writeSP({ ...current, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
+      return;
+    }
+    writeSP({ ...current, simulationData, dataPerRun, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
+  }, [status, sessionId]); // captures simulationData snapshot at the moment status/session changes
 
   // ── auto-switch center tab to plot when sim is running/completed ──────────────
   useEffect(() => {
@@ -1001,29 +1029,42 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
   };
 
-  const loadFileContent = async (filePath: string) => {
+  const loadFileContent = async (filePath: string, opts: { preserveTab?: boolean } = {}): Promise<ModelFile | null> => {
     setTreeLoading(true);
     try {
       const cleanPath = filePath.replace(/^mods\//, '');
       const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
       if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return; }
       const { content, path } = fileResult.data;
+      const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined;
+      const modelName = path.split('/').pop()?.replace(/\.ya?ml$/i, '') || content.metadata?.name || 'unknown';
+      let resolvedContent = content;
+      try {
+        const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+        const resolved = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`).then(r => r.json());
+        if (resolved?.success && resolved.data) resolvedContent = { ...content, ...resolved.data };
+      } catch (e) {
+        console.warn('Resolved model load failed, using raw YAML', e);
+      }
       const model: ModelFile = {
-        key: filePath, title: content.metadata?.name || path.split('/').pop()?.replace('.yaml', '') || 'unknown',
-        path: filePath, type: content.type, category: content.category,
-        content, metadata: content.metadata, variables: content.variables,
-        formulas: content.formulas, simulator: content.simulator,
-        optimizer: content.optimizer, imports: content.imports,
+        key: filePath, title: resolvedContent.metadata?.name || modelName,
+        path: filePath, type: resolvedContent.type, category: resolvedContent.category,
+        content: resolvedContent, rawContent: content, metadata: resolvedContent.metadata, variables: resolvedContent.variables,
+        formulas: resolvedContent.formulas, simulator: resolvedContent.simulator,
+        optimizer: resolvedContent.optimizer, imports: resolvedContent.imports,
+        provenance: resolvedContent.provenance,
         // Use full directory path so the loader can find the file regardless of metadata.name
-        folder: path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined,
+        folder,
         validated: undefined, validationErrors: [],
       };
       setLoadedMods(prev => ({ ...prev, [filePath]: model }));
       setConfirmedModel(model);
       onModelSelect(model);
-      setCenterTab('intro');
+      if (!opts.preserveTab) setCenterTab('intro');
+      return model;
     } catch (e: any) {
       message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
+      return null;
     } finally {
       setTreeLoading(false);
     }
@@ -1035,17 +1076,27 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
     setSelectedKey(key);
     setValidationResult(null);
-    if (!loadedMods[key]) loadFileContent(key);
-    else {
-      setConfirmedModel(loadedMods[key]);
-      onModelSelect(loadedMods[key]);
-    }
+    loadFileContent(key);
+  };
+
+  const toggleTreeNode = (key: React.Key) => {
+    setExpandedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return [...next];
+    });
+  };
+
+  const handleTreeNodeClick = (_event: React.MouseEvent, node: DataNode) => {
+    if (!node.isLeaf) toggleTreeNode(node.key);
   };
 
   const handleValidateAndLock = async () => {
     if (!selectedKey) return;
     setValidating(true);
     setValidationResult(null);
+    await loadFileContent(selectedKey, { preserveTab: true });
     const result = await validateModFile(selectedKey);
     if (result.valid) {
       setValidationResult(null);
@@ -1086,9 +1137,38 @@ const Simulator: React.FC<SimulatorProps> = ({
         .map(([name, d]: [string, any]) => ({ name, ...d }))
     : [];
   const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
-  const outputVars: string[] = selectedModel?.content?.simulator?.output_variables
-    || selectedModel?.content?.simulation?.output_variables
-    || Object.keys(stateVariables).slice(0, 5);
+  const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
+  const sourceOf = (kind: 'variables' | 'formulas', name: string) => provenance?.[kind]?.[name] || '';
+  const SourceTag = ({ source }: { source?: string }) => source ? (
+    <span style={{
+      color: c.textMute,
+      border: `1px solid ${c.border}`,
+      borderRadius: 4,
+      padding: '1px 5px',
+      fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)',
+      whiteSpace: 'nowrap',
+    }}>
+      from {source}
+    </span>
+  ) : null;
+  const resolveOutputVars = (): string[] => {
+    const variables: Record<string, any> = selectedModel?.content?.variables || {};
+    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator ?? {};
+    const rawVars = Array.isArray(sim.output_variables) ? sim.output_variables.map(String) : [];
+    const rawTypes = Array.isArray(sim.output_types) ? sim.output_types.map(String) : [];
+    if (rawVars.length === 0 && rawTypes.length === 0) return Object.keys(variables);
+    const next: string[] = [];
+    rawVars.forEach((name: string) => {
+      if (variables[name] && !next.includes(name)) next.push(name);
+    });
+    if (rawTypes.length > 0) {
+      Object.entries(variables).forEach(([name, detail]: [string, any]) => {
+        if (rawTypes.includes(String(detail.type)) && !next.includes(name)) next.push(name);
+      });
+    }
+    return next;
+  };
+  const outputVars: string[] = runOutputVars.length > 0 ? runOutputVars : resolveOutputVars();
   const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
 
   // flatten tree for list view
@@ -1109,7 +1189,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     try {
       set('status', 'running'); set('progress', 0); set('currentStep', 0);
       setSimData([]);
-      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
+      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
       isRunningRef.current = true;
       // Build regimens from inputEvents for simulation
       const regimenPayload = inputEvents
@@ -1139,6 +1219,10 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (result.success && result.data) {
         set('sessionId', result.data.session_id);
         set('totalSteps', result.data.total_steps);
+        if (Array.isArray(result.data.output_variables)) setRunOutputVars(result.data.output_variables);
+        const warnings = Array.isArray(result.data.warnings) ? result.data.warnings : [];
+        setOutputWarnings(warnings);
+        if (warnings.length > 0) message.warning(warnings.join('；'));
         if (result.data.session_seed) set('sessionSeed', result.data.session_seed);
         runBatch(result.data.session_id);
       } else {
@@ -1211,7 +1295,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const resetSimulation = () => {
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
-    setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
+    setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
     setOptResult(null);
   };
 
@@ -1571,12 +1655,13 @@ const Simulator: React.FC<SimulatorProps> = ({
             border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px',
             background: c.sectionHd,
           }}>
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <Tooltip title={detail.condition != null && detail.condition !== true ? `${t('sim.formulas.condition')}: ${String(detail.condition)}` : undefined}>
                 <strong style={{ color: c.text, cursor: detail.condition != null && detail.condition !== true ? 'help' : 'default' }}>
                   {name}{detail.condition != null && detail.condition !== true ? ' *' : ''}
                 </strong>
               </Tooltip>
+              <SourceTag source={sourceOf('formulas', name)} />
             </div>
             <code style={{ whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33', lineHeight: 1.6 }}>
               {typeof detail.dynamics === 'object' && detail.dynamics
@@ -1677,8 +1762,14 @@ const Simulator: React.FC<SimulatorProps> = ({
                       <td style={tdS}>
                         {d.description
                           ? <><div style={{ color: c.text }}>{d.description}</div>
-                              <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', marginTop: 1 }}>{name}</div></>
-                          : <div style={{ color: c.text, fontFamily: 'monospace' }}>{name}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
+                                <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{name}</span>
+                                <SourceTag source={sourceOf('variables', name)} />
+                              </div></>
+                          : <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ color: c.text, fontFamily: 'monospace' }}>{name}</span>
+                              <SourceTag source={sourceOf('variables', name)} />
+                            </div>
                         }
                       </td>
                       <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
@@ -1691,7 +1782,40 @@ const Simulator: React.FC<SimulatorProps> = ({
           }
         </IntroSection>
 
-        {/* ── 3. 公式 ── */}
+        {/* ── 3. 输出变量 ── */}
+        <IntroSection id="outputs"
+          title="输出变量"
+          badge={`${outputVars.length} 个`}
+        >
+          {outputVars.length === 0
+            ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无输出变量</span>
+            : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  <th style={thS}>变量名</th>
+                  <th style={thS}>含义</th>
+                  <th style={thS}>类型</th>
+                  <th style={thS}>单位</th>
+                  <th style={thS}>来源</th>
+                </tr></thead>
+                <tbody>
+                  {outputVars.map((name) => {
+                    const d = allV[name] || {};
+                    return (
+                      <tr key={name}>
+                        <td style={{ ...tdS, fontFamily: 'monospace', color: c.text }}>{name}</td>
+                        <td style={tdS}>{d.description || '—'}</td>
+                        <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
+                        <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
+                        <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+          }
+        </IntroSection>
+
+        {/* ── 4. 公式 ── */}
         {Object.keys(formulas).length > 0 && (
           <IntroSection id="formulas"
             title={t('sim.tabs.formulas') || '公式'}
@@ -1708,6 +1832,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{fd.description || name}</span>
                       {fd.description && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{name}</span>}
+                      <SourceTag source={sourceOf('formulas', name)} />
                       {cond && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace' }}>| 条件: {cond}</span>}
                     </div>
                     {expr && (
@@ -1722,7 +1847,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           </IntroSection>
         )}
 
-        {/* ── 4. 参考文献 ── */}
+        {/* ── 5. 参考文献 ── */}
         {refs.length > 0 && (
           <IntroSection id="refs" title="References" badge={`${refs.length} 条`}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2056,6 +2181,11 @@ const Simulator: React.FC<SimulatorProps> = ({
         {/* Charts area (or empty-state hint) */}
         {hasSimData ? (
           <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
+            {outputWarnings.length > 0 && (
+              <div style={{ color: isDarkMode ? '#fbbf24' : '#b45309', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', margin: '2px 2px 6px' }}>
+                {outputWarnings.join('；')}
+              </div>
+            )}
             <Collapse
               defaultActiveKey={outputVars}
               size="small"
@@ -2292,6 +2422,21 @@ const Simulator: React.FC<SimulatorProps> = ({
           }}>
             <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{t('sim.scene.header')} ({total})</span>
             {selectedKey && (
+              <Tooltip title="重新读取当前 YAML">
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<ReloadOutlined />}
+                  disabled={isLocked || treeLoading}
+                  onClick={e => {
+                    e.stopPropagation();
+                    loadFileContent(selectedKey, { preserveTab: true });
+                  }}
+                  style={{ color: c.textMute, padding: '0 3px' }}
+                />
+              </Tooltip>
+            )}
+            {selectedKey && (
               <Popover
                 open={validationResult !== null && !validationResult.valid}
                 placement="rightTop"
@@ -2324,7 +2469,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       set('progress', 0);
                       set('currentStep', 0);
                       setSimData([]);
-                      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0 }));
+                      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
                     } else {
                       handleValidateAndLock();
                     }
@@ -2354,7 +2499,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
                 {storyViewMode === 'tree' ? (
                   <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
-                    selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect} treeData={storyTree} />
+                    selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect}
+                    onClick={handleTreeNodeClick} treeData={storyTree} />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {storyList.length === 0

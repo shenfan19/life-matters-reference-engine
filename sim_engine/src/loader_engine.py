@@ -173,7 +173,7 @@ class LoaderEngine:
         return models
 
     def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None,
-              validate: bool = True) -> Optional[ModStructure]:
+              validate: bool = True, use_cache: bool = True) -> Optional[ModStructure]:
         """
         递归地加载指定名称的模型及其所有导入项。
         :param model_name: 要加载的模型名称。
@@ -191,7 +191,7 @@ class LoaderEngine:
 
         # 检查缓存。
         cache_key = (model_name, folder or "")
-        if cache_key in self.models_cache:
+        if use_cache and cache_key in self.models_cache:
             return self.models_cache[cache_key]
 
         # 查找模型文件路径。
@@ -201,7 +201,7 @@ class LoaderEngine:
             return None
         # 使用绝对路径作为缓存键
         cache_key = os.path.abspath(file_path)
-        if cache_key in self.models_cache:
+        if use_cache and cache_key in self.models_cache:
             return self.models_cache[cache_key]
 
         try:
@@ -214,8 +214,9 @@ class LoaderEngine:
                 model.validate_model()
 
             # 将加载的模型存入缓存（同时用绝对路径和 (name,folder) 两种 key）。
-            self.models_cache[cache_key] = model
-            self.models_cache[(model_name, folder or "")] = model
+            if use_cache:
+                self.models_cache[cache_key] = model
+                self.models_cache[(model_name, folder or "")] = model
             return model
             
         except Exception as e:

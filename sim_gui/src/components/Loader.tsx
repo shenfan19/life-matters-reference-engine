@@ -178,7 +178,7 @@ const Loader: React.FC<LoaderProps> = ({
     const key = keys[0] as string;
     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
     setSelectedKey(key);
-    if (!loadedMods[key]) loadFileContent(key);
+    loadFileContent(key);
   };
 
   const handleValidateAndLock = async () => {

@@ -64,6 +64,8 @@ export interface ModelFile {
     validationErrors?: string[];
     patchFile?: string;
     content?: any;
+    rawContent?: any;
+    provenance?: any;
     folder?: string;
 }
 

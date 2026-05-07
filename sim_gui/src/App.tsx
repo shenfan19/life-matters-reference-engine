@@ -327,7 +327,7 @@ function App() {
 
   // Loader states lifted so Simulator keeps them across re-renders
   const [storyTree, setStoryTree] = useState<DataNode[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(['models', 'scenarios']);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(() => readPrefs().expandedKeys || ['models', 'scenarios']);
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
   const [storyFilter, setStoryFilter] = useState('');
   const [loadedMods, setLoadedMods] = useState<Record<string, ModelFile>>({});
@@ -339,10 +339,11 @@ function App() {
   // Persist prefs
   useEffect(() => {
     try {
-      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ isDarkMode, fontSize, page, simMode }));
+      const current = readPrefs();
+      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ ...current, isDarkMode, fontSize, page, simMode, expandedKeys }));
       localStorage.setItem(LM_FONT_KEY, String(fontSize));
     } catch {}
-  }, [isDarkMode, fontSize, page, simMode]);
+  }, [isDarkMode, fontSize, page, simMode, expandedKeys]);
 
   const simStateRef = useRef(simState);
   simStateRef.current = simState;
