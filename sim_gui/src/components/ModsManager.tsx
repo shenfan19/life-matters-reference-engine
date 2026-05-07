@@ -121,7 +121,7 @@ function autoType(fd: any): string {
 function TChip({ t }: { t: string }) {
   const col = TYPE_COLORS[t] || TYPE_COLORS.derived;
   return (
-    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
+    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', padding: '1px 5px', borderRadius: 3,
       fontFamily: 'monospace', fontWeight: 700,
       background: col.bg, color: col.fg, whiteSpace: 'nowrap', flexShrink: 0 }}>
       {t}
@@ -551,7 +551,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
           {search && visible.length === 0 && (
-            <div style={{ padding: '20px 12px', textAlign: 'center', color: mute, fontSize: 12 }}>
+            <div style={{ padding: '20px 12px', textAlign: 'center', color: mute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
               无匹配结果
             </div>
           )}
@@ -578,7 +578,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
                   <span style={{ width: 10, textAlign: 'center' }}>{open ? '▾' : '▸'}</span>
                   <TriChk state={fss} onClick={e => toggleFolderFiles(n.key, e)} primary={primary} />
                   <span style={{ fontFamily: 'monospace', fontWeight: fss !== 'none' ? 600 : 400 }}>{n.name}/</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 9, color: mute }}>{n.fileCount}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: mute }}>{n.fileCount}</span>
                 </div>
               );
             }
@@ -608,7 +608,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
                   textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {n.name}
                 </span>
-                <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, flexShrink: 0,
+                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', padding: '1px 4px', borderRadius: 3, flexShrink: 0,
                   background: ft.bg, color: ft.color, fontWeight: 600 }}>
                   {ft.label}
                 </span>
@@ -630,7 +630,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       {checkedFiles.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 10, color: mute }}>
-          <div style={{ fontSize: 32 }}>📂</div>
+          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 2.2857)' }}>📂</div>
           <div style={{  }}>点击左侧文件查看</div>
           <div style={{ fontFamily: 'monospace' }}>可同时查看最多 5 个文件</div>
         </div>
@@ -753,18 +753,18 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
         background: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fafafa',
         borderBottom: `1px solid ${border}`,
         display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 20, flexShrink: 0 }}>{ft.icon}</span>
+        <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', flexShrink: 0 }}>{ft.icon}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, color: text,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {mt.name || fileKey.split('/').pop()}
           </div>
-          <div style={{ fontSize: 9, color: mute, fontFamily: 'monospace',
+          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: mute, fontFamily: 'monospace',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
             {fileKey}
           </div>
         </div>
-        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4,
+        <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', padding: '2px 6px', borderRadius: 4,
           border: `1px solid ${border}`, color: mute, fontWeight: 600, flexShrink: 0 }}>
           {ft.label}
         </span>
@@ -1017,7 +1017,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
   const entries = Object.entries(vars);
   if (entries.length === 0) return <span style={{ color: mute }}>—</span>;
 
-  const thSt = { fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+  const thSt = { fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase' as const, color: mute, padding: '0 6px 6px 0', textAlign: 'left' as const };
   const tdSt = { padding: '3px 6px 3px 0', verticalAlign: 'middle' as const };
 
@@ -1057,7 +1057,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
                       <option value="parameter">parameter</option>
                     </select>
                   ) : (
-                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', padding: '1px 5px', borderRadius: 3,
                       fontWeight: 700, background: tc + '1a', color: tc }}>
                       {vv.type || 'state'}
                     </span>
@@ -1216,7 +1216,7 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
             </div>
             {/* Dynamics rows */}
             <div style={{ padding: '6px 10px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, letterSpacing: '0.08em',
                 textTransform: 'uppercase', color: mute, marginBottom: 5 }}>dynamics</div>
               {dynEntries.map(([dk, dv]: [string, any]) => (
                 <div key={dk} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>

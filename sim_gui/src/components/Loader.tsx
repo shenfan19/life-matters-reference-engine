@@ -105,14 +105,14 @@ const Loader: React.FC<LoaderProps> = ({
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: '#007A33' }} />,
-                title: <span>{item.title} <Tag color="blue" style={{ fontSize: '10px' }}>pkg</Tag></span>,
+                title: <span>{item.title} <Tag color="blue" style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>pkg</Tag></span>,
                 titleStr: item.title, mod_type: 'story',
               };
             }
           }
           return {
             title: item.type === 'file'
-              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 8, fontSize: '10px' }}>{item.mod_type}</Tag>}</span>
+              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{item.mod_type}</Tag>}</span>
               : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
@@ -301,7 +301,7 @@ const Loader: React.FC<LoaderProps> = ({
             </Descriptions.Item>
             <Descriptions.Item label="分类">{selectedStory.category || 'N/A'}</Descriptions.Item>
             <Descriptions.Item label="描述" span={2}>
-              <span style={{ fontSize: '12px' }}>{selectedStory.metadata?.description || 'No description'}</span>
+              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{selectedStory.metadata?.description || 'No description'}</span>
             </Descriptions.Item>
             {selectedStory.imports && selectedStory.imports.length > 0 && (
               <Descriptions.Item label="导入模型" span={2}>
@@ -325,7 +325,7 @@ const Loader: React.FC<LoaderProps> = ({
   ] : [];
 
   return (
-    <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 24 }} />}>
+    <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.7143)' }} />}>
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 500 }}>
 
         {/* 场景列表 */}
@@ -340,7 +340,7 @@ const Loader: React.FC<LoaderProps> = ({
             background: isDarkMode ? '#111f16' : '#f0f7f1',
           }}>
             <BookOutlined style={{ color: '#007A33' }} />
-            <strong style={{ whiteSpace: 'nowrap', fontSize: '13px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
+            <strong style={{ whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
               {t('loader.story')} ({total})
             </strong>
             <Input
@@ -392,7 +392,7 @@ const Loader: React.FC<LoaderProps> = ({
                       }}
                     >
                       <BookOutlined style={{ marginRight: 8, color: isDarkMode ? '#94a3b8' : '#64748b' }} />
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
                         {mod.displayTitle}
                       </span>
                       <Tag style={{  }}>STORY</Tag>

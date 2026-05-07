@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import {
   SunOutlined, MoonOutlined,
@@ -65,7 +66,7 @@ function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: 
           padding: '3px 7px', border: 'none', cursor: 'pointer',
           background: fontSize === size ? c.primary : 'transparent',
           color: fontSize === size ? '#fff' : c.textMute,
-          fontSize: 11, fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
+          fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
         }}>{size}</button>
       ))}
     </div>
@@ -111,13 +112,13 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
         {/* Wordmark + inline subtitle */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: 20, fontWeight: 700, letterSpacing: '0.04em',
+            fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, letterSpacing: '0.04em',
             color: c.text,
             fontFamily: '"Georgia", "Times New Roman", serif',
           }}>
             {t('app.title')}
           </span>
-          <span style={{ color: c.textMute, fontSize: 13 }}>
+          <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
             · {subtitle}
           </span>
         </div>
@@ -289,7 +290,7 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c, t }: {
       )}
 
       {/* Center: Disclaimer */}
-      <span style={{ flex: 1, textAlign: 'center', opacity: 0.8, fontSize: 11, fontStyle: 'italic' }}>
+      <span style={{ flex: 1, textAlign: 'center', opacity: 0.8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontStyle: 'italic' }}>
         {t('statusBar.disclaimer')}
       </span>
 
@@ -406,7 +407,9 @@ function App() {
         display: 'flex', flexDirection: 'column', height: '100vh',
         backgroundColor: c.bg, color: c.text,
         transition: 'background-color 0.25s ease, color 0.25s ease',
-      }}>
+        fontSize,
+        '--lm-font-size': `${fontSize}px`,
+      } as CSSProperties & Record<'--lm-font-size', string>}>
 
         {/* ── Title bar ── */}
         <TitleBar
@@ -436,6 +439,7 @@ function App() {
               loadedMods={loadedMods} setLoadedMods={setLoadedMods}
               setConfirmedModel={setConfirmedModel} onModelSelect={setSelectedModel}
               simMode={simMode} onSimModeChange={setSimMode}
+              fontSize={fontSize}
             />
           </div>
 
@@ -478,46 +482,46 @@ function App() {
             }}
           >
             {/* App title */}
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.7143)', fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
               {t('about.name')}
             </div>
 
             {/* Subtitles */}
-            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', lineHeight: 1.6 }}>
               {t('about.subtitle')}
             </div>
-            <div style={{ color: c.textMute, fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', lineHeight: 1.6 }}>
               {t('about.subtitle2')}
             </div>
 
             {/* Version + license + repo */}
-            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 11, marginTop: 8, marginBottom: 12 }}>
+            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginTop: 8, marginBottom: 12 }}>
               {AUTHOR.version} · MIT License
             </div>
-            <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 11, marginBottom: 24 }}>
+            <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 24 }}>
               <GithubOutlined /> github.com/shenfan19/life-matters
             </a>
 
             {/* Author block */}
             <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginBottom: 20 }}>
-              <div style={{ color: c.text, fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{AUTHOR.name}</div>
-              <div style={{ color: c.textMute, fontSize: 13, marginBottom: 12 }}>{t('about.affiliation')}</div>
-              <a href={`mailto:${AUTHOR.email}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 13 }}>
+              <div style={{ color: c.text, fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 1.0714)', marginBottom: 4 }}>{AUTHOR.name}</div>
+              <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', marginBottom: 12 }}>{t('about.affiliation')}</div>
+              <a href={`mailto:${AUTHOR.email}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
                 <MailOutlined /> {AUTHOR.email}
               </a>
             </div>
 
             {/* Disclaimer block */}
             <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, textAlign: 'left' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: c.textSec, marginBottom: 12 }}>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.0714)', fontWeight: 700, color: c.textSec, marginBottom: 12 }}>
                 {t('disclaimer.title')}
               </div>
-              <div style={{ fontSize: 13, color: c.textSec, lineHeight: 1.65, marginBottom: 12 }}>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', color: c.textSec, lineHeight: 1.65, marginBottom: 12 }}>
                 {t('disclaimer.intro')}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Array.isArray(t('disclaimer.points')) && (t('disclaimer.points') as string[]).map((p, i) => (
-                  <div key={i} style={{ fontSize: 13, color: c.textSec, display: 'flex', gap: 10, lineHeight: 1.5 }}>
+                  <div key={i} style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', color: c.textSec, display: 'flex', gap: 10, lineHeight: 1.5 }}>
                     <span style={{ color: c.primary, flexShrink: 0, marginTop: 1 }}>·</span>
                     <span>{p}</span>
                   </div>
@@ -530,7 +534,7 @@ function App() {
               style={{
                 marginTop: 28, padding: '7px 28px', borderRadius: 8,
                 border: `1px solid ${c.border}`, background: 'none',
-                color: c.textMute, cursor: 'pointer', fontSize: 13,
+                color: c.textMute, cursor: 'pointer', fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)',
               }}
             >
               {t('about.close')}
