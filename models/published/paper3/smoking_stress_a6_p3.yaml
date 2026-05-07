@@ -3,7 +3,7 @@ metadata:
   paper: Paper 3 (JBI)
   case_id: A6
   updated: 2026-05-04
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     工作压力 × 吸烟 × 精神健康（A6）——Paper 3 新增三目标跨域案例。
 
@@ -40,7 +40,7 @@ metadata:
     value: 1
     unit: day
 
-# ── 变量 ── TODO: 所有参数值待文献确认 ─────────────────────────────────────────
+# ── 变量 ── TODO 所有参数值待文献确认 ─────────────────────────────────────────
 variables:
   nicotine_plasma:
     description: 血浆尼古丁浓度（ng/mL），t½ ≈ 6h（Feyerabend 1985）
@@ -96,7 +96,7 @@ variables:
     unit: AU
     type: parameter
 
-  # ── 参数 ── TODO: 精确值待填入 ─────────────────────────────────────────────
+  # ── 参数 ── TODO 精确值待填入 ─────────────────────────────────────────────
   k_nic:
     description: 尼古丁清除速率常数（t½=6h → k = ln2/6 ≈ 0.115/h，换算为/day）
     value: 2.77
@@ -127,7 +127,7 @@ variables:
     unit: L/day
     type: parameter
 
-# ── 动力学公式 ── TODO: 公式待细化，跨尺度耦合待实现 ───────────────────────────
+# ── 动力学公式 ── TODO 公式待细化，跨尺度耦合待实现 ───────────────────────────
 formulas:
   nicotine_dynamics:
     description: "尼古丁：吸烟摄入 - 自然清除（t½=6h，日步长近似）"
@@ -215,5 +215,5 @@ simulation:
       time: "09:00"
       value: 20.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"   # TODO: opt 决定结束日期
+      date_range: "2026-01-01 ~ 2026-12-31"   # TODO opt 决定结束日期
       label: "吸烟计划（Regimen有效期结束=戒烟日）"

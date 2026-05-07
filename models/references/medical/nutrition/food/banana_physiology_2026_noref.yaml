@@ -1,7 +1,7 @@
 metadata:
   name: banana
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "香蕉生长与采摘模型：单文件通用动力学演示。"
   tags: [agricultural, simple]
   step_size:

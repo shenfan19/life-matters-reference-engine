@@ -3,7 +3,7 @@ metadata:
   paper: Paper 2 (JAMIA)
   case_id: A5
   updated: 2026-05-04
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     高血压合并痛风药物冲突（A5）——Paper 2 核心临床验证案例。
 
@@ -27,7 +27,7 @@ metadata:
     value: 1
     unit: day
 
-# ── 变量 ── TODO: 参数值待从文献精确提取 ────────────────────────────────────────
+# ── 变量 ── TODO 参数值待从文献精确提取 ────────────────────────────────────────
 variables:
   blood_pressure:
     description: 收缩压（mmHg），目标 <130（ESC 2018）
@@ -105,7 +105,7 @@ variables:
     unit: μmol/day
     type: parameter
 
-# ── 动力学公式 ── TODO: 完整公式待填入 ────────────────────────────────────────
+# ── 动力学公式 ── TODO 完整公式待填入 ────────────────────────────────────────
 formulas:
   bp_dynamics:
     description: "血压：HCTZ降压 + 体重减轻降压 - 自然反弹"
@@ -119,7 +119,7 @@ formulas:
   ua_dynamics:
     description: >
       尿酸：基础产生 + HCTZ抑制清除 - 别嘌醇抑制产生 - 自然清除。
-      TODO: 加入减重酮体峰值效应（暂缺）
+      TODO 加入减重酮体峰值效应（暂缺）
     condition: true
     priority: 5
     dynamics:

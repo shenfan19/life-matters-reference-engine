@@ -1,7 +1,7 @@
 metadata:
   name: labor
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "工作与劳动动力学：模拟每日工作时间对储蓄和疲劳度的影响。展示了计划表如何驱动复杂的经济与生理平衡。"
   tags: [economic, social, labor]
   step_size:

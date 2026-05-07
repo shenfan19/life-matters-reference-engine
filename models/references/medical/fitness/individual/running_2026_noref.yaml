@@ -1,7 +1,7 @@
 metadata:
   name: running
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     跑步训练模型（单次训练课，60分钟）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。
     公式基于 Fick 原理与 Borg RPE 量表。

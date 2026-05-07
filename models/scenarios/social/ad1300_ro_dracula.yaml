@@ -1,7 +1,7 @@
 metadata:
   name: dracula
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。"
   tags: [mythical, physiological, dracula]
   step_size:

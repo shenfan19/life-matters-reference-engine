@@ -3,7 +3,7 @@ metadata:
   paper: Paper 3 (JBI)
   case_id: A5-P3
   updated: 2026-05-04
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     高血压+痛风 三目标扩展版（A5）——Paper 3 优化方法对照实验。
 
@@ -26,7 +26,7 @@ metadata:
     value: 1
     unit: day
 
-# TODO: 继承 paper2/a5_hypertension_gout.yaml，增加第三目标
+# TODO 继承 paper2/a5_hypertension_gout.yaml，增加第三目标
 imports:
   - published/paper2/hypertension_gout_a5_p2
 
@@ -73,4 +73,4 @@ simulation:
   start_date: "2026-01-01"
   end_date:   "2026-07-01"
   output_variables: [blood_pressure, uric_acid, body_weight, testser2]
-  schedules: []    # TODO: 从 paper2 版本复制
+  schedules: []    # TODO 从 paper2 版本复制

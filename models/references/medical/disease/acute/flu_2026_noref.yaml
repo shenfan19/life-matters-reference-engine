@@ -1,7 +1,7 @@
 metadata:
   name: flu
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "感冒动力学模型：包含病毒载量（R1）、免疫响应（R2）与体能状态（R3）。"
   tags: [medical, physiological, flu]
   step_size:
