@@ -3,7 +3,7 @@ metadata:
   paper: Paper 1 (JOSS)
   case_id: A1
   updated: 2026-05-04
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     脂肪肝运动 Regimen 优化（A1）——Paper 1 框架演示案例。
 
@@ -24,7 +24,7 @@ metadata:
     value: 1
     unit: day
 
-# ── 变量 ── TODO: 参数值待从文献填入 ────────────────────────────────────────────
+# ── 变量 ── TODO 参数值待从文献填入 ────────────────────────────────────────────
 variables:
   liver_fat_pct:
     description: 肝脏脂肪含量（%，MRI-PDFF测量，NAFLD典型初值15%）
@@ -53,27 +53,27 @@ variables:
     unit: MET
     type: input
 
-  # ── 参数（TODO: 从文献提取精确值） ──────────────────────────────────────────
+  # ── 参数（TODO 从文献提取精确值） ──────────────────────────────────────────
   alpha_fat:
-    description: 运动对肝脂肪的消耗系数（Keating 2015，TODO: 精确值）
+    description: 运动对肝脂肪的消耗系数（Keating 2015，TODO 精确值）
     value: 0.003
     unit: "% per MET·day"
     type: parameter
 
   beta_hiit:
-    description: HIIT额外减脂系数（间歇训练相对有氧步行的优势，TODO: 精确值）
+    description: HIIT额外减脂系数（间歇训练相对有氧步行的优势，TODO 精确值）
     value: 0.4
     unit: dimensionless
     type: parameter
 
   delta_alt:
-    description: 运动对ALT的急性升高系数（TODO: 精确值）
+    description: 运动对ALT的急性升高系数（TODO 精确值）
     value: 2.1
     unit: "IU/L per MET·day"
     type: parameter
 
   epsilon_alt:
-    description: ALT自然回落速率（TODO: 精确值）
+    description: ALT自然回落速率（TODO 精确值）
     value: 0.15
     unit: 1/day
     type: parameter
@@ -84,7 +84,7 @@ variables:
     unit: IU/L
     type: parameter
 
-# ── 动力学公式 ── TODO: 公式待根据参数文献细化 ────────────────────────────────
+# ── 动力学公式 ── TODO 公式待根据参数文献细化 ────────────────────────────────
 formulas:
   fat_mobilization:
     description: "肝脂肪：运动消耗（含HIIT bonus）+ 热量盈余积累（简化为0）"
@@ -101,7 +101,7 @@ formulas:
       alt_level: alt_level + (delta_alt * exercise_intensity - epsilon_alt * (alt_level - alt_baseline)) * step
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
-# TODO: 区分 HIIT（3×50分钟）和每日步行（7×21.4分钟）两个方案，分别运行
+# TODO 区分 HIIT（3×50分钟）和每日步行（7×21.4分钟）两个方案，分别运行
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-03-27"        # 12 周 = 84 天

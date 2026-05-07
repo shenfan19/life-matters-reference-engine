@@ -3,7 +3,7 @@ metadata:
   paper: Paper 1 (JOSS)
   case_id: B3
   updated: 2026-05-04
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     Banister 双室适应-疲劳模型（B3）——Paper 1 数值验证案例。
     经典 fitness-fatigue 模型（Morton 1990），用于验证 LM Euler 积分器精度。

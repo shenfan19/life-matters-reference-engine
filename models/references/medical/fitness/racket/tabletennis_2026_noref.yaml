@@ -1,5 +1,5 @@
 metadata:
-  author: TODO:AUTHOR
+  author: Fan Shen
   conflicts: []
   description: 乒乓球比赛生理模型，60分钟，强调反应速度、技术精度与神经-肌肉疲劳
   name: tabletennis

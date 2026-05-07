@@ -1,7 +1,7 @@
 metadata:
   name: swimming
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     游泳训练模型（单次训练课，60分钟）。技术效率主导：划水效率与体能共同决定速度。
     低冲击有氧运动，核心特征是技术衰减—疲劳越高效率越低。

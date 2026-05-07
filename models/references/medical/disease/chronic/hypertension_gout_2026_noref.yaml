@@ -1,7 +1,7 @@
 metadata:
   name: hypertension_gout
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     高血压合并痛风联合动力学模型（场景A5）。
     核心学术案例：ESC降压指南与ACR痛风指南是两套独立存在、互相矛盾的临床指南。

@@ -1,7 +1,7 @@
 metadata:
   name: ad1666_uk_issac_newton
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     牛顿奇迹年仿真/优化场景（1665-1667，伍尔斯索普庄园）。
     sim模式：按牛顿典型一天的历史作息运行（1440分钟 = 24小时）。

@@ -4,7 +4,7 @@ category: dynamics
 metadata:
   name: "england_1665_diet"
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "1665年英格兰乡村饮食模型（伍尔斯索普庄园）。基于17世纪英国普通绅士/农场主阶层的食物记录：黑麦面包、浓粥汤、小啤酒（ale）、咸猪肉、奶酪、根茎蔬菜、苹果。牛顿在此期间饮食简单但基本充足，主要风险是沉浸研究时忘记进食。"
   tags: [food, historical, 17th-century, england, nutrition]
   source: >

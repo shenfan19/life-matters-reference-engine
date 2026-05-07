@@ -1,7 +1,7 @@
 metadata:
   name: banister_fitness_fatigue
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     Banister双分量适应-疲劳模型（场景B3）：量化运动训练对运动表现的动态影响。
     适应分量（Fitness）与疲劳分量（Fatigue）均由训练负荷驱动，但以不同时间常数衰减。

@@ -1,7 +1,7 @@
 metadata:
   name: war
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "战争风险动力学模型：包含区域紧张度（R1）、武装冲突（R2）与社会动荡（R3）。"
   tags: [risk, war, social]
   step_size:

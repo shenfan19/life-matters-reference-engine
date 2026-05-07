@@ -1,5 +1,5 @@
 metadata:
-  author: TODO:AUTHOR
+  author: Fan Shen
   conflicts: []
   description: 网球比赛生理模型，90分钟比赛，间歇性爆发与技术精度衰减
   name: tennis

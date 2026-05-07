@@ -1,7 +1,7 @@
 metadata:
   name: noodle
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: "面条制作与煮熟模型：通用单文件动力学演示。"
   tags: [cooking, simple]
   step_size:

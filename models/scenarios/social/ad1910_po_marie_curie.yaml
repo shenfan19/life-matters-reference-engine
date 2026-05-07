@@ -1,7 +1,7 @@
 metadata:
   name: ad1910_po_marie_curie
   updated: 2026-04-23
-  author: TODO:AUTHOR
+  author: Fan Shen
   description: >
     居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。
     sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
