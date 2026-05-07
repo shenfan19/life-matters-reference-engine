@@ -22,6 +22,7 @@ node_modules
 # AI
 .ai-local/
 AI_INSTRUCTIONS.md
+AGENTS.md
 
 # Personal
 go/

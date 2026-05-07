@@ -135,6 +135,7 @@ export interface SimulatorProps {
     onModelSelect: (model: ModelFile | null) => void;
     simMode: 'sim' | 'opt';
     onSimModeChange: (mode: 'sim' | 'opt') => void;
+    fontSize: number;
 }
 
 export interface OptimizerProps {
@@ -143,4 +144,5 @@ export interface OptimizerProps {
     setState: React.Dispatch<React.SetStateAction<OptimizerState>>;
     isLocked: boolean;
     isDarkMode: boolean;
+    fontSize?: number;
 }

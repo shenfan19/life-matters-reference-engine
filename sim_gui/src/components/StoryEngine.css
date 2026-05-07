@@ -26,13 +26,13 @@
 }
 
 .story-title {
-  font-size: 20px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.4286);
   font-weight: 700;
   color: #52c41a;
 }
 
 .turn-counter {
-  font-size: 18px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.2857);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.50);
 }
@@ -77,7 +77,7 @@
 }
 
 .status-label {
-  font-size: 11px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7857);
   color: rgba(255, 255, 255, 0.45);
   margin-bottom: 8px;
   text-transform: uppercase;
@@ -91,7 +91,7 @@
 }
 
 .value-num {
-  font-size: 24px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.7143);
   font-weight: 800;
 }
 
@@ -188,7 +188,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 16px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.1429);
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
@@ -200,7 +200,7 @@
   position: absolute;
   bottom: 10px;
   left: 10px;
-  font-size: 24px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.7143);
 }
 
 .card-content {
@@ -211,7 +211,7 @@
 }
 
 .card-name {
-  font-size: 15px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.0714);
   font-weight: 700;
   text-align: center;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -220,7 +220,7 @@
 }
 
 .card-desc {
-  font-size: 11px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7857);
   color: #4a5568;
   font-style: italic;
   margin-bottom: 10px;
@@ -229,7 +229,7 @@
 
 .card-effects-short {
   margin-top: auto;
-  font-size: 12px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.8571);
   font-weight: 600;
 }
 
@@ -255,7 +255,7 @@
 }
 
 .log-item {
-  font-size: 12px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.8571);
   padding: 8px;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.2);
@@ -305,7 +305,7 @@
 }
 
 .played-zone-label {
-  font-size: 10px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7143);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -322,7 +322,7 @@
 }
 
 .played-zone-empty {
-  font-size: 11px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7857);
   color: rgba(255, 255, 255, 0.4);
   font-style: italic;
   align-self: center;
@@ -360,18 +360,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7857);
   font-weight: 700;
   flex-shrink: 0;
 }
 
 .played-card-icon {
-  font-size: 16px;
+  font-size: calc(var(--lm-font-size, 14px) * 1.1429);
   flex-shrink: 0;
 }
 
 .played-card-name {
-  font-size: 12px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.8571);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
@@ -384,17 +384,17 @@
 }
 
 .played-card-effects .eff-pos {
-  font-size: 10px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7143);
   color: #52c41a;
 }
 
 .played-card-effects .eff-neg {
-  font-size: 10px;
+  font-size: calc(var(--lm-font-size, 14px) * 0.7143);
   color: #ef4444;
 }
 
 .played-card-recall {
-  font-size: 14px;
+  font-size: calc(var(--lm-font-size, 14px) * 1);
   color: rgba(239, 68, 68, 0.7);
   opacity: 0;
   transition: opacity 0.15s;

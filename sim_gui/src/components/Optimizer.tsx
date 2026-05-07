@@ -43,16 +43,19 @@ interface LogEntry {
 function drawFitnessChart(
   ctx: CanvasRenderingContext2D, W: number, H: number,
   history: HistoryEntry[], isDark: boolean, primaryColor: string,
+  uiFontSize = 14,
 ) {
   ctx.clearRect(0, 0, W, H);
   const PAD = { l: 60, r: 12, t: 10, b: 28 };
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
+  const emptyFont = `${Math.max(9, uiFontSize * 11 / 14)}px system-ui`;
+  const tickFont = `${Math.max(7, uiFontSize * 9 / 14)}px system-ui`;
 
   const validPts = history.filter(h => h.fitness != null) as (HistoryEntry & { fitness: number })[];
   if (validPts.length === 0) {
     ctx.fillStyle = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)';
-    ctx.font = '11px system-ui';
+    ctx.font = emptyFont;
     ctx.textAlign = 'center';
     ctx.fillText('等待第一代数据…', W / 2, H / 2);
     return;
@@ -80,14 +83,14 @@ function drawFitnessChart(
     const v = yMin + (yRange / 5) * i;
     const y = toY(v);
     ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    ctx.fillStyle = textC; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    ctx.fillStyle = textC; ctx.font = tickFont; ctx.textAlign = 'right';
     const lbl = Math.abs(v) >= 1000 ? v.toExponential(1) : v.toFixed(3);
     ctx.fillText(lbl, PAD.l - 4, y + 3);
   }
   for (let i = 0; i <= 5; i++) {
     const x = PAD.l + (plotW / 5) * i;
     ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
-    ctx.fillStyle = textC; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = textC; ctx.font = tickFont; ctx.textAlign = 'center';
     const it = Math.round(xMin + (xRange / 5) * i);
     ctx.fillText(String(it), x, PAD.t + plotH + 14);
   }
@@ -130,7 +133,7 @@ function drawFitnessChart(
   ctx.fill();
 
   // Axis label
-  ctx.fillStyle = textC; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+  ctx.fillStyle = textC; ctx.font = tickFont; ctx.textAlign = 'center';
   ctx.fillText('Iteration / Generation', W / 2, H - 2);
 }
 
@@ -138,7 +141,8 @@ const OptChart: React.FC<{
   history: HistoryEntry[];
   isDark: boolean;
   primary: string;
-}> = ({ history, isDark, primary }) => {
+  fontSize: number;
+}> = ({ history, isDark, primary, fontSize }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -157,10 +161,10 @@ const OptChart: React.FC<{
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.scale(dpr, dpr);
-      drawFitnessChart(ctx, W, H, history, isDark, primary);
+      drawFitnessChart(ctx, W, H, history, isDark, primary, fontSize);
     });
     return () => cancelAnimationFrame(frame);
-  }, [history, isDark, primary]);
+  }, [history, isDark, primary, fontSize]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
@@ -186,7 +190,7 @@ const LogConsole: React.FC<{
       background: isDark ? '#0d1710' : '#f0f7f0',
       border: `1px solid ${c.border}`,
       borderRadius: 4, padding: '6px 8px',
-      fontFamily: 'monospace', fontSize: 11,
+      fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)',
       color: c.text,
     }}>
       {logs.length === 0 && (
@@ -210,7 +214,7 @@ const LogConsole: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Optimizer: React.FC<OptimizerProps> = ({
-  selectedModel, state, setState, isLocked = false, isDarkMode,
+  selectedModel, state, setState, isLocked = false, isDarkMode, fontSize = 14,
 }) => {
   const c = getC(isDarkMode);
   const {
@@ -368,19 +372,19 @@ const Optimizer: React.FC<OptimizerProps> = ({
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <div>
-            <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>时间范围</div>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, marginBottom: 3 }}>时间范围</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
                 onChange={e => setSimStartDate(e.target.value)}
                 style={{ width: 105, fontFamily: 'monospace' }} />
-              <span style={{ color: c.textMute, fontSize: 11 }}>~</span>
+              <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
               <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
                 onChange={e => setSimEndDate(e.target.value)}
                 style={{ width: 105, fontFamily: 'monospace' }} />
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>步长</div>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, marginBottom: 3 }}>步长</div>
             <div style={{ display: 'flex', gap: 4 }}>
               <Select size="small" value={stepUnit} onChange={handleStepUnitChange}
                 options={[{ label: '秒', value: 'second' }, { label: '分', value: 'minute' }, { label: '时', value: 'hour' }, { label: '天', value: 'day' }]}
@@ -389,17 +393,17 @@ const Optimizer: React.FC<OptimizerProps> = ({
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>MC 内评估次数</div>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, marginBottom: 3 }}>MC 内评估次数</div>
             <InputNumber size="small" value={optInnerRuns} min={1} max={20}
               onChange={v => setOptInnerRuns(v || 1)} style={{ width: 70 }} />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>聚合方式</div>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, marginBottom: 3 }}>聚合方式</div>
             <Select size="small" value={optAggregation} onChange={v => setOptAggregation(v)} style={{ width: 80 }}
               options={[{ label: '均值', value: 'mean' }, { label: '最坏', value: 'min' }, { label: '中位数', value: 'median' }]} />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: c.textMute, marginBottom: 3 }}>验证条数</div>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, marginBottom: 3 }}>验证条数</div>
             <InputNumber size="small" value={optVerifyRuns} min={1} max={50}
               onChange={v => setOptVerifyRuns(v || 1)} style={{ width: 70 }} />
           </div>
@@ -438,7 +442,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
         padding: '6px 10px', borderRadius: 4,
         background: isDarkMode ? '#0d1710' : '#f6ffed',
         border: `1px solid ${c.border}`,
-        fontSize: 12,
+        fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)',
       }}>
         {statusTag}
         <span style={{ color: c.textMute }}>
@@ -468,11 +472,11 @@ const Optimizer: React.FC<OptimizerProps> = ({
           flex: 3, border: `1px solid ${c.border}`, borderRadius: 4,
           padding: 4, background: c.panel, minWidth: 0,
         }}>
-          <div style={{ fontSize: 10, color: c.textMute, marginBottom: 2, paddingLeft: 4 }}>
+          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, marginBottom: 2, paddingLeft: 4 }}>
             Fitness vs Iteration
           </div>
           <div style={{ height: 'calc(100% - 18px)' }}>
-            <OptChart history={liveHistory} isDark={isDarkMode} primary={c.primary} />
+            <OptChart history={liveHistory} isDark={isDarkMode} primary={c.primary} fontSize={fontSize} />
           </div>
         </div>
 
@@ -494,20 +498,20 @@ const Optimizer: React.FC<OptimizerProps> = ({
           {r.best_f != null && (
             <Col span={8}>
               <Statistic title="最优目标值" value={Array.isArray(r.best_f) ? r.best_f[0]?.toFixed(5) : r.best_f?.toFixed ? r.best_f.toFixed(5) : r.best_f}
-                valueStyle={{ fontSize: 16, color: c.primary }} />
+                valueStyle={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.1429)', color: c.primary }} />
             </Col>
           )}
           {r.n_solutions != null && (
             <Col span={8}>
               <Statistic title="Pareto 解数" value={r.n_solutions}
-                valueStyle={{ fontSize: 16 }} />
+                valueStyle={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.1429)' }} />
             </Col>
           )}
           {r.verification?.mean != null && (
             <Col span={8}>
               <Statistic title={`验证均值 (N=${r.verification.verify_runs})`}
                 value={r.verification.mean.toFixed(5)}
-                valueStyle={{ fontSize: 16, color: c.primary }} />
+                valueStyle={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.1429)', color: c.primary }} />
             </Col>
           )}
         </Row>
@@ -515,7 +519,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
           <div style={{
             marginTop: 8, padding: '6px 10px',
             background: isDarkMode ? '#1a2a1a' : '#f6ffed',
-            borderRadius: 4, fontSize: 11, color: isDarkMode ? '#95de64' : '#389e0d',
+            borderRadius: 4, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: isDarkMode ? '#95de64' : '#389e0d',
             fontFamily: 'monospace',
           }}>
             验证分布: mean={r.verification.mean.toFixed(4)}, std={r.verification.std.toFixed(4)},
@@ -526,7 +530,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
           <div style={{
             marginTop: 8, padding: '6px 10px',
             background: isDarkMode ? '#111' : '#fafafa',
-            borderRadius: 4, fontSize: 11, fontFamily: 'monospace', color: c.textMute,
+            borderRadius: 4, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace', color: c.textMute,
           }}>
             最优参数: [{(r.best_x as number[]).map((v: number) => v.toFixed(4)).join(', ')}]
           </div>

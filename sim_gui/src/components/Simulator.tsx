@@ -86,12 +86,14 @@ function niceTickStep(range: number, targetTicks: number): number {
 function drawChartOnCtx(
   ctx: CanvasRenderingContext2D, W: number, H: number,
   varName: string, data: SimulationDataPoint[], isDark: boolean, lineColor: string,
-  runsData?: SimulationDataPoint[][]   // optional: per-run data for MC fan
+  runsData?: SimulationDataPoint[][],   // optional: per-run data for MC fan
+  uiFontSize = 14
 ) {
   ctx.clearRect(0, 0, W, H);
   const PAD = { l: 58, r: 12, t: 8, b: 28 };
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
+  const tickFont = `${Math.max(7, uiFontSize * 9 / 14)}px system-ui`;
   if (data.length === 0) return;
 
   // Compute y-range across all runs (so fan fits the axis)
@@ -122,7 +124,7 @@ function drawChartOnCtx(
     ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
     ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
     ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
-    ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    ctx.font = tickFont; ctx.textAlign = 'right';
     const lbl = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
     ctx.fillText(lbl, PAD.l - 4, y + 3);
   }
@@ -138,7 +140,7 @@ function drawChartOnCtx(
     ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
     const t = tMin + (tRange / 6) * i;
     ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
-    ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.font = tickFont; ctx.textAlign = 'center';
     ctx.fillText(fmtX(t), x, H - 6);
   }
 
@@ -185,7 +187,8 @@ const SimChart: React.FC<{
   colorIndex?: number;
   hideTitleBar?: boolean;
   runsData?: SimulationDataPoint[][];
-}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false, runsData }) => {
+  fontSize: number;
+}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false, runsData, fontSize }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; time: number; value: number } | null>(null);
@@ -203,10 +206,10 @@ const SimChart: React.FC<{
       canvas.height = canvas.offsetHeight * dpr;
       ctx.scale(dpr, dpr);
       drawChartOnCtx(ctx, canvas.offsetWidth, canvas.offsetHeight, varName, data, isDarkMode, lineColor,
-        runsData && runsData.length > 1 ? runsData : undefined);
+        runsData && runsData.length > 1 ? runsData : undefined, fontSize);
     });
     return () => cancelAnimationFrame(frame);
-  }, [data, runsData, varName, isDarkMode, lineColor]);
+  }, [data, runsData, varName, isDarkMode, lineColor, fontSize]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || data.length === 0) return;
@@ -269,13 +272,13 @@ const SimChart: React.FC<{
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 10, height: 10, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{varName}</span>
-            {unit && <span style={{ color: c.textMute, fontSize: 11 }}>({unit})</span>}
+            <span style={{ fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{varName}</span>
+            {unit && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>({unit})</span>}
           </div>
           <Button
             size="small" type="text" icon={<DownloadOutlined />}
             onClick={exportCSV}
-            style={{ color: c.textMute, padding: '0 4px', fontSize: 11 }}
+            style={{ color: c.textMute, padding: '0 4px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}
           >
             CSV
           </Button>
@@ -310,7 +313,7 @@ const SimChart: React.FC<{
             border: `1px solid ${c.border}`,
             borderRadius: 4,
             padding: '3px 7px',
-            fontSize: 11,
+            fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)',
             color: c.text,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
@@ -331,7 +334,8 @@ const ParetoChart: React.FC<{
   result: any;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-}> = ({ result, isDarkMode, c }) => {
+  fontSize: number;
+}> = ({ result, isDarkMode, c, fontSize }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number; pt: any } | null>(null);
 
@@ -378,7 +382,7 @@ const ParetoChart: React.FC<{
 
     // axes labels
     ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
-    ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.font = `${Math.max(8, fontSize * 10 / 14)}px monospace`; ctx.textAlign = 'center';
     for (let i = 0; i <= 4; i++) {
       const v = xMin + (xRange / 4) * i;
       ctx.fillText(v.toFixed(2), PAD.l + (plotW / 4) * i, H - 4);
@@ -393,7 +397,7 @@ const ParetoChart: React.FC<{
 
     // axis names
     ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
-    ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.font = `${Math.max(9, fontSize * 11 / 14)}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(labelX, PAD.l + plotW / 2, H - 28);
     ctx.save(); ctx.translate(12, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText(labelY, 0, 0); ctx.restore();
@@ -420,7 +424,7 @@ const ParetoChart: React.FC<{
     });
   };
 
-  useEffect(() => { draw(); }, [result, isDarkMode]);
+  useEffect(() => { draw(); }, [result, isDarkMode, fontSize]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -454,7 +458,7 @@ const ParetoChart: React.FC<{
           position: 'absolute', left: hover.x + 10, top: Math.max(0, hover.y - 10),
           background: isDarkMode ? '#1a1a1a' : '#fff',
           border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px',
-          fontSize: 11, color: c.text, pointerEvents: 'none', whiteSpace: 'pre',
+          fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, pointerEvents: 'none', whiteSpace: 'pre',
           boxShadow: '0 2px 6px rgba(0,0,0,0.15)', zIndex: 10,
         }}>
           {(result.objectives || []).map((o: any, i: number) => (
@@ -482,6 +486,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   loadedMods, setLoadedMods,
   setConfirmedModel, onModelSelect,
   simMode: mode, onSimModeChange: setMode,
+  fontSize,
 }) => {
   const { t } = useI18n();
   const c = getC(isDarkMode);
@@ -982,7 +987,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (!items.length) return [];
               return [{
                 key: `__group_${child.key}`,
-                title: <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.6, letterSpacing: 1 }}>{child.key.toUpperCase()}</span>,
+                title: <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', opacity: 0.6, letterSpacing: 1 }}>{child.key.toUpperCase()}</span>,
                 isLeaf: false, selectable: false, icon: null, children: items,
               } as DataNode];
             });
@@ -1364,7 +1369,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         <button
           onClick={disabled ? undefined : onToggle}
           style={{
-            fontSize: 10, padding: '1px 5px', borderRadius: 3, lineHeight: 1.4,
+            fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.4,
             border: `1px solid ${active ? c.primary : c.border}`,
             background: active ? (isDarkMode ? 'rgba(82,196,26,0.18)' : 'rgba(0,122,51,0.09)') : 'transparent',
             color: disabled ? c.border : active ? c.primary : c.textMute,
@@ -1389,7 +1394,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     return (
       <div style={{ padding: '4px 0' }}>
         {visibleEvents.length === 0 && (
-          <div style={{ textAlign: 'center', color: c.textMute, fontSize: 11, padding: 8 }}>
+          <div style={{ textAlign: 'center', color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: 8 }}>
             {mode === 'opt' ? '未定义优化变量（检查 YAML optimizer.inputs 块）' : '暂无输入事件'}
           </div>
         )}
@@ -1434,7 +1439,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })}
                 />
                 {varDef?.unit && (
-                  <span style={{ fontSize: 10, color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>
+                  <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>
                 )}
                 {mode === 'opt' && (
                   <Tooltip title={ev.optimizeValue ? '取消优化' : '加入优化范围'}>
@@ -1448,7 +1453,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                         })}
                         style={{ accentColor: c.primary, width: 11, height: 11 }}
                       />
-                      <span style={{ fontSize: 10, color: ev.optimizeValue ? c.primary : c.textMute }}>opt</span>
+                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeValue ? c.primary : c.textMute }}>opt</span>
                     </label>
                   </Tooltip>
                 )}
@@ -1457,7 +1462,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     <InputNumber size="small" value={ev.valueBounds[0]} placeholder="lo"
                       style={{ width: 48 }}
                       onChange={v => updateInputEvent(ev.id, { valueBounds: [v ?? 0, ev.valueBounds[1]] })} />
-                    <span style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}>~</span>
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
                     <InputNumber size="small" value={ev.valueBounds[1]} placeholder="hi"
                       style={{ width: 48 }}
                       onChange={v => updateInputEvent(ev.id, { valueBounds: [ev.valueBounds[0], v ?? 1] })} />
@@ -1480,7 +1485,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                           onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
                           style={{
                             width: 20, height: 20, border: `1px solid ${c.border}`,
-                            borderRadius: 3, fontSize: 9, cursor: 'pointer',
+                            borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer',
                             background: ev.days[i] ? c.primary : c.panel,
                             color: ev.days[i] ? '#fff' : c.textMute, padding: 0,
                           }}>{d}</button>
@@ -1490,11 +1495,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                   {ev.validRangeEnabled && (
                     <>
                       <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
-                        style={{ width: 88, fontFamily: 'monospace', fontSize: 10 }}
+                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
                         onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
-                      <span style={{ color: c.textMute, fontSize: 10 }}>~</span>
+                      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>~</span>
                       <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
-                        style={{ width: 88, fontFamily: 'monospace', fontSize: 10 }}
+                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
                         onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
                     </>
                   )}
@@ -1595,11 +1600,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     });
 
     const thS: React.CSSProperties = {
-      padding: '3px 8px', fontSize: 10, fontWeight: 700, color: c.textMute,
+      padding: '3px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontWeight: 700, color: c.textMute,
       textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd,
     };
     const tdS: React.CSSProperties = {
-      padding: '4px 8px', fontSize: 11, borderBottom: `1px solid ${c.border}`, verticalAlign: 'top',
+      padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', borderBottom: `1px solid ${c.border}`, verticalAlign: 'top',
     };
 
     const IntroSection = ({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) => {
@@ -1610,9 +1615,9 @@ const Simulator: React.FC<SimulatorProps> = ({
             display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
             cursor: 'pointer', background: c.sectionHd, userSelect: 'none',
           }}>
-            <span style={{ color: c.textMute, fontSize: 9, display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-            <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 12 }}>{title}</span>
-            {badge && <span style={{ color: c.textMute, fontSize: 11 }}>{badge}</span>}
+            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{title}</span>
+            {badge && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{badge}</span>}
           </div>
           {open && <div style={{ padding: '8px 12px 12px' }}>{children}</div>}
         </div>
@@ -1639,16 +1644,16 @@ const Simulator: React.FC<SimulatorProps> = ({
           badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}
         >
           {meta.description
-            ? <div style={{ fontSize: 12, color: c.text, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+            ? <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                 {String(meta.description).trim()}
               </div>
-            : <div style={{ color: c.textMute, fontSize: 12 }}>暂无描述</div>
+            : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>暂无描述</div>
           }
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
-            {meta.updated && <span style={{ color: c.textMute, fontSize: 11, fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
-            {meta.author && meta.author !== 'TODO:AUTHOR' && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.author}</span>}
-            {meta.paper && <span style={{ color: c.primary, fontSize: 11 }}>{meta.paper}</span>}
-            {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 11 }}>{meta.tags.join(' · ')}</span>}
+            {meta.updated && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
+            {meta.author && meta.author !== 'TODO:AUTHOR' && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.author}</span>}
+            {meta.paper && <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.paper}</span>}
+            {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.tags.join(' · ')}</span>}
           </div>
         </IntroSection>
 
@@ -1658,7 +1663,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           badge={`${Object.keys(allV).length} 个`}
         >
           {Object.keys(allV).length === 0
-            ? <span style={{ color: c.textMute, fontSize: 12 }}>无变量</span>
+            ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无变量</span>
             : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr>
                   <th style={thS}>描述 / 内部名</th>
@@ -1672,7 +1677,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       <td style={tdS}>
                         {d.description
                           ? <><div style={{ color: c.text }}>{d.description}</div>
-                              <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 10, marginTop: 1 }}>{name}</div></>
+                              <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', marginTop: 1 }}>{name}</div></>
                           : <div style={{ color: c.text, fontFamily: 'monospace' }}>{name}</div>
                         }
                       </td>
@@ -1701,12 +1706,12 @@ const Simulator: React.FC<SimulatorProps> = ({
                 return (
                   <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '7px 10px', background: c.sectionHd }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{fd.description || name}</span>
-                      {fd.description && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 10 }}>{name}</span>}
-                      {cond && <span style={{ color: c.textMute, fontSize: 10, fontFamily: 'monospace' }}>| 条件: {cond}</span>}
+                      <span style={{ fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{fd.description || name}</span>
+                      {fd.description && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{name}</span>}
+                      {cond && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace' }}>| 条件: {cond}</span>}
                     </div>
                     {expr && (
-                      <code style={{ display: 'block', whiteSpace: 'pre-wrap', color: isDarkMode ? '#86efac' : '#007A33', fontSize: 11, lineHeight: 1.6 }}>
+                      <code style={{ display: 'block', whiteSpace: 'pre-wrap', color: isDarkMode ? '#86efac' : '#007A33', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', lineHeight: 1.6 }}>
                         {expr}
                       </code>
                     )}
@@ -1722,7 +1727,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           <IntroSection id="refs" title="References" badge={`${refs.length} 条`}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {refs.map((r, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
+                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
                   <span style={{ color: c.primary, fontFamily: 'monospace', flexShrink: 0, minWidth: 24 }}>[{i + 1}]</span>
                   <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r}</span>
                 </div>
@@ -1741,7 +1746,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     <div style={{ padding: '8px 0' }}>
       {/* 模型内置 optimizer 提示 */}
       {hasModelOpt && (
-        <div style={{ background: c.sectionHd, border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px', marginBottom: 10, fontSize: 11, color: c.textSec }}>
+        <div style={{ background: c.sectionHd, border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px', marginBottom: 10, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textSec }}>
           已从模型 <code style={{ fontFamily: 'monospace' }}>optimizer:</code> 块读取配置，可在下方修改
         </div>
       )}
@@ -1865,7 +1870,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     return (
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
         {!hasPareto && (
-          <div style={{ textAlign: 'center', color: c.textMute, padding: 40, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: c.textMute, padding: 40, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
             {optRunning ? '优化运行中，请等待结果...' : '运行优化后在此查看 Pareto 结果'}
           </div>
         )}
@@ -1876,7 +1881,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               <span style={{ fontWeight: 600, color: c.text }}>Pareto 前沿</span>
               {(optResult.objectives || []).map((o: any, i: number) => (
                 <span key={i} style={{
-                  padding: '1px 6px', borderRadius: 3, fontSize: 11,
+                  padding: '1px 6px', borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)',
                   fontFamily: 'monospace', color: c.primary,
                   background: isDarkMode ? '#1e3824' : '#f0f7f0',
                   border: `1px solid ${c.border}`,
@@ -1885,7 +1890,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   {o.metric && o.metric !== 'final' ? ` (${o.metric})` : ''}
                 </span>
               ))}
-              <span style={{ color: c.textMute, fontSize: 12 }}>
+              <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
                 {optResult.n_solutions} 解 · {optResult.method}
                 {optElapsed > 0 ? ` · ${optElapsed.toFixed(1)}s` : ''}
               </span>
@@ -1893,14 +1898,14 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             {/* Full-size Pareto chart */}
             <div style={{ height: 320, border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-              <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} />
+              <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
             </div>
 
             {/* Best solution */}
             {optResult.best_x != null && (
               <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, border: `1px solid ${c.border}`, background: c.panel }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: c.textSec, marginBottom: 6 }}>最优解（Pareto 第一点）</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 12 }}>
+                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, color: c.textSec, marginBottom: 6 }}>最优解（Pareto 第一点）</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
                   {/* Decision variables */}
                   {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i}`))
                     .map((label: string, i: number) => (
@@ -1988,15 +1993,15 @@ const Simulator: React.FC<SimulatorProps> = ({
                 background: c.sectionHd, userSelect: 'none',
               }}
             >
-              <span style={{ fontSize: 9, color: c.textMute }}>{optLogOpen ? '▾' : '▸'}</span>
+              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: c.textMute }}>{optLogOpen ? '▾' : '▸'}</span>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {statusLine || (optRunning ? '启动中...' : 'Log')}
               </span>
               {optRunning && (
                 <Button size="small" danger
                   onClick={e => { e.stopPropagation(); cancelOptimization(); }}
-                  style={{ height: 20, fontSize: 11, padding: '0 6px', lineHeight: '20px' }}>
+                  style={{ height: 20, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '0 6px', lineHeight: '20px' }}>
                   停止
                 </Button>
               )}
@@ -2005,7 +2010,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             {optLogOpen && (
               <div style={{
                 maxHeight: 140, overflowY: 'auto',
-                fontFamily: 'monospace', fontSize: 11, color: c.text,
+                fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text,
                 background: isDarkMode ? '#0d1710' : '#f0f7f0',
                 padding: '3px 8px',
               }}>
@@ -2063,7 +2068,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
                       <span style={{ fontWeight: 600 }}>{varName}</span>
-                      {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 11 }}>{varInfo.description}</span>}
+                      {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{varInfo.description}</span>}
                       {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
                     </span>
                   ),
@@ -2075,7 +2080,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                   children: (
                     <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
                       isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
-                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined} />
+                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
+                      fontSize={fontSize} />
                   ),
                   styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
                 };
@@ -2083,7 +2089,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             />
             {inputVars.length > 0 && (
               <>
-                <div style={{ margin: '6px 0 2px', padding: '2px 8px', fontSize: 11, color: c.textMute, letterSpacing: '0.05em', borderLeft: `2px solid ${c.border}` }}>
+                <div style={{ margin: '6px 0 2px', padding: '2px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, letterSpacing: '0.05em', borderLeft: `2px solid ${c.border}` }}>
                   {t('sim.tabs.inputs')}
                 </div>
                 <Collapse
@@ -2099,7 +2105,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
                             <span style={{ fontWeight: 600 }}>{v.name}</span>
-                            {inputVarInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 11 }}>{inputVarInfo.description}</span>}
+                            {inputVarInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{inputVarInfo.description}</span>}
                             {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
                           </span>
                         );
@@ -2112,7 +2118,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                       children: (
                         <SimChart varName={v.name} unit={v.unit} data={simulationData}
                           isDarkMode={isDarkMode} c={c} colorIndex={outputVars.length + idx} hideTitleBar
-                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined} />
+                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
+                          fontSize={fontSize} />
                       ),
                       styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
                     };
@@ -2128,13 +2135,13 @@ const Simulator: React.FC<SimulatorProps> = ({
             : (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute, flexDirection: 'column', gap: 8 }}>
                 {!selectedKey
-                  ? <><span style={{ fontSize: 18 }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
+                  ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
                   : !isLocked
-                    ? <><span style={{ fontSize: 18 }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
+                    ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
                     : mode === 'opt'
-                      ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.control.run')}</span></>
+                      ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.control.run')}</span></>
                       : status === 'idle'
-                        ? <><span style={{ fontSize: 18 }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
+                        ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
                         : <span>{t('sim.scene.calculating')}</span>
                 }
               </div>
@@ -2216,11 +2223,11 @@ const Simulator: React.FC<SimulatorProps> = ({
 
         {/* Date range */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 12 }}>{t('sim.duration.label')}</span>
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
           <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
             onChange={e => set('simStartDate', e.target.value)}
             style={{ width: 100, fontFamily: 'monospace' }} />
-          <span style={{ color: c.textMute, fontSize: 11 }}>~</span>
+          <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
           <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
             onChange={e => set('simEndDate', e.target.value)}
             style={{ width: 100, fontFamily: 'monospace' }} />
@@ -2237,7 +2244,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         {/* MC runs */}
         <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '–'}` : 'Monte Carlo 运行条数（1=单条）'}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 12 }}>MC×</span>
+            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
             <InputNumber
               size="small" min={1} max={50} value={simRuns}
               onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
@@ -2293,7 +2300,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
                     <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
                     {validationResult?.errors.map((err, i) => (
-                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, marginBottom: 3 }}>• {err}</div>
+                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', marginBottom: 3 }}>• {err}</div>
                     ))}
                   </div>
                 }
@@ -2454,7 +2461,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                           background: c.sectionHd, userSelect: 'none',
                         }}
                       >
-                        <span style={{ color: c.textMute, fontSize: 9, transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+                        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
                         <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{tab.label}</span>
                       </div>
                       {isOpen && (
@@ -2525,22 +2532,22 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             // ── section JSX preview ────────────────────────────────────────
             const TH = ({ children }: { children: React.ReactNode }) => (
-              <th style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, color: c.textMute,
+              <th style={{ padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, color: c.textMute,
                 textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>{children}</th>
             );
             const TD = ({ children, mono }: { children: React.ReactNode; mono?: boolean }) => (
-              <td style={{ padding: '4px 8px', fontSize: 11, color: c.text,
+              <td style={{ padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text,
                 fontFamily: mono ? 'monospace' : 'inherit', borderBottom: `1px solid ${c.border}` }}>{children}</td>
             );
 
             function renderSectionContent(key: ReportSection): React.ReactNode {
               if (key === 'intro') return (
-                <div style={{ fontSize: 12, color: c.text, lineHeight: 1.8 }}>
+                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.8 }}>
                   {meta.description
                     ? <p style={{ margin: 0 }}>{meta.description}</p>
                     : <span style={{ color: c.textMute }}>暂无简介（可在 YAML metadata.description 中填写）</span>
                   }
-                  {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 11 }}>标签：{meta.tags.join('  ·  ')}</div> : null}
+                  {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>标签：{meta.tags.join('  ·  ')}</div> : null}
                 </div>
               );
               if (key === 'overview') return (
@@ -2577,7 +2584,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
                     const cite = citeStr(d.reference);
                     return <tr key={name}><TD mono>{name}</TD>
-                      <TD>{d.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 10 }}>{cite}</span>}</TD>
+                      <TD>{d.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
                       <TD>{d.type || '—'}</TD><TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
                   })}</tbody>
                 </table>
@@ -2590,27 +2597,28 @@ const Simulator: React.FC<SimulatorProps> = ({
                     const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
                     const cite = citeStr(fd.reference);
                     return <tr key={name}><TD mono>{name}</TD>
-                      <TD>{fd.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 10 }}>{cite}</span>}</TD>
+                      <TD>{fd.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
                       <TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
                   })}</tbody>
                 </table>
               );
               if (key === 'plots') {
-                if (!hasData) return <div style={{ color: c.textMute, fontSize: 11, padding: '8px 0' }}>尚无数据，请先运行仿真</div>;
+                if (!hasData) return <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '8px 0' }}>尚无数据，请先运行仿真</div>;
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {outputVars.map((varName, idx) => {
                       const varInfo = allV[varName];
                       return (
                         <div key={varName}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: c.text, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, color: c.text, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: VAR_COLORS[idx % VAR_COLORS.length], display: 'inline-block' }} />
                             <span style={{ fontFamily: 'monospace' }}>{varName}</span>
                             {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400 }}>{varInfo.description}</span>}
                             {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
                           </div>
                           <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
-                            isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar />
+                            isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
+                            fontSize={fontSize} />
                         </div>
                       );
                     })}
@@ -2618,7 +2626,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 );
               }
               if (key === 'refs') return (
-                <div style={{ fontSize: 11, color: c.text, lineHeight: 1.9 }}>
+                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, lineHeight: 1.9 }}>
                   {allRefs.length === 0
                     ? <span style={{ color: c.textMute }}>当前模型无参考文献（可在 YAML metadata.references / variable.reference / formula.reference 中添加）</span>
                     : allRefs.map((ref, i) => (
@@ -2631,7 +2639,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 </div>
               );
               if (key === 'opt') return (
-                <div style={{ fontSize: 11, color: c.text }}>
+                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
                   {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>目标函数</div>
                     {objectives.map((o, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
                       {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}</div>)}</>}
@@ -2715,10 +2723,12 @@ const Simulator: React.FC<SimulatorProps> = ({
             function buildHtml(md: string): string {
               const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
               const rows = md.split('\n');
-              let html = '<style>body{font-family:system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#1a2e22;line-height:1.6}' +
+              const tableFont = fontSize * 13 / 14;
+              const codeFont = fontSize * 12 / 14;
+              let html = `<style>body{font-family:system-ui,sans-serif;font-size:${fontSize}px;max-width:900px;margin:40px auto;padding:0 20px;color:#1a2e22;line-height:1.6}` +
                 'h1{color:#007A33;border-bottom:2px solid #007A33;padding-bottom:8px}h2{color:#007A33;margin-top:32px}' +
-                'table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #dde5de;padding:6px 10px;text-align:left;font-size:13px}' +
-                'th{background:#f2f4f2;font-weight:700}code{background:#f2f4f2;padding:1px 4px;border-radius:3px;font-size:12px}' +
+                `table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #dde5de;padding:6px 10px;text-align:left;font-size:${tableFont}px}` +
+                `th{background:#f2f4f2;font-weight:700}code{background:#f2f4f2;padding:1px 4px;border-radius:3px;font-size:${codeFont}px}` +
                 'blockquote{border-left:3px solid #b7eb8f;margin:0;padding-left:12px;color:#555}</style><body>';
               let inTable = false;
               rows.forEach(line => {
@@ -2768,7 +2778,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               ctx.scale(2, 2);
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, W, H);
-              drawChartOnCtx(ctx, W, H, varName, simulationData, false, VAR_COLORS[colorIndex % VAR_COLORS.length]);
+              drawChartOnCtx(ctx, W, H, varName, simulationData, false, VAR_COLORS[colorIndex % VAR_COLORS.length], undefined, fontSize);
               return canvas.toDataURL('image/png');
             }
 
@@ -2808,7 +2818,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             const canExport = reportSections.size > 0;
             const btnBase: React.CSSProperties = {
-              padding: '6px 16px', borderRadius: 5, fontSize: 12, fontWeight: 600,
+              padding: '6px 16px', borderRadius: 5, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', fontWeight: 600,
               cursor: 'pointer', transition: 'opacity 0.15s',
             };
 
@@ -2848,7 +2858,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     width: 168, flexShrink: 0, borderRight: `1px solid ${c.border}`,
                     background: c.panel, overflowY: 'auto', padding: '12px 0',
                   }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: c.textMute, letterSpacing: '0.1em',
+                    <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em',
                       textTransform: 'uppercase', padding: '0 14px 8px' }}>输出章节</div>
                     {ALL_REPORT_SECTIONS.map(s => {
                       const checked = reportSections.has(s.key);
@@ -2873,7 +2883,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                             }}
                             style={{ accentColor: c.primary, width: 12, height: 12, flexShrink: 0 }}
                           />
-                          <span style={{ fontSize: 12, color: c.text }}>{s.label}</span>
+                          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text }}>{s.label}</span>
                         </label>
                       );
                       return tooltipText
@@ -2885,7 +2895,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   {/* Right: accordion previews */}
                   <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {reportSections.size === 0 && (
-                      <div style={{ color: c.textMute, fontSize: 12, padding: '32px 0', textAlign: 'center' }}>
+                      <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', padding: '32px 0', textAlign: 'center' }}>
                         请在左侧勾选章节
                       </div>
                     )}
@@ -2907,11 +2917,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                               userSelect: 'none',
                             }}
                           >
-                            <span style={{ fontSize: 9, color: c.textMute, transition: 'transform 0.15s',
+                            <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: c.textMute, transition: 'transform 0.15s',
                               transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
-                            <span style={{ fontWeight: 600, fontSize: 12, color: c.text, flex: 1 }}>{s.label}</span>
+                            <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, flex: 1 }}>{s.label}</span>
                             {badge && <span style={{
-                              fontSize: 10, color: c.primary, fontFamily: 'monospace',
+                              fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.primary, fontFamily: 'monospace',
                               background: c.primary + '15', padding: '1px 7px', borderRadius: 8,
                             }}>{badge}</span>}
                           </div>
