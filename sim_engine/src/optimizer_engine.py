@@ -324,12 +324,42 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
             def notify(self, algorithm):
                 if progress_callback is not None and algorithm.opt is not None:
                     F = algorithm.opt.get('F')
+                    X = algorithm.opt.get('X')
+                    CV = algorithm.pop.get('CV') if algorithm.pop is not None else None
                     best_f = float(np.min(F)) if F is not None and len(F) > 0 else None
-                    progress_callback({
+                    entry = {
                         'iteration': algorithm.n_gen,
                         'fitness': best_f,
                         'n_eval': algorithm.evaluator.n_eval,
-                    })
+                    }
+                    if F is not None and len(F) > 0:
+                        F_arr = np.atleast_2d(F)
+                        X_arr = np.atleast_2d(X) if X is not None else None
+                        front = []
+                        for i in range(len(F_arr)):
+                            f_display = []
+                            for j, obj in enumerate(objectives):
+                                raw = -F_arr[i][j] if obj.get('direction', 'minimize') == 'maximize' else F_arr[i][j]
+                                f_display.append(float(raw))
+                            point = {'f': f_display}
+                            if X_arr is not None and i < len(X_arr):
+                                point['x'] = X_arr[i].tolist()
+                            front.append(point)
+                        entry['pareto_front'] = front
+                        entry['pareto_count'] = len(front)
+                        entry['objective_ranges'] = [
+                            {
+                                'min': float(min(p['f'][j] for p in front)),
+                                'max': float(max(p['f'][j] for p in front)),
+                            }
+                            for j in range(len(objectives))
+                        ]
+                    if CV is not None and len(CV) > 0:
+                        cv_arr = np.asarray(CV, dtype=float).reshape(-1)
+                        entry['feasible_ratio'] = float(np.mean(cv_arr <= 1e-9))
+                        entry['mean_cv'] = float(np.mean(np.maximum(cv_arr, 0)))
+                        entry['max_cv'] = float(np.max(np.maximum(cv_arr, 0)))
+                    progress_callback(entry)
 
         _cb = _ProgressCb() if progress_callback else None
 
