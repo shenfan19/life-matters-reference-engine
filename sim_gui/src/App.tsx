@@ -35,7 +35,7 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
   </svg>
 );
 import Simulator from './components/Simulator';
-import ModsManager from './components/ModsManager';
+import ModelBuilder from './components/ModelBuilder';
 import type { SimulationState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
 
@@ -227,9 +227,9 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
   );
 }
 
-// ─── Tools page → Mods Manager ────────────────────────────────────────────────
+// ─── Tools page → Model Builder ───────────────────────────────────────────────
 function ToolsPage({ isDarkMode, c }: { isDarkMode: boolean; c: typeof C.light }) {
-  return <ModsManager isDarkMode={isDarkMode} c={c} />;
+  return <ModelBuilder isDarkMode={isDarkMode} c={c} />;
 }
 
 // ─── Contact info ─────────────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ function App() {
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(() => readPrefs().expandedKeys || ['models', 'scenarios']);
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
   const [storyFilter, setStoryFilter] = useState('');
-  const [loadedMods, setLoadedMods] = useState<Record<string, ModelFile>>({});
+  const [loadedModels, setLoadedModels] = useState<Record<string, ModelFile>>({});
   const [isLocked, setIsLocked] = useState(false);
 
   const c = isDarkMode ? C.dark : C.light;
@@ -437,7 +437,7 @@ function App() {
               expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
               storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
               storyFilter={storyFilter} setStoryFilter={setStoryFilter}
-              loadedMods={loadedMods} setLoadedMods={setLoadedMods}
+              loadedModels={loadedModels} setLoadedModels={setLoadedModels}
               setConfirmedModel={setConfirmedModel} onModelSelect={setSelectedModel}
               simMode={simMode} onSimModeChange={setSimMode}
               fontSize={fontSize}

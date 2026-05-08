@@ -1,4 +1,4 @@
-// ModsManager.tsx
+// ModelBuilder.tsx
 // Select files (max 5) → structured cards shown side-by-side
 // Click 编辑 on a card → all fields become inline inputs
 // Save button activates (green) when there are unsaved changes
@@ -28,7 +28,7 @@ function useResize(initial: number, min = 150, max = 600, direction: 'right' | '
 }
 import { App, Input, Button, Modal } from 'antd';
 import { SearchOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { validateModFile } from '../core/validate';
+import { validateModelFile } from '../core/validate';
 
 // ─── File type registry ───────────────────────────────────────────────────────
 
@@ -138,7 +138,7 @@ const differ = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
 
 interface Props { isDarkMode: boolean; c: any; }
 
-export default function ModsManager({ isDarkMode, c }: Props) {
+export default function ModelBuilder({ isDarkMode, c }: Props) {
   const { modal, message } = App.useApp();
   const { width: leftW, startDrag: startLeftDrag } = useResize(230);
 
@@ -261,7 +261,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
   // ── Validate a file ───────────────────────────────────────────────────────
   async function handleValidate(key: string) {
     setValidateSt(p => ({ ...p, [key]: { loading: true, errors: [] } }));
-    const result = await validateModFile(key);
+    const result = await validateModelFile(key);
     setValidateSt(p => ({ ...p, [key]: { loading: false, valid: result.valid, errors: result.errors } }));
   }
 
@@ -329,7 +329,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       setChecked(next);
       // load metas for newly added
       files.filter(f => !checked.has(f.key) && next.has(f.key)).forEach(async f => {
-        const clean = f.key.replace(/^mods\//, '');
+        const clean = f.key.replace(/^models\//, '');
         try {
           const d = await fetch(`/api/file/${clean}`).then(r => r.json());
           if (d.success && d.data?.content) setMetas(p => ({ ...p, [f.key]: d.data.content }));
@@ -349,7 +349,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       if (fileType(key) === 'game_story') return; // game_story not supported in editor
       if (checked.size >= 5) { message.warning('最多同时查看 5 个文件'); return; }
       setChecked(p => new Set([...p, key]));
-      const clean = key.replace(/^mods\//, '');
+      const clean = key.replace(/^models\//, '');
       try {
         const d = await fetch(`/api/file/${clean}`).then(r => r.json());
         if (d.success && d.data?.content)
@@ -395,7 +395,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
         setMetas(p => ({ ...p, [key]: clone(draft) }));
         cancelEdit(key);
         // Re-fetch from disk to confirm sync
-        const clean = key.replace(/^mods\//, '');
+        const clean = key.replace(/^models\//, '');
         fetch(`/api/file/${clean}`).then(r => r.json()).then(fresh => {
           if (fresh.success && fresh.data?.content)
             setMetas(p => ({ ...p, [key]: fresh.data.content }));
@@ -430,7 +430,7 @@ export default function ModsManager({ isDarkMode, c }: Props) {
       okText: '删除', okType: 'danger', cancelText: '取消',
       onOk: async () => {
         try {
-          const r = await fetch(`/api/file/${key.replace(/^mods\//, '')}`, { method: 'DELETE' });
+          const r = await fetch(`/api/file/${key.replace(/^models\//, '')}`, { method: 'DELETE' });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           message.success('文件已删除');
           if (checked.has(key)) toggleFile(key);
@@ -733,6 +733,15 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
   const fmls = data?.formulas  ?? {};
   const simK = data?.simulator ? 'simulator' : 'simulation';
   const sim  = data?.[simK]   ?? {};
+  const formatDescription = (description: any): string => {
+    if (!description) return '';
+    if (typeof description === 'string') return description;
+    if (typeof description !== 'object') return String(description);
+    return Object.entries(description)
+      .filter(([, value]) => value != null && String(value).trim())
+      .map(([key, value]) => `${key}: ${String(value).trim()}`)
+      .join('\n\n');
+  };
 
   const cardW = totalCards === 1 ? 560 : totalCards === 2 ? 440 : 360;
   const shadow = isDarkMode
@@ -841,14 +850,14 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
             </Row>
             <Row label="描述" c={c}>
               {editing ? (
-                <textarea value={mt.description || ''} rows={2}
+                <textarea value={formatDescription(mt.description)} rows={4}
                   onChange={e => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.description = e.target.value; })}
                   style={{ width: '100%', resize: 'vertical', border: `1px solid ${border}`,
                     borderRadius: 4, padding: '4px 8px', background: bg, color: text,
                     outline: 'none', fontFamily: 'inherit', lineHeight: 1.55 }} />
               ) : (
-                <span style={{ color: mute, lineHeight: 1.6 }}>
-                  {mt.description || <span style={{ opacity: 0.4 }}>—</span>}
+                <span style={{ color: mute, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {formatDescription(mt.description) || <span style={{ opacity: 0.4 }}>—</span>}
                 </span>
               )}
             </Row>

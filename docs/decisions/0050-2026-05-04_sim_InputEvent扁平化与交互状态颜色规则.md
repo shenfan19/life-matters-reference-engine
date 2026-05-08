@@ -138,6 +138,6 @@ models/source/medical/test/
 - 树节点选中：绿色背景（`#1a3a22` 暗色 / `#e8f5e9` 浅色），不再是灰色 ✓
 - 左侧 header 显示"Models / 模型库" ✓
 - COMPONENTS 组在 SCENARIOS 上方 ✓
-- test 模型显示 `mod_type: "model"` 紫色标签 ✓
+- test 模型显示 `model_type: "model"` 紫色标签 ✓
 - InputEvent 行1+行2 = 最小2行，开关展开最多3行（时间/日/范合并一行）✓
 - 删除按钮与 toggle 之间有 `flex:1` 间距，不易误触 ✓

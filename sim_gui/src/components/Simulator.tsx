@@ -39,7 +39,7 @@ import {
   LoadingOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile } from '../types';
-import { validateModFile } from '../core/validate';
+import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 
 const API_BASE = '/api';
@@ -483,7 +483,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   expandedKeys, setExpandedKeys,
   storyViewMode, setStoryViewMode,
   storyFilter, setStoryFilter,
-  loadedMods, setLoadedMods,
+  loadedModels, setLoadedModels,
   setConfirmedModel, onModelSelect,
   simMode: mode, onSimModeChange: setMode,
   fontSize,
@@ -504,7 +504,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
-  const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
+  const selectedStory = selectedKey ? loadedModels[selectedKey] ?? null : null;
 
   // ── center tab ───────────────────────────────────────────────────────────────
   const [centerTab, setCenterTab] = useState<'intro' | 'setup' | 'opt' | 'plot' | 'report'>('intro');
@@ -986,30 +986,30 @@ const Simulator: React.FC<SimulatorProps> = ({
           const titleStr = item.type === 'file' ? item.title.replace(/\.ya?ml$/, '') : item.title;
           if (item.type === 'folder' && item.children?.length === 1) {
             const child = item.children[0];
-            if (child.type === 'file' && (child.title === 'mod.yaml' || child.title === 'mod.yml')) {
+            if (child.type === 'file' && (child.title === 'model.yaml' || child.title === 'model.yml')) {
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: c.primary }} />,
                 title: <span>{item.title} <Tag color="blue" style={{}}>pkg</Tag></span>,
-                titleStr: item.title, mod_type: 'story',
+                titleStr: item.title, model_type: 'story',
               };
             }
           }
           const isModel = item.key?.startsWith('models/');
           return {
             title: item.type === 'file'
-              ? <span>{titleStr}{item.mod_type && <Tag color={isModel ? 'purple' : 'blue'} style={{ marginLeft: 6 }}>{item.mod_type}</Tag>}</span>
+              ? <span>{titleStr}{item.model_type && <Tag color={isModel ? 'purple' : 'blue'} style={{ marginLeft: 6 }}>{item.model_type}</Tag>}</span>
               : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
             isLeaf: item.type === 'file',
             children: item.children ? convert(item.children) : undefined,
-            titleStr, mod_type: item.mod_type,
+            titleStr, model_type: item.model_type,
           };
         });
-        const modsNode = result.data.find((n: any) => n.key === 'models');
-        if (modsNode?.children) {
-          const combined: DataNode[] = modsNode.children
+        const modelsNode = result.data.find((n: any) => n.key === 'models');
+        if (modelsNode?.children) {
+          const combined: DataNode[] = modelsNode.children
             .flatMap((child: any) => {
               const items = convert(child.children || []);
               if (!items.length) return [];
@@ -1032,9 +1032,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   const loadFileContent = async (filePath: string, opts: { preserveTab?: boolean } = {}): Promise<ModelFile | null> => {
     setTreeLoading(true);
     try {
-      const cleanPath = filePath.replace(/^mods\//, '');
+      const cleanPath = filePath.replace(/^models\//, '');
       const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
-      if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return; }
+      if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return null; }
       const { content, path } = fileResult.data;
       const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined;
       const modelName = path.split('/').pop()?.replace(/\.ya?ml$/i, '') || content.metadata?.name || 'unknown';
@@ -1057,7 +1057,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         folder,
         validated: undefined, validationErrors: [],
       };
-      setLoadedMods(prev => ({ ...prev, [filePath]: model }));
+      setLoadedModels(prev => ({ ...prev, [filePath]: model }));
       setConfirmedModel(model);
       onModelSelect(model);
       if (!opts.preserveTab) setCenterTab('intro');
@@ -1097,7 +1097,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setValidating(true);
     setValidationResult(null);
     await loadFileContent(selectedKey, { preserveTab: true });
-    const result = await validateModFile(selectedKey);
+    const result = await validateModelFile(selectedKey);
     if (result.valid) {
       setValidationResult(null);
       setIsLocked(true);
@@ -2395,18 +2395,18 @@ const Simulator: React.FC<SimulatorProps> = ({
           <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
           <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
             onChange={e => set('simStartDate', e.target.value)}
-            style={{ width: 100, fontFamily: 'monospace' }} />
+            style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
           <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
           <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
             onChange={e => set('simEndDate', e.target.value)}
-            style={{ width: 100, fontFamily: 'monospace' }} />
+            style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
         </div>
 
         {/* Step size */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
-          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: 58 }} min={1} />
-          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ width: 62, flexShrink: 0 }}
+          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
+          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content', flexShrink: 0 }}
             options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
         </div>
 
@@ -2544,11 +2544,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {storyList.length === 0
                       ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
-                      : storyList.map((mod: any) => (
-                          <div key={mod.key} onClick={() => handleSelect([mod.key])}
-                            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === mod.key ? c.rowHover : 'transparent', color: c.text }}>
+                      : storyList.map((modelEntry: any) => (
+                          <div key={modelEntry.key} onClick={() => handleSelect([modelEntry.key])}
+                            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === modelEntry.key ? c.rowHover : 'transparent', color: c.text }}>
                             <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.displayTitle}</span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modelEntry.displayTitle}</span>
                           </div>
                         ))
                     }

@@ -5,7 +5,7 @@ import type { DataNode as AntDataNode } from 'antd/es/tree';
 
 export interface DataNode extends AntDataNode {
     titleStr?: string;
-    mod_type?: string;
+    model_type?: string;
     path?: string;
     isLeaf?: boolean;
     displayTitle?: string;
@@ -21,7 +21,7 @@ export interface LoaderProps {
     storyTree: DataNode[];
     setStoryTree: (tree: DataNode[]) => void;
     expandedKeys: React.Key[];
-    setExpandedKeys: (keys: React.Key[]) => void;
+    setExpandedKeys: React.Dispatch<React.SetStateAction<React.Key[]>>;
     modelViewMode: 'tree' | 'list';
     setModelViewMode: (mode: 'tree' | 'list') => void;
     storyViewMode: 'tree' | 'list';
@@ -40,8 +40,8 @@ export interface LoaderProps {
     setManualCheckedModelKeys: (keys: React.Key[]) => void;
     checkedStoryKeys: React.Key[];
     setCheckedStoryKeys: (keys: React.Key[]) => void;
-    loadedMods: Record<string, ModelFile>;
-    setLoadedMods: (mods: Record<string, ModelFile>) => void;
+    loadedModels: Record<string, ModelFile>;
+    setLoadedModels: (models: Record<string, ModelFile>) => void;
     isSimulating: boolean;
     isLocked: boolean;
     setIsLocked: (locked: boolean) => void;
@@ -126,13 +126,13 @@ export interface SimulatorProps {
     storyTree: DataNode[];
     setStoryTree: (tree: DataNode[]) => void;
     expandedKeys: React.Key[];
-    setExpandedKeys: (keys: React.Key[]) => void;
+    setExpandedKeys: React.Dispatch<React.SetStateAction<React.Key[]>>;
     storyViewMode: 'tree' | 'list';
     setStoryViewMode: (mode: 'tree' | 'list') => void;
     storyFilter: string;
     setStoryFilter: (filter: string) => void;
-    loadedMods: Record<string, ModelFile>;
-    setLoadedMods: (mods: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
+    loadedModels: Record<string, ModelFile>;
+    setLoadedModels: (models: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
     setConfirmedModel: (model: ModelFile | null) => void;
     onModelSelect: (model: ModelFile | null) => void;
     simMode: 'sim' | 'opt';

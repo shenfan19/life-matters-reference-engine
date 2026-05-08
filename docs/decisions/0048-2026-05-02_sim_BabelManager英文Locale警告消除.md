@@ -6,7 +6,7 @@
 
 ## 背景
 
-每次初始化 `ModStructure`（包括 Monte Carlo 多 run 时每个 `_clone_model()` 调用）均会创建一个新的 `BabelLanguageManager`，并尝试加载 `locales/en/LC_MESSAGES/` 目录。该目录不存在，产生警告：
+每次初始化 `ModelStructure`（包括 Monte Carlo 多 run 时每个 `_clone_model()` 调用）均会创建一个新的 `BabelLanguageManager`，并尝试加载 `locales/en/LC_MESSAGES/` 目录。该目录不存在，产生警告：
 
 ```
 WARNING:src.babel_manager:Locale en not found at locales\en\LC_MESSAGES, using NullTranslations

@@ -82,17 +82,17 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Error initializing plugins: {e}")
         plugin_manager = None
     
-    # 初始化 Mods 系统
+    # 初始化 Models 系统
     try:
         from src.loader_engine import LoaderEngine
         
-        mods_dir = PROJECT_ROOT / "models"
-        logger.info(f"Models directory: {mods_dir}")
+        models_dir = PROJECT_ROOT / "models"
+        logger.info(f"Models directory: {models_dir}")
 
-        if not mods_dir.exists():
-            mods_dir.mkdir(parents=True, exist_ok=True)
+        if not models_dir.exists():
+            models_dir.mkdir(parents=True, exist_ok=True)
 
-        loader_engine = LoaderEngine(mods_directory=str(mods_dir))
+        loader_engine = LoaderEngine(models_directory=str(models_dir))
         logger.info(f"✅ Models system initialized")
         
         try:
@@ -111,14 +111,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Failed to import LoaderEngine: {e}")
         loader_engine = None
     except Exception as e:
-        logger.error(f"❌ Error initializing mods: {e}")
+        logger.error(f"❌ Error initializing models: {e}")
         loader_engine = None
     
     # 初始化仿真引擎
     try:
         from src.simulator_engine import SimulatorEngine
-        mods_dir = PROJECT_ROOT / "models"
-        simulator_engine = SimulatorEngine(mods_directory=str(mods_dir))
+        models_dir = PROJECT_ROOT / "models"
+        simulator_engine = SimulatorEngine(models_directory=str(models_dir))
         logger.info(f"✅ Simulation system initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing simulation: {e}")
@@ -261,8 +261,8 @@ async def health_check():
             "loader_engine": loader_engine is not None
         },
         "plugins_loaded": len(plugin_manager.plugins) if plugin_manager else 0,
-        "mods_directory": str(PROJECT_ROOT / "models"),
-        "mods_exists": (PROJECT_ROOT / "models").exists(),
+        "models_directory": str(PROJECT_ROOT / "models"),
+        "models_exists": (PROJECT_ROOT / "models").exists(),
         "active_opt_jobs": active_jobs,
     }
 
@@ -418,12 +418,12 @@ async def call_plugin_backend(plugin_id: str, endpoint: str, payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ========== Mods 端点 ==========
-@app.get("/api/mods")
-async def list_mods(folder: str = None):
+# ========== Models 端点 ==========
+@app.get("/api/models")
+async def list_models(folder: str = None):
     """获取所有模型列表"""
     if loader_engine is None:
-        return {"models": [], "message": "Mods system not initialized"}
+        return {"models": [], "message": "Models system not initialized"}
     
     try:
         folders = [folder] if folder else None
@@ -447,7 +447,7 @@ async def list_mods(folder: str = None):
 
 
 @app.get("/api/models/{model_name}")
-async def get_mod(model_name: str, folder: str = None):
+async def get_model(model_name: str, folder: str = None):
     """获取单个模型详情"""
     if loader_engine is None:
         raise HTTPException(status_code=503, detail="Models system not initialized")
@@ -513,7 +513,7 @@ async def get_mod(model_name: str, folder: str = None):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting mod: {e}")
+        logger.error(f"Error getting model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -550,7 +550,7 @@ async def list_files():
                         with open(item_path, 'r', encoding='utf-8') as f:
                             data = yaml.safe_load(f)
                             if isinstance(data, dict):
-                                file_metadata['mod_type'] = data.get('type', 'unknown')
+                                file_metadata['model_type'] = data.get('type', 'unknown')
                                 file_metadata['category'] = data.get('category', 'unknown')
                                 file_metadata['description'] = data.get('description', '')
                                 file_metadata['difficulty'] = data.get('difficulty', '')
@@ -573,12 +573,12 @@ async def list_files():
         return items
     
     try:
-        mods_dir = PROJECT_ROOT / "models"
+        models_dir = PROJECT_ROOT / "models"
         tree = [{
             'title': 'models',
             'key': 'models',
             'type': 'folder',
-            'children': build_tree(str(mods_dir))
+            'children': build_tree(str(models_dir))
         }]
         
         return {'success': True, 'data': tree}
@@ -717,9 +717,9 @@ async def save_file_endpoint(request: SaveFileRequest):
 @app.delete("/api/file/{file_path:path}")
 async def delete_file(file_path: str):
     """Delete a file inside the models directory."""
-    mods_root = PROJECT_ROOT / "models"
-    target = mods_root / file_path.lstrip('/')
-    if not str(target.resolve()).startswith(str(mods_root.resolve())):
+    models_root = PROJECT_ROOT / "models"
+    target = models_root / file_path.lstrip('/')
+    if not str(target.resolve()).startswith(str(models_root.resolve())):
         raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
@@ -736,11 +736,11 @@ async def delete_file(file_path: str):
 async def move_file(request: FileMoveRequest):
     """Move / rename a file inside the models directory."""
     import shutil
-    mods_root = PROJECT_ROOT / "models"
-    src = mods_root / request.src.lstrip('/')
-    dst = mods_root / request.dst.lstrip('/')
+    models_root = PROJECT_ROOT / "models"
+    src = models_root / request.src.lstrip('/')
+    dst = models_root / request.dst.lstrip('/')
     for p in (src, dst):
-        if not str(p.resolve()).startswith(str(mods_root.resolve())):
+        if not str(p.resolve()).startswith(str(models_root.resolve())):
             raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if not src.exists():
         raise HTTPException(status_code=404, detail=f"Source not found: {request.src}")
@@ -771,9 +771,9 @@ _FILE_TEMPLATES = {
 @app.post("/api/file-new")
 async def create_new_file(request: FileNewRequest):
     """Create a new YAML file from a template inside the models directory."""
-    mods_root = PROJECT_ROOT / "models"
-    target = mods_root / request.path.lstrip('/')
-    if not str(target.resolve()).startswith(str(mods_root.resolve())):
+    models_root = PROJECT_ROOT / "models"
+    target = models_root / request.path.lstrip('/')
+    if not str(target.resolve()).startswith(str(models_root.resolve())):
         raise HTTPException(status_code=400, detail="Path must be inside models directory")
     if target.exists():
         raise HTTPException(status_code=409, detail=f"File already exists: {request.path}")
@@ -849,7 +849,7 @@ async def merge_models(request: MergeRequest):
 # ========== Validate 端点 ==========
 def _simple_yaml_validate(file_path, project_root):
     """
-    Semantic validation of a mod YAML file.
+    Semantic validation of a model YAML file.
 
     Checks:
       1. metadata.name exists
@@ -979,7 +979,7 @@ async def validate_model(request: ValidateRequest):
 async def split_model(request: SplitRequest):
     """拆分模型"""
     if loader_engine is None:
-        raise HTTPException(status_code=503, detail="Mods system not initialized")
+        raise HTTPException(status_code=503, detail="Models system not initialized")
     
     try:
         file_path = request.file_path
@@ -1069,8 +1069,8 @@ async def search_files(q: str = ""):
             logger.error(f"Search error in {directory}: {e}")
     
     try:
-        mods_dir = PROJECT_ROOT / "models"
-        search_in_dir(str(mods_dir))
+        models_dir = PROJECT_ROOT / "models"
+        search_in_dir(str(models_dir))
         return {'success': True, 'data': results}
     except Exception as e:
         logger.error(f"Search error: {e}")
@@ -1141,8 +1141,8 @@ async def list_folders():
             logger.error(f"Error collecting folders from {directory}: {e}")
     
     try:
-        mods_dir = PROJECT_ROOT / "models"
-        collect_folders(str(mods_dir))
+        models_dir = PROJECT_ROOT / "models"
+        collect_folders(str(models_dir))
         return {'success': True, 'data': folders}
     except Exception as e:
         logger.error(f"Error listing folders: {e}")

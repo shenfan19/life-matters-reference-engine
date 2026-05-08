@@ -1,7 +1,7 @@
 // frontend/vite.config.ts
 // 修改记录:
 // 1. 添加 proxy 配置: 将 /api/* 请求代理到 Flask (localhost:5000)
-// 2. 保留 modsPlugin (可选，如果想用 Vite 直接读取文件)
+// 2. 保留 modelsPlugin (可选，如果想用 Vite 直接读取文件)
 // 3. 更新端口为 5173 (与架构文档一致)
 
 import { defineConfig } from 'vite'
@@ -10,12 +10,12 @@ import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
 
-// 【可选】扫描 mods 目录生成文件列表的插件
+// 【可选】扫描 models 目录生成文件列表的插件
 // 注意: 现在所有 /api 请求都会被代理到 Flask，所以这个插件可能不会被使用
 // 保留此代码以备将来切换架构时使用
-function modsPlugin() {
+function modelsPlugin() {
   return {
-    name: 'mods-plugin',
+    name: 'models-plugin',
     configureServer(server: any) {
       // 【注释】这些路由现在被代理到 Flask，不再由 Vite 处理
       // 如果将来想让 Vite 直接读取文件，取消下面的注释
@@ -23,8 +23,8 @@ function modsPlugin() {
       /*
       // 添加虚拟模块，提供文件列表
       server.middlewares.use('/api/files', (req: any, res: any) => {
-        const modsDir = path.resolve(__dirname, '../../mods')
-        const fileTree = scanDirectory(modsDir)
+        const modelsDir = path.resolve(__dirname, '../../models')
+        const fileTree = scanDirectory(modelsDir)
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ success: true, data: fileTree }))
       })
@@ -32,7 +32,7 @@ function modsPlugin() {
       // 读取 YAML 文件内容
       server.middlewares.use('/api/file', (req: any, res: any) => {
         const filePath = req.url.replace('/api/file/', '')
-        const fullPath = path.resolve(__dirname, '../../mods', filePath)
+        const fullPath = path.resolve(__dirname, '../../models', filePath)
         
         try {
           const content = fs.readFileSync(fullPath, 'utf-8')

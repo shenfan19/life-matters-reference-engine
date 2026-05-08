@@ -5,7 +5,7 @@
 # This file is part of the LifeMatters simulation framework.
 #
 # Purpose:
-# The `loader_engine.py` module acts as an entry point for model-related operations in the LifeMatters framework. It provides high-level interfaces for locating, caching, merging, and splitting YAML-based models, while delegating the core logic—such as recursive loading, dependency resolution via imports, data merging, and structural validation—to the `ModStructure` class. This separation enhances modularity, reusability, and maintainability across the framework's components, including Loader, Simulator, Generator, and Optimizer.
+# The `loader_engine.py` module acts as an entry point for model-related operations in the LifeMatters framework. It provides high-level interfaces for locating, caching, merging, and splitting YAML-based models, while delegating the core logic—such as recursive loading, dependency resolution via imports, data merging, and structural validation—to the `ModelStructure` class. This separation enhances modularity, reusability, and maintainability across the framework's components, including Loader, Simulator, Generator, and Optimizer.
 #
 # For more information, please refer to the project README.md.
 #
@@ -15,7 +15,7 @@ import os
 import logging
 import yaml
 from typing import Dict, Any, List, Optional, Set
-from .model_structure import ModStructure, ModelMetadata
+from .model_structure import ModelStructure, ModelMetadata
 
 # 设置日志记录器，用于在程序运行时输出信息和错误。
 logger = logging.getLogger(__name__)
@@ -25,16 +25,16 @@ class LoaderEngine:
     模型加载引擎，负责处理模型文件的查找、加载、合并、拆分等核心操作。
     它管理模型缓存，并处理模型间的导入关系。
     """
-    def __init__(self, mods_directory: str = "models", language: str = "en"):
+    def __init__(self, models_directory: str = "models", language: str = "en"):
         """
         初始化 LoaderEngine 实例。
-        :param mods_directory: 存放模型文件的根目录。
+        :param models_directory: 存放模型文件的根目录。
         :param language: 语言设置，尽管此模块主要处理文件操作，但保留此参数以备将来扩展。
         """
-        self.mods_directory = mods_directory
+        self.models_directory = models_directory
         self.language = language
         # 模型缓存，用于存储已加载的模型，避免重复加载。
-        self.models_cache: Dict[tuple, ModStructure] = {}
+        self.models_cache: Dict[tuple, ModelStructure] = {}
     
     def find_model_file(self, model_name: str, folder: Optional[str] = None) -> Optional[str]:
         """
@@ -51,13 +51,13 @@ class LoaderEngine:
             return None
         
         # 确定基础目录
-        base_dir = self.mods_directory
+        base_dir = self.models_directory
         
         if '/' in model_name or os.sep in model_name:
             # 标准化路径分隔符
             model_name_norm = model_name.replace('/', os.sep)
             
-            # 1. 尝试直接作为相对于 mods_directory 的路径 (适合 model_name 已包含 scenarios/, stories/ 或 models/ 的情况)
+            # 1. 尝试直接作为相对于 models_directory 的路径 (适合 model_name 已包含 scenarios/, stories/ 或 models/ 的情况)
             file_path = os.path.join(base_dir, model_name_norm)
             if not file_path.endswith('.yaml'):
                 file_path += '.yaml'
@@ -126,7 +126,7 @@ class LoaderEngine:
         :return: 一个字典，键是模型名称，值是包含模型元数据的字典。
         """
         models = {}
-        base_dir = self.mods_directory
+        base_dir = self.models_directory
         _skip = {'merged', 'splited', 'output', '__pycache__', '.git', '_output'}
 
         # 未指定文件夹时，递归收集整个 models 目录下的所有子目录
@@ -156,7 +156,7 @@ class LoaderEngine:
                         # 尝试加载模型以获取其元数据（使用新 find_model_file）
                         file_path = self.find_model_file(model_name, folder)
                         if file_path:
-                            model = ModStructure()  # 创建临时 ModStructure 加载
+                            model = ModelStructure()  # 创建临时 ModelStructure 加载
                             model.load_model(file_path, model_name)
                             models[model_name] = {
                                 "name": model.metadata.name,
@@ -173,14 +173,14 @@ class LoaderEngine:
         return models
 
     def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None,
-              validate: bool = True, use_cache: bool = True) -> Optional[ModStructure]:
+              validate: bool = True, use_cache: bool = True) -> Optional[ModelStructure]:
         """
         递归地加载指定名称的模型及其所有导入项。
         :param model_name: 要加载的模型名称。
         :param folder: 可选的子文件夹。
         :param loaded_models: 用于检测循环依赖的集合。
         :param validate: 是否验证模型（默认 True）。
-        :return: 加载并合并后的 ModStructure 实例，或在失败时返回 None。
+        :return: 加载并合并后的 ModelStructure 实例，或在失败时返回 None。
         """
         # 初始化已加载模型集合，用于检测循环依赖。
         loaded_models = loaded_models or set()
@@ -197,7 +197,7 @@ class LoaderEngine:
         # 查找模型文件路径。
         file_path = self.find_model_file(model_name, folder)
         if not file_path:
-            logger.error(f"模型 {model_name} 在 {self.mods_directory} 中未找到")
+            logger.error(f"模型 {model_name} 在 {self.models_directory} 中未找到")
             return None
         # 使用绝对路径作为缓存键
         cache_key = os.path.abspath(file_path)
@@ -205,7 +205,7 @@ class LoaderEngine:
             return self.models_cache[cache_key]
 
         try:
-            model = ModStructure(self.mods_directory, self.language)
+            model = ModelStructure(self.models_directory, self.language)
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
 
@@ -245,9 +245,9 @@ class LoaderEngine:
                     "formulas": 0
                 }
             
-            merged_model = ModStructure(self.mods_directory, self.language)
+            merged_model = ModelStructure(self.models_directory, self.language)
             merged_model.visited.clear()  # 清空访问记录
-            mod_name = merged_name
+            output_model_name = merged_name
             first_item_processed = False
             
             # 处理文件夹
@@ -270,14 +270,14 @@ class LoaderEngine:
                         with open(root_file_path, 'r', encoding='utf-8') as f:
                             data = yaml.safe_load(f) or {}
                             if 'metadata' in data and 'name' in data['metadata']:
-                                mod_name = data['metadata']['name']
+                                output_model_name = data['metadata']['name']
                         first_item_processed = True
                     
                     # 加载根文件（包含 imports）
                     merged_model.append_model(root_file_path, folder, log_as_loaded=True, validate=False)
                     
                     # 加载文件夹中的其他文件
-                    search_dir = os.path.join(self.mods_directory, folder)
+                    search_dir = os.path.join(self.models_directory, folder)
                     files = [f for f in os.listdir(search_dir) 
                             if os.path.isfile(os.path.join(search_dir, f)) 
                             and f.endswith('.yaml') 
@@ -302,7 +302,7 @@ class LoaderEngine:
                         with open(file_path, 'r', encoding='utf-8') as f:
                             data = yaml.safe_load(f) or {}
                             if 'metadata' in data and 'name' in data['metadata']:
-                                mod_name = data['metadata']['name']
+                                output_model_name = data['metadata']['name']
                         first_item_processed = True
                     
                     merged_model.append_model(file_path, model_name, log_as_loaded=True, validate=False)
@@ -315,7 +315,7 @@ class LoaderEngine:
                 source_desc.append(f"文件 {', '.join(model_names)}")
             
             merged_model.metadata = ModelMetadata(
-                name=mod_name,
+                name=output_model_name,
                 version="1.0.0",
                 author="LoaderEngine",
                 description=f"合并模型来自 {' 和 '.join(source_desc)}",
@@ -380,7 +380,7 @@ class LoaderEngine:
         :return: 包含拆分结果的字典。
         """
         try:
-            model = ModStructure(mods_directory=self.mods_directory, language=self.language)
+            model = ModelStructure(models_directory=self.models_directory, language=self.language)
             
             if folder:
                 # 处理 --folder：加载文件夹所有文件，以同名文件为根
@@ -401,7 +401,7 @@ class LoaderEngine:
             # 确保输出目录存在
             os.makedirs(output_dir, exist_ok=True)
             
-            # 调用 ModStructure 的 split_model 方法，传入输出目录
+            # 调用 ModelStructure 的 split_model 方法，传入输出目录
             model.split_model(output_dir)
             
             return {

@@ -1,6 +1,6 @@
 /**
- * Shared validation utility for mod YAML files.
- * Used by both Simulator (lock-and-run) and ModsManager (Tools tab).
+ * Shared validation utility for model YAML files.
+ * Used by both Simulator (lock-and-run) and ModelBuilder (Tools tab).
  *
  * Backend endpoint: POST /api/validate
  *   Request:  { file_path: string, sim_params?: object, opt_params?: object }
@@ -22,7 +22,7 @@ export interface ValidateOptions {
   optParams?: Record<string, unknown>;
 }
 
-export async function validateModFile(
+export async function validateModelFile(
   filePath: string,
   options: ValidateOptions = {},
 ): Promise<ValidationResult> {
