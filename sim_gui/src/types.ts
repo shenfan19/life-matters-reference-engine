@@ -140,6 +140,22 @@ export interface SimulatorProps {
     fontSize: number;
 }
 
+export interface InputEvent {
+  id: string;
+  variable: string;
+  time: string;
+  timeEnabled: boolean;
+  value: number;
+  label: string;
+  daysEnabled: boolean;
+  days: boolean[];
+  validRangeEnabled: boolean;
+  validStart: string;
+  validEnd: string;
+  optimizeValue: boolean;
+  valueBounds: [number, number];
+}
+
 export interface OptimizerProps {
     selectedModel: ModelFile | null;
     state: OptimizerState;

@@ -7,24 +7,24 @@
 
 ### 1.1 功能需求
 
-| ID  | 需求 |
-|-----|------|
+| ID  | 需求                                               |
+| --- | ------------------------------------------------ |
 | R1  | 优化目标、决策变量、约束完全由 YAML `optimizer:` 块驱动，不硬编码任何目标函数 |
-| R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead） |
-| R3  | 支持两种输入格式：`inputs:`（新，推荐）和 `regimen:`（旧，向后兼容） |
-| R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程 |
-| R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness） |
-| R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置 |
-| R7  | 支持任务取消（标记 cancelled，当前迭代完成后停止） |
+| R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead）     |
+| R3  | 支持两种输入格式：`inputs:`（新，推荐）和 `regimen:`（旧，向后兼容）     |
+| R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程                |
+| R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
+| R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
+| R7  | 支持任务取消（标记 cancelled，当前迭代完成后停止）                   |
 
 ### 1.2 依赖
 
-| 库 | 用途 | 最低版本 |
-|---|---|---|
-| `pymoo` | NSGA-II / Callback | ≥ 0.6.0 |
-| `scipy` | L-BFGS-B / Nelder-Mead | ≥ 1.7.0 |
-| `asteval` | 公式求值 | 任意 |
-| `fastapi` | 异步端点 + `create_task` | ≥ 0.100 |
+| 库         | 用途                     | 最低版本    |
+| --------- | ---------------------- | ------- |
+| `pymoo`   | NSGA-II / Callback     | ≥ 0.6.0 |
+| `scipy`   | L-BFGS-B / Nelder-Mead | ≥ 1.7.0 |
+| `asteval` | 公式求值                   | 任意      |
+| `fastapi` | 异步端点 + `create_task`   | ≥ 0.100 |
 
 pymoo 0.6+ 正确导入路径：
 ```python

@@ -1,7 +1,19 @@
 // sim_gui/src/components/Simulator.tsx
-// Integrated Loader + 2-column Simulator layout (left tree+tabs / center stacked charts)
+// State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
+import { message } from 'antd';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
+import { validateModelFile } from '../core/validate';
+import { useI18n } from '../core/i18n';
+import { getC } from '../core/theme';
+import SimTopBar from './SimTopBar';
+import SimModelTree from './SimModelTree';
+import SimSetupTab from './SimSetupTab';
+import SimIntroTab from './SimIntroTab';
+import SimPlotTab from './SimPlotTab';
+import SimOptTab from './SimOptTab';
+import SimReportTab from './SimReportTab';
 
 function useResize(initial: number, min = 150, max = 700, direction: 'right' | 'left' = 'right') {
   const [width, setWidth] = useState(initial);
@@ -22,460 +34,14 @@ function useResize(initial: number, min = 150, max = 700, direction: 'right' | '
   return { width, startDrag };
 }
 
-
-import {
-  Button, Select, InputNumber, Tooltip, Tag,
-  message, Spin, Empty, Input, Tree,
-  Segmented, Collapse, Popover,
-} from 'antd';
-import {
-  PlayCircleOutlined, PauseOutlined, StopOutlined, StepForwardOutlined,
-  DownloadOutlined,
-  LockOutlined, UnlockOutlined,
-  BookOutlined, CheckCircleOutlined,
-  PlusOutlined, MinusCircleOutlined,
-  FileOutlined, FolderOutlined, FilterOutlined,
-  UnorderedListOutlined, ClusterOutlined,
-  LoadingOutlined, ReloadOutlined,
-} from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile } from '../types';
-import { validateModelFile } from '../core/validate';
-import { useI18n } from '../core/i18n';
-
 const API_BASE = '/api';
 
-interface InputEvent {
-  id: string;
-  variable: string;        // from model's input-type variables
-  time: string;            // "HH:mm"
-  timeEnabled: boolean;    // show time field toggle
-  value: number;
-  label: string;
-  daysEnabled: boolean;
-  days: boolean[];         // [Mon,Tue,Wed,Thu,Fri,Sat,Sun]
-  validRangeEnabled: boolean;
-  validStart: string;      // "YYYY-MM-DD"
-  validEnd: string;
-  optimizeValue: boolean;
-  valueBounds: [number, number];  // [min, max]
-}
-
-function getC(dark: boolean) {
-  return dark ? {
-    bg: '#111111', panel: '#1a1a1a', border: '#2a2a2a',
-    primary: '#52c41a', text: 'rgba(255,255,255,0.92)',
-    textSec: 'rgba(255,255,255,0.75)', textMute: 'rgba(255,255,255,0.52)',
-    inputBg: '#222222', sectionHd: '#111111', rowHover: 'rgba(82,196,26,0.1)',
-  } : {
-    bg: '#f5f5f5', panel: '#ffffff', border: '#e0e0e0',
-    primary: '#007A33', text: '#1a2e22',
-    textSec: '#6b7280', textMute: 'rgba(0,0,0,0.55)',
-    inputBg: '#ffffff', sectionHd: '#efefef', rowHover: 'rgba(0,122,51,0.07)',
-  };
-}
-
-// ─── Nice tick step helper ────────────────────────────────────────────────────
-function niceTickStep(range: number, targetTicks: number): number {
-  const rough = range / targetTicks;
-  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
-  const normalized = rough / mag;
-  let nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-  return nice * mag;
-}
-
-function drawChartOnCtx(
-  ctx: CanvasRenderingContext2D, W: number, H: number,
-  varName: string, data: SimulationDataPoint[], isDark: boolean, lineColor: string,
-  runsData?: SimulationDataPoint[][],   // optional: per-run data for MC fan
-  uiFontSize = 14
-) {
-  ctx.clearRect(0, 0, W, H);
-  const PAD = { l: 58, r: 12, t: 8, b: 28 };
-  const plotW = W - PAD.l - PAD.r;
-  const plotH = H - PAD.t - PAD.b;
-  const tickFont = `${Math.max(7, uiFontSize * 9 / 14)}px system-ui`;
-  if (data.length === 0) return;
-
-  // Compute y-range across all runs (so fan fits the axis)
-  let allValues = data.map(d => (d[varName] as number) ?? 0);
-  if (runsData && runsData.length > 1) {
-    for (const rd of runsData) {
-      for (const d of rd) allValues.push((d[varName] as number) ?? 0);
-    }
-  }
-  let minV = Math.min(...allValues); let maxV = Math.max(...allValues);
-  if (minV === maxV) { minV -= 1; maxV += 1; }
-  const step = niceTickStep(maxV - minV, 5);
-  const yMin = Math.floor(minV / step) * step;
-  const yMax = yMin + step * Math.ceil((maxV - yMin) / step || 1);
-  const yActualRange = yMax - yMin || 1;
-  const tMin = data[0].time ?? 0;
-  const tMax = data[data.length - 1].time ?? 0;
-  const tRange = tMax - tMin || 1;
-  const toX = (t: number) => PAD.l + ((t - tMin) / tRange) * plotW;
-  const toY = (v: number) => PAD.t + plotH - ((v - yMin) / yActualRange) * plotH;
-
-  ctx.lineWidth = 1;
-  const tickCount = Math.round((yMax - yMin) / step);
-  for (let i = 0; i <= tickCount; i++) {
-    const val = yMin + i * step;
-    const y = toY(val);
-    if (y < PAD.t - 1 || y > PAD.t + plotH + 1) continue;
-    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
-    ctx.font = tickFont; ctx.textAlign = 'right';
-    const lbl = Math.abs(val) >= 1000 ? val.toExponential(1) : val % 1 === 0 ? String(val) : val.toFixed(2);
-    ctx.fillText(lbl, PAD.l - 4, y + 3);
-  }
-  const fmtX = (t: number): string => {
-    if (tRange <= 172800)  return `${Math.round(t / 3600)}h`;       // ≤ 2d → hours
-    if (tRange <= 1209600) return `${Math.round(t / 86400)}d`;      // ≤ 14d → days
-    if (tRange <= 31536000) return `${Math.round(t / 604800)}w`;    // ≤ 1yr → weeks
-    return `${Math.round(t / 2592000)}mo`;                           // > 1yr → months
-  };
-  for (let i = 0; i <= 6; i++) {
-    const x = PAD.l + (plotW / 6) * i;
-    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
-    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
-    const t = tMin + (tRange / 6) * i;
-    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
-    ctx.font = tickFont; ctx.textAlign = 'center';
-    ctx.fillText(fmtX(t), x, H - 6);
-  }
-
-  // Draw semi-transparent individual run lines (MC fan) — each run gets a distinct hue
-  if (runsData && runsData.length > 1) {
-    const runAlpha = Math.max(0.25, Math.min(0.6, 3.0 / runsData.length));
-    ctx.save();
-    ctx.lineWidth = 1.2;
-    runsData.forEach((rd, runIdx) => {
-      if (rd.length === 0) return;
-      const hue = (runIdx * 360 / runsData.length + 30) % 360;
-      ctx.strokeStyle = `hsla(${hue}, 75%, ${isDark ? 65 : 45}%, ${runAlpha})`;
-      ctx.beginPath();
-      rd.forEach((d, i) => {
-        const x = toX(d.time ?? 0);
-        const v = Math.max(yMin, Math.min(yMax, (d[varName] as number) ?? 0));
-        const y = toY(v);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-    });
-    ctx.restore();
-  }
-
-  // Draw mean (or single) line on top
-  ctx.strokeStyle = lineColor; ctx.lineWidth = runsData && runsData.length > 1 ? 2 : 1.5;
-  ctx.beginPath();
-  data.forEach((d, i) => {
-    const x = toX(d.time ?? 0); const y = toY((d[varName] as number) ?? 0);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-}
-
-// ─── SimChart component ───────────────────────────────────────────────────────
-const VAR_COLORS = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
-
-const SimChart: React.FC<{
-  varName: string;
-  unit?: string;
-  data: SimulationDataPoint[];
-  isDarkMode: boolean;
-  c: ReturnType<typeof getC>;
-  colorIndex?: number;
-  hideTitleBar?: boolean;
-  runsData?: SimulationDataPoint[][];
-  fontSize: number;
-}> = ({ varName, unit, data, isDarkMode, c, colorIndex = 0, hideTitleBar = false, runsData, fontSize }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ x: number; time: number; value: number } | null>(null);
-
-  const lineColor = VAR_COLORS[colorIndex % VAR_COLORS.length];
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      if (!canvasRef.current) return;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.offsetWidth * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-      ctx.scale(dpr, dpr);
-      drawChartOnCtx(ctx, canvas.offsetWidth, canvas.offsetHeight, varName, data, isDarkMode, lineColor,
-        runsData && runsData.length > 1 ? runsData : undefined, fontSize);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [data, runsData, varName, isDarkMode, lineColor, fontSize]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || data.length === 0) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const PAD = { l: 58, r: 12, t: 8, b: 28 };
-    const plotW = rect.width - PAD.l - PAD.r;
-    const mouseX = e.clientX - rect.left;
-    if (mouseX < PAD.l || mouseX > rect.width - PAD.r) { setHover(null); return; }
-
-    const tMin = data[0].time ?? 0;
-    const tMax = data[data.length - 1].time ?? 0;
-    const tRange = tMax - tMin || 1;
-    const frac = (mouseX - PAD.l) / plotW;
-    const tTarget = tMin + frac * tRange;
-
-    // Find nearest data point
-    let nearest = data[0];
-    let minDist = Math.abs((data[0].time ?? 0) - tTarget);
-    for (const d of data) {
-      const dist = Math.abs((d.time ?? 0) - tTarget);
-      if (dist < minDist) { minDist = dist; nearest = d; }
-    }
-
-    setHover({ x: mouseX, time: nearest.time ?? 0, value: (nearest[varName] as number) ?? 0 });
-  };
-
-  const exportCSV = () => {
-    const hasMC = runsData && runsData.length > 1;
-    const runCols = hasMC ? runsData!.map((_, i) => `${varName}_run${i}`).join(',') : '';
-    const header = hasMC ? `time_s,time_h,${varName}_mean,${runCols}` : `time_s,time_h,${varName}`;
-    const rows = [header,
-      ...data.map((d, idx) => {
-        const base = `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${(d[varName] as number) ?? 0}`;
-        if (!hasMC) return base;
-        const runVals = runsData!.map(rd => (rd[idx]?.[varName] as number) ?? '').join(',');
-        return `${base},${runVals}`;
-      })];
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = hasMC ? `${varName}_mc.csv` : `${varName}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const CANVAS_H = 160;
-
-  return (
-    <div
-      ref={containerRef}
-      style={{ marginBottom: 8, flexShrink: 0, position: 'relative', background: isDarkMode ? '#111111' : '#fafafa', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setHover(null)}
-    >
-      {/* Title bar */}
-      {!hideTitleBar && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '3px 10px', borderBottom: `1px solid ${c.border}`,
-          background: isDarkMode ? '#1a1a1a' : '#f0f0f0',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{varName}</span>
-            {unit && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>({unit})</span>}
-          </div>
-          <Button
-            size="small" type="text" icon={<DownloadOutlined />}
-            onClick={exportCSV}
-            style={{ color: c.textMute, padding: '0 4px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}
-          >
-            CSV
-          </Button>
-        </div>
-      )}
-
-      {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{ width: '100%', height: CANVAS_H, display: 'block' }}
-      />
-
-      {/* Hover crosshair + tooltip */}
-      {hover && (
-        <>
-          {/* Vertical line */}
-          <div style={{
-            position: 'absolute',
-            left: hover.x,
-            top: 28 + 8, // title bar height + canvas pad top
-            bottom: 28,  // canvas pad bottom
-            width: 1,
-            background: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)',
-            pointerEvents: 'none',
-          }} />
-          {/* Tooltip */}
-          <div style={{
-            position: 'absolute',
-            left: hover.x + 8,
-            top: 36,
-            background: isDarkMode ? '#222' : '#fff',
-            border: `1px solid ${c.border}`,
-            borderRadius: 4,
-            padding: '3px 7px',
-            fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)',
-            color: c.text,
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            zIndex: 10,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-          }}>
-            <div style={{ color: c.textMute }}>{(hover.time / 3600).toFixed(2)} h</div>
-            <div style={{ fontWeight: 600, color: lineColor }}>{hover.value.toFixed(4)}</div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-// ─── ParetoChart component ────────────────────────────────────────────────────
-const ParetoChart: React.FC<{
-  result: any;
-  isDarkMode: boolean;
-  c: ReturnType<typeof getC>;
-  fontSize: number;
-}> = ({ result, isDarkMode, c, fontSize }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hover, setHover] = useState<{ x: number; y: number; pt: any } | null>(null);
-
-  const PAD = { l: 52, r: 16, t: 16, b: 44 };
-  const pts: Array<{x: number; y: number}> = (result.pareto_front || []).map((p: any) => ({
-    x: p.f[0], y: p.f.length > 1 ? p.f[1] : 0,
-  }));
-
-  const obj0 = result.objectives?.[0];
-  const obj1 = result.objectives?.[1];
-  const labelX = obj0 ? `${obj0.variable} (${obj0.direction === 'maximize' ? 'max' : 'min'})` : 'Obj 1';
-  const labelY = obj1 ? `${obj1.variable} (${obj1.direction === 'maximize' ? 'max' : 'min'})` : 'Obj 2';
-
-  const draw = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || pts.length === 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth, H = canvas.offsetHeight;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    const ctx = canvas.getContext('2d')!;
-    ctx.scale(dpr, dpr);
-
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = isDarkMode ? '#111' : '#fff';
-    ctx.fillRect(0, 0, W, H);
-
-    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs);
-    const yMin = Math.min(...ys), yMax = Math.max(...ys);
-    const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
-    const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
-    const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
-    const toCanvasY = (v: number) => PAD.t + plotH - ((v - yMin) / yRange) * plotH;
-
-    // grid
-    ctx.strokeStyle = isDarkMode ? '#222' : '#eee';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const x = PAD.l + (plotW / 4) * i;
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
-      const y = PAD.t + (plotH / 4) * i;
-      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + plotW, y); ctx.stroke();
-    }
-
-    // axes labels
-    ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
-    ctx.font = `${Math.max(8, fontSize * 10 / 14)}px monospace`; ctx.textAlign = 'center';
-    for (let i = 0; i <= 4; i++) {
-      const v = xMin + (xRange / 4) * i;
-      ctx.fillText(v.toFixed(2), PAD.l + (plotW / 4) * i, H - 4);
-    }
-    ctx.save(); ctx.translate(10, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    for (let i = 0; i <= 4; i++) {
-      const v = yMin + (yRange / 4) * i;
-      ctx.fillText(v.toFixed(2), -(plotH / 4) * i + plotH / 2, 8);
-    }
-    ctx.restore();
-
-    // axis names
-    ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
-    ctx.font = `${Math.max(9, fontSize * 11 / 14)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(labelX, PAD.l + plotW / 2, H - 28);
-    ctx.save(); ctx.translate(12, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2);
-    ctx.fillText(labelY, 0, 0); ctx.restore();
-
-    // Pareto front line
-    const sorted = [...pts].sort((a, b) => a.x - b.x);
-    ctx.strokeStyle = isDarkMode ? '#52c41a' : '#007A33';
-    ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    sorted.forEach((p, i) => {
-      const cx = toCanvasX(p.x), cy = toCanvasY(p.y);
-      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
-    });
-    ctx.stroke(); ctx.setLineDash([]);
-
-    // points
-    pts.forEach((p, i) => {
-      const cx = toCanvasX(p.x), cy = toCanvasY(p.y);
-      ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = isDarkMode ? '#52c41a' : '#007A33';
-      ctx.fill();
-      ctx.strokeStyle = isDarkMode ? '#111' : '#fff';
-      ctx.lineWidth = 1.5; ctx.stroke();
-    });
-  };
-
-  useEffect(() => { draw(); }, [result, isDarkMode, fontSize]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas || pts.length === 0) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const W = canvas.offsetWidth, H = canvas.offsetHeight;
-    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
-    const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
-    const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
-    const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
-    const toCanvasY = (v: number) => PAD.t + plotH - ((v - yMin) / yRange) * plotH;
-    let best: any = null, bestD = 15;
-    (result.pareto_front || []).forEach((p: any) => {
-      const cx = toCanvasX(p.f[0]), cy = toCanvasY(p.f.length > 1 ? p.f[1] : 0);
-      const d = Math.hypot(mx - cx, my - cy);
-      if (d < bestD) { bestD = d; best = { x: mx, y: my, pt: p }; }
-    });
-    setHover(best);
-  };
-
-  if (pts.length === 0) return null;
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: 280 }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }}
-        onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)} />
-      {hover && (
-        <div style={{
-          position: 'absolute', left: hover.x + 10, top: Math.max(0, hover.y - 10),
-          background: isDarkMode ? '#1a1a1a' : '#fff',
-          border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px',
-          fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, pointerEvents: 'none', whiteSpace: 'pre',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.15)', zIndex: 10,
-        }}>
-          {(result.objectives || []).map((o: any, i: number) => (
-            `${o.variable}: ${hover.pt.f[i]?.toFixed(4) ?? '-'}`
-          )).join('\n')}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── localStorage persistence helpers ────────────────────────────────────────
 const SIM_PERSIST_KEY = 'sim_persist';
 const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
 const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
-// ─── Main component ───────────────────────────────────────────────────────────
+type CenterTab = 'intro' | 'setup' | 'opt' | 'plot' | 'report';
+
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
   isLocked, setIsLocked, isDarkMode,
@@ -491,6 +57,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t } = useI18n();
   const c = getC(isDarkMode);
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
+  const SECTION_H = 26;
 
   const {
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
@@ -504,27 +71,15 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
-  const selectedStory = selectedKey ? loadedModels[selectedKey] ?? null : null;
 
   // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<'intro' | 'setup' | 'opt' | 'plot' | 'report'>('intro');
+  const [centerTab, setCenterTab] = useState<CenterTab>('intro');
 
   // ── report tab ───────────────────────────────────────────────────────────────
-  const ALL_REPORT_SECTIONS = [
-    { key: 'intro',      label: 'Description', desc: '模型背景与适用场景说明' },
-    { key: 'overview',   label: '模型概览',   desc: '名称、描述、标签、变量总数' },
-    { key: 'formulas',   label: '方程列表',   desc: '所有方程含义及激活条件' },
-    { key: 'variables',  label: '变量汇总',   desc: '所有变量类型、含义及最终值' },
-    { key: 'simcfg',     label: '仿真配置',   desc: '时间范围、步长、输入参数值' },
-    { key: 'plots',      label: 'Plot 曲线',  desc: '各输出变量仿真轨迹图' },
-    { key: 'opt',        label: '优化结果',   desc: '目标函数、约束条件及结果' },
-    { key: 'refs',       label: '参考文献',   desc: 'IEEE 编号格式引用列表' },
-  ] as const;
-  type ReportSection = typeof ALL_REPORT_SECTIONS[number]['key'];
-  const [reportSections, setReportSections] = useState<Set<ReportSection>>(
+  const [reportSections, setReportSections] = useState<Set<string>>(
     new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg', 'plots', 'refs'])
   );
-  const [openReportPreviews, setOpenReportPreviews] = useState<Set<ReportSection>>(
+  const [openReportPreviews, setOpenReportPreviews] = useState<Set<string>>(
     new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg'])
   );
   const [reportGenerating, setReportGenerating] = useState(false);
@@ -532,11 +87,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
 
   // ── left panel sections ───────────────────────────────────────────────────────
-  const SECTION_H = 26; // header height px
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
   const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'formulas', 'refs']));
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
-  const leftPanelRef = useRef<HTMLDivElement>(null);
 
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
@@ -550,19 +103,15 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optCurGen, setOptCurGen] = useState(0);
   const [optTotalGen, setOptTotalGen] = useState(0);
   const [optLogs, setOptLogs] = useState<Array<{t: number; msg: string}>>([]);
-  const [optHistory, setOptHistory] = useState<Array<{iteration: number; fitness: number | null; n_eval?: number}>>([]);
+  const [optHistory, setOptHistory] = useState<any[]>([]);
   const [optElapsed, setOptElapsed] = useState(0);
-  const [optLogOpen, setOptLogOpen] = useState(true);
   const [optJobId, setOptJobId] = useState<string | null>(null);
   const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
-  // optMethod is auto-read from status polling, not hardcoded
   const [optMethod, setOptMethod] = useState('');
 
   // ── inputEvents state ────────────────────────────────────────────────────────
   const [inputEvents, setInputEvents] = useState<InputEvent[]>(() => {
     const saved = readSP();
-    // Migrate from old regimen format if present
     if (saved?.inputEvents) return saved.inputEvents;
     if (saved?.regimens) {
       const events: InputEvent[] = [];
@@ -592,10 +141,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   });
 
   const isRunningRef = useRef(false);
-  // refs for restore flow
   const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
-  // Only restore saved inputEvents on the very first mount if model key matches saved key.
-  // Any model change resets inputEvents from YAML so old events don't bleed into new models.
   const isInitialMount = useRef(true);
   const savedKeyForRestore = readSP()?.selectedKey || null;
 
@@ -610,7 +156,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     return d.toISOString().slice(0, 10);
   };
 
-  // ── helpers ──────────────────────────────────────────────────────────────────
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));
   const setSimData = (val: SimulationDataPoint[] | ((p: SimulationDataPoint[]) => SimulationDataPoint[])) =>
@@ -620,14 +165,13 @@ const Simulator: React.FC<SimulatorProps> = ({
   useEffect(() => {
     setRunOutputVars([]);
     setOutputWarnings([]);
-    let freshInputInit = false;  // tracks whether we initialized inputEvents from scratch
+    let freshInputInit = false;
     if (selectedModel?.content?.variables) {
       const inputs: Record<string, number> = {};
       const states: Record<string, number> = {};
       const newInputEvents: InputEvent[] = [];
       const rawSchedules = selectedModel.content?.simulation?.schedules;
 
-      // Parse "Mon","Tue"... strings → boolean[7] mask (0=Mon … 6=Sun)
       const DAY_STR_MAP: Record<string, number> = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 };
       const parseDaysMask = (days?: string[]): boolean[] => {
         if (!days?.length) return [true,true,true,true,true,true,true];
@@ -636,9 +180,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         return m;
       };
 
-      // Canonical flat-list format: simulation.schedules = [{variable, time, value, days?, valid_start?, valid_end?}]
       const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
-      // Legacy dict format: simulation.schedules = {varName: {points: [{time_secs, value}]}}
       const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
 
       const varBounds = (data: any): [number, number] => [
@@ -652,11 +194,9 @@ const Simulator: React.FC<SimulatorProps> = ({
           const flatEntries = schedList.filter(s => s.variable === name);
 
           if (flatEntries.length > 0) {
-            // New canonical format: one InputEvent per flat schedule entry
             flatEntries.forEach((s, i) => {
               const daysList: string[] = Array.isArray(s.days) ? s.days : [];
               const hasDays = daysList.length > 0 && daysList.length < 7;
-              // Support both explicit valid_start/valid_end and compact date_range "YYYY-MM-DD ~ YYYY-MM-DD"
               let validStart: string = s.valid_start ?? '';
               let validEnd: string   = s.valid_end   ?? '';
               if (!validStart && !validEnd && s.date_range) {
@@ -680,19 +220,18 @@ const Simulator: React.FC<SimulatorProps> = ({
               });
             });
           } else if (schedDict[name]?.points?.length) {
-            // Legacy seconds-based format (backward compat, deduplicated by time)
             const seen = new Set<string>();
             const secsToHHMM = (sec: number) => {
               const s2 = sec % 86400;
               return `${String(Math.floor(s2/3600)).padStart(2,'0')}:${String(Math.floor((s2%3600)/60)).padStart(2,'0')}`;
             };
             (schedDict[name].points as any[]).forEach((pt: any, idx: number) => {
-              const t = secsToHHMM(pt.time ?? 0);
-              if (seen.has(t)) return;
-              seen.add(t);
+              const t2 = secsToHHMM(pt.time ?? 0);
+              if (seen.has(t2)) return;
+              seen.add(t2);
               newInputEvents.push({
                 id: `${name}-ev${idx}`,
-                variable: name, time: t, timeEnabled: true,
+                variable: name, time: t2, timeEnabled: true,
                 value: pt.value ?? 0, label: '',
                 daysEnabled: false, days: [true,true,true,true,true,true,true],
                 validRangeEnabled: false, validStart: '', validEnd: '',
@@ -700,7 +239,6 @@ const Simulator: React.FC<SimulatorProps> = ({
               });
             });
           } else {
-            // No schedule: single event with variable default
             newInputEvents.push({
               id: `${name}-ev0`,
               variable: name, time: '08:00', timeEnabled: false,
@@ -714,14 +252,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       });
       set('inputParams', inputs);
       set('stateVariables', states);
-      // Restore saved events only on first mount with the same model key; always reinit otherwise.
       const restoreFromSaved = isInitialMount.current &&
         selectedModel.key === savedKeyForRestore &&
         (readSP()?.inputEvents?.length ?? 0) > 0;
       isInitialMount.current = false;
 
       if (restoreFromSaved) {
-        // Keep saved inputEvents; optimizer.inputs flags applied below regardless
+        // Keep saved inputEvents
       } else {
         setInputEvents(newInputEvents);
         freshInputInit = true;
@@ -740,14 +277,12 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (u === 'hour') return 'hour';
       if (u === 'minute') return 'minute';
       if (u === 'second') return 'second';
-      return 'day';   // week/month/year → show as day in UI
+      return 'day';
     };
     if (sim) {
-      // ── new format: start_date / end_date; step from metadata.step_size ──
       if (sim.start_date && sim.end_date) {
         set('simStartDate', String(sim.start_date));
         set('simEndDate',   String(sim.end_date));
-        // metadata.step_size 优先；向后兼容 simulation.step / step_unit
         const metaStep = selectedModel?.content?.metadata?.step_size;
         if (metaStep?.unit) {
           set('stepValue', metaStep.value ?? 1);
@@ -757,7 +292,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           set('stepUnit',  toStepUnit(String(sim.step_unit || 'minute')));
         }
       } else {
-        // ── legacy fallback: step_size / time_unit / total_time ──
         const UNIT_SEC: Record<string, number> = {
           second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000,
         };
@@ -776,10 +310,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       set('simEndDate', DEFAULT_END);
     }
 
-    // ── 读取 optimizer 块，预填 objectives / constraints / algorithm ──────────
     const optBlock: any = selectedModel?.content?.optimizer;
     if (optBlock && optBlock.enabled !== false) {
-      // 解析 objectives（支持单目标 objective:{} 和多目标 objectives:[]）
       const parseDir = (d: string): 'minimize' | 'maximize' =>
         d === 'maximize' ? 'maximize' : 'minimize';
 
@@ -794,7 +326,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       }
       if (rawObjs.length > 0) setObjectives(rawObjs);
 
-      // 解析 constraints（condition: "<= 160" → op + value）
       const parseCondition = (cond: string): { op: '≤' | '≥'; value: number } | null => {
         const m = cond.trim().match(/^([<>]=?)\s*(-?\d+(?:\.\d+)?)/);
         if (!m) return null;
@@ -809,7 +340,6 @@ const Simulator: React.FC<SimulatorProps> = ({
         if (parsedCons.length > 0) setConstraints(parsedCons);
       }
 
-      // 解析算法参数
       const methodMap: Record<string, string> = {
         'nsga2': 'NSGA-II', 'nsga-2': 'NSGA-II', 'nsga_2': 'NSGA-II',
         'moead': 'MOEA/D', 'moea/d': 'MOEA/D',
@@ -824,15 +354,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
 
-      // MC 运行次数
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) {
         set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       }
 
-      // Apply optimizer decision-variable flags — handle both inputs: (new) and regimen: (legacy)
-      // Also carries over time, timeEnabled, label so events match the YAML optimizer definition.
       if (Array.isArray(optBlock.inputs)) {
-        // New inputs: format — each entry with optimize.value is a decision variable
         const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
           e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
         );
@@ -851,7 +377,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           }));
         }
       } else if (optBlock.regimen?.variable && Array.isArray(optBlock.regimen?.events)) {
-        // Legacy regimen: format — single variable, events list, dose_bounds per event
         const regVar: string = optBlock.regimen.variable;
         const regEvs: any[] = optBlock.regimen.events;
         setInputEvents(prev => prev.map(ev => {
@@ -872,7 +397,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   }, [selectedModel]);
 
   // ── sync inputEvents → inputParams ──────────────────────────────────────────
-  // Simple aggregation: sum all event values per variable (backend gets totals per step)
   useEffect(() => {
     const params: Record<string, number> = {};
     inputEvents.forEach(ev => {
@@ -907,7 +431,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       progress: saved.progress ?? 0,
       totalSteps: saved.totalSteps ?? prev.totalSteps,
       sessionSeed: saved.sessionSeed ?? 0,
-      // restore dates — skip legacy '2000-01-01' default so new default kicks in
       ...(saved.simStartDate && saved.simStartDate !== '2000-01-01' && { simStartDate: saved.simStartDate }),
       ...(saved.simEndDate && saved.simEndDate !== '2001-01-01' && { simEndDate: saved.simEndDate }),
       ...(saved.stepValue != null && { stepValue: saved.stepValue }),
@@ -938,7 +461,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
   }, []);
 
-  // ── reset validation on selection change (skip on initial mount) ──────────────
+  // ── reset validation on selection change ─────────────────────────────────────
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     setValidationResult(null);
@@ -959,7 +482,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       return;
     }
     writeSP({ ...current, simulationData, dataPerRun, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
-  }, [status, sessionId]); // captures simulationData snapshot at the moment status/session changes
+  }, [status, sessionId]);
 
   // ── auto-switch center tab to plot when sim is running/completed ──────────────
   useEffect(() => {
@@ -970,11 +493,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   useEffect(() => {
     return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
   }, []);
-
-  // ── log auto-scroll ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (optLogOpen) logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [optLogs.length, optLogOpen]);
 
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
@@ -989,19 +507,16 @@ const Simulator: React.FC<SimulatorProps> = ({
             if (child.type === 'file' && (child.title === 'model.yaml' || child.title === 'model.yml')) {
               return {
                 key: child.key, isLeaf: true, ...child,
-                icon: <FolderOutlined style={{ color: c.primary }} />,
-                title: <span>{item.title} <Tag color="blue" style={{}}>pkg</Tag></span>,
-                titleStr: item.title, model_type: 'story',
+                icon: <React.Fragment />,
+                title: item.title, titleStr: item.title, model_type: 'story',
               };
             }
           }
           const isModel = item.key?.startsWith('models/');
           return {
-            title: item.type === 'file'
-              ? <span>{titleStr}{item.model_type && <Tag color={isModel ? 'purple' : 'blue'} style={{ marginLeft: 6 }}>{item.model_type}</Tag>}</span>
-              : item.title,
+            title: item.type === 'file' ? titleStr : item.title,
             key: item.key,
-            icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
+            icon: undefined,
             isLeaf: item.type === 'file',
             children: item.children ? convert(item.children) : undefined,
             titleStr, model_type: item.model_type,
@@ -1015,8 +530,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (!items.length) return [];
               return [{
                 key: `__group_${child.key}`,
-                title: <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', opacity: 0.6, letterSpacing: 1 }}>{child.key.toUpperCase()}</span>,
-                isLeaf: false, selectable: false, icon: null, children: items,
+                title: child.key.toUpperCase(),
+                isLeaf: false, selectable: false, icon: undefined, children: items,
               } as DataNode];
             });
           setStoryTree(combined);
@@ -1053,7 +568,6 @@ const Simulator: React.FC<SimulatorProps> = ({
         formulas: resolvedContent.formulas, simulator: resolvedContent.simulator,
         optimizer: resolvedContent.optimizer, imports: resolvedContent.imports,
         provenance: resolvedContent.provenance,
-        // Use full directory path so the loader can find the file regardless of metadata.name
         folder,
         validated: undefined, validationErrors: [],
       };
@@ -1114,107 +628,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     setValidating(false);
   };
 
-  // ── derived data ──────────────────────────────────────────────────────────────
-  const latestData = simulationData[simulationData.length - 1] || { step: 0, time: 0 };
-  const inputVars = selectedModel?.content?.variables
-    ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) => d.type === 'input')
-        .map(([name, d]: [string, any]) => ({ name, ...d }))
-    : [];
-  const stateVars = selectedModel?.content?.variables
-    ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) => d.type === 'state')
-        .map(([name, d]: [string, any]) => ({ name, ...d }))
-    : [];
-  const DIST_RE = /^\s*(normal|uniform|lognormal)\s*\(/;
-  const probConsts = selectedModel?.content?.variables
-    ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) =>
-          d.type === 'probability_constant' ||
-          d.type === 'probability' ||
-          (d.type === 'parameter' && typeof d.value === 'string' && DIST_RE.test(d.value))
-        )
-        .map(([name, d]: [string, any]) => ({ name, ...d }))
-    : [];
-  const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
-  const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
-  const sourceOf = (kind: 'variables' | 'formulas', name: string) => provenance?.[kind]?.[name] || '';
-  const SourceTag = ({ source }: { source?: string }) => source ? (
-    <span style={{
-      color: c.textMute,
-      border: `1px solid ${c.border}`,
-      borderRadius: 4,
-      padding: '1px 5px',
-      fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)',
-      whiteSpace: 'nowrap',
-    }}>
-      from {source}
-    </span>
-  ) : null;
-  const resolveOutputVars = (): string[] => {
-    const variables: Record<string, any> = selectedModel?.content?.variables || {};
-    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator ?? {};
-    const rawVars = Array.isArray(sim.output_variables) ? sim.output_variables.map(String) : [];
-    const rawTypes = Array.isArray(sim.output_types) ? sim.output_types.map(String) : [];
-    if (rawVars.length === 0 && rawTypes.length === 0) return Object.keys(variables);
-    const next: string[] = [];
-    rawVars.forEach((name: string) => {
-      if (variables[name] && !next.includes(name)) next.push(name);
-    });
-    if (rawTypes.length > 0) {
-      Object.entries(variables).forEach(([name, detail]: [string, any]) => {
-        if (rawTypes.includes(String(detail.type)) && !next.includes(name)) next.push(name);
-      });
-    }
-    return next;
-  };
-  const outputVars: string[] = runOutputVars.length > 0 ? runOutputVars : resolveOutputVars();
-  const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
-  const DESCRIPTION_LABELS: Record<string, string> = {
-    brief: 'Brief',
-    need: 'Need',
-    problem: 'Problem',
-    method: 'Method',
-    simulation: 'Simulation',
-    optimization: 'Optimization',
-    result: 'Result',
-    conclusion: 'Conclusion',
-    limitations: 'Limitations',
-    usage: 'Usage',
-  };
-  const descriptionLabel = (key: string): string => DESCRIPTION_LABELS[key]
-    || key.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
-  const getDescriptionSections = (description: any): Array<{ key: string; label: string; text: string }> => {
-    if (!description) return [];
-    if (typeof description === 'string') {
-      const text = description.trim();
-      return text ? [{ key: 'brief', label: 'Brief', text }] : [];
-    }
-    if (typeof description !== 'object') return [];
-    return Object.entries(description)
-      .filter(([, value]) => value != null && String(value).trim())
-      .map(([key, value]) => ({ key, label: descriptionLabel(key), text: String(value).trim() }));
-  };
-  const descriptionText = (description: any): string => getDescriptionSections(description)
-    .map(section => section.text)
-    .join('\n\n');
-  const descriptionSummary = (description: any): string => {
-    const sections = getDescriptionSections(description);
-    return sections.find(s => s.key === 'brief')?.text || sections[0]?.text || '';
-  };
-
-  // flatten tree for list view
-  const flattenTree = (nodes: DataNode[]): any[] => {
-    let flat: any[] = [];
-    nodes.forEach(n => {
-      if (n.isLeaf) flat.push({ ...n, displayTitle: (n as any).titleStr || (typeof n.title === 'string' ? n.title : '') });
-      if (n.children?.length) flat = [...flat, ...flattenTree(n.children)];
-    });
-    return flat;
-  };
-  const storyList = flattenTree(storyTree)
-    .filter(n => !storyFilter || n.titleStr?.toLowerCase().includes(storyFilter.toLowerCase()));
-
   // ── sim control ───────────────────────────────────────────────────────────────
   const startSimulation = async () => {
     if (!selectedModel) return;
@@ -1223,7 +636,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       setSimData([]);
       setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
       isRunningRef.current = true;
-      // Build regimens from inputEvents for simulation
       const regimenPayload = inputEvents
         .filter(ev => inputVars.some(v => v.name === ev.variable))
         .map(ev => ({
@@ -1277,20 +689,14 @@ const Simulator: React.FC<SimulatorProps> = ({
           set('currentStep', res.data.current_step);
           set('progress', res.data.progress);
           setSimData(prev => [...prev, ...res.data.outputs]);
-
-          // Accumulate per-run data for MC fan display
           if (res.data.outputs_per_run && res.data.sim_runs > 1) {
             setState(prev => {
               const incoming: SimulationDataPoint[][] = res.data.outputs_per_run;
               const existing = prev.dataPerRun.length > 0 ? prev.dataPerRun : Array.from({ length: incoming.length }, () => []);
-              const merged = existing.map((runArr, i) => [
-                ...runArr,
-                ...(incoming[i] || []),
-              ]);
+              const merged = existing.map((runArr, i) => [...runArr, ...(incoming[i] || [])]);
               return { ...prev, dataPerRun: merged };
             });
           }
-
           if (res.data.completed) {
             set('status', 'completed'); isRunningRef.current = false;
             message.success(t('sim.msg.sim_complete'));
@@ -1335,7 +741,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedModel) return;
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
-    // Build regimen from inputEvents where optimizeValue === true
     const optimizeEvents = inputEvents.filter(ev => ev.optimizeValue);
     if (optimizeEvents.length === 0) {
       message.warning('请先勾选至少一个优化变量（☑ 优化）');
@@ -1350,8 +755,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptTotalGen(totalGen); setOptJobId(null);
     set('status', 'running'); set('progress', 0);
 
-    // Build optimizer config from GUI state
-    // Group by variable (for backend compatibility, use first variable's events)
     const firstVar = optimizeEvents[0].variable;
     const varEvents = optimizeEvents.filter(ev => ev.variable === firstVar);
 
@@ -1422,7 +825,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             setOptRunning(false);
             setOptResult(sd.result);
             set('status', 'idle'); set('progress', 100);
-            // Auto-switch to opt tab to show results
             setCenterTab('opt');
             message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
           } else if (sd.status === 'failed') {
@@ -1450,11 +852,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptRunning(false); set('status', 'idle');
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // LEFT PANEL TAB CONTENT RENDERERS
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // ── InputEvent helpers ────────────────────────────────────────────────────────
+  // ── input event CRUD ──────────────────────────────────────────────────────────
   const addInputEvent = () => {
     const firstInputVar = inputVars[0];
     if (!firstInputVar) return;
@@ -1474,858 +872,37 @@ const Simulator: React.FC<SimulatorProps> = ({
   const removeInputEvent = (id: string) =>
     setInputEvents(prev => prev.filter(ev => ev.id !== id));
 
-  const renderInputsContent = () => {
-    const DAY_LABELS = ['一','二','三','四','五','六','日'];
-
-    // Small pill toggle button
-    const Tog = ({ label, active, disabled, title, onToggle }: {
-      label: string; active: boolean; disabled?: boolean; title?: string; onToggle: () => void;
-    }) => (
-      <Tooltip title={title}>
-        <button
-          onClick={disabled ? undefined : onToggle}
-          style={{
-            fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.4,
-            border: `1px solid ${active ? c.primary : c.border}`,
-            background: active ? (isDarkMode ? 'rgba(82,196,26,0.18)' : 'rgba(0,122,51,0.09)') : 'transparent',
-            color: disabled ? c.border : active ? c.primary : c.textMute,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            flexShrink: 0,
-          }}
-        >{label}</button>
-      </Tooltip>
-    );
-
-    // In opt mode: show only events that will be optimized (from optimizer.inputs);
-    // in sim mode: show all events.
-    const optVars = new Set<string>(
-      ((selectedModel?.content?.optimizer?.inputs ?? []) as any[])
-        .filter((e: any) => e.optimize?.value)
-        .map((e: any) => e.variable)
-    );
-    const visibleEvents = mode === 'opt' && optVars.size > 0
-      ? inputEvents.filter(ev => optVars.has(ev.variable))
-      : inputEvents;
-
-    return (
-      <div style={{ padding: '4px 0' }}>
-        {visibleEvents.length === 0 && (
-          <div style={{ textAlign: 'center', color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: 8 }}>
-            {mode === 'opt' ? '未定义优化变量（检查 YAML optimizer.inputs 块）' : '暂无输入事件'}
-          </div>
-        )}
-        {visibleEvents.map((ev) => {
-          const varDef = inputVars.find(v => v.name === ev.variable);
-          const bounds = varDef?.bounds as [number,number] | undefined;
-          const hasDetails = ev.timeEnabled || ev.daysEnabled || ev.validRangeEnabled;
-          return (
-            <div key={ev.id} style={{
-              marginBottom: 5, border: `1px solid ${c.border}`,
-              borderRadius: 5, padding: '4px 6px',
-              background: c.panel,
-            }}>
-              {/* Row 1: variable + 4 toggles + delete */}
-              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                <Select
-                  size="small" value={ev.variable}
-                  style={{ flex: 1, minWidth: 0 }}
-                  options={inputVars.map(v => ({ label: v.name, value: v.name }))}
-                  onChange={val => updateInputEvent(ev.id, {
-                    variable: val,
-                    valueBounds: [
-                      (inputVars.find(v => v.name === val)?.bounds as any)?.[0] ?? 0,
-                      (inputVars.find(v => v.name === val)?.bounds as any)?.[1] ?? 1,
-                    ],
-                  })}
-                />
-                <Tog label="值" active disabled title="值始终启用" onToggle={() => {}} />
-                <Tog label="时" active={ev.timeEnabled} title="指定触发时刻" onToggle={() => updateInputEvent(ev.id, { timeEnabled: !ev.timeEnabled })} />
-                <Tog label="日" active={ev.daysEnabled} title="指定执行日" onToggle={() => updateInputEvent(ev.id, { daysEnabled: !ev.daysEnabled })} />
-                <Tog label="范" active={ev.validRangeEnabled} title="指定有效期" onToggle={() => updateInputEvent(ev.id, { validRangeEnabled: !ev.validRangeEnabled })} />
-                <div style={{ flex: 1 }} />
-                <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
-                  style={{ padding: '0 2px' }} onClick={() => removeInputEvent(ev.id)} />
-              </div>
-
-              {/* Row 2: value + unit + (opt mode) optimize checkbox + bounds */}
-              <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 3 }}>
-                <InputNumber
-                  size="small" value={ev.value}
-                  style={{ flex: 1, minWidth: 0 }}
-                  onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })}
-                />
-                {varDef?.unit && (
-                  <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>
-                )}
-                {mode === 'opt' && (
-                  <Tooltip title={ev.optimizeValue ? '取消优化' : '加入优化范围'}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
-                      <input type="checkbox" checked={ev.optimizeValue}
-                        onChange={e => updateInputEvent(ev.id, {
-                          optimizeValue: e.target.checked,
-                          valueBounds: ev.valueBounds[0] === 0 && ev.valueBounds[1] === 1
-                            ? [bounds?.[0] ?? 0, bounds?.[1] ?? ((ev.value * 2) || 1)]
-                            : ev.valueBounds,
-                        })}
-                        style={{ accentColor: c.primary, width: 11, height: 11 }}
-                      />
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeValue ? c.primary : c.textMute }}>opt</span>
-                    </label>
-                  </Tooltip>
-                )}
-                {mode === 'opt' && ev.optimizeValue && (
-                  <>
-                    <InputNumber size="small" value={ev.valueBounds[0]} placeholder="lo"
-                      style={{ width: 48 }}
-                      onChange={v => updateInputEvent(ev.id, { valueBounds: [v ?? 0, ev.valueBounds[1]] })} />
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                    <InputNumber size="small" value={ev.valueBounds[1]} placeholder="hi"
-                      style={{ width: 48 }}
-                      onChange={v => updateInputEvent(ev.id, { valueBounds: [ev.valueBounds[0], v ?? 1] })} />
-                  </>
-                )}
-              </div>
-
-              {/* Row 3 (combined): time | day buttons | date range — only when any active */}
-              {hasDetails && (
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
-                  {ev.timeEnabled && (
-                    <Input size="small" value={ev.time} placeholder="HH:mm"
-                      style={{ width: 58, fontFamily: 'monospace' }}
-                      onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
-                  )}
-                  {ev.daysEnabled && (
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {DAY_LABELS.map((d, i) => (
-                        <button key={i}
-                          onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
-                          style={{
-                            width: 20, height: 20, border: `1px solid ${c.border}`,
-                            borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer',
-                            background: ev.days[i] ? c.primary : c.panel,
-                            color: ev.days[i] ? '#fff' : c.textMute, padding: 0,
-                          }}>{d}</button>
-                      ))}
-                    </div>
-                  )}
-                  {ev.validRangeEnabled && (
-                    <>
-                      <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
-                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
-                      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>~</span>
-                      <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
-                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <Button size="small" icon={<PlusOutlined />} block
-          onClick={addInputEvent}
-          disabled={inputVars.length === 0}
-          style={{ borderColor: c.border, color: c.textSec, marginTop: 4 }}>
-          添加输入事件
-        </Button>
-      </div>
-    );
-  };
-
-  const renderVarsContent = () => (
-    <div style={{ padding: '8px 0' }}>
-      {stateVars.length === 0 && probConsts.length === 0
-        ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.vars.empty')} style={{ marginTop: 20 }} />
-        : <>
-            {stateVars.length > 0 && (
-              <>
-                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.vars.state_header')}</div>
-                {stateVars.map(v => (
-                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
-                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                      <span style={{ fontWeight: 600, fontFamily: 'monospace', color: c.primary, flexShrink: 0 }}>
-                        {(latestData[v.name] ?? v.value ?? 0).toFixed(4)}
-                      </span>
-                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
-                    </div>
-                  </Tooltip>
-                ))}
-              </>
-            )}
-            {probConsts.length > 0 && (
-              <>
-                <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '12px 0 6px' }}>{t('sim.vars.params_header')}</div>
-                {probConsts.map(v => (
-                  <Tooltip key={v.name} title={v.description || undefined} placement="top">
-                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: c.textSec, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                      <span style={{ fontFamily: 'monospace', color: c.textSec, flexShrink: 0 }}>{v.value}</span>
-                      {v.unit && <span style={{ color: c.textMute, flexShrink: 0 }}>{v.unit}</span>}
-                      <LockOutlined style={{ color: c.textMute, flexShrink: 0 }} />
-                    </div>
-                  </Tooltip>
-                ))}
-              </>
-            )}
-          </>
-      }
-    </div>
-  );
-
-  const renderFormulasContent = () => {
-    const entries = Object.entries(formulas);
-    if (entries.length === 0) return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.formulas.empty')} style={{ marginTop: 20 }} />
-    );
-    return (
-      <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {entries.map(([name, detail]: [string, any]) => (
-          <div key={name} style={{
-            border: `1px solid ${c.border}`, borderRadius: 4, padding: '6px 8px',
-            background: c.sectionHd,
-          }}>
-            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Tooltip title={detail.condition != null && detail.condition !== true ? `${t('sim.formulas.condition')}: ${String(detail.condition)}` : undefined}>
-                <strong style={{ color: c.text, cursor: detail.condition != null && detail.condition !== true ? 'help' : 'default' }}>
-                  {name}{detail.condition != null && detail.condition !== true ? ' *' : ''}
-                </strong>
-              </Tooltip>
-              <SourceTag source={sourceOf('formulas', name)} />
-            </div>
-            <code style={{ whiteSpace: 'pre-wrap', display: 'block', color: isDarkMode ? '#86efac' : '#007A33', lineHeight: 1.6 }}>
-              {typeof detail.dynamics === 'object' && detail.dynamics
-                ? Object.entries(detail.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('\n')
-                : String(detail.dynamics ?? '')}
-            </code>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-
-  const renderIntroTab = () => {
-    const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
-    const allV: Record<string, any> = selectedModel?.content?.variables || {};
-    const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
-    const descSections = getDescriptionSections(meta.description);
-
-    const toggleIntro = (key: string) => setIntroOpen(prev => {
-      const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n;
-    });
-
-    const thS: React.CSSProperties = {
-      padding: '3px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontWeight: 700, color: c.textMute,
-      textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd,
-    };
-    const tdS: React.CSSProperties = {
-      padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', borderBottom: `1px solid ${c.border}`, verticalAlign: 'top',
-    };
-
-    const IntroSection = ({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) => {
-      const open = introOpen.has(id);
-      return (
-        <div style={{ borderBottom: `1px solid ${c.border}` }}>
-          <div onClick={() => toggleIntro(id)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-            cursor: 'pointer', background: c.sectionHd, userSelect: 'none',
-          }}>
-            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-            <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{title}</span>
-            {badge && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{badge}</span>}
-          </div>
-          {open && <div style={{ padding: '8px 12px 12px' }}>{children}</div>}
-        </div>
-      );
-    };
-
-    if (!selectedModel) return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty') || '请选择一个模型'} />
-      </div>
-    );
-
-    const varTypeBadge = (type: string) => {
-      const map: Record<string, string> = { state: '状态', input: '输入', parameter: '参数', evidence: '证据' };
-      return map[type] || type || '—';
-    };
-
-    return (
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-
-        {/* ── 1. Description ── */}
-        <IntroSection id="meta"
-          title="Description"
-          badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}
-        >
-          {descSections.length > 0
-            ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                {descSections.map(section => (
-                  <div key={section.key} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr)', gap: 8, alignItems: 'baseline' }}>
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontWeight: 700, textTransform: 'uppercase' }}>
-                      {section.label}
-                    </span>
-                    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
-                      {section.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>暂无描述</div>
-          }
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
-            {meta.updated && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
-            {meta.author && meta.author !== 'TODO:AUTHOR' && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.author}</span>}
-            {meta.paper && <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.paper}</span>}
-            {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.tags.join(' · ')}</span>}
-          </div>
-        </IntroSection>
-
-        {/* ── 2. 变量 ── */}
-        <IntroSection id="variables"
-          title={t('sim.tabs.variables') || '变量'}
-          badge={`${Object.keys(allV).length} 个`}
-        >
-          {Object.keys(allV).length === 0
-            ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无变量</span>
-            : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                <thead><tr>
-                  <th style={{ ...thS, width: '22%' }}>Name</th>
-                  <th style={thS}>Description</th>
-                  <th style={thS}>类型</th>
-                  <th style={thS}>初始值</th>
-                  <th style={thS}>单位</th>
-                  <th style={thS}>来源</th>
-                </tr></thead>
-                <tbody>
-                  {Object.entries(allV).map(([name, d]: [string, any]) => (
-                    <tr key={name}>
-                      <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
-                        {name}
-                      </td>
-                      <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
-                      <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
-                      <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
-                      <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
-                      <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-          }
-        </IntroSection>
-
-        {/* ── 3. 输出变量 ── */}
-        <IntroSection id="outputs"
-          title="输出变量"
-          badge={`${outputVars.length} 个`}
-        >
-          {outputVars.length === 0
-            ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无输出变量</span>
-            : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                <thead><tr>
-                  <th style={{ ...thS, width: '22%' }}>Name</th>
-                  <th style={thS}>Description</th>
-                  <th style={thS}>类型</th>
-                  <th style={thS}>单位</th>
-                  <th style={thS}>来源</th>
-                </tr></thead>
-                <tbody>
-                  {outputVars.map((name) => {
-                    const d = allV[name] || {};
-                    return (
-                      <tr key={name}>
-                        <td style={{ ...tdS, fontFamily: 'monospace', color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
-                        <td style={{ ...tdS, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
-                        <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
-                        <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
-                        <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-          }
-        </IntroSection>
-
-        {/* ── 4. 公式 ── */}
-        {Object.keys(formulas).length > 0 && (
-          <IntroSection id="formulas"
-            title={t('sim.tabs.formulas') || '公式'}
-            badge={`${Object.keys(formulas).length} 个`}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <thead><tr>
-                <th style={{ ...thS, width: '20%' }}>Name</th>
-                <th style={{ ...thS, width: '26%' }}>Description</th>
-                <th style={thS}>Expression</th>
-                <th style={{ ...thS, width: '14%' }}>Condition</th>
-                <th style={{ ...thS, width: '12%' }}>来源</th>
-              </tr></thead>
-              <tbody>
-                {Object.entries(formulas).map(([name, fd]: [string, any]) => {
-                  const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : null;
-                  const expr = typeof fd.dynamics === 'object' && fd.dynamics
-                    ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
-                    : String(fd.dynamics ?? '');
-                  return (
-                    <tr key={name}>
-                      <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
-                      <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fd.description || ''}>{fd.description || '—'}</td>
-                      <td style={{ ...tdS, color: isDarkMode ? '#86efac' : '#007A33', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={expr}>{expr || '—'}</td>
-                      <td style={{ ...tdS, color: c.textMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cond || ''}>{cond || '—'}</td>
-                      <td style={tdS}><SourceTag source={sourceOf('formulas', name)} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </IntroSection>
-        )}
-
-        {/* ── 5. 参考文献 ── */}
-        {refs.length > 0 && (
-          <IntroSection id="refs" title="References" badge={`${refs.length} 条`}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {refs.map((r, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-                  <span style={{ color: c.primary, fontFamily: 'monospace', flexShrink: 0, minWidth: 24 }}>[{i + 1}]</span>
-                  <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r}</span>
-                </div>
-              ))}
-            </div>
-          </IntroSection>
-        )}
-
-      </div>
-    );
-  };
-
-  const renderOptContent = () => {
-    const hasModelOpt = !!(selectedModel?.content?.optimizer?.enabled !== false && selectedModel?.content?.optimizer);
-    return (
-    <div style={{ padding: '8px 0' }}>
-      {/* 模型内置 optimizer 提示 */}
-      {hasModelOpt && (
-        <div style={{ background: c.sectionHd, border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px', marginBottom: 10, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textSec }}>
-          已从模型 <code style={{ fontFamily: 'monospace' }}>optimizer:</code> 块读取配置，可在下方修改
-        </div>
-      )}
-      {/* Objectives */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.objectives')}</div>
-      {objectives.map((obj, i) => (
-        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-          <span style={{ color: c.textMute, width: 14 }}>{i + 1}.</span>
-          <Select size="small" value={obj.variable} style={{ flex: 1 }}
-            options={allVarNames.map(n => ({ label: n, value: n }))}
-            onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, variable: v } : o))} />
-          <Select size="small" value={obj.direction} style={{ width: 80 }}
-            options={[{ label: t('sim.opt.minimize'), value: 'minimize' }, { label: t('sim.opt.maximize'), value: 'maximize' }]}
-            onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, direction: v } : o))} />
-          <Button size="small" danger icon={<MinusCircleOutlined />}
-            onClick={() => setObjectives(p => p.filter((_, j) => j !== i))} />
-        </div>
-      ))}
-      <Button size="small" icon={<PlusOutlined />} block
-        onClick={() => setObjectives(p => [...p, { variable: allVarNames[0] || '', direction: 'minimize' }])}
-        style={{ borderColor: c.border, color: c.textSec, marginBottom: 14 }}>
-        {t('sim.opt.add_objective')}
-      </Button>
-
-      {/* Constraints */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.constraints')}</div>
-      {constraints.map((con, i) => (
-        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
-          <Select size="small" value={con.variable} style={{ flex: 1 }}
-            options={allVarNames.map(n => ({ label: n, value: n }))}
-            onChange={v => setConstraints(p => p.map((c2, j) => j === i ? { ...c2, variable: v } : c2))} />
-          <Select size="small" value={con.op} style={{ width: 48 }}
-            options={[{ label: '≤', value: '≤' }, { label: '≥', value: '≥' }]}
-            onChange={v => setConstraints(p => p.map((c2, j) => j === i ? { ...c2, op: v } : c2))} />
-          <InputNumber size="small" value={con.value} style={{ width: 64 }}
-            onChange={v => setConstraints(p => p.map((c2, j) => j === i ? { ...c2, value: v || 0 } : c2))} />
-          <Button size="small" danger icon={<MinusCircleOutlined />}
-            onClick={() => setConstraints(p => p.filter((_, j) => j !== i))} />
-        </div>
-      ))}
-      <Button size="small" icon={<PlusOutlined />} block
-        onClick={() => setConstraints(p => [...p, { variable: allVarNames[0] || '', op: '≤', value: 100 }])}
-        style={{ borderColor: c.border, color: c.textSec, marginBottom: 14 }}>
-        {t('sim.opt.add_constraint')}
-      </Button>
-
-      {/* Algorithm */}
-      <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.algorithm')}</div>
-      <Select size="small" value={optAlgo}
-        options={[
-          { label: 'NSGA-II（多目标 Pareto）', value: 'NSGA-II' },
-          { label: 'MOEA/D（多目标分解）',     value: 'MOEA/D' },
-          { label: 'L-BFGS-B（单目标梯度）',   value: 'l-bfgs-b' },
-          { label: 'Nelder-Mead（单目标无梯度）', value: 'nelder-mead' },
-        ]}
-        onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 8 }} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.population')}</div>
-          <InputNumber size="small" value={optPop} onChange={v => setOptPop(v || 100)} style={{ width: '100%' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.generations')}</div>
-          <InputNumber size="small" value={optGen} onChange={v => setOptGen(v || 200)} style={{ width: '100%' }} />
-        </div>
-      </div>
-    </div>
-    );
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // LEFT PANEL SECTION RESIZE
-  // ─────────────────────────────────────────────────────────────────────────────
-  const startSectionResize = (keyA: string, keyB: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const container = leftPanelRef.current;
-    if (!container) return;
-    const allKeys = ['inputs', ...(mode === 'opt' ? ['opt'] : [])];
-    const availableH = container.clientHeight - SECTION_H * allKeys.length;
-    const openArr = allKeys.filter(k => openSections.has(k));
-    const totalW = openArr.reduce((s, k) => s + (sectionWeights[k] || 1), 0);
-    const pxPerW = availableH / totalW;
-    const wA = sectionWeights[keyA] || 1;
-    const wB = sectionWeights[keyB] || 1;
-    const combined = wA + wB;
-    const onMove = (ev: MouseEvent) => {
-      const dw = (ev.clientY - startY) / pxPerW;
-      const nA = Math.max(0.15, wA + dw);
-      const nB = Math.max(0.15, combined - nA);
-      setSectionWeights(p => ({ ...p, [keyA]: nA, [keyB]: nB }));
-    };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CENTER PANEL
-  // ─────────────────────────────────────────────────────────────────────────────
-  const exportVarCSV = (varName: string) => {
-    const hasMC = dataPerRun.length > 1;
-    const runCols = hasMC ? dataPerRun.map((_, i) => `${varName}_run${i}`).join(',') : '';
-    const header = hasMC ? `time_s,time_h,${varName}_mean,${runCols}` : `time_s,time_h,${varName}`;
-    const rows = [header,
-      ...simulationData.map((d, idx) => {
-        const base = `${d.time},${((d.time ?? 0) / 3600).toFixed(4)},${(d[varName] as number) ?? 0}`;
-        if (!hasMC) return base;
-        const runVals = dataPerRun.map(rd => (rd[idx]?.[varName] as number) ?? '').join(',');
-        return `${base},${runVals}`;
-      })];
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = hasMC ? `${varName}_mc.csv` : `${varName}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // ── Opt center tab: full Pareto result view ──────────────────────────────────
-  const renderOptTab = () => {
-    const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
-    return (
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-        {!hasPareto && (
-          <div style={{ textAlign: 'center', color: c.textMute, padding: 40, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
-            {optRunning ? '优化运行中，请等待结果...' : '运行优化后在此查看 Pareto 结果'}
-          </div>
-        )}
-        {hasPareto && (
-          <>
-            {/* Header - auto from result */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <span style={{ fontWeight: 600, color: c.text }}>Pareto 前沿</span>
-              {(optResult.objectives || []).map((o: any, i: number) => (
-                <span key={i} style={{
-                  padding: '1px 6px', borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)',
-                  fontFamily: 'monospace', color: c.primary,
-                  background: isDarkMode ? '#1e3824' : '#f0f7f0',
-                  border: `1px solid ${c.border}`,
-                }}>
-                  {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}
-                  {o.metric && o.metric !== 'final' ? ` (${o.metric})` : ''}
-                </span>
-              ))}
-              <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-                {optResult.n_solutions} 解 · {optResult.method}
-                {optElapsed > 0 ? ` · ${optElapsed.toFixed(1)}s` : ''}
-              </span>
-            </div>
-
-            {/* Full-size Pareto chart */}
-            <div style={{ height: 320, border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-              <ParetoChart result={optResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-            </div>
-
-            {/* Best solution */}
-            {optResult.best_x != null && (
-              <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, border: `1px solid ${c.border}`, background: c.panel }}>
-                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, color: c.textSec, marginBottom: 6 }}>最优解（Pareto 第一点）</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-                  {/* Decision variables */}
-                  {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i}`))
-                    .map((label: string, i: number) => (
-                      <div key={i}>
-                        <span style={{ color: c.textMute }}>{label}: </span>
-                        <span style={{ color: c.primary, fontWeight: 600 }}>{optResult.best_x?.[i]?.toFixed(3)}</span>
-                      </div>
-                    ))
-                  }
-                  {/* Objective values */}
-                  {(optResult.objectives || []).map((o: any, i: number) => (
-                    <div key={`obj-${i}`}>
-                      <span style={{ color: c.textMute }}>{o.variable}: </span>
-                      <span style={{ color: c.text }}>{optResult.best_f?.[i]?.toFixed(4)}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  size="small" type="primary" style={{ marginTop: 8, background: c.primary, borderColor: c.primary }}
-                  onClick={() => {
-                    if (!optResult?.best_x?.length) return;
-                    // Map best_x values back into the optimized inputEvents (sequential match)
-                    const regVar: string | undefined = optResult.regimen_variable;
-                    const bestX: number[] = optResult.best_x;
-                    let xIdx = 0;
-                    setInputEvents((prev: InputEvent[]) => prev.map(ev => {
-                      if (regVar && ev.variable === regVar && ev.optimizeValue) {
-                        const val = bestX[xIdx++];
-                        return val != null ? { ...ev, value: Number(val.toFixed(4)) } : ev;
-                      }
-                      return ev;
-                    }));
-                    setMode('sim');
-                    setCenterTab('setup');
-                    message.success('已填入最优解，请检查参数后运行仿真');
-                  }}
-                >
-                  以此解运行仿真 →
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // ── Opt section: persistent log console ──────────────────────────────────────
-  const renderOptSection = () => {
-    const latestHist = optHistory.length > 0 ? optHistory[optHistory.length - 1] : null;
-    const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
-    const hasLogs = optLogs.length > 0;
-    if (!optRunning && !hasLogs) return null;
-
-    // Auto status line — everything derived from runtime state, nothing hardcoded
-    const parts: string[] = [];
-    if (optRunning) {
-      if (optMethod) parts.push(optMethod);
-      if (optCurGen > 0) parts.push(`Gen ${optCurGen}${optTotalGen > 0 ? `/${optTotalGen}` : ''}`);
-      if (latestHist?.fitness != null) parts.push(`best ${latestHist.fitness.toFixed(4)}`);
-      if (latestHist?.n_eval != null) parts.push(`eval ${latestHist.n_eval}`);
-      if (optElapsed > 0) parts.push(`${optElapsed.toFixed(1)}s`);
-    } else if (optResult) {
-      if (optResult.method) parts.push(optResult.method);
-      if (optResult.n_solutions != null) parts.push(`${optResult.n_solutions} 解`);
-      if (optElapsed > 0) parts.push(`${optElapsed.toFixed(1)}s`);
-    } else if (hasLogs) {
-      parts.push('已结束');
+  // ── derived data ──────────────────────────────────────────────────────────────
+  const inputVars = selectedModel?.content?.variables
+    ? Object.entries(selectedModel.content.variables)
+        .filter(([, d]: [string, any]) => d.type === 'input')
+        .map(([name, d]: [string, any]) => ({ name, ...d }))
+    : [];
+  const stateVars = selectedModel?.content?.variables
+    ? Object.entries(selectedModel.content.variables)
+        .filter(([, d]: [string, any]) => d.type === 'state')
+        .map(([name, d]: [string, any]) => ({ name, ...d }))
+    : [];
+  const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
+  const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
+  const resolveOutputVars = (): string[] => {
+    const variables: Record<string, any> = selectedModel?.content?.variables || {};
+    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator ?? {};
+    const rawVars = Array.isArray(sim.output_variables) ? sim.output_variables.map(String) : [];
+    const rawTypes = Array.isArray(sim.output_types) ? sim.output_types.map(String) : [];
+    if (rawVars.length === 0 && rawTypes.length === 0) return Object.keys(variables);
+    const next: string[] = [];
+    rawVars.forEach((name: string) => { if (variables[name] && !next.includes(name)) next.push(name); });
+    if (rawTypes.length > 0) {
+      Object.entries(variables).forEach(([name, detail]: [string, any]) => {
+        if (rawTypes.includes(String(detail.type)) && !next.includes(name)) next.push(name);
+      });
     }
-    const statusLine = parts.join('  ·  ');
-
-    const dotColor = optRunning ? c.primary : hasPareto ? '#52c41a' : '#ff7875';
-
-    return (
-      <div style={{ borderTop: `1px solid ${c.border}`, background: c.panel, flexShrink: 0 }}>
-        {/* ── Log console: collapsible, persistent ── */}
-        {(optRunning || hasLogs) && (
-          <div>
-            {/* Header row — click to toggle */}
-            <div
-              onClick={() => setOptLogOpen(v => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '3px 8px', cursor: 'pointer',
-                background: c.sectionHd, userSelect: 'none',
-              }}
-            >
-              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: c.textMute }}>{optLogOpen ? '▾' : '▸'}</span>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {statusLine || (optRunning ? '启动中...' : 'Log')}
-              </span>
-              {optRunning && (
-                <Button size="small" danger
-                  onClick={e => { e.stopPropagation(); cancelOptimization(); }}
-                  style={{ height: 20, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '0 6px', lineHeight: '20px' }}>
-                  停止
-                </Button>
-              )}
-            </div>
-            {/* Log body */}
-            {optLogOpen && (
-              <div style={{
-                maxHeight: 140, overflowY: 'auto',
-                fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text,
-                background: isDarkMode ? '#0d1710' : '#f0f7f0',
-                padding: '3px 8px',
-              }}>
-                {optLogs.length === 0 && (
-                  <span style={{ color: c.textMute }}>等待...</span>
-                )}
-                {optLogs.map((l, i) => {
-                  const d = new Date(l.t * 1000);
-                  const ts = [d.getHours(), d.getMinutes(), d.getSeconds()]
-                    .map(n => String(n).padStart(2, '0')).join(':');
-                  return (
-                    <div key={i} style={{ lineHeight: 1.5 }}>
-                      <span style={{ color: c.textMute }}>{ts}</span>{' '}{l.msg}
-                    </div>
-                  );
-                })}
-                <div ref={logEndRef} />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+    return next;
   };
+  const outputVars: string[] = runOutputVars.length > 0 ? runOutputVars : resolveOutputVars();
+  const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
 
-  // ── Center panel ──────────────────────────────────────────────────────────────
-  const renderCenterPanel = () => {
-    const hasSimData = simulationData.length > 0;
-    const optHasContent = optRunning || optLogs.length > 0 || (optResult?.pareto_front?.length ?? 0) > 0;
-
-    if (centerTab === 'opt') {
-      return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {renderOptTab()}
-          {mode === 'opt' && renderOptSection()}
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Charts area (or empty-state hint) */}
-        {hasSimData ? (
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
-            {outputWarnings.length > 0 && (
-              <div style={{ color: isDarkMode ? '#fbbf24' : '#b45309', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', margin: '2px 2px 6px' }}>
-                {outputWarnings.join('；')}
-              </div>
-            )}
-            <Collapse
-              defaultActiveKey={outputVars}
-              size="small"
-              items={outputVars.map((varName, idx) => {
-                const varInfo = selectedModel?.content?.variables?.[varName];
-                const lineColor = VAR_COLORS[idx % VAR_COLORS.length];
-                return {
-                  key: varName,
-                  label: (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontWeight: 600 }}>{varName}</span>
-                      {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{varInfo.description}</span>}
-                      {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
-                    </span>
-                  ),
-                  extra: (
-                    <Button size="small" type="text" icon={<DownloadOutlined />}
-                      onClick={e => { e.stopPropagation(); exportVarCSV(varName); }}
-                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
-                  ),
-                  children: (
-                    <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
-                      isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
-                      runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
-                      fontSize={fontSize} />
-                  ),
-                  styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
-                };
-              })}
-            />
-            {inputVars.length > 0 && (
-              <>
-                <div style={{ margin: '6px 0 2px', padding: '2px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, letterSpacing: '0.05em', borderLeft: `2px solid ${c.border}` }}>
-                  {t('sim.tabs.inputs')}
-                </div>
-                <Collapse
-                  defaultActiveKey={inputVars.map(v => v.name)}
-                  size="small"
-                  items={inputVars.map((v, idx) => {
-                    const lineColor = VAR_COLORS[(outputVars.length + idx) % VAR_COLORS.length];
-                    return {
-                      key: v.name,
-                      label: (() => {
-                        const inputVarInfo = selectedModel?.content?.variables?.[v.name];
-                        return (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
-                            <span style={{ fontWeight: 600 }}>{v.name}</span>
-                            {inputVarInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{inputVarInfo.description}</span>}
-                            {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
-                          </span>
-                        );
-                      })(),
-                      extra: (
-                        <Button size="small" type="text" icon={<DownloadOutlined />}
-                          onClick={e => { e.stopPropagation(); exportVarCSV(v.name); }}
-                          style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
-                      ),
-                      children: (
-                        <SimChart varName={v.name} unit={v.unit} data={simulationData}
-                          isDarkMode={isDarkMode} c={c} colorIndex={outputVars.length + idx} hideTitleBar
-                          runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
-                          fontSize={fontSize} />
-                      ),
-                      styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
-                    };
-                  })}
-                />
-              </>
-            )}
-          </div>
-        ) : (
-          /* Empty-state: show hint in sim mode; spacer in opt mode (opt section is at bottom) */
-          mode === 'opt' && optHasContent
-            ? <div style={{ flex: 1 }} />
-            : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute, flexDirection: 'column', gap: 8 }}>
-                {!selectedKey
-                  ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
-                  : !isLocked
-                    ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
-                    : mode === 'opt'
-                      ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.control.run')}</span></>
-                      : status === 'idle'
-                        ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
-                        : <span>{t('sim.scene.calculating')}</span>
-                }
-              </div>
-            )
-        )}
-
-        {/* Opt section — always at bottom in opt mode, regardless of sim data */}
-        {mode === 'opt' && renderOptSection()}
-      </div>
-    );
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────────
   const countLeaves = (nodes: DataNode[]): number => {
     let n = 0;
     nodes.forEach(node => { if (node.isLeaf) n++; else if (node.children) n += countLeaves(node.children); });
@@ -2333,802 +910,168 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
-  const inputsVarCount = inputEvents.length;
-  const leftTabs = [
-    { key: 'inputs', label: `${t('sim.tabs.inputs')}${inputsVarCount > 0 ? ` (${inputsVarCount})` : ''}`, content: renderInputsContent() },
-    ...(mode === 'opt' ? [{ key: 'opt', label: t('sim.tabs.optimizer'), content: renderOptContent() }] : []),
-  ];
-
+  // ── render ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Top bar — controls + time settings（flexWrap 自动换行） ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
-        padding: '5px 12px', flexShrink: 0,
-        borderBottom: `1px solid ${c.border}`, background: c.panel,
-      }}>
-        <Segmented
-          size="small" value={mode}
-          onChange={v => {
-            const newMode = v as 'sim' | 'opt';
-            setMode(newMode);
-          }}
-          options={[{ label: t('sim.mode.simulation'), value: 'sim' }, { label: t('sim.mode.optimization'), value: 'opt' }]}
-          disabled={status === 'running' || status === 'paused' || status === 'completed'}
-          style={{ flexShrink: 0 }}
-        />
-        <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
-        <Button
-          type="primary" size="small"
-          icon={(status === 'running' || optRunning) ? <PauseOutlined /> : <PlayCircleOutlined />}
-          onClick={
-            mode === 'opt'
-              ? (optRunning ? undefined : startOptimization)
-              : status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation
-          }
-          loading={optRunning}
-          disabled={!isLocked || (mode === 'opt' ? optRunning : status === 'completed')}
-          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-        >
-          {mode === 'opt'
-            ? (optRunning ? '优化中...' : t('sim.control.run'))
-            : status === 'running' ? t('sim.control.pause')
-            : status === 'paused' ? t('sim.control.continue')
-            : t('sim.control.run')}
-        </Button>
-        <Button size="small" icon={<StepForwardOutlined />}
-          onClick={runSingleStep}
-          disabled={mode === 'opt' || !isLocked || !sessionId || status === 'running' || status === 'completed'}
-          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-        >{t('sim.control.step')}</Button>
-        <Button size="small" icon={<StopOutlined />}
-          onClick={resetSimulation}
-          disabled={status === 'idle'}
-          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-        >{t('sim.control.reset')}</Button>
+      <SimTopBar
+        mode={mode} setMode={setMode}
+        status={status} progress={progress} currentStep={currentStep}
+        optRunning={optRunning} isLocked={isLocked} sessionId={sessionId}
+        simStartDate={simStartDate} simEndDate={simEndDate}
+        stepValue={stepValue} stepUnit={stepUnit}
+        simRuns={simRuns} sessionSeed={sessionSeed}
+        onSimStartDateChange={v => set('simStartDate', v)}
+        onSimEndDateChange={v => set('simEndDate', v)}
+        onStepValueChange={v => set('stepValue', v)}
+        onStepUnitChange={v => set('stepUnit', v)}
+        onSimRunsChange={v => set('simRuns', v)}
+        startSimulation={startSimulation}
+        pauseSimulation={pauseSimulation}
+        resumeSimulation={resumeSimulation}
+        runSingleStep={runSingleStep}
+        resetSimulation={resetSimulation}
+        startOptimization={startOptimization}
+        isDarkMode={isDarkMode} c={c} t={t}
+      />
 
-        <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
-
-        {/* Date range */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
-          <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
-            onChange={e => set('simStartDate', e.target.value)}
-            style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-          <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
-          <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
-            onChange={e => set('simEndDate', e.target.value)}
-            style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-        </div>
-
-        {/* Step size */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
-          <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
-          <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content', flexShrink: 0 }}
-            options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
-        </div>
-
-        {/* MC runs */}
-        <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '–'}` : 'Monte Carlo 运行条数（1=单条）'}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
-            <InputNumber
-              size="small" min={1} max={50} value={simRuns}
-              onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
-              style={{ width: 46 }}
-              disabled={status === 'running'}
-            />
-          </div>
-        </Tooltip>
-
-        {/* Progress — only flexible element */}
-        {progress > 0 && (
-          <>
-            <div style={{ flex: 1, minWidth: 60, maxWidth: 160 }}>
-              <div style={{ height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: `${progress}%`, height: '100%', background: c.primary, transition: 'width 0.3s', borderRadius: 3 }} />
-              </div>
-            </div>
-            <span style={{ color: c.textMute, fontFamily: 'monospace', flexShrink: 0 }}>{Math.round(progress)}%</span>
-          </>
-        )}
-        <span style={{ color: c.textMute, fontFamily: 'monospace', flexShrink: 0, whiteSpace: 'nowrap' }}>
-          step {currentStep}
-        </span>
-
-      </div>
-
-      {/* ── Two-column body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* LEFT PANEL — Scene only ── */}
-        <div style={{
-          width: leftW, flexShrink: 0,
-          background: c.panel,
-          display: 'flex', flexDirection: 'column',
-          overflow: 'hidden',
-          borderRight: `1px solid ${c.border}`,
-        }}>
-          {/* Scene header */}
-          <div style={{
-            height: SECTION_H, flexShrink: 0,
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px',
-            background: c.sectionHd,
-            borderBottom: `1px solid ${c.border}`,
-          }}>
-            <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{t('sim.scene.header')} ({total})</span>
-            {selectedKey && (
-              <Tooltip title="重新读取当前 YAML">
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<ReloadOutlined />}
-                  disabled={isLocked || treeLoading}
-                  onClick={e => {
-                    e.stopPropagation();
-                    loadFileContent(selectedKey, { preserveTab: true });
-                  }}
-                  style={{ color: c.textMute, padding: '0 3px' }}
-                />
-              </Tooltip>
-            )}
-            {selectedKey && (
-              <Popover
-                open={validationResult !== null && !validationResult.valid}
-                placement="rightTop"
-                onOpenChange={open => { if (!open) setValidationResult(null); }}
-                content={
-                  <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
-                    <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
-                    {validationResult?.errors.map((err, i) => (
-                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', marginBottom: 3 }}>• {err}</div>
-                    ))}
-                  </div>
-                }
-              >
-                <Button
-                  size="small"
-                  type={isLocked ? 'default' : 'dashed'}
-                  icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
-                  loading={validating}
-                  style={isLocked
-                    ? { color: '#52c41a', borderColor: '#52c41a' }
-                    : { color: '#faad14', borderColor: '#faad14' }}
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (isLocked) {
-                      // unlock = reset，清除仿真结果，准备下次直接运行
-                      setIsLocked(false);
-                      setValidationResult(null);
-                      isRunningRef.current = false;
-                      set('status', 'idle');
-                      set('progress', 0);
-                      set('currentStep', 0);
-                      setSimData([]);
-                      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
-                    } else {
-                      handleValidateAndLock();
-                    }
-                  }}
-                >
-                  {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
-                </Button>
-              </Popover>
-            )}
-          </div>
+        <SimModelTree
+          width={leftW} SECTION_H={SECTION_H}
+          storyTree={storyTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
+          storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
+          expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
+          selectedKey={selectedKey} isLocked={isLocked}
+          treeLoading={treeLoading}
+          validationResult={validationResult} setValidationResult={setValidationResult}
+          validating={validating}
+          total={total}
+          isDarkMode={isDarkMode} c={c} t={t}
+          loadFileContent={loadFileContent}
+          handleSelect={handleSelect}
+          handleTreeNodeClick={handleTreeNodeClick}
+          handleValidateAndLock={handleValidateAndLock}
+          setIsLocked={setIsLocked}
+          onUnlock={() => {
+            setIsLocked(false);
+            setValidationResult(null);
+            isRunningRef.current = false;
+            set('status', 'idle');
+            set('progress', 0);
+            set('currentStep', 0);
+            setSimData([]);
+            setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+          }}
+        />
 
-          {/* Scene content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-              <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
-                onChange={e => setStoryFilter(e.target.value)}
-                prefix={<FilterOutlined style={{ color: c.textMute }} />}
-                style={{ flex: 1 }} disabled={isLocked} />
-              <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
-                <Button size="small" type="text"
-                  icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
-                  onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
-                  style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
-              </Tooltip>
-            </div>
-            <div style={{ opacity: isLocked ? 0.4 : 1, pointerEvents: isLocked ? 'none' : 'auto' }}>
-              <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-                {storyViewMode === 'tree' ? (
-                  <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
-                    selectedKeys={selectedKey ? [selectedKey] : []} onSelect={handleSelect}
-                    onClick={handleTreeNodeClick} treeData={storyTree} />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {storyList.length === 0
-                      ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
-                      : storyList.map((modelEntry: any) => (
-                          <div key={modelEntry.key} onClick={() => handleSelect([modelEntry.key])}
-                            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === modelEntry.key ? c.rowHover : 'transparent', color: c.text }}>
-                            <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modelEntry.displayTitle}</span>
-                          </div>
-                        ))
-                    }
-                  </div>
-                )}
-              </Spin>
-            </div>
-          </div>
-        </div>
-
-        {/* LEFT-CENTER resize handle */}
         <div
           onMouseDown={startLeftDrag}
-          style={{
-            width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
-            transition: 'background 0.15s',
-          }}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent', transition: 'background 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         />
 
-        {/* CENTER — dual-tab: Setup | Plot ── */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Tab bar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 0,
-            borderBottom: `1px solid ${c.border}`, background: c.panel,
-            flexShrink: 0, paddingLeft: 8,
-          }}>
+          {/* Center tab bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 8 }}>
             {([
               { key: 'intro',  label: 'Overview' },
               { key: 'setup',  label: t('sim.tab.setup')   || '配置' },
               { key: 'opt',    label: t('sim.tab.opt')     || 'Pareto' },
               { key: 'plot',   label: t('sim.tab.plot')    || '图表' },
               { key: 'report', label: t('sim.tab.report')  || '报告' },
-            ] as { key: 'intro' | 'setup' | 'opt' | 'plot' | 'report'; label: string }[]).map(tab => {
+            ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
-              // opt tab in sim mode: visible but muted (review-only, not interactive for opt ops)
               const isOptReview = tab.key === 'opt' && mode === 'sim';
-              const color = isActive
-                ? (isOptReview ? c.textSec : c.primary)
-                : c.textMute;
-              const underline = isActive
-                ? (isOptReview ? `2px solid ${c.border}` : `2px solid ${c.primary}`)
-                : '2px solid transparent';
+              const color = isActive ? (isOptReview ? c.textSec : c.primary) : c.textMute;
+              const underline = isActive ? (isOptReview ? `2px solid ${c.border}` : `2px solid ${c.primary}`) : '2px solid transparent';
               return (
-                <button
-                  key={tab.key}
-                  onClick={() => setCenterTab(tab.key)}
-                  style={{
-                    padding: '6px 16px', border: 'none', cursor: 'pointer',
-                    background: 'transparent',
-                    color, fontWeight: isActive ? (isOptReview ? 500 : 600) : 400,
-                    borderBottom: underline,
-                    marginBottom: -1, outline: 'none', transition: 'all 0.12s',
-                    opacity: tab.key === 'opt' && mode === 'sim' && !isActive ? 0.45 : 1,
-                  }}
-                >
+                <button key={tab.key} onClick={() => setCenterTab(tab.key)} style={{ padding: '6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color, fontWeight: isActive ? (isOptReview ? 500 : 600) : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: tab.key === 'opt' && mode === 'sim' && !isActive ? 0.45 : 1 }}>
                   {tab.label}
                 </button>
               );
             })}
           </div>
 
-          {/* Intro tab content */}
           {centerTab === 'intro' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {renderIntroTab()}
+              <SimIntroTab
+                selectedModel={selectedModel} outputVars={outputVars}
+                formulas={formulas} provenance={provenance}
+                introOpen={introOpen} setIntroOpen={setIntroOpen}
+                isDarkMode={isDarkMode} c={c} t={t}
+              />
             </div>
           )}
 
-          {/* Setup tab content */}
           {centerTab === 'setup' && (
-            <div ref={leftPanelRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {leftTabs.map((tab, idx) => {
-                const isOpen = openSections.has(tab.key);
-                const openArr = leftTabs.filter(t => openSections.has(t.key));
-                const nextOpenTab = leftTabs.slice(idx + 1).find(t => openSections.has(t.key));
-                const showDragHandle = isOpen && !!nextOpenTab;
-                return (
-                  <React.Fragment key={tab.key}>
-                    <div style={{
-                      flex: isOpen ? String(sectionWeights[tab.key] || 1) : '0 0 auto',
-                      minHeight: SECTION_H,
-                      display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                      borderBottom: `1px solid ${c.border}`,
-                    }}>
-                      <div
-                        onClick={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(tab.key)) n.delete(tab.key); else n.add(tab.key); return n; })}
-                        style={{
-                          height: SECTION_H, flexShrink: 0,
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          padding: '0 12px', cursor: 'pointer',
-                          background: c.sectionHd, userSelect: 'none',
-                        }}
-                      >
-                        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
-                        <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{tab.label}</span>
-                      </div>
-                      {isOpen && (
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-                          {tab.content}
-                        </div>
-                      )}
-                    </div>
-                    {showDragHandle && (
-                      <div
-                        onMouseDown={startSectionResize(tab.key, nextOpenTab!.key)}
-                        style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent', transition: 'background 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
+            <SimSetupTab
+              inputEvents={inputEvents}
+              addInputEvent={addInputEvent}
+              updateInputEvent={updateInputEvent}
+              removeInputEvent={removeInputEvent}
+              inputVars={inputVars}
+              mode={mode}
+              selectedModel={selectedModel}
+              openSections={openSections} setOpenSections={setOpenSections}
+              sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
+              SECTION_H={SECTION_H}
+              objectives={objectives} setObjectives={setObjectives}
+              constraints={constraints} setConstraints={setConstraints}
+              optAlgo={optAlgo} setOptAlgo={setOptAlgo}
+              optPop={optPop} setOptPop={setOptPop}
+              optGen={optGen} setOptGen={setOptGen}
+              allVarNames={allVarNames}
+              isDarkMode={isDarkMode} c={c} t={t}
+            />
           )}
 
-          {/* Plot tab content */}
-          {centerTab === 'plot' && renderCenterPanel()}
+          {centerTab === 'plot' && (
+            <SimPlotTab
+              simulationData={simulationData} dataPerRun={dataPerRun}
+              outputVars={outputVars} outputWarnings={outputWarnings}
+              inputVars={inputVars}
+              selectedModel={selectedModel}
+              selectedKey={selectedKey} isLocked={isLocked} mode={mode} status={status}
+              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+            />
+          )}
 
-          {/* Opt tab content */}
-          {centerTab === 'opt' && renderCenterPanel()}
+          {centerTab === 'opt' && (
+            <SimOptTab
+              optResult={optResult} optRunning={optRunning}
+              optHistory={optHistory} optCurGen={optCurGen} optTotalGen={optTotalGen}
+              optElapsed={optElapsed} optMethod={optMethod} optLogs={optLogs}
+              objectives={objectives} constraints={constraints}
+              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+              setInputEvents={setInputEvents}
+              setMode={setMode}
+              setCenterTab={v => setCenterTab(v as CenterTab)}
+            />
+          )}
 
-          {/* Report tab content */}
-          {centerTab === 'report' && (() => {
-            const meta = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
-            const latestStep = simulationData[simulationData.length - 1];
-            const hasData = simulationData.length > 0;
-            const allV: Record<string, any> = selectedModel?.content?.variables || {};
-            const metaDescText = descriptionText(meta.description);
-            const metaDescSummary = descriptionSummary(meta.description);
+          {centerTab === 'report' && (
+            <SimReportTab
+              selectedModel={selectedModel}
+              simulationData={simulationData} dataPerRun={dataPerRun}
+              outputVars={outputVars} stateVars={stateVars} inputVars={inputVars}
+              formulas={formulas} inputParams={inputParams}
+              simStartDate={simStartDate} simEndDate={simEndDate}
+              stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
+              objectives={objectives} constraints={constraints}
+              optAlgo={optAlgo} optPop={optPop} optGen={optGen}
+              mode={mode}
+              reportSections={reportSections} setReportSections={setReportSections}
+              openReportPreviews={openReportPreviews} setOpenReportPreviews={setOpenReportPreviews}
+              reportGenerating={reportGenerating} setReportGenerating={setReportGenerating}
+              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+            />
+          )}
 
-            // ── reference collector ────────────────────────────────────────
-            const allRefs: string[] = [];
-            const refIdx = new Map<string, number>();
-            function collectRefs(val: unknown): number[] {
-              if (!val) return [];
-              const arr = (Array.isArray(val) ? val : [val]) as string[];
-              return arr.filter(Boolean).map(r => {
-                if (refIdx.has(r)) return refIdx.get(r)!;
-                allRefs.push(r); refIdx.set(r, allRefs.length); return allRefs.length;
-              });
-            }
-            function citeStr(val: unknown): string {
-              const nums = collectRefs(val);
-              return nums.length ? ' ' + nums.map(n => `[${n}]`).join('') : '';
-            }
-            // Collect eagerly in display order: meta → variables → formulas
-            collectRefs((meta as any).references ?? (meta as any).reference);
-            Object.values(allV).forEach((d: any) => collectRefs(d.reference));
-            Object.values(formulas).forEach((fd: any) => collectRefs(fd.reference));
-
-            // ── section summary badges ─────────────────────────────────────
-            function sectionBadge(key: ReportSection): string {
-              if (key === 'intro')    return metaDescText ? '有描述' : '无描述';
-              if (key === 'overview') return `${stateVars.length + inputVars.length} 个变量`;
-              if (key === 'formulas') return `${Object.keys(formulas).length} 个`;
-              if (key === 'variables') return `${Object.keys(allV).length} 个`;
-              if (key === 'simcfg')   return `${Object.keys(inputParams).length} 项输入`;
-              if (key === 'plots')    return hasData ? `${outputVars.length} 条曲线` : '需先仿真';
-              if (key === 'opt')      return `${objectives.length} 目标`;
-              if (key === 'refs')     return allRefs.length > 0 ? `${allRefs.length} 条` : '无';
-              return '';
-            }
-
-            // ── section JSX preview ────────────────────────────────────────
-            const TH = ({ children }: { children: React.ReactNode }) => (
-              <th style={{ padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, color: c.textMute,
-                textAlign: 'left', borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>{children}</th>
-            );
-            const TD = ({ children, mono }: { children: React.ReactNode; mono?: boolean }) => (
-              <td style={{ padding: '4px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text,
-                fontFamily: mono ? 'monospace' : 'inherit', borderBottom: `1px solid ${c.border}` }}>{children}</td>
-            );
-
-            function renderSectionContent(key: ReportSection): React.ReactNode {
-              if (key === 'intro') return (
-                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.8 }}>
-                  {metaDescText
-                    ? <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{metaDescText}</p>
-                    : <span style={{ color: c.textMute }}>暂无简介（可在 YAML metadata.description 中填写）</span>
-                  }
-                  {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>标签：{meta.tags.join('  ·  ')}</div> : null}
-                </div>
-              );
-              if (key === 'overview') return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
-                  <tr><TD>名称</TD><TD mono>{meta.name || selectedModel?.label || '—'}</TD></tr>
-                  <tr><TD>描述</TD><TD>{(metaDescSummary || '—').slice(0, 120)}</TD></tr>
-                  {meta.tags?.length ? <tr><TD>标签</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
-                  <tr><TD>状态变量</TD><TD mono>{stateVars.length} 个</TD></tr>
-                  <tr><TD>输入变量</TD><TD mono>{inputVars.length} 个</TD></tr>
-                  <tr><TD>方程数</TD><TD mono>{Object.keys(formulas).length} 个</TD></tr>
-                </tbody></table>
-              );
-              if (key === 'simcfg') return (
-                <div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}><tbody>
-                    <tr><TD>时间范围</TD><TD mono>{simStartDate} ~ {simEndDate}</TD></tr>
-                    <tr><TD>步长</TD><TD mono>{stepValue} {stepUnit}</TD></tr>
-                    <tr><TD>批量大小</TD><TD mono>{batchSize}</TD></tr>
-                  </tbody></table>
-                  {Object.keys(inputParams).length > 0 && (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><TH>变量</TH><TH>含义</TH><TH>值</TH></tr></thead>
-                      <tbody>{Object.entries(inputParams).map(([k, v]) => (
-                        <tr key={k}><TD mono>{k}</TD><TD>{allV[k]?.description || '—'}</TD><TD mono>{String(v)}</TD></tr>
-                      ))}</tbody>
-                    </table>
-                  )}
-                </div>
-              );
-              if (key === 'variables') return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr><TH>变量名</TH><TH>含义</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
-                  <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
-                    const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                    const cite = citeStr(d.reference);
-                    return <tr key={name}><TD mono>{name}</TD>
-                      <TD>{d.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
-                      <TD>{d.type || '—'}</TD><TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
-                  })}</tbody>
-                </table>
-              );
-              if (key === 'formulas') return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr><TH>方程名</TH><TH>含义</TH><TH>条件</TH><TH>影响变量</TH></tr></thead>
-                  <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
-                    const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
-                    const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
-                    const cite = citeStr(fd.reference);
-                    return <tr key={name}><TD mono>{name}</TD>
-                      <TD>{fd.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
-                      <TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
-                  })}</tbody>
-                </table>
-              );
-              if (key === 'plots') {
-                if (!hasData) return <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '8px 0' }}>尚无数据，请先运行仿真</div>;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {outputVars.map((varName, idx) => {
-                      const varInfo = allV[varName];
-                      return (
-                        <div key={varName}>
-                          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, color: c.text, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 2, background: VAR_COLORS[idx % VAR_COLORS.length], display: 'inline-block' }} />
-                            <span style={{ fontFamily: 'monospace' }}>{varName}</span>
-                            {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400 }}>{varInfo.description}</span>}
-                            {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
-                          </div>
-                          <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
-                            isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
-                            fontSize={fontSize} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              if (key === 'refs') return (
-                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, lineHeight: 1.9 }}>
-                  {allRefs.length === 0
-                    ? <span style={{ color: c.textMute }}>当前模型无参考文献（可在 YAML metadata.references / variable.reference / formula.reference 中添加）</span>
-                    : allRefs.map((ref, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-                          <span style={{ color: c.primary, fontWeight: 700, flexShrink: 0, fontFamily: 'monospace', minWidth: 28 }}>[{i + 1}]</span>
-                          <span>{ref}</span>
-                        </div>
-                      ))
-                  }
-                </div>
-              );
-              if (key === 'opt') return (
-                <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
-                  {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>目标函数</div>
-                    {objectives.map((o, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
-                      {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}</div>)}</>}
-                  {constraints.length > 0 && <><div style={{ fontWeight: 700, margin: '8px 0 4px' }}>约束条件</div>
-                    {constraints.map((c2, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
-                      {c2.variable} {c2.op} {c2.value}</div>)}</>}
-                  <div style={{ marginTop: 8, color: c.textMute }}>算法: {optAlgo} · 种群: {optPop} · 代数: {optGen}</div>
-                </div>
-              );
-              return null;
-            }
-
-            // ── build report markdown (for export) ────────────────────────
-            function buildMd(): string {
-              const lines: string[] = [];
-              const ts = new Date().toLocaleString('zh-CN');
-              lines.push(`# 仿真报告\n\n> 生成时间：${ts}\n`);
-              if (reportSections.has('intro') && metaDescText) {
-                lines.push(`## Description\n`);
-                lines.push(`${metaDescText}\n`);
-                if (meta.tags?.length) lines.push(`**标签**：${meta.tags.join('  ·  ')}\n`);
-              }
-              if (reportSections.has('overview')) {
-                lines.push(`## 模型概览\n`);
-                lines.push(`| 字段 | 值 |\n|------|-----|`);
-                lines.push(`| 名称 | ${meta.name || selectedModel?.label || '—'} |`);
-                lines.push(`| 描述 | ${(metaDescSummary || '—').replace(/\n/g, ' ')} |`);
-                if (meta.tags?.length) lines.push(`| 标签 | ${meta.tags.join(', ')} |`);
-                lines.push(`| 状态变量数 | ${stateVars.length} |\n| 输入变量数 | ${inputVars.length} |\n| 方程数 | ${Object.keys(formulas).length} |\n`);
-              }
-              if (reportSections.has('simcfg')) {
-                lines.push(`## 仿真配置\n\n| 参数 | 值 |\n|------|-----|`);
-                lines.push(`| 时间范围 | ${simStartDate} ~ ${simEndDate} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
-                if (Object.keys(inputParams).length) {
-                  lines.push(`\n**输入参数**\n\n| 变量 | 含义 | 值 |\n|------|------|-----|`);
-                  Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${allV[k]?.description || '—'} | ${v} |`));
-                }
-                lines.push('');
-              }
-              if (reportSections.has('variables')) {
-                lines.push(`## 变量汇总\n\n| 变量名 | 含义 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|------|--------|--------|------|`);
-                Object.entries(allV).forEach(([name, d]: [string, any]) => {
-                  const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-                  lines.push(`| \`${name}\` | ${d.description || '—'}${citeStr(d.reference)} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
-                });
-                lines.push('');
-              }
-              if (reportSections.has('formulas')) {
-                lines.push(`## 方程列表\n\n| 方程名 | 含义 | 条件 | 影响变量 |\n|--------|------|------|----------|`);
-                Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
-                  const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
-                  lines.push(`| \`${name}\` | ${fd.description || '—'}${citeStr(fd.reference)} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
-                });
-                lines.push('');
-              }
-              if (reportSections.has('plots') && hasData) {
-                lines.push(`## Plot 曲线\n`);
-                outputVars.forEach((varName, idx) => {
-                  const d = allV[varName] || {};
-                  const caption = [varName, d.description, d.unit ? `(${d.unit})` : ''].filter(Boolean).join('  ');
-                  lines.push(`\n**${caption}**\n`);
-                  const dataUrl = varToDataUrl(varName, idx);
-                  if (dataUrl) lines.push(`![${varName}](${dataUrl})\n`);
-                });
-                lines.push('');
-              }
-              if (reportSections.has('opt') && mode === 'opt') {
-                lines.push(`## 优化配置\n`);
-                if (objectives.length) { lines.push(`**目标函数**\n`); objectives.forEach(o => lines.push(`- ${o.direction === 'maximize' ? '最大化' : '最小化'} \`${o.variable}\``)); }
-                if (constraints.length) { lines.push(`\n**约束条件**\n`); constraints.forEach(c2 => lines.push(`- \`${c2.variable}\` ${c2.op} ${c2.value}`)); }
-                lines.push(`\n算法: ${optAlgo} · 种群: ${optPop} · 代数: ${optGen}\n`);
-              }
-              if (reportSections.has('refs') && allRefs.length > 0) {
-                lines.push(`## 参考文献\n`);
-                allRefs.forEach((ref, i) => lines.push(`[${i + 1}] ${ref}`));
-                lines.push('');
-              }
-              return lines.join('\n');
-            }
-
-            function buildHtml(md: string): string {
-              const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-              const rows = md.split('\n');
-              const tableFont = fontSize * 13 / 14;
-              const codeFont = fontSize * 12 / 14;
-              let html = `<style>body{font-family:system-ui,sans-serif;font-size:${fontSize}px;max-width:900px;margin:40px auto;padding:0 20px;color:#1a2e22;line-height:1.6}` +
-                'h1{color:#007A33;border-bottom:2px solid #007A33;padding-bottom:8px}h2{color:#007A33;margin-top:32px}' +
-                `table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #dde5de;padding:6px 10px;text-align:left;font-size:${tableFont}px}` +
-                `th{background:#f2f4f2;font-weight:700}code{background:#f2f4f2;padding:1px 4px;border-radius:3px;font-size:${codeFont}px}` +
-                'blockquote{border-left:3px solid #b7eb8f;margin:0;padding-left:12px;color:#555}</style><body>';
-              let inTable = false;
-              rows.forEach(line => {
-                if (line.startsWith('# '))       { if (inTable){html+='</table>';inTable=false;} html+=`<h1>${esc(line.slice(2))}</h1>`; }
-                else if (line.startsWith('## ')) { if (inTable){html+='</table>';inTable=false;} html+=`<h2>${esc(line.slice(3))}</h2>`; }
-                else if (line.startsWith('> '))  { html+=`<blockquote>${esc(line.slice(2))}</blockquote>`; }
-                else if (/^\*\*.*\*\*$/.test(line)){ html+=`<p><strong>${esc(line.slice(2,-2))}</strong></p>`; }
-                else if (/^!\[/.test(line)) {
-                  const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
-                  if (m) html += `<img alt="${esc(m[1])}" src="${m[2]}" style="width:100%;max-width:680px;margin:4px 0;display:block">`;
-                }
-                else if (line.startsWith('- '))  { html+=`<li>${line.slice(2).replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</li>`; }
-                else if (line.startsWith('|')) {
-                  const cells = line.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>c.trim());
-                  if (cells.every(c=>/^[-:]+$/.test(c))) return;
-                  if (!inTable){ html+='<table>'; inTable=true; }
-                  html+='<tr>'+cells.map(c=>`<td>${c.replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</td>`).join('')+'</tr>';
-                } else { if(inTable){html+='</table>';inTable=false;} if(line.trim()) html+=`<p>${line.replace(/`([^`]+)`/g,(_,m)=>`<code>${esc(m)}</code>`)}</p>`; }
-              });
-              if (inTable) html += '</table>';
-              return html + '</body>';
-            }
-
-            function previewHtml() {
-              const w = window.open('', '_blank');
-              if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); }
-            }
-
-            function downloadMd() {
-              setReportGenerating(true);
-              const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `report_${(meta.name || 'sim').replace(/\s+/g,'_')}_${Date.now()}.md`;
-              document.body.appendChild(a); a.click();
-              document.body.removeChild(a); URL.revokeObjectURL(url);
-              setTimeout(() => setReportGenerating(false), 500);
-            }
-
-            function varToDataUrl(varName: string, colorIndex: number, W = 680, H = 160): string {
-              if (simulationData.length === 0) return '';
-              const canvas = document.createElement('canvas');
-              canvas.width = W * 2; canvas.height = H * 2;
-              const ctx = canvas.getContext('2d');
-              if (!ctx) return '';
-              ctx.scale(2, 2);
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, W, H);
-              drawChartOnCtx(ctx, W, H, varName, simulationData, false, VAR_COLORS[colorIndex % VAR_COLORS.length], undefined, fontSize);
-              return canvas.toDataURL('image/png');
-            }
-
-            function downloadTrajectoryCsv() {
-              if (!hasData) return;
-              const hasMC = dataPerRun.length > 1;
-              const baseCols = Object.keys(simulationData[0]).filter(k => k !== 'step');
-              const varCols = baseCols.filter(k => k !== 'time');
-              // header: base columns, then run columns for each variable
-              const mcRunCols = hasMC
-                ? varCols.flatMap(k => dataPerRun.map((_, i) => `${k}_run${i}`))
-                : [];
-              const header = [
-                ...baseCols.map(k => {
-                  const desc = allV[k]?.description;
-                  return desc ? `${k}(${desc})` : k;
-                }),
-                ...mcRunCols,
-              ].join(',');
-              const rows = simulationData.map((row, idx) => {
-                const base = baseCols.map(k => row[k] != null ? String(row[k]) : '').join(',');
-                if (!hasMC) return base;
-                const mcVals = varCols.flatMap(k =>
-                  dataPerRun.map(rd => (rd[idx]?.[k] as number) ?? '')
-                ).join(',');
-                return `${base},${mcVals}`;
-              });
-              const csv = [header, ...rows].join('\n');
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `trajectory_${(meta.name || 'sim').replace(/\s+/g,'_')}_${Date.now()}.csv`;
-              document.body.appendChild(a); a.click();
-              document.body.removeChild(a); URL.revokeObjectURL(url);
-            }
-
-            const canExport = reportSections.size > 0;
-            const btnBase: React.CSSProperties = {
-              padding: '6px 16px', borderRadius: 5, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', fontWeight: 600,
-              cursor: 'pointer', transition: 'opacity 0.15s',
-            };
-
-            return (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-                {/* ── Top action bar ── */}
-                <div style={{
-                  display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
-                  padding: '10px 16px', borderBottom: `1px solid ${c.border}`, background: c.panel,
-                }}>
-                  <button onClick={previewHtml} disabled={!canExport} style={{
-                    ...btnBase, border: `1px solid ${c.primary}`, background: 'transparent',
-                    color: c.primary, opacity: canExport ? 1 : 0.4,
-                  }}>⬡ HTML 预览</button>
-                  <button onClick={downloadMd} disabled={!canExport || reportGenerating} style={{
-                    ...btnBase, border: 'none', background: canExport ? c.primary : c.border,
-                    color: '#fff', opacity: canExport && !reportGenerating ? 1 : 0.4,
-                  }}>{reportGenerating ? '生成中…' : '↓ 导出 .md'}</button>
-                  <button onClick={downloadTrajectoryCsv} disabled={!hasData} style={{
-                    ...btnBase, border: `1px solid ${c.border}`, background: 'transparent',
-                    color: hasData ? c.text : c.textMute, opacity: hasData ? 1 : 0.4,
-                  }}>↓ 轨迹 .csv</button>
-                  <Tooltip title="DOCX 导出功能开发中">
-                    <button disabled style={{
-                      ...btnBase, border: `1px solid ${c.border}`, background: 'transparent',
-                      color: c.textMute, cursor: 'not-allowed', opacity: 0.4,
-                    }}>↓ 导出 .docx</button>
-                  </Tooltip>
-                </div>
-
-                {/* ── Main area: left checklist + right accordion ── */}
-                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-
-                  {/* Left: section checklist */}
-                  <div style={{
-                    width: 168, flexShrink: 0, borderRight: `1px solid ${c.border}`,
-                    background: c.panel, overflowY: 'auto', padding: '12px 0',
-                  }}>
-                    <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em',
-                      textTransform: 'uppercase', padding: '0 14px 8px' }}>输出章节</div>
-                    {ALL_REPORT_SECTIONS.map(s => {
-                      const checked = reportSections.has(s.key);
-                      const disabledPlots = s.key === 'plots' && !hasData;
-                      const disabledOpt = s.key === 'opt' && mode !== 'opt';
-                      const isDisabled = disabledPlots || disabledOpt;
-                      const tooltipText = disabledPlots ? '需先完成仿真才能显示曲线'
-                        : disabledOpt ? '仅在优化模式下可用' : '';
-                      const row = (
-                        <label key={s.key} style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '7px 14px', cursor: isDisabled ? 'not-allowed' : 'pointer',
-                          opacity: isDisabled ? 0.4 : 1,
-                          background: checked && !isDisabled ? (c.primary + '12') : 'transparent',
-                          borderLeft: `2px solid ${checked && !isDisabled ? c.primary : 'transparent'}`,
-                          transition: 'all 0.12s',
-                        }}>
-                          <input type="checkbox" checked={checked} disabled={isDisabled}
-                            onChange={() => {
-                              setReportSections(p => { const s2 = new Set(p); s2.has(s.key) ? s2.delete(s.key) : s2.add(s.key); return s2; });
-                              setOpenReportPreviews(p => { const s2 = new Set(p); checked ? s2.delete(s.key) : s2.add(s.key); return s2; });
-                            }}
-                            style={{ accentColor: c.primary, width: 12, height: 12, flexShrink: 0 }}
-                          />
-                          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text }}>{s.label}</span>
-                        </label>
-                      );
-                      return tooltipText
-                        ? <Tooltip key={s.key} title={tooltipText} placement="right">{row}</Tooltip>
-                        : row;
-                    })}
-                  </div>
-
-                  {/* Right: accordion previews */}
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {reportSections.size === 0 && (
-                      <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', padding: '32px 0', textAlign: 'center' }}>
-                        请在左侧勾选章节
-                      </div>
-                    )}
-                    {ALL_REPORT_SECTIONS.filter(s => reportSections.has(s.key)).map(s => {
-                      const isOpen = openReportPreviews.has(s.key);
-                      const badge = sectionBadge(s.key);
-                      return (
-                        <div key={s.key} style={{
-                          border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden',
-                          background: c.panel, flexShrink: 0,
-                        }}>
-                          {/* Accordion header */}
-                          <div
-                            onClick={() => setOpenReportPreviews(p => { const s2 = new Set(p); s2.has(s.key) ? s2.delete(s.key) : s2.add(s.key); return s2; })}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 8,
-                              padding: '8px 12px', cursor: 'pointer',
-                              background: isOpen ? c.sectionHd : 'transparent',
-                              userSelect: 'none',
-                            }}
-                          >
-                            <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: c.textMute, transition: 'transform 0.15s',
-                              transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
-                            <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, flex: 1 }}>{s.label}</span>
-                            {badge && <span style={{
-                              fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.primary, fontFamily: 'monospace',
-                              background: c.primary + '15', padding: '1px 7px', borderRadius: 8,
-                            }}>{badge}</span>}
-                          </div>
-                          {/* Accordion content */}
-                          {isOpen && (
-                            <div style={{ padding: '10px 12px', borderTop: `1px solid ${c.border}` }}>
-                              {renderSectionContent(s.key)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       </div>
-
     </div>
   );
 };
