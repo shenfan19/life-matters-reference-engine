@@ -1086,6 +1086,12 @@ def resolve_evidence(model):
 
 `baseline_ref` 引用的 `ir` 变量必须在同一 `evidence:` 节中先行解析（Loader 按依赖顺序执行，若存在循环引用则报错）。
 
+### Metadata description
+
+`metadata.description` 在运行时保持原始结构：可以是字符串，也可以是映射对象。后端只做类型校验，不固定字段集合，不补空字段。前端 Overview 页负责把字符串显示为单行 `Brief`，或按映射对象在 YAML 中的字段顺序显示所有非空字段。
+
+推荐字段名见 `model_design.md`，但 Loader 和 Simulator 不依赖这些推荐字段；新增字段会按 key 自动生成英文标签。
+
 ### AST 预编译
 
 加载期将 `dynamics` 表达式文本转为 `asteval` 安全语法树节点，加速仿真主循环的每步求值，避免重复解析字符串。

@@ -1,11 +1,18 @@
 id: af1943_fr_little_prince
 name: "小王子：沙漠中的告别"
-description: |
-  一个飞行员的飞机在撒哈拉沙漠迫降。他遇见了一个小男孩——从另一颗星球来的王子。
-  他们交谈了八天。
-  小王子说：我的玫瑰，我必须回去了。
-  他不会飞，只有一种方式能回去。
-  这个模拟的问题是：飞行员能不能给小王子另一个选择。
+description:
+  brief: |
+    一个飞行员的飞机在撒哈拉沙漠迫降。他遇见了一个小男孩——从另一颗星球来的王子。
+    他们交谈了八天。
+    小王子说：我的玫瑰，我必须回去了。
+    他不会飞，只有一种方式能回去。
+    这个模拟的问题是：飞行员能不能给小王子另一个选择。
+  problem: 在该情境中，需要平衡 修飞机努力、真正聆听小王子、说服小王子留下 对生存、目标进展或长期代价的影响。
+  method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
+  simulation: 默认仿真长度为 8 个 day，用于比较不同输入策略下的轨迹。
+  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
 type: scenario
 tags: [desert, meaning, connection, loss, philosophy, literature]
 source: Le Petit Prince (Antoine de Saint-Exupéry, 1943)

@@ -2,11 +2,17 @@ metadata:
   name: ad1910_po_marie_curie
   updated: 2026-04-23
   author: Fan Shen
-  description: >
-    居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。
-    sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
-    opt模式：在性别歧视压制和辐射威胁的约束下，搜索最优的研究节律——
-    怎样分配实验时间、授课与休息，在完成放射性发现的同时维持健康？
+  description:
+    brief: |
+      居里夫人放射性研究仿真/优化场景（1898-1906，巴黎）。
+      sim模式：按月尺度运行，追踪辐射积累、研究进展、健康状态和经费的动态平衡。
+      opt模式：在性别歧视压制和辐射威胁的约束下，搜索最优的研究节律——
+      怎样分配实验时间、授课与休息，在完成放射性发现的同时维持健康？
+    problem: 在该情境中，需要平衡 research_intensity、rest_time、teaching_load、fundraise_effort 对生存、目标进展或长期代价的影响。
+    method: 包含 8 个可调输入、8 个状态变量和 8 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 1910-01-01 到 1918-01-01，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
   tags: [historical, curie, radiation, research, 19th-century, france, women-in-science]
   period: "1898-1906"
   location: "Paris, France"

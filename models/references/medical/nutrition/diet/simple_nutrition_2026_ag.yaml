@@ -5,7 +5,12 @@ metadata:
   name: "simple_nutrition"
   updated: 2026-04-23
   author: "Antigravity"
-  description: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
+  description:
+    brief: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 8 个变量和 1 个方程，描述 food_carbohydrate、food_protein、food_fat、water_intake 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   tags: [nutrition, simple, demo]
   step_size:
     value: 1

@@ -1,24 +1,19 @@
-metadata:
+﻿metadata:
   name: a5_hypertension_gout_3obj
   paper: Paper 3 (JBI)
   case_id: A5-P3
   updated: 2026-05-04
   author: Fan Shen
-  description: >
-    高血压+痛风 三目标扩展版（A5）——Paper 3 优化方法对照实验。
-
-    在 Paper 2 A5 基础上扩展为三目标（BP × UA × 体重），
-    用于展示 K×4 Pareto 面 vs 加权和标量优化的差异。
-
-    扩展内容：
-    - 增加第三目标：body_weight（最小化26周末体重）
-    - 对照：equal-weight 加权和（w=[1/3,1/3,1/3]）单点 vs K×4 Pareto面
-    - 展示非凸区域：同时达标（BP<130 + UA<360 + BW降>3kg）只在Pareto面特定区域
-
-    待办（scheduled 2027-06-01）：1) 运行三目标 K×4 NSGA-II；
-    2) 运行加权和（L-BFGS-B，equal weights）；
-    3) 3D 散点图 BP × UA × BW，标出加权和落点。
-    # 4. 验证：加权和落点是否遗漏了三目标同时达标的可行区域
+  description:
+    brief: 高血压合并痛风三目标扩展版（A5-P3），用于展示三目标 Pareto 面与加权和标量优化的差异。
+    need: 为 Paper 3 评估 K×4 在更高维临床冲突中的表现，特别是同时处理降压、控尿酸和减重目标。
+    problem: 单一加权和可能落在一个折中点，遗漏三目标同时达标的非凸可行区域；临床目标之间的权重也难以预先确定。
+    method: 继承 Paper 2 A5 的血压、尿酸和体重动力学，在 optimizer 中加入 body_weight 作为第三目标。
+    simulation: 默认沿用 26 周时间窗，输出 blood_pressure、uric_acid、body_weight 和 thiazide_dose；当前 schedules 仍待由 Paper 2 版本继承或复制。
+    optimization: NSGA-II 三目标最小化 blood_pressure、uric_acid、body_weight，保留 BP、UA 和热量缺口约束，种群 150、代数 300。
+    result: 预期三维 Pareto 面揭示加权和单点无法覆盖的可行区域，特别是 BP<130、UA<360、体重下降同时满足的区域。
+    conclusion: 期望结论是多目标前沿比预设权重更适合展示跨病种治疗冲突。
+    limitations: 当前为 Paper 3 方法对照配置，第三目标参数和 schedules 仍需与 Paper 2 基线保持一致后再正式运行。
   tags: [paper3, hypertension, gout, 3obj, pareto, A5, comparison]
   references:
     - "参见 paper2/a5_hypertension_gout.yaml 完整引用"
@@ -28,7 +23,7 @@ metadata:
 
 # TODO 继承 paper2/a5_hypertension_gout.yaml，增加第三目标
 imports:
-  - published/paper2/hypertension_gout_a5_p2
+  - published/paper2/hypertension_gout_a5_p2.yaml
 
 variables: {}
 formulas: {}

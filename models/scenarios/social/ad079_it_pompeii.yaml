@@ -2,12 +2,18 @@ metadata:
   name: ad079_it_pompeii
   updated: 2026-04-25
   author: Fan Shen
-  description: >
-    庞贝逃离仿真（公元79年8月24日-25日，维苏威火山喷发）。
-    sim模式：模拟普通市民在火山喷发后的逃离轨迹——灰层累积、岩浆涌风险随时间演变，
-    体能在逃离过程中持续消耗。
-    opt模式：在不同体能与时间约束下，找到最优逃离策略：
-    何时加速？何时就地掩蔽？移速与耐力如何权衡？
+  description:
+    brief: |
+      庞贝逃离仿真（公元79年8月24日-25日，维苏威火山喷发）。
+      sim模式：模拟普通市民在火山喷发后的逃离轨迹——灰层累积、岩浆涌风险随时间演变，
+      体能在逃离过程中持续消耗。
+      opt模式：在不同体能与时间约束下，找到最优逃离策略：
+      何时加速？何时就地掩蔽？移速与耐力如何权衡？
+    problem: 在该情境中，需要平衡 movement_speed、shelter_use、health、escape_distance 对生存、目标进展或长期代价的影响。
+    method: 包含 7 个可调输入、7 个状态变量和 12 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 0079-08-24 到 0079-08-25，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 2 个，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
   tags: [historical, disaster, volcanic, survival, ancient-rome, 1st-century]
   period: "79-08-24 13:00 ~ 79-08-25 08:00"
   location: "Pompeii, Roman Empire (modern-day Campania, Italy)"
@@ -37,7 +43,7 @@ variables:
     value: 1.5
     unit: "级"
     bounds: [0.0, 3.0]
-    description: >
+    description: |
       移动速度：0=原地掩蔽, 1=谨慎步行(~3km/h), 2=快步(~5km/h), 3=奔跑(~7km/h)。
       速度越高，逃离越快，但体能消耗越大，且在灰雨中呼吸更急促（吸入更多灰）。
 
@@ -46,7 +52,7 @@ variables:
     value: 0.0
     unit: "系数"
     bounds: [0.0, 1.0]
-    description: >
+    description: |
       就地掩蔽程度（0=全程移动, 1=原地不动躲避灰雨）。
       掩蔽减少体能消耗和灰吸入，但停止逃离且面临屋顶坍塌风险。
 
@@ -57,7 +63,7 @@ variables:
     unit: "分"
     bounds: [0, 100]
     io_role: output
-    description: >
+    description: |
       体能与生理状态。受灰吸入、高温、体力消耗影响。归零即死亡。
       历史参考：庞贝约2000具遗骸中，大多数死于岩浆涌的热冲击，
       部分死于灰层压垮的建筑（Luongo et al. 2003a）。
@@ -68,7 +74,7 @@ variables:
     unit: "km"
     bounds: [0, 30]
     io_role: output
-    description: >
+    description: |
       距庞贝城中心的逃离距离（km）。
       安全阈值：>8km（可达Stabiae）；>12km（接近Nuceria，更安全）。
       Pliny小普林尼由Misenum方向逃离（约30km），历史上得以幸存。
@@ -79,7 +85,7 @@ variables:
     unit: "危险指数"
     bounds: [0, 100]
     io_role: output
-    description: >
+    description: |
       灰层累积危险指数（归一化，100=极高危）。
       映射自真实灰层厚度（约0-100cm），35以上开始威胁罗马建筑结构，
       60以上使户外移动极度困难。
@@ -90,7 +96,7 @@ variables:
     unit: "危险指数"
     bounds: [0, 100]
     io_role: output
-    description: >
+    description: |
       岩浆涌强度（归一化）。公元79年8月25日凌晨开始快速上升，
       约6:30am（喷发后~17小时）首次岩浆涌抵达庞贝城区。
       >80时城区内无人幸存（Mastrolorenzo et al. 2010）。
@@ -100,7 +106,7 @@ variables:
     value: 0.0
     unit: "小时"
     bounds: [0, 20]
-    description: >
+    description: |
       自喷发开始（13:00）起经过的小时数，用于分阶段激活岩浆涌动力学。
       不作为游戏输出变量，仅驱动公式时序。
 
@@ -264,7 +270,7 @@ optimizer:
     description: "前期是否选择短暂掩蔽等待灰雨减弱（有时比立即跑更有效）"
 
   analysis:
-    pareto_description: >
+    pareto_description: |
       关键发现（预期）：最优策略通常是"早期适度步行（movement_speed≈1.5），
       凌晨后立即加速至3.0"，而非全程奔跑（health耗尽）或过早掩蔽（被困）。
       历史上小普林尼的记录与此一致：他在下午先观察，傍晚开始有序撤离，

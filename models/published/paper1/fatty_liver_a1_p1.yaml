@@ -1,19 +1,19 @@
-metadata:
+﻿metadata:
   name: a1_fatty_liver
   paper: Paper 1 (JOSS)
   case_id: A1
   updated: 2026-05-04
   author: Fan Shen
-  description: >
-    脂肪肝运动 Regimen 优化（A1）——Paper 1 框架演示案例。
-
-    临床问题：相同总运动量（150分钟/周，符合EASL指南）下，
-    HIIT（3×50分钟/周）vs 每日低强度步行（7×21.4分钟/天），
-    哪种 Regimen 结构在 ALT 约束（≤40 IU/L）下减脂最优？
-
-    三子模型：运动疲劳（小时-天级）× 肝脂肪代谢（天级）× ALT动力学（天级）。
-    Opt：最大化12周后肝脂肪减少量，约束 ALT≤40 IU/L，总运动量固定。
-    模型参数待填入，参照 Keating 2015 / Promrat 2010（scheduled 2026-08-01）。
+  description:
+    brief: 脂肪肝运动 Regimen 优化（A1），用于演示相同运动总量下不同运动结构对肝脂肪与 ALT 的影响。
+    need: 比较 HIIT 与每日低强度步行在 NAFLD 管理中的动态差异，为 Paper 1 展示 LM 框架如何表达行为干预与临床约束。
+    problem: 运动强度越高可能越有利于减脂，但也可能推高 ALT 和疲劳；仅用总运动量无法说明 Regimen 结构的风险收益。
+    method: 日步长模型，包含肝脂肪、ALT、运动疲劳和当日运动强度。运动输入驱动肝脂肪下降、ALT 急性反应和疲劳累积。
+    simulation: 默认仿真 2026-01-01 到 2026-03-27，每日 07:00 低强度步行，输出 liver_fat_pct、alt_level、exercise_intensity。
+    optimization: NSGA-II 优化 exercise_intensity 的训练日和辅助日强度，目标为最小化 12 周末肝脂肪，约束 ALT <= 40 IU/L。
+    result: 预期可观察到减脂收益、ALT 约束和疲劳累积之间的权衡；当前参数仍为演示值，结果用于框架展示。
+    conclusion: 期望结论是 Regimen 结构比单纯总运动量更重要；本模型不构成 NAFLD 临床处方。
+    limitations: 参数待从 Keating 2015 / Promrat 2010 等文献精化，HIIT 与步行方案仍需拆分为正式对照场景。
   tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"

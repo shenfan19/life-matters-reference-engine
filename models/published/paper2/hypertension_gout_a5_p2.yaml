@@ -1,21 +1,19 @@
-metadata:
+﻿metadata:
   name: a5_hypertension_gout
   paper: Paper 2 (JAMIA)
   case_id: A5
   updated: 2026-05-04
   author: Fan Shen
-  description: >
-    高血压合并痛风药物冲突（A5）——Paper 2 核心临床验证案例。
-
-    临床冲突：ESC高血压指南（Williams 2018）推荐噻嗪类利尿剂（HCTZ）一线用药，
-    ACR痛风指南（FitzGerald 2020）指出HCTZ是痛风发作最常见的可改变风险因素。
-    同时，减重（两个指南均推荐）在快速脂肪动员期间经酮体竞争机制升高尿酸。
-
-    三个耦合状态变量：血压（BP）× 尿酸（UA）× 体重（BW）。
-    Opt：双目标 Pareto（BP < 130 mmHg × UA < 360 μmol/L），
-    决策变量为 HCTZ剂量 + 别嘌醇剂量（可选）+ 热量缺口。
-
-    公式和参数待完整填入，参照 Law 2009 / Choi 2012（scheduled 2026-12-01）。
+  description:
+    brief: 高血压合并痛风药物冲突（A5），用于表达 HCTZ 降压收益与尿酸升高风险之间的权衡。
+    need: 为 Paper 2 展示 LM 如何处理两个指南推荐在同一患者身上发生冲突的场景。
+    problem: ESC/ESH 高血压指南支持噻嗪类利尿剂降压，ACR 痛风指南则指出 HCTZ 会增加痛风风险；减重也可能在快速脂肪动员时升高尿酸。
+    method: 日步长模型，耦合 blood_pressure、uric_acid、body_weight、thiazide_dose、caloric_deficit 和 allopurinol_dose。
+    simulation: 默认仿真 26 周，HCTZ 25 mg 晨服并维持每日热量缺口，输出 blood_pressure、uric_acid、body_weight、thiazide_dose。
+    optimization: NSGA-II 双目标最小化 26 周末收缩压和尿酸，约束 BP <= 130、UA <= 360、caloric_deficit <= 700。
+    result: 预期 Pareto 前沿显示降压、控尿酸和减重速度之间的可行区间，帮助识别需要药物替代或联合降尿酸治疗的区域。
+    conclusion: 期望结论是单病种指南的局部最优可能造成跨病种风险，多目标建模能显式暴露冲突。
+    limitations: 尿酸酮体峰值和部分药效参数仍待文献精化，当前结果用于方法验证。
   tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt]
   references:
     - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"
@@ -117,7 +115,7 @@ formulas:
         - 0.04 * (blood_pressure - 155) * step
 
   ua_dynamics:
-    description: >
+    description: |
       尿酸：基础产生 + HCTZ抑制清除 - 别嘌醇抑制产生 - 自然清除。
       TODO 加入减重酮体峰值效应（暂缺）
     condition: true

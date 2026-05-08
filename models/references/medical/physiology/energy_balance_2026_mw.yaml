@@ -2,7 +2,14 @@ metadata:
   name: energy_balance
   updated: 2026-04-23
   author: Minghui Wu
-  description: 能量平衡模型，包括基础代谢率、能量消耗和运动影响
+  description:
+    brief: 能量平衡模型，包括基础代谢率、能量消耗和运动影响
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 7 个变量和 5 个方程，描述 energy、metabolism_rate、basal_metabolic_rate、energy_expenditure 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于观察候选干预或参数组合的风险收益边界。
+    limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   tags:
   - metabolism
   - energy

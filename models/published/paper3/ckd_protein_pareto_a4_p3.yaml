@@ -1,24 +1,19 @@
-metadata:
+﻿metadata:
   name: a4_ckd_protein_pareto
   paper: Paper 3 (JBI)
   case_id: A4-P3
   updated: 2026-05-04
   author: Fan Shen
-  description: >
-    CKD 蛋白质-肌肉权衡 深化版（A4）——Paper 3 优化方法对照实验。
-
-    在 Paper 2 A4 基础上扩展，用于 K×4 vs step-by-step vs 静态指南的三方法比较。
-
-    扩展内容（相比 paper2/a4_ckd_protein.yaml）：
-    - 增大种群和代数（population=150, generations=300）提供完整 Pareto 前沿
-    - 加入 CKD 4期变体（GFR_initial=25）用于分期对比
-    - 对照组配置：step-by-step（T×N，d=364）在注释中说明
-    - 层3验证点：指南静态方案（0.7 g/kg/day）标注在前沿图上
-
-    待办（scheduled 2027-06-01）：1) 运行本文件获得 K×4 Pareto 前沿；
-    2) 配置 step-by-step 对照（d=364）在相同时间预算内运行；
-    3) 比较 HV 指标（预期 K×4 HV > 2× step-by-step HV）；
-    4) 输出 CKD 3期 + 4期分层 Pareto 前沿图。
+  description:
+    brief: CKD 蛋白质-肌肉权衡深化版（A4-P3），用于比较 K×4、step-by-step 与静态指南方案的优化表现。
+    need: 为 Paper 3 展示 LM 优化框架如何在同一 CKD 营养模型上比较不同搜索策略和决策表示。
+    problem: 蛋白质摄入决策既影响 GFR、肌肉质量和 BUN，也受算法时间预算和 Pareto 前沿覆盖度影响；静态指南点可能遗漏重要折中。
+    method: 继承 Paper 2 A4 的 CKD 蛋白质-肌肉动力学，扩展 NSGA-II 种群和代数，并预留 CKD 4 期分层对照。
+    simulation: 默认沿用 52 周时间窗，输出 GFR、muscle_mass、BUN、dietary_protein；当前 schedules 仍待从 Paper 2 版本复制或由 imports 继承。
+    optimization: NSGA-II 双目标最大化 muscle_mass 和 GFR，约束 BUN <= 20、GFR >= 30，种群 150、代数 300，用于生成更完整 Pareto 前沿。
+    result: 预期 K×4 Pareto 前沿在覆盖度和 hypervolume 上优于 step-by-step，并能标出指南静态方案相对位置。
+    conclusion: 期望结论是结构化 Regimen 搜索比静态指南点和逐步搜索更能揭示 CKD 蛋白质摄入的可行前沿。
+    limitations: 当前文件仍是 Paper 3 对照实验配置草案，变量、公式继承和 step-by-step 对照尚需补全。
   tags: [paper3, ckd, protein, muscle, A4, pareto, comparison, K4]
   references:
     - "参见 paper2/a4_ckd_protein.yaml 完整引用"

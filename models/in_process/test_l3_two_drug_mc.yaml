@@ -3,24 +3,30 @@ type: model
 metadata:
   name: l3_two_drug_mc
   title: "[TEST L3] 五时段给药 · 双目标 + MC"
-  description: >
-    【调试用 TEST L3】5 决策变量 · 双目标 Pareto · MC 启用 · 预估完成 3–8分钟
+  description:
+    brief: |
+      【调试用 TEST L3】5 决策变量 · 双目标 Pareto · MC 启用 · 预估完成 3–8分钟
 
-    ── 用途 ──────────────────────────────────────────────
-    验证高维决策变量 + 蒙特卡洛积分的完整优化链路。
-    5 个决策变量对应每日5个给药时段，测试 NSGA-II 在高维空间的寻优能力。
+      ── 用途 ──────────────────────────────────────────────
+      验证高维决策变量 + 蒙特卡洛积分的完整优化链路。
+      5 个决策变量对应每日5个给药时段，测试 NSGA-II 在高维空间的寻优能力。
 
-    ── 场景 ──────────────────────────────────────────────
-    每日5次给药，各时段生物利用度不同（空腹/餐后/代谢节律）。
-      · 目标1：最大化 plasma_level 均值（维持治疗窗口）
-      · 目标2：最小化 liver_load 终值（减少毒性累积）
-    时段及吸收率：06:00(72%) 08:00(60%) 12:00(55%) 17:00(50%) 22:00(65%)
-    MC 扰动：个体清除率差异（normal分布），每候选解评估2次取均值。
+      ── 场景 ──────────────────────────────────────────────
+      每日5次给药，各时段生物利用度不同（空腹/餐后/代谢节律）。
+        · 目标1：最大化 plasma_level 均值（维持治疗窗口）
+        · 目标2：最小化 liver_load 终值（减少毒性累积）
+      时段及吸收率：06:00(72%) 08:00(60%) 12:00(55%) 17:00(50%) 22:00(65%)
+      MC 扰动：个体清除率差异（normal分布），每候选解评估2次取均值。
 
-    ── 参数规模 ──────────────────────────────────────────
-    pop=25, gen=30 → 750次评估 × 2 MC × 35步 ≈ 3–8分钟
-    决策变量: 5（各时段剂量: 0–20 mg）
-    MC: 启用（sim_runs=2）
+      ── 参数规模 ──────────────────────────────────────────
+      pop=25, gen=30 → 750次评估 × 2 MC × 35步 ≈ 3–8分钟
+      决策变量: 5（各时段剂量: 0–20 mg）
+      MC: 启用（sim_runs=2）
+    need: 作为开发期测试模型，用于验证仿真、调度、MC 或优化链路是否稳定。
+    method: 包含 8 个变量和 2 个方程，围绕 plasma_level、liver_load、clearance_rate、slot_6am 构造最小可运行动力学。
+    simulation: 默认仿真从 2025-01-01 到 2025-02-04，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 2 个，决策输入 5 个，用于搜索可行的干预或参数组合。
+    result: 预期用于发现回归错误，并确认 GUI 与后端输出保持一致。
   tags: [test, L3, multi-objective, pareto, 5-variable, mc, pharmacokinetics]
   references:
     - "TEST L3: Five-slot daily schedule optimizer with MC integration test"
@@ -44,7 +50,7 @@ variables:
     bounds: [0.0, 1800.0]
 
   clearance_rate:
-    description: >
+    description: |
       药物日清除率（MC参数，个体差异）。
       normal(0.28, 0.04)：均值半衰期 ≈ 2.5天。
     value: "normal(0.28, 0.04)"
@@ -89,7 +95,7 @@ variables:
 
 formulas:
   drug_kinetics:
-    description: >
+    description: |
       日步长动力学：每日五次给药总吸收量 - 当日清除量。
       daily_absorbed = slot_6am*0.72 + slot_8am*0.60 + slot_12pm*0.55
                      + slot_5pm*0.50 + slot_10pm*0.65

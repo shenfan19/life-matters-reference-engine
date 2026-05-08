@@ -2,11 +2,17 @@ metadata:
   name: ad1666_uk_issac_newton
   updated: 2026-04-23
   author: Fan Shen
-  description: >
-    牛顿奇迹年仿真/优化场景（1665-1667，伍尔斯索普庄园）。
-    sim模式：按牛顿典型一天的历史作息运行（1440分钟 = 24小时）。
-    opt模式：在1665年英国约束条件下搜索最优作息——
-    怎样分配饮食、研究强度、户外时间，在保持健康的同时最大化科学洞见？
+  description:
+    brief: |
+      牛顿奇迹年仿真/优化场景（1665-1667，伍尔斯索普庄园）。
+      sim模式：按牛顿典型一天的历史作息运行（1440分钟 = 24小时）。
+      opt模式：在1665年英国约束条件下搜索最优作息——
+      怎样分配饮食、研究强度、户外时间，在保持健康的同时最大化科学洞见？
+    problem: 在该情境中，需要平衡 bread_intake、pottage_intake、ale_intake、meat_intake 对生存、目标进展或长期代价的影响。
+    method: 包含 22 个可调输入、22 个状态变量和 17 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 1666-09-01 到 1666-09-02，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
   tags: [historical, newton, cognition, nutrition, 17th-century, england]
   period: "1665-1667"
   location: "Woolsthorpe Manor, Lincolnshire, England"
@@ -557,7 +563,7 @@ optimizer:
       apple_per_150g: 0   # 庄园自产
 
   analysis:
-    pareto_description: >
+    pareto_description: |
       优化结果展示洞见积累与健康维持之间的权衡曲线。
       关键发现（已有历史印证）：
       1. 苹果园散步（outdoor_intensity=2）是帕累托改进点——

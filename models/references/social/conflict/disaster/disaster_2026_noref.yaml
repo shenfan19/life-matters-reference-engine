@@ -2,7 +2,12 @@ metadata:
   name: disaster111
   updated: 2026-04-23
   author: Fan Shen
-  description: 自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。1111
+  description:
+    brief: 自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。1111
+    need: 作为社会动力学参考模块，为历史、文学或经济场景提供可复用机制。
+    method: 包含 7 个变量和 3 个方程，描述 hazard_intensity、damage_index、population_safety、rescue_progress 的状态演化。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-03，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags:
   - environmental
   - disaster

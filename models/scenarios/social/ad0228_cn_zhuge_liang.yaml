@@ -2,11 +2,17 @@ metadata:
   name: ad0228_cn_zhuge_liang
   updated: 2026-04-23
   author: Fan Shen
-  description: >
-    诸葛亮北伐仿真场景（228–234 AD，祁山大营）。
-    sim模式：模拟北伐一日的体力分配与军务筹划。
-    opt模式：在蜀汉国力受限的约束下，搜索最优军务强度与休息分配——
-    怎样在保全丞相健康的同时最大化北伐战略进度？
+  description:
+    brief: |
+      诸葛亮北伐仿真场景（228–234 AD，祁山大营）。
+      sim模式：模拟北伐一日的体力分配与军务筹划。
+      opt模式：在蜀汉国力受限的约束下，搜索最优军务强度与休息分配——
+      怎样在保全丞相健康的同时最大化北伐战略进度？
+    problem: 在该情境中，需要平衡 work_intensity、rest_quality、food_intake、political_address 对生存、目标进展或长期代价的影响。
+    method: 包含 11 个可调输入、11 个状态变量和 12 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 0228-03-01 到 0228-09-01，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
   tags: [historical, china, three-kingdoms, cognition, strategy, overwork]
   period: "228-234"
   location: "Qishan Camp, Wei-Shu Border, China"
@@ -274,7 +280,7 @@ optimizer:
     maps_to: "political_address"
 
   analysis:
-    pareto_description: >
+    pareto_description: |
       帕累托前沿揭示：提高work_intensity在fatigue<50时线性提升strategy，
       但fatigue>70后效率骤降且health加速损耗。
       最优解通常在work_intensity=2.0–2.3、rest_quality=0.7–0.8区间——

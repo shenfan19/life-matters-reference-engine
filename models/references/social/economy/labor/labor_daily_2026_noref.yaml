@@ -2,7 +2,12 @@ metadata:
   name: labor
   updated: 2026-04-23
   author: Fan Shen
-  description: "工作与劳动动力学：模拟每日工作时间对储蓄和疲劳度的影响。展示了计划表如何驱动复杂的经济与生理平衡。"
+  description:
+    brief: "工作与劳动动力学：模拟每日工作时间对储蓄和疲劳度的影响。展示了计划表如何驱动复杂的经济与生理平衡。"
+    need: 作为社会动力学参考模块，为历史、文学或经济场景提供可复用机制。
+    method: 包含 4 个变量和 2 个方程，描述 savings、fatigue、work_intensity、hourly_wage 的状态演化。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags: [economic, social, labor]
   step_size:
     value: 1
