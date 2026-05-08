@@ -13,16 +13,17 @@ metadata:
     simulation: 默认仿真从 0228-03-01 到 0228-09-01，用于观察核心状态随时间变化。
     optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    evidence: 基于慢性过劳动力学模型（Xie & Boven 2006）与《三国志·诸葛亮传》。
+    mechanism: |
+      战略推进由军务强度驱动，并受疲劳、士气和营养三重调制：
+      strategy_gain = work_intensity × max(0.2, 1 − fatigue/100)
+        × max(0.3, morale/80) × max(0.3, nutrition/70)。
+      这一结构对应“食少事烦，其能久乎”的历史叙述。
+    time_scale: 步长为 1 天，总时长 180 天，近似一次北伐季。
+
   tags: [historical, china, three-kingdoms, cognition, strategy, overwork]
   period: "228-234"
   location: "Qishan Camp, Wei-Shu Border, China"
-  science_note: >
-    基于慢性过劳动力学模型（Xie & Boven 2006）与《三国志·诸葛亮传》。
-    洞见公式：strategy_gain = work_intensity × max(0.2, 1 − fatigue/100)
-              × max(0.3, morale/80) × max(0.3, nutrition/70)。
-    疲劳、士气、营养三重调制战略效率；与史载"食少事烦，其能久乎"吻合。
-    步长=1天，总时长=180天（一次北伐季）。
-
   step_size:
     value: 1
     unit: day

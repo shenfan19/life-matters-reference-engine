@@ -14,17 +14,18 @@ metadata:
     simulation: 默认仿真从 1847-01-01 到 1865-01-01，用于观察核心状态随时间变化。
     optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    evidence: 基于科学创新扩散理论（Rogers 1962）与历史传记（Carter 1983）。
+    mechanism: |
+      机构接受度由倡导强度和证据质量共同驱动，同时受到抵触惯性抑制：
+      acceptance_gain = advocacy_intensity × evidence_factor × (1 - rejection_resistance)。
+      evidence_factor = min(1, evidence / 60)；
+      rejection_resistance = 0.4 + 0.4 × (1 - acceptance / 100)。
+      即越不被接受，越难推动接受。
+    time_scale: 步长为 1 月，总时长 216 月（18 年）。
+
   tags: [historical, medical, handwashing, science-rejection, mental-health, 19th-century]
   period: "1847-1865"
   location: "Vienna General Hospital / Budapest, Hungary"
-  science_note: >
-    基于科学创新扩散理论（Rogers 1962）与历史传记（Carter 1983）。
-    接受度公式：acceptance_gain = advocacy_intensity × evidence_factor × (1 - rejection_resistance)。
-    evidence_factor = min(1, evidence / 60)；
-    rejection_resistance = 0.4 + 0.4 × (1 - acceptance / 100)
-    （即越不被接受，越难推动接受，与历史上的"抵触惯性"吻合）。
-    步长=1月，总时长=216月（18年）。
-
   step_size:
     value: 1
     unit: month
