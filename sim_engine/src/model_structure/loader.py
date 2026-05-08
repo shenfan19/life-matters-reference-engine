@@ -10,11 +10,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Loader:
+    @staticmethod
+    def _yaml_path_candidates(path: str) -> List[str]:
+        if path.lower().endswith(('.yaml', '.yml')):
+            return [path]
+        return [path + '.yaml', path + '.yml']
+
     def _source_label(self, file_path: str) -> str:
-        mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
+        models_root = self.models_directory if hasattr(self, 'models_directory') else None
         try:
-            if mods_root:
-                rel = os.path.relpath(file_path, mods_root).replace(os.sep, '/')
+            if models_root:
+                rel = os.path.relpath(file_path, models_root).replace(os.sep, '/')
             else:
                 rel = os.path.basename(file_path)
         except ValueError:
@@ -82,15 +88,15 @@ class Loader:
             imported_output_variables: List[str] = []
             imported_output_types: List[str] = []
             
-            # 获取 mods 根目录（用于解析新格式的导入路径）
-            mods_root = self.mods_directory if hasattr(self, 'mods_directory') else None
-            if not mods_root:
+            # 获取 models 根目录（用于解析新格式的导入路径）
+            models_root = self.models_directory if hasattr(self, 'models_directory') else None
+            if not models_root:
                 # 尝试从文件路径推断 models 根目录
                 # 假设文件在 models/ 或 models/components/ 或 models/stories/ 下
                 path_parts = os.path.normpath(file_path).split(os.sep)
                 if 'models' in path_parts:
-                    mods_idx = path_parts.index('models')
-                    mods_root = os.sep.join(path_parts[:mods_idx + 1])
+                    models_idx = path_parts.index('models')
+                    models_root = os.sep.join(path_parts[:models_idx + 1])
             
             for imp_name in imports:
                 imp_path = None
@@ -106,16 +112,16 @@ class Loader:
                     )
 
                 if imp_name_normalized.startswith('.'):
-                    imp_path = os.path.normpath(os.path.join(current_dir, imp_name_normalized.replace('/', os.sep)))
-                    if not imp_path.endswith(('.yaml', '.yml')):
-                        imp_path += '.yaml'
+                    imp_base_path = os.path.normpath(os.path.join(current_dir, imp_name_normalized.replace('/', os.sep)))
+                    imp_candidates = self._yaml_path_candidates(imp_base_path)
+                    imp_path = next((candidate for candidate in imp_candidates if os.path.exists(candidate)), imp_candidates[0])
 
-                elif mods_root and '/' in imp_name_normalized:
+                elif models_root and '/' in imp_name_normalized:
                     if imp_name_normalized.startswith('models/'):
                         imp_name_normalized = imp_name_normalized[len('models/'):]
-                    imp_path = os.path.join(mods_root, imp_name_normalized.replace('/', os.sep))
-                    if not imp_path.endswith(('.yaml', '.yml')):
-                        imp_path += '.yaml'
+                    imp_base_path = os.path.join(models_root, imp_name_normalized.replace('/', os.sep))
+                    imp_candidates = self._yaml_path_candidates(imp_base_path)
+                    imp_path = next((candidate for candidate in imp_candidates if os.path.exists(candidate)), imp_candidates[0])
 
                 else:
                     raise ValueError(
@@ -123,8 +129,8 @@ class Loader:
                         "请写成 models 根路径（如 published/paper2/foo）或相对路径（./foo, ../foo）。"
                     )
 
-                if imp_path and mods_root:
-                    root_real = os.path.realpath(mods_root)
+                if imp_path and models_root:
+                    root_real = os.path.realpath(models_root)
                     imp_real = os.path.realpath(imp_path)
                     if not imp_real.startswith(root_real + os.sep) and imp_real != root_real:
                         raise ValueError(f"导入模型 {imp_name} 超出 models 目录。解析路径: {imp_path}")

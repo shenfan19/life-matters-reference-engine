@@ -28,7 +28,7 @@ interface LoaderProps {
   storyTree: DataNode[];
   setStoryTree: (tree: DataNode[]) => void;
   expandedKeys: React.Key[];
-  setExpandedKeys: (keys: React.Key[]) => void;
+  setExpandedKeys: React.Dispatch<React.SetStateAction<React.Key[]>>;
   storyViewMode: 'tree' | 'list';
   setStoryViewMode: (mode: 'tree' | 'list') => void;
   storyFilter: string;
@@ -37,8 +37,8 @@ interface LoaderProps {
   setStorySort: (sort: 'name' | 'type') => void;
   checkedStoryKeys: React.Key[];
   setCheckedStoryKeys: (keys: React.Key[]) => void;
-  loadedMods: Record<string, ModelFile>;
-  setLoadedMods: (mods: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
+  loadedModels: Record<string, ModelFile>;
+  setLoadedModels: (models: Record<string, ModelFile> | ((prev: Record<string, ModelFile>) => Record<string, ModelFile>)) => void;
   isSimulating?: boolean;
   isLocked: boolean;
   setIsLocked: (locked: boolean) => void;
@@ -61,8 +61,8 @@ const Loader: React.FC<LoaderProps> = ({
   setStoryFilter,
   storySort,
   setStorySort,
-  loadedMods,
-  setLoadedMods,
+  loadedModels,
+  setLoadedModels,
   isSimulating = false,
   isLocked,
   setIsLocked,
@@ -74,7 +74,7 @@ const Loader: React.FC<LoaderProps> = ({
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ success: boolean; errors?: string[] } | null>(null);
 
-  const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
+  const selectedStory = selectedKey ? loadedModels[selectedKey] ?? null : null;
 
   const formatDescription = (description: any): string => {
     if (!description) return 'No description';
@@ -111,29 +111,29 @@ const Loader: React.FC<LoaderProps> = ({
           const titleStr = item.type === 'file' ? item.title.replace(/\.ya?ml$/, '') : item.title;
           if (item.type === 'folder' && item.children?.length === 1) {
             const child = item.children[0];
-            if (child.type === 'file' && (child.title === 'mod.yaml' || child.title === 'mod.yml')) {
+            if (child.type === 'file' && (child.title === 'model.yaml' || child.title === 'model.yml')) {
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: '#007A33' }} />,
                 title: <span>{item.title} <Tag color="blue" style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>pkg</Tag></span>,
-                titleStr: item.title, mod_type: 'story',
+                titleStr: item.title, model_type: 'story',
               };
             }
           }
           return {
             title: item.type === 'file'
-              ? <span>{titleStr}{item.mod_type && <Tag color="blue" style={{ marginLeft: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{item.mod_type}</Tag>}</span>
+              ? <span>{titleStr}{item.model_type && <Tag color="blue" style={{ marginLeft: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{item.model_type}</Tag>}</span>
               : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
             isLeaf: item.type === 'file',
             children: item.children ? convert(item.children) : undefined,
-            titleStr, mod_type: item.mod_type,
+            titleStr, model_type: item.model_type,
           };
         });
-        const modsNode = result.data.find((n: any) => n.key === 'models');
-        if (modsNode?.children) {
-          const sNode = modsNode.children.find((n: any) => n.key === 'scenarios');
+        const modelsNode = result.data.find((n: any) => n.key === 'models');
+        if (modelsNode?.children) {
+          const sNode = modelsNode.children.find((n: any) => n.key === 'scenarios');
           if (sNode) setStoryTree(convert(sNode.children || []));
         }
         message.success(t('common.success'));
@@ -150,7 +150,7 @@ const Loader: React.FC<LoaderProps> = ({
   const loadFileContent = async (filePath: string) => {
     setLoading(true);
     try {
-      const cleanPath = filePath.replace(/^mods\//, '');
+      const cleanPath = filePath.replace(/^models\//, '');
       const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
       if (!fileResult.success) { message.error(`读取失败: ${fileResult.error}`); return; }
 
@@ -173,7 +173,7 @@ const Loader: React.FC<LoaderProps> = ({
         validationErrors: [],
       };
 
-      setLoadedMods(prev => ({ ...prev, [filePath]: model }));
+      setLoadedModels(prev => ({ ...prev, [filePath]: model }));
       setConfirmedModel(model);
       if (onModelSelect) onModelSelect(model);
     } catch (e: any) {
@@ -196,7 +196,7 @@ const Loader: React.FC<LoaderProps> = ({
     setValidating(true);
     setValidationResult(null);
     try {
-      const cleanPath = selectedKey.replace(/^mods\//, '');
+      const cleanPath = selectedKey.replace(/^models\//, '');
       const result = await fetch(`${API_BASE}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -391,21 +391,21 @@ const Loader: React.FC<LoaderProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {storyList.length === 0
                   ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.no_data')} />
-                  : storyList.map(mod => (
+                  : storyList.map(modelEntry => (
                     <div
-                      key={mod.key}
-                      onClick={() => handleSelect([mod.key])}
+                      key={modelEntry.key}
+                      onClick={() => handleSelect([modelEntry.key])}
                       style={{
                         display: 'flex', alignItems: 'center', padding: '5px 8px',
                         borderRadius: 4, cursor: 'pointer',
-                        background: selectedKey === mod.key
+                        background: selectedKey === modelEntry.key
                           ? (isDarkMode ? '#1a3a22' : '#e8f5e9')
                           : 'transparent',
                       }}
                     >
                       <BookOutlined style={{ marginRight: 8, color: isDarkMode ? '#94a3b8' : '#64748b' }} />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
-                        {mod.displayTitle}
+                        {modelEntry.displayTitle}
                       </span>
                       <Tag style={{  }}>STORY</Tag>
                     </div>

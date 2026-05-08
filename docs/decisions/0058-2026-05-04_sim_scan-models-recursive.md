@@ -26,7 +26,7 @@
 
 **前端 `Simulator.tsx` `loadFileTree()`**：原硬编码只提取 `scenarios` 和 `components` 两个子节点。改为动态遍历 `models/` 的所有直接子目录，每个子目录生成一个带标题的分组（`COMPONENTS`、`SCENARIOS`、`PAPER` 等），跳过 `stories/`（游戏内容，待移出）。
 
-**前端 `ModsManager.tsx`**：原过滤器只保留 `components/` 和 `scenarios/` 开头的节点。改为只排除 `stories/`，其余所有节点均可见（包括 `references/`、`published/`、`in_process/`）。
+**前端 `ModelBuilder.tsx`**：原过滤器只保留 `components/` 和 `scenarios/` 开头的节点。改为只排除 `stories/`，其余所有节点均可见（包括 `references/`、`published/`、`in_process/`）。
 
 ```python
 if not folders:

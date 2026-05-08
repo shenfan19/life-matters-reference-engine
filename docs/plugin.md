@@ -22,7 +22,7 @@
 |------|------|
 | 模型格式导入（SBML、CellML → LM YAML） | 属于模型创作流程，归 Model Builder 扩展点，未来单独设计 |
 | 优化算法 | 与 pymoo/scipy 接口耦合过深，现有三种算法已覆盖主要场景 |
-| YAML loader/parser | 已在核心中，与 ModStructure 双向耦合，抽出无益 |
+| YAML loader/parser | 已在核心中，与 ModelStructure 双向耦合，抽出无益 |
 | Model Builder UI | 双向耦合核心数据结构，不适合插件模式 |
 | 游戏卡牌扩展 | 属于 game/ 层，独立于 sim 插件系统设计 |
 

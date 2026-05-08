@@ -40,7 +40,7 @@ const toAssetUrl = (rel: string | undefined) =>
 
 ### 4. Vite 中间件 MIME 修正
 
-`vite.config.ts` 的 `modsPlugin` 增加扩展名 → MIME 映射表，涵盖：
+`vite.config.ts` 的 `modelsPlugin` 增加扩展名 → MIME 映射表，涵盖：
 
 | 扩展名 | MIME |
 |--------|------|

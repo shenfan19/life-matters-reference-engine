@@ -1,14 +1,14 @@
-// scripts/generate-mods-list.js
+// scripts/generate-models-list.js
 // 放在 src/frontend/scripts/ 目录下
-// 运行: node scripts/generate-mods-list.js
+// 运行: node scripts/generate-models-list.js
 
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
 // 路径配置
-const MODS_DIR = path.resolve(__dirname, '../../mods');
-const OUTPUT_FILE = path.resolve(__dirname, '../public/mods-list.json');
+const MODELS_DIR = path.resolve(__dirname, '../../models');
+const OUTPUT_FILE = path.resolve(__dirname, '../public/models-list.json');
 
 // 颜色输出
 const colors = {
@@ -110,30 +110,30 @@ function countFolders(nodes) {
  */
 function main() {
   log('blue', '\n========================================');
-  log('blue', '  生成 MODS 文件列表');
+  log('blue', '  生成 MODELS 文件列表');
   log('blue', '========================================\n');
 
-  // 检查 mods 目录是否存在
-  if (!fs.existsSync(MODS_DIR)) {
-    log('red', `错误: mods 目录不存在`);
-    log('yellow', `路径: ${MODS_DIR}`);
+  // 检查 models 目录是否存在
+  if (!fs.existsSync(MODELS_DIR)) {
+    log('red', `错误: models 目录不存在`);
+    log('yellow', `路径: ${MODELS_DIR}`);
     log('yellow', '\n请确保目录结构正确：');
     log('yellow', '  life-matters/');
-    log('yellow', '    ├── mods/           ← 应该在这里');
+    log('yellow', '    ├── models/         ← 应该在这里');
     log('yellow', '    └── src/');
     log('yellow', '        └── frontend/');
     process.exit(1);
   }
 
-  log('blue', `扫描目录: ${MODS_DIR}`);
+  log('blue', `扫描目录: ${MODELS_DIR}`);
   log('blue', '');
 
-  // 扫描 mods 目录
-  const children = scanDirectory(MODS_DIR);
+  // 扫描 models 目录
+  const children = scanDirectory(MODELS_DIR);
   
   const fileTree = [{
-    title: 'mods',
-    key: 'mods',
+    title: 'models',
+    key: 'models',
     type: 'folder',
     children: children,
   }];
@@ -150,7 +150,7 @@ function main() {
 
   if (fileCount === 0) {
     log('yellow', '⚠️  警告: 没有找到 YAML 文件');
-    log('yellow', '   请检查 mods 目录是否包含 .yaml 或 .yml 文件\n');
+    log('yellow', '   请检查 models 目录是否包含 .yaml 或 .yml 文件\n');
   }
 
   // 确保 public 目录存在

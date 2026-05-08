@@ -12,7 +12,7 @@ import re
 import uuid
 from typing import Dict, Any, List, Optional, Callable, Tuple
 from scipy.integrate import solve_ivp
-from .model_structure import ModStructure
+from .model_structure import ModelStructure
 from .model_structure.base import Variable, InputSchedule, SchedulePoint, Accumulator, TIME_UNIT_SECONDS
 from .loader_engine import LoaderEngine
 
@@ -23,16 +23,16 @@ class SimulatorEngine:
     """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
     VALID_OUTPUT_TYPES = {'input', 'parameter', 'state'}
     
-    def __init__(self, mods_directory: str = "models", language: str = "en"):
+    def __init__(self, models_directory: str = "models", language: str = "en"):
         """
         初始化仿真引擎。
-        :param mods_directory: 模型目录路径。
+        :param models_directory: 模型目录路径。
         :param language: 语言设置（如 "en", "zhhans"）。
         """
         # 初始化 LoaderEngine 以加载模型，指定模型目录和语言。
-        self.loader = LoaderEngine(mods_directory, language)
+        self.loader = LoaderEngine(models_directory, language)
         # 初始化当前模型为 None。
-        self.current_model: Optional[ModStructure] = None
+        self.current_model: Optional[ModelStructure] = None
         # 初始化当前仿真步数。
         self.current_step = 0
         # 初始化仿真时间（秒）。
@@ -49,7 +49,7 @@ class SimulatorEngine:
         # ✅ 新增：GUI 会话管理
         self.sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> session_data
 
-    def _resolve_output_variables(self, model: ModStructure) -> Tuple[List[str], List[str]]:
+    def _resolve_output_variables(self, model: ModelStructure) -> Tuple[List[str], List[str]]:
         sim = model.simulator or {}
         raw_vars = sim.get('output_variables')
         raw_types = sim.get('output_types')
@@ -176,7 +176,7 @@ class SimulatorEngine:
             csv_output_path = output_path
             if not csv_output_path:
                 # 默认输出到 models/output/ 目录
-                output_dir = os.path.join(self.loader.mods_directory, "output")
+                output_dir = os.path.join(self.loader.models_directory, "output")
                 os.makedirs(output_dir, exist_ok=True)
                 csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_simulation.csv")
             
@@ -670,7 +670,7 @@ class SimulatorEngine:
             
             # 确定输出路径
             if not output_path:
-                output_dir = os.path.join(self.loader.mods_directory, "output")
+                output_dir = os.path.join(self.loader.models_directory, "output")
                 os.makedirs(output_dir, exist_ok=True)
                 output_path = os.path.join(output_dir, f"{session['model_name']}_session_{session_id[:8]}.csv")
             
@@ -813,7 +813,7 @@ class SimulatorEngine:
             # 写入 CSV 文件
             csv_output_path = output_path
             if not csv_output_path:
-                output_dir = os.path.join(self.loader.mods_directory, "output")
+                output_dir = os.path.join(self.loader.models_directory, "output")
                 os.makedirs(output_dir, exist_ok=True)
                 csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_csv_input.csv")
             
@@ -977,14 +977,14 @@ class SimulatorEngine:
     # ==================== 模型克隆（MC多条运行用）====================
 
     @staticmethod
-    def _clone_model(base: ModStructure) -> ModStructure:
+    def _clone_model(base: ModelStructure) -> ModelStructure:
         """
         为 Monte Carlo 多条运行创建模型的独立副本。
         不使用 deepcopy（BabelLanguageManager 含文件句柄，不可 pickle），
         而是手动复制只读数据，让 asteval / lang_manager 各自全新初始化。
         """
-        fresh = ModStructure(
-            mods_directory=base.mods_directory,
+        fresh = ModelStructure(
+            models_directory=base.models_directory,
             language='en',
         )
 
@@ -995,7 +995,7 @@ class SimulatorEngine:
         fresh.optimizer        = dict(base.optimizer)
         fresh.time_unit        = base.time_unit
         fresh.current_filename = base.current_filename
-        fresh.mods_directory   = base.mods_directory
+        fresh.models_directory = base.models_directory
 
         # 每条 run 需要独立的 variable 实例（含当前值）
         fresh.variables = {

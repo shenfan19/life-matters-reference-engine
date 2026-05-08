@@ -75,4 +75,4 @@ ckd_protein_pareto_a4_p3.yaml    ← 与上一行相邻，同主题一目了然
 - ADR 0057 结构快照与文件命名规则：更新为新文件名
 - ADR 0058：路径示例补充 `references/`、`in_process/`
 - CLAUDE.md 代码结构说明更新
-- 后端 `api_server.py` 与前端 `ModsManager.tsx` 无需改动（递归扫描，见 ADR 0058）
+- 后端 `api_server.py` 与前端 `ModelBuilder.tsx` 无需改动（递归扫描，见 ADR 0058）

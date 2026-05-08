@@ -14,8 +14,8 @@ import yaml
 # 初始化模块的日志记录器
 logger = logging.getLogger(__name__)
 
-class ModStructure(Loader, Validator, Simulation):
-    def __init__(self, mods_directory: str = "models", language: str = "en"):
+class ModelStructure(Loader, Validator, Simulation):
+    def __init__(self, models_directory: str = "models", language: str = "en"):
         # 初始化元数据
         self.metadata = None
         # 初始化变量字典
@@ -47,7 +47,7 @@ class ModStructure(Loader, Validator, Simulation):
         self.time_unit: str = 'second'
         # 跟踪已访问模型，防止循环依赖
         self.visited: Set[str] = set()
-        self.mods_directory = mods_directory
+        self.models_directory = models_directory
         # 当前文件名（无扩展名），由 loader.py 设置
         self.current_filename: str = None
         self.lang_manager = BabelLanguageManager(default_language=language) # + 初始化 LanguageManager，用于国际化消息

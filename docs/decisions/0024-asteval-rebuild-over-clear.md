@@ -8,7 +8,7 @@
 
 ## 背景
 
-`ModStructure._initialize_asteval()` 每次加载新模型后需要刷新符号表，将当前变量写入 `asteval.symtable`。  
+`ModelStructure._initialize_asteval()` 每次加载新模型后需要刷新符号表，将当前变量写入 `asteval.symtable`。
 原实现使用 `symtable.clear()` 清空旧条目后再重新写入：
 
 ```python
