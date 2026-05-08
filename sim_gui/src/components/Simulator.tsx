@@ -486,8 +486,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── auto-switch center tab to plot when sim is running/completed ──────────────
   useEffect(() => {
-    if (status === 'running' || status === 'completed') setCenterTab('plot');
-  }, [status]);
+    if ((status === 'running' || status === 'completed') && mode !== 'opt') setCenterTab('plot');
+  }, [status, mode]);
 
   // ── cleanup opt poll on unmount ───────────────────────────────────────────────
   useEffect(() => {
@@ -739,6 +739,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const startOptimization = async () => {
     if (!selectedModel) return;
+    setCenterTab('opt');
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
     const optimizeEvents = inputEvents.filter(ev => ev.optimizeValue);
@@ -979,8 +980,8 @@ const Simulator: React.FC<SimulatorProps> = ({
             {([
               { key: 'intro',  label: 'Overview' },
               { key: 'setup',  label: t('sim.tab.setup')   || '配置' },
-              { key: 'opt',    label: t('sim.tab.opt')     || 'Pareto' },
-              { key: 'plot',   label: t('sim.tab.plot')    || '图表' },
+              { key: 'opt',    label: t('sim.tab.opt')     || 'Opt Result' },
+              { key: 'plot',   label: t('sim.tab.plot')    || 'Sim Result' },
               { key: 'report', label: t('sim.tab.report')  || '报告' },
             ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
@@ -1035,6 +1036,9 @@ const Simulator: React.FC<SimulatorProps> = ({
               inputVars={inputVars}
               selectedModel={selectedModel}
               selectedKey={selectedKey} isLocked={isLocked} mode={mode} status={status}
+              simStartDate={simStartDate} simEndDate={simEndDate}
+              stepValue={stepValue} stepUnit={stepUnit}
+              simRuns={simRuns} sessionSeed={sessionSeed}
               isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
             />
           )}
