@@ -13,15 +13,16 @@ metadata:
     simulation: 默认仿真从 1666-09-01 到 1666-09-02，用于观察核心状态随时间变化。
     optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    evidence: 基于认知负荷理论（Sweller 1988）与历史传记（Westfall 1980）。
+    mechanism: |
+      洞见积累由研究强度驱动，并受疲劳与营养共同调制：
+      insight_gain = study_intensity × max(0.2, 1−fatigue/120) × max(0.4, nutrition/80)。
+      该机制对应牛顿沉浸研究、忽视饮食的历史记录。
+    time_scale: 步长为 1 分钟，总时长 1440 分钟（1 天）；食物变量表示摄入速率（g/min 或 ml/min）。
+
   tags: [historical, newton, cognition, nutrition, 17th-century, england]
   period: "1665-1667"
   location: "Woolsthorpe Manor, Lincolnshire, England"
-  science_note: >
-    基于认知负荷理论（Sweller 1988）与历史传记（Westfall 1980）。
-    洞见公式：insight_gain = study_intensity × max(0.2, 1−fatigue/120) × max(0.4, nutrition/80)。
-    疲劳和营养共同调制研究效率，与牛顿沉浸研究忘记进食的历史记录吻合。
-    步长=1分钟，总时长=1440分钟（1天）。食物变量为摄入速率（g/min 或 ml/min）。
-
 # ── 变量定义（完全内联，无需导入模型文件）────────────────────────────────────────
   step_size:
     value: 1

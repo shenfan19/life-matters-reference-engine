@@ -25,7 +25,11 @@
 
 `brief`、`need`、`problem`、`method`、`simulation`、`optimization`、`result`、`conclusion`、`limitations`
 
-这些字段只是推荐，不是 schema 限制。作者可以增加其他英文键，例如 `scope`、`cohort`、`assumption`、`usage`。GUI 会自动把 unknown key 转成英文标签，例如 `expected_cohort` 显示为 `Expected Cohort`。
+这些字段只是推荐，不是 schema 限制。作者可以增加其他英文键，例如 `scope`、`cohort`、`assumption`、`usage`、`evidence`、`mechanism`、`time_scale`、`sources`。GUI 会自动把 unknown key 转成英文标签，例如 `expected_cohort` 显示为 `Expected Cohort`。
+
+科学依据、文献解释和建模假设属于模型描述的一部分，但不使用笼统的 `science_note`。应拆成更具体的 description 子项，例如 `evidence`、`mechanism`、`time_scale`、`sources`；不再使用 `metadata.science_note` 或顶层 `science_note`。
+
+当来源能归属到具体变量或公式时，优先写入对应 `reference` 字段；`description.sources` 只保留无法拆分的场景级背景来源。
 
 `brief` 取代 `summary` 作为第一推荐字段，因为它更像模型卡片中的短说明，不暗示必须写成论文摘要。`result` 取代 `expected_result`；如果当前还没有实际结果，可以在内容中写明“预期……”。
 

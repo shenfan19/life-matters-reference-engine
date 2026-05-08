@@ -13,17 +13,17 @@ metadata:
     simulation: 默认仿真从 1910-01-01 到 1918-01-01，用于观察核心状态随时间变化。
     optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    evidence: 基于放射性暴露模型与科学史研究（Quinn 1995；Reid 1974）。
+    mechanism: |
+      辐射积累随实验强度增加：radiation += research_intensity × exposure_factor。
+      健康损耗由辐射和过劳共同决定：health_decay = radiation × 0.05 + overwork_penalty。
+      研究产出受辐射负担抑制：progress += research_intensity × max(0.3, 1 - radiation/120)。
+    resource_model: 每回合有固定支出；授课和经费申请是主要收入来源，因此研究强度与财务维持互相牵制。
+    time_scale: 步长为 1 月，总时长 96 月（8 年）。
+
   tags: [historical, curie, radiation, research, 19th-century, france, women-in-science]
   period: "1898-1906"
   location: "Paris, France"
-  science_note: >
-    基于放射性暴露模型与科学史研究（Quinn 1995；Reid 1974）。
-    辐射积累公式：radiation += research_intensity × exposure_factor。
-    健康损耗：health_decay = radiation × 0.05 + overwork_penalty。
-    研究产出：progress += research_intensity × max(0.3, 1 - radiation/120)。
-    经费约束：每回合固定支出；授课和经费申请是主要收入来源。
-    步长=1月，总时长=96月（8年）。
-
   step_size:
     value: 1
     unit: month
