@@ -1,7 +1,7 @@
 id: sensitivity_analysis
 name: 敏感性分析
 version: '0.1'
-description: >
+description: |
   计算各状态变量与目标变量之间的 Pearson 相关系数，按绝对值排序输出龙卷风图数据。
   适用于 Paper 2 第二层验证（MC 参数敏感性）。
 author: LM Team

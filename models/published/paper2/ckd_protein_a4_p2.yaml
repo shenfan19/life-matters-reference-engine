@@ -1,18 +1,19 @@
-metadata:
+﻿metadata:
   name: a4_ckd_protein
   paper: Paper 2 (JAMIA)
   case_id: A4
   updated: 2026-05-04
   author: Fan Shen
-  description: >
-    CKD 蛋白质-肌肉权衡（A4）——Paper 2 核心临床验证案例。
-    三个耦合状态变量（GFR、肌肉质量、血尿素氮）+ 饮食蛋白质输入。
-    MC 参数：alpha（蛋白质对 GFR 的损伤敏感性）和 mu_s（肌肉合成效率），
-    个体差异±25%，多条曲线在第 10–20 周显著分叉。
-    52 周仿真，日步长，展示 KDIGO 2020 指南已承认的临床空白：
-    低蛋白保护肾功能但加速肌少症，低到一定程度后 GFR 仍无法阻止下降。
-    Opt 目标：双目标 Pareto（最大化52周末肌肉质量 × 最大化GFR），
-    决策变量为每日蛋白质三餐分配方案。
+  description:
+    brief: CKD 蛋白质-肌肉权衡（A4），用于表达低蛋白保护肾功能与肌少症风险之间的临床冲突。
+    need: 为 Paper 2 展示 LM 如何把指南中的营养建议、个体差异和多目标优化放进同一个动态模型。
+    problem: 降低蛋白质摄入可能减轻 GFR 损伤和 BUN 负担，但也会削弱肌肉合成；过低蛋白不能阻止 CKD 基础进展。
+    method: 日步长模型，耦合 GFR、muscle_mass、BUN 和 dietary_protein。MC 采样 alpha、mu_s、mu_u 表达个体肾功能敏感性和合成代谢能力差异。
+    simulation: 默认仿真 52 周，三餐蛋白质合计约 0.8 g/kg/day，输出 GFR、muscle_mass、BUN、dietary_protein。
+    optimization: NSGA-II 双目标优化三餐蛋白质分配，最大化 52 周末肌肉质量和 GFR，并约束 BUN <= 20、GFR >= 30、dietary_protein >= 0.6。
+    result: 预期 Pareto 前沿展示“更多肌肉保留”和“更慢肾功能衰退”之间的折中，MC 曲线在 10–20 周开始分叉。
+    conclusion: 期望结论是单一静态蛋白质建议不足以覆盖个体差异，动态多目标优化能暴露可行区间与风险边界。
+    limitations: 参数为文献启发的演示值，未替代 KDIGO 指南或个体化营养医嘱。
   tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4]
   references:
     - "KDIGO 2020 Clinical Practice Guideline §3.1.13 Grade 2C"
@@ -60,7 +61,7 @@ variables:
 
   # ── MC 概率参数 ──────────────────────────────────────────────────────────────
   alpha:
-    description: >
+    description: |
       蛋白质摄入超过安全阈值对 GFR 的损伤敏感性（Kalantar-Zadeh 2017）。
       MC 时各条曲线采样不同值，代表个体肾功能对蛋白质负荷的耐受差异。
     value: "normal(0.0012, 0.0003)"
@@ -69,7 +70,7 @@ variables:
     bounds: [0.0003, 0.003]
 
   mu_s:
-    description: >
+    description: |
       肌肉蛋白合成效率（每 g/kg/day 蛋白质每天生成 kg 肌肉）。
       MC 时代表个体合成代谢能力差异（Carrero 2013）。
     value: "normal(0.008, 0.002)"
@@ -92,7 +93,7 @@ variables:
     bounds: [0.001, 0.005]
 
   mu_u:
-    description: >
+    description: |
       尿毒症驱动的肌肉分解增强系数（GFR 每下降1单位额外增加的分解率）。
       敏感性分析中最重要的参数（Wang & Mitch 2014）。
     value: "normal(0.0015, 0.0005)"
@@ -115,7 +116,7 @@ variables:
 # ── 动力学公式 ─────────────────────────────────────────────────────────────────
 formulas:
   gfr_decline:
-    description: >
+    description: |
       GFR 下降：蛋白质超过安全阈值的损伤 + 非蛋白质基础下降。
       蛋白质低于 0.6 g/kg/day 时超载项为零（不继续保护，仅不再损伤）。
     condition: true
@@ -124,7 +125,7 @@ formulas:
       GFR: GFR - (alpha * max(0, dietary_protein - 0.6) * GFR + beta0 * GFR) * step
 
   muscle_dynamics:
-    description: >
+    description: |
       肌肉质量：合成（蛋白质 × 肾功能相对保留度）− 基础降解 − 尿毒症驱动分解。
       肾功能相对保留度 = min(1, GFR/GFR_initial)，反映 CKD 合成代谢抵抗。
     condition: true
@@ -136,7 +137,7 @@ formulas:
         - mu_u * max(0, GFR_initial - GFR) * muscle_mass) * step
 
   bun_dynamics:
-    description: >
+    description: |
       血尿素氮：蛋白质分解产生 − GFR 清除。
       BUN 是约束变量：>20 mg/dL 代表蛋白质过量。
     condition: true

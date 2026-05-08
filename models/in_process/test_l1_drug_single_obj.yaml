@@ -3,21 +3,27 @@ type: model
 metadata:
   name: l1_drug_single_obj
   title: "[TEST L1] 单目标快速优化"
-  description: >
-    【调试用 TEST L1】单目标优化 · 30天日步长 · 预估完成 < 1分钟
+  description:
+    brief: |
+      【调试用 TEST L1】单目标优化 · 30天日步长 · 预估完成 < 1分钟
 
-    ── 用途 ──────────────────────────────────────────────
-    调试优化链路：endpoint → job 系统 → 结果回传。
-    最快验证路径，出现问题首先用此模型排查。
+      ── 用途 ──────────────────────────────────────────────
+      调试优化链路：endpoint → job 系统 → 结果回传。
+      最快验证路径，出现问题首先用此模型排查。
 
-    ── 场景 ──────────────────────────────────────────────
-    单一口服药物，每日早晨给药（08:00）。
-    目标：最大化第30天血浆浓度，约束肝脏累积负荷 ≤ 250 mg/L·day。
+      ── 场景 ──────────────────────────────────────────────
+      单一口服药物，每日早晨给药（08:00）。
+      目标：最大化第30天血浆浓度，约束肝脏累积负荷 ≤ 250 mg/L·day。
 
-    ── 参数规模 ──────────────────────────────────────────
-    pop=10, gen=15 → 150次评估 × 30步 ≈ 1–3秒
-    决策变量: 1（dose_mg: 0–50 mg）
-    MC: 未启用（clearance_rate 固定为均值）
+      ── 参数规模 ──────────────────────────────────────────
+      pop=10, gen=15 → 150次评估 × 30步 ≈ 1–3秒
+      决策变量: 1（dose_mg: 0–50 mg）
+      MC: 未启用（clearance_rate 固定为均值）
+    need: 作为开发期测试模型，用于验证仿真、调度、MC 或优化链路是否稳定。
+    method: 包含 4 个变量和 2 个方程，围绕 plasma_level、liver_load、clearance_rate、dose_mg 构造最小可运行动力学。
+    simulation: 默认仿真从 2025-01-01 到 2025-01-31，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 1 个，决策输入 1 个，用于搜索可行的干预或参数组合。
+    result: 预期用于发现回归错误，并确认 GUI 与后端输出保持一致。
   tags: [test, L1, single-objective, pharmacokinetics, debug]
   references:
     - "TEST L1: Simplified first-order PK model for optimizer unit test"
@@ -41,7 +47,7 @@ variables:
     bounds: [0.0, 1200.0]
 
   clearance_rate:
-    description: >
+    description: |
       药物清除率（个体差异）。
       MC 参数：normal(0.3, 0.05) /day。
       均值 0.3：即半衰期 ≈ 2.3天。
@@ -59,7 +65,7 @@ variables:
 
 formulas:
   drug_kinetics:
-    description: >
+    description: |
       一阶药代动力学。吸收率 60%，清除率 clearance_rate。
       稳态：plasma_level_ss = dose_mg * 0.6 / clearance_rate
       （dose=10 → ss≈20; dose=42 → ss≈84，约为约束上限）

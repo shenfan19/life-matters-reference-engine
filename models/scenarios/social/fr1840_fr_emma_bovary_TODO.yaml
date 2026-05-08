@@ -1,10 +1,17 @@
 id: fr1840_fr_emma_bovary
 name: "包法利夫人：浪漫主义的代价"
-description: |
-  艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。
-  她相信自己应该过另一种生活——激情、华服、真爱。
-  她一次次行动，一次次失望，一次次借债。
-  最终的账单不只是金钱上的。
+description:
+  brief: |
+    艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。
+    她相信自己应该过另一种生活——激情、华服、真爱。
+    她一次次行动，一次次失望，一次次借债。
+    最终的账单不只是金钱上的。
+  problem: 在该情境中，需要平衡 浪漫主义追求强度、融入乡村生活、自我认知 对生存、目标进展或长期代价的影响。
+  method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
+  simulation: 默认仿真长度为 60 个 month，用于比较不同输入策略下的轨迹。
+  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
 type: scenario
 tags: [depression, romantic-delusion, debt, society, literature]
 source: Madame Bovary (Gustave Flaubert, 1857)

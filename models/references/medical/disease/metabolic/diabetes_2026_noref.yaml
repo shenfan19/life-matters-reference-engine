@@ -2,7 +2,14 @@ metadata:
   name: diabetes
   updated: 2026-04-23
   author: Fan Shen
-  description: "综合糖尿病动力学模型：包含血糖调节（R1）、胰岛素响应（R2）、并发症进展（R3）与系统炎症（R4）。单文件封装标准。"
+  description:
+    brief: "综合糖尿病动力学模型：包含血糖调节（R1）、胰岛素响应（R2）、并发症进展（R3）与系统炎症（R4）。单文件封装标准。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 12 个变量和 4 个方程，描述 blood_glucose、fasting_glucose、plasma_insulin、insulin_sensitivity 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于观察候选干预或参数组合的风险收益边界。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags: [medical, physiological, core]
   step_size:
     value: 1

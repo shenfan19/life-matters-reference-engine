@@ -5,7 +5,12 @@ metadata:
   name: "newton_study"
   updated: 2026-04-23
   author: Fan Shen
-  description: "牛顿奇迹年生理-认知模型（1665-1667）。整合心智疲劳、研究强度、洞见积累与健康的动态关系。基于认知负荷理论与历史记录：牛顿长时间高强度工作、忽视饮食睡眠、因烛光实验损伤视力。"
+  description:
+    brief: "牛顿奇迹年生理-认知模型（1665-1667）。整合心智疲劳、研究强度、洞见积累与健康的动态关系。基于认知负荷理论与历史记录：牛顿长时间高强度工作、忽视饮食睡眠、因烛光实验损伤视力。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 11 个变量和 10 个方程，描述 nutrition、hydration、study_intensity、candle_study 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags: [cognition, fatigue, study, historical, newton]
   source: >
     Westfall RS (1980) Never at Rest: A Biography of Isaac Newton.
@@ -39,7 +44,7 @@ variables:
     value: 0.0
     unit: "强度"
     bounds: [0.0, 3.0]
-    description: >
+    description: |
       研究强度等级：
       0 = 休息/农务
       1 = 轻度阅读/思考（苹果树下漫步）

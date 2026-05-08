@@ -85,8 +85,8 @@ class Validator:
             if hasattr(self.metadata, 'author') and not isinstance(self.metadata.author, str):
                 errors.append(f"Metadata author must be a string, got {type(self.metadata.author).__name__}")
                 is_valid = False
-            if hasattr(self.metadata, 'description') and not isinstance(self.metadata.description, str):
-                errors.append(f"Metadata description must be a string, got {type(self.metadata.description).__name__}")
+            if hasattr(self.metadata, 'description') and not isinstance(self.metadata.description, (str, dict)):
+                errors.append(f"Metadata description must be a string or dict, got {type(self.metadata.description).__name__}")
                 is_valid = False
             return is_valid, errors, []
 

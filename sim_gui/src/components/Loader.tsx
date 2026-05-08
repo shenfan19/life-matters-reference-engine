@@ -76,6 +76,16 @@ const Loader: React.FC<LoaderProps> = ({
 
   const selectedStory = selectedKey ? loadedMods[selectedKey] ?? null : null;
 
+  const formatDescription = (description: any): string => {
+    if (!description) return 'No description';
+    if (typeof description === 'string') return description;
+    if (typeof description !== 'object') return String(description);
+    return Object.values(description)
+      .filter(value => value != null && String(value).trim())
+      .map(value => String(value).trim())
+      .join('\n\n') || 'No description';
+  };
+
   useEffect(() => {
     if (storyTree.length === 0) loadFileTree();
   }, []);
@@ -301,7 +311,9 @@ const Loader: React.FC<LoaderProps> = ({
             </Descriptions.Item>
             <Descriptions.Item label="分类">{selectedStory.category || 'N/A'}</Descriptions.Item>
             <Descriptions.Item label="描述" span={2}>
-              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{selectedStory.metadata?.description || 'No description'}</span>
+              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', whiteSpace: 'pre-wrap' }}>
+                {formatDescription(selectedStory.metadata?.description)}
+              </span>
             </Descriptions.Item>
             {selectedStory.imports && selectedStory.imports.length > 0 && (
               <Descriptions.Item label="导入模型" span={2}>

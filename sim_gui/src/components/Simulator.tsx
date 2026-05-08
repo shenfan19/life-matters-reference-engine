@@ -511,7 +511,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── report tab ───────────────────────────────────────────────────────────────
   const ALL_REPORT_SECTIONS = [
-    { key: 'intro',      label: '简介',       desc: '模型背景与适用场景说明' },
+    { key: 'intro',      label: 'Description', desc: '模型背景与适用场景说明' },
     { key: 'overview',   label: '模型概览',   desc: '名称、描述、标签、变量总数' },
     { key: 'formulas',   label: '方程列表',   desc: '所有方程含义及激活条件' },
     { key: 'variables',  label: '变量汇总',   desc: '所有变量类型、含义及最终值' },
@@ -1170,6 +1170,38 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const outputVars: string[] = runOutputVars.length > 0 ? runOutputVars : resolveOutputVars();
   const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
+  const DESCRIPTION_LABELS: Record<string, string> = {
+    brief: 'Brief',
+    need: 'Need',
+    problem: 'Problem',
+    method: 'Method',
+    simulation: 'Simulation',
+    optimization: 'Optimization',
+    result: 'Result',
+    conclusion: 'Conclusion',
+    limitations: 'Limitations',
+    usage: 'Usage',
+  };
+  const descriptionLabel = (key: string): string => DESCRIPTION_LABELS[key]
+    || key.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+  const getDescriptionSections = (description: any): Array<{ key: string; label: string; text: string }> => {
+    if (!description) return [];
+    if (typeof description === 'string') {
+      const text = description.trim();
+      return text ? [{ key: 'brief', label: 'Brief', text }] : [];
+    }
+    if (typeof description !== 'object') return [];
+    return Object.entries(description)
+      .filter(([, value]) => value != null && String(value).trim())
+      .map(([key, value]) => ({ key, label: descriptionLabel(key), text: String(value).trim() }));
+  };
+  const descriptionText = (description: any): string => getDescriptionSections(description)
+    .map(section => section.text)
+    .join('\n\n');
+  const descriptionSummary = (description: any): string => {
+    const sections = getDescriptionSections(description);
+    return sections.find(s => s.key === 'brief')?.text || sections[0]?.text || '';
+  };
 
   // flatten tree for list view
   const flattenTree = (nodes: DataNode[]): any[] => {
@@ -1679,6 +1711,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
     const allV: Record<string, any> = selectedModel?.content?.variables || {};
     const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
+    const descSections = getDescriptionSections(meta.description);
 
     const toggleIntro = (key: string) => setIntroOpen(prev => {
       const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n;
@@ -1723,14 +1756,23 @@ const Simulator: React.FC<SimulatorProps> = ({
     return (
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── 1. 模型简介 ── */}
+        {/* ── 1. Description ── */}
         <IntroSection id="meta"
-          title={t('sim.tab.intro') || '模型'}
+          title="Description"
           badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}
         >
-          {meta.description
-            ? <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
-                {String(meta.description).trim()}
+          {descSections.length > 0
+            ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {descSections.map(section => (
+                  <div key={section.key} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr)', gap: 8, alignItems: 'baseline' }}>
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontWeight: 700, textTransform: 'uppercase' }}>
+                      {section.label}
+                    </span>
+                    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                      {section.text}
+                    </span>
+                  </div>
+                ))}
               </div>
             : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>暂无描述</div>
           }
@@ -1749,32 +1791,26 @@ const Simulator: React.FC<SimulatorProps> = ({
         >
           {Object.keys(allV).length === 0
             ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无变量</span>
-            : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead><tr>
-                  <th style={thS}>描述 / 内部名</th>
+                  <th style={{ ...thS, width: '22%' }}>Name</th>
+                  <th style={thS}>Description</th>
                   <th style={thS}>类型</th>
                   <th style={thS}>初始值</th>
                   <th style={thS}>单位</th>
+                  <th style={thS}>来源</th>
                 </tr></thead>
                 <tbody>
                   {Object.entries(allV).map(([name, d]: [string, any]) => (
                     <tr key={name}>
-                      <td style={tdS}>
-                        {d.description
-                          ? <><div style={{ color: c.text }}>{d.description}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
-                                <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{name}</span>
-                                <SourceTag source={sourceOf('variables', name)} />
-                              </div></>
-                          : <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <span style={{ color: c.text, fontFamily: 'monospace' }}>{name}</span>
-                              <SourceTag source={sourceOf('variables', name)} />
-                            </div>
-                        }
+                      <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
+                        {name}
                       </td>
+                      <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
                       <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
                       <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
                       <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
+                      <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1789,10 +1825,10 @@ const Simulator: React.FC<SimulatorProps> = ({
         >
           {outputVars.length === 0
             ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无输出变量</span>
-            : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead><tr>
-                  <th style={thS}>变量名</th>
-                  <th style={thS}>含义</th>
+                  <th style={{ ...thS, width: '22%' }}>Name</th>
+                  <th style={thS}>Description</th>
                   <th style={thS}>类型</th>
                   <th style={thS}>单位</th>
                   <th style={thS}>来源</th>
@@ -1802,8 +1838,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                     const d = allV[name] || {};
                     return (
                       <tr key={name}>
-                        <td style={{ ...tdS, fontFamily: 'monospace', color: c.text }}>{name}</td>
-                        <td style={tdS}>{d.description || '—'}</td>
+                        <td style={{ ...tdS, fontFamily: 'monospace', color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
+                        <td style={{ ...tdS, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
                         <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
                         <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
                         <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
@@ -1821,29 +1857,32 @@ const Simulator: React.FC<SimulatorProps> = ({
             title={t('sim.tabs.formulas') || '公式'}
             badge={`${Object.keys(formulas).length} 个`}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Object.entries(formulas).map(([name, fd]: [string, any]) => {
-                const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : null;
-                const expr = typeof fd.dynamics === 'object' && fd.dynamics
-                  ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('\n')
-                  : String(fd.dynamics ?? '');
-                return (
-                  <div key={name} style={{ border: `1px solid ${c.border}`, borderRadius: 4, padding: '7px 10px', background: c.sectionHd }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{fd.description || name}</span>
-                      {fd.description && <span style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{name}</span>}
-                      <SourceTag source={sourceOf('formulas', name)} />
-                      {cond && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace' }}>| 条件: {cond}</span>}
-                    </div>
-                    {expr && (
-                      <code style={{ display: 'block', whiteSpace: 'pre-wrap', color: isDarkMode ? '#86efac' : '#007A33', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', lineHeight: 1.6 }}>
-                        {expr}
-                      </code>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <thead><tr>
+                <th style={{ ...thS, width: '20%' }}>Name</th>
+                <th style={{ ...thS, width: '26%' }}>Description</th>
+                <th style={thS}>Expression</th>
+                <th style={{ ...thS, width: '14%' }}>Condition</th>
+                <th style={{ ...thS, width: '12%' }}>来源</th>
+              </tr></thead>
+              <tbody>
+                {Object.entries(formulas).map(([name, fd]: [string, any]) => {
+                  const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : null;
+                  const expr = typeof fd.dynamics === 'object' && fd.dynamics
+                    ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
+                    : String(fd.dynamics ?? '');
+                  return (
+                    <tr key={name}>
+                      <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
+                      <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fd.description || ''}>{fd.description || '—'}</td>
+                      <td style={{ ...tdS, color: isDarkMode ? '#86efac' : '#007A33', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={expr}>{expr || '—'}</td>
+                      <td style={{ ...tdS, color: c.textMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cond || ''}>{cond || '—'}</td>
+                      <td style={tdS}><SourceTag source={sourceOf('formulas', name)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </IntroSection>
         )}
 
@@ -2541,7 +2580,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             flexShrink: 0, paddingLeft: 8,
           }}>
             {([
-              { key: 'intro',  label: t('sim.tab.intro')   || '模型' },
+              { key: 'intro',  label: 'Overview' },
               { key: 'setup',  label: t('sim.tab.setup')   || '配置' },
               { key: 'opt',    label: t('sim.tab.opt')     || 'Pareto' },
               { key: 'plot',   label: t('sim.tab.plot')    || '图表' },
@@ -2642,6 +2681,8 @@ const Simulator: React.FC<SimulatorProps> = ({
             const latestStep = simulationData[simulationData.length - 1];
             const hasData = simulationData.length > 0;
             const allV: Record<string, any> = selectedModel?.content?.variables || {};
+            const metaDescText = descriptionText(meta.description);
+            const metaDescSummary = descriptionSummary(meta.description);
 
             // ── reference collector ────────────────────────────────────────
             const allRefs: string[] = [];
@@ -2665,7 +2706,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
             // ── section summary badges ─────────────────────────────────────
             function sectionBadge(key: ReportSection): string {
-              if (key === 'intro')    return meta.description ? '有描述' : '无描述';
+              if (key === 'intro')    return metaDescText ? '有描述' : '无描述';
               if (key === 'overview') return `${stateVars.length + inputVars.length} 个变量`;
               if (key === 'formulas') return `${Object.keys(formulas).length} 个`;
               if (key === 'variables') return `${Object.keys(allV).length} 个`;
@@ -2689,8 +2730,8 @@ const Simulator: React.FC<SimulatorProps> = ({
             function renderSectionContent(key: ReportSection): React.ReactNode {
               if (key === 'intro') return (
                 <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.8 }}>
-                  {meta.description
-                    ? <p style={{ margin: 0 }}>{meta.description}</p>
+                  {metaDescText
+                    ? <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{metaDescText}</p>
                     : <span style={{ color: c.textMute }}>暂无简介（可在 YAML metadata.description 中填写）</span>
                   }
                   {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>标签：{meta.tags.join('  ·  ')}</div> : null}
@@ -2699,7 +2740,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (key === 'overview') return (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
                   <tr><TD>名称</TD><TD mono>{meta.name || selectedModel?.label || '—'}</TD></tr>
-                  <tr><TD>描述</TD><TD>{(meta.description || '—').slice(0, 120)}</TD></tr>
+                  <tr><TD>描述</TD><TD>{(metaDescSummary || '—').slice(0, 120)}</TD></tr>
                   {meta.tags?.length ? <tr><TD>标签</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
                   <tr><TD>状态变量</TD><TD mono>{stateVars.length} 个</TD></tr>
                   <tr><TD>输入变量</TD><TD mono>{inputVars.length} 个</TD></tr>
@@ -2803,16 +2844,16 @@ const Simulator: React.FC<SimulatorProps> = ({
               const lines: string[] = [];
               const ts = new Date().toLocaleString('zh-CN');
               lines.push(`# 仿真报告\n\n> 生成时间：${ts}\n`);
-              if (reportSections.has('intro') && meta.description) {
-                lines.push(`## 简介\n`);
-                lines.push(`${meta.description}\n`);
+              if (reportSections.has('intro') && metaDescText) {
+                lines.push(`## Description\n`);
+                lines.push(`${metaDescText}\n`);
                 if (meta.tags?.length) lines.push(`**标签**：${meta.tags.join('  ·  ')}\n`);
               }
               if (reportSections.has('overview')) {
                 lines.push(`## 模型概览\n`);
                 lines.push(`| 字段 | 值 |\n|------|-----|`);
                 lines.push(`| 名称 | ${meta.name || selectedModel?.label || '—'} |`);
-                lines.push(`| 描述 | ${(meta.description || '—').replace(/\n/g, ' ')} |`);
+                lines.push(`| 描述 | ${(metaDescSummary || '—').replace(/\n/g, ' ')} |`);
                 if (meta.tags?.length) lines.push(`| 标签 | ${meta.tags.join(', ')} |`);
                 lines.push(`| 状态变量数 | ${stateVars.length} |\n| 输入变量数 | ${inputVars.length} |\n| 方程数 | ${Object.keys(formulas).length} |\n`);
               }

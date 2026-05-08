@@ -66,3 +66,4 @@
 | [0058](0058-2026-05-04_sim_scan-models-recursive.md) | `scan_models` 未指定文件夹时递归发现所有子目录（`os.walk`），前端改为动态分组而非硬编码 comp/scen | ✅ 已实施 | 2026-05-04 |
 | [0063](0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | Resolved imports 与仿真输出选择规则 | ✅ 已实施 | 2026-05-07 |
 | [0064](0064-2026-05-07_project-edit-refresh-run-snapshot.md) | 编辑态刷新源文件，运行态固定快照 | ✅ 已实施 | 2026-05-07 |
+| [0065](0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |

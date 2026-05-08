@@ -10,7 +10,7 @@ class ModelMetadata:
     name: str
     version: str
     author: str
-    description: str
+    description: Any
     conflicts: List[str] = None
     tags: List[str] = None
 

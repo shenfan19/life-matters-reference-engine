@@ -2,7 +2,12 @@ metadata:
   name: banana
   updated: 2026-04-23
   author: Fan Shen
-  description: "香蕉生长与采摘模型：单文件通用动力学演示。"
+  description:
+    brief: "香蕉生长与采摘模型：单文件通用动力学演示。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 4 个变量和 2 个方程，描述 ripeness、freshness、water_input、harvest_action 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-15，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags: [agricultural, simple]
   step_size:
     value: 1

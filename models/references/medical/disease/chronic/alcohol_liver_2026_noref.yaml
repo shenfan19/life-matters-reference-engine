@@ -2,7 +2,12 @@ metadata:
   name: "alcohol_liver_disease_model"
   updated: 2026-04-23
   author: Fan Shen
-  description: "酒精剂量响应导致肝病模型，基于医学论文中的剂量依赖和肝损伤动态。效果随剂量累积。"
+  description:
+    brief: "酒精剂量响应导致肝病模型，基于医学论文中的剂量依赖和肝损伤动态。效果随剂量累积。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 3 个变量和 4 个方程，描述 alcohol_dose、liver_damage_effect、liver_health_score 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-04-01，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   conflicts: []
   tags: [alcohol, liver_disease, dose_response]
   reference: ["Dynamic models of alcoholic liver disease", "Dose-response in hepatotoxicity"]

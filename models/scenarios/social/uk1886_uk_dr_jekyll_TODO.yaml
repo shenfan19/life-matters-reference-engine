@@ -1,11 +1,18 @@
 id: uk1886_uk_dr_jekyll
 name: "杰基尔博士：失控的实验"
-description: |
-  亨利·杰基尔博士，维多利亚社会的体面绅士，秘密研发出一种药物，
-  能够让他暂时变成另一个人——海德先生，那个被压抑的阴暗面。
-  起初他能自由切换。后来需要药物才能变回来。
-  再后来，他在睡梦中就开始变化了。
-  这是一个关于：成瘾是如何从控制变为被控制的模拟。
+description:
+  brief: |
+    亨利·杰基尔博士，维多利亚社会的体面绅士，秘密研发出一种药物，
+    能够让他暂时变成另一个人——海德先生，那个被压抑的阴暗面。
+    起初他能自由切换。后来需要药物才能变回来。
+    再后来，他在睡梦中就开始变化了。
+    这是一个关于：成瘾是如何从控制变为被控制的模拟。
+  problem: 在该情境中，需要平衡 药物使用频率、科学研究严谨度、维持社会形象 对生存、目标进展或长期代价的影响。
+  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+  simulation: 默认仿真长度为 52 个 week，用于比较不同输入策略下的轨迹。
+  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
 type: scenario
 tags: [addiction, self-experimentation, dual-personality, ethics, literature]
 source: Strange Case of Dr Jekyll and Mr Hyde (R.L. Stevenson, 1886)

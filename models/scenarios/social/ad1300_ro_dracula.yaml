@@ -2,7 +2,11 @@ metadata:
   name: dracula
   updated: 2026-04-23
   author: Fan Shen
-  description: "德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。"
+  description:
+    brief: "德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。"
+    problem: 在该情境中，需要平衡 blood_reserve、thirst_level、sun_exposure、hunt_intensity 对生存、目标进展或长期代价的影响。
+    method: 包含 4 个可调输入、4 个状态变量和 3 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 1462-06-01 到 1562-05-31，用于观察核心状态随时间变化。
   tags: [mythical, physiological, dracula]
   step_size:
     value: 1

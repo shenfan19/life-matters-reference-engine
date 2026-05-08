@@ -2,10 +2,16 @@ metadata:
   name: test_glucose_meal
   updated: 2026-04-30
   author: LM Test
-  description: >
-    血糖 MC + Opt 测试场景。三日三餐脉冲式摄入→胃缓冲→血糖波动。
-    两个正态分布参数（insulin_sensitivity + absorption_efficiency）在 MC 多条曲线间产生可见分叉。
-    Opt 目标：调整每餐碳水量，在满足每日总量≥150g 的前提下最小化餐后血糖峰值。
+  description:
+    brief: |
+      血糖 MC + Opt 测试场景。三日三餐脉冲式摄入→胃缓冲→血糖波动。
+      两个正态分布参数（insulin_sensitivity + absorption_efficiency）在 MC 多条曲线间产生可见分叉。
+      Opt 目标：调整每餐碳水量，在满足每日总量≥150g 的前提下最小化餐后血糖峰值。
+    need: 作为开发期测试模型，用于验证仿真、调度、MC 或优化链路是否稳定。
+    method: 包含 5 个变量和 3 个方程，围绕 blood_glucose、stomach_carbs、carb_intake、insulin_sensitivity 构造最小可运行动力学。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-04，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于发现回归错误，并确认 GUI 与后端输出保持一致。
   tags: [test, glucose, mc, schedule, pulse, opt]
   step_size:
     value: 1
@@ -53,7 +59,7 @@ variables:
 # 吸收速率 2.0 g/min × step_size(min) = 20 g/step
 formulas:
   meal_absorption:
-    description: >
+    description: |
       carb_intake（脉冲总量）一次性加入胃缓冲；
       胃内碳水以 2 g/min 速率吸收，吸收量受 absorption_efficiency 调节（MC 可见）。
     condition: true

@@ -5,7 +5,12 @@ metadata:
   name: "england_1665_diet"
   updated: 2026-04-23
   author: Fan Shen
-  description: "1665年英格兰乡村饮食模型（伍尔斯索普庄园）。基于17世纪英国普通绅士/农场主阶层的食物记录：黑麦面包、浓粥汤、小啤酒（ale）、咸猪肉、奶酪、根茎蔬菜、苹果。牛顿在此期间饮食简单但基本充足，主要风险是沉浸研究时忘记进食。"
+  description:
+    brief: "1665年英格兰乡村饮食模型（伍尔斯索普庄园）。基于17世纪英国普通绅士/农场主阶层的食物记录：黑麦面包、浓粥汤、小啤酒（ale）、咸猪肉、奶酪、根茎蔬菜、苹果。牛顿在此期间饮食简单但基本充足，主要风险是沉浸研究时忘记进食。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 11 个变量和 8 个方程，描述 bread_intake、pottage_intake、ale_intake、meat_intake 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   tags: [food, historical, 17th-century, england, nutrition]
   source: >
     Drummond JC, Wilbraham A (1939) The Englishman's Food.

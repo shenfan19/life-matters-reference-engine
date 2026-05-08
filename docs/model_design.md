@@ -50,6 +50,17 @@ category: physiological | socio_economic | environmental | risk | simple
 metadata:
   name: "唯一标识符"
   version: "1.0.0"
+  author: "作者或团队"
+  description:
+    brief: "一行说明模型是什么、服务哪个案例。"
+    need: "为什么需要这个模型。"
+    problem: "要表达的关键冲突或机制难点。"
+    method: "模型结构、时间步长、核心状态和输入。"
+    simulation: "默认仿真如何运行，以及主要输出。"
+    optimization: "如果有优化，说明目标、约束和决策变量。"
+    result: "已有结果或预期结果。"
+    conclusion: "已有结论或期望结论。"
+    limitations: "当前限制、参数缺口和非适用范围。"
   tags: [tag1, tag2]
   references: ["Author et al. (Year) Title. Journal."]
   step_size:           # 必填：模型时钟分辨率
@@ -154,6 +165,37 @@ simulation:
       days: [Mon, Wed, Fri]       # 可选；三字母缩写 Mon–Sun；缺席 = 每天
       date_range: "YYYY-MM-DD ~ YYYY-MM-DD"  # 可选；条目仅在此区间生效；缺席 = 全程
       label: "说明"               # 可选；GUI 展示用
+```
+
+### `metadata.description`
+
+`description` 支持两种写法：
+
+```yaml
+metadata:
+  description: "一段简短说明。"
+```
+
+或结构化写法：
+
+```yaml
+metadata:
+  description:
+    brief: "模型一句话简介。"
+    problem: "关键问题。"
+    method: "建模方法。"
+    result: "已有结果或预期结果。"
+```
+
+结构化写法推荐使用英文键名。字段不固定，GUI 会按 YAML 中的字段顺序显示所有非空字段；没有写的字段不会显示，也不会占用空白。推荐字段为 `brief`、`need`、`problem`、`method`、`simulation`、`optimization`、`result`、`conclusion`、`limitations`。作者可以按模型需要增加其他字段，例如 `cohort`、`scope`、`assumption`、`usage`。
+
+短文本可以直接写成普通标量；需要保留换行时可用 `|`：
+
+```yaml
+description:
+  method: |
+    第一段。
+    第二段。
 ```
 
 ---

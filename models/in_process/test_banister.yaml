@@ -2,14 +2,20 @@ metadata:
   name: test_banister
   updated: 2026-05-01
   author: LM Test
-  description: >
-    - Banister 运动适应 MC + Opt 测试场景（Banister fitness-fatigue 验证案例）。
-    - 经典 fitness-fatigue 双室模型（Morton 1990）。
-    - MC 参数：g（适应增益）和 h（疲劳增益）在个体间服从正态分布，
-    - 多条 MC 曲线在第 4–8 周可见明显分叉。
-    - 16 周训练块 + 2 周减量期，仿真 126 天，日步长。
-    - Opt 目标：双目标 Pareto（最大化末期表现 × 最小化峰值疲劳），
-    - 决策变量为各周训练负荷分配。
+  description:
+    brief: |
+      - Banister 运动适应 MC + Opt 测试场景（Banister fitness-fatigue 验证案例）。
+      - 经典 fitness-fatigue 双室模型（Morton 1990）。
+      - MC 参数：g（适应增益）和 h（疲劳增益）在个体间服从正态分布，
+      - 多条 MC 曲线在第 4–8 周可见明显分叉。
+      - 16 周训练块 + 2 周减量期，仿真 126 天，日步长。
+      - Opt 目标：双目标 Pareto（最大化末期表现 × 最小化峰值疲劳），
+      - 决策变量为各周训练负荷分配。
+    need: 作为开发期测试模型，用于验证仿真、调度、MC 或优化链路是否稳定。
+    method: 包含 9 个变量和 3 个方程，围绕 fitness、fatigue、performance、training_load 构造最小可运行动力学。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-07，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 2 个，用于搜索可行的干预或参数组合。
+    result: 预期用于发现回归错误，并确认 GUI 与后端输出保持一致。
   tags: [test, banister, mc, opt, exercise, fitness, fatigue]
   references:
     - "Morton RH et al. (1990) Modeling human performance in running. J Appl Physiol 69(3):1171–1177"

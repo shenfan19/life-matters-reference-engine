@@ -1,7 +1,7 @@
 id: post_causal_inference
 name: 因果推断
 version: '0.1'
-description: >
+description: |
   仿真后因果分析。对仿真时间序列中的状态变量进行 Granger 因果检验，
   估计变量间的有向因果关系，输出因果图边列表。
 author: LM Team

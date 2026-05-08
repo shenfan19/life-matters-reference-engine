@@ -2,12 +2,18 @@ metadata:
   name: ad1847_hu_semmelweis
   updated: 2026-04-23
   author: Fan Shen
-  description: >
-    塞麦尔维斯洗手倡导仿真场景（1847–1865，维也纳产科医院）。
-    sim模式：模拟医学证据积累与机构接受度之间的动力学，
-    以及持续受挫对研究者心理健康的侵蚀。
-    opt模式：在维多利亚时代医学体制约束下，
-    找到最优倡导策略——何时发表、何时休养、何时放弃？
+  description:
+    brief: |
+      塞麦尔维斯洗手倡导仿真场景（1847–1865，维也纳产科医院）。
+      sim模式：模拟医学证据积累与机构接受度之间的动力学，
+      以及持续受挫对研究者心理健康的侵蚀。
+      opt模式：在维多利亚时代医学体制约束下，
+      找到最优倡导策略——何时发表、何时休养、何时放弃？
+    problem: 在该情境中，需要平衡 research_effort、advocacy_intensity、self_care、evidence 对生存、目标进展或长期代价的影响。
+    method: 包含 8 个可调输入、8 个状态变量和 7 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真从 1847-01-01 到 1865-01-01，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 3 个，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
   tags: [historical, medical, handwashing, science-rejection, mental-health, 19th-century]
   period: "1847-1865"
   location: "Vienna General Hospital / Budapest, Hungary"
@@ -207,7 +213,7 @@ optimizer:
     maps_to: "self_care"
 
   analysis:
-    pareto_description: >
+    pareto_description: |
       关键发现：最优策略是先集中2年（24个月）积累证据（research_effort=3），
       再转向倡导（advocacy_intensity=2），同时保持self_care≈0.5。
       历史塞麦尔维斯的实际路径：过早高强度倡导（evidence不足时）

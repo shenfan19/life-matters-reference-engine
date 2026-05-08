@@ -5,7 +5,12 @@ metadata:
   name: "digestive_system"
   updated: 2026-04-23
   author: "Minghui Wu, Antigravity"
-  description: "胃肠道状态、营养吸收、激素酶和小肠大肠动力学模型。"
+  description:
+    brief: "胃肠道状态、营养吸收、激素酶和小肠大肠动力学模型。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 29 个变量和 16 个方程，描述 amino_acids、bile_acids、bile_function、cholecystokinin_level 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   tags: [digestion, gastrointestinal]
   step_size:
     value: 1

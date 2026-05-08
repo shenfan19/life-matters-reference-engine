@@ -3,20 +3,26 @@ type: model
 metadata:
   name: l2_drug_pareto
   title: "[TEST L2] 三剂时段 · 双目标 Pareto"
-  description: >
-    - 【调试用 TEST L2】3 决策变量 · 双目标 Pareto · 预估完成 1–3分钟
-    - ── 用途 ──────────────────────────────────────────────
-    - 验证多变量优化 + Pareto 前沿可视化。
-    - Pareto 前沿应呈现疗效与毒性的单调权衡曲线。
-    - ── 场景 ──────────────────────────────────────────────
-    - 每日三次给药（早/中/晚），优化各时段剂量分配。
-      · 目标1：最大化 plasma_level 均值（疗效）
-      · 目标2：最小化 liver_load 终值（毒性）
-    三个时段吸收率不同：早晨最高（空腹），中午次之，晚上最低。
-    ── 参数规模 ──────────────────────────────────────────
-    pop=20, gen=20 → 400次评估 × 30步 ≈ 1–3分钟
-    决策变量: 3（morning_dose, noon_dose, evening_dose: 0–30 mg each）
-    MC: 未启用
+  description:
+    brief: |
+      - 【调试用 TEST L2】3 决策变量 · 双目标 Pareto · 预估完成 1–3分钟
+      - ── 用途 ──────────────────────────────────────────────
+      - 验证多变量优化 + Pareto 前沿可视化。
+      - Pareto 前沿应呈现疗效与毒性的单调权衡曲线。
+      - ── 场景 ──────────────────────────────────────────────
+      - 每日三次给药（早/中/晚），优化各时段剂量分配。
+        · 目标1：最大化 plasma_level 均值（疗效）
+        · 目标2：最小化 liver_load 终值（毒性）
+      三个时段吸收率不同：早晨最高（空腹），中午次之，晚上最低。
+      ── 参数规模 ──────────────────────────────────────────
+      pop=20, gen=20 → 400次评估 × 30步 ≈ 1–3分钟
+      决策变量: 3（morning_dose, noon_dose, evening_dose: 0–30 mg each）
+      MC: 未启用
+    need: 作为开发期测试模型，用于验证仿真、调度、MC 或优化链路是否稳定。
+    method: 包含 6 个变量和 2 个方程，围绕 plasma_level、liver_load、clearance_rate、morning_dose 构造最小可运行动力学。
+    simulation: 默认仿真从 2025-01-01 到 2025-01-31，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，目标 2 个，决策输入 3 个，用于搜索可行的干预或参数组合。
+    result: 预期用于发现回归错误，并确认 GUI 与后端输出保持一致。
   tags: [test, L2, multi-objective, pareto, 3-variable, pharmacokinetics]
   references:
     - "TEST L2: Three-dose schedule optimization for Pareto front test"
@@ -69,7 +75,7 @@ variables:
 
 formulas:
   drug_kinetics:
-    description: >
+    description: |
       三次给药日步长动力学。
       daily_absorbed = morning*0.70 + noon*0.55 + evening*0.45
       每日清除 plasma_level * clearance_rate。

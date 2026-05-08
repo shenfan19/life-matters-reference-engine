@@ -1,7 +1,14 @@
 metadata:
   author: Fan Shen
   conflicts: []
-  description: 足球比赛生理模型，90分钟比赛，间歇性高强度运动，乳酸动力学与耐力
+  description:
+    brief: 足球比赛生理模型，90分钟比赛，间歇性高强度运动，乳酸动力学与耐力
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 13 个变量和 11 个方程，描述 game_intensity、sprint_ratio、heart_rate、vo2 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于观察候选干预或参数组合的风险收益边界。
+    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   name: football
   tags:
   - fitness

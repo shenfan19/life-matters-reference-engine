@@ -5,7 +5,12 @@ metadata:
   name: "cooked_meat"
   updated: 2026-04-23
   author: "Antigravity"
-  description: "标准烤肉营养模型。每100g含：蛋白质 26g, 脂肪 15g, 碳水化合物 0g, 水分 58g。"
+  description:
+    brief: "标准烤肉营养模型。每100g含：蛋白质 26g, 脂肪 15g, 碳水化合物 0g, 水分 58g。"
+    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
+    method: 包含 5 个变量和 1 个方程，描述 meat_intake、food_carbohydrate、food_protein、food_fat 的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   tags: [food, diet, meat]
   step_size:
     value: 1
