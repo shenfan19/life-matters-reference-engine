@@ -67,3 +67,4 @@
 | [0063](0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | Resolved imports 与仿真输出选择规则 | ✅ 已实施 | 2026-05-07 |
 | [0064](0064-2026-05-07_project-edit-refresh-run-snapshot.md) | 编辑态刷新源文件，运行态固定快照 | ✅ 已实施 | 2026-05-07 |
 | [0065](0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |
+| [0066](0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Simulator 拆分与 Sim/Opt 结果工作区 | ✅ 已实施；OPT/SIM 分离重构待进一步设计 | 2026-05-08 |

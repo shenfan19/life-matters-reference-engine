@@ -16,6 +16,12 @@ interface SimPlotTabProps {
   isLocked: boolean;
   mode: 'sim' | 'opt';
   status: 'idle' | 'running' | 'paused' | 'completed';
+  simStartDate: string;
+  simEndDate: string;
+  stepValue: number;
+  stepUnit: string;
+  simRuns: number;
+  sessionSeed: number;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
   t: (key: string) => string;
@@ -25,9 +31,77 @@ interface SimPlotTabProps {
 const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, isLocked, mode, status,
+  simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
   isDarkMode, c, t, fontSize,
 }) => {
   const hasSimData = simulationData.length > 0;
+  const modelVariables = (selectedModel?.content?.variables || {}) as Record<string, any>;
+  const placeholderOutputVars = (outputVars.length > 0
+    ? outputVars
+    : Object.entries(modelVariables)
+      .filter(([, info]) => info?.type !== 'parameter')
+      .map(([name]) => name)
+      .slice(0, 4));
+  const plotSlots = placeholderOutputVars.length > 0 ? placeholderOutputVars : ['output'];
+  const emptyStateText = !selectedKey
+    ? t('sim.scene.empty_hint')
+    : !isLocked
+      ? t('sim.scene.select_hint')
+      : mode === 'opt'
+        ? '优化模式下仿真结果会在运行仿真后显示'
+        : status === 'idle'
+          ? t('sim.scene.click_to_start')
+          : t('sim.scene.calculating');
+
+  const summaryItems = [
+    ['Model', selectedModel?.title || '-'],
+    ['Points', String(simulationData.length)],
+    ['Outputs', String(outputVars.length)],
+    ['MC', `x${simRuns}${sessionSeed ? ` seed ${sessionSeed}` : ''}`],
+    ['Range', `${simStartDate} ~ ${simEndDate}`],
+    ['Step', `${stepValue} ${stepUnit}`],
+  ];
+
+  const summaryBar = (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 8px', marginBottom: 6, borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>
+      {summaryItems.map(([label, value]) => (
+        <div key={label} style={{ display: 'flex', gap: 5, alignItems: 'baseline', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
+          <span style={{ color: c.textMute, fontWeight: 700, textTransform: 'uppercase' }}>{label}</span>
+          <span style={{ color: c.text, fontFamily: label === 'Model' ? undefined : 'monospace' }}>{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const PlaceholderChart = ({ name, colorIndex, unit }: { name: string; colorIndex: number; unit?: string }) => {
+    const lineColor = VAR_COLORS[colorIndex % VAR_COLORS.length];
+    return (
+      <div style={{
+        height: 220,
+        borderTop: `1px solid ${c.border}`,
+        background: isDarkMode ? '#111' : '#fff',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute',
+          inset: '22px 16px 30px 42px',
+          backgroundImage: `linear-gradient(${isDarkMode ? '#252525' : '#eee'} 1px, transparent 1px)`,
+          backgroundSize: '100% 25%',
+          borderLeft: `1px solid ${c.border}`,
+          borderBottom: `1px solid ${c.border}`,
+        }} />
+        <div style={{ position: 'absolute', left: 12, top: 8, display: 'flex', alignItems: 'center', gap: 6, color: c.text, fontWeight: 600 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block' }} />
+          <span>{name}</span>
+          {unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({unit})</span>}
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          {emptyStateText}
+        </div>
+      </div>
+    );
+  };
 
   const exportVarCSV = (varName: string) => {
     const hasMC = dataPerRun.length > 1;
@@ -48,23 +122,63 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
 
   if (!hasSimData) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textMute, flexDirection: 'column', gap: 8 }}>
-        {!selectedKey
-          ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>📂</span><span>{t('sim.scene.empty_hint')}</span></>
-          : !isLocked
-            ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>🔒</span><span>{t('sim.scene.select_hint')}</span></>
-            : mode === 'opt'
-              ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.control.run')}</span></>
-              : status === 'idle'
-                ? <><span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)' }}>▶</span><span>{t('sim.scene.click_to_start')}</span></>
-                : <span>{t('sim.scene.calculating')}</span>
-        }
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
+        {summaryBar}
+        <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', margin: '2px 2px 6px', padding: '2px 6px' }}>
+          {emptyStateText}
+        </div>
+        <Collapse defaultActiveKey={plotSlots} size="small"
+          items={plotSlots.map((varName, idx) => {
+            const varInfo = modelVariables[varName];
+            const lineColor = VAR_COLORS[idx % VAR_COLORS.length];
+            return {
+              key: varName,
+              label: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontWeight: 600 }}>{varName}</span>
+                  {varInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{varInfo.description}</span>}
+                  {varInfo?.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({varInfo.unit})</span>}
+                </span>
+              ),
+              children: <PlaceholderChart name={varName} unit={varInfo?.unit} colorIndex={idx} />,
+              styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
+            };
+          })}
+        />
+        {inputVars.length > 0 && (
+          <>
+            <div style={{ margin: '6px 0 2px', padding: '2px 8px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute, letterSpacing: '0.05em', borderLeft: `2px solid ${c.border}` }}>
+              {t('sim.tabs.inputs')}
+            </div>
+            <Collapse defaultActiveKey={inputVars.map(v => v.name)} size="small"
+              items={inputVars.map((v, idx) => {
+                const inputVarInfo = modelVariables[v.name];
+                const lineColor = VAR_COLORS[(plotSlots.length + idx) % VAR_COLORS.length];
+                return {
+                  key: v.name,
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: lineColor, display: 'inline-block', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600 }}>{v.name}</span>
+                      {inputVarInfo?.description && <span style={{ color: c.textMute, fontWeight: 400, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{inputVarInfo.description}</span>}
+                      {v.unit && <span style={{ color: c.textMute, fontWeight: 400 }}>({v.unit})</span>}
+                    </span>
+                  ),
+                  children: <PlaceholderChart name={v.name} unit={v.unit} colorIndex={plotSlots.length + idx} />,
+                  styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
+                };
+              })}
+            />
+          </>
+        )}
       </div>
     );
   }
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
+      {summaryBar}
       {outputWarnings.length > 0 && (
         <div style={{ color: isDarkMode ? '#fbbf24' : '#b45309', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', margin: '2px 2px 6px' }}>
           {outputWarnings.join('；')}
