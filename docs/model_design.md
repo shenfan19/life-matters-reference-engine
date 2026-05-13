@@ -214,6 +214,13 @@ description:
 
 裸名字检索已经禁用，例如 `imports: a4_ckd_protein` 不再递归搜索整个 `models/`。这样可以避免同名模型被意外导入。
 
+### 合并顺序
+
+1. imports 按列表顺序加载，**靠后的覆盖靠前的**
+2. **当前文件始终覆盖所有 imports**，无论 imports 列表怎么写
+3. 循环 import 自动报错（A → B → A 不允许）
+4. 同一文件被多次 import（菱形依赖：A → B、C，B → D，C → D）时只加载一次，不重复叠加
+
 GUI 读取模型时会显示 resolved model：变量、方程、输出变量、`simulation` 和 `optimizer` 都包含 imports 合并后的结果。模型页负责结构审阅，会标出变量、方程、输出变量来自哪个 YAML；报告页保持面向结果，不展示 import/source provenance。
 
 输出变量选择规则：
