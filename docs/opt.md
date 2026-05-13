@@ -1,4 +1,8 @@
 # Optimizer 文档
+
+> **决议导航**：本文件中的关键决议已汇总至 [DECISIONS.md](DECISIONS.md)（⭐⭐ 为核心约束）。  
+> 关键 ADR：异步 Job → [0049](decisions/0049-2026-05-02_sim_Optimizer异步Job系统设计.md)；三层验证 → [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md)；Regimen 格式 → [0052](decisions/0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md)
+
 > 版本 2026-05-02（已移除路径 B）；2026-05-04 更新：inputs: 格式、optimizer_override、三态指示器。
 
 ---

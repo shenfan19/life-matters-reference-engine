@@ -176,7 +176,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
             return ev;
           }));
           setMode('sim');
-          setCenterTab('setup');
+          setCenterTab('simulation');
         }}
       >
         以此解运行仿真 →

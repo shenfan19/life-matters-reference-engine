@@ -2,12 +2,12 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { message } from 'antd';
+import { Button, Input, InputNumber, message, Select, Tooltip } from 'antd';
+import { PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
-import SimTopBar from './SimTopBar';
 import SimModelTree from './SimModelTree';
 import SimSetupTab from './SimSetupTab';
 import SimIntroTab from './SimIntroTab';
@@ -40,7 +40,7 @@ const SIM_PERSIST_KEY = 'sim_persist';
 const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
 const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
-type CenterTab = 'intro' | 'setup' | 'opt' | 'plot' | 'report';
+type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report';
 
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
@@ -108,6 +108,18 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optJobId, setOptJobId] = useState<string | null>(null);
   const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [optMethod, setOptMethod] = useState('');
+
+  const switchCenterTab = (tab: string) => {
+    if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
+      setCenterTab('simulation');
+    } else if (tab === 'opt' || tab === 'optimization') {
+      setCenterTab('optimization');
+    } else if (tab === 'report') {
+      setCenterTab('report');
+    } else {
+      setCenterTab('intro');
+    }
+  };
 
   // ── inputEvents state ────────────────────────────────────────────────────────
   const [inputEvents, setInputEvents] = useState<InputEvent[]>(() => {
@@ -484,10 +496,10 @@ const Simulator: React.FC<SimulatorProps> = ({
     writeSP({ ...current, simulationData, dataPerRun, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
   }, [status, sessionId]);
 
-  // ── auto-switch center tab to plot when sim is running/completed ──────────────
+  // ── auto-switch center tab to simulation when sim is running/completed ───────
   useEffect(() => {
-    if ((status === 'running' || status === 'completed') && mode !== 'opt') setCenterTab('plot');
-  }, [status, mode]);
+    if (status === 'running' || status === 'completed') setCenterTab('simulation');
+  }, [status]);
 
   // ── cleanup opt poll on unmount ───────────────────────────────────────────────
   useEffect(() => {
@@ -734,12 +746,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
-    setOptResult(null);
   };
 
   const startOptimization = async () => {
     if (!selectedModel) return;
-    setCenterTab('opt');
+    setCenterTab('optimization');
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
     const optimizeEvents = inputEvents.filter(ev => ev.optimizeValue);
@@ -754,7 +765,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
     setOptHistory([]); setOptElapsed(0); setOptMethod('');
     setOptTotalGen(totalGen); setOptJobId(null);
-    set('status', 'running'); set('progress', 0);
 
     const firstVar = optimizeEvents[0].variable;
     const varEvents = optimizeEvents.filter(ev => ev.variable === firstVar);
@@ -803,7 +813,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
       if (!resp.ok || !data.success || !data.job_id) {
         message.error(data.detail || data.error || '优化启动失败');
-        setOptRunning(false); set('status', 'idle'); return;
+        setOptRunning(false); return;
       }
 
       const jobId: string = data.job_id;
@@ -819,28 +829,26 @@ const Simulator: React.FC<SimulatorProps> = ({
           setOptCurGen(sd.iteration || 0);
           setOptElapsed(sd.elapsed || 0);
           if (sd.method) setOptMethod(sd.method);
-          set('progress', Math.min(99, Math.round(((sd.iteration || 0) / totalGen) * 100)));
 
           if (sd.status === 'completed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false);
             setOptResult(sd.result);
-            set('status', 'idle'); set('progress', 100);
-            setCenterTab('opt');
+            setCenterTab('optimization');
             message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false); set('status', 'idle');
+            setOptRunning(false);
             message.error(sd.error || '优化失败');
           } else if (sd.status === 'cancelled') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false); set('status', 'idle');
+            setOptRunning(false);
           }
         } catch { /* ignore transient poll errors */ }
       }, 1500);
 
     } catch (e: any) {
-      setOptRunning(false); set('status', 'idle');
+      setOptRunning(false);
       message.error(e.message);
     }
   };
@@ -850,7 +858,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (optJobId) {
       try { await fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }); } catch {}
     }
-    setOptRunning(false); set('status', 'idle');
+    setOptRunning(false);
   };
 
   // ── input event CRUD ──────────────────────────────────────────────────────────
@@ -911,31 +919,103 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
+  const ProgressStrip = ({ label, percent, detail, active }: { label: string; percent: number; detail: string; active: boolean }) => (
+    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${c.border}`, background: c.panel }}>
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, textTransform: 'uppercase', minWidth: 82 }}>{label}</span>
+      <div style={{ flex: 1, height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', background: active ? c.primary : c.textMute, transition: 'width 0.3s', borderRadius: 3 }} />
+      </div>
+      <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{detail}</span>
+    </div>
+  );
+
+  const SimControls = (
+    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      <Button
+        type="primary" size="small"
+        icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
+        onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation}
+        disabled={!isLocked || status === 'completed'}
+        style={{ whiteSpace: 'nowrap' }}
+      >
+        {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : t('sim.control.run')}
+      </Button>
+      <Button size="small" icon={<StepForwardOutlined />}
+        onClick={runSingleStep}
+        disabled={!isLocked || !sessionId || status === 'running' || status === 'completed'}
+        style={{ whiteSpace: 'nowrap' }}
+      >{t('sim.control.step')}</Button>
+      <Button size="small" icon={<StopOutlined />}
+        onClick={resetSimulation}
+        disabled={status === 'idle'}
+        style={{ whiteSpace: 'nowrap' }}
+      >{t('sim.control.reset')}</Button>
+      <div style={{ width: 1, height: 16, background: c.border }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
+        <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
+          onChange={e => set('simStartDate', e.target.value)}
+          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
+        <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
+          onChange={e => set('simEndDate', e.target.value)}
+          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
+        <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
+        <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content' }}
+          options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
+      </div>
+      <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '-'}` : 'Monte Carlo 运行条数（1=单条）'}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
+          <InputNumber
+            size="small" min={1} max={50} value={simRuns}
+            onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
+            style={{ width: 52 }}
+            disabled={status === 'running'}
+          />
+        </div>
+      </Tooltip>
+    </div>
+  );
+
+  const OptControls = (
+    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      <Button
+        type="primary" size="small"
+        icon={optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
+        onClick={optRunning ? cancelOptimization : startOptimization}
+        disabled={!isLocked}
+        style={{ whiteSpace: 'nowrap' }}
+      >
+        {optRunning ? '停止优化' : t('sim.control.run')}
+      </Button>
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+        {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : '设置目标、约束和范围后运行优化'}
+      </span>
+    </div>
+  );
+
+  const WorkspacePage = ({ controls, setup, result, progress }: { controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode }) => (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {controls}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: `1px solid ${c.border}` }}>
+          {setup}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {result}
+        </div>
+      </div>
+      {progress}
+    </div>
+  );
+
   // ── render ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-
-      <SimTopBar
-        mode={mode} setMode={setMode}
-        status={status} progress={progress} currentStep={currentStep}
-        optRunning={optRunning} isLocked={isLocked} sessionId={sessionId}
-        simStartDate={simStartDate} simEndDate={simEndDate}
-        stepValue={stepValue} stepUnit={stepUnit}
-        simRuns={simRuns} sessionSeed={sessionSeed}
-        onSimStartDateChange={v => set('simStartDate', v)}
-        onSimEndDateChange={v => set('simEndDate', v)}
-        onStepValueChange={v => set('stepValue', v)}
-        onStepUnitChange={v => set('stepUnit', v)}
-        onSimRunsChange={v => set('simRuns', v)}
-        startSimulation={startSimulation}
-        pauseSimulation={pauseSimulation}
-        resumeSimulation={resumeSimulation}
-        runSingleStep={runSingleStep}
-        resetSimulation={resetSimulation}
-        startOptimization={startOptimization}
-        isDarkMode={isDarkMode} c={c} t={t}
-      />
-
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         <SimModelTree
@@ -979,17 +1059,15 @@ const Simulator: React.FC<SimulatorProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 8 }}>
             {([
               { key: 'intro',  label: 'Overview' },
-              { key: 'setup',  label: t('sim.tab.setup')   || '配置' },
-              { key: 'opt',    label: t('sim.tab.opt')     || 'Opt Result' },
-              { key: 'plot',   label: t('sim.tab.plot')    || 'Sim Result' },
+              { key: 'simulation', label: 'simulation' },
+              { key: 'optimization', label: 'optimization' },
               { key: 'report', label: t('sim.tab.report')  || '报告' },
             ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
-              const isOptReview = tab.key === 'opt' && mode === 'sim';
-              const color = isActive ? (isOptReview ? c.textSec : c.primary) : c.textMute;
-              const underline = isActive ? (isOptReview ? `2px solid ${c.border}` : `2px solid ${c.primary}`) : '2px solid transparent';
+              const color = isActive ? c.primary : c.textMute;
+              const underline = isActive ? `2px solid ${c.primary}` : '2px solid transparent';
               return (
-                <button key={tab.key} onClick={() => setCenterTab(tab.key)} style={{ padding: '6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color, fontWeight: isActive ? (isOptReview ? 500 : 600) : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: tab.key === 'opt' && mode === 'sim' && !isActive ? 0.45 : 1 }}>
+                <button key={tab.key} onClick={() => { setCenterTab(tab.key); if (tab.key === 'simulation') setMode('sim'); if (tab.key === 'optimization') setMode('opt'); }} style={{ padding: '6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color, fontWeight: isActive ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s' }}>
                   {tab.label}
                 </button>
               );
@@ -1007,52 +1085,84 @@ const Simulator: React.FC<SimulatorProps> = ({
             </div>
           )}
 
-          {centerTab === 'setup' && (
-            <SimSetupTab
-              inputEvents={inputEvents}
-              addInputEvent={addInputEvent}
-              updateInputEvent={updateInputEvent}
-              removeInputEvent={removeInputEvent}
-              inputVars={inputVars}
-              mode={mode}
-              selectedModel={selectedModel}
-              openSections={openSections} setOpenSections={setOpenSections}
-              sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
-              SECTION_H={SECTION_H}
-              objectives={objectives} setObjectives={setObjectives}
-              constraints={constraints} setConstraints={setConstraints}
-              optAlgo={optAlgo} setOptAlgo={setOptAlgo}
-              optPop={optPop} setOptPop={setOptPop}
-              optGen={optGen} setOptGen={setOptGen}
-              allVarNames={allVarNames}
-              isDarkMode={isDarkMode} c={c} t={t}
+          {centerTab === 'simulation' && (
+            <WorkspacePage
+              controls={SimControls}
+              setup={
+                <SimSetupTab
+                  inputEvents={inputEvents}
+                  addInputEvent={addInputEvent}
+                  updateInputEvent={updateInputEvent}
+                  removeInputEvent={removeInputEvent}
+                  inputVars={inputVars}
+                  mode="sim"
+                  selectedModel={selectedModel}
+                  openSections={openSections} setOpenSections={setOpenSections}
+                  sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
+                  SECTION_H={SECTION_H}
+                  objectives={objectives} setObjectives={setObjectives}
+                  constraints={constraints} setConstraints={setConstraints}
+                  optAlgo={optAlgo} setOptAlgo={setOptAlgo}
+                  optPop={optPop} setOptPop={setOptPop}
+                  optGen={optGen} setOptGen={setOptGen}
+                  allVarNames={allVarNames}
+                  isDarkMode={isDarkMode} c={c} t={t}
+                />
+              }
+              result={
+                <SimPlotTab
+                  simulationData={simulationData} dataPerRun={dataPerRun}
+                  outputVars={outputVars} outputWarnings={outputWarnings}
+                  inputVars={inputVars}
+                  selectedModel={selectedModel}
+                  selectedKey={selectedKey} isLocked={isLocked} mode="sim" status={status}
+                  simStartDate={simStartDate} simEndDate={simEndDate}
+                  stepValue={stepValue} stepUnit={stepUnit}
+                  simRuns={simRuns} sessionSeed={sessionSeed}
+                  isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+                />
+              }
+              progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} />}
             />
           )}
 
-          {centerTab === 'plot' && (
-            <SimPlotTab
-              simulationData={simulationData} dataPerRun={dataPerRun}
-              outputVars={outputVars} outputWarnings={outputWarnings}
-              inputVars={inputVars}
-              selectedModel={selectedModel}
-              selectedKey={selectedKey} isLocked={isLocked} mode={mode} status={status}
-              simStartDate={simStartDate} simEndDate={simEndDate}
-              stepValue={stepValue} stepUnit={stepUnit}
-              simRuns={simRuns} sessionSeed={sessionSeed}
-              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
-            />
-          )}
-
-          {centerTab === 'opt' && (
-            <SimOptTab
-              optResult={optResult} optRunning={optRunning}
-              optHistory={optHistory} optCurGen={optCurGen} optTotalGen={optTotalGen}
-              optElapsed={optElapsed} optMethod={optMethod} optLogs={optLogs}
-              objectives={objectives} constraints={constraints}
-              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
-              setInputEvents={setInputEvents}
-              setMode={setMode}
-              setCenterTab={v => setCenterTab(v as CenterTab)}
+          {centerTab === 'optimization' && (
+            <WorkspacePage
+              controls={OptControls}
+              setup={
+                <SimSetupTab
+                  inputEvents={inputEvents}
+                  addInputEvent={addInputEvent}
+                  updateInputEvent={updateInputEvent}
+                  removeInputEvent={removeInputEvent}
+                  inputVars={inputVars}
+                  mode="opt"
+                  selectedModel={selectedModel}
+                  openSections={openSections} setOpenSections={setOpenSections}
+                  sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
+                  SECTION_H={SECTION_H}
+                  objectives={objectives} setObjectives={setObjectives}
+                  constraints={constraints} setConstraints={setConstraints}
+                  optAlgo={optAlgo} setOptAlgo={setOptAlgo}
+                  optPop={optPop} setOptPop={setOptPop}
+                  optGen={optGen} setOptGen={setOptGen}
+                  allVarNames={allVarNames}
+                  isDarkMode={isDarkMode} c={c} t={t}
+                />
+              }
+              result={
+                <SimOptTab
+                  optResult={optResult} optRunning={optRunning}
+                  optHistory={optHistory} optCurGen={optCurGen} optTotalGen={optTotalGen}
+                  optElapsed={optElapsed} optMethod={optMethod} optLogs={optLogs}
+                  objectives={objectives} constraints={constraints}
+                  isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+                  setInputEvents={setInputEvents}
+                  setMode={setMode}
+                  setCenterTab={switchCenterTab}
+                />
+              }
+              progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}
             />
           )}
 
