@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Button, InputNumber, Select, Tooltip, Input } from 'antd';
+import React, { useRef, useState, useEffect } from 'react';
+import { Button, InputNumber, Select, Slider, Tooltip, Input } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { InputEvent, ModelFile } from '../types';
 import { getC } from '../core/theme';
@@ -43,6 +43,14 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+
+  // Local state for slider/input — only propagate to parent on commit (mouseup / blur / Enter)
+  const [localPop, setLocalPop] = useState(optPop);
+  const [localGen, setLocalGen] = useState(optGen);
+  useEffect(() => setLocalPop(optPop), [optPop]);
+  useEffect(() => setLocalGen(optGen), [optGen]);
+  const commitPop = (v: number) => { setLocalPop(v); setOptPop(v); };
+  const commitGen = (v: number) => { setLocalGen(v); setOptGen(v); };
 
   const Tog = ({ label, active, disabled, title, onToggle }: {
     label: string; active: boolean; disabled?: boolean; title?: string; onToggle: () => void;
@@ -220,17 +228,60 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
           { label: 'L-BFGS-B（单目标梯度）', value: 'l-bfgs-b' },
           { label: 'Nelder-Mead（单目标无梯度）', value: 'nelder-mead' },
         ]}
-        onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 8 }} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.population')}</div>
-          <InputNumber size="small" value={optPop} onChange={v => setOptPop(v || 100)} style={{ width: '100%' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: c.textMute, marginBottom: 3 }}>{t('sim.opt.generations')}</div>
-          <InputNumber size="small" value={optGen} onChange={v => setOptGen(v || 200)} style={{ width: '100%' }} />
-        </div>
-      </div>
+        onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 10 }} />
+      {(optAlgo === 'NSGA-II' || optAlgo === 'MOEA/D') && (() => {
+        const PRESETS = [
+          { key: 'quick',    pop: 20,  gen: 40,  labelKey: 'sim.opt.preset.quick'    },
+          { key: 'standard', pop: 50,  gen: 80,  labelKey: 'sim.opt.preset.standard' },
+          { key: 'fine',     pop: 100, gen: 200, labelKey: 'sim.opt.preset.fine'     },
+        ];
+        const activeKey = PRESETS.find(p => p.pop === optPop && p.gen === optGen)?.key ?? null;
+        const sm = 'calc(var(--lm-font-size, 14px) * 0.7857)';
+        const xs = 'calc(var(--lm-font-size, 14px) * 0.6429)';
+        return (
+          <>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              {PRESETS.map(p => {
+                const active = activeKey === p.key;
+                return (
+                  <button key={p.key} onClick={() => { setOptPop(p.pop); setOptGen(p.gen); }}
+                    style={{ flex: 1, padding: '4px 0', borderRadius: 4, cursor: 'pointer', textAlign: 'center',
+                      border: `1px solid ${active ? c.primary : c.border}`,
+                      background: active ? c.activeBg : 'transparent',
+                      color: active ? c.primary : c.textSec }}>
+                    <div style={{ fontSize: sm, fontWeight: 600 }}>{t(p.labelKey)}</div>
+                    <div style={{ fontSize: xs, color: active ? c.primary : c.textMute, fontFamily: 'monospace' }}>
+                      {p.pop}×{p.gen}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ color: c.textMute, fontSize: sm, width: 28, flexShrink: 0 }}>{t('sim.opt.population')}</span>
+              <Slider style={{ flex: 1, margin: '0 4px' }} min={5} max={200}
+                value={Math.min(localPop, 200)} onChange={v => setLocalPop(v)}
+                onChangeComplete={v => commitPop(v)} tooltip={{ formatter: null }} />
+              <InputNumber size="small" min={1} value={localPop}
+                onChange={v => setLocalPop(v ?? 1)}
+                onBlur={() => commitPop(localPop)}
+                onPressEnter={() => commitPop(localPop)}
+                style={{ width: 56, flexShrink: 0 }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: c.textMute, fontSize: sm, width: 28, flexShrink: 0 }}>{t('sim.opt.generations')}</span>
+              <Slider style={{ flex: 1, margin: '0 4px' }} min={5} max={200}
+                value={Math.min(localGen, 200)} onChange={v => setLocalGen(v)}
+                onChangeComplete={v => commitGen(v)} tooltip={{ formatter: null }} />
+              <InputNumber size="small" min={1} value={localGen}
+                onChange={v => setLocalGen(v ?? 1)}
+                onBlur={() => commitGen(localGen)}
+                onPressEnter={() => commitGen(localGen)}
+                style={{ width: 56, flexShrink: 0 }} />
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 
