@@ -8,8 +8,58 @@ from typing import Dict, List, Any
 from .base import VariableType, Variable, WINDOW_SECONDS, TIME_UNIT_SECONDS
 from .utils import extract_vars_from_expr
 import logging
+import math as _math
+import ast as _ast
 
 logger = logging.getLogger(__name__)
+
+# 公式函数的全局数学环境（作为 exec 的 globals，提供 sin/cos/max 等）
+_FORMULA_GLOBALS: Dict[str, Any] = {
+    '__builtins__': {},
+    'math': _math,
+    'sin': _math.sin, 'cos': _math.cos, 'tan': _math.tan,
+    'asin': _math.asin, 'acos': _math.acos, 'atan': _math.atan, 'atan2': _math.atan2,
+    'exp': _math.exp, 'log': _math.log, 'log10': _math.log10,
+    'sqrt': _math.sqrt, 'pow': pow, 'ceil': _math.ceil, 'floor': _math.floor,
+    'abs': abs, 'max': max, 'min': min, 'round': round,
+    'True': True, 'False': False, 'None': None,
+    'pi': _math.pi, 'e': _math.e,
+}
+
+# 每步由引擎注入的时间/步长符号（不是模型变量，但公式可以引用）
+_STEP_SYMS = frozenset({
+    'step', 'step_size', 'dt', 't', 'time',
+    'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
+})
+
+
+def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
+    """把表达式字符串编译成 Python 函数，返回 (fn, param_names) 或 (None, None)。
+    param_names 是有序的参数名列表，调用时按位置传入当前值。
+    """
+    try:
+        tree = _ast.parse(expr_str, mode='eval')
+    except SyntaxError:
+        return None, None
+
+    # 提取表达式中引用的所有名字
+    all_names = {node.id for node in _ast.walk(tree) if isinstance(node, _ast.Name)}
+
+    # 分成模型变量参数 + 步长符号参数（math 函数在 globals 里，不作参数）
+    var_params = sorted(all_names & model_var_names)
+    step_params = sorted(all_names & _STEP_SYMS)
+    params = var_params + step_params
+
+    param_str = ', '.join(params) if params else ''
+    fn_code = f'def _fn({param_str}): return {expr_str}'
+
+    local_ns: Dict = {}
+    try:
+        exec(fn_code, _FORMULA_GLOBALS, local_ns)
+    except Exception:
+        return None, None
+
+    return local_ns['_fn'], params
 
 class Simulation:
     # Simulation
@@ -101,6 +151,50 @@ class Simulation:
                 acc.running_sum = 0.0
                 acc.window_start_time = self.time + step_size
 
+    def _build_formula_cache(self):
+        """加载后第一次 step() 前调用，把公式表达式转换为真正的 Python 函数。
+        每步直接调用 fn(*args)，变量走 LOAD_FAST 而非字典查找。
+        编译失败时 fn=None，step() 回退到 asteval。
+        """
+        self._sorted_formulas = sorted(
+            self.formulas.items(),
+            key=lambda x: x[1].priority,
+            reverse=True
+        )
+        model_vars = frozenset(self.variables.keys())
+        compiled = {}
+
+        for form_name, formula in self._sorted_formulas:
+            # 条件
+            raw_cond = formula.condition
+            if isinstance(raw_cond, str):
+                cond_fn, cond_params = _compile_expr_to_fn(raw_cond, model_vars)
+            else:
+                cond_fn, cond_params = None, None  # 布尔/None，直接用原值
+
+            # dynamics：每个变量对应一个函数
+            dyn = {}
+            for var_name, expr in formula.dynamics.items():
+                if isinstance(expr, str):
+                    fn, params = _compile_expr_to_fn(expr, model_vars)
+                    dyn[var_name] = (fn, params, expr)   # expr 备用回退
+                else:
+                    dyn[var_name] = (None, None, expr)   # 数值字面量
+
+            # formula 字段
+            raw_f = getattr(formula, 'formula', None)
+            if isinstance(raw_f, str) and raw_f:
+                f_fn, f_params = _compile_expr_to_fn(raw_f, model_vars)
+            else:
+                f_fn, f_params = None, None
+
+            compiled[form_name] = {
+                'cond':    (raw_cond, cond_fn, cond_params),
+                'dyn':     dyn,
+                'formula': (raw_f, f_fn, f_params),
+            }
+        self._formula_cache = compiled
+
     def step(self, step_size: float = 1.0):
         """
         执行单步仿真
@@ -133,62 +227,97 @@ class Simulation:
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
         
-        # 按优先级排序公式
-        sorted_formulas = sorted(self.formulas.items(), key=lambda x: x[1].priority, reverse=True)
-        
-        # 存储公式结果
-        formula_results = {}  # 存储 formula 字段的结果
-        
-        # 执行每个公式
-        for form_name, formula in sorted_formulas:
-            try:
-                # 评估条件
-                condition = formula.condition
-                if isinstance(condition, str):
-                    try:
-                        condition = self.asteval.eval(formula.condition, raise_errors=True)
-                    except Exception as cond_err:
-                        logger.error(f"Error evaluating condition for formula '{form_name}': {formula.condition} -> {cond_err}")
-                        continue # 跳过逻辑错误的公式
-                
-                if condition:
-                    # 处理 dynamics
-                    for var_name, expr in formula.dynamics.items():
-                        try:
-                            new_value = self.asteval.eval(expr, raise_errors=True)
-                            if new_value is None:
-                                logger.warning(f"Formula '{form_name}' evaluated to None for variable '{var_name}' with expression: {expr}")
-                                continue
+        # 第一次调用时把公式编译为函数（只编译一次）
+        if not hasattr(self, '_sorted_formulas'):
+            self._build_formula_cache()
 
-                            if var_name in self.variables:
-                                var = self.variables[var_name]
-                                # 应用边界约束
-                                var.value = max(min(new_value, var.bounds[1] if var.bounds else float('inf')), 
-                                            var.bounds[0] if var.bounds else float('-inf'))
-                                self.asteval.symtable[var_name] = var.value
-                                
-                                # 确保 variable_history 已初始化
-                                if var_name not in self.variable_history:
-                                    self.variable_history[var_name] = []
-                                self.variable_history[var_name].append(var.value)
-                            else:
-                                # 临时变量更新到符号表
-                                self.asteval.symtable[var_name] = new_value
-                                
-                        except Exception as dyn_err:
-                            logger.error(f"Error evaluating dynamics for formula '{form_name}', variable '{var_name}': {expr} -> {dyn_err}")
+        # 每步注入的时间/步长值（供 _get_arg 查询）
+        step_sym_vals = {
+            'step': step_size, 'step_size': step_size, 'dt': step_size,
+            't': self.time / unit_sec, 'time': self.time / unit_sec,
+            'SECOND': 1.0, 'MINUTE': 60.0, 'HOUR': 3600.0, 'DAY': 86400.0,
+            'WEEK': 604800.0, 'MONTH': 2592000.0, 'YEAR': 31536000.0,
+        }
+
+        def _get_arg(name: str) -> float:
+            """按参数名取当前值：优先从模型变量，其次从步长符号。"""
+            v = self.variables.get(name)
+            if v is not None:
+                return v.value
+            return step_sym_vals.get(name, 0.0)
+
+        formula_results = {}
+
+        for form_name, formula in self._sorted_formulas:
+            try:
+                cache = self._formula_cache[form_name]
+
+                # ── 评估条件 ──────────────────────────────────────────────
+                raw_cond, cond_fn, cond_params = cache['cond']
+                if cond_fn is not None:
+                    try:
+                        condition = cond_fn(*[_get_arg(n) for n in cond_params])
+                    except Exception as cond_err:
+                        logger.error(f"Error in condition for '{form_name}': {cond_err}")
+                        continue
+                elif isinstance(raw_cond, str):
+                    # 编译失败，回退 asteval
+                    try:
+                        condition = self.asteval.eval(raw_cond, raise_errors=True)
+                    except Exception as cond_err:
+                        logger.error(f"Error evaluating condition for formula '{form_name}': {raw_cond} -> {cond_err}")
+                        continue
+                else:
+                    condition = raw_cond if raw_cond is not None else True
+
+                if not condition:
+                    continue
+
+                # ── 处理 dynamics ─────────────────────────────────────────
+                for var_name, (fn, params, raw_expr) in cache['dyn'].items():
+                    try:
+                        if fn is not None:
+                            new_value = fn(*[_get_arg(n) for n in params])
+                        elif isinstance(raw_expr, str):
+                            new_value = self.asteval.eval(raw_expr, raise_errors=True)
+                        else:
+                            new_value = raw_expr  # 数值字面量
+
+                        if new_value is None:
+                            logger.warning(f"Formula '{form_name}' evaluated to None for variable '{var_name}'")
                             continue
 
-                    # 处理 formula
-                    if hasattr(formula, 'formula') and formula.formula:
-                        try:
-                            result = self.asteval.eval(formula.formula, raise_errors=True)
-                            formula_results[form_name] = result
-                        except Exception as form_err:
-                            logger.error(f"Error evaluating formula result for '{form_name}': {formula.formula} -> {form_err}")
+                        if var_name in self.variables:
+                            var = self.variables[var_name]
+                            var.value = max(min(new_value,
+                                               var.bounds[1] if var.bounds else float('inf')),
+                                            var.bounds[0] if var.bounds else float('-inf'))
+                            self.asteval.symtable[var_name] = var.value
+                            if var_name not in self.variable_history:
+                                self.variable_history[var_name] = []
+                            self.variable_history[var_name].append(var.value)
+                        else:
+                            self.asteval.symtable[var_name] = new_value
+
+                    except Exception as dyn_err:
+                        logger.error(f"Error evaluating dynamics for formula '{form_name}', variable '{var_name}': {raw_expr} -> {dyn_err}")
+                        continue
+
+                # ── 处理 formula 字段 ─────────────────────────────────────
+                raw_f, f_fn, f_params = cache['formula']
+                if f_fn is not None:
+                    try:
+                        formula_results[form_name] = f_fn(*[_get_arg(n) for n in f_params])
+                    except Exception as form_err:
+                        logger.error(f"Error evaluating formula result for '{form_name}': {form_err}")
+                elif isinstance(raw_f, str) and raw_f:
+                    try:
+                        formula_results[form_name] = self.asteval.eval(raw_f, raise_errors=True)
+                    except Exception as form_err:
+                        logger.error(f"Error evaluating formula result for '{form_name}': {raw_f} -> {form_err}")
+
             except Exception as e:
                 logger.error(f"Unexpected error executing formula '{form_name}': {e}")
-                # 不中断整个仿真，只记录错误
         
         # 新增：执行 post_step 钩子
         for hook in self.hooks.get('post_step', []):
@@ -267,3 +396,5 @@ class Simulation:
         for acc in getattr(self, 'accumulators', {}).values():
             acc.running_sum = 0.0
             acc.window_start_time = 0.0
+
+        # 公式缓存在 reset 时不需要重建（公式本身不变），保留即可
