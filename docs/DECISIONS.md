@@ -1,6 +1,6 @@
 # Sim 决议汇总
 
-> 本文件是 `docs/decisions/` 中 72 条 ADR 的**主题分类摘要**，标注重要程度与对应文档。  
+> 本文件是 `docs/decisions/` 中 61 条 ADR 的**主题分类摘要**，标注重要程度与对应文档。  
 > 完整时序索引见 [decisions/README.md](decisions/README.md)。
 
 **重要程度**：⭐⭐ = 核心约束，影响格式规范或架构，不可随意更改；⭐ = 重要实现决策；无标注 = 已实施，历史记录
@@ -19,8 +19,7 @@
 | [0063](decisions/0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | **Resolved imports 与输出变量选择规则（output_types / output_variables 语义）** | ⭐⭐ | ✅ |
 | [0065](decisions/0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化写法（brief/need/method 等字段） | ⭐ | ✅ |
 | [0057](decisions/0057-2026-05-04_project_models-paper-directory.md) | models/published/paper1-3/ 论文专用场景目录 | ⭐ | ✅ |
-| [0058](decisions/0058-2026-05-04_sim_scan-models-recursive.md) | scan_models 递归发现所有子目录 | ⭐ | ✅ |
-| [0062](decisions/0062-2026-05-06_project_models-directory-rename.md) | models 目录重命名 | | ✅ |
+| [0062](decisions/0062-2026-05-06_project_models-directory-rename.md) | models 目录重命名规范（source/ → in_process/ 等） | | ✅ |
 
 ---
 
@@ -32,9 +31,6 @@
 | [0024](decisions/0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ⭐ | ✅ |
 | [0070](decisions/0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | **asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代** | ⭐⭐ | ✅ |
 | [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | **MC 概率仿真：parameter 分布表达式、多 run 引擎、半透明曲线渲染** | ⭐⭐ | ✅ |
-| [0047](decisions/0047-2026-05-02_sim_后端健康检查与非阻塞修复.md) | 后端健康检查与非阻塞修复 | | ✅ |
-| [0048](decisions/0048-2026-05-02_sim_BabelManager英文Locale警告消除.md) | BabelManager 英文 Locale 警告消除 | | ✅ |
-| [0051](decisions/0051-2026-05-04_sim_inputs初始化修复与模式感知.md) | inputs 初始化修复与模式感知 | ⭐ | ✅ |
 | [0054](decisions/0054-2026-05-04_sim_unified-apply-regimens.md) | **仿真/优化 Regimen 执行函数统一；删除 `_apply_regimen_events`** | ⭐⭐ | ✅ |
 | [0064](decisions/0064-2026-05-07_project-edit-refresh-run-snapshot.md) | **编辑态刷新源文件，运行态固定快照（两种不同的模型加载语义）** | ⭐⭐ | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | **Simulator 拆分；Sim/Opt 结果工作区分离** | ⭐⭐ | ✅（OPT/SIM 分离重构待续）|
@@ -61,9 +57,7 @@
 | [0005](decisions/0005-localstorage-persistence.md) | 客户端状态持久化：localStorage | ⭐ | ✅ |
 | [0012](decisions/0012-neutral-theme-unified-colors.md) | **中性主题 + 双应用色彩 Token 统一** | ⭐⭐ | ✅ |
 | [0013](decisions/0013-relative-font-scale-selector.md) | 相对字号系统 + 字号选择器 | ⭐ | ✅ |
-| [0032](decisions/0032-sim-gui-default-font-size-14.md) | sim_gui 默认字号 14px | ⭐ | ✅ |
 | [0050](decisions/0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | **InputEvent 扁平化；激活/未选中的颜色规则（绿色=激活）** | ⭐⭐ | ✅ |
-| [0059](decisions/0059-2026-05-05_project_navigation-rename.md) | 导航重命名 | | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Sim/Opt Tab 分离与结果工作区 UI | ⭐ | ✅（部分待续）|
 | [0067](decisions/0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化器算法预设与参数滑块 UI | | ✅ |
 | [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
@@ -76,7 +70,6 @@
 
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
-| [0039](decisions/0039-2026-04-22_docs_模块文档重组.md) | docs 重组：modules/ 合并入 design/ | | ✅ |
 | [0041](decisions/0041-2026-04-22_project_命名规范下划线优先.md) | **命名规范：snake_case 下划线优先** | ⭐⭐ | ✅ |
 | [0042](decisions/0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名 | | ✅ |
 | [0055](decisions/0055-2026-05-04_project_docs-go-public-private-split.md) | **docs/ 公开 / go/ 内部不发布 分界规则** | ⭐⭐ | ✅ |
