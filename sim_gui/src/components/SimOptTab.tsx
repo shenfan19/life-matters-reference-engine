@@ -53,7 +53,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   const Section = ({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) => {
     const open = openSections.has(id);
     return (
-      <div style={{ borderBottom: `1px solid ${c.border}` }}>
+      <div style={{ borderRadius: 10, border: `1px solid ${c.border}`, boxShadow: isDarkMode ? '0 1px 5px rgba(0,0,0,0.35)' : '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden', background: c.panel, flexShrink: 0 }}>
         <div onClick={() => toggleSection(id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', background: c.sectionHd, userSelect: 'none' }}>
           <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
           <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{title}</span>
@@ -185,8 +185,8 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="完成后显示推荐解" />;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '8px 12px', borderBottom: `1px solid ${c.border}` }}>{optSummary}</div>
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
+      <div style={{ padding: '6px 4px' }}>{optSummary}</div>
 
       <Section id="front" title="Front" badge={`${optResult?.n_solutions ?? latestHist?.pareto_count ?? 0} 解`}>
         <div style={{ height: 340, overflow: 'hidden' }}>

@@ -1,6 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Button, InputNumber, Select, Slider, Tooltip, Input } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { HolderOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { InputEvent, ModelFile } from '../types';
 import { getC } from '../core/theme';
 
@@ -36,7 +40,7 @@ interface SimSetupTabProps {
 const SimSetupTab: React.FC<SimSetupTabProps> = ({
   inputEvents, addInputEvent, updateInputEvent, removeInputEvent,
   inputVars, mode, selectedModel,
-  openSections, setOpenSections, sectionWeights, setSectionWeights, SECTION_H,
+  openSections, setOpenSections, sectionWeights: _sw, setSectionWeights: _ssw, SECTION_H: _sh,
   objectives, setObjectives, constraints, setConstraints,
   optAlgo, setOptAlgo, optPop, setOptPop, optGen, setOptGen,
   allVarNames, isDarkMode, c, t,
@@ -290,64 +294,93 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
     ...(mode === 'opt' ? [{ key: 'opt', label: t('sim.tabs.optimizer'), content: optContent }] : []),
   ];
 
-  const startSectionResize = (keyA: string, keyB: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const container = panelRef.current;
-    if (!container) return;
-    const allKeys = ['inputs', ...(mode === 'opt' ? ['opt'] : [])];
-    const availableH = container.clientHeight - SECTION_H * allKeys.length;
-    const totalW = allKeys.filter(k => openSections.has(k)).reduce((s, k) => s + (sectionWeights[k] || 1), 0);
-    const pxPerW = availableH / totalW;
-    const wA = sectionWeights[keyA] || 1;
-    const wB = sectionWeights[keyB] || 1;
-    const combined = wA + wB;
-    const onMove = (ev: MouseEvent) => {
-      const dw = (ev.clientY - startY) / pxPerW;
-      const nA = Math.max(0.15, wA + dw);
-      const nB = Math.max(0.15, combined - nA);
-      setSectionWeights(p => ({ ...p, [keyA]: nA, [keyB]: nB }));
-    };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+  const tabKeys = tabs.map(t2 => t2.key);
+  const [tabOrder, setTabOrder] = useState<string[]>(tabKeys);
+  useEffect(() => { setTabOrder(tabKeys); }, [mode]);
+
+  const orderedTabs = tabOrder
+    .filter(k => tabKeys.includes(k))
+    .map(k => tabs.find(t2 => t2.key === k)!);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setTabOrder(prev => {
+        const oldIdx = prev.indexOf(String(active.id));
+        const newIdx = prev.indexOf(String(over.id));
+        return arrayMove(prev, oldIdx, newIdx);
+      });
+    }
   };
 
   return (
-    <div ref={panelRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {tabs.map((tab, idx) => {
-        const isOpen = openSections.has(tab.key);
-        const nextOpenTab = tabs.slice(idx + 1).find(t2 => openSections.has(t2.key));
-        const showDragHandle = isOpen && !!nextOpenTab;
-        return (
-          <React.Fragment key={tab.key}>
-            <div style={{ flex: isOpen ? String(sectionWeights[tab.key] || 1) : '0 0 auto', minHeight: SECTION_H, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: `1px solid ${c.border}` }}>
-              <div
-                onClick={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(tab.key)) n.delete(tab.key); else n.add(tab.key); return n; })}
-                style={{ height: SECTION_H, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', cursor: 'pointer', background: c.sectionHd, userSelect: 'none' }}
-              >
-                <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
-                <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{tab.label}</span>
-              </div>
-              {isOpen && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-                  {tab.content}
-                </div>
-              )}
-            </div>
-            {showDragHandle && (
-              <div
-                onMouseDown={startSectionResize(tab.key, nextOpenTab!.key)}
-                style={{ height: 4, flexShrink: 0, cursor: 'row-resize', background: 'transparent', transition: 'background 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={orderedTabs.map(t2 => t2.key)} strategy={verticalListSortingStrategy}>
+        <div ref={panelRef} style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {orderedTabs.map(tab => (
+            <SortableCard
+              key={tab.key}
+              id={tab.key}
+              label={tab.label}
+              isOpen={openSections.has(tab.key)}
+              onToggle={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(tab.key)) n.delete(tab.key); else n.add(tab.key); return n; })}
+              c={c}
+              isDarkMode={isDarkMode}
+            >
+              {tab.content}
+            </SortableCard>
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 };
+
+function SortableCard({ id, label, isOpen, onToggle, c, isDarkMode, children }: {
+  id: string; label: string; isOpen: boolean; onToggle: () => void;
+  c: ReturnType<typeof getC>; isDarkMode: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        borderRadius: 10,
+        border: `1px solid ${c.border}`,
+        boxShadow: isDarkMode ? '0 1px 5px rgba(0,0,0,0.35)' : '0 1px 4px rgba(0,0,0,0.08)',
+        overflow: 'hidden',
+        background: c.panel,
+        flexShrink: 0,
+      }}
+    >
+      <div
+        onClick={onToggle}
+        style={{ height: 32, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', cursor: 'pointer', background: c.sectionHd, userSelect: 'none' }}
+      >
+        <span
+          {...attributes}
+          {...listeners}
+          onClick={e => e.stopPropagation()}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', color: c.textMute, display: 'flex', alignItems: 'center', padding: '0 2px' }}
+        >
+          <HolderOutlined style={{ fontSize: 13 }} />
+        </span>
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+        <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{label}</span>
+      </div>
+      {isOpen && (
+        <div style={{ padding: '8px 12px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default SimSetupTab;

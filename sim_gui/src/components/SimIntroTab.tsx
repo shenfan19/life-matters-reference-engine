@@ -53,7 +53,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   const Section = ({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) => {
     const open = introOpen.has(id);
     return (
-      <div style={{ borderBottom: `1px solid ${c.border}` }}>
+      <div style={{ borderRadius: 10, border: `1px solid ${c.border}`, boxShadow: isDarkMode ? '0 1px 5px rgba(0,0,0,0.35)' : '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden', background: c.panel, flexShrink: 0 }}>
         <div onClick={() => toggleIntro(id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', background: c.sectionHd, userSelect: 'none' }}>
           <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
           <span style={{ flex: 1, fontWeight: 600, color: c.text, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{title}</span>
@@ -67,7 +67,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   const varTypeBadge = (type: string) => ({ state: '状态', input: '输入', parameter: '参数', evidence: '证据' })[type] || type || '—';
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
 
       <Section id="meta" title="Description" badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}>
         {descSections.length > 0

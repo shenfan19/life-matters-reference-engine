@@ -1038,16 +1038,25 @@ Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `models/sour
 
 这避免模型间耦合，符合单一职责原则。
 
-### 表达式求值方案
+### 表达式求值架构（⭐⭐ 核心约束）
 
-| 场景 | 推荐方案 | 原因 |
-|------|---------|------|
-| 表达式简单、来源可信 | `numexpr` | 最快，C 后端 |
-| 需要函数调用或动态变量 | `asteval` | 最灵活，支持 Python 语法子集 |
-| 简单条件分支 | `asteval` 三元表达式 | 直接解析 `x if cond else y` |
-| 复杂分支（性能优先） | 分步条件 + `numexpr` | 预先分组执行 |
+**asteval 是公式表达式的安全沙箱层，不可用 Python 原生 `eval()` 直接替代。**
 
-> 当前系统使用 `asteval`，可按需逐步切换，保持向后兼容。
+YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提供：
+- 无访问文件系统、网络、`__import__` 等危险操作的隔离执行环境
+- 内置数学函数（`sin`/`cos`/`max`/`min` 等）的安全版本
+- 语法错误的可控捕获，不会导致整个引擎崩溃
+
+#### 运行时分层
+
+| 层 | 工具 | 职责 |
+|----|------|------|
+| **验证层**（加载时） | `asteval` | 解析 + 语法检查；检测未定义变量 |
+| **编译层**（首次 step 前） | `ast.parse` + `exec` | 将表达式转为 Python 函数（`_build_formula_cache`） |
+| **执行层**（每步） | 原生 Python 函数调用 | `fn(*args)`，变量走 LOAD_FAST |
+| **回退层**（编译失败时） | `asteval.eval()` | 不中断仿真，保持兼容性 |
+
+**禁止**：用 `eval(expr, symtable)` 或 `eval(compile(expr, ...), globals)` 直接替代 `asteval.eval()`，即使表达式已来自 YAML。asteval 在验证层和回退层不可绕过，见 ADR 0024、ADR 0068、ADR 0070。
 
 ### 变量命名冲突处理
 
@@ -1092,9 +1101,18 @@ def resolve_evidence(model):
 
 推荐字段名见 `model_design.md`，但 Loader 和 Simulator 不依赖这些推荐字段；新增字段会按 key 自动生成英文标签。
 
-### AST 预编译
+### 公式预编译为 Python 函数（ADR 0068）
 
-加载期将 `dynamics` 表达式文本转为 `asteval` 安全语法树节点，加速仿真主循环的每步求值，避免重复解析字符串。
+模型加载后首次调用 `step()` 时，`_build_formula_cache()` 对每条公式执行一次预编译：
+
+1. `ast.parse()` 提取表达式引用的变量名（模型变量 + 步长符号）
+2. `exec()` 在隔离命名空间中生成具名参数函数：
+   ```python
+   def _fn(blood_glucose, uptake, utilization, step): return blood_glucose + (uptake - utilization) * step
+   ```
+3. 缓存 `(fn, [param_names])` 和排好序的公式列表
+
+每步调用 `fn(*[_get_arg(n) for n in params])`，变量通过位置参数传入，Python 内部走 `LOAD_FAST`，无字典查找开销。编译失败时回退到 `asteval.eval()`。
 
 ---
 
@@ -1142,14 +1160,20 @@ GET /api/validate?model=stories/marie_curie
 
 校验未通过时显示报告并阻止进入仿真，避免产生误导性结果。
 
-### CLI 接口
+### 接口层约束（⭐⭐ 核心约束）
 
-```bash
-python sim_engine/src/optimizer_cli.py \
-  --file stories/marie_curie/story \
-  --target max_qol \
-  --method nsga2
+**LM 的正式用户接口是 GUI（`sim_gui/`）。CLI 不是正式接口，不接受新功能，不修复 bug。**
+
 ```
+用户 → sim_gui（React）→ HTTP API（api_server.py）→ 引擎层（Python）
+```
+
+- **不新增 CLI 功能**：所有功能只在 GUI 实现
+- **不把 CLI 作为测试入口**：测试直接 import 引擎层函数
+- **批量/自动化场景**：通过 HTTP API，不经 CLI 解析层
+- `optimizer_cli.py` 等文件暂留供内部调试，不随代码发布，不在文档中介绍
+
+背景与决策理由见 ADR 0072。
 
 ### 中间结果暂存（models/temp/）
 
