@@ -444,3 +444,77 @@ accumulators:
 完整 L3 细分见 `docs/decisions/0022-models-three-level-taxonomy.md`。
 
 `standalone: true`（或省略）= 可独立运行；`standalone: false` = 库组件，需被 import。
+
+---
+
+## optimizer.results — 优化结果内嵌格式
+
+优化完成后，结果写回 `optimizer.results` 块，与配置并列存于同一 YAML 文件。
+这意味着**发布模型即发布结果**；有结果的模型下次运行时自动热启动（warm-start）。
+
+### 完整结构
+
+```yaml
+optimizer:
+  method: nsga2
+  objectives: [...]
+  regimen: {...}
+  algorithm: {...}
+
+  results:                          # ← 优化完成后由 GUI 写入，无需手动填写
+    generated_at: "YYYY-MM-DD"     # 生成日期（ISO 8601 日期部分）
+    method: nsga2                  # 使用的算法
+    n_solutions: 8                 # Pareto 前沿解的数量
+    elapsed_seconds: 87.3          # 本次运行耗时（秒）
+    pareto_front:                  # 所有非支配解（flow-style，每行一个解）
+      - {x: [0.30, 0.29, 0.30], f: [65.8, 47.1]}
+      - {x: [0.35, 0.33, 0.34], f: [66.9, 44.8]}
+    best:                          # 推荐解（Pareto 前沿中的平衡点）
+      x: [0.30, 0.29, 0.30]       # 决策变量值（与 regimen.events 顺序对应）
+      f: [65.8, 47.1]             # 目标函数值（与 objectives 顺序对应）
+      regimen:                    # 人类可读的方案（变量名 → 时间标签 → 值）
+        dietary_protein:
+          "早餐蛋白质": 0.30
+          "午餐蛋白质": 0.29
+          "晚餐蛋白质": 0.30
+      objectives:                 # 人类可读的目标结果
+        muscle_mass: 65.8
+        GFR: 47.1
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `generated_at` | 日期字符串 | 写入日期，用于判断结果是否过期 |
+| `method` | string | 算法名（nsga2 / l-bfgs-b / nelder-mead） |
+| `n_solutions` | int | Pareto 前沿解的数量 |
+| `elapsed_seconds` | float | 本次运行耗时 |
+| `pareto_front` | list | 所有非支配解，每个元素为 `{x: [...], f: [...]}` |
+| `best.x` | list | 推荐解的决策变量值 |
+| `best.f` | list | 推荐解的目标值 |
+| `best.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}） |
+| `best.objectives` | dict | 人类可读的目标结果（变量名: 值） |
+
+### 设计原则
+
+- **`results` 整体覆写**：每次保存时用新前沿完整替换旧 `results`，不保留历史；Pareto 前沿只会随搜索改善或持平，不会退化。
+- **格式统一**：`pareto_front` 使用 YAML flow-style（`{x: [...], f: [...]}` 单行），50 个解 = 50 行，不破坏模型可读性。
+- **热启动（warm-start）**：加载有 `results` 的模型时，GUI 自动将 `pareto_front` 中的 `x` 向量作为 NSGA-II 的初始种群，继续搜索。
+- **发布即结果**：建模者运行优化、保存模型、上传 YAML，接收者打开即看到 Pareto 前沿；`results` 可独立阅读，不需要额外后处理工具。
+- **无结果也合法**：`optimizer.results` 是可选块；没有该字段的模型正常运行，从随机初始种群开始搜索。
+
+### 工作流
+
+```
+建模者                          GUI                          模型文件
+  │                              │                              │
+  │── 打开含 results 的模型 ──>  │ 显示历史 Pareto 前沿          │
+  │                              │ 工具栏：● 模型含有历史结果     │
+  │── 点击"运行优化" ──────────> │ warm-start（历史解为初始种群）  │
+  │                              │ 继续进化 n 代                │
+  │── 点击"保存结果到模型" ────> │ POST /api/optimizer/write-results
+  │                              │──────────────────────────>  │ optimizer.results 覆写
+  │── 点击"下载模型" ──────────> │ GET /api/file-raw/{path}     │
+  │   接收 .yaml 文件             │                              │
+```

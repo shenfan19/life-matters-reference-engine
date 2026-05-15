@@ -61,6 +61,7 @@
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Sim/Opt Tab 分离与结果工作区 UI | ⭐ | ✅（部分待续）|
 | [0067](decisions/0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化器算法预设与参数滑块 UI | | ✅ |
 | [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
+| [0069](decisions/0069-2026-05-16_sim_optimizer-results-stateless-design.md) | **optimizer.results 内嵌 + 无状态服务 + warm-start + CSV 导出** | ⭐⭐ | ✅ |
 | [0071](decisions/0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | **全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序** | ⭐ | ✅ |
 
 ---
