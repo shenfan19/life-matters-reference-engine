@@ -124,14 +124,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Error initializing simulation: {e}")
         simulator_engine = None
 
-    # 初始化运行历史存储
-    try:
-        from src import run_store
-        run_store.init(PROJECT_ROOT)
-        logger.info(f"✅ Run store initialized at {PROJECT_ROOT / 'runs'}")
-    except Exception as e:
-        logger.error(f"❌ Error initializing run store: {e}")
-
     logger.info("=" * 60)
     logger.info("Backend initialization complete")
     logger.info("=" * 60)
@@ -1558,98 +1550,6 @@ async def convert_scenario(request: ConvertRequest):
         "player_cards": len(player_cards),
         "message":      f"生成完成：{len(env_cards)} 张环境牌，{len(player_cards)} 张玩家牌",
     }
-
-
-# ========== Run History 端点 ==========
-
-class SaveRunRequest(BaseModel):
-    type: str                                    # "sim" | "opt"
-    model_name: str
-    model_key: str = ''
-    label: str = ''
-    status: str = 'completed'
-    sim_config: Optional[Dict[str, Any]] = None
-    sim_result: Optional[Dict[str, Any]] = None
-    sim_result_summary: Optional[Dict[str, Any]] = None
-    opt_config: Optional[Dict[str, Any]] = None
-    opt_result: Optional[Dict[str, Any]] = None
-    opt_result_summary: Optional[Dict[str, Any]] = None
-
-
-class PatchRunRequest(BaseModel):
-    label: Optional[str] = None
-    status: Optional[str] = None
-
-
-@app.get("/api/runs")
-async def list_runs():
-    """返回所有运行历史的元数据列表（不含大数组）。"""
-    try:
-        from src import run_store
-        return {'success': True, 'runs': run_store.list_runs()}
-    except Exception as e:
-        logger.error(f"list_runs error: {e}")
-        return {'success': False, 'runs': [], 'error': str(e)}
-
-
-@app.get("/api/runs/{run_id}")
-async def get_run(run_id: str):
-    """返回单条运行的完整数据（含仿真数组）。"""
-    try:
-        from src import run_store
-        run = run_store.get_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail="Run not found")
-        return {'success': True, 'run': run}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"get_run error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/runs/save")
-async def save_run(request: SaveRunRequest):
-    """前端调用，将一条完整运行记录持久化到磁盘。"""
-    try:
-        from src import run_store
-        data = request.dict(exclude_none=True)
-        run_id = run_store.save_run(data)
-        return {'success': True, 'run_id': run_id}
-    except Exception as e:
-        logger.error(f"save_run error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/api/runs/{run_id}")
-async def delete_run(run_id: str):
-    """删除一条运行历史记录。"""
-    try:
-        from src import run_store
-        if not run_store.delete_run(run_id):
-            raise HTTPException(status_code=404, detail="Run not found")
-        return {'success': True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"delete_run error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.patch("/api/runs/{run_id}")
-async def patch_run(run_id: str, request: PatchRunRequest):
-    """更新运行的 label 或 status 字段（轻量更新）。"""
-    try:
-        from src import run_store
-        patch = {k: v for k, v in request.dict().items() if v is not None}
-        if not run_store.patch_run(run_id, patch):
-            raise HTTPException(status_code=404, detail="Run not found")
-        return {'success': True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"patch_run error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # 运行服务器
