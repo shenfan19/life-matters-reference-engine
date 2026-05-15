@@ -273,10 +273,22 @@ def run_optimizer(simulator_engine, model_name: str,
         G_mean = (G_accum / mc_runs).tolist() if n_con else []
         return F_mean, G_mean
 
+    # ── warm-start: seed population from existing results ─────────────────────
+    # Reads optimizer.results.pareto_front from the YAML (or from optimizer_override)
+    warm_front = []
+    existing_results = opt_block.get('results') or {}
+    if isinstance(existing_results, dict):
+        warm_front = existing_results.get('pareto_front', [])
+    # Override from GUI (GUI can explicitly pass warm_start=[{x:[...]}, ...])
+    if optimizer_override and 'warm_start' in optimizer_override:
+        warm_front = optimizer_override['warm_start']
+    warm_x = [p['x'] for p in warm_front if isinstance(p, dict) and 'x' in p]
+
     # ── run optimizer ─────────────────────────────────────────────────────────
     if n_obj >= 2 or method_raw in ('nsga2', 'nsga-ii', 'moea/d'):
         result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
-                            pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
+                            pop_size, n_gen, seed, objectives,
+                            progress_callback=progress_callback, warm_x=warm_x)
     elif method_raw in ('l-bfgs-b', 'l_bfgs_b'):
         result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, method='L-BFGS-B',
                             progress_callback=progress_callback)
@@ -297,7 +309,7 @@ def run_optimizer(simulator_engine, model_name: str,
 # ── NSGA-II ────────────────────────────────────────────────────────────────────
 
 def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, objectives,
-               progress_callback=None):
+               progress_callback=None, warm_x=None):
     try:
         from pymoo.algorithms.moo.nsga2 import NSGA2
         from pymoo.core.problem import Problem
@@ -363,8 +375,22 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
 
         _cb = _ProgressCb() if progress_callback else None
 
+        # Build initial population: warm-start from previous results if available
+        sampling = None
+        if warm_x:
+            rng = np.random.default_rng(seed)
+            warm = np.array(warm_x, dtype=float)
+            warm = np.clip(warm, xl, xu)
+            n_warm = len(warm)
+            if n_warm >= pop_size:
+                sampling = warm[:pop_size]
+            else:
+                n_fill = pop_size - n_warm
+                fill = xl + rng.random((n_fill, len(xl))) * (xu - xl)
+                sampling = np.vstack([warm, fill])
+
         problem = LMProblem()
-        algo = NSGA2(pop_size=pop_size)
+        algo = NSGA2(pop_size=pop_size) if sampling is None else NSGA2(pop_size=pop_size, sampling=sampling)
         termination = get_termination("n_gen", n_gen)
         res = pymoo_minimize(problem, algo, termination, seed=seed, verbose=False, callback=_cb)
 

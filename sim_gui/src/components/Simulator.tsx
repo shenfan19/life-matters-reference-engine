@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Select, Tooltip } from 'antd';
-import { PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
@@ -739,12 +739,58 @@ const Simulator: React.FC<SimulatorProps> = ({
     } catch (e: any) { message.error(e.message); }
   };
 
+  // ── export CSV ────────────────────────────────────────────────────────────────
+  const exportSimCSV = () => {
+    if (!simulationData.length) return;
+    const keys = Object.keys(simulationData[0]);
+    const rows = simulationData.map(row => keys.map(k => (row as any)[k]).join(','));
+    const csv = [keys.join(','), ...rows].join('\n');
+    const modelName = selectedModel?.content?.metadata?.name || 'sim';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
+    a.click();
+  };
+
   const pauseSimulation = () => { isRunningRef.current = false; set('status', 'paused'); };
   const resumeSimulation = () => { if (!sessionId) return; isRunningRef.current = true; set('status', 'running'); runBatch(sessionId); };
   const resetSimulation = () => {
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+  };
+
+  // ── opt results: save back to model YAML + download ───────────────────────────
+  const saveOptResults = async (results: any): Promise<boolean> => {
+    if (!selectedModel?.key) return false;
+    // Strip the leading "models/" that the tree key may include
+    const modelKey = selectedModel.key.replace(/^models\//, '');
+    try {
+      const r = await fetch(`${API_BASE}/optimizer/write-results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_key: modelKey, results }),
+      });
+      const d = await r.json();
+      return !!d.success;
+    } catch {
+      return false;
+    }
+  };
+
+  const downloadModelYAML = async () => {
+    if (!selectedModel?.key) return;
+    const modelKey = selectedModel.key.replace(/^models\//, '');
+    try {
+      const r = await fetch(`${API_BASE}/file-raw/${modelKey}`);
+      const d = await r.json();
+      if (!d.success || !d.text) return;
+      const name = selectedModel.content?.metadata?.name || modelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'model';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([d.text], { type: 'text/yaml' }));
+      a.download = `${name}.yaml`;
+      a.click();
+    } catch {}
   };
 
   const startOptimization = async () => {
@@ -768,7 +814,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const firstVar = optimizeEvents[0].variable;
     const varEvents = optimizeEvents.filter(ev => ev.variable === firstVar);
 
-    const optimizerOverride = {
+    const optimizerOverride: Record<string, any> = {
       regimen: {
         variable: firstVar,
         events: varEvents.map(ev => ({
@@ -797,6 +843,12 @@ const Simulator: React.FC<SimulatorProps> = ({
         seed: 42,
       },
     };
+
+    // Warm-start: if model already has results, seed the population with previous Pareto front
+    const existingFront = selectedModel.content?.optimizer?.results?.pareto_front;
+    if (Array.isArray(existingFront) && existingFront.length > 0) {
+      optimizerOverride.warm_start = existingFront;
+    }
 
     try {
       const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
@@ -976,6 +1028,13 @@ const Simulator: React.FC<SimulatorProps> = ({
             disabled={status === 'running'}
           />
         </div>
+      </Tooltip>
+      <Tooltip title="导出仿真结果为 CSV">
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={exportSimCSV}
+          disabled={!simulationData.length}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >CSV</Button>
       </Tooltip>
     </div>
   );
@@ -1159,6 +1218,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                   setInputEvents={setInputEvents}
                   setMode={setMode}
                   setCenterTab={switchCenterTab}
+                  onSaveResults={saveOptResults}
+                  onDownloadModel={downloadModelYAML}
+                  hasExistingResults={!!(selectedModel?.content?.optimizer?.results?.pareto_front?.length)}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}
