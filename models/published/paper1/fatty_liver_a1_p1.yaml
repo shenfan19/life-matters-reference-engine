@@ -148,3 +148,17 @@ optimizer:
     population_size: 80
     n_generations: 150
     seed: 42
+  results:
+    generated_at: "2026-05-16"
+    method: nsga2
+    n_solutions: 1
+    elapsed_seconds: 124.7
+    pareto_front:
+      - {x: [7.8, 3.2], f: [19.4]}
+    best:
+      x: [7.8, 3.2]
+      f: [19.4]
+      regimen:
+        exercise_intensity: {"07:00 (Mon/Wed/Fri)": 7.8, "07:00 (Tue/Thu/Sat/Sun)": 3.2}
+      objectives:
+        liver_fat_pct: 19.4
