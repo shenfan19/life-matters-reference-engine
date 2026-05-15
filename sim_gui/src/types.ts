@@ -156,42 +156,6 @@ export interface InputEvent {
   valueBounds: [number, number];
 }
 
-// ── Run history types ──────────────────────────────────────────────────────────
-
-export interface RunMeta {
-  id: string;
-  type: 'sim' | 'opt';
-  model_name: string;
-  model_key: string;
-  created_at: string;   // ISO 8601
-  status: string;       // 'completed' | 'interrupted'
-  label: string;
-  sim_result_summary?: { n_points: number; n_runs: number; output_vars: string[] };
-  opt_result_summary?: { n_solutions: number; method: string; elapsed: number };
-  // sim_config is also present in meta (no large arrays)
-  sim_config?: {
-    start_date: string; end_date: string;
-    step_value: number; step_unit: StepUnit;
-    sim_runs: number; session_seed: number;
-    input_events: InputEvent[];
-  };
-  opt_config?: {
-    input_events: InputEvent[];
-    objectives: Array<{ variable: string; direction: 'minimize' | 'maximize' }>;
-    constraints: Array<{ variable: string; op: '≤' | '≥'; value: number }>;
-    optimizer_override: any;
-  };
-}
-
-export interface RunRecord extends RunMeta {
-  sim_result?: {
-    data: SimulationDataPoint[];
-    data_per_run: SimulationDataPoint[][];
-    output_vars: string[];
-  };
-  opt_result?: any;   // same shape as optResult state in Simulator
-}
-
 export interface OptimizerProps {
     selectedModel: ModelFile | null;
     state: OptimizerState;

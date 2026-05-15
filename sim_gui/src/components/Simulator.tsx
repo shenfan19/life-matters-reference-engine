@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Select, Tooltip } from 'antd';
-import { HistoryOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, RunRecord } from '../types';
+import { PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
@@ -14,7 +14,6 @@ import SimIntroTab from './SimIntroTab';
 import SimPlotTab from './SimPlotTab';
 import SimOptTab from './SimOptTab';
 import SimReportTab from './SimReportTab';
-import SimRunHistory from './SimRunHistory';
 
 function useResize(initial: number, min = 150, max = 700, direction: 'right' | 'left' = 'right') {
   const [width, setWidth] = useState(initial);
@@ -109,13 +108,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optJobId, setOptJobId] = useState<string | null>(null);
   const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [optMethod, setOptMethod] = useState('');
-  const lastOptimizerOverrideRef = useRef<any>(null);  // saved when opt starts, for history save
-
-  // ── run history panel ─────────────────────────────────────────────────────────
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [simSaved, setSimSaved] = useState(false);   // 显示"已保存"标记
-  const [optSaved, setOptSaved] = useState(false);
-
   const switchCenterTab = (tab: string) => {
     if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
       setCenterTab('simulation');
@@ -719,11 +711,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (res.data.completed) {
             set('status', 'completed'); isRunningRef.current = false;
             message.success(t('sim.msg.sim_complete'));
-            // 自动存档：读取最终 state 并保存
-            setState(prev => {
-              saveSimRun(prev.simulationData, prev.dataPerRun, runOutputVars);
-              return prev;
-            });
           } else setTimeout(loop, updateInterval);
         } else {
           message.error(res.error || t('sim.msg.start_failed'));
@@ -760,121 +747,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
   };
 
-  // ── run history: save & load ───────────────────────────────────────────────────
-
-  const saveSimRun = async (finalData: SimulationDataPoint[], finalPerRun: SimulationDataPoint[][], finalOutputVars: string[]) => {
-    if (!selectedModel) return;
-    const modelName = selectedModel.content?.metadata?.name || selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'unknown';
-    try {
-      await fetch(`${API_BASE}/runs/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'sim',
-          model_name: modelName,
-          model_key: selectedModel.key,
-          status: 'completed',
-          sim_config: {
-            start_date: simStartDate,
-            end_date: simEndDate,
-            step_value: stepValue,
-            step_unit: stepUnit,
-            sim_runs: simRuns,
-            session_seed: sessionSeed,
-            input_events: inputEvents,
-          },
-          sim_result: {
-            data: finalData,
-            data_per_run: finalPerRun,
-            output_vars: finalOutputVars,
-          },
-          sim_result_summary: {
-            n_points: finalData.length,
-            n_runs: simRuns,
-            output_vars: finalOutputVars,
-          },
-        }),
-      });
-      setSimSaved(true);
-      setTimeout(() => setSimSaved(false), 4000);
-    } catch {
-      // 静默失败，不打断用户体验
-    }
-  };
-
-  const saveOptRun = async (result: any, elapsed: number) => {
-    if (!selectedModel) return;
-    const modelName = selectedModel.content?.metadata?.name || selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'unknown';
-    try {
-      await fetch(`${API_BASE}/runs/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'opt',
-          model_name: modelName,
-          model_key: selectedModel.key,
-          status: 'completed',
-          opt_config: {
-            input_events: inputEvents,
-            objectives,
-            constraints,
-            optimizer_override: lastOptimizerOverrideRef.current,
-          },
-          opt_result: result,
-          opt_result_summary: {
-            n_solutions: result?.n_solutions ?? 0,
-            method: result?.method ?? '',
-            elapsed,
-          },
-        }),
-      });
-      setOptSaved(true);
-      setTimeout(() => setOptSaved(false), 4000);
-    } catch {
-      // 静默失败
-    }
-  };
-
-  const loadHistoryRun = (run: RunRecord) => {
-    if (run.type === 'sim' && run.sim_result) {
-      const r = run.sim_result;
-      const cfg = run.sim_config;
-      setState(prev => ({
-        ...prev,
-        simulationData: r.data || [],
-        dataPerRun: r.data_per_run || [],
-        status: 'completed',
-        progress: 100,
-        currentStep: r.data.length,
-        totalSteps: r.data.length,
-        sessionId: '',
-        ...(cfg?.start_date && { simStartDate: cfg.start_date }),
-        ...(cfg?.end_date   && { simEndDate:   cfg.end_date   }),
-        ...(cfg?.step_value  != null && { stepValue: cfg.step_value }),
-        ...(cfg?.step_unit   && { stepUnit:  cfg.step_unit  }),
-        ...(cfg?.sim_runs    != null && { simRuns: cfg.sim_runs }),
-        ...(cfg?.session_seed != null && { sessionSeed: cfg.session_seed }),
-      }));
-      if (r.output_vars?.length) setRunOutputVars(r.output_vars);
-      setCenterTab('simulation');
-      message.success(`已加载仿真历史：${run.model_name}`);
-    } else if (run.type === 'opt' && run.opt_result) {
-      setOptResult(run.opt_result);
-      setOptHistory([]);
-      setOptLogs([]);
-      setOptCurGen(0);
-      setOptTotalGen(0);
-      setOptElapsed(run.opt_result_summary?.elapsed ?? 0);
-      setOptMethod(run.opt_result?.method ?? '');
-      setOptRunning(false);
-      if (run.opt_config?.objectives?.length) setObjectives(run.opt_config.objectives);
-      if (run.opt_config?.constraints?.length) setConstraints(run.opt_config.constraints);
-      if (run.opt_config?.input_events?.length) setInputEvents(run.opt_config.input_events);
-      setCenterTab('optimization');
-      message.success(`已加载优化历史：${run.model_name}`);
-    }
-  };
-
   const startOptimization = async () => {
     if (!selectedModel) return;
     setCenterTab('optimization');
@@ -892,12 +764,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
     setOptHistory([]); setOptElapsed(0); setOptMethod('');
     setOptTotalGen(totalGen); setOptJobId(null);
-    lastOptimizerOverrideRef.current = null;  // reset, will be set below
 
     const firstVar = optimizeEvents[0].variable;
     const varEvents = optimizeEvents.filter(ev => ev.variable === firstVar);
 
-    const optimizerOverride: any = {
+    const optimizerOverride = {
       regimen: {
         variable: firstVar,
         events: varEvents.map(ev => ({
@@ -926,8 +797,6 @@ const Simulator: React.FC<SimulatorProps> = ({
         seed: 42,
       },
     };
-
-    lastOptimizerOverrideRef.current = optimizerOverride;
 
     try {
       const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
@@ -966,7 +835,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             setOptResult(sd.result);
             setCenterTab('optimization');
             message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
-            saveOptRun(sd.result, sd.elapsed ?? 0);
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false);
@@ -1109,19 +977,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           />
         </div>
       </Tooltip>
-      <div style={{ flex: 1 }} />
-      {simSaved && (
-        <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', whiteSpace: 'nowrap' }}>
-          ✓ 已保存
-        </span>
-      )}
-      <Button
-        size="small" icon={<HistoryOutlined />}
-        onClick={() => setHistoryOpen(true)}
-        style={{ whiteSpace: 'nowrap', color: c.textSec }}
-      >
-        历史记录
-      </Button>
     </div>
   );
 
@@ -1139,19 +994,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
         {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : '设置目标、约束和范围后运行优化'}
       </span>
-      <div style={{ flex: 1 }} />
-      {optSaved && (
-        <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', whiteSpace: 'nowrap' }}>
-          ✓ 已保存
-        </span>
-      )}
-      <Button
-        size="small" icon={<HistoryOutlined />}
-        onClick={() => setHistoryOpen(true)}
-        style={{ whiteSpace: 'nowrap', color: c.textSec }}
-      >
-        历史记录
-      </Button>
     </div>
   );
 
@@ -1344,12 +1186,6 @@ const Simulator: React.FC<SimulatorProps> = ({
         </div>
       </div>
 
-      <SimRunHistory
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        isDarkMode={isDarkMode}
-        onLoadRun={loadHistoryRun}
-      />
     </div>
   );
 };
