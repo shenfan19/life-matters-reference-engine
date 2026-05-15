@@ -1344,6 +1344,49 @@ async def get_optimizer_status(job_id: str):
     }
 
 
+class WriteOptResultsRequest(BaseModel):
+    model_key: str          # path relative to models/, e.g. "published/paper2/foo.yaml"
+    results: Dict[str, Any] # the optimizer.results block to write
+
+
+@app.post("/api/optimizer/write-results")
+async def write_opt_results(request: WriteOptResultsRequest):
+    """Write optimizer.results back into the model YAML file.
+    Called by the frontend after opt completes; the model file becomes the
+    persistent record of the best Pareto front found so far.
+    """
+    try:
+        models_root = PROJECT_ROOT / "models"
+        target = models_root / request.model_key.lstrip('/')
+        if not str(target.resolve()).startswith(str(models_root.resolve())):
+            raise HTTPException(status_code=400, detail="Path outside models/")
+        if not target.exists():
+            raise HTTPException(status_code=404, detail=f"Model file not found: {request.model_key}")
+
+        with open(target, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+
+        if 'optimizer' not in data or not isinstance(data['optimizer'], dict):
+            raise HTTPException(status_code=400, detail="Model has no optimizer: block")
+
+        data['optimizer']['results'] = request.results
+
+        with open(target, 'w', encoding='utf-8') as f:
+            yaml.dump(data, f, allow_unicode=True, default_flow_style=False,
+                      sort_keys=False, indent=2)
+
+        if loader_engine:
+            loader_engine.models_cache.clear()
+
+        logger.info(f"optimizer.results written to {target}")
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"write_opt_results error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/api/optimizer/job/{job_id}")
 async def cancel_optimizer_job(job_id: str):
     """标记优化任务为已取消"""

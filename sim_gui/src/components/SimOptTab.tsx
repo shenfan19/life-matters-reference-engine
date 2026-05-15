@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Empty } from 'antd';
+import { Button, Empty, message, Tooltip } from 'antd';
+import { CloudUploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import type { InputEvent } from '../types';
 import ParetoChart from './ParetoChart';
@@ -23,13 +24,18 @@ interface SimOptTabProps {
   setInputEvents: React.Dispatch<React.SetStateAction<InputEvent[]>>;
   setMode: (m: 'sim' | 'opt') => void;
   setCenterTab: (tab: string) => void;
+  onSaveResults: (results: any) => Promise<boolean>;
+  onDownloadModel: () => void;
+  hasExistingResults: boolean;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
   setInputEvents, setMode, setCenterTab,
+  onSaveResults, onDownloadModel, hasExistingResults,
 }) => {
+  const [saving, setSaving] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
 
@@ -145,6 +151,44 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     </div>
   );
 
+  const buildResults = (result: any) => {
+    const regVar = result.regimen_variable;
+    const labels: string[] = result.regimen_event_labels || [];
+    const bestRegimen: Record<string, Record<string, number>> = {};
+    if (regVar && labels.length && result.best_x) {
+      bestRegimen[regVar] = {};
+      labels.forEach((lbl: string, i: number) => {
+        if (result.best_x[i] != null) bestRegimen[regVar][lbl] = Number(result.best_x[i].toFixed(4));
+      });
+    }
+    const bestObjectives: Record<string, number> = {};
+    (result.objectives || []).forEach((o: any, i: number) => {
+      if (result.best_f?.[i] != null) bestObjectives[o.variable] = Number(result.best_f[i].toFixed(4));
+    });
+    return {
+      generated_at: new Date().toISOString().slice(0, 10),
+      method: result.method || 'nsga2',
+      n_solutions: result.n_solutions || 0,
+      elapsed_seconds: Math.round(optElapsed * 10) / 10,
+      pareto_front: result.pareto_front || [],
+      best: {
+        x: result.best_x,
+        f: result.best_f,
+        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
+        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
+      },
+    };
+  };
+
+  const handleSave = async () => {
+    if (!optResult) return;
+    setSaving(true);
+    const ok = await onSaveResults(buildResults(optResult));
+    setSaving(false);
+    if (ok) message.success('结果已写回模型文件，下次续跑将从此前沿热启动');
+    else message.error('保存失败，请检查模型文件路径');
+  };
+
   const bestPanel = optResult?.best_x != null ? (
     <div style={{ padding: '2px 0' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
@@ -162,31 +206,46 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
           </div>
         ))}
       </div>
-      <Button size="small" type="primary" style={{ marginTop: 8, background: c.primary, borderColor: c.primary }}
-        onClick={() => {
-          if (!optResult?.best_x?.length) return;
-          const regVar: string | undefined = optResult.regimen_variable;
-          const bestX: number[] = optResult.best_x;
-          let xIdx = 0;
-          setInputEvents(prev => prev.map(ev => {
-            if (regVar && ev.variable === regVar && ev.optimizeValue) {
-              const val = bestX[xIdx++];
-              return val != null ? { ...ev, value: Number(val.toFixed(4)) } : ev;
-            }
-            return ev;
-          }));
-          setMode('sim');
-          setCenterTab('simulation');
-        }}
-      >
-        以此解运行仿真 →
-      </Button>
+      <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+        <Button size="small" type="primary" style={{ background: c.primary, borderColor: c.primary }}
+          onClick={() => {
+            if (!optResult?.best_x?.length) return;
+            const regVar: string | undefined = optResult.regimen_variable;
+            const bestX: number[] = optResult.best_x;
+            let xIdx = 0;
+            setInputEvents(prev => prev.map(ev => {
+              if (regVar && ev.variable === regVar && ev.optimizeValue) {
+                const val = bestX[xIdx++];
+                return val != null ? { ...ev, value: Number(val.toFixed(4)) } : ev;
+              }
+              return ev;
+            }));
+            setMode('sim');
+            setCenterTab('simulation');
+          }}
+        >以此解运行仿真 →</Button>
+        <Tooltip title="将 Pareto 前沿写回模型 YAML — 下次续跑自动热启动，发布模型即发布结果">
+          <Button size="small" icon={<CloudUploadOutlined />} loading={saving} onClick={handleSave}>
+            保存结果到模型
+          </Button>
+        </Tooltip>
+        <Tooltip title="下载模型 YAML（含优化结果）">
+          <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>
+            下载模型
+          </Button>
+        </Tooltip>
+      </div>
     </div>
   ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="完成后显示推荐解" />;
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
       <div style={{ padding: '6px 4px' }}>{optSummary}</div>
+      {hasExistingResults && !optRunning && !optResult && (
+        <div style={{ padding: '3px 6px', borderRadius: 4, background: isDarkMode ? '#1a3a22' : '#e8f5e9', color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          ● 模型含有历史结果，运行时将从上次 Pareto 前沿热启动
+        </div>
+      )}
 
       <Section id="front" title="Front" badge={`${optResult?.n_solutions ?? latestHist?.pareto_count ?? 0} 解`}>
         <div style={{ height: 340, overflow: 'hidden' }}>
