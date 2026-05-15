@@ -68,3 +68,9 @@
 | [0064](0064-2026-05-07_project-edit-refresh-run-snapshot.md) | 编辑态刷新源文件，运行态固定快照 | ✅ 已实施 | 2026-05-07 |
 | [0065](0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |
 | [0066](0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Simulator 拆分与 Sim/Opt 结果工作区 | ✅ 已实施；OPT/SIM 分离重构待进一步设计 | 2026-05-08 |
+| [0067](0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化算法参数预设（快速/标准/精细）与滑动条联动 UI | ✅ 已实施 | 2026-05-15 |
+| [0068](0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译：asteval 运行时解析 → 加载时生成 Python 函数，step 调用函数 | ✅ 已实施 | 2026-05-15 |
+| [0069](0069-2026-05-15_sim_run-history-auto-archive.md) | 运行历史自动存档：sim/opt 完成后自动 POST 到服务器，历史抽屉加载/删除 | ✅ 已实施 | 2026-05-15 |
+| [0070](0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代（补录核心约束） | ✅ 已实施 | 2026-05-15 |
+| [0071](0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | 全局圆角卡片面板 + 设置齿轮 Popover（字号/语言）+ 区块拖拽排序 | ✅ 已实施 | 2026-05-15 |
+| [0072](0072-2026-05-15_project_gui-only-no-cli.md) | GUI-only：放弃 CLI 作为正式接口（⭐⭐ 核心约束，补录） | ✅ 核心约束 | 2026-05-15 |

@@ -1,6 +1,6 @@
 # Sim 决议汇总
 
-> 本文件是 `docs/decisions/` 中 66 条 ADR 的**主题分类摘要**，标注重要程度与对应文档。  
+> 本文件是 `docs/decisions/` 中 72 条 ADR 的**主题分类摘要**，标注重要程度与对应文档。  
 > 完整时序索引见 [decisions/README.md](decisions/README.md)。
 
 **重要程度**：⭐⭐ = 核心约束，影响格式规范或架构，不可随意更改；⭐ = 重要实现决策；无标注 = 已实施，历史记录
@@ -30,6 +30,7 @@
 |-----|------|---------|------|
 | [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md) | **Regimen K×4 输入调度：时刻/摄入量/执行日/有效期** | ⭐⭐ | ✅ |
 | [0024](decisions/0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ⭐ | ✅ |
+| [0070](decisions/0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | **asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代** | ⭐⭐ | ✅ |
 | [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | **MC 概率仿真：parameter 分布表达式、多 run 引擎、半透明曲线渲染** | ⭐⭐ | ✅ |
 | [0047](decisions/0047-2026-05-02_sim_后端健康检查与非阻塞修复.md) | 后端健康检查与非阻塞修复 | | ✅ |
 | [0048](decisions/0048-2026-05-02_sim_BabelManager英文Locale警告消除.md) | BabelManager 英文 Locale 警告消除 | | ✅ |
@@ -64,6 +65,10 @@
 | [0050](decisions/0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | **InputEvent 扁平化；激活/未选中的颜色规则（绿色=激活）** | ⭐⭐ | ✅ |
 | [0059](decisions/0059-2026-05-05_project_navigation-rename.md) | 导航重命名 | | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Sim/Opt Tab 分离与结果工作区 UI | ⭐ | ✅（部分待续）|
+| [0067](decisions/0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化器算法预设与参数滑块 UI | | ✅ |
+| [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
+| [0069](decisions/0069-2026-05-15_sim_run-history-auto-archive.md) | **运行历史自动存档：runs/ + 历史面板** | ⭐ | ✅ |
+| [0071](decisions/0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | **全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序** | ⭐ | ✅ |
 
 ---
 
@@ -77,6 +82,7 @@
 | [0055](decisions/0055-2026-05-04_project_docs-go-public-private-split.md) | **docs/ 公开 / go/ 内部不发布 分界规则** | ⭐⭐ | ✅ |
 | [0060](decisions/0060-2026-05-05_project_game-repo-separation.md) | **Game repo 独立（sim 和 game 分离为独立 repo）** | ⭐⭐ | ✅ |
 | [0061](decisions/0061-2026-05-06_project_temp-storage-no-user-accounts.md) | 临时存储方案，不做用户账号系统 | ⭐ | ✅ |
+| [0072](decisions/0072-2026-05-15_project_gui-only-no-cli.md) | **GUI-only：CLI 不是正式接口，不新增功能，批量场景用 HTTP API** | ⭐⭐ | ✅ |
 
 ---
 

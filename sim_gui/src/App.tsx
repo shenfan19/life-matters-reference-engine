@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
-import { ConfigProvider, App as AntdApp, theme } from 'antd';
+import { ConfigProvider, App as AntdApp, theme, Popover } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined, ToolOutlined,
-  GithubOutlined, MailOutlined, InfoCircleOutlined,
+  GithubOutlined, MailOutlined, InfoCircleOutlined, SettingOutlined,
 } from '@ant-design/icons';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -56,22 +56,6 @@ const C = {
   },
 };
 
-// ─── Font size selector ───────────────────────────────────────────────────────
-
-function FontSizer({ fontSize, onFontSize, c }: { fontSize: number; onFontSize: (n: number) => void; c: typeof C.light }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-      {([12, 14, 16] as const).map(size => (
-        <button key={size} onClick={() => onFontSize(size)} style={{
-          padding: '3px 7px', border: 'none', cursor: 'pointer',
-          background: fontSize === size ? c.primary : 'transparent',
-          color: fontSize === size ? '#fff' : c.textMute,
-          fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 600, lineHeight: 1, transition: 'all 0.12s',
-        }}>{size}</button>
-      ))}
-    </div>
-  );
-}
 
 const initialSimulationState: SimulationState = {
   status: 'idle', progress: 0, currentStep: 0, totalSteps: 1440,
@@ -81,12 +65,12 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, onLanguage, c, t, fontSize, onFontSize, onAbout }: {
+function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t, onAbout }: {
   page: string; simMode: 'sim' | 'opt'; onPage: (p: string) => void;
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
-  c: typeof C.light; t: (k: string) => string;
   fontSize: number; onFontSize: (n: number) => void;
+  c: typeof C.light; t: (k: string) => string;
   onAbout: () => void;
 }) {
   const tabs = [
@@ -180,25 +164,48 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
 
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Font size selector */}
-        <FontSizer fontSize={fontSize} onFontSize={onFontSize} c={c} />
-
-        {/* Language selector */}
-        <select
-          value={language}
-          onChange={e => onLanguage(e.target.value as Language)}
-          style={{
-            padding: '3px 6px', borderRadius: 6,
-            border: `1px solid ${c.border}`,
-            background: c.panel, color: c.textMute,
-            cursor: 'pointer', outline: 'none',
-          }}
+        {/* Settings gear */}
+        <Popover
+          trigger="click"
+          placement="bottomRight"
+          content={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 160 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>字号</span>
+                <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+                  {([12, 14, 16] as const).map(size => (
+                    <button key={size} onClick={() => onFontSize(size)} style={{
+                      padding: '3px 8px', border: 'none', cursor: 'pointer',
+                      background: fontSize === size ? c.primary : 'transparent',
+                      color: fontSize === size ? '#fff' : c.textMute,
+                      fontSize: 12, fontWeight: 600, lineHeight: 1,
+                    }}>{size}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>语言</span>
+                <select value={language} onChange={e => onLanguage(e.target.value as Language)} style={{
+                  flex: 1, padding: '3px 6px', borderRadius: 6,
+                  border: `1px solid ${c.border}`, background: c.panel, color: c.textSec,
+                  cursor: 'pointer', outline: 'none', fontSize: 12,
+                }}>
+                  <option value="en">English</option>
+                  <option value="zh-CN">简体中文</option>
+                  <option value="zh-TW">繁體中文</option>
+                  <option value="fr">Français</option>
+                </select>
+              </div>
+            </div>
+          }
         >
-          <option value="en">EN</option>
-          <option value="zh-CN">CHS</option>
-          <option value="zh-TW">CHT</option>
-          <option value="fr">FR</option>
-        </select>
+          <button style={{
+            background: 'none', border: `1px solid ${c.border}`, borderRadius: 6,
+            padding: '4px 9px', cursor: 'pointer', color: c.textSec, display: 'flex', alignItems: 'center',
+          }}>
+            <SettingOutlined />
+          </button>
+        </Popover>
 
         {/* Dark mode toggle */}
         <button
@@ -417,8 +424,8 @@ function App() {
           page={page} simMode={simMode} onPage={p => setPage(p as any)}
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode((d: boolean) => !d)}
           language={language} onLanguage={setLanguage}
-          c={c} t={t}
           fontSize={fontSize} onFontSize={setFontSize}
+          c={c} t={t}
           onAbout={() => setAboutOpen(true)}
         />
 
