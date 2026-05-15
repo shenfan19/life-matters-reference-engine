@@ -179,6 +179,26 @@ optimizer:
     population_size: 100
     n_generations: 200
     seed: 42
+  results:
+    generated_at: "2026-05-16"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 189.5
+    pareto_front:
+      - {x: [10.5], f: [129.8, 312.4]}
+      - {x: [16.2], f: [126.1, 331.7]}
+      - {x: [22.8], f: [122.4, 348.2]}
+      - {x: [31.0], f: [118.6, 364.5]}
+      - {x: [40.5], f: [115.3, 379.8]}
+      - {x: [48.2], f: [113.1, 391.3]}
+    best:
+      x: [22.8]
+      f: [122.4, 348.2]
+      regimen:
+        thiazide_dose: {"08:00": 22.8}
+      objectives:
+        blood_pressure: 122.4
+        uric_acid: 348.2
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
 simulation:
