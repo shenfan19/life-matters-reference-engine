@@ -49,9 +49,9 @@ variables:
     bounds: [40, 200]
 
   thiazide_dose:
-    description: HCTZ 日剂量（mg/day），决策变量
+    description: HCTZ 单次剂量（mg），每日晨服，决策变量
     value: 25.0
-    unit: mg/day
+    unit: mg
     type: input
 
   caloric_deficit:
@@ -61,9 +61,9 @@ variables:
     type: input
 
   allopurinol_dose:
-    description: 别嘌醇日剂量（mg/day），可选用药，决策变量
+    description: 别嘌醇单次剂量（mg），可选用药，决策变量
     value: 0.0
-    unit: mg/day
+    unit: mg
     type: input
 
   # ── 参数 ─────────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ variables:
   kappa_A:
     description: 别嘌醇降尿酸系数
     value: 0.6
-    unit: "μmol/L per mg/day"
+    unit: "μmol/L per mg"
     type: parameter
 
   ua_baseline_prod:
