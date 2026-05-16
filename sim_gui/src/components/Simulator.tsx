@@ -4,7 +4,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult } from '../types';
+
+const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
+
+// Converts a Pareto solution x-vector to inputEvents using optimizer.inputs/regimen structure.
+// Ordering matches the Python backend: variables in Object.entries order, events in list order.
+function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEvent[]): InputEvent[] {
+  const mapping: Array<{ variable: string; time: string }> = [];
+  if (optimizerConfig?.inputs) {
+    for (const [varName, conf] of Object.entries(optimizerConfig.inputs as Record<string, any>)) {
+      for (const ev of ((conf as any).events || [])) mapping.push({ variable: varName, time: ev.time });
+    }
+  } else if (optimizerConfig?.regimen) {
+    const varName = optimizerConfig.regimen.variable || '';
+    for (const ev of (optimizerConfig.regimen.events || [])) mapping.push({ variable: varName, time: ev.time });
+  }
+  const result = baseEvents.map(ev => ({ ...ev }));
+  mapping.forEach(({ variable, time }, i) => {
+    if (i >= x.length) return;
+    const idx = result.findIndex(ev => ev.variable === variable && ev.time === time && ev.optimizeValue);
+    if (idx >= 0) result[idx] = { ...result[idx], value: x[i] };
+  });
+  return result;
+}
 import ModelBuilder from './ModelBuilder';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
@@ -169,6 +192,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead'>('NSGA-II');
   const [optPop, setOptPop] = useState(50);
   const [optGen, setOptGen] = useState(80);
+  const [comparedPlans, setComparedPlans] = useState<PlanResult[]>([]);
   const [optResult, setOptResult] = useState<any>(null);
   const [optRunning, setOptRunning] = useState(false);
   const [optCurGen, setOptCurGen] = useState(0);
@@ -706,6 +730,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     try {
       set('status', 'running'); set('progress', 0); set('currentStep', 0);
       setSimData([]);
+      setComparedPlans([]);
       setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
       isRunningRef.current = true;
       const regimenPayload = inputEvents
@@ -798,6 +823,63 @@ const Simulator: React.FC<SimulatorProps> = ({
         if (res.data.completed) message.success(t('sim.msg.sim_complete'));
       }
     } catch (e: any) { message.error(e.message); }
+  };
+
+  // ── multi-plan comparison ─────────────────────────────────────────────────────
+  const handleRunCompared = async (selectedRows: Array<{ x: number[]; f: number[]; rank: number }>) => {
+    if (!selectedModel || selectedRows.length === 0) return;
+    const optimizer = selectedModel.content?.optimizer;
+    if (!optimizer) { message.warning('无优化配置'); return; }
+
+    const plans: PlanResult[] = selectedRows.map((row, i) => ({
+      id: `pareto-${row.rank}`,
+      label: `Pareto #${row.rank}`,
+      color: PLAN_COLORS[i % PLAN_COLORS.length],
+      data: [], runsData: [], running: true,
+    }));
+    setComparedPlans(plans);
+    switchCenterTab('simulation');
+
+    const modelName = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content?.metadata?.name || '';
+    const timeHours = dateToHours(simStartDate, simEndDate);
+    const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
+    const localInputVars = selectedModel.content?.variables
+      ? Object.entries(selectedModel.content.variables).filter(([, d]: [string, any]) => d.type === 'input').map(([name]) => name)
+      : [];
+
+    await Promise.all(selectedRows.map(async (row, i) => {
+      try {
+        const planEvents = xToInputEvents(row.x, optimizer, inputEvents);
+        const regimens = planEvents
+          .filter(ev => localInputVars.includes(ev.variable))
+          .map(ev => ({
+            variable: ev.variable,
+            events: [{ id: ev.id, time: ev.time, value: ev.value }],
+            days_enabled: ev.daysEnabled, days: ev.days,
+            valid_range_enabled: ev.validRangeEnabled,
+            valid_start: ev.validStart, valid_end: ev.validEnd,
+          }));
+        const startResult = await fetch(`${API_BASE}/simulation/start`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
+        }).then(r => r.json());
+        if (!startResult.success) throw new Error(startResult.error);
+        const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: startResult.data.session_id, steps: startResult.data.total_steps, input_changes: inputParams }),
+        }).then(r => r.json());
+        if (!batchResult.success) throw new Error(batchResult.error);
+        setComparedPlans(prev => prev.map((p, idx) => idx !== i ? p : {
+          ...p,
+          data: batchResult.data.outputs || [],
+          runsData: (batchResult.data.outputs_per_run?.length > 1) ? batchResult.data.outputs_per_run : [],
+          running: false,
+        }));
+      } catch (e: any) {
+        console.error(`Plan ${i} failed:`, e);
+        setComparedPlans(prev => prev.map((p, idx) => idx !== i ? p : { ...p, running: false }));
+      }
+    }));
   };
 
   // ── export CSV ────────────────────────────────────────────────────────────────
@@ -1291,6 +1373,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   stepValue={stepValue} stepUnit={stepUnit}
                   simRuns={simRuns} sessionSeed={sessionSeed}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+                  comparedPlans={comparedPlans}
                 />
               }
               progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} />}
@@ -1333,6 +1416,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   setCenterTab={switchCenterTab}
                   onDownloadModel={downloadModelYAML}
                   hasExistingResults={!!(selectedModel?.content?.optimizer?.results?.pareto_front?.length)}
+                  onRunCompared={handleRunCompared}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}

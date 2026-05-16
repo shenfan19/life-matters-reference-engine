@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Collapse, Empty } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import type { ModelFile, SimulationDataPoint } from '../types';
+import type { ModelFile, SimulationDataPoint, PlanResult } from '../types';
 import { getC } from '../core/theme';
 import SimChart, { VAR_COLORS } from './SimChart';
 
@@ -26,15 +26,17 @@ interface SimPlotTabProps {
   c: ReturnType<typeof getC>;
   t: (key: string) => string;
   fontSize: number;
+  comparedPlans?: PlanResult[];
 }
 
 const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, isLocked, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
-  isDarkMode, c, t, fontSize,
+  isDarkMode, c, t, fontSize, comparedPlans,
 }) => {
   const hasSimData = simulationData.length > 0;
+  const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
   const modelVariables = (selectedModel?.content?.variables || {}) as Record<string, any>;
   const placeholderOutputVars = (outputVars.length > 0
     ? outputVars
@@ -120,7 +122,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  if (!hasSimData) {
+  if (!hasSimData && !isMultiPlan) {
     return (
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
         {summaryBar}
@@ -204,9 +206,11 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
                 style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
             ),
             children: (
-              <SimChart varName={varName} unit={varInfo?.unit} data={simulationData}
+              <SimChart varName={varName} unit={varInfo?.unit}
+                data={isMultiPlan ? [] : simulationData}
+                runsData={isMultiPlan ? undefined : (dataPerRun.length > 1 ? dataPerRun : undefined)}
+                planDatasets={isMultiPlan ? comparedPlans : undefined}
                 isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
-                runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
                 fontSize={fontSize} />
             ),
             styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
@@ -238,9 +242,11 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
                     style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
                 ),
                 children: (
-                  <SimChart varName={v.name} unit={v.unit} data={simulationData}
+                  <SimChart varName={v.name} unit={v.unit}
+                    data={isMultiPlan ? [] : simulationData}
+                    runsData={isMultiPlan ? undefined : (dataPerRun.length > 1 ? dataPerRun : undefined)}
+                    planDatasets={isMultiPlan ? comparedPlans : undefined}
                     isDarkMode={isDarkMode} c={c} colorIndex={outputVars.length + idx} hideTitleBar
-                    runsData={dataPerRun.length > 1 ? dataPerRun : undefined}
                     fontSize={fontSize} />
                 ),
                 styles: { header: { padding: '4px 8px' }, body: { padding: 0 } },
