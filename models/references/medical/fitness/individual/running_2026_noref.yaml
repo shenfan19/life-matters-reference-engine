@@ -1,16 +1,28 @@
 metadata:
   name: running
-  updated: 2026-04-23
+  updated: 2026-05-17
   author: Fan Shen
   description:
     brief: |
-      跑步训练模型（单次训练课，60分钟）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。
-      公式基于 Fick 原理与 Borg RPE 量表。
-    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
-    method: 包含 9 个变量和 7 个方程，描述 training_intensity、pace、heart_rate、vo2 的基础动态。
-    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  tags: [sport, running, aerobic, endurance]
+      跑步训练模型（单次训练课，分钟步长）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。
+      公式基于 Fick 原理、Daniels VO2-配速公式与 Borg RPE 量表。
+    need: 作为健身参考模块，为长跑训练、NAFLD运动干预、心血管康复等场景提供可复用的运动生理基础。
+    method: |
+      9个变量（2个输入、7个状态）。
+      心率基于220-年龄最大心率估算；VO2基于Daniels Running Formula；
+      乳酸双相模型（有氧区<2mmol/L，阈值区2-4，无氧区>4）；
+      疲劳指数基于RPE和乳酸累积。
+    simulation: 默认仿真60分钟单次跑步训练（5 km/h中等有氧配速）。
+    limitations: |
+      参数基于70kg成年男性；未包含气温、坡度、海拔等环境因素；
+      疲劳模型未区分中枢和外周疲劳机制。
+  tags: [sport, running, aerobic, endurance, VO2max, Daniels, lactate]
+  references:
+    - "Daniels J (2014) Daniels' Running Formula, 3rd ed. Human Kinetics, Champaign, IL."
+    - "Borg G (1998) Borg's Perceived Exertion and Pain Scales. Human Kinetics, Champaign, IL."
+    - "Weltman A et al. (1990) The lactate threshold is a valid indicator of endurance performance. J Sports Med Phys Fitness 30(2):212-218."
+    - "ACSM (2021) ACSM's Guidelines for Exercise Testing and Prescription, 11th ed. Lippincott Williams & Wilkins."
+    - "Wilmore JH, Costill DL, Kenney WL (2008) Physiology of Sport and Exercise, 4th ed. Human Kinetics."
   step_size:
     value: 1
     unit: minute
@@ -117,5 +129,18 @@ formulas:
 
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date:   "2026-01-01"
   output_variables: [heart_rate, vo2, distance, calories_burned, fatigue, lactate, performance]
+  schedules:
+    - variable: training_intensity
+      time: "07:00"
+      value: 5.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "中等有氧强度跑步（RPE=5，约6 min/km）"
+    - variable: pace
+      time: "07:00"
+      value: 6.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "配速6分/公里（中等有氧区）"

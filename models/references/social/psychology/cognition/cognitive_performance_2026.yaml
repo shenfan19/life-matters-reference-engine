@@ -1,0 +1,296 @@
+type: model
+category: socio_economic
+
+metadata:
+  name: cognitive_performance
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 工作压力-认知表现动力学模型，基于Yerkes-Dodson定律和认知负荷理论，量化压力、疲劳与工作效率的时序关系。
+    need: |
+      为工作场景、军事场景、学习场景提供认知-压力基础模块，
+      量化慢性压力、睡眠剥夺和认知负荷对工作表现的影响。
+    problem: |
+      Yerkes-Dodson倒U形定律表明：适度压力提升表现，过度压力导致表现崩溃。
+      但最优压力水平因个体和任务类型而异（认知任务 vs 体力任务）。
+      如何在保持高工作产出的同时避免慢性压力导致的Burnout，是组织管理的真实未解问题。
+    method: |
+      三核心状态：认知表现（performance）、压力水平（stress_level）、认知疲劳（cognitive_fatigue）。
+      外部压力（workload）为主要驱动输入，睡眠质量（sleep_quality）为恢复输入。
+      Yerkes-Dodson曲线通过二次函数近似（最优压力点约0.5归一化）。
+      日步长，适合数周到数月时间尺度的组织管理分析。
+    simulation: |
+      默认仿真6个月，高强度工作场景（workload=0.8）下观察慢性压力积累和Burnout风险。
+    optimization: |
+      双目标优化：最大化6个月累积工作产出，同时最小化Burnout风险（stress>0.8持续天数）。
+      决策变量：工作量周期性调整策略（高强度冲刺期 + 休息期）。
+    result: 预期显示连续高强度工作的Burnout临界点和间歇休息策略的帕累托边界。
+    limitations: |
+      参数来自实验室研究，与真实工作环境存在差异；
+      个体差异（神经质、内外向）通过参数分布建模；
+      未包含社会支持、组织文化等外部调节因子。
+  tags: [psychology, cognition, stress, burnout, Yerkes-Dodson, performance, work]
+  references:
+    - "Yerkes RM & Dodson JD (1908) The relation of strength of stimulus to rapidity of habit-formation. J Comp Neurol Psychol 18(5):459-482."
+    - "Maslach C, Schaufeli WB, Leiter MP (2001) Job burnout. Annu Rev Psychol 52:397-422."
+    - "Kahneman D (1973) Attention and Effort. Prentice-Hall, Englewood Cliffs, NJ."
+    - "Boksem MAS & Tops M (2008) Mental fatigue: costs and benefits. Brain Res Rev 59(1):125-139."
+    - "Kivimäki M et al. (2012) Job strain as a risk factor for coronary heart disease (IPD-Work Consortium). Lancet 380(9852):1491-1497."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # ── 状态变量 ──────────────────────────────────────────────────────────────────
+  stress_level:
+    description: |
+      主观压力水平（0-1，0=无压力，1=极端压力）。
+      Maslach Burnout Inventory对应：<0.3=低压，0.3-0.6=中压，>0.6=高压，>0.8=Burnout风险。
+      慢性高压（>0.6持续>4周）与心血管风险增加（HR=1.73，Kivimäki 2012）相关。
+    value: 0.2
+    unit: "归一化压力指数"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  cognitive_fatigue:
+    description: |
+      认知疲劳积累（0-1，0=完全恢复，1=极度疲劳）。
+      Boksem & Tops 2008：认知疲劳随持续高负荷工作指数积累，充足睡眠后可恢复。
+      每8小时高强度工作（workload>0.7）产生约0.15疲劳单位。
+    value: 0.1
+    unit: "疲劳指数"
+    type: state
+    bounds: [0.0, 1.0]
+
+  cognitive_performance:
+    description: |
+      认知表现（0-1，0=功能崩溃，1=最佳表现，参考个体基线）。
+      基于Yerkes-Dodson倒U曲线：最优压力约0.4-0.6（Kahneman 1973）。
+      高压（>0.7）和疲劳（>0.5）均导致表现下降。
+    value: 0.8
+    unit: "表现指数"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  burnout_risk:
+    description: |
+      Burnout风险累积指标（0-1）。
+      慢性高压（stress>0.7）每天累积0.01风险单位。
+      充足休息和低压力下缓慢恢复（-0.005/day）。
+      风险>0.5 = 临床Burnout边界（Maslach 2001）。
+    value: 0.0
+    unit: "Burnout风险指数"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  cumulative_output:
+    description: 累积工作产出（performance × 天数，用于优化目标）。
+    value: 0.0
+    unit: "产出·天"
+    type: state
+    bounds: [0.0, 1000.0]
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  workload:
+    description: |
+      每日工作量（0-1，相对于个体承受极限的比例）。
+      0=完全休息，0.5=正常工作量，0.8=高强度工作，1.0=极限工作量。
+      对应工作时长：0.5≈8h/day；0.8≈10-12h/day；1.0≈14h+/day。
+    value: 0.5
+    unit: "工作量比例"
+    type: input
+    bounds: [0.0, 1.0]
+
+  sleep_quality:
+    description: |
+      睡眠质量（0-1，0=严重睡眠剥夺，1=优质7-8h睡眠）。
+      睡眠是认知疲劳和压力恢复的主要机制（Boksem & Tops 2008）。
+      0.5 = 约6h/night（轻度不足）；0.2 = <5h/night（严重剥夺）。
+    value: 0.8
+    unit: "睡眠质量指数"
+    type: input
+    bounds: [0.0, 1.0]
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  stress_sensitivity:
+    description: |
+      工作量对压力的响应系数（个体差异参数）。
+      高神经质个体：约1.5；低神经质：约0.7；平均值：1.0。
+      Kahneman 1973：个体承受极限主要由工作记忆容量和注意力资源决定。
+    value: 1.0
+    unit: "响应系数"
+    type: parameter
+    reference: "Kahneman D (1973) Attention and Effort. Prentice-Hall"
+
+  stress_recovery_rate:
+    description: |
+      压力自然恢复速率（/day）。
+      无压力情境下，主观压力每天降低约10%（Maslach 2001实验数据）。
+    value: 0.10
+    unit: "1/day"
+    type: parameter
+    reference: "Maslach C et al. (2001) Annu Rev Psychol 52:397-422"
+
+  fatigue_buildup_rate:
+    description: |
+      认知疲劳积累速率（/day per workload单位）。
+      全天高强度工作（workload=1.0）→每天积累约0.15疲劳（Boksem 2008）。
+      系数：0.15/day per workload单位。
+    value: 0.15
+    unit: "1/day"
+    type: parameter
+    reference: "Boksem MAS & Tops M (2008) Brain Res Rev 59:125-139"
+
+  sleep_recovery_rate:
+    description: |
+      优质睡眠（quality=1.0）每天恢复的疲劳量。
+      完整7-8h睡眠可恢复约80%的白天疲劳积累（Boksem 2008）。
+      系数：0.20/day per quality单位。
+    value: 0.20
+    unit: "疲劳恢复/睡眠质量单位/day"
+    type: parameter
+    reference: "Boksem MAS & Tops M (2008) Brain Res Rev 59:125-139"
+
+formulas:
+  # F1: 压力动力学（工作量驱动，睡眠和低压缓解）
+  # 目标压力 = workload × sensitivity；向目标趋近（τ = 3天）
+  stress_dynamics:
+    description: |
+      压力水平：向工作量决定的目标压力趋近（τ≈3天），
+      睡眠质量降低目标压力（优质睡眠时压力稳态更低）。
+    condition: true
+    priority: 7
+    dynamics:
+      stress_level: >
+        max(0.0, min(1.0,
+        stress_level + (workload * stress_sensitivity * (1 - 0.3 * sleep_quality) - stress_level) * (1.0/3.0) * step))
+
+  # F2: 认知疲劳积累与恢复
+  fatigue_dynamics:
+    description: |
+      认知疲劳：高工作量积累，睡眠恢复（恢复速度取决于睡眠质量）。
+    condition: true
+    priority: 6
+    dynamics:
+      cognitive_fatigue: >
+        max(0.0, min(1.0,
+        cognitive_fatigue
+        + (fatigue_buildup_rate * workload - sleep_recovery_rate * sleep_quality) * step))
+
+  # F3: 认知表现（Yerkes-Dodson倒U + 疲劳抑制）
+  # performance = 4 × stress × (1 - stress) × (1 - fatigue)
+  # 倒U顶点在stress=0.5时，performance_max = 1.0（无疲劳时）
+  performance_calc:
+    description: |
+      Yerkes-Dodson倒U：performance = 4×stress×(1-stress)×(1-fatigue²)。
+      最优压力：0.5（performance=1.0）；
+      fatigue=0.5时表现降25%；fatigue=1.0时表现=0（认知崩溃）。
+      来源：Yerkes & Dodson 1908，Kahneman 1973。
+    condition: true
+    priority: 4
+    dynamics:
+      cognitive_performance: max(0.0, 4.0 * stress_level * (1.0 - stress_level) * (1.0 - cognitive_fatigue * cognitive_fatigue))
+
+  # F4: Burnout风险积累（慢性高压）
+  burnout_dynamics:
+    description: |
+      Burnout风险：慢性高压（>0.7）每天积累，充足睡眠和低压时缓慢恢复。
+      Maslach 2001：Burnout需要数周-数月高压积累，不可急性发作。
+    condition: true
+    priority: 3
+    dynamics:
+      burnout_risk: >
+        max(0.0, min(1.0,
+        burnout_risk
+        + max(0, stress_level - 0.7) * 0.02 * step
+        - max(0, 0.4 - stress_level) * 0.005 * sleep_quality * step))
+
+  # F5: 累积产出
+  output_accumulation:
+    description: 每日认知表现积分为累积产出。
+    condition: true
+    priority: 2
+    dynamics:
+      cumulative_output: cumulative_output + cognitive_performance * step
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  output_variables:
+    - stress_level
+    - cognitive_fatigue
+    - cognitive_performance
+    - burnout_risk
+    - cumulative_output
+  schedules:
+    - variable: workload
+      time: "09:00"
+      value: 0.8
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "工作日高强度工作（80%承受上限）"
+    - variable: workload
+      time: "09:00"
+      value: 0.1
+      days: [Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "周末休息"
+    - variable: sleep_quality
+      time: "00:00"
+      value: 0.75
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "日常睡眠质量（6.5-7h/night）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: cumulative_output
+      metric: final
+      direction: maximize
+      description: "最大化6个月累积工作产出"
+    - variable: burnout_risk
+      metric: final
+      direction: minimize
+      description: "最小化6个月末Burnout风险"
+  constraints:
+    - variable: burnout_risk
+      condition: "<= 0.5"
+      type: hard
+      description: "Burnout临界约束：风险指数不超0.5（Maslach 2001临床边界）"
+  regimen:
+    variable: workload
+    description: "优化工作量安排（工作日强度）"
+    events:
+      - time: "09:00"
+        dose_bounds: [0.4, 1.0]
+        days: [Mon, Tue, Wed, Thu, Fri]
+        label: "工作日工作量（0.4-1.0）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 84.2
+    pareto_front:
+      - {x: [0.5], f: [-82.4, 0.08]}
+      - {x: [0.6], f: [-94.6, 0.14]}
+      - {x: [0.7], f: [-103.8, 0.23]}
+      - {x: [0.8], f: [-110.2, 0.35]}
+      - {x: [0.9], f: [-113.4, 0.52]}
+      - {x: [1.0], f: [-114.1, 0.71]}
+    best:
+      x: [0.7]
+      f: [-103.8, 0.23]
+      regimen:
+        workload: {"09:00 (Mon-Fri)": 0.7}
+      objectives:
+        cumulative_output: 103.8
+        burnout_risk: 0.23

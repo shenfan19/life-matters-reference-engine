@@ -18,9 +18,9 @@ metadata:
     value: 1
     unit: minute
 imports:
-- digestive_system
-- insulin_system
-- endocrine_system
+- references/medical/physiology/digestive_system_2026_mw
+- references/medical/physiology/insulin_system_2026_mw
+- references/medical/physiology/endocrine_system_2026_mw
 variables:
   blood_glucose:
     description: 血糖浓度，正常范围70-140 mg/dL
@@ -116,16 +116,9 @@ formulas:
     priority: 9
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-03"
   output_variables:
   - blood_glucose
   - fasting_glucose
   - postprandial_glucose
   - glucose_variability
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - blood_glucose
-  variables_to_optimize:
-  - insulin_sensitivity

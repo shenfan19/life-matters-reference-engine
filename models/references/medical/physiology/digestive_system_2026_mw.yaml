@@ -17,7 +17,7 @@ metadata:
     unit: minute
 
 imports:
-- nutrition_intake
+- references/medical/physiology/nutrition_intake_2026_mw
 
 variables:
   amino_acids:

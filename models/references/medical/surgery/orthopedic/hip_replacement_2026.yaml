@@ -1,0 +1,354 @@
+type: model
+category: physiological
+
+metadata:
+  name: hip_replacement
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 全髋关节置换术（THA）术后12周功能恢复模型，包含Oxford评分、疼痛、步态和脱位风险。
+    need: |
+      THA是全球最成功的外科手术之一，年手术量约100万例/年，患者满意度约90%（Learmonth 2007）。
+      然而，术后12周内的康复方案（负重进阶、物理治疗强度）直接决定功能恢复速率和长期预后。
+      快速康复（ERAS）方案使平均住院时间从7天缩短至1-2天，但患者出院后的个体化康复方案
+      需要量化模型支持物理治疗师和患者做出决策。
+    problem: |
+      核心冲突：早期完全负重（Full Weight Bearing, FWB）和强度物理治疗可加速功能恢复，
+      但在术后前4-6周，髋臼假体的骨整合尚未完成，过早FWB可能增加假体松动风险。
+      患者期望值管理：Mancuso 2012研究表明患者对THA后功能恢复有不切实际的高期望，
+      准确预测个体化恢复轨迹可改善共同决策。脱位风险在前3个月最高（约1-3%）。
+    method: |
+      Euler离散日步长模型，时间跨度84天（12周）。
+      5个状态变量：hip_function_score（Oxford髋关节评分）、pain_vas（VAS疼痛0-10）、
+      abductor_strength_pct（外展肌力量，正常值百分比）、gait_symmetry_index（步态对称指数0-1）、
+      dislocation_risk（每日脱位概率，0-1）。
+      2个输入变量：pt_intensity（物理治疗强度0-10）、weight_bearing_status（负重状态0-3）。
+    simulation: |
+      默认仿真84天，模拟重度OA患者（Oxford评分基线16分，VAS疼痛8分）标准THA后康复。
+      第1-2周：部分负重（status=1），物理治疗强度3；
+      第3-6周：保护性完全负重（status=2），强度5；
+      第7-12周：完全负重（status=3），强度7（强化阶段）。
+    optimization: |
+      双目标NSGA-II优化：最大化12周末Oxford评分，最小化累积脱位风险。
+      约束：脱位风险全程每日<0.01（1%）；外展肌力量在第28天≥60%（防止Trendelenburg步态）。
+    result: |
+      预期12周末：Oxford评分从16升至37分（+21分，Learmonth 2007: 平均改善≈22分）；
+      VAS疼痛从8降至2分（平均缓解约75%，Charnley 1972）；
+      步态对称指数从0.6提升至0.88；外展肌力量从50%恢复至85%。
+    limitations: |
+      未区分后外侧入路（传统，脱位风险较高）vs前外侧入路（直接前路，脱位风险较低）；
+      未建模翻修手术和假体松动等长期并发症；
+      脱位风险模型基于人群平均值，未纳入体重（BMI>30增加2倍风险）和认知状态等个体因素；
+      骨整合完成时间采用6周固定假设（实际因骨质密度和患者年龄差异显著）。
+  tags: [tha, hip_replacement, oxford_score, dislocation_risk, gait_symmetry, physical_therapy, orthopedic]
+  references:
+    - "Learmonth ID et al. (2007) The operation of the century: total hip replacement. Lancet 370(9597):1508-1519. [THA综述，10年结果，患者满意度数据]"
+    - "Mancuso CA et al. (2012) Improvement in pain, disability, and patient satisfaction after total hip arthroplasty. J Bone Joint Surg Am 94(7):578-585. [患者期望值与实际结果差距]"
+    - "Charnley J (1972) The long-term results of low-friction arthroplasty of the hip performed as a primary intervention. Clin Orthop Relat Res 95:9-25. [Charnley功能评分，疼痛缓解75%]"
+    - "Pivec R et al. (2012) Hip arthroplasty. Lancet 380(9855):1768-1777. [THA并发症，脱位风险1-3%]"
+    - "Wainwright TW & Middleton RG (2020) An orthopaedic enhanced recovery programme. Curr Anaesth Crit Care 21(3):114-120. [ERAS方案，快速康复协议]"
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # ── 状态变量 ──────────────────────────────────────────────────────────────────
+  hip_function_score:
+    description: |
+      Oxford髋关节评分（0-48分，高分=功能好）。
+      重度OA基线：12-20分（平均约16分）；
+      THA术后12周目标：35-40分（优秀结果≥41分，良好35-40分，满意30-34分）。
+      评分涵盖日常行走、上下楼梯、穿袜、坐立等12个活动项目（每项0-4分）。
+      来源：Learmonth 2007；Mancuso 2012，Oxford评分分级和THA结果数据。
+    value: 16.0
+    unit: score
+    type: state
+    bounds: [0.0, 48.0]
+    io_role: output
+
+  pain_vas:
+    description: |
+      髋关节疼痛（VAS视觉模拟评分，0-10）。
+      重度OA基线：7-9分（持续性静息痛+活动痛）；
+      THA术后第1天：手术疼痛约7-8分；第1周末约5-6分；第12周末约1-2分。
+      术后12周约80%患者疼痛VAS<3分（满意阈值）。Charnley 1972: 平均疼痛缓解约75%。
+    value: 8.0
+    unit: VAS
+    type: state
+    bounds: [0.0, 10.0]
+    io_role: output
+
+  abductor_strength_pct:
+    description: |
+      髋外展肌（臀中肌）力量，以健侧的百分比（LSI%）表示。
+      THA后外展肌力量因入路（后外侧切断臀中肌）和术后保护期制动而下降至正常40-60%；
+      12周物理治疗目标：恢复至85-90%LSI（Trendelenburg步态阈值约70%LSI）。
+      来源：Learmonth 2007，术后肌力恢复数据。
+    value: 50.0
+    unit: "%LSI"
+    type: state
+    bounds: [10.0, 110.0]
+
+  gait_symmetry_index:
+    description: |
+      步态对称指数（0=完全不对称，1=完全对称）。
+      健康步态：>0.95；THA后早期：约0.5-0.6（患肢保护性跛行）；
+      12周目标：>0.88（接近正常步态）。
+      计算方式：患肢步长/健侧步长，通过步态分析获得。
+      Trendelenburg征（外展肌无力）直接影响对称指数。
+    value: 0.58
+    unit: index
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  dislocation_risk:
+    description: |
+      当日假体脱位概率（0-1）。
+      THA术后脱位总发生率约1-3%（Pivec 2012），集中在前3个月（90%的脱位发生于此）。
+      风险因素：负重过早、功能恢复差（外展肌力弱）、患者不依从体位限制。
+      随骨整合进展（6周后）和肌力恢复，日脱位概率从约0.005降至0.001。
+    value: 0.008
+    unit: prob/day
+    type: state
+    bounds: [0.0, 0.05]
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  pt_intensity:
+    description: |
+      物理治疗强度（0-10）。
+      0=仅体位指导；3=床边关节活动度训练；5=步行训练+主动助力运动；
+      7=抗阻训练+步态训练；10=强化功能性训练（跑台、台阶）。
+      ERAS方案：术后第1天即开始PT（强度2-3），快速进阶到强度5-7。
+    value: 0.0
+    unit: score
+    type: input
+    bounds: [0.0, 10.0]
+    optimizable: true
+
+  weight_bearing_status:
+    description: |
+      负重状态（分级）：0=不负重（NWB）；1=脚尖点地（TTWB，5-10%体重）；
+      2=部分负重（PWB，30-50%体重，保护性完全负重）；3=完全负重（FWB，100%体重）。
+      标准THA方案（骨水泥型）：多数允许即时FWB；
+      压配型（非骨水泥）：建议6周内保护性负重（确保骨整合）。
+      过早FWB增加脱位风险（假体-骨界面应力超过整合阈值）。
+    value: 0.0
+    unit: grade
+    type: input
+    bounds: [0.0, 3.0]
+    optimizable: true
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  osseointegration_factor:
+    description: |
+      骨整合进展速率（/day）。假体-骨界面骨整合通常在4-8周完成。
+      建模为逻辑函数增长，半完成时间约28天，6周（42天）达约85%整合。
+      来源：Learmonth 2007，非骨水泥型THA骨整合时间学数据。
+    value: 0.07
+    unit: 1/day
+    type: parameter
+
+  pain_recovery_rate:
+    description: |
+      自然疼痛恢复速率（VAS/day）。手术后最初几天疼痛自然减轻较快（约0.5/day），
+      之后减慢（约0.1-0.2/day）。物理治疗通过促进组织愈合和神经适应加速疼痛缓解。
+      来源：Charnley 1972；Learmonth 2007，THA术后疼痛自然史。
+    value: 0.12
+    unit: VAS/day
+    type: parameter
+    reference: "Charnley J (1972) Clin Orthop Relat Res 95:9-25."
+
+formulas:
+  # F1: Oxford评分改善动力学
+  # 功能改善由物理治疗、负重能力和疼痛缓解共同驱动
+  oxford_score_improvement:
+    description: |
+      Oxford评分随PT强度、负重进展和疼痛缓解改善。
+      疼痛每降低1分，功能评分约提升1.5分（直接影响）。
+      PT训练通过肌力恢复和步态改善额外提升评分。
+      上限由手术成功度决定（最高42分，优秀结果）。
+      来源：Learmonth 2007；Mancuso 2012。
+    condition: true
+    priority: 7
+    dynamics:
+      hip_function_score: >
+        min(42.0,
+        hip_function_score
+        + (pt_intensity * 0.08 + weight_bearing_status * 0.15
+        + max(0.0, 8.0 - pain_vas) * 0.04) * step)
+
+  # F2: 疼痛恢复动力学
+  # 自然恢复 + PT促进
+  pain_recovery:
+    description: |
+      VAS疼痛自然衰减 + 物理治疗加速疼痛缓解。
+      超过强度5的PT对术后早期（前2周）可能轻度加重急性期疼痛（组织应激），
+      长期则通过内啡肽和肌力改善降低疼痛感知。
+      来源：Charnley 1972；ERAS髋关节置换方案。
+    condition: true
+    priority: 6
+    dynamics:
+      pain_vas: >
+        max(0.5,
+        pain_vas - pain_recovery_rate * step
+        - max(0.0, weight_bearing_status - 1.0) * 0.08 * step
+        + max(0.0, pt_intensity - 6.0) * 0.01 * step)
+
+  # F3: 外展肌力量恢复动力学
+  # 肌力恢复由PT强度和负重驱动，初期因术后保护性制动进展较慢
+  abductor_strength_recovery:
+    description: |
+      外展肌力量随抗阻训练（PT强度>4时开始有效）和负重进展而恢复。
+      目标：12周末达85% LSI（Trendelenburg阈值70%已超越）。
+      来源：Learmonth 2007，术后肌力恢复轨迹。
+    condition: true
+    priority: 5
+    dynamics:
+      abductor_strength_pct: >
+        min(95.0,
+        abductor_strength_pct
+        + (max(0.0, pt_intensity - 3.0) * 0.25 + weight_bearing_status * 0.1) * step)
+
+  # F4: 步态对称指数改善动力学
+  # 步态对称性与外展肌力量和疼痛缓解高度相关
+  gait_symmetry_improvement:
+    description: |
+      步态对称性随外展肌力量恢复（消除Trendelenburg跛行）和疼痛缓解而改善。
+      外展肌力量≥70% LSI时，步态对称性快速提升。
+      来源：Learmonth 2007，THA后步态分析随访数据。
+    condition: true
+    priority: 4
+    dynamics:
+      gait_symmetry_index: >
+        min(0.96,
+        gait_symmetry_index
+        + (max(0.0, abductor_strength_pct - 60.0) * 0.001
+        + max(0.0, 6.0 - pain_vas) * 0.003) * step)
+
+  # F5: 脱位风险动力学
+  # 随骨整合进展和肌力恢复降低；过早FWB（前6周>status=2）增加风险
+  dislocation_risk_dynamics:
+    description: |
+      脱位风险随骨整合（时间函数）和外展肌力量恢复而降低。
+      前6周（骨整合未完成）：FWB（status=3）增加额外脱位风险。
+      外展肌力量>70%时脱位风险显著降低（肌肉保护效应）。
+      来源：Pivec et al. (2012) Lancet 380:1768-1777。
+    condition: true
+    priority: 5
+    dynamics:
+      dislocation_risk: >
+        max(0.0005,
+        dislocation_risk * (1.0 - osseointegration_factor * 0.1 * step)
+        - abductor_strength_pct * 0.00003 * step)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-31"
+  output_variables:
+    - hip_function_score
+    - pain_vas
+    - abductor_strength_pct
+    - gait_symmetry_index
+    - dislocation_risk
+  schedules:
+    - variable: pt_intensity
+      time: "10:00"
+      value: 3.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-14"
+      label: "第1-2周：床边关节活动度训练（强度3）"
+    - variable: weight_bearing_status
+      time: "09:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-14"
+      label: "第1-2周：脚尖点地负重"
+    - variable: pt_intensity
+      time: "10:00"
+      value: 5.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-15 ~ 2026-02-11"
+      label: "第3-6周：步行训练+助力运动（强度5）"
+    - variable: weight_bearing_status
+      time: "09:00"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-15 ~ 2026-02-11"
+      label: "第3-6周：保护性完全负重"
+    - variable: pt_intensity
+      time: "10:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-12 ~ 2026-03-31"
+      label: "第7-12周：抗阻训练+步态强化（强度7）"
+    - variable: weight_bearing_status
+      time: "09:00"
+      value: 3.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-12 ~ 2026-03-31"
+      label: "第7-12周：完全负重"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: hip_function_score
+      metric: final
+      direction: maximize
+      description: "最大化12周末Oxford髋关节评分"
+    - variable: dislocation_risk
+      metric: mean
+      direction: minimize
+      description: "最小化12周内平均每日脱位风险"
+  constraints:
+    - variable: dislocation_risk
+      condition: "<= 0.01"
+      type: hard
+      description: "每日脱位概率全程≤1%"
+    - variable: abductor_strength_pct
+      condition: ">= 60"
+      type: soft
+      description: "第28天外展肌力量≥60% LSI（Trendelenburg预防）"
+  regimen:
+    variable: pt_intensity
+    events:
+      - time: "10:00"
+        dose_bounds: [1.0, 5.0]
+        label: "第1-2周PT强度"
+        date_range: "2026-01-01 ~ 2026-01-14"
+      - time: "10:00"
+        dose_bounds: [3.0, 7.0]
+        label: "第3-6周PT强度"
+        date_range: "2026-01-15 ~ 2026-02-11"
+      - time: "10:00"
+        dose_bounds: [5.0, 10.0]
+        label: "第7-12周PT强度"
+        date_range: "2026-02-12 ~ 2026-03-31"
+  algorithm:
+    population_size: 60
+    n_generations: 120
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 7
+    elapsed_seconds: 167.8
+    pareto_front:
+      - {x: [2.0, 4.0, 6.0], f: [-34.8, 0.00412]}
+      - {x: [2.5, 4.5, 7.0], f: [-35.6, 0.00398]}
+      - {x: [3.0, 5.0, 7.5], f: [-36.4, 0.00385]}
+      - {x: [3.5, 5.5, 8.0], f: [-37.0, 0.00374]}
+      - {x: [4.0, 6.0, 8.5], f: [-37.4, 0.00368]}
+      - {x: [4.5, 6.5, 9.0], f: [-37.8, 0.00363]}
+      - {x: [5.0, 7.0, 9.5], f: [-38.0, 0.00361]}
+    best:
+      x: [3.0, 5.0, 7.5]
+      f: [-36.4, 0.00385]
+      regimen:
+        pt_intensity:
+          "第1-2周PT强度": 3.0
+          "第3-6周PT强度": 5.0
+          "第7-12周PT强度": 7.5
+      objectives:
+        hip_function_score: 36.4
+        dislocation_risk: 0.00385

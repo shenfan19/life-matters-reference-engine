@@ -18,16 +18,16 @@ metadata:
     value: 1
     unit: minute
 imports:
-- models/medical/physiology/nutrition_intake
-- models/medical/physiology/digestive_system
-- models/medical/physiology/glucose_regulation
-- models/medical/physiology/insulin_system
-- models/medical/physiology/endocrine_system
-- models/medical/physiology/energy_balance
-- models/medical/disease/metabolic/complications
-- models/medical/disease/metabolic/inflammation
-- models/medical/disease/metabolic/obesity
-- models/medical/physiology/physiology
+- references/medical/physiology/nutrition_intake_2026_mw
+- references/medical/physiology/digestive_system_2026_mw
+- references/medical/physiology/glucose_regulation_2026_mw
+- references/medical/physiology/insulin_system_2026_mw
+- references/medical/physiology/endocrine_system_2026_mw
+- references/medical/physiology/energy_balance_2026_mw
+- references/medical/disease/metabolic/complications_2026_mw
+- references/medical/disease/metabolic/inflammation_2026_mw
+- references/medical/disease/metabolic/obesity_2026_noref
+- references/medical/physiology/physiology_2026_mw
 variables:
   body_water:
     bounds:
@@ -72,15 +72,8 @@ formulas:
     priority: 1
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-08"
   output_variables:
   - body_water
   - diabetes_risk
   - diabetes_type
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - health_score
-  variables_to_optimize:
-  - diabetes_risk

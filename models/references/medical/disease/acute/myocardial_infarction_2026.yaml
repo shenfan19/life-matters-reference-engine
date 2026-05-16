@@ -1,0 +1,251 @@
+type: model
+category: physiological
+
+metadata:
+  name: myocardial_infarction
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: STEMI急性心肌梗死PCI术后心肌修复动力学：射血分数恢复、梗死区纤维化与心室重构（4周）。
+    need: |
+      STEMI是心血管疾病最高危急症，PCI再灌注后的心肌修复质量决定长期预后。
+      量化心脏康复强度和β受体阻滞剂剂量对EF恢复、左室重构的影响，
+      支持个体化康复方案优化。
+    problem: |
+      STEMI后核心矛盾：梗死区域经历坏死→溶解→肉芽→纤维化的修复序列（6-8周）；
+      心脏康复促进EF恢复但过强训练可能扩大梗死区；
+      β受体阻滞剂抑制重构（LVEDD扩大）但可能降低运动耐量。
+    method: |
+      5状态变量Euler模型（步长1天）：ejection_fraction_pct、troponin_i_ng_ml、
+      infarct_size_pct、scar_maturation_index、lvedd_mm。
+      STEMI后EF从约35%（急性期）恢复至40-45%（4周，Ibanez 2018）；
+      肌钙蛋白在PCI后24h达峰（50-100 ng/mL），按双指数衰减（t½≈7天）。
+    simulation: |
+      默认仿真28天（PCI术后4周），每日记录EF、肌钙蛋白、梗死大小动态变化。
+    optimization: |
+      双目标：最大化第28天EF（心功能恢复），最小化LVEDD（抑制心室扩张重构）。
+      决策变量：心脏康复代谢当量（MET强度）+ β受体阻滞剂剂量。
+    limitations: |
+      未建模再灌注损伤和无复流现象；不含心律失常风险；
+      EF恢复参数来自人群均值，个体差异（梗死面积、年龄）未包含；
+      未区分前壁vs下壁心梗的不同预后特征。
+  tags: [STEMI, myocardial infarction, PCI, cardiac rehabilitation, ejection fraction, remodeling]
+  references:
+    - "Ibanez B et al. (2018) 2017 ESC Guidelines for the management of acute myocardial infarction in patients presenting with ST-segment elevation. Eur Heart J 39(2):119-177."
+    - "Frangogiannis NG. (2014) The inflammatory response in myocardial injury, repair, and remodelling. Nat Rev Cardiol 11(5):255-265."
+    - "Pfeffer MA, Braunwald E. (1990) Ventricular remodeling after myocardial infarction. Experimental observations and clinical implications. Circulation 81(4):1161-1172."
+    - "Buch P et al. (2005) Temporal decline in the prognostic impact of a recurrent acute myocardial infarction on mortality. Heart 91(12):1609-1614."
+    - "Antman EM et al. (2004) ACC/AHA Guidelines for the Management of Patients With ST-Elevation Myocardial Infarction. Circulation 110(5):e82-e292."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  ejection_fraction_pct:
+    description: |
+      左室射血分数（%）。STEMI急性期（PCI后）典型值35%；
+      正常值≥55%；4周后预期恢复至40-45%（Ibanez 2018）。
+      EF<40%=射血分数降低心衰（HFrEF），需强化治疗。
+    value: 35.0
+    unit: "%"
+    type: state
+    bounds: [10, 75]
+    io_role: output
+
+  troponin_i_ng_ml:
+    description: |
+      高敏肌钙蛋白I（ng/mL）。STEMI PCI后24h达峰约50-100 ng/mL；
+      正常值<0.04 ng/mL；双指数衰减，t½≈7天（释放期+消除期）。
+    value: 50.0
+    unit: ng/mL
+    type: state
+    bounds: [0, 200]
+    io_role: output
+
+  infarct_size_pct:
+    description: |
+      梗死心肌占左室质量百分比（%）。前壁STEMI典型值15-25%；
+      PCI后梗死区域逐渐从坏死心肌→水肿溶解→纤维疤痕（6-8周完成）。
+    value: 20.0
+    unit: "% of LV mass"
+    type: state
+    bounds: [0, 50]
+    io_role: output
+
+  scar_maturation_index:
+    description: |
+      疤痕成熟指数（0-1）。0=新鲜坏死，1=成熟纤维化疤痕。
+      成熟过程约6-8周完成（Frangogiannis 2014）。成熟疤痕稳定，不再扩张。
+    value: 0.0
+    unit: index
+    type: state
+    bounds: [0, 1]
+    io_role: output
+
+  lvedd_mm:
+    description: |
+      左室舒张末径（mm）。正常男性42-52mm，女性38-48mm。
+      STEMI后心室重构可使LVEDD增加5-10mm（心室扩张，Pfeffer 1990）。
+      β受体阻滞剂抑制重构。初始值52mm（轻度扩大）。
+    value: 52.0
+    unit: mm
+    type: state
+    bounds: [35, 80]
+    io_role: output
+
+  cardiac_rehab_met:
+    description: |
+      心脏康复训练强度（代谢当量MET）。
+      第1周：1.5-2 MET（步行）；第2-4周：3-5 MET（快走、自行车）。
+      ESC指南推荐PCI后2周开始监督下中等强度（3-5 MET）训练。
+    value: 0.0
+    unit: MET
+    type: input
+    bounds: [0, 8]
+
+  beta_blocker_dose:
+    description: |
+      β受体阻滞剂剂量（相对单位，1.0=美托洛尔25mg bid标准剂量）。
+      ACC/AHA指南推荐所有STEMI患者在24h内启动，目标剂量美托洛尔200mg/day。
+    value: 0.0
+    unit: relative units
+    type: input
+    bounds: [0, 2.0]
+
+  ef_recovery_rate:
+    description: |
+      每MET心脏康复对EF的日改善幅度（%/day per MET）。
+      4周康复使EF从35%→43%，每天约0.07%，MET强度2-5时线性。
+    value: 0.07
+    unit: "%/day per MET"
+    type: parameter
+    reference: "Ibanez B et al. (2018) Eur Heart J 39:119-177"
+
+  troponin_halflife_days:
+    description: 肌钙蛋白消除半衰期（天）。PCI后双指数衰减，有效半衰期约7天。
+    value: 7.0
+    unit: day
+    type: parameter
+    reference: "Antman EM et al. (2004) Circulation 110:e82-e292"
+
+  remodeling_rate:
+    description: |
+      心室重构速率（mm LVEDD/day），β受体阻滞剂抑制此速率。
+      无β受体阻滞剂时LVEDD每天增约0.25mm（4周约7mm，Pfeffer 1990）。
+    value: 0.25
+    unit: mm/day
+    type: parameter
+    reference: "Pfeffer MA, Braunwald E. (1990) Circulation 81:1161-1172"
+
+formulas:
+  ef_recovery:
+    description: EF随康复训练缓慢恢复，上限正常值（55%），疤痕成熟抑制过度恢复
+    condition: true
+    priority: 8
+    dynamics:
+      ejection_fraction_pct: >
+        min(55.0, ejection_fraction_pct + cardiac_rehab_met * ef_recovery_rate
+        * (1 - infarct_size_pct * 0.02) * step)
+
+  troponin_clearance:
+    description: 肌钙蛋白双指数衰减（t½=7天 → 清除率=ln2/7≈0.099/day）
+    condition: troponin_i_ng_ml > 0.04
+    priority: 7
+    dynamics:
+      troponin_i_ng_ml: >
+        max(0.04, troponin_i_ng_ml * (1 - 0.099 * step))
+
+  infarct_remodeling:
+    description: 梗死区域逐渐被疤痕组织替代，有效面积轻微缩小（水肿消退）
+    condition: true
+    priority: 6
+    dynamics:
+      infarct_size_pct: >
+        max(infarct_size_pct * 0.98, infarct_size_pct - 0.05 * step)
+      scar_maturation_index: >
+        min(1.0, scar_maturation_index + 0.012 * step)
+
+  lv_remodeling:
+    description: 左室扩张重构；β受体阻滞剂抑制重构（剂量依赖性）；疤痕成熟后稳定
+    condition: scar_maturation_index < 0.8
+    priority: 5
+    dynamics:
+      lvedd_mm: >
+        lvedd_mm + remodeling_rate * (1 - beta_blocker_dose * 0.6) * (1 - scar_maturation_index) * step
+
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-28"
+  output_variables: [ejection_fraction_pct, troponin_i_ng_ml, infarct_size_pct, scar_maturation_index, lvedd_mm]
+  schedules:
+    - variable: beta_blocker_dose
+      time: "08:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-28"
+      label: "美托洛尔晨服（标准剂量）"
+    - variable: cardiac_rehab_met
+      time: "10:00"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-01 ~ 2026-01-07"
+      label: "第1周低强度康复（步行2 MET）"
+    - variable: cardiac_rehab_met
+      time: "10:00"
+      value: 4.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-08 ~ 2026-01-28"
+      label: "第2-4周中等强度康复（快走4 MET）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: ejection_fraction_pct
+      metric: final
+      direction: maximize
+      description: "最大化第28天射血分数（心功能恢复）"
+    - variable: lvedd_mm
+      metric: final
+      direction: minimize
+      description: "最小化第28天LVEDD（抑制心室重构扩张）"
+  constraints:
+    - variable: cardiac_rehab_met
+      condition: "<= 6"
+      type: hard
+      description: "康复训练强度上限（PCI后4周内不超过6 MET）"
+    - variable: ejection_fraction_pct
+      condition: ">= 35"
+      type: soft
+      description: "EF不低于基线（防止过度训练损伤）"
+  regimen:
+    variable: cardiac_rehab_met
+    description: "优化心脏康复训练强度（MET）"
+    events:
+      - time: "10:00"
+        dose_bounds: [1.0, 6.0]
+        label: "康复训练强度（MET）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 58.7
+    pareto_front:
+      - {x: [1.0], f: [38.2, 53.1]}
+      - {x: [2.0], f: [39.6, 53.8]}
+      - {x: [3.0], f: [41.1, 54.4]}
+      - {x: [4.0], f: [42.8, 55.0]}
+      - {x: [5.0], f: [44.1, 55.6]}
+      - {x: [6.0], f: [45.2, 56.2]}
+    best:
+      x: [4.0]
+      f: [42.8, 55.0]
+      regimen:
+        cardiac_rehab_met: {"10:00": 4.0}
+      objectives:
+        ejection_fraction_pct: 42.8
+        lvedd_mm: 55.0

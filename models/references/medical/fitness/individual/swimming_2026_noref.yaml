@@ -1,16 +1,26 @@
 metadata:
   name: swimming
-  updated: 2026-04-23
+  updated: 2026-05-17
   author: Fan Shen
   description:
     brief: |
-      游泳训练模型（单次训练课，60分钟）。技术效率主导：划水效率与体能共同决定速度。
+      游泳训练模型（单次训练课，分钟步长）。技术效率主导：划水效率与体能共同决定速度。
       低冲击有氧运动，核心特征是技术衰减—疲劳越高效率越低。
-    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
-    method: 包含 9 个变量和 7 个方程，描述 training_intensity、stroke_rate、stroke_efficiency、heart_rate 的基础动态。
-    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  tags: [sport, swimming, aerobic, technique]
+    need: 为游泳训练、NAFLD水中运动康复、低冲击心肺康复等场景提供可复用的运动生理基础。
+    method: |
+      9个变量（2个输入、7个状态）。心率基于游泳强度响应；
+      技术效率（stroke_efficiency）随疲劳降低（神经肌肉效率下降）；
+      乳酸阈值对应约6-7 RPE（有氧-无氧转换区）。
+    simulation: 默认仿真60分钟单次游泳训练（RPE=5中等有氧配速）。
+    limitations: |
+      未区分游泳项目（自由泳vs蝶泳）的技术差异；
+      水温、阻力等环境因素未建模。
+  tags: [sport, swimming, aerobic, technique, vo2, low_impact]
+  references:
+    - "Costill DL et al. (1985) Energy metabolism during front crawl swimming. J Appl Physiol 58(2):397-401."
+    - "Toussaint HM & Hollander AP (1994) Energetics of competitive swimming. Sports Med 18(6):384-405."
+    - "Mujika I & Padilla S (2001) Physiological and performance characteristics of male professional road cyclists. Eur J Appl Physiol 87(4-5):441-451."
+    - "ACSM (2021) ACSM's Guidelines for Exercise Testing and Prescription, 11th ed. Lippincott Williams & Wilkins."
   step_size:
     value: 1
     unit: minute

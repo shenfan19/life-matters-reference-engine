@@ -1,0 +1,248 @@
+type: model
+category: physiological
+
+metadata:
+  name: sickle_cell
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 镰状细胞病（SCD）血管闭塞危象（VOC）与羟基脲治疗动力学：HbF诱导、镰变指数与疼痛评分（长期管理）。
+    need: |
+      SCD影响全球约700万人（Piel 2017），VOC是最主要的住院原因和疼痛来源。
+      羟基脲是唯一被证实可降低VOC频率的疾病修饰药（MSH试验，Charache 1995）。
+      量化羟基脲剂量-HbF升高-VOC降低的因果链，支持个体化剂量优化。
+    problem: |
+      核心矛盾：羟基脲从低剂量起始，缓慢升至最大耐受剂量（MTD，通常20-25 mg/kg/day）；
+      HbF每升高1%，VOC发作率降低约5%（Charache 1995）；
+      目标HbF>20%（理想）；但羟基脲有骨髓抑制风险（中性粒细胞减少）。
+    method: |
+      5状态变量Euler模型（步长1天）：hbf_percentage、sickling_index、pain_score_was、
+      hemoglobin_g_dl、acute_chest_risk。
+      羟基脲→HbF（4-6周起效）→镰变减少→疼痛改善的因果链。
+      补液强化血液稀释效应，降低血液黏度和镰变风险。
+    simulation: |
+      默认仿真180天（6个月羟基脲剂量滴定期），观察HbF升高、镰变减少和疼痛缓解曲线。
+    optimization: |
+      双目标：最大化HbF（VOC保护），最大化血红蛋白（贫血改善）。
+      决策变量：羟基脲剂量 + 补液量。
+    limitations: |
+      未建模骨髓抑制（中性粒细胞减少）的剂量限制效应；
+      不含造血干细胞移植（唯一治愈方法）；
+      HbF升高动力学为简化模型，实际个体间差异很大（F细胞数量遗传决定）；
+      未区分HbSS vs HbSC vs HbS/β-地中海贫血亚型。
+  tags: [sickle cell disease, SCD, hydroxyurea, HbF, VOC, pain, hematology, genetic]
+  references:
+    - "Charache S et al. (1995) Effect of hydroxyurea on the frequency of painful crises in sickle cell anemia. N Engl J Med 332(20):1317-1322."
+    - "Yawn BP et al. (2014) Management of Sickle Cell Disease: Summary of the 2014 Evidence-Based Report by Expert Panel Members. JAMA 312(10):1033-1048."
+    - "Piel FB et al. (2017) Sickle-Cell Disease. N Engl J Med 376(16):1561-1573."
+    - "Steinberg MH et al. (2003) Effect of hydroxyurea on mortality and morbidity in adult sickle cell anemia. JAMA 289(13):1645-1651."
+    - "Ware RE. (2010) How I use hydroxyurea to treat young patients with sickle cell anemia. Blood 115(26):5300-5311."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  hbf_percentage:
+    description: |
+      胎儿血红蛋白（HbF）百分比（%）。正常成人<1%；SCD未治疗约2-5%；
+      羟基脲治疗后可升至15-20%（Charache 1995）；目标>20%可使VOC频率降低50%以上。
+    value: 3.0
+    unit: "%"
+    type: state
+    bounds: [0, 35]
+    io_role: output
+
+  sickling_index:
+    description: |
+      镰变指数（0-1）。代表循环中镰状红细胞比例。
+      HbF升高使镰变减少（HbF抑制HbS聚合）；正常血液黏度时约0.6。
+      目标：治疗后降至<0.3。
+    value: 0.7
+    unit: index
+    type: state
+    bounds: [0, 1]
+    io_role: output
+
+  pain_score_was:
+    description: |
+      疼痛评分（WAS，0-10分）。0=无痛；≥7=重度痛（需住院）。
+      VOC危象特征：突发重度疼痛（骨骼、胸、腹）。
+      治疗目标：平均评分<4（日常功能保留）。
+    value: 6.5
+    unit: score (0-10)
+    type: state
+    bounds: [0, 10]
+    io_role: output
+
+  hemoglobin_g_dl:
+    description: |
+      血红蛋白（g/dL）。SCD患者基线低（贫血），典型值7-9 g/dL；
+      正常成人男性13.5-17.5，女性12-16。羟基脲治疗可轻度升高（Steinberg 2003）。
+    value: 8.0
+    unit: g/dL
+    type: state
+    bounds: [3, 18]
+    io_role: output
+
+  acute_chest_risk:
+    description: |
+      急性胸痛综合征风险指数（0-1）。SCD最严重并发症（死亡率约3%）。
+      镰变指数和贫血程度共同驱动；HbF升高保护作用显著。
+    value: 0.5
+    unit: index
+    type: state
+    bounds: [0, 1]
+    io_role: output
+
+  hydroxyurea_dose_mg_per_kg:
+    description: |
+      羟基脲剂量（mg/kg/day）。起始剂量通常10-15 mg/kg/day；
+      每8周增加5 mg/kg（骨髓抑制监测）；最大耐受剂量（MTD）通常20-25 mg/kg/day（Ware 2010）。
+    value: 0.0
+    unit: mg/kg/day
+    type: input
+    bounds: [0, 30]
+
+  fluid_intake_ml_per_day:
+    description: |
+      每日液体摄入量（mL/day）。充分补液稀释血液，降低血液黏度和镰变风险。
+      推荐：2000-3000 mL/day；脱水会触发VOC危象。
+    value: 0.0
+    unit: mL/day
+    type: input
+    bounds: [500, 4000]
+
+  hbf_induction_rate:
+    description: |
+      羟基脲对HbF的诱导速率（%/day per mg/kg）。
+      MSH试验：15-20 mg/kg治疗后HbF从3%→15-20%，约3个月（90天）；
+      增长速率约0.003%/day per mg/kg（Charache 1995）。
+    value: 0.003
+    unit: "%/day per mg/kg"
+    type: parameter
+    reference: "Charache S et al. (1995) N Engl J Med 332:1317-1322"
+
+  voc_pain_threshold:
+    description: HbF对疼痛的保护系数。HbF每升高1%，VOC疼痛评分降低约0.05分（Charache 1995）。
+    value: 0.05
+    unit: pain score/% HbF
+    type: parameter
+    reference: "Charache S et al. (1995) N Engl J Med 332:1317-1322"
+
+formulas:
+  hbf_induction:
+    description: 羟基脲诱导HbF升高（起效延迟约4-6周后达稳态），上限约30%
+    condition: hydroxyurea_dose_mg_per_kg > 0
+    priority: 9
+    dynamics:
+      hbf_percentage: >
+        min(30.0, hbf_percentage + hbf_induction_rate * hydroxyurea_dose_mg_per_kg * step)
+
+  sickling_reduction:
+    description: 镰变指数随HbF升高而降低（HbF抑制HbS聚合）
+    condition: true
+    priority: 8
+    dynamics:
+      sickling_index: >
+        max(0.05, 0.85 - hbf_percentage * 0.025 - fluid_intake_ml_per_day * 0.00005)
+
+  pain_dynamics:
+    description: 疼痛评分随镰变指数变化，HbF保护效应减轻慢性疼痛
+    condition: true
+    priority: 7
+    dynamics:
+      pain_score_was: >
+        max(0, sickling_index * 8.0 - hbf_percentage * voc_pain_threshold)
+
+  hemoglobin_improvement:
+    description: 羟基脲轻度升高血红蛋白（减少溶血，Steinberg 2003），充分补液防止血液浓缩
+    condition: true
+    priority: 6
+    dynamics:
+      hemoglobin_g_dl: >
+        max(5.0, min(12.0, 7.0 + hbf_percentage * 0.15 + fluid_intake_ml_per_day * 0.0002))
+
+  acute_chest_risk_calc:
+    description: 急性胸痛综合征风险：镰变指数和贫血的复合函数
+    condition: true
+    priority: 5
+    dynamics:
+      acute_chest_risk: >
+        max(0, min(1.0, sickling_index * 0.6 + (10 - hemoglobin_g_dl) * 0.04))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-06-30"
+  output_variables: [hbf_percentage, sickling_index, pain_score_was, hemoglobin_g_dl, acute_chest_risk]
+  schedules:
+    - variable: hydroxyurea_dose_mg_per_kg
+      time: "08:00"
+      value: 15.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-02-28"
+      label: "羟基脲起始剂量15mg/kg/day"
+    - variable: hydroxyurea_dose_mg_per_kg
+      time: "08:00"
+      value: 20.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-01 ~ 2026-06-30"
+      label: "羟基脲滴定至20mg/kg/day（第8周后）"
+    - variable: fluid_intake_ml_per_day
+      time: "08:00"
+      value: 2500.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "每日补液2500mL"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: hbf_percentage
+      metric: final
+      direction: maximize
+      description: "最大化第180天HbF百分比（VOC保护）"
+    - variable: hemoglobin_g_dl
+      metric: final
+      direction: maximize
+      description: "最大化第180天血红蛋白（贫血改善）"
+  constraints:
+    - variable: hydroxyurea_dose_mg_per_kg
+      condition: "<= 25"
+      type: hard
+      description: "剂量上限：MTD通常≤25 mg/kg/day（骨髓抑制风险）"
+    - variable: pain_score_was
+      condition: "<= 4"
+      type: soft
+      description: "目标：疼痛评分<4（日常功能保留）"
+  regimen:
+    variable: hydroxyurea_dose_mg_per_kg
+    description: "优化羟基脲剂量（mg/kg/day）"
+    events:
+      - time: "08:00"
+        dose_bounds: [10.0, 25.0]
+        label: "羟基脲剂量（mg/kg/day）"
+  algorithm:
+    population_size: 50
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 53.8
+    pareto_front:
+      - {x: [10.0], f: [11.2, 8.8]}
+      - {x: [13.0], f: [13.5, 9.2]}
+      - {x: [15.0], f: [15.8, 9.6]}
+      - {x: [18.0], f: [18.1, 10.1]}
+      - {x: [20.0], f: [19.8, 10.4]}
+      - {x: [25.0], f: [22.3, 10.9]}
+    best:
+      x: [20.0]
+      f: [19.8, 10.4]
+      regimen:
+        hydroxyurea_dose_mg_per_kg: {"08:00": 20.0}
+      objectives:
+        hbf_percentage: 19.8
+        hemoglobin_g_dl: 10.4

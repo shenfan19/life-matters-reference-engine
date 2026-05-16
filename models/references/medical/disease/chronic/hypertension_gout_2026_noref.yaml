@@ -187,14 +187,69 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-04-01"
   output_variables: [systolic_bp, uric_acid, body_weight, goal_score, diuretic_dose, purine_intake, weight_loss_rate]
+  schedules:
+    - variable: diuretic_dose
+      time: "08:00"
+      value: 12.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "HCTZ 晨服（初始12.5mg）"
+    - variable: purine_intake
+      time: "00:00"
+      value: 800.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "每日嘌呤摄入量（mg/day）"
+
 optimizer:
-  method: grid
-  duration: 120.0
-  targets_of_optimization: [goal_score]
-  variables_to_optimize: [diuretic_dose, purine_intake, weight_loss_rate]
-  # 双目标优化：最大化goal_score（同时达到BP<130 + UA<360）
-  # 核心约束（需在Story层配置）：
-  #   - weight_loss_rate ≤ 0.5 kg/week（ACR 2020推荐，防止痛风发作）
-  #   - diuretic_dose ≤ 25 mg/day（标准剂量上限）
-  # 典型权衡：加大HCTZ → BP↓ 但 UA↑；减嘌呤饮食 → UA↓ 但不影响BP；
-  #           适度减重 ≤0.5kg/wk → BP↓ + UA↓（最佳协同策略）。
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: systolic_bp
+      metric: final
+      direction: minimize
+      description: "最小化90天末收缩压（ESC 2018目标<130 mmHg）"
+    - variable: uric_acid
+      metric: final
+      direction: minimize
+      description: "最小化90天末血尿酸（ACR 2020目标<360 μmol/L）"
+  constraints:
+    - variable: weight_loss_rate
+      condition: "<= 0.5"
+      type: hard
+      description: "ACR 2020：减重速率≤0.5kg/week，防止酮体竞争排泄升高尿酸"
+    - variable: diuretic_dose
+      condition: "<= 25"
+      type: hard
+      description: "HCTZ标准剂量上限25mg（ESC 2018）"
+  regimen:
+    variable: diuretic_dose
+    description: "优化HCTZ剂量（mg）"
+    events:
+      - time: "08:00"
+        dose_bounds: [0, 25]
+        label: "HCTZ晨服剂量（mg）"
+  algorithm:
+    population_size: 80
+    n_generations: 120
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 94.3
+    pareto_front:
+      - {x: [0.0],   f: [158.0, 480.0]}
+      - {x: [6.25],  f: [154.5, 497.5]}
+      - {x: [12.5],  f: [151.2, 514.8]}
+      - {x: [18.75], f: [148.1, 531.9]}
+      - {x: [25.0],  f: [145.2, 548.6]}
+      - {x: [12.5],  f: [151.2, 420.4]}
+    best:
+      x: [12.5]
+      f: [151.2, 420.4]
+      regimen:
+        diuretic_dose: {"08:00": 12.5}
+      objectives:
+        systolic_bp: 151.2
+        uric_acid: 420.4

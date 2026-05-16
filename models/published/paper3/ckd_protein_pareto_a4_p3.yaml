@@ -91,4 +91,22 @@ simulation:
   start_date: "2026-01-01"
   end_date:   "2026-12-31"
   output_variables: [GFR, muscle_mass, BUN, dietary_protein]
-  schedules: []                # TODO 从 paper2 版本复制
+  schedules:
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "早餐蛋白质（g/kg/day）"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "午餐蛋白质（g/kg/day）"
+    - variable: dietary_protein
+      time: "18:00"
+      value: 0.26
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "晚餐蛋白质（g/kg/day）"

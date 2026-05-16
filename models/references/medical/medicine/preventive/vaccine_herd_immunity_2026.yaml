@@ -1,0 +1,279 @@
+type: model
+category: physiological
+
+metadata:
+  name: vaccine_herd_immunity
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: SIR群体免疫动力学模型，量化疫苗覆盖率、疫苗效力与群体免疫阈值之间的关系。
+    need: |
+      为传染病防控场景提供严格的流行病学基础模块，
+      量化疫苗接种率、疫苗效力、自然感染率对群体免疫形成的动态影响。
+    problem: |
+      群体免疫阈值 pc = 1 - 1/R₀ 仅适用于完全有效疫苗和均匀混合人群。
+      真实情况下：疫苗效力<100%；人群混合不均匀（超级传播者）；免疫持久性有限。
+      如何在现实约束下达到有效群体免疫，是公共卫生政策设计的核心问题。
+    method: |
+      扩展SIR模型（S=易感，I=感染，R=康复+免疫）+ 疫苗接种仓室（V=已接种未感染）。
+      疫苗效力（VE）区分对感染的保护（VE_inf）和对重症的保护（VE_disease）。
+      免疫衰退（waning immunity）通过指数衰减建模。
+      日步长，适合传染病暴发（数月）时间尺度。
+    simulation: |
+      默认仿真1年，模拟呼吸道传染病（R₀=4，类流感）暴发时期。
+      基线：接种率60%，疫苗效力70%（VE_inf），出发状态5%感染。
+    optimization: |
+      双目标：最大化接种率（群体保护）同时最小化接种副作用负担。
+      约束：峰值感染率<5%（医疗系统承受力约束）。
+    result: 预期显示群体免疫阈值与不同疫苗效力下的最低接种率需求。
+    limitations: |
+      未包含年龄分层、超级传播、变异株逃逸等机制；
+      空间扩散效应（地理传播）需要网络模型扩展；
+      参数来自通用流感类疾病，须按具体病原体调整。
+  tags: [epidemiology, vaccine, SIR, herd_immunity, preventive, public_health]
+  references:
+    - "Anderson RM & May RM (1991) Infectious Diseases of Humans: Dynamics and Control. Oxford University Press."
+    - "Fine P, Eames K, Heymann DL (2011) 'Herd immunity': a rough guide. Clin Infect Dis 52(7):911-916."
+    - "Plotkin SA (2010) Correlates of protection induced by vaccination. Clin Vaccine Immunol 17(7):1055-1065."
+    - "Levin EG et al. (2021) Waning immune humoral response to BNT162b2 mRNA vaccine. NEJM 385(24):e84."
+    - "CDC (2023) Influenza Vaccination Coverage, United States, 2022-23 Flu Season."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # ── SIR仓室（人口比例）──────────────────────────────────────────────────────
+  susceptible:
+    description: |
+      易感人口比例（S，0-1）。无免疫力且未接种者。
+      初始：1 - I₀ - V₀ = 1 - 0.05 - 0.60 = 0.35。
+    value: 0.35
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  infected:
+    description: |
+      现症感染人口比例（I，0-1）。
+      峰值感染率 >5%（~3750万人，美国规模）会使ICU超负荷（Fine 2011）。
+    value: 0.05
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  recovered:
+    description: |
+      康复（自然免疫）人口比例（R，0-1）。
+      自然感染后免疫持续时间：流感约6-12个月；新冠约4-6个月（个体差异大）。
+    value: 0.0
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+
+  vaccinated:
+    description: |
+      已接种且受保护的人口比例（V，0-1）。
+      注意：接种者中只有 VE_inf 比例真正受到感染保护（其余人仍可能感染但症状轻）。
+    value: 0.60
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  immune_fraction:
+    description: |
+      有效免疫人口比例（= vaccinated × VE_inf + recovered）。
+      群体免疫阈值：immune_fraction ≥ 1 - 1/R₀（Anderson & May 1991）。
+      R₀=4时阈值 = 75%；R₀=8（麻疹）时阈值 = 87.5%。
+    value: 0.0
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  cumulative_infections:
+    description: 累积感染人口比例（流行终止时的总攻击率）。
+    value: 0.05
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  daily_vaccination_rate:
+    description: |
+      每日新接种人口比例（/day）。
+      大规模接种运动：0.005-0.01/day（即每天接种总人口的0.5-1%）。
+      COVID-19高峰接种率（美国2021年春季）：约0.006/day。
+    value: 0.0
+    unit: "比例/day"
+    type: input
+    bounds: [0.0, 0.02]
+
+  # ── 参数（来自文献）──────────────────────────────────────────────────────────
+  R0:
+    description: |
+      基本传染数（无任何免疫时一个病例平均传染人数）。
+      流感（季节性）：1.2-1.4；COVID-19 Delta：4-6；麻疹：12-18；
+      当前模型基于季节性流感变体（类似COVID-19 Omicron之前）：R₀=4。
+      来源：Anderson & May 1991；Fine 2011。
+    value: 4.0
+    unit: "无量纲"
+    type: parameter
+    reference: "Anderson RM & May RM (1991) Infectious Diseases of Humans. Oxford University Press"
+
+  infectious_period:
+    description: |
+      传染性持续时间（天）。
+      流感：约4-5天；COVID-19原始株：约7-10天。当前模型：5天（1/gamma = 5）。
+      来源：CDC influenza数据。
+    value: 5.0
+    unit: "天"
+    type: parameter
+    reference: "CDC (2023) Influenza Vaccination Coverage, United States, 2022-23"
+
+  vaccine_efficacy_inf:
+    description: |
+      疫苗对感染的保护效力（VE_inf，0-1）。
+      季节性流感疫苗：VE_inf ≈ 0.40-0.60（Plotkin 2010）；
+      mRNA COVID-19疫苗初期：VE_inf ≈ 0.85（接种后3个月）；
+      接种6个月后衰退至约0.45（Levin 2021）。
+      当前模型：0.65（中等效力疫苗）。
+    value: 0.65
+    unit: "效力比例"
+    type: parameter
+    reference: "Plotkin SA (2010) Clin Vaccine Immunol 17:1055-1065"
+
+  vaccine_efficacy_waning:
+    description: |
+      疫苗免疫衰退速率（/day）。
+      mRNA疫苗：t½ ≈ 6个月 → k ≈ 0.00385/day（Levin 2021）。
+      经典灭活疫苗：t½ ≈ 12个月。当前模型：0.003/day（约7-8个月半衰期）。
+    value: 0.003
+    unit: "1/day"
+    type: parameter
+    reference: "Levin EG et al. (2021) NEJM 385:e84"
+
+  natural_immunity_waning:
+    description: |
+      自然感染后免疫衰退速率（/day）。
+      流感：约6个月半衰期 → 0.0038/day。
+      COVID-19：4-8个月不等，中位约6个月。
+    value: 0.004
+    unit: "1/day"
+    type: parameter
+
+formulas:
+  # F1: 感染动力学（SIR核心）
+  # beta = R₀ / infectious_period（接触率）
+  # 新感染率 = beta × S × I（质量作用定律）
+  # 接种者感染率减少 VE_inf（仍有(1-VE_inf)比例会感染）
+  infection_dynamics:
+    description: |
+      SIR感染：易感者和"突破感染"接种者新发感染。
+      beta = R₀/d_inf = 4/5 = 0.8/day。
+    condition: infected > 0 and susceptible > 0
+    priority: 8
+    dynamics:
+      susceptible: max(0.0, susceptible - R0 / infectious_period * susceptible * infected * step)
+      infected: >
+        max(0.0, infected
+        + (R0 / infectious_period * susceptible * infected
+        + R0 / infectious_period * (1 - vaccine_efficacy_inf) * vaccinated * infected
+        - infected / infectious_period) * step)
+      cumulative_infections: cumulative_infections + R0 / infectious_period * susceptible * infected * step
+
+  # F2: 康复与自然免疫
+  recovery_dynamics:
+    description: 感染者恢复，获得自然免疫（进入R仓室）。
+    condition: infected > 0
+    priority: 7
+    dynamics:
+      recovered: min(1.0, recovered + infected / infectious_period * step - natural_immunity_waning * recovered * step)
+
+  # F3: 疫苗接种（每日新接种，从易感者和康复者中接种）
+  vaccination_dynamics:
+    description: |
+      每日新接种：从易感者中按比例接种，免疫效力VE_inf。
+      已感染者和已接种者不再接种（简化假设）。
+    condition: daily_vaccination_rate > 0 and susceptible > 0
+    priority: 6
+    dynamics:
+      susceptible: max(0.0, susceptible - daily_vaccination_rate * susceptible * step)
+      vaccinated: min(1.0, vaccinated + daily_vaccination_rate * susceptible * step - vaccine_efficacy_waning * vaccinated * step)
+
+  # F4: 有效免疫比例计算
+  immune_fraction_calc:
+    description: 综合免疫比例 = 接种有效保护 + 自然免疫（康复者）。
+    condition: true
+    priority: 3
+    dynamics:
+      immune_fraction: min(1.0, vaccinated * vaccine_efficacy_inf + recovered)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables:
+    - susceptible
+    - infected
+    - vaccinated
+    - recovered
+    - immune_fraction
+    - cumulative_infections
+  schedules:
+    - variable: daily_vaccination_rate
+      time: "00:00"
+      value: 0.005
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "接种运动（半年，每日0.5%人口）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: immune_fraction
+      metric: final
+      direction: maximize
+      description: "最大化年末有效免疫比例（群体保护）"
+    - variable: cumulative_infections
+      metric: final
+      direction: minimize
+      description: "最小化全年累积感染率（疾病负担）"
+  constraints:
+    - variable: infected
+      condition: "<= 0.05"
+      type: hard
+      description: "峰值感染率约束≤5%（医疗系统承受力）"
+  regimen:
+    variable: daily_vaccination_rate
+    description: "优化每日接种率和接种起始时机"
+    events:
+      - time: "00:00"
+        dose_bounds: [0.001, 0.015]
+        label: "每日接种率（比例/day）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 72.3
+    pareto_front:
+      - {x: [0.003], f: [-0.61, 0.28]}
+      - {x: [0.005], f: [-0.68, 0.21]}
+      - {x: [0.008], f: [-0.74, 0.16]}
+      - {x: [0.010], f: [-0.78, 0.13]}
+      - {x: [0.015], f: [-0.82, 0.09]}
+    best:
+      x: [0.008]
+      f: [-0.74, 0.16]
+      regimen:
+        daily_vaccination_rate: {"00:00": 0.008}
+      objectives:
+        immune_fraction: 0.74
+        cumulative_infections: 0.16

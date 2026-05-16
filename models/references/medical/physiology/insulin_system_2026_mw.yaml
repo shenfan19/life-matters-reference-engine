@@ -18,7 +18,7 @@ metadata:
     value: 1
     unit: minute
 imports:
-- glucose_regulation
+- references/medical/physiology/glucose_regulation_2026_mw
 variables:
   plasma_insulin:
     description: 血浆胰岛素浓度
@@ -83,17 +83,10 @@ formulas:
     priority: 2
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-03"
   output_variables:
   - plasma_insulin
   - insulin_secretion_rate
   - beta_cell_function
   - beta_cell_mass
   - insulin_sensitivity
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - insulin_sensitivity
-  variables_to_optimize:
-  - beta_cell_function

@@ -17,8 +17,8 @@ metadata:
     value: 1
     unit: minute
 imports:
-- nutrition_intake
-- glucose_regulation
+- references/medical/physiology/nutrition_intake_2026_mw
+- references/medical/physiology/glucose_regulation_2026_mw
 variables:
   energy:
     description: 当前能量储备
@@ -95,16 +95,9 @@ formulas:
     priority: 1
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-08"
   output_variables:
   - energy
   - metabolism_rate
   - basal_metabolic_rate
   - energy_expenditure
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - energy_expenditure
-  variables_to_optimize:
-  - insulin_sensitivity
