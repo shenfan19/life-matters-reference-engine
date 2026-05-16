@@ -321,6 +321,15 @@ class SimulatorEngine:
                     if var_name in base_model.variables:
                         base_model.set_variable_value(var_name, value)
 
+            # GUI Working State Layer（ADR 0074）：
+            # 有 GUI regimen 的变量写入 manual_overrides，使 _apply_schedules 跳过它们，
+            # 确保 GUI 值优先级高于 YAML schedule。
+            if regimens:
+                for reg in regimens:
+                    var = reg.get('variable', '')
+                    if var in base_model.variables:
+                        base_model.manual_overrides[var] = 'gui'
+
             # 生成会话 ID 和种子列表（T4）
             session_id = str(uuid.uuid4())
             session_seed = int(np.random.randint(0, 2**31))
@@ -1034,9 +1043,9 @@ class SimulatorEngine:
             for name, acc in base.accumulators.items()
         }
 
-        # 重置运行时状态
+        # 重置运行时状态（manual_overrides 从 base 继承，保留 GUI Working State 设置）
         fresh.variable_history = {n: [v.value] for n, v in fresh.variables.items()}
-        fresh.manual_overrides = {}
+        fresh.manual_overrides = dict(getattr(base, 'manual_overrides', {}))
         fresh.current_step     = 0
         fresh.time             = 0.0
 
