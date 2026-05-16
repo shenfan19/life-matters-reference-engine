@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Collapse, Empty } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimulationDataPoint, PlanResult } from '../types';
@@ -38,6 +38,18 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   const hasSimData = simulationData.length > 0;
   const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
   const modelVariables = (selectedModel?.content?.variables || {}) as Record<string, any>;
+
+  // Which plan curves are currently visible in the chart
+  const [visiblePlanIds, setVisiblePlanIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    // Auto-show all plans whenever the plan list changes (new plans added)
+    if (comparedPlans && comparedPlans.length > 0)
+      setVisiblePlanIds(new Set(comparedPlans.map(p => p.id)));
+  }, [comparedPlans?.map(p => p.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visiblePlans = isMultiPlan
+    ? (comparedPlans ?? []).filter(p => visiblePlanIds.has(p.id))
+    : undefined;
   const placeholderOutputVars = (outputVars.length > 0
     ? outputVars
     : Object.entries(modelVariables)
@@ -63,6 +75,29 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
     ['Range', `${simStartDate} ~ ${simEndDate}`],
     ['Step', `${stepValue} ${stepUnit}`],
   ];
+
+  // Plan visibility toggle row — shown above charts when multi-plan results exist
+  const planToggleBar = isMultiPlan && comparedPlans && comparedPlans.length > 0 ? (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '4px 8px', borderBottom: `1px solid ${c.border}`, background: c.sectionHd, flexShrink: 0 }}>
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>显示</span>
+      {comparedPlans.map(plan => (
+        <label key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox"
+            checked={visiblePlanIds.has(plan.id)}
+            onChange={e => {
+              const next = new Set(visiblePlanIds);
+              if (e.target.checked) next.add(plan.id); else next.delete(plan.id);
+              setVisiblePlanIds(next);
+            }}
+            style={{ accentColor: plan.color }}
+          />
+          <span style={{ color: plan.running ? c.textMute : plan.color, fontSize: 'calc(var(--lm-font-size, 14px) * 0.82)', fontWeight: 600 }}>
+            {plan.label}{plan.running ? ' …' : ''}
+          </span>
+        </label>
+      ))}
+    </div>
+  ) : null;
 
   const summaryBar = (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 8px', marginBottom: 6, borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>
@@ -106,6 +141,32 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   };
 
   const exportVarCSV = (varName: string) => {
+    if (isMultiPlan && comparedPlans && comparedPlans.some(p => p.data.length > 0)) {
+      const plansWithData = comparedPlans.filter(p => p.data.length > 0);
+      const anyMC = plansWithData.some(p => (p.runsData?.length ?? 0) > 1);
+      const headerParts = ['time_s', 'time_h'];
+      for (const plan of plansWithData) {
+        const hasPlanMC = (plan.runsData?.length ?? 0) > 1;
+        headerParts.push(anyMC ? `${plan.label}_mean` : plan.label);
+        if (hasPlanMC) plan.runsData!.forEach((_, ri) => headerParts.push(`${plan.label}_run${ri}`));
+      }
+      const refData = plansWithData[0].data;
+      const dataRows = refData.map((d, idx) => {
+        const t = d.time ?? 0;
+        const parts = [String(t), (t / 3600).toFixed(4)];
+        for (const plan of plansWithData) {
+          parts.push(String((plan.data[idx]?.[varName] as number) ?? ''));
+          if ((plan.runsData?.length ?? 0) > 1)
+            plan.runsData!.forEach(rd => parts.push(String((rd[idx]?.[varName] as number) ?? '')));
+        }
+        return parts.join(',');
+      });
+      const blob = new Blob([[headerParts.join(','), ...dataRows].join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${varName}_plans.csv`; a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     const hasMC = dataPerRun.length > 1;
     const runCols = hasMC ? dataPerRun.map((_, i) => `${varName}_run${i}`).join(',') : '';
     const header = hasMC ? `time_s,time_h,${varName}_mean,${runCols}` : `time_s,time_h,${varName}`;
@@ -180,6 +241,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
+      {planToggleBar}
       {summaryBar}
       {outputWarnings.length > 0 && (
         <div style={{ color: isDarkMode ? '#fbbf24' : '#b45309', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', margin: '2px 2px 6px' }}>
@@ -209,7 +271,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
               <SimChart varName={varName} unit={varInfo?.unit}
                 data={isMultiPlan ? [] : simulationData}
                 runsData={isMultiPlan ? undefined : (dataPerRun.length > 1 ? dataPerRun : undefined)}
-                planDatasets={isMultiPlan ? comparedPlans : undefined}
+                planDatasets={isMultiPlan ? visiblePlans : undefined}
                 isDarkMode={isDarkMode} c={c} colorIndex={idx} hideTitleBar
                 fontSize={fontSize} />
             ),
@@ -245,7 +307,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
                   <SimChart varName={v.name} unit={v.unit}
                     data={isMultiPlan ? [] : simulationData}
                     runsData={isMultiPlan ? undefined : (dataPerRun.length > 1 ? dataPerRun : undefined)}
-                    planDatasets={isMultiPlan ? comparedPlans : undefined}
+                    planDatasets={isMultiPlan ? visiblePlans : undefined}
                     isDarkMode={isDarkMode} c={c} colorIndex={outputVars.length + idx} hideTitleBar
                     fontSize={fontSize} />
                 ),
