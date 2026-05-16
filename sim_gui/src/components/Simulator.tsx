@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult } from '../types';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan } from '../types';
 
 const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
 
@@ -248,6 +248,13 @@ const Simulator: React.FC<SimulatorProps> = ({
     return [];
   });
 
+  // Multi-plan state: plans are session-only (not persisted). inputEvents stays as the live
+  // editing state for the active plan; plans array stores snapshots per plan.
+  const [plans, setPlans] = useState<SimPlan[]>([{
+    id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: [],
+  }]);
+  const [activePlanId, setActivePlanId] = useState('plan-1');
+
   const isRunningRef = useRef(false);
   const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
   const isInitialMount = useRef(true);
@@ -369,6 +376,9 @@ const Simulator: React.FC<SimulatorProps> = ({
         // Keep saved inputEvents
       } else {
         setInputEvents(newInputEvents);
+        // Reset to single plan on new model load
+        setPlans([{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
+        setActivePlanId('plan-1');
         freshInputInit = true;
       }
       const ranges: typeof optRanges = {};
@@ -505,6 +515,34 @@ const Simulator: React.FC<SimulatorProps> = ({
         }));
       }
     }
+    // Pre-load stored opt results so Pareto chart is visible immediately when model has results
+    const rawResults = optBlock?.results;
+    if (rawResults?.pareto_front?.length > 0) {
+      const labels: string[] = [];
+      if (optBlock.inputs) {
+        for (const conf of Object.values(optBlock.inputs as Record<string, any>))
+          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time || '');
+      } else if (optBlock.regimen?.events) {
+        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time || '');
+      }
+      // Build objectives from optBlock directly (rawObjs is scoped inside the optBlock if block)
+      const parseDir2 = (d: string) => d === 'maximize' ? 'maximize' : 'minimize' as const;
+      const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
+      if (optBlock.objective) preloadObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir2(optBlock.objective.direction || '') });
+      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
+      setOptResult({
+        pareto_front: rawResults.pareto_front,
+        best_x: rawResults.best?.x ?? [],
+        best_f: rawResults.best?.f ?? [],
+        objectives: preloadObjs,
+        n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
+        method: rawResults.method ?? 'nsga2',
+        regimen_event_labels: labels.length > 0 ? labels : undefined,
+      });
+    } else {
+      setOptResult(null);
+    }
+
     // F-5-2: offer to pre-fill inputEvents from optimizer.results.best.x
     if (freshInputInit && optBlock?.results?.best?.x?.length > 0) {
       const bestX: number[] = optBlock.results.best.x;
@@ -897,6 +935,98 @@ const Simulator: React.FC<SimulatorProps> = ({
     }));
   };
 
+  // ── plan management ───────────────────────────────────────────────────────────
+  const selectPlan = (id: string) => {
+    // Save current inputEvents snapshot into current plan before switching
+    setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p));
+    setActivePlanId(id);
+    const target = plans.find(p => p.id === id);
+    if (target) setInputEvents(target.inputEvents);
+  };
+
+  const addPlan = () => {
+    const id = `plan-${Date.now()}`;
+    const newPlan: SimPlan = {
+      id, label: `方案 ${plans.length + 1}`,
+      color: PLAN_COLORS[plans.length % PLAN_COLORS.length],
+      inputEvents: [...inputEvents], // copy current
+    };
+    setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlan));
+    setActivePlanId(id);
+  };
+
+  const removePlan = (id: string) => {
+    if (plans.length <= 1) return;
+    const remaining = plans.filter(p => p.id !== id);
+    setPlans(remaining);
+    if (activePlanId === id) {
+      const next = remaining[0];
+      setActivePlanId(next.id);
+      setInputEvents(next.inputEvents);
+    }
+  };
+
+  const addPlansFromOpt = (rows: Array<{ x: number[]; f: number[]; rank: number }>) => {
+    const optimizer = selectedModel?.content?.optimizer;
+    if (!optimizer || rows.length === 0) return;
+    const newPlans: SimPlan[] = rows.map((row, i) => ({
+      id: `pareto-${row.rank}-${Date.now()}-${i}`,
+      label: `Pareto #${row.rank}`,
+      color: PLAN_COLORS[(plans.length + i) % PLAN_COLORS.length],
+      inputEvents: xToInputEvents(row.x, optimizer, inputEvents),
+    }));
+    setPlans(prev =>
+      prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlans)
+    );
+    switchCenterTab('simulation');
+  };
+
+  // Run all plans in parallel, results → comparedPlans (multi-curve chart)
+  const runAllPlans = async () => {
+    if (!selectedModel) return;
+    // Snapshot current inputEvents into active plan
+    const currentPlans = plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p);
+    const results: PlanResult[] = currentPlans.map(plan => ({
+      id: plan.id, label: plan.label, color: plan.color, data: [], runsData: [], running: true,
+    }));
+    setComparedPlans(results);
+    setSimData([]);
+    set('status', 'running'); set('progress', 0); set('currentStep', 0);
+    isRunningRef.current = true;
+
+    const modelName = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content?.metadata?.name || '';
+    const timeHours = dateToHours(simStartDate, simEndDate);
+    const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
+    const localInputVarNames = new Set(inputVars.map((v: any) => v.name));
+
+    await Promise.all(currentPlans.map(async (plan, i) => {
+      try {
+        const regimens = plan.inputEvents
+          .filter(ev => localInputVarNames.has(ev.variable))
+          .map(ev => ({ variable: ev.variable, events: [{ id: ev.id, time: ev.time, value: ev.value }], days_enabled: ev.daysEnabled, days: ev.days, valid_range_enabled: ev.validRangeEnabled, valid_start: ev.validStart, valid_end: ev.validEnd }));
+        const startResult = await fetch(`${API_BASE}/simulation/start`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
+        }).then(r => r.json());
+        if (!startResult.success) throw new Error(startResult.error);
+        const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: startResult.data.session_id, steps: startResult.data.total_steps, input_changes: inputParams }),
+        }).then(r => r.json());
+        if (!batchResult.success) throw new Error(batchResult.error);
+        setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : {
+          ...r, data: batchResult.data.outputs ?? [], runsData: batchResult.data.outputs_per_run?.length > 1 ? batchResult.data.outputs_per_run : [], running: false,
+        }));
+      } catch (e: any) {
+        console.error(`Plan ${plan.label} failed:`, e);
+        setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : { ...r, running: false }));
+      }
+    }));
+    set('status', 'completed');
+    isRunningRef.current = false;
+    message.success('所有方案仿真完成');
+  };
+
   // ── apply opt best solution to sim ───────────────────────────────────────────
   const applyBestToSim = () => {
     const optimizer = selectedModel?.content?.optimizer;
@@ -1173,11 +1303,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       <Button
         type="primary" size="small"
         icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
-        onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : startSimulation}
+        onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation}
         disabled={!isLocked || status === 'completed'}
         style={{ whiteSpace: 'nowrap' }}
       >
-        {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : t('sim.control.run')}
+        {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `运行全部 ${plans.length} 方案` : t('sim.control.run')}
       </Button>
       <Button size="small" icon={<StepForwardOutlined />}
         onClick={runSingleStep}
@@ -1240,29 +1370,18 @@ const Simulator: React.FC<SimulatorProps> = ({
       >
         {optRunning ? '停止优化' : t('sim.control.run')}
       </Button>
-      {hasExistingResults && !optRunning && (
-        <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
-          {(['热启动', '冷启动'] as const).map((label, idx) => {
-            const active = idx === 0 ? warmStartEnabled : !warmStartEnabled;
-            return (
-              <button key={label}
-                onClick={() => setWarmStartEnabled(idx === 0)}
-                style={{ padding: '2px 8px', border: 'none', cursor: 'pointer', background: active ? c.activeBg : 'transparent', color: active ? c.primary : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', fontWeight: active ? 600 : 400 }}
-              >{label}</button>
-            );
-          })}
-        </div>
+      {hasExistingResults && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
+          <input type="checkbox" checked={warmStartEnabled} onChange={e => setWarmStartEnabled(e.target.checked)}
+            style={{ accentColor: c.primary }} />
+          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartEnabled ? c.primary : c.textSec }}>
+            继续计算
+          </span>
+        </label>
       )}
-      {hasExistingResults && !optRunning && (
-        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)' }}>
-          历史 {existingResults.n_solutions ?? existingResults.pareto_front.length} 解 · {existingResults.generated_at ?? ''}
-        </span>
-      )}
-      {!hasExistingResults && (
-        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-          {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : '设置目标、约束和范围后运行优化'}
-        </span>
-      )}
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+        {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : hasExistingResults ? `历史 ${existingResults.n_solutions ?? existingResults.pareto_front.length} 解 · ${existingResults.generated_at ?? ''}` : '设置目标、约束和范围后运行优化'}
+      </span>
     </div>
   );
 
@@ -1411,6 +1530,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                   optGen={optGen} setOptGen={setOptGen}
                   allVarNames={allVarNames}
                   isDarkMode={isDarkMode} c={c} t={t}
+                  plans={plans} activePlanId={activePlanId}
+                  onSelectPlan={selectPlan} onAddPlan={addPlan} onRemovePlan={removePlan}
                 />
               }
               result={
@@ -1466,6 +1587,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   hasExistingResults={hasExistingResults}
                   onRunCompared={handleRunCompared}
                   onApplyBestToSim={applyBestToSim}
+                  onSendToSim={addPlansFromOpt}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}

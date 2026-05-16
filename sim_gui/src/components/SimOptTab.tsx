@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { DownloadOutlined, ExportOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import ParetoChart from './ParetoChart';
 import OptProgressChart from './OptProgressChart';
@@ -24,12 +24,13 @@ interface SimOptTabProps {
   hasExistingResults: boolean;
   onRunCompared?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
   onApplyBestToSim?: () => void;
+  onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, hasExistingResults, onRunCompared, onApplyBestToSim,
+  onDownloadModel, hasExistingResults, onRunCompared, onApplyBestToSim, onSendToSim,
 }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
@@ -236,20 +237,37 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       <Section id="data" title="Solutions" badge={hasPareto ? `${resultRows.length} 行` : undefined}>
         {hasPareto ? (
           <div style={{ overflowX: 'auto' }}>
-            {onRunCompared && checkedIdx.size > 0 && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                <Button size="small" type="primary" icon={<PlayCircleOutlined />}
-                  style={{ background: c.primary, borderColor: c.primary }}
-                  onClick={() => {
-                    const rows = [...checkedIdx].map(idx => ({
-                      x: optResult.pareto_front[idx]?.x || [],
-                      f: optResult.pareto_front[idx]?.f || [],
-                      rank: idx + 1,
-                    }));
-                    onRunCompared(rows);
-                    setCheckedIdx(new Set());
-                  }}
-                >Compare ({checkedIdx.size})</Button>
+            {checkedIdx.size > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+                {onRunCompared && (
+                  <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+                    style={{ background: c.primary, borderColor: c.primary }}
+                    onClick={() => {
+                      const rows = [...checkedIdx].map(idx => ({
+                        x: optResult.pareto_front[idx]?.x || [],
+                        f: optResult.pareto_front[idx]?.f || [],
+                        rank: idx + 1,
+                      }));
+                      onRunCompared(rows);
+                      setCheckedIdx(new Set());
+                    }}
+                  >仿真对比 ({checkedIdx.size})</Button>
+                )}
+                {onSendToSim && (
+                  <Tooltip title="将选中的 Pareto 解添加为仿真方案（Sim 面板的方案管理器）">
+                    <Button size="small" icon={<ExportOutlined />}
+                      onClick={() => {
+                        const rows = [...checkedIdx].map(idx => ({
+                          x: optResult.pareto_front[idx]?.x || [],
+                          f: optResult.pareto_front[idx]?.f || [],
+                          rank: idx + 1,
+                        }));
+                        onSendToSim(rows);
+                        setCheckedIdx(new Set());
+                      }}
+                    >发送到仿真 ({checkedIdx.size})</Button>
+                  </Tooltip>
+                )}
                 <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
               </div>
             )}

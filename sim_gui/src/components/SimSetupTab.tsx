@@ -5,7 +5,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { InputEvent, ModelFile } from '../types';
+import type { InputEvent, ModelFile, SimPlan } from '../types';
 import { getC } from '../core/theme';
 
 interface SimSetupTabProps {
@@ -35,6 +35,11 @@ interface SimSetupTabProps {
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
   t: (key: string) => string;
+  plans?: SimPlan[];
+  activePlanId?: string;
+  onSelectPlan?: (id: string) => void;
+  onAddPlan?: () => void;
+  onRemovePlan?: (id: string) => void;
 }
 
 const SimSetupTab: React.FC<SimSetupTabProps> = ({
@@ -44,6 +49,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
   objectives, setObjectives, constraints, setConstraints,
   optAlgo, setOptAlgo, optPop, setOptPop, optGen, setOptGen,
   allVarNames, isDarkMode, c, t,
+  plans, activePlanId, onSelectPlan, onAddPlan, onRemovePlan,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -318,6 +324,29 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={orderedTabs.map(t2 => t2.key)} strategy={verticalListSortingStrategy}>
+        {/* Plan Manager — shown in sim mode when plan callbacks are provided */}
+        {mode === 'sim' && plans && onSelectPlan && onAddPlan && onRemovePlan && (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderBottom: `1px solid ${c.border}`, background: c.sectionHd, flexWrap: 'wrap' }}>
+            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>方案</span>
+            {plans.map(plan => {
+              const isActive = plan.id === activePlanId;
+              return (
+                <div key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 3, borderRadius: 4, border: `1px solid ${isActive ? plan.color : c.border}`, padding: '2px 4px 2px 6px', background: isActive ? (isDarkMode ? '#1a2e1a' : '#f0f7f0') : 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={() => onSelectPlan(plan.id)}>
+                  <span style={{ width: 7, height: 7, borderRadius: 2, background: plan.color, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ color: isActive ? plan.color : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', fontWeight: isActive ? 600 : 400, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plan.label}</span>
+                  {plans.length > 1 && (
+                    <span style={{ color: c.textMute, cursor: 'pointer', marginLeft: 1, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', lineHeight: 1, padding: '0 2px' }}
+                      onClick={e => { e.stopPropagation(); onRemovePlan(plan.id); }}>×</span>
+                  )}
+                </div>
+              );
+            })}
+            <button onClick={onAddPlan} style={{ border: `1px dashed ${c.border}`, borderRadius: 4, padding: '2px 7px', background: 'transparent', color: c.textMute, cursor: 'pointer', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', flexShrink: 0 }}>
+              + 添加
+            </button>
+          </div>
+        )}
         <div ref={panelRef} style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedTabs.map(tab => (
             <SortableCard
