@@ -982,18 +982,25 @@ const Simulator: React.FC<SimulatorProps> = ({
     setPlans(prev =>
       prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlans)
     );
+    // Reset sim status so Run button is enabled; switch mode to sim
+    set('status', 'idle');
+    set('progress', 0);
+    set('currentStep', 0);
+    setMode('sim');
+    setComparedPlans([]);
     switchCenterTab('simulation');
   };
 
-  // Run all plans in parallel, results → comparedPlans (multi-curve chart)
+  // Run all plans sequentially (not parallel) to avoid overloading the backend.
+  // Each plan uses the batched loop pattern identical to startSimulation.
   const runAllPlans = async () => {
     if (!selectedModel) return;
-    // Snapshot current inputEvents into active plan
     const currentPlans = plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p);
-    const results: PlanResult[] = currentPlans.map(plan => ({
+
+    const initResults: PlanResult[] = currentPlans.map(plan => ({
       id: plan.id, label: plan.label, color: plan.color, data: [], runsData: [], running: true,
     }));
-    setComparedPlans(results);
+    setComparedPlans(initResults);
     setSimData([]);
     set('status', 'running'); set('progress', 0); set('currentStep', 0);
     isRunningRef.current = true;
@@ -1003,7 +1010,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
     const localInputVarNames = new Set(inputVars.map((v: any) => v.name));
 
-    await Promise.all(currentPlans.map(async (plan, i) => {
+    let anyFailed = false;
+
+    for (let i = 0; i < currentPlans.length; i++) {
+      if (!isRunningRef.current) break; // stopped by user
+      const plan = currentPlans[i];
       try {
         const regimens = plan.inputEvents
           .filter(ev => localInputVarNames.has(ev.variable))
@@ -1012,23 +1023,50 @@ const Simulator: React.FC<SimulatorProps> = ({
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
         }).then(r => r.json());
-        if (!startResult.success) throw new Error(startResult.error);
-        const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: startResult.data.session_id, steps: startResult.data.total_steps, input_changes: inputParams }),
-        }).then(r => r.json());
-        if (!batchResult.success) throw new Error(batchResult.error);
+        if (!startResult.success) throw new Error(startResult.error || '启动失败');
+
+        const sid = startResult.data.session_id;
+        const totalSteps = startResult.data.total_steps;
+        let planData: any[] = [];
+        let planRunsData: any[][] = [];
+        let completed = false;
+        let stepsRan = 0;
+
+        // Batch loop — same pattern as startSimulation, avoids sending all steps at once
+        while (!completed && isRunningRef.current) {
+          const remaining = totalSteps - stepsRan;
+          const chunk = Math.min(batchSize > 0 ? batchSize : 200, remaining, 500);
+          const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sid, steps: chunk, input_changes: inputParams }),
+          }).then(r => r.json());
+          if (!batchResult.success) throw new Error(batchResult.error || '批处理失败');
+          planData = [...planData, ...(batchResult.data.outputs || [])];
+          if (batchResult.data.outputs_per_run?.length > 1) {
+            const inc: any[][] = batchResult.data.outputs_per_run;
+            if (planRunsData.length === 0) planRunsData = inc.map(() => []);
+            inc.forEach((run, ri) => { planRunsData[ri] = [...(planRunsData[ri] || []), ...run]; });
+          }
+          stepsRan += batchResult.data.steps_executed ?? chunk;
+          completed = batchResult.data.completed;
+        }
+
         setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : {
-          ...r, data: batchResult.data.outputs ?? [], runsData: batchResult.data.outputs_per_run?.length > 1 ? batchResult.data.outputs_per_run : [], running: false,
+          ...r, data: planData, runsData: planRunsData, running: false,
         }));
+        // Update progress: fraction of plans done
+        set('progress', Math.round(((i + 1) / currentPlans.length) * 100));
       } catch (e: any) {
-        console.error(`Plan ${plan.label} failed:`, e);
+        console.error(`Plan "${plan.label}" failed:`, e);
+        message.error(`方案 "${plan.label}" 运行失败: ${e.message}`);
         setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : { ...r, running: false }));
+        anyFailed = true;
       }
-    }));
+    }
+
     set('status', 'completed');
     isRunningRef.current = false;
-    message.success('所有方案仿真完成');
+    if (!anyFailed) message.success(`${currentPlans.length} 个方案仿真完成`);
   };
 
   // ── apply opt best solution to sim ───────────────────────────────────────────
@@ -1039,6 +1077,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       message.warning('无推荐解可用'); return;
     }
     setInputEvents(prev => xToInputEvents(bestX, optimizer, prev));
+    set('status', 'idle'); set('progress', 0); set('currentStep', 0);
+    setComparedPlans([]);
     setMode('sim');
     switchCenterTab('simulation');
   };
