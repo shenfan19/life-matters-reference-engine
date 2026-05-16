@@ -193,6 +193,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optPop, setOptPop] = useState(50);
   const [optGen, setOptGen] = useState(80);
   const [comparedPlans, setComparedPlans] = useState<PlanResult[]>([]);
+  const [warmStartEnabled, setWarmStartEnabled] = useState(true);
   const [optResult, setOptResult] = useState<any>(null);
   const [optRunning, setOptRunning] = useState(false);
   const [optCurGen, setOptCurGen] = useState(0);
@@ -465,6 +466,9 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       }
 
+      // Reset warm-start preference on new model load; default to warm if results exist
+      setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
+
       if (Array.isArray(optBlock.inputs)) {
         const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
           e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
@@ -500,6 +504,17 @@ const Simulator: React.FC<SimulatorProps> = ({
           };
         }));
       }
+    }
+    // F-5-2: offer to pre-fill inputEvents from optimizer.results.best.x
+    if (freshInputInit && optBlock?.results?.best?.x?.length > 0) {
+      const bestX: number[] = optBlock.results.best.x;
+      Modal.confirm({
+        title: '检测到优化结果',
+        content: `模型包含推荐解（${bestX.length} 个决策变量），是否将其预填为当前输入方案？`,
+        okText: '加载推荐解',
+        cancelText: '使用默认调度',
+        onOk: () => setInputEvents(prev => xToInputEvents(bestX, optBlock, prev)),
+      });
     }
   }, [selectedModel]);
 
@@ -882,6 +897,18 @@ const Simulator: React.FC<SimulatorProps> = ({
     }));
   };
 
+  // ── apply opt best solution to sim ───────────────────────────────────────────
+  const applyBestToSim = () => {
+    const optimizer = selectedModel?.content?.optimizer;
+    const bestX = optimizer?.results?.best?.x;
+    if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
+      message.warning('无推荐解可用'); return;
+    }
+    setInputEvents(prev => xToInputEvents(bestX, optimizer, prev));
+    setMode('sim');
+    switchCenterTab('simulation');
+  };
+
   // ── export CSV ────────────────────────────────────────────────────────────────
   const exportSimCSV = () => {
     if (!simulationData.length) return;
@@ -1003,10 +1030,12 @@ const Simulator: React.FC<SimulatorProps> = ({
       },
     };
 
-    // Warm-start: if model already has results, seed the population with previous Pareto front
-    const existingFront = selectedModel.content?.optimizer?.results?.pareto_front;
-    if (Array.isArray(existingFront) && existingFront.length > 0) {
-      optimizerOverride.warm_start = existingFront;
+    // F-5-3: use explicit warm/cold start choice
+    if (warmStartEnabled) {
+      const existingFront = selectedModel.content?.optimizer?.results?.pareto_front;
+      if (Array.isArray(existingFront) && existingFront.length > 0) {
+        optimizerOverride.warm_start = existingFront;
+      }
     }
 
     try {
@@ -1198,6 +1227,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     </div>
   );
 
+  const existingResults = selectedModel?.content?.optimizer?.results;
+  const hasExistingResults = !!(existingResults?.pareto_front?.length);
   const OptControls = (
     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
       <Button
@@ -1209,9 +1240,29 @@ const Simulator: React.FC<SimulatorProps> = ({
       >
         {optRunning ? '停止优化' : t('sim.control.run')}
       </Button>
-      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-        {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : '设置目标、约束和范围后运行优化'}
-      </span>
+      {hasExistingResults && !optRunning && (
+        <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
+          {(['热启动', '冷启动'] as const).map((label, idx) => {
+            const active = idx === 0 ? warmStartEnabled : !warmStartEnabled;
+            return (
+              <button key={label}
+                onClick={() => setWarmStartEnabled(idx === 0)}
+                style={{ padding: '2px 8px', border: 'none', cursor: 'pointer', background: active ? c.activeBg : 'transparent', color: active ? c.primary : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', fontWeight: active ? 600 : 400 }}
+              >{label}</button>
+            );
+          })}
+        </div>
+      )}
+      {hasExistingResults && !optRunning && (
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)' }}>
+          历史 {existingResults.n_solutions ?? existingResults.pareto_front.length} 解 · {existingResults.generated_at ?? ''}
+        </span>
+      )}
+      {!hasExistingResults && (
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : '设置目标、约束和范围后运行优化'}
+        </span>
+      )}
     </div>
   );
 
@@ -1411,12 +1462,10 @@ const Simulator: React.FC<SimulatorProps> = ({
                   optElapsed={optElapsed} optMethod={optMethod} optLogs={optLogs}
                   objectives={objectives} constraints={constraints}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
-                  setInputEvents={setInputEvents}
-                  setMode={setMode}
-                  setCenterTab={switchCenterTab}
                   onDownloadModel={downloadModelYAML}
-                  hasExistingResults={!!(selectedModel?.content?.optimizer?.results?.pareto_front?.length)}
+                  hasExistingResults={hasExistingResults}
                   onRunCompared={handleRunCompared}
+                  onApplyBestToSim={applyBestToSim}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}

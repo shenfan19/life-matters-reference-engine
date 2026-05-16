@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
 import { DownloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
-import type { InputEvent } from '../types';
 import ParetoChart from './ParetoChart';
 import OptProgressChart from './OptProgressChart';
 
@@ -21,19 +20,16 @@ interface SimOptTabProps {
   c: ReturnType<typeof getC>;
   t: (key: string) => string;
   fontSize: number;
-  setInputEvents: React.Dispatch<React.SetStateAction<InputEvent[]>>;
-  setMode: (m: 'sim' | 'opt') => void;
-  setCenterTab: (tab: string) => void;
   onDownloadModel: () => void;
   hasExistingResults: boolean;
   onRunCompared?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
+  onApplyBestToSim?: () => void;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  setInputEvents, setMode, setCenterTab,
-  onDownloadModel, hasExistingResults, onRunCompared,
+  onDownloadModel, hasExistingResults, onRunCompared, onApplyBestToSim,
 }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
@@ -170,21 +166,8 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
         <Button size="small" type="primary" style={{ background: c.primary, borderColor: c.primary }}
-          onClick={() => {
-            if (!optResult?.best_x?.length) return;
-            const regVar: string | undefined = optResult.regimen_variable;
-            const bestX: number[] = optResult.best_x;
-            let xIdx = 0;
-            setInputEvents(prev => prev.map(ev => {
-              if (regVar && ev.variable === regVar && ev.optimizeValue) {
-                const val = bestX[xIdx++];
-                return val != null ? { ...ev, value: Number(val.toFixed(4)) } : ev;
-              }
-              return ev;
-            }));
-            setMode('sim');
-            setCenterTab('simulation');
-          }}
+          onClick={onApplyBestToSim}
+          disabled={!onApplyBestToSim}
         >以此解运行仿真 →</Button>
         <Tooltip title="下载模型 YAML（含此次 Pareto 前沿），可上传继续搜索">
           <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>
