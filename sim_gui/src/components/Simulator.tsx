@@ -1395,15 +1395,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
-  const ProgressStrip = ({ label, percent, detail, active }: { label: string; percent: number; detail: string; active: boolean }) => (
-    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${c.border}`, background: c.panel }}>
-      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, textTransform: 'uppercase', minWidth: 82 }}>{label}</span>
-      <div style={{ flex: 1, height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', background: active ? c.primary : c.textMute, transition: 'width 0.3s', borderRadius: 3 }} />
-      </div>
-      <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{detail}</span>
-    </div>
-  );
 
   const SimControls = (
     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
@@ -1498,20 +1489,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     </div>
   );
 
-  const WorkspacePage = ({ controls, setup, result, progress }: { controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode }) => (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
-        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {setup}
-        </div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {result}
-        </div>
-      </div>
-      {progress}
-    </div>
-  );
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
@@ -1661,7 +1638,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   comparedPlans={comparedPlans}
                 />
               }
-              progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} />}
+              progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} c={c} isDarkMode={isDarkMode} />}
             />
           )}
 
@@ -1702,7 +1679,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   onSendToSim={addPlansFromOpt}
                 />
               }
-              progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} />}
+              progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} isDarkMode={isDarkMode} />}
             />
           )}
 
@@ -1787,5 +1764,34 @@ const Simulator: React.FC<SimulatorProps> = ({
     </div>
   );
 };
+
+function WorkspacePage({ controls, setup, result, progress }: { controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {controls}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
+        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {setup}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {result}
+        </div>
+      </div>
+      {progress}
+    </div>
+  );
+}
+
+function ProgressStrip({ label, percent, detail, active, c, isDarkMode }: { label: string; percent: number; detail: string; active: boolean; c: ReturnType<typeof getC>; isDarkMode: boolean }) {
+  return (
+    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${c.border}`, background: c.panel }}>
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, textTransform: 'uppercase', minWidth: 82 }}>{label}</span>
+      <div style={{ flex: 1, height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', background: active ? c.primary : c.textMute, transition: 'width 0.3s', borderRadius: 3 }} />
+      </div>
+      <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{detail}</span>
+    </div>
+  );
+}
 
 export default Simulator;
