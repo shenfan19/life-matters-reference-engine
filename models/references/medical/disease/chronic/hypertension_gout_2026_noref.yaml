@@ -96,12 +96,12 @@ variables:
   # P1: Diuretic Dose — 核心冲突输入
   diuretic_dose:
     description: |
-      氢氯噻嗪（HCTZ）日剂量（mg/day）。
+      氢氯噻嗪（HCTZ）单次剂量（mg）。
       降压效果：25mg → 收缩压降低约10 mmHg（Law 2003）；剂量-效应线性假设。
       尿酸代价：25mg → 尿酸升高约70 μmol/L（Gurwitz 1992）。
-      标准推荐范围：12.5-25 mg/day（ESC 2018）。
+      临床推荐范围：12.5-25 mg/day（ESC 2018，指每日一次给药）。
     value: 0.0
-    unit: "mg/day"
+    unit: "mg"
     type: input
     bounds: [0.0, 25.0]
 
