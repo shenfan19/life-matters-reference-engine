@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Empty, Input, Popover, Spin, Tooltip, Tree } from 'antd';
 import {
   BookOutlined, ClusterOutlined, FileOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, LockOutlined, ReloadOutlined, UnlockOutlined,
-  UnorderedListOutlined,
+  UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined,
 } from '@ant-design/icons';
 import type { DataNode, ModelFile, SimulationState } from '../types';
 import { getC } from '../core/theme';
@@ -34,6 +34,13 @@ interface SimModelTreeProps {
   handleValidateAndLock: () => void;
   setIsLocked: (v: boolean) => void;
   onUnlock: () => void;
+  // Builder mode
+  builderMode?: boolean;
+  builderCheckedFiles?: string[];
+  onToggleBuilderFile?: (key: string) => void;
+  onOpenBuilder?: () => void;
+  onNewFile?: () => void;
+  onMergeFiles?: () => void;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -43,6 +50,12 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   validating, total, isDarkMode, c, t,
   loadFileContent, handleSelect, handleTreeNodeClick, handleValidateAndLock,
   setIsLocked, onUnlock,
+  builderMode = false,
+  builderCheckedFiles = [],
+  onToggleBuilderFile,
+  onOpenBuilder,
+  onNewFile,
+  onMergeFiles,
 }) => {
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
@@ -56,6 +69,31 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   const storyList = flattenTree(storyTree)
     .filter(n => !storyFilter || n.titleStr?.toLowerCase().includes(storyFilter.toLowerCase()));
 
+  // Builder mode: custom title renderer with checkbox for leaf nodes
+  const builderTitleRender = (node: any) => {
+    if (!node.isLeaf) {
+      return <span style={{ color: c.textSec }}>{node.titleStr || node.title}</span>;
+    }
+    const checked = builderCheckedFiles.includes(node.key);
+    return (
+      <span
+        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+        onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(node.key); }}
+      >
+        <input
+          type="checkbox"
+          readOnly
+          checked={checked}
+          onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(node.key); }}
+          style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0 }}
+        />
+        <span style={{ color: checked ? c.primary : c.text }}>
+          {node.titleStr || node.title}
+        </span>
+      </span>
+    );
+  };
+
   return (
     <div style={{
       width, flexShrink: 0,
@@ -64,6 +102,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
       overflow: 'hidden',
       borderRight: `1px solid ${c.border}`,
     }}>
+      {/* Header */}
       <div style={{
         height: SECTION_H, flexShrink: 0,
         display: 'flex', alignItems: 'center', gap: 6,
@@ -71,42 +110,73 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         background: c.sectionHd,
         borderBottom: `1px solid ${c.border}`,
       }}>
-        <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{t('sim.scene.header')} ({total})</span>
-        {selectedKey && (
-          <Tooltip title="重新读取当前 YAML">
-            <Button
-              size="small" type="text" icon={<ReloadOutlined />}
-              disabled={isLocked || treeLoading}
-              onClick={e => { e.stopPropagation(); loadFileContent(selectedKey, { preserveTab: true }); }}
-              style={{ color: c.textMute, padding: '0 3px' }}
-            />
-          </Tooltip>
-        )}
-        {selectedKey && (
-          <Popover
-            open={validationResult !== null && !validationResult.valid}
-            placement="rightTop"
-            onOpenChange={open => { if (!open) setValidationResult(null); }}
-            content={
-              <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
-                <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
-                {validationResult?.errors.map((err, i) => (
-                  <div key={i} style={{ fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', marginBottom: 3 }}>• {err}</div>
-                ))}
-              </div>
-            }
-          >
-            <Button
-              size="small"
-              type={isLocked ? 'default' : 'dashed'}
-              icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
-              loading={validating}
-              style={isLocked ? { color: '#52c41a', borderColor: '#52c41a' } : { color: '#faad14', borderColor: '#faad14' }}
-              onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
-            >
-              {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
-            </Button>
-          </Popover>
+        <span style={{ flex: 1, fontWeight: 600, color: c.text }}>
+          {t('sim.scene.header')} ({total})
+        </span>
+
+        {builderMode ? (
+          // Builder mode: New + Merge buttons
+          <>
+            <Tooltip title="新建模型文件">
+              <Button size="small" type="text" icon={<PlusOutlined />}
+                onClick={onNewFile}
+                style={{ color: c.primary, padding: '0 4px' }}
+              />
+            </Tooltip>
+            <Tooltip title={builderCheckedFiles.length >= 2 ? '合并选中文件' : '请先选择 2 个以上文件'}>
+              <Button size="small" type="text" icon={<MergeCellsOutlined />}
+                onClick={onMergeFiles}
+                disabled={builderCheckedFiles.length < 2}
+                style={{ color: builderCheckedFiles.length >= 2 ? c.primary : c.textMute, padding: '0 4px' }}
+              />
+            </Tooltip>
+          </>
+        ) : (
+          // Normal mode: Reload + Lock + Edit Library entry
+          <>
+            {selectedKey && (
+              <Tooltip title="重新读取当前 YAML">
+                <Button
+                  size="small" type="text" icon={<ReloadOutlined />}
+                  disabled={isLocked || treeLoading}
+                  onClick={e => { e.stopPropagation(); loadFileContent(selectedKey, { preserveTab: true }); }}
+                  style={{ color: c.textMute, padding: '0 3px' }}
+                />
+              </Tooltip>
+            )}
+            {selectedKey && (
+              <Popover
+                open={validationResult !== null && !validationResult.valid}
+                placement="rightTop"
+                onOpenChange={open => { if (!open) setValidationResult(null); }}
+                content={
+                  <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
+                    <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
+                    {validationResult?.errors.map((err, i) => (
+                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', marginBottom: 3 }}>• {err}</div>
+                    ))}
+                  </div>
+                }
+              >
+                <Button
+                  size="small"
+                  type={isLocked ? 'default' : 'dashed'}
+                  icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
+                  loading={validating}
+                  style={isLocked ? { color: '#52c41a', borderColor: '#52c41a' } : { color: '#faad14', borderColor: '#faad14' }}
+                  onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+                >
+                  {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
+                </Button>
+              </Popover>
+            )}
+            <Tooltip title="编辑模型库">
+              <Button size="small" type="text" icon={<EditOutlined />}
+                onClick={onOpenBuilder}
+                style={{ color: c.textMute, padding: '0 3px' }}
+              />
+            </Tooltip>
+          </>
         )}
       </div>
 
@@ -115,17 +185,31 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
           <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
             onChange={e => setStoryFilter(e.target.value)}
             prefix={<FilterOutlined style={{ color: c.textMute }} />}
-            style={{ flex: 1 }} disabled={isLocked} />
-          <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
-            <Button size="small" type="text"
-              icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
-              onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
-              style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
-          </Tooltip>
+            style={{ flex: 1 }} disabled={isLocked && !builderMode} />
+          {!builderMode && (
+            <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
+              <Button size="small" type="text"
+                icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
+                onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
+                style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
+            </Tooltip>
+          )}
         </div>
-        <div style={{ opacity: isLocked ? 0.4 : 1, pointerEvents: isLocked ? 'none' : 'auto' }}>
+
+        <div style={{ opacity: (isLocked && !builderMode) ? 0.4 : 1, pointerEvents: (isLocked && !builderMode) ? 'none' : 'auto' }}>
           <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-            {storyViewMode === 'tree' ? (
+            {builderMode ? (
+              // Builder mode: always show tree with checkboxes
+              <Tree
+                showIcon
+                expandedKeys={expandedKeys}
+                onExpand={setExpandedKeys}
+                selectedKeys={[]}
+                onClick={handleTreeNodeClick}
+                treeData={storyTree}
+                titleRender={builderTitleRender}
+              />
+            ) : storyViewMode === 'tree' ? (
               <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
                 selectedKeys={selectedKey ? [selectedKey] : []}
                 onSelect={handleSelect}

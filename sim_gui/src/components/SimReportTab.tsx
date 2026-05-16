@@ -366,9 +366,9 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
         </Tooltip>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ width: 168, flexShrink: 0, borderRight: `1px solid ${c.border}`, background: c.panel, overflowY: 'auto', padding: '12px 0' }}>
-          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 14px 8px' }}>输出章节</div>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
+        <div style={{ width: 160, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 4px 6px' }}>输出章节</div>
           {ALL_REPORT_SECTIONS.map(s => {
             const checked = reportSections.has(s.key);
             const disabledPlots = s.key === 'plots' && !hasData;
@@ -376,21 +376,27 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
             const isDisabled = disabledPlots || disabledOpt;
             const tooltipText = disabledPlots ? '需先完成仿真才能显示曲线' : disabledOpt ? '仅在优化模式下可用' : '';
             const row = (
-              <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1, background: checked && !isDisabled ? (c.primary + '12') : 'transparent', borderLeft: `2px solid ${checked && !isDisabled ? c.primary : 'transparent'}`, transition: 'all 0.12s' }}>
+              <label key={s.key} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1,
+                background: checked && !isDisabled ? (isDarkMode ? '#1a3a22' : '#e8f5e9') : c.panel,
+                border: `1px solid ${checked && !isDisabled ? c.primary : c.border}`,
+                borderRadius: 6, transition: 'all 0.12s',
+              }}>
                 <input type="checkbox" checked={checked} disabled={isDisabled}
                   onChange={() => {
                     setReportSections(p => { const s2 = new Set(p); s2.has(s.key) ? s2.delete(s.key) : s2.add(s.key); return s2; });
                     setOpenReportPreviews(p => { const s2 = new Set(p); checked ? s2.delete(s.key) : s2.add(s.key); return s2; });
                   }}
                   style={{ accentColor: c.primary, width: 12, height: 12, flexShrink: 0 }} />
-                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text }}>{s.label}</span>
+                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: checked && !isDisabled ? c.primary : c.text }}>{s.label}</span>
               </label>
             );
             return tooltipText ? <Tooltip key={s.key} title={tooltipText} placement="right">{row}</Tooltip> : row;
           })}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {reportSections.size === 0 && (
             <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', padding: '32px 0', textAlign: 'center' }}>请在左侧勾选章节</div>
           )}

@@ -136,9 +136,17 @@ const differ = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Props { isDarkMode: boolean; c: any; }
+interface Props {
+  isDarkMode: boolean;
+  c: any;
+  // Embedded mode: left panel is hidden; files come from parent
+  embedded?: boolean;
+  controlledFiles?: string[];
+  onReloadTree?: () => void;
+  onUncheckedFile?: (key: string) => void;
+}
 
-export default function ModelBuilder({ isDarkMode, c }: Props) {
+export default function ModelBuilder({ isDarkMode, c, embedded = false, controlledFiles, onReloadTree, onUncheckedFile }: Props) {
   const { modal, message } = App.useApp();
   const { width: leftW, startDrag: startLeftDrag } = useResize(230);
 
@@ -181,6 +189,32 @@ export default function ModelBuilder({ isDarkMode, c }: Props) {
       }
     }).catch(() => {});
   }, []);
+
+  // Sync external controlledFiles → internal checked + metas (embedded mode)
+  const checkedRef = useRef(checked);
+  checkedRef.current = checked;
+  useEffect(() => {
+    if (!embedded || !controlledFiles) return;
+    const newChecked = new Set(controlledFiles);
+    const currentChecked = checkedRef.current;
+    // Remove deselected files
+    [...currentChecked].filter(k => !newChecked.has(k)).forEach(key => {
+      setMetas(p => { const n = { ...p }; delete n[key]; return n; });
+      setDrafts(p => { const n = { ...p }; delete n[key]; return n; });
+      setEditSet(p => { const s = new Set(p); s.delete(key); return s; });
+      setValidateSt(p => { const n = { ...p }; delete n[key]; return n; });
+    });
+    // Load metas for newly added files
+    const added = controlledFiles.filter(k => !currentChecked.has(k));
+    setChecked(newChecked);
+    added.forEach(async key => {
+      const clean = key.replace(/^models\//, '');
+      try {
+        const d = await fetch(`/api/file/${clean}`).then(r => r.json());
+        if (d.success && d.data?.content) setMetas(p => ({ ...p, [key]: d.data.content }));
+      } catch {}
+    });
+  }, [controlledFiles, embedded]);
 
   const checkedFiles = useMemo(() =>
     allNodes.filter(n => n.kind === 'file' && checked.has(n.key)).map(n => n.key),
@@ -345,6 +379,7 @@ export default function ModelBuilder({ isDarkMode, c }: Props) {
       setMetas(p => { const n = { ...p }; delete n[key]; return n; });
       setDrafts(p => { const n = { ...p }; delete n[key]; return n; });
       setEditSet(p => { const s = new Set(p); s.delete(key); return s; });
+      onUncheckedFile?.(key);
     } else {
       if (fileType(key) === 'game_story') return; // game_story not supported in editor
       if (checked.size >= 5) { message.warning('最多同时查看 5 个文件'); return; }
@@ -419,6 +454,7 @@ export default function ModelBuilder({ isDarkMode, c }: Props) {
         setAllNodes(nodes);
       }
     }).catch(() => {});
+    onReloadTree?.();
   }
 
   // ── Delete file ───────────────────────────────────────────────────────────
@@ -483,9 +519,9 @@ export default function ModelBuilder({ isDarkMode, c }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: bg }}>
 
-      {/* ── LEFT: file tree ── */}
-      <div style={{ width: leftW, flexShrink: 0,
-        background: panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── LEFT: file tree (hidden in embedded mode) ── */}
+      <div style={{ width: embedded ? 0 : leftW, flexShrink: 0, overflow: 'hidden',
+        background: panel, display: 'flex', flexDirection: 'column' }}>
 
         <div style={{ padding: '10px 10px 6px' }}>
           <Input size="small"
@@ -618,21 +654,23 @@ export default function ModelBuilder({ isDarkMode, c }: Props) {
         </div>
       </div>
 
-      {/* ── Resize handle ── */}
-      <div onMouseDown={startLeftDrag}
-        style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
-          borderRight: `1px solid ${border}`, transition: 'background 0.15s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-      />
+      {/* ── Resize handle (hidden in embedded mode) ── */}
+      {!embedded && (
+        <div onMouseDown={startLeftDrag}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent',
+            borderRight: `1px solid ${border}`, transition: 'background 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        />
+      )}
 
       {/* ── RIGHT: card area ── */}
       {checkedFiles.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 10, color: mute }}>
           <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 2.2857)' }}>📂</div>
-          <div style={{  }}>点击左侧文件查看</div>
-          <div style={{ fontFamily: 'monospace' }}>可同时查看最多 5 个文件</div>
+          <div>{embedded ? '在左侧目录树中勾选文件以编辑' : '点击左侧文件查看'}</div>
+          {!embedded && <div style={{ fontFamily: 'monospace' }}>可同时查看最多 5 个文件</div>}
         </div>
       ) : (
         <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden',

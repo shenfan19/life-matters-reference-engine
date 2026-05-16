@@ -59,12 +59,11 @@
 | `c.navHover` | `rgba(82,196,26,0.08)` | `rgba(0,122,51,0.06)` |
 
 **适用范围（凡表示"当前激活"的元素均须遵守）**：
-- 顶部导航 Tab（当前页面）
+- 中央面板 Tab（Overview / Simulation / Optimization / Report，以及动态 Builder Tab）
 - 模式切换控件（Sim / Opt Segmented）
 - 左侧树节点选中（Tree `nodeSelectedBg`）
 - 左侧 Tab 选中（Inputs / Vars / Formulas）
 - 小型 pill 开关按钮（时/日/范 toggle）
-- 中央面板 Tab（Setup / Plot / Opt / Report）
 
 **不适用范围（以下元素不使用 primary 颜色，统一用 `c.border` / `c.panel`）**：
 - 列表项 / 数据行（如 input event card、变量行、公式行）——这些是数据展示，不是导航状态
@@ -153,6 +152,7 @@ Tabs: {
 
 - **组件内 padding**：卡片内部 `8px 12px`，紧凑卡片 `6px 8px`。
 - **组件间 gap**：同一行控件 `gap: 4~8px`；不同 section 之间 `gap: 12~16px`；顶层区域之间 `gap: 8~12px`。
+- **分割线 vs gap**：当两列/两区块的内容已经有自己的圆角框体时，用 `gap: 8px` 替代 `borderRight/borderBottom` 分割线；分割线只用于无框体的扁平内容之间。
 - **分割线**：相关内容组之间用 `1px solid c.border`，不要用粗线或色块分割。
 - **卡片圆角**：外层卡片 `borderRadius: 8px`，内嵌 block `borderRadius: 6px`，小标签 `borderRadius: 4px`。
 

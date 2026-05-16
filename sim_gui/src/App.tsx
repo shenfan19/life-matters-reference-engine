@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { ConfigProvider, App as AntdApp, theme, Popover } from 'antd';
 import {
   SunOutlined, MoonOutlined,
-  LoadingOutlined, ToolOutlined,
+  LoadingOutlined,
   GithubOutlined, MailOutlined, InfoCircleOutlined, SettingOutlined,
 } from '@ant-design/icons';
 
@@ -35,7 +35,6 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
   </svg>
 );
 import Simulator from './components/Simulator';
-import ModelBuilder from './components/ModelBuilder';
 import type { SimulationState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
 
@@ -65,19 +64,14 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t, onAbout }: {
-  page: string; simMode: 'sim' | 'opt'; onPage: (p: string) => void;
+function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t, onAbout }: {
+  simMode: 'sim' | 'opt';
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
   fontSize: number; onFontSize: (n: number) => void;
   c: typeof C.light; t: (k: string) => string;
   onAbout: () => void;
 }) {
-  const tabs = [
-    { id: 'tools',     label: t('menu.tools'),     icon: <ToolOutlined /> },
-    { id: 'simulator', label: page === 'simulator' && simMode === 'opt' ? t('menu.simulator.opt') : t('menu.simulator'), icon: <HeartPulseIcon /> },
-  ];
-
   const subtitle = t(simMode === 'opt' ? 'menu.sub.simulator.opt' : 'menu.sub.simulator.sim');
 
   return (
@@ -91,9 +85,7 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
     }}>
       {/* Logo wordmark */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
-        {/* Wave mark */}
         <HeartPulseIcon size={28} color={isDarkMode ? '#52c41a' : '#007A33'} />
-        {/* Wordmark + inline subtitle */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
             fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, letterSpacing: '0.04em',
@@ -106,58 +98,6 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
             · {subtitle}
           </span>
         </div>
-      </div>
-
-      {/* Nav tabs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        {tabs.map(tab => {
-          const active = page === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onPage(tab.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '5px 12px', borderRadius: 6,
-                border: 'none', cursor: 'pointer',
-                background: active ? c.activeBg : 'transparent',
-                color: active ? c.activeText : c.textSec,
-                fontWeight: active ? 600 : 400,
-                transition: 'all 0.12s',
-                outline: 'none',
-              }}
-            >
-              <span style={{ opacity: active ? 1 : 0.6 }}>{tab.icon}</span>
-              {tab.label}
-              {active && (
-                <span style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: c.primary, display: 'inline-block',
-                }} />
-              )}
-            </button>
-          );
-        })}
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 18, background: c.border, margin: '0 6px', flexShrink: 0 }} />
-
-        {/* Game button */}
-        <button
-          onClick={() => window.open('http://localhost:5174', '_blank')}
-          title={t('button.go_game.tip')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '5px 12px', borderRadius: 6,
-            border: 'none', cursor: 'pointer',
-            background: 'transparent',
-            color: c.textSec, fontWeight: 400,
-            transition: 'all 0.12s', outline: 'none',
-          }}
-        >
-          <span style={{ opacity: 0.6 }}><CardPulseIcon /></span>
-          {t('button.go_game')}
-        </button>
       </div>
 
       <div style={{ flex: 1 }} />{/* pushes right actions to edge */}
@@ -232,11 +172,6 @@ function TitleBar({ page, simMode, onPage, isDarkMode, onToggleDark, language, o
       </div>
     </div>
   );
-}
-
-// ─── Tools page → Model Builder ───────────────────────────────────────────────
-function ToolsPage({ isDarkMode, c }: { isDarkMode: boolean; c: typeof C.light }) {
-  return <ModelBuilder isDarkMode={isDarkMode} c={c} />;
 }
 
 // ─── Contact info ─────────────────────────────────────────────────────────────
@@ -320,7 +255,6 @@ function readPrefs(): Record<string, any> {
 
 function App() {
   const { t, language, setLanguage } = useI18n();
-  const [page,     setPage]     = useState<'simulator' | 'tools'>(() => readPrefs().page === 'story' ? 'simulator' : (readPrefs().page ?? 'simulator'));
   const [simMode,  setSimMode]  = useState<'sim' | 'opt'>(() => readPrefs().simMode  ?? 'sim');
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
   const [aboutOpen,  setAboutOpen]  = useState(false);
@@ -347,10 +281,10 @@ function App() {
   useEffect(() => {
     try {
       const current = readPrefs();
-      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ ...current, isDarkMode, fontSize, page, simMode, expandedKeys }));
+      localStorage.setItem(SIM_PREFS_KEY, JSON.stringify({ ...current, isDarkMode, fontSize, page: 'simulator', simMode, expandedKeys }));
       localStorage.setItem(LM_FONT_KEY, String(fontSize));
     } catch {}
-  }, [isDarkMode, fontSize, page, simMode, expandedKeys]);
+  }, [isDarkMode, fontSize, simMode, expandedKeys]);
 
   const simStateRef = useRef(simState);
   simStateRef.current = simState;
@@ -421,7 +355,7 @@ function App() {
 
         {/* ── Title bar ── */}
         <TitleBar
-          page={page} simMode={simMode} onPage={p => setPage(p as any)}
+          simMode={simMode}
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode((d: boolean) => !d)}
           language={language} onLanguage={setLanguage}
           fontSize={fontSize} onFontSize={setFontSize}
@@ -429,34 +363,20 @@ function App() {
           onAbout={() => setAboutOpen(true)}
         />
 
-        {/* ── Content (zoom wrapper scales all inline sizes) ── */}
+        {/* ── Content ── */}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg }}>
-
-          {/* Simulator: always mounted, shown/hidden via CSS */}
-          <div style={{
-            display: page === 'simulator' ? 'flex' : 'none',
-            flexDirection: 'column', width: '100%', height: '100%',
-          }}>
-            <Simulator
-              selectedModel={selectedModel} state={simState} setState={setSimState}
-              isLocked={isLocked} setIsLocked={setIsLocked} isDarkMode={isDarkMode}
-              storyTree={storyTree} setStoryTree={setStoryTree}
-              expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
-              storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
-              storyFilter={storyFilter} setStoryFilter={setStoryFilter}
-              loadedModels={loadedModels} setLoadedModels={setLoadedModels}
-              setConfirmedModel={setConfirmedModel} onModelSelect={setSelectedModel}
-              simMode={simMode} onSimModeChange={setSimMode}
-              fontSize={fontSize}
-            />
-          </div>
-
-          {/* Tools: always mounted, shown/hidden via CSS */}
-          <div style={{ display: page === 'tools' ? 'flex' : 'none', width: '100%', height: '100%' }}>
-            <ToolsPage isDarkMode={isDarkMode} c={c} />
-          </div>
-
-
+          <Simulator
+            selectedModel={selectedModel} state={simState} setState={setSimState}
+            isLocked={isLocked} setIsLocked={setIsLocked} isDarkMode={isDarkMode}
+            storyTree={storyTree} setStoryTree={setStoryTree}
+            expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
+            storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
+            storyFilter={storyFilter} setStoryFilter={setStoryFilter}
+            loadedModels={loadedModels} setLoadedModels={setLoadedModels}
+            setConfirmedModel={setConfirmedModel} onModelSelect={setSelectedModel}
+            simMode={simMode} onSimModeChange={setSimMode}
+            fontSize={fontSize}
+          />
         </div>
 
         {/* ── Status bar ── */}

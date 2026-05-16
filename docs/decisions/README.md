@@ -65,3 +65,5 @@
 | [0070](0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代（补录核心约束） | ⭐⭐ 核心约束 | 2026-05-15 |
 | [0071](0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | 全局圆角卡片面板 + 设置齿轮 Popover（字号/语言）+ 区块拖拽排序 | ✅ 已实施 | 2026-05-15 |
 | [0072](0072-2026-05-15_project_gui-only-no-cli.md) | GUI-only：放弃 CLI 作为正式接口（补录核心约束） | ⭐⭐ 核心约束 | 2026-05-15 |
+| [0073](0073-2026-05-16_sim_multi-plan-simulation.md) | 多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行 | 待实现 | 2026-05-16 |
+| [0074](0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | 单层标签组导航：动态 Builder Tab + 统一目录树双模式 | ✅ 已实施 | 2026-05-16 |
