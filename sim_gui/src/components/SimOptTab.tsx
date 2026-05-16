@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
-import { DownloadOutlined, ExportOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { DownloadOutlined, ExportOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import ParetoChart from './ParetoChart';
 import OptProgressChart from './OptProgressChart';
@@ -21,6 +21,7 @@ interface SimOptTabProps {
   t: (key: string) => string;
   fontSize: number;
   onDownloadModel: () => void;
+  onSaveResults?: () => void;
   hasExistingResults: boolean;
   onRunCompared?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
   onApplyBestToSim?: () => void;
@@ -30,7 +31,7 @@ interface SimOptTabProps {
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, hasExistingResults, onRunCompared, onApplyBestToSim, onSendToSim,
+  onDownloadModel, onSaveResults, hasExistingResults, onRunCompared, onApplyBestToSim, onSendToSim,
 }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
@@ -166,13 +167,28 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         ))}
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-        <Button size="small" type="primary" style={{ background: c.primary, borderColor: c.primary }}
-          onClick={onApplyBestToSim}
-          disabled={!onApplyBestToSim}
-        >以此解运行仿真 →</Button>
-        <Tooltip title="下载模型 YAML（含此次 Pareto 前沿），可上传继续搜索">
+        <Tooltip title="将推荐解填入仿真输入，切换到 Sim 面板运行">
+          <Button size="small" type="primary" style={{ background: c.primary, borderColor: c.primary }}
+            onClick={onApplyBestToSim} disabled={!onApplyBestToSim}
+          >运行仿真 →</Button>
+        </Tooltip>
+        {onSendToSim && (
+          <Tooltip title="将推荐解添加为仿真方案（Sim 面板方案管理器）">
+            <Button size="small" icon={<ExportOutlined />}
+              onClick={() => onSendToSim([{ x: optResult.best_x || [], f: optResult.best_f || [], rank: 0 }])}
+            >发送到仿真</Button>
+          </Tooltip>
+        )}
+        {onSaveResults && (
+          <Tooltip title="将优化结果（Pareto 前沿 + 推荐解）写回模型 YAML 文件">
+            <Button size="small" icon={<SaveOutlined />} onClick={onSaveResults}>
+              保存到文件
+            </Button>
+          </Tooltip>
+        )}
+        <Tooltip title="下载含 Pareto 前沿的模型 YAML，可上传继续搜索">
           <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>
-            下载模型
+            下载
           </Button>
         </Tooltip>
       </div>
@@ -182,11 +198,6 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
       <div style={{ padding: '6px 4px' }}>{optSummary}</div>
-      {hasExistingResults && !optRunning && !optResult && (
-        <div style={{ padding: '3px 6px', borderRadius: 4, background: isDarkMode ? '#1a3a22' : '#e8f5e9', color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-          ● 模型含有历史结果，运行时将从上次 Pareto 前沿热启动
-        </div>
-      )}
 
       <Section id="front" title="Front" badge={`${optResult?.n_solutions ?? latestHist?.pareto_count ?? 0} 解`}>
         <div style={{ height: 340, overflow: 'hidden' }}>
