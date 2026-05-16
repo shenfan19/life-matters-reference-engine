@@ -88,37 +88,90 @@ LM 本质上是**动态可计算的 meta-analysis 替代品**，对应 NIH 推�
 
 ## 调试工作流需求
 
-### F-OPT-SIM：优化结果直通仿真
-
-**背景**：优化完成后，Pareto 前沿上的每个解都是一个完整的输入方案（决策变量值 + 时间调度）。建模者需要快速验证某个解的仿真轨迹是否符合预期，目前需要手动把数值复制到 Sim 面板，流程割裂。
-
-**需求**：
-
-| ID | 描述 |
-|----|------|
-| F-OS-1 | 在 Opt 结果面板（Pareto 前沿列表或推荐解块），提供"在 Sim 中运行"操作；点击后自动填充 Sim 面板的 Regimen，切换到 Sim Tab，并立即触发运行 |
-| F-OS-2 | 点击"写入模型文件"后，将当前选中解的 Regimen 作为 `optimizer.results.best` 写回 YAML（沿用 ADR 0069 的 `export-model` 机制），下次打开模型时 Sim 面板自动加载该 Regimen |
-| F-OS-3 | 操作入口紧邻 Pareto 前沿表格，每行或推荐解块各一个，不进入模态弹窗 |
-
-**不在范围**：把 Pareto 解写入 `simulation.schedules`（YAML 的模型定义层）；F-OS-2 只写 `results.best`，不改动模型结构。
+> 以下五个需求按实现优先级排序。1、4、5 优先，2、3 在 5 完成后跟进。
 
 ---
 
-### F-MPLAN：多方案仿真
+### F-1：GUI Working State Layer（GUI 工作状态层）
 
-**背景**：Pareto 前沿提供了一组非支配解，建模者需要同时可视化多个方案的仿真曲线来比较差异（例如：激进蛋白摄入 vs 保守摄入 vs 推荐解，同时观察肌肉量和 GFR 的轨迹）。
+**背景**：当前引擎优先级颠倒：`_apply_regimens`（GUI 层）先写值，随后 `model.step()` 内的 `_apply_schedules()`（YAML 层）覆盖它。结果是 GUI 的任何编辑对有 YAML schedule 的变量完全无效，用户的输入修改和 Opt 结果都无法真正进入仿真。
 
-详细架构决策见 [ADR 0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md)。
+**决定**：GUI Working State Layer 是 Sim 面板 `inputEvents[]` 的集合，**优先级永远高于 YAML schedule**。YAML schedule 仅作为加载时的默认值填充 inputEvents，之后引擎不再单独应用 YAML schedule。
 
 **需求**：
 
 | ID | 描述 |
 |----|------|
-| F-MP-1 | Sim 面板支持同时存在多个**方案**（Plan），每个方案有独立的输入配置（Regimen），共享同一个模型和时间区间 |
-| F-MP-2 | 所有方案的仿真曲线显示在同一图表中，按方案颜色区分；图例标注方案名称 |
-| F-MP-3 | 从 Opt 结果面板可一键将 Pareto 前沿的任意解添加为新方案（衔接 F-OS-1） |
-| F-MP-4 | 方案列表支持增删、重命名；方案数量上限暂定 6 个（颜色可区分） |
-| F-MP-5 | MC 模式下，每个方案独立运行概率扰动，结果以各自的均值曲线 + 置信带呈现在同一图表中 |
-| F-MP-6 | 当只有一个方案时，UI 退化为当前单方案视图，不增加复杂度 |
+| F-1-1 | 引擎：`simulator_engine.py` session 启动时，将有 GUI regimen 的变量写入 `model.manual_overrides`；`_apply_schedules()` 遇到 `manual_overrides` 中的变量自动跳过 |
+| F-1-2 | 行为：GUI 中修改任意输入值（含从 Opt 结果注入的值），该变量本次 session 全程使用 GUI 值，YAML schedule 对其不生效 |
+| F-1-3 | 兼容：未在 GUI 中配置 regimen 的变量，YAML schedule 照常应用（向后兼容） |
 
-**不在范围**：方案保存为 YAML 文件；方案间统计显著性检验；跨不同模型的方案比较（方案共享模型，差异仅在输入）。
+**ADR**：此决策反转 ADR 0053 对 GUI-controlled 变量的优先级规则，需记录新 ADR 0074。
+
+---
+
+### F-4：F-MPLAN 多方案仿真
+
+**背景**：Pareto 前沿是一组非支配解，建模者需要同时可视化多个方案的仿真轨迹来直观比较权衡（例如：激进 vs 保守 vs 推荐解）。
+
+详细架构决策见 [ADR 0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md)。
+
+**交互模型**（MVP）：Pareto 解表格 checkbox → 勾选方案 → Run Compared → 图表显示 N 条曲线。Plans 来自 Pareto 前沿，不需要 YAML 多方案格式，不需要 MINPUT 面板。
+
+**需求**：
+
+| ID | 描述 |
+|----|------|
+| F-MP-1 | Pareto 解表格：每行加 checkbox；表格顶部有"Run Compared"按钮，勾选后并行启动 N 个 session |
+| F-MP-2 | 所有勾选方案的仿真曲线显示在同一图表中，按方案颜色区分；图例可单独 toggle |
+| F-MP-3 | 方案颜色来自预设调色板，最多 6 个 plan 同时运行 |
+| F-MP-4 | MC 模式下，每个方案独立运行概率扰动（相同 seed），各自显示均值曲线 + 置信带 |
+| F-MP-5 | 当只有一个 plan 运行时，图表行为与现有单方案完全一致 |
+
+**前置依赖**：F-1（GUI Working State Layer）必须先实现，否则 Pareto 解的值会被 YAML schedule 覆盖。  
+**不在范围**：方案保存为 YAML；手动创建自定义 plan 并编辑输入（二期）；跨模型比较。
+
+---
+
+### F-5：Opt→Sim 双向读写（Round-trip）
+
+**背景**：Pareto 前沿是 N 组输入组合；export-model 的 YAML 含有 `optimizer.results`，但重新加载时 Sim 不读取 opt 结果、Opt 无法显式选热/冷启动。同时"以此解运行仿真"按钮只处理单变量，多变量 opt 映射错误。
+
+**架构**：Opt 结果（`pareto_front[i].x`）通过软件层重组为 N 组合规 inputEvents（Plan），Plan 是 Sim 的会话级对象；`optimizer.inputs` 的结构本身隐含了 `x[i]` 与 `{variable, time}` 的映射关系，不需要额外字段。`best.regimen` 仅作人类可读的可视化备选。
+
+**需求**：
+
+| ID | 描述 |
+|----|------|
+| F-5-1 | **前端 `xToInputEvents` 函数**：输入 `x[]` + 当前 YAML 的 `optimizer.inputs`（或 `regimen`）结构 + 基础 inputEvents；按 `optimizer.inputs` 的变量名顺序 × events 列表顺序展开，逐一匹配 inputEvent（按 `variable + time`），返回更新后的 inputEvents；这是 Opt→Sim 所有路径的共同基础 |
+| F-5-2 | **Sim 加载 opt 结果**：加载含 `optimizer.results.best.x` 的模型时，GUI 询问是否将推荐解（`best.x`）预填为当前 inputEvents（调用 `xToInputEvents`）；用户可选"加载推荐解"或"使用模型默认调度" |
+| F-5-3 | **Opt 显式热/冷启动**：模型含 `optimizer.results.pareto_front` 时，Opt 面板显示"历史解 N 个（YYYY-MM-DD）"；运行前提供"热启动（继续搜索）"和"冷启动（重新搜索）"两个按钮，废除当前的自动决定逻辑 |
+| F-5-4 | **清理残留单变量代码**：`SimOptTab.tsx` 中"以此解运行仿真"按钮改为调用 `xToInputEvents(best_x, optimizerInputs, inputEvents)`，支持任意数量的优化变量 |
+
+**YAML schema**：无变化，不新增字段；`optimizer.inputs` 结构已隐含映射关系。
+
+---
+
+### F-2：Pareto 解逐行 Apply（依赖 F-5）
+
+**背景**：F-5 实现 `xToInputEvents` 后，任意 Pareto 解都可正确映射为 Sim inputEvents。F-2 在此基础上为每行 Pareto 解单独提供"Apply to Sim"入口。
+
+**需求**：
+
+| ID | 描述 |
+|----|------|
+| F-2-1 | Pareto 前沿表格每行有"Apply to Sim"按钮；点击后调用 `xToInputEvents(row.x, optimizerInputs, inputEvents)` 更新当前 Sim Plan，切换到 Sim Tab |
+| F-2-2 | 匹配失败的 x 项（optimizer.inputs 与模型当前状态不一致）给出 warning，其余正常应用 |
+
+---
+
+### F-3：F-OPT-SIM 完整（依赖 F-2）
+
+**背景**：F-2 实现后，opt→sim 通道完整，F-3 扩展为：从 Opt 面板直接将选中 Pareto 解作为新 Plan 加入 F-MPLAN 的 Run Compared 流程。
+
+**需求**：
+
+| ID | 描述 |
+|----|------|
+| F-3-1 | Pareto 表格每行除"Apply to Sim"外，增加"+ Add to Compared Plans"；加入后自动出现在 F-MPLAN 的方案列表中 |
+| F-3-2 | 当 F-MPLAN 与 F-OPT-SIM 同时使用时，Sim 图表同时显示基础方案（用户手动编辑）和 Pareto 方案（来自 Opt）的曲线 |

@@ -470,7 +470,7 @@ optimizer:
       - {x: [0.30, 0.29, 0.30], f: [65.8, 47.1]}
       - {x: [0.35, 0.33, 0.34], f: [66.9, 44.8]}
     best:                          # 推荐解（Pareto 前沿中的平衡点）
-      x: [0.30, 0.29, 0.30]       # 决策变量值（与 regimen.events 顺序对应）
+      x: [0.30, 0.29, 0.30]       # 决策变量值（与 optimizer.inputs 事件顺序对应）
       f: [65.8, 47.1]             # 目标函数值（与 objectives 顺序对应）
       regimen:                    # 人类可读的方案（变量名 → 时间标签 → 值）
         dietary_protein:
@@ -493,15 +493,19 @@ optimizer:
 | `pareto_front` | list | 所有非支配解，每个元素为 `{x: [...], f: [...]}` |
 | `best.x` | list | 推荐解的决策变量值 |
 | `best.f` | list | 推荐解的目标值 |
-| `best.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}） |
+| `best.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}）；供人类阅读，不用于程序反解 |
 | `best.objectives` | dict | 人类可读的目标结果（变量名: 值） |
+
+**`x` 向量与 inputEvents 的映射关系**：`x[i]` 对应 `optimizer.inputs`（或 `optimizer.regimen`）中按变量名顺序、再按 events 列表顺序展开的第 i 个可优化事件。此映射关系由 `optimizer.inputs` 的结构隐含，不需要额外存储。软件（前端）在将 Pareto 解转化为 Sim Plans 时，按相同顺序解析 `optimizer.inputs` 还原映射（见 `xToInputEvents` 函数，sim_design.md）。
 
 ### 设计原则
 
 - **`results` 整体覆写**：每次保存时用新前沿完整替换旧 `results`，不保留历史；Pareto 前沿只会随搜索改善或持平，不会退化。
 - **格式统一**：`pareto_front` 使用 YAML flow-style（`{x: [...], f: [...]}` 单行），50 个解 = 50 行，不破坏模型可读性。
-- **热启动（warm-start）**：加载有 `results` 的模型时，GUI 自动将 `pareto_front` 中的 `x` 向量作为 NSGA-II 的初始种群，继续搜索。
-- **发布即结果**：建模者运行优化、保存模型、上传 YAML，接收者打开即看到 Pareto 前沿；`results` 可独立阅读，不需要额外后处理工具。
+- **热/冷启动（用户选择）**：加载有 `results` 的模型时，Opt 面板显示历史解数量和日期，由用户显式选择"热启动"（以历史前沿为初始种群继续搜索）或"冷启动"（从随机初始种群重新搜索）；不自动决定。
+- **Sim 读取 opt 结果**：加载含 `best.regimen` 的模型时，Sim 面板询问是否将推荐解预填为当前 inputEvents；用户可选择加载或忽略。
+- **Opt→Sim 多输出（N-N）**：Pareto 前沿是 N 组输入组合；软件将 N 个 Pareto 解各自重组为合规的 Sim inputEvents（Plan），供 F-MPLAN 并行仿真和比较；opt.results 仅保留原始 x/f 向量。
+- **发布即结果**：建模者运行优化、保存模型、上传 YAML，接收者打开即看到 Pareto 前沿和推荐解；`results` 可独立阅读。
 - **无结果也合法**：`optimizer.results` 是可选块；没有该字段的模型正常运行，从随机初始种群开始搜索。
 
 ### 工作流
