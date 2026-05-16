@@ -194,6 +194,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optGen, setOptGen] = useState(80);
   const [comparedPlans, setComparedPlans] = useState<PlanResult[]>([]);
   const [warmStartEnabled, setWarmStartEnabled] = useState(true);
+  const [storedOptResult, setStoredOptResult] = useState<any>(null); // pre-loaded from YAML
   const [optResult, setOptResult] = useState<any>(null);
   const [optRunning, setOptRunning] = useState(false);
   const [optCurGen, setOptCurGen] = useState(0);
@@ -530,7 +531,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
       if (optBlock.objective) preloadObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir2(optBlock.objective.direction || '') });
       if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
-      setOptResult({
+      const preloaded = {
         pareto_front: rawResults.pareto_front,
         best_x: rawResults.best?.x ?? [],
         best_f: rawResults.best?.f ?? [],
@@ -538,8 +539,11 @@ const Simulator: React.FC<SimulatorProps> = ({
         n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
         method: rawResults.method ?? 'nsga2',
         regimen_event_labels: labels.length > 0 ? labels : undefined,
-      });
+      };
+      setStoredOptResult(preloaded);
+      setOptResult(preloaded); // always show on load; checkbox toggle can clear it
     } else {
+      setStoredOptResult(null);
       setOptResult(null);
     }
 
@@ -1109,6 +1113,54 @@ const Simulator: React.FC<SimulatorProps> = ({
     } catch {}
   };
 
+  // Save optimizer results back to the model file on disk (uses export-model YAML + file-raw write)
+  const saveResultsToFile = async () => {
+    if (!selectedModel?.key || !optResult) { message.warning('无结果可保存'); return; }
+    const modelKey = selectedModel.key.replace(/^models\//, '');
+    const regVar: string = optResult.regimen_variable || '';
+    const labels: string[] = optResult.regimen_event_labels || [];
+    const bestRegimen: Record<string, Record<string, number>> = {};
+    if (regVar && labels.length && optResult.best_x) {
+      bestRegimen[regVar] = {};
+      labels.forEach((lbl: string, i: number) => {
+        if (optResult.best_x[i] != null) bestRegimen[regVar][lbl] = Number(optResult.best_x[i].toFixed(4));
+      });
+    }
+    const bestObjectives: Record<string, number> = {};
+    (optResult.objectives || []).forEach((o: any, i: number) => {
+      if (optResult.best_f?.[i] != null) bestObjectives[o.variable] = Number(optResult.best_f[i].toFixed(4));
+    });
+    const results = {
+      generated_at: new Date().toISOString().slice(0, 10),
+      method: optResult.method || 'nsga2',
+      n_solutions: optResult.n_solutions || 0,
+      elapsed_seconds: Math.round(optElapsed * 10) / 10,
+      pareto_front: optResult.pareto_front || [],
+      best: {
+        x: optResult.best_x, f: optResult.best_f,
+        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
+        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
+      },
+    };
+    try {
+      const exportResp = await fetch(`${API_BASE}/optimizer/export-model`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_key: modelKey, results }),
+      }).then(r => r.json());
+      if (!exportResp.success || !exportResp.text) { message.error('生成 YAML 失败'); return; }
+      const saveResp = await fetch(`${API_BASE}/file-raw/${modelKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: exportResp.text }),
+      }).then(r => r.json());
+      if (saveResp.success) {
+        message.success('结果已保存到模型文件');
+        setStoredOptResult(optResult); // update stored so 继续计算 reflects new save
+      } else {
+        message.error('保存失败：' + (saveResp.detail || ''));
+      }
+    } catch (e: any) { message.error(e.message); }
+  };
+
   const startOptimization = async () => {
     if (!selectedModel) return;
     setCenterTab('optimization');
@@ -1372,7 +1424,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       </Button>
       {hasExistingResults && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-          <input type="checkbox" checked={warmStartEnabled} onChange={e => setWarmStartEnabled(e.target.checked)}
+          <input type="checkbox" checked={warmStartEnabled}
+            onChange={e => {
+              const v = e.target.checked;
+              setWarmStartEnabled(v);
+              // Toggle display: checked = show stored results, unchecked = clear display
+              if (!optRunning) setOptResult(v ? storedOptResult : null);
+            }}
             style={{ accentColor: c.primary }} />
           <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartEnabled ? c.primary : c.textSec }}>
             继续计算
@@ -1584,6 +1642,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   objectives={objectives} constraints={constraints}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
                   onDownloadModel={downloadModelYAML}
+                  onSaveResults={saveResultsToFile}
                   hasExistingResults={hasExistingResults}
                   onRunCompared={handleRunCompared}
                   onApplyBestToSim={applyBestToSim}
