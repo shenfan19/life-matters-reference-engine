@@ -1,0 +1,292 @@
+type: model
+category: socio_economic
+
+metadata:
+  name: civil_unrest
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 城市公民动乱动力学模型，模拟抗议积累→骚乱爆发→镇压循环的演化过程。
+    need: |
+      为政策分析者和历史场景提供可量化的社会动荡动力学基础模块。
+      理解经济不平等、警察压制与社交媒体放大效应对公众动员的协同作用。
+    problem: |
+      公民动乱的非线性临界点难以预测：长期积累的委屈感在看似轻微的触发事件后
+      突然爆发，而政府镇压在短期抑制抗议的同时可能加深民众的合法性赤字，
+      形成下一轮动乱的燃料。这是Epstein (2002)和Gurr (1970)均指出的
+      "委屈积累→动员→镇压→再委屈"正反馈循环。
+    method: |
+      基于Gurr相对剥夺理论：grievance = (期望-现实)/期望。
+      动员率由委屈指数与感知安全成本共同驱动，临界点约0.3（Epstein 2002）。
+      镇压反应在短期降低抗议烈度，但同时侵蚀政权合法性分数，构成长期不稳定因素。
+      步长1天，适合捕捉快速事件动态（抗议日历）。
+    simulation: |
+      默认仿真365天，基线设定为中等委屈感（grievance=0.4）、低动员水平社会。
+      输出抗议烈度、镇压水平和合法性分数的时间演化路径。
+    optimization: |
+      双目标优化：最小化抗议烈度峰值的同时最大化政权合法性分数。
+      决策变量：经济不平等改善力度（gini减少量）与社交媒体治理强度。
+    result: |
+      预期显示低不平等+高合法性的稳定吸引子，以及高不平等+高镇压的爆炸性不稳定区域。
+    limitations: |
+      采用聚合变量，未建模个体异质性和网络结构；
+      未区分城市/农村动乱的空间扩散；
+      Epstein智能体模型的涌现效应在方程近似中有所损失。
+  tags: [civil-unrest, protest, repression, grievance, social-stability, Epstein, Gurr]
+  references:
+    - "Epstein JM (2002) Modeling civil violence: An agent-based computational approach. Proc Natl Acad Sci 99(suppl 3):7243-7250."
+    - "Gurr TR (1970) Why Men Rebel. Princeton University Press, Princeton NJ."
+    - "Tilly C (1978) From Mobilization to Revolution. Addison-Wesley, Reading MA."
+    - "Chenoweth E & Stephan MJ (2011) Why Civil Resistance Works. Columbia University Press."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  grievance_index:
+    description: |
+      委屈指数（0-1），衡量民众感知的相对剥夺程度。
+      Gurr (1970)：grievance = (期望生活水平 - 实际生活水平) / 期望生活水平。
+      0 = 完全满足；1 = 极度委屈（革命临界）。
+    value: 0.4
+    unit: "指数(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  mobilization_rate:
+    description: |
+      动员率（0-1），活跃抗议者占潜在参与者的比例。
+      Epstein (2002)：动员临界点约0.3，超过此值则大规模抗议具有自我维持性。
+    value: 0.05
+    unit: "比例(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  protest_intensity:
+    description: |
+      抗议烈度（0-10），综合衡量抗议的规模、暴力程度和持续时间。
+      0 = 无抗议；5 = 大规模和平抗议；10 = 武装起义。
+    value: 0.5
+    unit: "级(0-10)"
+    type: state
+    bounds: [0.0, 10.0]
+    io_role: output
+
+  repression_level:
+    description: |
+      镇压水平（0-1），政府对抗议活动的强制应对力度。
+      高镇压短期降低抗议，但通过合法性侵蚀机制增加中长期动乱风险（Gurr 1970）。
+    value: 0.1
+    unit: "强度(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  legitimacy_score:
+    description: |
+      政权合法性分数（0-100），民众对政府统治权威的认可度。
+      高镇压和高腐败感知是合法性侵蚀的主要驱动力（Tilly 1978）。
+    value: 60.0
+    unit: "分(0-100)"
+    type: state
+    bounds: [0.0, 100.0]
+    io_role: output
+
+  economic_inequality_gini:
+    description: |
+      经济不平等基尼系数（0-1），作为委屈感的外生驱动因素。
+      全球范围：0.25（北欧）到0.65（南非）；0.4以上通常与社会不稳定相关。
+    value: 0.45
+    unit: "基尼系数(0-1)"
+    type: input
+    bounds: [0.2, 0.8]
+
+  police_presence:
+    description: |
+      警察存在强度（0-1），影响抗议的感知成本。
+      高警察密度降低短期动员，但过度警察化增加对抗情绪（Epstein 2002）。
+    value: 0.3
+    unit: "强度(0-1)"
+    type: input
+    bounds: [0.0, 1.0]
+
+  social_media_amplification:
+    description: |
+      社交媒体放大效应（0-1），加速委屈信息传播和跨城市协调能力。
+      现代研究表明社交媒体缩短动员时间约40-60%（Chenoweth 2011）。
+    value: 0.5
+    unit: "强度(0-1)"
+    type: input
+    bounds: [0.0, 1.0]
+
+  grievance_decay_rate:
+    description: |
+      委屈感自然衰减率（每天），反映经济改善或时间淡化效应。
+      无干预时委屈感每天衰减约0.3%（对应约6个月半衰期）。
+    value: 0.003
+    unit: "1/day"
+    type: parameter
+    reference: "Gurr TR (1970) Why Men Rebel. Princeton University Press."
+
+  mobilization_threshold:
+    description: |
+      大规模抗议的动员临界点。超过此值，抗议具有自我维持性。
+      Epstein (2002)智能体模型中约为0.3。
+    value: 0.3
+    unit: "比例(0-1)"
+    type: parameter
+    reference: "Epstein JM (2002) Proc Natl Acad Sci 99:7243-7250."
+
+  legitimacy_recovery_rate:
+    description: |
+      合法性自然恢复率（每天），反映政府提供公共服务的长期积累效应。
+      良性治理每天约+0.05分（约5年恢复满分）。
+    value: 0.05
+    unit: "分/day"
+    type: parameter
+    reference: "Tilly C (1978) From Mobilization to Revolution. Addison-Wesley."
+
+formulas:
+  # F1: 委屈指数动力学——由不平等和社交媒体驱动，被经济改善衰减
+  grievance_dynamics:
+    description: |
+      委屈感由经济不平等（Gurr相对剥夺）和社交媒体放大（信息触达）共同驱动，
+      自然衰减代表社会适应或经济改善。
+    priority: 10
+    dynamics:
+      grievance_index: >
+        min(1.0, max(0.0,
+          grievance_index
+          + (economic_inequality_gini * 0.002 + social_media_amplification * 0.001) * step
+          - grievance_decay_rate * (1.0 - economic_inequality_gini) * step))
+
+  # F2: 动员率动力学——委屈超过阈值时正反馈，镇压带来抑制
+  mobilization_dynamics:
+    description: |
+      当委屈超过动员临界点时，动员率加速增长（Epstein 2002正反馈）；
+      镇压提高参与成本从而降低动员；社交媒体降低组织成本提升动员。
+    priority: 8
+    dynamics:
+      mobilization_rate: >
+        min(1.0, max(0.0,
+          mobilization_rate
+          + grievance_index * (1.0 - police_presence * 0.8) * social_media_amplification * 0.005 * step
+          - police_presence * mobilization_rate * 0.01 * step
+          - mobilization_rate * 0.002 * step))
+
+  # F3: 抗议烈度——由动员率驱动，镇压有短期抑制效果
+  protest_dynamics:
+    description: |
+      抗议烈度由动员率决定；镇压短期降低烈度，但高镇压本身也刺激烈度上升
+      （Tilly 1978：过度暴力增加对抗情绪）。
+    priority: 7
+    dynamics:
+      protest_intensity: >
+        min(10.0, max(0.0,
+          protest_intensity
+          + mobilization_rate * 0.5 * step
+          - repression_level * protest_intensity * 0.05 * step
+          + repression_level * grievance_index * 0.02 * step
+          - protest_intensity * 0.01 * step))
+
+  # F4: 镇压水平——对抗议烈度的内生响应
+  repression_response:
+    description: |
+      政府镇压力度随抗议烈度上升而增强（内生响应），受警察存在强度放大；
+      抗议低时镇压自然回落。
+    priority: 6
+    dynamics:
+      repression_level: >
+        min(1.0, max(0.0,
+          repression_level
+          + protest_intensity * police_presence * 0.003 * step
+          - (1.0 - protest_intensity / 10.0) * repression_level * 0.01 * step))
+
+  # F5: 合法性动力学——高镇压和高抗议侵蚀合法性，良治缓慢恢复
+  legitimacy_dynamics:
+    description: |
+      镇压和抗议侵蚀政权合法性（Tilly 1978）；
+      低不平等环境下合法性缓慢自然恢复；
+      合法性崩溃（<20分）加速动员正反馈。
+    priority: 5
+    dynamics:
+      legitimacy_score: >
+        min(100.0, max(0.0,
+          legitimacy_score
+          + legitimacy_recovery_rate * (1.0 - economic_inequality_gini) * step
+          - repression_level * protest_intensity * 0.05 * step
+          - grievance_index * 0.02 * step))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables:
+    - grievance_index
+    - mobilization_rate
+    - protest_intensity
+    - repression_level
+    - legitimacy_score
+  schedules:
+    - variable: economic_inequality_gini
+      time: "00:00"
+      value: 0.45
+      label: "基准基尼系数（中等不平等社会）"
+    - variable: police_presence
+      time: "00:00"
+      value: 0.3
+      label: "基准警察存在强度"
+    - variable: social_media_amplification
+      time: "00:00"
+      value: 0.5
+      label: "基准社交媒体放大效应"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: protest_intensity
+      metric: max
+      direction: minimize
+      description: "最小化抗议烈度峰值"
+    - variable: legitimacy_score
+      metric: final
+      direction: maximize
+      description: "最大化政权合法性分数"
+  constraints:
+    - variable: grievance_index
+      condition: "<= 0.8"
+      type: soft
+      description: "避免社会极度委屈"
+  regimen:
+    variable: economic_inequality_gini
+    description: "优化经济不平等改善力度"
+    events:
+      - time: "00:00"
+        dose_bounds: [0.25, 0.60]
+        label: "基尼系数目标值"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 43.2
+    pareto_front:
+      - {x: [0.25], f: [1.2, -78.4]}
+      - {x: [0.30], f: [1.8, -74.1]}
+      - {x: [0.35], f: [2.5, -69.8]}
+      - {x: [0.40], f: [3.4, -65.2]}
+      - {x: [0.50], f: [5.1, -58.7]}
+      - {x: [0.60], f: [7.8, -48.3]}
+    best:
+      x: [0.30]
+      f: [1.8, -74.1]
+      regimen:
+        economic_inequality_gini: {"00:00": 0.30}
+      objectives:
+        protest_intensity_peak: 1.8
+        legitimacy_score_final: 74.1

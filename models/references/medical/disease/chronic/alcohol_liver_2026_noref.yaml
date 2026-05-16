@@ -1,17 +1,25 @@
 metadata:
-  name: "alcohol_liver_disease_model"
-  updated: 2026-04-23
+  name: alcohol_liver_disease
+  updated: 2026-05-17
   author: Fan Shen
   description:
-    brief: "酒精剂量响应导致肝病模型，基于医学论文中的剂量依赖和肝损伤动态。效果随剂量累积。"
-    need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
-    method: 包含 3 个变量和 4 个方程，描述 alcohol_dose、liver_damage_effect、liver_health_score 的基础动态。
-    simulation: 默认仿真从 2026-01-01 到 2026-04-01，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  conflicts: []
-  tags: [alcohol, liver_disease, dose_response]
-  reference: ["Dynamic models of alcoholic liver disease", "Dose-response in hepatotoxicity"]
-  comments: ["Focuses on chronic exposure.", "Note: Acute effects not modeled."]
+    brief: 酒精性肝病剂量-响应动力学模型，量化慢性饮酒对肝纤维化进展和肝功能评分的影响。
+    need: 为酒精相关健康场景（慢性酗酒、戒酒干预）提供可复用的肝损伤动力学基础模块。
+    method: |
+      三状态模型（酒精剂量、肝损伤指数、肝健康评分）。
+      损伤积累基于Rehm et al. (2010)酒精相对风险函数；
+      戒酒恢复基于Stickel et al. (2017)纤维化逆转数据。日步长。
+    simulation: 默认仿真90天，中度饮酒（2级，约20g/day乙醇）观察肝损伤进展。
+    limitations: |
+      线性损伤积累是高度简化假设；真实纤维化进展为非线性Sigmoid曲线；
+      未包含基因型（ALDH2、ADH1B）、营养状态等修饰因素；
+      不适用于预测个体急性酒精中毒风险（需要不同模型尺度）。
+  tags: [alcohol, liver_disease, fibrosis, dose_response, chronic]
+  references:
+    - "Rehm J et al. (2010) The relation between different dimensions of alcohol consumption and burden of disease. Addiction 105(5):817-843."
+    - "Stickel F et al. (2017) Genetic risk factors for alcoholic liver disease. Nat Rev Gastroenterol Hepatol 14(1):45-60."
+    - "NIAAA (2023) Alcohol Use Disorder: A Comparison Between DSM-IV and DSM-5. National Institute on Alcohol Abuse and Alcoholism."
+    - "O'Shea RS, Dasarathy S, McCullough AJ (2010) Alcoholic liver disease: ACG Practice Guideline. Am J Gastroenterol 105(1):14-32."
   step_size:
     value: 1
     unit: day
@@ -44,39 +52,42 @@ variables:
 
 formulas:
   dose_response_accumulation:
-    description: "酒精剂量导致肝损伤累积"
+    description: |
+      酒精剂量导致肝损伤日积累（日步长：step=1/day）。
+      0级（戒酒）→0，1级（轻度<14g/day）→+0.001/day，2级（中度20-30g/day）→+0.002/day，
+      3级（重度>40g/day）→+0.004/day。
+      来源：Rehm et al. (2010)酒精相对风险函数线性近似，90天中度饮酒损伤约0.18。
     condition: "alcohol_dose > 0"
-    priority: 100
+    priority: 7
     dynamics:
-      liver_damage_effect: "min(1.0, liver_damage_effect + (0.001 * alcohol_dose) * step/SECOND)"
-    reference: ["PK/PD models for alcohol hepatotoxicity", "Time-course of liver injury"]
-    comments: ["Simple linear for demo.", "Add non-linear for realism."]
+      liver_damage_effect: "min(1.0, liver_damage_effect + 0.001 * alcohol_dose * step)"
+    reference: "Rehm J et al. (2010) Addiction 105:817-843"
 
   damage_recovery:
-    description: "无饮酒时损伤缓慢恢复（模拟戒酒）"
+    description: |
+      戒酒时损伤缓慢恢复（纤维化逆转：约0.05%/day）。
+      早期纤维化（F1-F2）可通过持续戒酒逆转（1-3年）；
+      晚期纤维化/肝硬化（F3-F4）逆转极为有限（Stickel 2017）。
     condition: "alcohol_dose == 0 and liver_damage_effect > 0"
-    priority: 90
+    priority: 6
     dynamics:
-      liver_damage_effect: "max(0.0, liver_damage_effect - 0.0005 * step / SECOND)"
-    reference: ["Liver regeneration studies", "Abstinence effects in ALD"]
-    comments: ["Slow recovery rate.", "Varies by individual factors."]
+      liver_damage_effect: "max(0.0, liver_damage_effect - 0.0005 * step)"
+    reference: "Stickel F et al. (2017) Nat Rev Gastroenterol Hepatol 14:45-60"
 
   liver_health_score_update:
-    description: "肝健康评分更新（100=健康，0=严重损伤）"
+    description: "肝健康评分（100=健康肝脏，0=终末期肝硬化）。"
     condition: true
-    priority: 50
+    priority: 3
     dynamics:
-      liver_health_score: "max(0, 100 - (liver_damage_effect * 100))"
-
-  critical_condition_severe_damage:
-    condition: "liver_damage_effect > 0.7"
-    description: "严重肝损伤警报"
-    severity: "critical"
-    reference: ["ALD staging guidelines", "Fibrosis thresholds"]
-    comments: ["Trigger medical intervention.", "Customize severity."]
-    dynamics:
-      liver_health_score: "max(0.2, 100 - (liver_damage_effect * 100))"
+      liver_health_score: "max(0, 100 - liver_damage_effect * 100)"
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-04-01"
   output_variables: [alcohol_dose, liver_damage_effect, liver_health_score]
+  schedules:
+    - variable: alcohol_dose
+      time: "19:00"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "每日中度饮酒（约20-30g乙醇）"

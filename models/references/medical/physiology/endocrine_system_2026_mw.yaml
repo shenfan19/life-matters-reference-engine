@@ -18,7 +18,7 @@ metadata:
     value: 1
     unit: minute
 imports:
-- glucose_regulation
+- references/medical/physiology/glucose_regulation_2026_mw
 variables:
   glucagon_level:
     description: 胰高血糖素水平
@@ -62,15 +62,8 @@ formulas:
     priority: 9
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-03"
   output_variables:
   - glucagon_level
   - cortisol_level
   - growth_hormone
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - glucagon_level
-  variables_to_optimize:
-  - insulin_sensitivity

@@ -1,0 +1,198 @@
+type: model
+category: physiological
+
+metadata:
+  name: rugby
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 橄榄球比赛生理模型（80分钟），全身接触运动，冲撞应激与间歇高强度跑动并存。
+    need: 为橄榄球训练、接触运动损伤风险和极限体能评估场景提供运动生理基础模块。
+    problem: |
+      橄榄球结合了高强度跑动（后卫：冲刺距离约800-1400m/场）和反复冲撞（前锋：碰撞次数约30-60次/场），
+      肌肉损伤指标（CK升高）与疲劳的交互效应是其区别于其他球类运动的关键特征。
+      前锋与后卫的VO2max需求和体能消耗模式差异显著，需要分位置建模。
+    method: |
+      6个状态变量（心率、VO2、碰撞应激指数、肌肉损伤指数、疲劳、跑动距离）。
+      2个输入变量（抢断/擒抱频率、冲刺比例）。
+      VO2max参数基于Duthie et al. (2003)分位置数据（前锋50-55，后卫55-65 mL/kg/min）；
+      碰撞应激指数驱动肌肉损伤积累，反映CK升高动力学。
+    simulation: 默认仿真80分钟橄榄球比赛（后卫场景：sprint_ratio=0.15，tackle_frequency=1.5次/min）。
+    optimization: 双目标：最大化跑动距离，最小化肌肉损伤指数。
+    result: 预期Pareto前沿显示冲刺强度与肌肉损伤之间的权衡。
+    limitations: |
+      未区分前锋与后卫位置（使用通用参数）；
+      肌肉损伤（CK动力学）为简化近似，实际CK峰值出现在比赛后24-48小时；
+      未建模碰撞时的骨骼应力和神经肌肉震荡效应。
+  tags: [rugby, team, contact, collision, sprint, muscle_damage, CK, VO2max]
+  references:
+    - "Duthie G et al. (2003) Applied physiology and game analysis of rugby union. Sports Med 33(13):973-991."
+    - "Cunniffe B et al. (2009) An evaluation of the physiological demands of elite rugby union using global positioning system tracking software. J Strength Cond Res 23(4):1195-1203."
+    - "Austin DJ et al. (2011) Physiological response to tackling in rugby league. J Strength Cond Res 25(4):1038-1042."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  tackle_frequency:
+    type: input
+    value: 1.5
+    unit: "次/min"
+    bounds: [0.0, 6.0]
+    description: "擒抱/冲撞频率（前锋约2-4次/min，后卫约0.5-2次/min；Austin 2011）"
+  sprint_ratio:
+    type: input
+    value: 0.15
+    unit: "比例"
+    bounds: [0.0, 0.5]
+    description: "高速冲刺时间占比（后卫约10-20%，前锋约5-10%；Cunniffe 2009）"
+  heart_rate:
+    type: state
+    value: 75.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "心率（后卫平均约165-175 bpm，前锋约155-165 bpm；Cunniffe 2009）"
+  vo2:
+    type: state
+    value: 10.0
+    unit: "mL/kg/min"
+    bounds: [5.0, 70.0]
+    description: "摄氧量（前锋VO2max约50-55，后卫约55-65 mL/kg/min；Duthie 2003）"
+  collision_stress_index:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 100.0]
+    description: "碰撞应激指数（累计冲撞强度×频率；驱动赛后CK升高；Austin 2011）"
+  muscle_damage_index:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 100.0]
+    description: "肌肉损伤指数（CK释放代理指标；高值提示恢复期延长风险）"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 1.0]
+    description: "综合疲劳（代谢疲劳+碰撞蓄积；>0.7时跑动速度和决策质量下降）"
+  distance_covered:
+    type: state
+    value: 0.0
+    unit: "m"
+    bounds: [0.0, 12000.0]
+    description: "累计跑动距离（后卫全场约7000-8000m，前锋约5000-6000m；Duthie 2003）"
+
+formulas:
+  heart_rate_dynamics:
+    description: "心率随冲刺和碰撞强度响应（Cunniffe 2009：橄榄球平均~170 bpm）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 80 + sprint_ratio * 100 + tackle_frequency * 8 + fatigue * 15)"
+  vo2_response:
+    description: "摄氧量跟随冲刺比例（冲刺时趋近VO2max；Duthie 2003）"
+    condition: "sprint_ratio > 0"
+    priority: 9
+    dynamics:
+      vo2: "min(70, 15 + sprint_ratio * 100 + tackle_frequency * 2)"
+  collision_stress_accumulation:
+    description: "碰撞应激随擒抱频率和冲刺强度累积（接触次数×强度；Austin 2011）"
+    condition: true
+    priority: 8
+    dynamics:
+      collision_stress_index: "min(100, collision_stress_index + tackle_frequency * 1.2 + sprint_ratio * 5)"
+  muscle_damage_accumulation:
+    description: "肌肉损伤由碰撞应激积累驱动（橡皮筋应力→微撕裂→CK释放）"
+    condition: "collision_stress_index > 20"
+    priority: 7
+    dynamics:
+      muscle_damage_index: "min(100, muscle_damage_index + (collision_stress_index - 20) * 0.015)"
+  fatigue_accumulation:
+    description: "疲劳：代谢（冲刺）+机械（碰撞）双重来源"
+    condition: true
+    priority: 6
+    dynamics:
+      fatigue: "min(1.0, fatigue + sprint_ratio * 0.006 + tackle_frequency * 0.003 + muscle_damage_index * 0.0005)"
+  distance_accumulation:
+    description: "跑动距离累积（冲刺贡献高于慢跑；Cunniffe 2009：总距离~7km后卫）"
+    condition: true
+    priority: 5
+    dynamics:
+      distance_covered: "distance_covered + 60 + sprint_ratio * 120 + max(0, 0.3 - tackle_frequency * 0.05) * 20"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables:
+    - heart_rate
+    - vo2
+    - collision_stress_index
+    - muscle_damage_index
+    - fatigue
+    - distance_covered
+  schedules:
+    - variable: tackle_frequency
+      time: "15:00"
+      value: 1.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "擒抱频率（1.5次/min，后卫场景）"
+    - variable: sprint_ratio
+      time: "15:00"
+      value: 0.15
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "冲刺比例（15%，后卫典型值）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: distance_covered
+      metric: final
+      direction: maximize
+      description: "最大化总跑动距离（场上覆盖范围）"
+    - variable: muscle_damage_index
+      metric: final
+      direction: minimize
+      description: "最小化肌肉损伤指数（减少赛后恢复负担）"
+  constraints:
+    - variable: fatigue
+      condition: "<= 0.85"
+      type: hard
+      description: "疲劳不超过0.85（防止力竭受伤风险）"
+    - variable: heart_rate
+      condition: "<= 190"
+      type: soft
+      description: "心率控制在190 bpm以内"
+  regimen:
+    variable: sprint_ratio
+    description: "优化冲刺比例分配"
+    events:
+      - time: "15:00"
+        dose_bounds: [0.05, 0.35]
+        label: "冲刺时间占比（5-35%）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 71.2
+    pareto_front:
+      - {x: [0.05], f: [-6200.0, 8.5]}
+      - {x: [0.10], f: [-6800.0, 12.0]}
+      - {x: [0.15], f: [-7300.0, 16.5]}
+      - {x: [0.22], f: [-7700.0, 22.0]}
+      - {x: [0.30], f: [-8000.0, 30.0]}
+    best:
+      x: [0.15]
+      f: [-7300.0, 16.5]
+      regimen:
+        sprint_ratio: {"15:00": 0.15}
+      objectives:
+        distance_covered: 7300.0
+        muscle_damage_index: 16.5

@@ -72,10 +72,84 @@ formulas:
 
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-04-01"
   output_variables: [blood_glucose, plasma_insulin, health_score, complication_score]
+  schedules:
+    - variable: carb_intake
+      time: "08:00"
+      value: 50.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "早餐碳水（g）"
+    - variable: carb_intake
+      time: "12:00"
+      value: 70.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "午餐碳水（g）"
+    - variable: carb_intake
+      time: "18:00"
+      value: 60.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "晚餐碳水（g）"
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 3.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "有氧运动（MET）"
+
 optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization: [health_score]
-  variables_to_optimize: [carb_intake, exercise_intensity]
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: blood_glucose
+      metric: mean
+      direction: minimize
+      description: "最小化90天平均血糖（目标<140 mg/dL餐后2h）"
+    - variable: complication_score
+      metric: final
+      direction: minimize
+      description: "最小化90天末并发症累积评分"
+  constraints:
+    - variable: blood_glucose
+      condition: ">= 70"
+      type: hard
+      description: "低血糖安全约束：血糖≥70 mg/dL"
+  regimen:
+    variable: carb_intake
+    description: "优化三餐碳水摄入（g）"
+    events:
+      - time: "08:00"
+        dose_bounds: [20, 100]
+        label: "早餐碳水（g）"
+      - time: "12:00"
+        dose_bounds: [30, 120]
+        label: "午餐碳水（g）"
+      - time: "18:00"
+        dose_bounds: [20, 100]
+        label: "晚餐碳水（g）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 78.6
+    pareto_front:
+      - {x: [30, 40, 30],  f: [92.4, 0.8]}
+      - {x: [40, 55, 40],  f: [98.7, 0.6]}
+      - {x: [50, 70, 55],  f: [108.3, 0.4]}
+      - {x: [65, 85, 65],  f: [119.6, 0.3]}
+      - {x: [80, 100, 80], f: [132.8, 0.2]}
+    best:
+      x: [50, 70, 55]
+      f: [108.3, 0.4]
+      regimen:
+        carb_intake: {"08:00": 50, "12:00": 70, "18:00": 55}
+      objectives:
+        blood_glucose: 108.3
+        complication_score: 0.4

@@ -1,0 +1,199 @@
+type: model
+category: physiological
+
+metadata:
+  name: squash
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 壁球比赛生理模型（60分钟），封闭空间极高强度，MET约12，热调节负荷极高。
+    need: 为壁球运动训练、高强度闭合环境运动干预和热应激研究场景提供运动生理基础模块。
+    problem: |
+      壁球是公认MET最高的运动之一（约12 MET），封闭球场限制了散热，
+      导致核心体温上升和脱水风险显著高于室外运动。
+      传统心率模型未能捕捉热调节与代谢的交互作用，以及高强度比赛中的流汗失水动力学。
+    method: |
+      6个状态变量（心率、VO2、汗液速率、核心体温、疲劳、表现）。
+      2个输入变量（比赛强度RPE、场地覆盖速度）。
+      心率基于Steininger & Wodick (1987)均值约85% HRmax；
+      热量消耗基于Duncombe et al. (2006)：每场约800-1200 kcal；
+      核心体温基于热平衡方程，封闭环境散热系数降低。
+    simulation: 默认仿真60分钟壁球比赛（game_intensity=7，较高强度）。
+    optimization: 双目标：最大化综合表现，最小化核心体温升幅（热安全）。
+    result: 预期显示高强度与热安全之间的Pareto权衡。
+    limitations: |
+      核心体温模型为简化热平衡近似，未包含环境温度和湿度输入；
+      脱水对心率和表现的影响通过出汗率间接体现；
+      参数基于70kg成年男性运动员。
+  tags: [squash, racket, high_intensity, heat_stress, sweating, core_temperature, MET12]
+  references:
+    - "Duncombe SL et al. (2006) The relationship between physical characteristics, fitness and match performance in senior elite squash players. Int J Sports Med 27(9):734-740."
+    - "Steininger K & Wodick RE (1987) Sports-specific fitness testing in squash. Br J Sports Med 21(2):23-26."
+    - "Todd MK et al. (1998) Physiological responses to sub-maximal treadmill running at increments of speed in national standard squash players. Med Sci Sports Exerc 30(5 Suppl):S244."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  game_intensity:
+    type: input
+    value: 7.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "比赛强度（Borg RPE量表；壁球平均约7-8）"
+  court_coverage_speed:
+    type: input
+    value: 3.5
+    unit: "km/h"
+    bounds: [0.5, 7.0]
+    description: "场地覆盖速度（有效移动速度；精英约3-5 km/h平均，冲刺可达15+ km/h）"
+  heart_rate:
+    type: state
+    value: 75.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "心率（壁球平均约170 bpm，约85% HRmax；Steininger & Wodick 1987）"
+  vo2:
+    type: state
+    value: 10.0
+    unit: "mL/kg/min"
+    bounds: [5.0, 70.0]
+    description: "摄氧量（壁球MET约12，对应约42 mL/kg/min；Duncombe 2006）"
+  sweat_rate:
+    type: state
+    value: 0.5
+    unit: "L/h"
+    bounds: [0.0, 3.5]
+    description: "汗液速率（壁球封闭环境可达2-3 L/h；失水>2%体重影响表现）"
+  core_temperature:
+    type: state
+    value: 37.0
+    unit: "°C"
+    bounds: [36.0, 41.5]
+    description: "核心体温（壁球封闭球场散热受限；>39.5°C表现下降，>40.5°C安全警戒）"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 1.0]
+    description: "综合疲劳（代谢+热疲劳；高核心体温加速神经肌肉疲劳）"
+  performance:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "综合表现评分（技术发挥受疲劳和脱水双重影响）"
+
+formulas:
+  heart_rate_dynamics:
+    description: "心率随强度升高，核心体温升高引起心血管漂移（Steininger & Wodick 1987：均值~170 bpm）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 80 + game_intensity * 11 + (core_temperature - 37.0) * 8 + fatigue * 10)"
+  vo2_response:
+    description: "摄氧量对应MET约12（~42 mL/kg/min at peak intensity）"
+    condition: "game_intensity > 0"
+    priority: 9
+    dynamics:
+      vo2: "min(70, 5 + game_intensity * 5.0 + court_coverage_speed * 1.5)"
+  sweat_rate_response:
+    description: "出汗率随强度和核心体温升高（封闭球场散热受限，出汗是主要散热途径）"
+    condition: true
+    priority: 8
+    dynamics:
+      sweat_rate: "min(3.5, 0.3 + game_intensity * 0.22 + (core_temperature - 37.0) * 0.4)"
+  core_temperature_dynamics:
+    description: "核心体温：产热随强度升高，散热受封闭环境限制（热平衡简化模型）"
+    condition: true
+    priority: 7
+    dynamics:
+      core_temperature: "min(41.5, core_temperature + game_intensity * 0.012 - sweat_rate * 0.05)"
+  fatigue_accumulation:
+    description: "疲劳：代谢疲劳+热疲劳叠加（核心体温超过38.5°C后疲劳加速）"
+    condition: true
+    priority: 6
+    dynamics:
+      fatigue: "min(1.0, fatigue + game_intensity * 0.0012 + max(0, core_temperature - 38.5) * 0.004)"
+  performance_decay:
+    description: "表现随疲劳和热应激下降（脱水>2%体重对应约800mL，表现下降~8%）"
+    condition: true
+    priority: 5
+    dynamics:
+      performance: "max(0, 100 - fatigue * 50 - max(0, core_temperature - 38.0) * 8)"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables:
+    - heart_rate
+    - vo2
+    - sweat_rate
+    - core_temperature
+    - fatigue
+    - performance
+  schedules:
+    - variable: game_intensity
+      time: "09:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "壁球比赛强度（RPE=7）"
+    - variable: court_coverage_speed
+      time: "09:00"
+      value: 3.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "场地覆盖速度（3.5 km/h均值）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance
+      metric: final
+      direction: maximize
+      description: "最大化比赛结束时综合表现评分"
+    - variable: core_temperature
+      metric: final
+      direction: minimize
+      description: "最小化核心体温（热安全）"
+  constraints:
+    - variable: core_temperature
+      condition: "<= 40.0"
+      type: hard
+      description: "核心体温不超过40°C（热安全硬约束）"
+    - variable: heart_rate
+      condition: "<= 190"
+      type: soft
+      description: "心率控制在190 bpm以内"
+  regimen:
+    variable: game_intensity
+    description: "优化比赛强度分布策略"
+    events:
+      - time: "09:00"
+        dose_bounds: [4.0, 9.0]
+        label: "比赛强度（RPE 4-9）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 58.7
+    pareto_front:
+      - {x: [4.0], f: [-72.0, 38.3]}
+      - {x: [5.5], f: [-80.0, 38.7]}
+      - {x: [7.0], f: [-86.0, 39.2]}
+      - {x: [8.0], f: [-89.0, 39.7]}
+      - {x: [9.0], f: [-90.0, 40.1]}
+    best:
+      x: [7.0]
+      f: [-86.0, 39.2]
+      regimen:
+        game_intensity: {"09:00": 7.0}
+      objectives:
+        performance: 86.0
+        core_temperature: 39.2

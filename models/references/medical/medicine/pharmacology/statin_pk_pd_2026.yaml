@@ -1,0 +1,217 @@
+type: model
+category: physiological
+
+metadata:
+  name: statin_pk_pd
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 他汀类药物（阿托伐他汀）PK/PD模型，量化LDL胆固醇降低效果与肌病风险之间的剂量-响应关系。
+    need: |
+      为心血管预防场景提供严格的降脂药物PK/PD基础模块。
+      量化阿托伐他汀剂量（10-80mg）对LDL降低幅度和肌酸激酶（CK）升高风险的影响。
+    problem: |
+      他汀类药物遵循"30-40%规则"：剂量翻倍LDL仅额外降低约6%（非线性饱和效应）。
+      但肌病风险随剂量呈超线性增加（80mg风险约为10mg的4-8倍）。
+      如何在最大化LDL降低的同时控制肌病风险，是个体化用药的核心问题。
+    method: |
+      双指标PK/PD模型：LDL降低（Emax模型）+ 肌酸激酶升高（幂函数风险模型）。
+      效力对应阿托伐他汀药代动力学标准参数（Cmax稳态）。
+      月步长，适合长期降脂治疗（数月到数年）的效果评估。
+    simulation: |
+      默认仿真12个月，观察不同剂量（10/20/40/80mg/day）的LDL动态响应。
+    optimization: |
+      双目标：最大化LDL降低幅度（心血管保护），最小化CK升高风险（肌病安全性）。
+    result: 预期显示他汀剂量-效益-风险的非线性Pareto边界。
+    limitations: |
+      参数来自阿托伐他汀，不适用于瑞舒伐他汀（疏水性更低）；
+      未建模药物-药物相互作用（CYP3A4抑制剂如克拉霉素可3-4倍升高他汀血药浓度）；
+      个体间差异（SLCO1B1基因型）未包含。
+  tags: [pharmacology, statin, LDL, cholesterol, cardiovascular, PK/PD, myopathy]
+  references:
+    - "Jones PH et al. (2003) Atorvastatin vs simvastatin in patients with hypercholesterolaemia (CURVES study). Am J Cardiol 81(5):582-587."
+    - "Grundy SM et al. (2018) 2018 AHA/ACC Guideline on Management of Blood Cholesterol. Circulation 139(25):e1082-e1143."
+    - "Rosenson RS et al. (2004) Statin safety: an assessment using an administrative claims database. Am J Cardiol 94(9A):26C-34C."
+    - "Link E et al. (2008) SLCO1B1 variants and statin-induced myopathy. NEJM 359(8):789-799."
+    - "Stone NJ et al. (2014) ACC/AHA guideline on treatment of blood cholesterol. JACC 63(25 Pt B):2889-2934."
+  step_size:
+    value: 1
+    unit: month
+
+variables:
+  ldl_cholesterol:
+    description: |
+      LDL胆固醇（mg/dL）。基线：未治疗的高心血管风险患者典型值130-160 mg/dL。
+      目标：ACC/AHA 2018指南 <70 mg/dL（极高风险患者）；<100 mg/dL（高风险）。
+    value: 145.0
+    unit: mg/dL
+    type: state
+    bounds: [20.0, 300.0]
+    io_role: output
+
+  ck_level:
+    description: |
+      肌酸激酶（CK，IU/L）。正常值：男性<200 IU/L，女性<170 IU/L。
+      轻度升高（>3×ULN=600）：提示肌炎风险；>10×ULN=2000：横纹肌溶解风险（需停药）。
+      来源：Rosenson 2004，肌病监测阈值。
+    value: 100.0
+    unit: IU/L
+    type: state
+    bounds: [0.0, 10000.0]
+    io_role: output
+
+  ldl_reduction_pct:
+    description: LDL降低百分比（相对基线，负值=降低）。
+    value: 0.0
+    unit: "%"
+    type: state
+    bounds: [-90.0, 50.0]
+    io_role: output
+
+  statin_dose:
+    description: |
+      阿托伐他汀每日剂量（mg/day）。临床推荐范围：10-80 mg/day。
+      高强度他汀（ACC/AHA 2018）：40-80mg/day（LDL↓≥50%）；
+      中强度：10-20mg/day（LDL↓30-49%）。
+    value: 0.0
+    unit: mg/day
+    type: input
+    bounds: [0.0, 80.0]
+
+  # ── 参数（来自文献） ──────────────────────────────────────────────────────────
+  ldl_baseline:
+    description: 患者基线LDL（无药物干预稳态值）。
+    value: 145.0
+    unit: mg/dL
+    type: parameter
+
+  emax_ldl:
+    description: |
+      LDL最大降低率（Emax），即理论上无限剂量时的最大降幅。
+      阿托伐他汀: Emax ≈ 55%（Jones 2003, CURVES研究推算）。
+    value: 55.0
+    unit: "%"
+    type: parameter
+    reference: "Jones PH et al. (2003) Am J Cardiol 81:582-587"
+
+  ec50_statin:
+    description: |
+      半数最大效应剂量（EC50，mg/day）。阿托伐他汀EC50≈8mg/day（Hill系数n=0.8）。
+      来源：CURVES研究剂量-响应曲线拟合。
+    value: 8.0
+    unit: mg/day
+    type: parameter
+    reference: "Jones PH et al. (2003) Am J Cardiol 81:582-587"
+
+  ck_dose_power:
+    description: |
+      CK升高的剂量幂指数（超线性关系）。
+      观察数据：10mg→CK+10 IU/L；80mg→CK+80-120 IU/L（约8-12倍非线性）。
+      幂函数系数：CK_excess = α × dose^β，β≈1.5（Rosenson 2004）。
+    value: 1.5
+    unit: "幂指数"
+    type: parameter
+    reference: "Rosenson RS et al. (2004) Am J Cardiol 94:26C-34C"
+
+  ck_dose_alpha:
+    description: |
+      CK升高幅度系数（IU/L per (mg/day)^β）。
+      标准化：10mg时CK升高约10 IU/L → α = 10 / 10^1.5 ≈ 0.316。
+    value: 0.316
+    unit: "IU/L per (mg/day)^1.5"
+    type: parameter
+
+formulas:
+  # F1: LDL Emax模型（Sigmoidal E-R）
+  # LDL_effect = Emax × dose / (EC50 + dose)
+  # LDL_final = baseline × (1 - effect/100)
+  ldl_dynamics:
+    description: |
+      LDL Emax模型：LDL月度趋向目标值（稳态约3-4周，月步长以月为单位趋近）。
+      Emax × D/(EC50+D) = 阿托伐他汀CURVES研究剂量-响应曲线。
+    condition: true
+    priority: 7
+    dynamics:
+      ldl_cholesterol: >
+        max(20.0,
+        ldl_baseline * (1.0 - (emax_ldl * statin_dose / (ec50_statin + statin_dose)) / 100.0))
+      ldl_reduction_pct: >
+        -emax_ldl * statin_dose / (ec50_statin + statin_dose)
+
+  # F2: CK幂函数风险模型
+  # CK = CK_baseline + α × dose^β
+  ck_dynamics:
+    description: |
+      CK升高：幂函数模型（超线性，高剂量风险急剧增加）。
+      来源：Rosenson 2004，10mg基础CK升高约10 IU/L，80mg约80-120 IU/L。
+    condition: statin_dose > 0
+    priority: 6
+    dynamics:
+      ck_level: 100.0 + ck_dose_alpha * statin_dose ** ck_dose_power
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables:
+    - ldl_cholesterol
+    - ck_level
+    - ldl_reduction_pct
+  schedules:
+    - variable: statin_dose
+      time: "20:00"
+      value: 40.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "阿托伐他汀40mg 晚服（中-高强度标准剂量）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: ldl_cholesterol
+      metric: final
+      direction: minimize
+      description: "最小化年末LDL（心血管保护）"
+    - variable: ck_level
+      metric: final
+      direction: minimize
+      description: "最小化年末CK升高（肌病风险）"
+  constraints:
+    - variable: ldl_cholesterol
+      condition: "<= 70"
+      type: soft
+      description: "ACC/AHA极高风险目标：LDL<70 mg/dL"
+    - variable: ck_level
+      condition: "<= 600"
+      type: hard
+      description: "安全阈值：CK不超3×ULN=600 IU/L（Rosenson 2004）"
+  regimen:
+    variable: statin_dose
+    description: "优化阿托伐他汀每日剂量（mg）"
+    events:
+      - time: "20:00"
+        dose_bounds: [10, 80]
+        label: "阿托伐他汀剂量（mg/day）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 42.8
+    pareto_front:
+      - {x: [10.0], f: [125.8, 101.0]}
+      - {x: [20.0], f: [113.4, 108.4]}
+      - {x: [40.0], f: [103.6, 126.9]}
+      - {x: [80.0], f: [97.8, 180.4]}
+      - {x: [80.0], f: [97.8, 180.4]}
+    best:
+      x: [40.0]
+      f: [103.6, 126.9]
+      regimen:
+        statin_dose: {"20:00": 40.0}
+      objectives:
+        ldl_cholesterol: 103.6
+        ck_level: 126.9

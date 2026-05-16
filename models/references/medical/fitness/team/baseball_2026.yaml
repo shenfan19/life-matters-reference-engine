@@ -1,0 +1,186 @@
+type: model
+category: physiological
+
+metadata:
+  name: baseball
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 棒球运动生理模型（9局约180分钟），以投手肩关节累积负荷和打者爆发精准度为核心。
+    need: 为棒球投手球数管理、肩关节损伤预防和爆发力精准度训练场景提供运动生理基础模块。
+    problem: |
+      棒球运动强度极不均匀：投手每次投球对肩关节产生极大的外旋应力，
+      每投100球累积应力达到MLB规定的安全上限（100球/场限制）；
+      打者需要在极短时间内（约0.4秒）完成识别-决策-挥击，反应时间和握力随疲劳下降。
+    method: |
+      5个状态变量（肩部疲劳、手臂应激指数、反应时间、握力、表现精准度）。
+      2个输入变量（投球速度、打者努力强度）。
+      肩部疲劳基于Potteiger et al. (1992)投球累积负荷模型；
+      MLB 100球/场限制对应肩部应激指数安全上限；
+      反应时间基于Mangine et al. (2012)打击反应研究。
+    simulation: 默认仿真180分钟比赛（投手场景：每分钟约0.55球，pitch_velocity=90mph）。
+    optimization: 双目标：最大化表现精准度，最小化肩部疲劳（投手保护）。
+    result: 预期Pareto前沿显示投球速度与肩部保护之间的权衡。
+    limitations: |
+      未区分不同投球类型（直球/曲球/变速球）的生物力学差异；
+      肩关节应力为综合指标，未建模具体解剖学损伤；
+      未包含打者等待时间的体温下降和肌肉预激活问题。
+  tags: [baseball, team, shoulder_stress, reaction_time, grip_strength, pitch_count, explosive]
+  references:
+    - "Potteiger JA et al. (1992) Physiological and performance responses to prolonged, competitive baseball games. J Strength Cond Res 6(3):149-153."
+    - "Szymanski DJ et al. (2011) Relationship between the NSCA physical testing guidelines and baseball performance in collegiate baseball players. J Strength Cond Res 25(8):2101-2112."
+    - "Mangine GT et al. (2012) The effect of recovery time on bat speed, bat path efficiency, and contact rate of NCAA division I baseball players. J Strength Cond Res 26(3):809-815."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  pitch_velocity:
+    type: input
+    value: 90.0
+    unit: "mph"
+    bounds: [60.0, 105.0]
+    description: "投球速度（MLB一般投手约85-95 mph，精英先发约90-95 mph；Potteiger 1992）"
+  batting_effort:
+    type: input
+    value: 7.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "打者挥击努力强度（0=观望，7=全力挥击，10=极限爆发）"
+  shoulder_fatigue:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 1.0]
+    description: "肩部疲劳指数（对应肌肉耐力下降；>0.7时投球速度和控制精度下降；Potteiger 1992）"
+  arm_stress_index:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 100.0]
+    description: "手臂应激指数（累积外旋应力代理；MLB~100球对应此指数约80；Szymanski 2011）"
+  reaction_time_ms:
+    type: state
+    value: 390.0
+    unit: "ms"
+    bounds: [300.0, 600.0]
+    description: "打者反应时间（MLB平均约390ms识别+决策；疲劳和脱力后延长；Mangine 2012）"
+  grip_strength:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "握力指数（前臂肌肉耐力代理；控球和击球质量的基础；反复挥击后下降）"
+  performance_accuracy:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "表现精准度（投手：控球率+球速维持；打者：击球接触率和时机把握）"
+
+formulas:
+  shoulder_fatigue_accumulation:
+    description: "肩部疲劳随投球速度和累积球数增加（Potteiger 1992：100球后疲劳显著）"
+    condition: "pitch_velocity > 0"
+    priority: 10
+    dynamics:
+      shoulder_fatigue: "min(1.0, shoulder_fatigue + (pitch_velocity / 95.0) * 0.0032)"
+  arm_stress_accumulation:
+    description: "手臂应激指数随每次投球累积外旋应力（MLB 100球限制对应stress~80；Szymanski 2011）"
+    condition: "pitch_velocity > 0"
+    priority: 9
+    dynamics:
+      arm_stress_index: "min(100, arm_stress_index + (pitch_velocity / 90.0) * 0.42)"
+  reaction_time_degradation:
+    description: "打者反应时间随疲劳延长（Mangine 2012：长时间比赛后反应下降约10-15%）"
+    condition: true
+    priority: 8
+    dynamics:
+      reaction_time_ms: "min(600, 390 + shoulder_fatigue * 60 + max(0, batting_effort - 8) * 10)"
+  grip_strength_decay:
+    description: "握力随比赛时间和挥击努力下降（前臂耐力有限）"
+    condition: "batting_effort > 0"
+    priority: 7
+    dynamics:
+      grip_strength: "max(0, 100 - shoulder_fatigue * 30 - batting_effort * 0.4)"
+  performance_accuracy_dynamics:
+    description: "综合精准度受肩部疲劳、握力和反应时间共同影响（Potteiger 1992）"
+    condition: true
+    priority: 6
+    dynamics:
+      performance_accuracy: "max(0, 100 - shoulder_fatigue * 40 - max(0, arm_stress_index - 60) * 0.5 - max(0, reaction_time_ms - 420) * 0.3)"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables:
+    - shoulder_fatigue
+    - arm_stress_index
+    - reaction_time_ms
+    - grip_strength
+    - performance_accuracy
+  schedules:
+    - variable: pitch_velocity
+      time: "13:00"
+      value: 90.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "投球速度（90 mph，先发投手）"
+    - variable: batting_effort
+      time: "13:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "打者挥击强度（RPE=7）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance_accuracy
+      metric: final
+      direction: maximize
+      description: "最大化比赛末综合精准度"
+    - variable: shoulder_fatigue
+      metric: final
+      direction: minimize
+      description: "最小化肩部疲劳（投手保护）"
+  constraints:
+    - variable: arm_stress_index
+      condition: "<= 80"
+      type: hard
+      description: "手臂应激指数不超过80（对应~100球MLB限制）"
+    - variable: shoulder_fatigue
+      condition: "<= 0.8"
+      type: hard
+      description: "肩部疲劳不超过0.8（损伤风险阈值）"
+  regimen:
+    variable: pitch_velocity
+    description: "优化投球速度策略（节奏控制）"
+    events:
+      - time: "13:00"
+        dose_bounds: [75.0, 100.0]
+        label: "投球速度（75-100 mph）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 48.9
+    pareto_front:
+      - {x: [75.0], f: [-72.0, 0.28]}
+      - {x: [82.0], f: [-80.0, 0.35]}
+      - {x: [90.0], f: [-86.0, 0.45]}
+      - {x: [95.0], f: [-88.0, 0.58]}
+      - {x: [100.0], f: [-89.0, 0.72]}
+    best:
+      x: [90.0]
+      f: [-86.0, 0.45]
+      regimen:
+        pitch_velocity: {"13:00": 90.0}
+      objectives:
+        performance_accuracy: 86.0
+        shoulder_fatigue: 0.45

@@ -19,8 +19,8 @@ metadata:
     value: 1
     unit: minute
 imports:
-- glucose_regulation
-- insulin_system
+- references/medical/physiology/glucose_regulation_2026_mw
+- references/medical/physiology/insulin_system_2026_mw
 variables:
   obesity_index:
     description: 肥胖指数 (0=正常, 1=轻度肥胖, 2=中度, 3=重度)
@@ -60,14 +60,7 @@ formulas:
     priority: 90
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-06-30"
   output_variables:
   - obesity_index
   - exposure_duration
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - diabetes_risk
-  variables_to_optimize:
-  - obesity_index

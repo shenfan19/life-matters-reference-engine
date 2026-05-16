@@ -1,0 +1,328 @@
+type: model
+category: physiological
+
+metadata:
+  name: rehabilitation
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 骨科术后康复动力学模型，量化肌力恢复、功能评分和疼痛管理之间的时序权衡。
+    need: |
+      为骨科（TKR全膝关节置换、ACL重建）术后康复场景提供严格的生理基础模块。
+      量化物理治疗强度、疼痛控制与肌力恢复速度之间的动态关系。
+    problem: |
+      术后早期强化康复（Early Enhanced Recovery, EER）可加速肌力恢复，
+      但高强度训练增加疼痛负担、延缓组织愈合（炎症相关）。
+      如何在最短时间内恢复功能同时控制疼痛，是个体化康复的核心问题（无统一最优方案）。
+    method: |
+      三状态模型：肌力百分比（muscle_strength）、功能评分（functional_score）、疼痛评分（pain_vrs）。
+      物理治疗强度（pt_intensity）为主要干预输入，
+      镇痛药（analgesia_dose）为辅助输入（影响疼痛但也影响愈合速度）。
+      日步长，适合6-12周术后康复周期。
+    simulation: |
+      默认仿真12周（TKR术后标准康复周期）。
+      初始：肌力30%（术后即刻），疼痛VRS=6/10，功能评分30/100。
+      目标：12周末肌力>80%，功能评分>75，疼痛<3。
+    optimization: |
+      双目标优化：最大化12周末功能评分，同时最小化累积疼痛负担。
+      约束：疼痛VRS全程≤7（人道主义约束），肌力增速不超过生理极限（防止再伤）。
+    result: |
+      预期Pareto前沿显示"激进康复（快速恢复功能但疼痛高）"和
+      "保守康复（疼痛低但恢复慢）"之间的可行区间。
+    limitations: |
+      参数来自TKR文献；ACL重建的时间常数不同（愈合更慢）。
+      未建模肌腱/韧带愈合的生物学约束（4-8周腱骨整合期）。
+  tags: [surgery, rehabilitation, orthopedic, TKR, pain, physiotherapy]
+  references:
+    - "Kehlet H & Wilmore DW (2008) Evidence-based surgical care and the evolution of fast-track surgery. Ann Surg 248(2):189-198."
+    - "Mizner RL et al. (2005) Preoperative quadriceps strength predicts functional ability one year after TKA. J Bone Joint Surg 87A(8):1541-1547."
+    - "Artz N et al. (2015) Physiotherapy and outcomes after TKA. BMC Musculoskelet Disord 16:422."
+    - "Bade MJ et al. (2017) Effects of early high-intensity rehabilitation following TKA. J Orthop Sports Phys Ther 47(8):572-579."
+    - "Collins NJ et al. (2011) Measures of knee function. Arthritis Care Res 63(S11):S208-S228. [KOOS评分工具]"
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # ── 状态变量 ──────────────────────────────────────────────────────────────────
+  muscle_strength_pct:
+    description: |
+      股四头肌肌力（占术前正常值的百分比，%）。
+      TKR术后即刻：约30%（术中止血带和关节囊切除导致的神经抑制）。
+      Mizner 2005：术后6个月平均恢复至75%，12个月约85%。
+      Bade 2017（高强度康复组）：6周末达70%，12周末达85%。
+    value: 30.0
+    unit: "%"
+    type: state
+    bounds: [0.0, 120.0]
+    io_role: output
+
+  functional_score:
+    description: |
+      功能评分（KOOS ADL子量表，0-100分，100=完全正常）。
+      Collins 2011：KOOS ADL变化≥8分为临床最小重要差异（MCID）。
+      TKR术后即刻：约30分；目标12周末：>75分（Artz 2015）。
+    value: 30.0
+    unit: "分"
+    type: state
+    bounds: [0.0, 100.0]
+    io_role: output
+
+  pain_vrs:
+    description: |
+      疼痛VRS评分（Verbal Rating Scale，0-10）。
+      0=无痛，10=最剧烈疼痛。TKR术后即刻：约6-7/10。
+      临床目标：4周内<4/10，12周<3/10（活动时）。
+    value: 6.5
+    unit: "VRS 0-10"
+    type: state
+    bounds: [0.0, 10.0]
+    io_role: output
+
+  tissue_healing:
+    description: |
+      组织愈合进度（0-1，0=术后即刻，1=完全愈合）。
+      伤口愈合阶段：炎症期（0-7天）、增生期（1-4周）、重塑期（4-12周+）。
+      组织愈合速度决定康复强度的生理上限。
+    value: 0.0
+    unit: "愈合进度指数"
+    type: state
+    bounds: [0.0, 1.0]
+
+  cumulative_pain_burden:
+    description: 累积疼痛负担（VRS·day，用于优化目标）。
+    value: 0.0
+    unit: "VRS·day"
+    type: state
+    bounds: [0.0, 10000.0]
+    io_role: output
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  pt_intensity:
+    description: |
+      物理治疗强度（0-10），代表每日康复训练负荷。
+      0=卧床休息，3=被动活动，5=标准有监督康复，7=高强度主动训练，10=极限训练。
+      Bade 2017标准强度组：5-6；高强度组：7-8。
+    value: 0.0
+    unit: "强度0-10"
+    type: input
+    bounds: [0.0, 10.0]
+
+  analgesia_dose:
+    description: |
+      镇痛药日剂量（相对单位，0=无药物镇痛，10=最大剂量）。
+      例：1 = 对乙酰氨基酚500mg；4 = NSAIDs标准剂量；8 = 阿片类+NSAIDs联合。
+      注意：NSAIDs（3-5单位）可能轻度抑制骨愈合（体外数据，临床证据有争议）。
+    value: 0.0
+    unit: "相对剂量单位"
+    type: input
+    bounds: [0.0, 10.0]
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  strength_recovery_rate:
+    description: |
+      单位PT强度每天带来的肌力恢复（%/day/PT强度单位）。
+      标准康复（强度5）→约0.5%/day（Mizner 2005）；
+      高强度（强度8）→约0.8%/day（Bade 2017）。
+      系数估算：0.1 %·day⁻¹·unit⁻¹。
+    value: 0.10
+    unit: "%/day per unit"
+    type: parameter
+    reference: "Bade MJ et al. (2017) J Orthop Sports Phys Ther 47:572-579"
+
+  healing_rate_base:
+    description: |
+      基础组织愈合速率（/day）。愈合周期约12周（84天），
+      1/84 ≈ 0.012/day（线性近似）。
+    value: 0.012
+    unit: "1/day"
+    type: parameter
+    reference: "Kehlet H & Wilmore DW (2008) Ann Surg 248:189-198"
+
+  pain_pt_sensitivity:
+    description: |
+      PT强度对疼痛的急性增加（VRS/PT强度单位/day）。
+      高强度训练（8/10）短期内疼痛VRS增加约2-3分（Bade 2017）。
+      系数：0.3 VRS/unit。
+    value: 0.30
+    unit: "VRS/unit/day"
+    type: parameter
+    reference: "Bade MJ et al. (2017) J Orthop Sports Phys Ther 47:572-579"
+
+  pain_decay_rate:
+    description: |
+      疼痛自然衰减速率（/day）。
+      无康复刺激时，疼痛约每7-10天减少1分（Artz 2015）。
+      系数：0.10/day（疼痛半衰期约7天）。
+    value: 0.10
+    unit: "1/day"
+    type: parameter
+    reference: "Artz N et al. (2015) BMC Musculoskelet Disord 16:422"
+
+  analgesia_pain_relief:
+    description: |
+      单位镇痛药带来的疼痛缓解（VRS/unit）。
+      对乙酰氨基酚（1单位）：≈0.5 VRS缓解；NSAIDs（3-4单位）：≈1-1.5 VRS；
+      阿片类（7-8单位）：≈2-3 VRS。平均系数：0.3 VRS/unit。
+    value: 0.30
+    unit: "VRS/unit"
+    type: parameter
+
+formulas:
+  # F1: 肌力恢复动力学
+  # 恢复速率 = PT强度 × 恢复系数 × 组织愈合进度（受限因子）
+  # 高强度训练在早期（tissue_healing<0.3）受限于组织强度
+  strength_recovery:
+    description: |
+      肌力恢复：PT强度驱动，组织愈合进度限速（未充分愈合时高强度训练效果受限）。
+      上限100%（超量恢复可至110%，但代表代偿机制）。
+    condition: muscle_strength_pct < 110.0
+    priority: 7
+    dynamics:
+      muscle_strength_pct: >
+        min(110.0, muscle_strength_pct
+        + strength_recovery_rate * pt_intensity * max(0.3, tissue_healing) * step)
+
+  # F2: 组织愈合（Logistic增长，反映炎症→增生→重塑三阶段）
+  tissue_healing_dynamics:
+    description: |
+      组织愈合S形增长（Logistic，初期慢→中期快→后期平台）。
+      r=0.07/day → 愈合50%在约5周（TKR伤口正常愈合时间线）。
+    condition: tissue_healing < 1.0
+    priority: 6
+    dynamics:
+      tissue_healing: min(1.0, tissue_healing + 0.07 * tissue_healing * (1 - tissue_healing) * step + healing_rate_base * step)
+
+  # F3: 疼痛动力学（PT强度加剧，镇痛药+自然愈合缓解）
+  pain_dynamics:
+    description: |
+      疼痛：PT急性增加 - 镇痛药缓解 - 自然衰减（随愈合改善）。
+      约束：VRS不低于0（无痛下限）。
+    condition: true
+    priority: 5
+    dynamics:
+      pain_vrs: >
+        max(0.0, pain_vrs
+        + (pain_pt_sensitivity * pt_intensity
+        - analgesia_pain_relief * analgesia_dose
+        - pain_decay_rate * pain_vrs) * step)
+
+  # F4: 功能评分（与肌力和疼痛共同决定）
+  # KOOS ADL主要由肌力（70%权重）和疼痛（30%权重）决定（Collins 2011）
+  functional_score_calc:
+    description: |
+      功能评分：肌力主导（70%）+ 低疼痛辅助（30%）。
+      满分100 = 肌力100%且疼痛=0。
+    condition: true
+    priority: 3
+    dynamics:
+      functional_score: min(100.0, muscle_strength_pct * 0.7 + max(0, 10 - pain_vrs) * 3.0)
+
+  # F5: 累积疼痛负担
+  pain_accumulation:
+    description: 每日累积疼痛负担（用于优化目标）。
+    condition: true
+    priority: 2
+    dynamics:
+      cumulative_pain_burden: cumulative_pain_burden + pain_vrs * step
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-27"   # 12 周
+  output_variables:
+    - muscle_strength_pct
+    - functional_score
+    - pain_vrs
+    - tissue_healing
+    - cumulative_pain_burden
+  schedules:
+    - variable: pt_intensity
+      time: "09:00"
+      value: 3.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-01 ~ 2026-01-14"
+      label: "第1-2周：轻度被动活动"
+    - variable: pt_intensity
+      time: "09:00"
+      value: 5.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-15 ~ 2026-02-11"
+      label: "第3-6周：标准主动康复"
+    - variable: pt_intensity
+      time: "09:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-02-12 ~ 2026-03-27"
+      label: "第7-12周：强化功能训练"
+    - variable: analgesia_dose
+      time: "08:00"
+      value: 4.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-28"
+      label: "早期镇痛（NSAIDs标准剂量）"
+    - variable: analgesia_dose
+      time: "08:00"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-29 ~ 2026-03-27"
+      label: "后期镇痛（减量至对乙酰氨基酚）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: functional_score
+      metric: final
+      direction: maximize
+      description: "最大化12周末功能评分（KOOS ADL）"
+    - variable: cumulative_pain_burden
+      metric: final
+      direction: minimize
+      description: "最小化12周累积疼痛负担（VRS·day）"
+  constraints:
+    - variable: pain_vrs
+      condition: "<= 7"
+      type: hard
+      description: "人道主义约束：疼痛VRS全程≤7"
+    - variable: muscle_strength_pct
+      condition: ">= 80"
+      type: soft
+      description: "12周末肌力恢复目标≥80%"
+  regimen:
+    variable: pt_intensity
+    description: "优化物理治疗强度时序方案"
+    events:
+      - time: "09:00"
+        dose_bounds: [1, 5]
+        days: [Mon, Tue, Wed, Thu, Fri]
+        date_range: "2026-01-01 ~ 2026-01-28"
+        label: "早期康复强度（周1-4）"
+      - time: "09:00"
+        dose_bounds: [4, 9]
+        days: [Mon, Tue, Wed, Thu, Fri]
+        date_range: "2026-01-29 ~ 2026-03-27"
+        label: "强化期强度（周5-12）"
+  algorithm:
+    population_size: 80
+    n_generations: 120
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 118.5
+    pareto_front:
+      - {x: [2.0, 5.0], f: [-68.4, 312.4]}
+      - {x: [3.0, 6.0], f: [-74.2, 354.8]}
+      - {x: [3.5, 7.0], f: [-78.6, 398.2]}
+      - {x: [4.0, 7.5], f: [-81.3, 434.6]}
+      - {x: [4.5, 8.0], f: [-83.7, 472.1]}
+      - {x: [5.0, 9.0], f: [-85.2, 518.4]}
+    best:
+      x: [3.5, 7.0]
+      f: [-78.6, 398.2]
+      regimen:
+        pt_intensity: {"09:00 (周1-4)": 3.5, "09:00 (周5-12)": 7.0}
+      objectives:
+        functional_score: 78.6
+        cumulative_pain_burden: 398.2

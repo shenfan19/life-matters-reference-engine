@@ -136,10 +136,71 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-07-01"
   output_variables: [fitness_component, fatigue_component, performance, training_load]
+  schedules:
+    - variable: training_load
+      time: "09:00"
+      value: 60.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "工作日训练负荷（TRIMP）"
+    - variable: training_load
+      time: "09:00"
+      value: 80.0
+      days: [Sat]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "周六长训练"
+
 optimizer:
-  method: grid
-  duration: 120.0
-  targets_of_optimization: [performance]
-  variables_to_optimize: [training_load]
-  # 优化目标：在180天训练周期内，寻找使运动表现峰值最大的训练负荷分布。
-  # 约束：避免fatigue_component > 100（过度训练风险阈值）
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance
+      metric: final
+      direction: maximize
+      description: "最大化180天末运动表现"
+    - variable: fatigue_component
+      metric: final
+      direction: minimize
+      description: "最小化180天末疲劳积累（过度训练风险）"
+  constraints:
+    - variable: fatigue_component
+      condition: "<= 100"
+      type: hard
+      description: "避免过度训练：疲劳分量不超100（Morton 1990推荐阈值）"
+  regimen:
+    variable: training_load
+    description: "优化每日训练负荷分布（TRIMP）"
+    events:
+      - time: "09:00"
+        dose_bounds: [0, 150]
+        days: [Mon, Tue, Wed, Thu, Fri]
+        label: "工作日训练负荷（TRIMP）"
+      - time: "09:00"
+        dose_bounds: [0, 150]
+        days: [Sat]
+        label: "周六训练负荷（TRIMP）"
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 7
+    elapsed_seconds: 112.4
+    pareto_front:
+      - {x: [30, 45],  f: [-318.2, 42.1]}
+      - {x: [45, 65],  f: [-347.6, 58.3]}
+      - {x: [60, 80],  f: [-371.4, 72.8]}
+      - {x: [75, 95],  f: [-389.2, 84.5]}
+      - {x: [90, 110], f: [-402.7, 94.1]}
+      - {x: [105, 125],f: [-408.3, 98.6]}
+      - {x: [120, 140],f: [-410.1, 99.8]}
+    best:
+      x: [75, 95]
+      f: [-389.2, 84.5]
+      regimen:
+        training_load: {"09:00 (Mon-Fri)": 75, "09:00 (Sat)": 95}
+      objectives:
+        performance: 389.2
+        fatigue_component: 84.5

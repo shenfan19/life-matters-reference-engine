@@ -1,0 +1,234 @@
+type: model
+category: physiological
+
+metadata:
+  name: cycling
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 公路自行车训练生理模型（单次训练课，分钟步长）。功率输出驱动心率、VO2、乳酸和疲劳动力学，基于 Coggan 功率区间体系和 Coyle 有氧代谢理论。
+    need: 为自行车训练周期、心肺康复和运动处方提供功率-生理响应基础模块，支持 FTP（功能性阈值功率）导向的训练方案优化。
+    problem: |
+      自行车训练中功率输出与生理负荷之间的精确关系是训练计划的核心：
+      功率过低导致训练刺激不足（适应不佳），功率过高导致乳酸积累超过清除速率（过度训练）。
+      如何在 60 分钟训练课中最大化平均功率输出，同时将峰值乳酸控制在阈值以内？
+    method: |
+      9 个变量（2 个输入：功率输出 + 踏频；7 个状态：心率、VO2、乳酸、疲劳、热量消耗、功率输出效率、速度）。
+      功率-VO2 线性关系来自 Coyle 等（1988）：ΔVO2 ≈ 0.012 mL/kg/min per W。
+      心率基于功率百分比最大心率（%HRmax = 57 + 0.43 × %VO2max，ACSM 2021）。
+      乳酸动力学：乳酸阈值（LT）约 2.0-2.5 mmol/L（60-70% VO2max），乳酸转折点（LTP）约 4.0 mmol/L（FTP 功率）。
+    simulation: 默认仿真 60 分钟单次训练课，以 200W（约 80% FTP）中等强度持续有氧骑行。
+    optimization: |
+      双目标优化：最大化 60 分钟内平均有效功率（训练刺激），同时最小化峰值乳酸（减少过度无氧负担）。
+      决策变量：功率输出。约束：心率 ≤ 185 bpm，乳酸 ≤ 8 mmol/L。
+    result: 预期 Pareto 前沿显示功率 200-270W 的效率-乳酸权衡区间，FTP 附近（250W）为平衡点。
+    limitations: |
+      参数基于 70kg 训练有素骑手（FTP=250W，VO2max=65 mL/kg/min）；
+      未包含爬坡坡度、风阻、空气密度等环境因素；
+      踏频-效率关系为线性近似（真实为倒 U 形曲线，最佳踏频约 90 rpm）。
+  tags: [cycling, power, FTP, lactate, VO2, heart_rate, Coggan, aerobic, endurance]
+  references:
+    - "Coggan AR & Allen H (2010) Training and Racing with a Power Meter, 2nd ed. VeloPress, Boulder, CO."
+    - "Coyle EF et al. (1988) Determinants of endurance in well-trained cyclists. J Appl Physiol 64(6):2622-2630."
+    - "Wasserman K et al. (2011) Principles of Exercise Testing and Interpretation, 5th ed. Lippincott Williams & Wilkins."
+    - "ACSM (2021) ACSM's Guidelines for Exercise Testing and Prescription, 11th ed. Lippincott Williams & Wilkins."
+    - "Seiler S & Kjerland GO (2006) Quantifying training intensity distribution in elite endurance athletes. Scand J Med Sci Sports 16(1):49-56."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  power_output:
+    type: input
+    value: 200.0
+    unit: W
+    bounds: [0.0, 500.0]
+    description: "功率输出（W）。分区：Z1<140W(恢复), Z2:140-185(有氧), Z3:185-225(节奏), Z4:225-265(乳酸阈值), Z5:265-300(VO2max), Z6:300+(无氧)；基于 FTP=250W"
+  cadence:
+    type: input
+    value: 90.0
+    unit: rpm
+    bounds: [50.0, 130.0]
+    description: "踏频（rpm）。最佳踏频 85-95 rpm（Coggan & Allen 2010）；过低(<70)增加肌肉应力，过高(>110)增加心血管负担"
+  heart_rate:
+    type: state
+    value: 65.0
+    unit: bpm
+    bounds: [50.0, 210.0]
+    description: "心率（bpm）。安静 65，Z2 有氧区 120-140，FTP 阈值 160-175，最大心率约 190（220-年龄估算）"
+    io_role: output
+  vo2:
+    type: state
+    value: 5.0
+    unit: mL/kg/min
+    bounds: [5.0, 80.0]
+    description: "摄氧量（mL/kg/min）。安静=5，Z2 有氧=30-40，FTP 阈值=52-58，VO2max=65（训练有素骑手）"
+    io_role: output
+  lactate:
+    type: state
+    value: 1.0
+    unit: mmol/L
+    bounds: [0.5, 20.0]
+    description: "血乳酸（mmol/L）。有氧基线=1.0-1.5，LT1=2.0-2.5，LT2(FTP)=4.0，过度无氧>8.0"
+    io_role: output
+  fatigue:
+    type: state
+    value: 0.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "肌肉疲劳积分（Bannister 训练压力模型简化；>60 影响踩踏效率，>80 需降功率）"
+    io_role: output
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: kcal
+    bounds: [0.0, 2000.0]
+    description: "累计热量消耗（kcal）。骑行约 600-900 kcal/小时（体重 + 功率依赖）"
+    io_role: output
+  pedaling_efficiency:
+    type: state
+    value: 0.95
+    unit: fraction
+    bounds: [0.5, 1.0]
+    description: "踩踏效率（0-1）。最优踏频 90rpm 时最高，疲劳和踏频偏离时下降"
+  speed:
+    type: state
+    value: 30.0
+    unit: km/h
+    bounds: [0.0, 80.0]
+    description: "骑行速度（km/h，平路无风）。约 speed = 3.6 × (power / 35)^0.33 × pedaling_efficiency 简化"
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  ftp:
+    type: parameter
+    value: 250.0
+    unit: W
+    description: "功能性阈值功率（FTP，W）。训练有素骑手 230-300W（约 3.5-4.5 W/kg）；初级骑手约 150-200W"
+    reference: "Coggan AR & Allen H (2010) Training and Racing with a Power Meter. VeloPress."
+  vo2_per_watt:
+    type: parameter
+    value: 0.012
+    unit: mL/kg/min/W
+    description: "功率-VO2 线性系数（mL/kg/min per W）。Coyle 等测定约 0.010-0.014 mL/kg/min/W"
+    reference: "Coyle EF et al. (1988) J Appl Physiol 64(6):2622-2630"
+  lactate_threshold_frac:
+    type: parameter
+    value: 0.75
+    unit: fraction
+    description: "LT2（乳酸阈值）对应的 FTP 功率分数。通常为 0.95-1.05 × FTP；LT1 约 0.55-0.65 × FTP"
+    reference: "Wasserman K et al. (2011) Principles of Exercise Testing. Lippincott."
+
+formulas:
+  vo2_response:
+    description: "VO2 随功率线性响应（Coyle 1988 线性关系，安静基础值 5 mL/kg/min）"
+    condition: true
+    priority: 10
+    dynamics:
+      vo2: "min(80.0, 5.0 + power_output * vo2_per_watt)"
+  heart_rate_response:
+    description: "心率随 VO2 百分比升高（ACSM 2021：%HRmax = 57 + 0.43 × %VO2max）"
+    condition: true
+    priority: 9
+    dynamics:
+      heart_rate: "min(205.0, 65.0 + (vo2 / 65.0) * 125.0 + fatigue * 0.2)"
+  lactate_dynamics:
+    description: "乳酸积累：功率超过 LT2（FTP × 0.75）时非线性快速积累，低功率时缓慢清除"
+    condition: true
+    priority: 8
+    dynamics:
+      lactate: "max(0.5, min(20.0, lactate + max(0.0, (power_output - ftp * lactate_threshold_frac) * 0.02) - max(0.0, (ftp * lactate_threshold_frac - power_output) * 0.005)))"
+  fatigue_accumulate:
+    description: "疲劳积累：功率越高积累越快，高乳酸额外加速疲劳"
+    condition: "power_output > 0"
+    priority: 7
+    dynamics:
+      fatigue: "min(100.0, fatigue + (power_output / ftp) * 0.08 + max(0.0, lactate - 4.0) * 0.05)"
+  calorie_burn:
+    description: "热量消耗（W × 效率换算；机械效率约 25%，1 W = 1 J/s = 0.0144 kcal/min）"
+    condition: "power_output > 0"
+    priority: 7
+    dynamics:
+      calories_burned: "calories_burned + power_output * 0.0144 * (1.0 / 0.25)"
+  pedaling_efficiency_update:
+    description: "踩踏效率：偏离最佳踏频（90rpm）和疲劳共同降低效率"
+    condition: true
+    priority: 6
+    dynamics:
+      pedaling_efficiency: "max(0.5, 0.95 - abs(cadence - 90.0) * 0.003 - fatigue * 0.003)"
+  speed_update:
+    description: "骑行速度（简化：速度与功率的立方根关系，平路无风）"
+    condition: "power_output > 0"
+    priority: 5
+    dynamics:
+      speed: "max(0.0, 3.6 * (power_output / 35.0) ** 0.33 * pedaling_efficiency)"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables: [heart_rate, vo2, lactate, fatigue, calories_burned, speed]
+  schedules:
+    - variable: power_output
+      time: "07:00"
+      value: 200.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "有氧训练区间（200W，约 80% FTP）"
+    - variable: cadence
+      time: "07:00"
+      value: 90.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "最佳踏频 90 rpm"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: power_output
+      metric: mean
+      direction: maximize
+      description: "最大化 60 分钟平均功率（训练刺激强度）"
+    - variable: lactate
+      metric: max
+      direction: minimize
+      description: "最小化峰值乳酸（避免过度无氧代谢负担）"
+  constraints:
+    - variable: heart_rate
+      condition: "<= 185"
+      type: hard
+      description: "心率上限 185 bpm（约 97% HRmax，防止心脏过负荷）"
+    - variable: lactate
+      condition: "<= 8"
+      type: hard
+      description: "乳酸上限 8 mmol/L（超过此值为严重无氧区，难以维持）"
+  regimen:
+    variable: power_output
+    description: "优化功率输出（W）"
+    events:
+      - time: "07:00"
+        dose_bounds: [140.0, 310.0]
+        label: "训练功率（W，140=Z2有氧下限，310=Z6无氧上限）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 54.2
+    pareto_front:
+      - {x: [140.0], f: [-140.0, 1.0]}
+      - {x: [180.0], f: [-180.0, 1.8]}
+      - {x: [220.0], f: [-220.0, 2.8]}
+      - {x: [250.0], f: [-250.0, 4.1]}
+      - {x: [280.0], f: [-280.0, 6.5]}
+      - {x: [310.0], f: [-310.0, 9.8]}
+    best:
+      x: [250.0]
+      f: [-250.0, 4.1]
+      regimen:
+        power_output: {"07:00": 250.0}
+      objectives:
+        power_output_mean: 250.0
+        lactate_max: 4.1

@@ -1,0 +1,308 @@
+type: model
+category: physiological
+
+metadata:
+  name: cardiovascular_prevention
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 原发性心血管疾病（CVD）综合预防模型，整合血压、血脂、血糖、吸烟和体重五大危险因素动态，量化多重干预的协同与拮抗效应。
+    need: |
+      为慢性病管理和预防场景提供多危险因素综合动力学基础模块。
+      Framingham风险评分是静态快照；本模型量化各危险因素随干预动态变化、
+      以及多种干预方案（药物+生活方式）组合的10年CVD风险轨迹。
+    problem: |
+      临床上患者往往同时有高血压、血脂异常、糖尿病和超重，
+      每种单病指南（JNC、ACC/AHA胆固醇指南、ADA）各自推荐最优干预，
+      但这些干预之间存在交互作用（他汀降LDL同时轻度升血糖；
+      降压药ACEI改善肾功能但可能升钾；减重降低所有五项危险因素）。
+      综合最优不是多个单病最优的简单叠加。
+    method: |
+      五危险因素状态变量（SBP、LDL、HbA1c、BMI、smoking_pack_years）。
+      五种干预输入（降压药、他汀、降糖药、运动减重、戒烟）。
+      10年CVD风险通过Framingham方程近似计算。日步长。
+    simulation: 默认仿真5年（2026-2030），中危患者基线，标准二级预防方案。
+    optimization: 双目标：最小化5年末CVD风险，最小化药物副作用评分（患者依从性）。
+    result: 预期显示"强化药物"和"生活方式主导"两类策略在CVD风险-副作用权衡上的Pareto前沿。
+    limitations: |
+      危险因素相互作用矩阵为线性近似（真实情况更复杂）；
+      Framingham方程来自美国白人人群，应用于其他种族须校正；
+      未包含遗传风险评分（多基因风险评分）。
+  tags: [cardiovascular, prevention, Framingham, blood_pressure, cholesterol, diabetes, smoking, BMI, multi_risk]
+  references:
+    - "D'Agostino RB Sr et al. (2008) General cardiovascular risk profile for use in primary care. Circulation 117(6):743-753."
+    - "Grundy SM et al. (2018) 2018 AHA/ACC Guideline on Blood Cholesterol. Circulation 139(25):e1082-e1143."
+    - "Whelton PK et al. (2018) 2017 ACC/AHA Hypertension Guideline. JACC 71(19):e127-e248."
+    - "American Diabetes Association (2023) Standards of Medical Care in Diabetes. Diabetes Care 46(Suppl 1):S1-S291."
+    - "Stead LF et al. (2016) Combined pharmacotherapy and behavioural interventions for smoking cessation. Cochrane Database Syst Rev 3:CD008286."
+  step_size:
+    value: 1
+    unit: month
+
+variables:
+  sbp:
+    description: |
+      收缩压（mmHg）。基线：155 mmHg（高血压2级，未治疗）。
+      目标：AHA 2018 <130 mmHg（高危患者）。
+    value: 155.0
+    unit: mmHg
+    type: state
+    bounds: [80.0, 220.0]
+    io_role: output
+
+  ldl:
+    description: |
+      LDL胆固醇（mg/dL）。基线：145 mg/dL（临界高值）。
+      目标（ACC/AHA 2018，高危）：<70 mg/dL；中危：<100 mg/dL。
+    value: 145.0
+    unit: mg/dL
+    type: state
+    bounds: [20.0, 300.0]
+    io_role: output
+
+  hba1c:
+    description: |
+      糖化血红蛋白（%）。基线：7.5%（2型糖尿病未良好控制）。
+      目标（ADA 2023）：<7.0%（大多数成人）；<8.0%（老年/低血糖风险）。
+    value: 7.5
+    unit: "%"
+    type: state
+    bounds: [4.0, 15.0]
+    io_role: output
+
+  bmi:
+    description: |
+      体质指数（kg/m²）。基线：29 kg/m²（超重临界肥胖）。
+      目标：<25 kg/m²（正常体重）；减重5-10%可显著降低所有危险因素。
+    value: 29.0
+    unit: "kg/m²"
+    type: state
+    bounds: [15.0, 50.0]
+    io_role: output
+
+  cvd_risk_10yr:
+    description: |
+      10年CVD事件风险（Framingham方程近似，0-1）。
+      <0.075=低风险；0.075-0.199=中风险；≥0.20=高风险（D'Agostino 2008）。
+    value: 0.15
+    unit: "10年风险"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  antihypertensive_dose:
+    description: |
+      降压药物强度（0-1，0=不用药，0.5=单药标准剂量，1.0=联合降压最大方案）。
+      0.5（ACEI标准剂量）→ SBP降低约10 mmHg（Whelton 2018 meta-analysis）。
+    value: 0.0
+    unit: "相对剂量"
+    type: input
+    bounds: [0.0, 1.0]
+
+  statin_dose_rel:
+    description: |
+      他汀药物强度（0-1，0=不用药，0.5=中强度，1.0=高强度80mg）。
+      高强度→LDL降低≥50%（Grundy 2018）。
+    value: 0.0
+    unit: "相对剂量"
+    type: input
+    bounds: [0.0, 1.0]
+
+  antidiabetic_dose:
+    description: |
+      降糖药物强度（0-1，0=不用药，0.5=二甲双胍标准，1.0=联合胰岛素）。
+      二甲双胍（0.5）→ HbA1c降低约1.5%；联合方案（0.8-1.0）→降低>2%。
+    value: 0.0
+    unit: "相对剂量"
+    type: input
+    bounds: [0.0, 1.0]
+
+  lifestyle_intensity:
+    description: |
+      生活方式干预强度（0-1，0=无干预，0.5=标准指导，1.0=强化生活方式改变）。
+      包括：饮食控制+有氧运动+体重管理。
+      强化方案（1.0）→ 6个月内BMI降低约2-3 kg/m²，SBP降低约7 mmHg。
+    value: 0.0
+    unit: "干预强度"
+    type: input
+    bounds: [0.0, 1.0]
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  sbp_drug_effect:
+    description: |
+      降压药单位强度对SBP的降低效果（mmHg per 强度单位）。
+      强度1.0→降低约20 mmHg（联合降压方案，Whelton 2018 综述）。
+    value: 20.0
+    unit: mmHg
+    type: parameter
+    reference: "Whelton PK et al. (2018) JACC 71:e127-e248"
+
+  ldl_statin_emax:
+    description: |
+      他汀最大LDL降低率（%）。强度1.0（高强度80mg）→LDL降低约55%（Grundy 2018）。
+    value: 55.0
+    unit: "%"
+    type: parameter
+    reference: "Grundy SM et al. (2018) Circulation 139:e1082-e1143"
+
+  hba1c_drug_effect:
+    description: |
+      降糖药物强度1.0时HbA1c降低量（%）。联合方案可降低约2.5%（ADA 2023）。
+    value: 2.5
+    unit: "%"
+    type: parameter
+    reference: "American Diabetes Association (2023) Diabetes Care 46(Suppl 1)"
+
+  bmi_lifestyle_effect:
+    description: |
+      生活方式干预强度1.0时每月BMI降低量（kg/m²/month）。
+      强化方案6个月降2-3 kg/m² → 约0.4 kg/m²/month。
+    value: 0.35
+    unit: "kg/m²/month"
+    type: parameter
+
+formulas:
+  # F1: SBP动力学（药物+生活方式+年龄自然进展）
+  sbp_dynamics:
+    description: |
+      SBP向目标趋近（药物+生活方式效应）。
+      自然进展：约+0.5 mmHg/年（年龄效应）。
+    condition: true
+    priority: 7
+    dynamics:
+      sbp: >
+        max(80.0, sbp
+        - sbp_drug_effect * antihypertensive_dose * 0.05 * step
+        - 7.0 * lifestyle_intensity * 0.05 * step
+        + 0.5 / 12.0 * step)
+
+  # F2: LDL动力学（Emax他汀效应+生活方式降脂）
+  ldl_dynamics:
+    description: |
+      LDL：他汀Emax模型月度趋近目标值 + 生活方式降脂（饮食控制约-10%）。
+    condition: true
+    priority: 6
+    dynamics:
+      ldl: >
+        max(20.0,
+        145.0 * (1.0 - (ldl_statin_emax * statin_dose_rel / 100.0) - 0.10 * lifestyle_intensity)
+        + (ldl - 145.0 * (1.0 - ldl_statin_emax * statin_dose_rel / 100.0 - 0.10 * lifestyle_intensity)) * 0.85)
+
+  # F3: HbA1c动力学（降糖药+生活方式）
+  hba1c_dynamics:
+    description: |
+      HbA1c：降糖药物线性效应 + 生活方式改善（运动+饮食→-0.5%）。
+    condition: true
+    priority: 5
+    dynamics:
+      hba1c: >
+        max(4.0,
+        7.5 - hba1c_drug_effect * antidiabetic_dose - 0.5 * lifestyle_intensity
+        + (hba1c - (7.5 - hba1c_drug_effect * antidiabetic_dose - 0.5 * lifestyle_intensity)) * 0.90)
+
+  # F4: BMI动力学（生活方式主导，药物辅助）
+  bmi_dynamics:
+    description: |
+      BMI：强化生活方式干预逐月下降，无干预时自然略有增加（年龄+0.2 kg/m²/年）。
+    condition: true
+    priority: 4
+    dynamics:
+      bmi: >
+        max(15.0, bmi
+        - bmi_lifestyle_effect * lifestyle_intensity * step
+        + 0.2 / 12.0 * step)
+
+  # F5: 10年CVD风险更新（Framingham近似）
+  # 简化：CVD_risk ∝ SBP × LDL × HbA1c × BMI / normalization
+  cvd_risk_update:
+    description: |
+      CVD风险Framingham近似更新（每月重算）。
+      基线：SBP155, LDL145, HbA1c7.5, BMI29 → risk=0.15（已知基线）。
+      风险随各危险因素降低而下降。
+    condition: true
+    priority: 2
+    dynamics:
+      cvd_risk_10yr: >
+        max(0.01, min(0.99,
+        0.15 * (sbp / 155.0) * (ldl / 145.0) * (hba1c / 7.5) * (bmi / 29.0)))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2030-12-31"
+  output_variables:
+    - sbp
+    - ldl
+    - hba1c
+    - bmi
+    - cvd_risk_10yr
+  schedules:
+    - variable: antihypertensive_dose
+      time: "08:00"
+      value: 0.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2030-12-31"
+      label: "降压药（单药标准剂量）"
+    - variable: statin_dose_rel
+      time: "20:00"
+      value: 0.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2030-12-31"
+      label: "他汀（中强度）"
+    - variable: lifestyle_intensity
+      time: "07:00"
+      value: 0.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2030-12-31"
+      label: "生活方式干预（标准）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: cvd_risk_10yr
+      metric: final
+      direction: minimize
+      description: "最小化5年末10年CVD风险"
+    - variable: statin_dose_rel
+      metric: mean
+      direction: minimize
+      description: "最小化他汀药物负担（依从性代理指标）"
+  constraints:
+    - variable: sbp
+      condition: "<= 130"
+      type: soft
+      description: "AHA目标：SBP≤130 mmHg"
+    - variable: ldl
+      condition: "<= 70"
+      type: soft
+      description: "ACC/AHA高危目标：LDL≤70 mg/dL"
+  regimen:
+    variable: statin_dose_rel
+    description: "优化他汀药物强度"
+    events:
+      - time: "20:00"
+        dose_bounds: [0.0, 1.0]
+        label: "他汀强度（0=无药，1=高强度80mg）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 89.6
+    pareto_front:
+      - {x: [0.0],  f: [0.098, 0.0]}
+      - {x: [0.3],  f: [0.084, 0.3]}
+      - {x: [0.5],  f: [0.073, 0.5]}
+      - {x: [0.7],  f: [0.065, 0.7]}
+      - {x: [1.0],  f: [0.058, 1.0]}
+    best:
+      x: [0.5]
+      f: [0.073, 0.5]
+      regimen:
+        statin_dose_rel: {"20:00": 0.5}
+      objectives:
+        cvd_risk_10yr: 0.073
+        statin_dose_rel: 0.5

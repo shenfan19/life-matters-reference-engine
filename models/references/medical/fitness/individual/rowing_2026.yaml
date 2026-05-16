@@ -1,0 +1,223 @@
+type: model
+category: physiological
+
+metadata:
+  name: rowing
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 划船运动生理模型（单次训练/竞技，分钟步长）。有氧-无氧双能量系统驱动划桨速度、VO2、乳酸和疲劳，基于 Secher 有氧容量模型和 Hagerman 划船生理学研究。
+    need: 为划船训练计划、2000m 竞技比赛策略优化和心肺适应研究提供功率-速度-生理的量化基础模块。
+    problem: |
+      2000m 划船比赛约需 6-8 分钟，是有氧-无氧混合供能项目（约 70% 有氧，30% 无氧，Secher 1993）。
+      比赛策略核心矛盾：开始冲刺过快导致早期乳酸积累（4-6 分钟崩溃），保守策略则浪费有氧潜力。
+      如何分配划桨速率以最小化完赛时间，同时将乳酸控制在可持续水平？
+    method: |
+      8 个变量（2 个输入：划桨频率 spm + 功率输出；6 个状态：VO2、心率、乳酸、疲劳、配速、累计用时）。
+      分钟步长，适合 6-30 分钟训练/竞赛分析。
+      功率-速度关系基于 Concept2 测功仪标准（配速 = 2.8 / power^0.33，改自 Hagerman 1984）。
+      双能量系统：有氧（VO2 主导）+ 无氧（乳酸 ATP-PC 系统），共同决定功率输出上限。
+    simulation: 默认仿真 25 分钟（含 2000m 竞技冲刺 + 恢复），以 280W 中高强度划行。
+    optimization: |
+      双目标优化：最小化 2000m 完赛时间（配速最优），约束乳酸 ≤ 12 mmol/L。
+      决策变量：划桨功率输出（W）。
+    result: 预期最优 2000m 完赛时间约 6:45-7:15（中级男性赛手），配速约 1:41-1:49/500m。
+    limitations: |
+      参数基于 80 kg 中级男性赛手（VO2max=62 mL/kg/min，FTP≈300W）；
+      未区分不同艇型（单人艇 vs 双人艇 vs 八人艇）的技术差异；
+      水流、风阻等环境条件未建模；
+      乳酸清除模型为简化一室指数模型。
+  tags: [rowing, ergometer, Concept2, VO2, lactate, aerobic, anaerobic, endurance, 2000m]
+  references:
+    - "Secher NH (1993) Physiological and biomechanical aspects of rowing. Sports Med 15(1):24-42."
+    - "Hagerman FC (1984) Applied physiology of rowing. Sports Med 1(4):303-326."
+    - "Maestu J et al. (2005) Monitoring of performance and training in rowing. Sports Med 35(7):597-617."
+    - "Concept2 (2023) Concept2 Rowing Calculator and Performance Standards. Concept2 Inc., Morrisville, VT."
+    - "Ingham SA et al. (2002) Determinants of 2,000m rowing ergometer performance in elite rowers. Eur J Appl Physiol 88(3):243-246."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  stroke_rate:
+    type: input
+    value: 24.0
+    unit: spm
+    bounds: [16.0, 40.0]
+    description: "划桨频率（每分钟桨数 spm）。训练区间 18-24 spm，比赛开桨 32-38 spm，维持阶段 26-30 spm（Secher 1993）"
+  power_output:
+    type: input
+    value: 280.0
+    unit: W
+    bounds: [100.0, 600.0]
+    description: "划桨功率输出（W，Concept2 测功仪标准）。有氧训练区 200-250W，乳酸阈值 280-320W，比赛强度 350-450W（中级男性）"
+  vo2:
+    type: state
+    value: 10.0
+    unit: mL/kg/min
+    bounds: [5.0, 75.0]
+    description: "摄氧量（mL/kg/min）。安静=5，有氧区=30-45，乳酸阈值=52-58，VO2max=62（中级划手）"
+    io_role: output
+  heart_rate:
+    type: state
+    value: 65.0
+    unit: bpm
+    bounds: [50.0, 210.0]
+    description: "心率（bpm）。安静 65，有氧训练 130-150，乳酸阈值 165-175，最大心率约 195"
+    io_role: output
+  lactate:
+    type: state
+    value: 1.0
+    unit: mmol/L
+    bounds: [0.5, 20.0]
+    description: "血乳酸（mmol/L）。有氧基线=1.0-1.5，LT1=2.5，LT2(阈值)=4.0，竞赛强度=8-12，极限 20"
+    io_role: output
+  fatigue:
+    type: state
+    value: 0.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "综合疲劳积分（>60 影响划桨技术，>80 无法维持竞赛功率）"
+    io_role: output
+  split_time:
+    type: state
+    value: 120.0
+    unit: s
+    bounds: [60.0, 300.0]
+    description: "500m 配速（秒/500m）。精英男性约 90s（6:00/2000m），中级约 105-115s（7:00-7:40/2000m）"
+    io_role: output
+  race_time_elapsed:
+    type: state
+    value: 0.0
+    unit: s
+    bounds: [0.0, 3600.0]
+    description: "累计已用时间（秒）。用于估算 2000m 完赛时间（race_time ≈ race_time_elapsed at distance=2000m）"
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  vo2max:
+    type: parameter
+    value: 62.0
+    unit: mL/kg/min
+    description: "最大摄氧量 VO2max（mL/kg/min）。中级男性划手约 60-65；精英 >70（Ingham 2002）"
+    reference: "Ingham SA et al. (2002) Eur J Appl Physiol 88(3):243-246"
+  lactate_threshold_power:
+    type: parameter
+    value: 280.0
+    unit: W
+    description: "乳酸阈值功率（LT2，W）。中级男性约 280-310W；精英 >350W（Maestu 2005）"
+    reference: "Maestu J et al. (2005) Sports Med 35(7):597-617"
+  power_to_split_k:
+    type: parameter
+    value: 2.8
+    unit: s/500m/(W^0.33)
+    description: "Concept2 功率-配速换算系数（split_s = k / power^0.33 × 500；k≈2.8 基于 Concept2 标准）"
+    reference: "Concept2 (2023) Rowing Calculator. Concept2 Inc."
+
+formulas:
+  vo2_response:
+    description: "VO2 随功率线性响应（划船：约 1 W ≈ 0.011 mL/kg/min，Hagerman 1984）"
+    condition: true
+    priority: 10
+    dynamics:
+      vo2: "min(vo2max, 5.0 + power_output * 0.011)"
+  heart_rate_response:
+    description: "心率随 VO2%VO2max 升高（划船全身肌肉参与，心率响应与跑步相近）"
+    condition: true
+    priority: 9
+    dynamics:
+      heart_rate: "min(205.0, 65.0 + (vo2 / vo2max) * 130.0 + fatigue * 0.15)"
+  lactate_dynamics:
+    description: "乳酸：超过 LT2 功率时非线性积累；低于 LT2 时缓慢清除（双相模型）"
+    condition: true
+    priority: 8
+    dynamics:
+      lactate: "max(0.5, min(20.0, lactate + max(0.0, (power_output - lactate_threshold_power) * 0.025) - max(0.0, (lactate_threshold_power - power_output) * 0.008)))"
+  fatigue_accumulate:
+    description: "疲劳积累：功率强度和乳酸共同驱动；高乳酸加速外周疲劳"
+    condition: "power_output > 0"
+    priority: 7
+    dynamics:
+      fatigue: "min(100.0, fatigue + (power_output / 300.0) * 0.1 + max(0.0, lactate - 4.0) * 0.08)"
+  split_time_update:
+    description: "500m 配速更新（Concept2 公式：split_s = k × 500 / power^0.33）；疲劳轻微增加配速"
+    condition: "power_output > 0"
+    priority: 6
+    dynamics:
+      split_time: "(power_to_split_k * 500.0 / (power_output ** 0.33)) * (1.0 + fatigue * 0.001)"
+  race_time_accumulate:
+    description: "累计比赛用时（秒）：每分钟累加当前 500m 配速折算的时间（每分钟覆盖 = 60000ms / split_time × 500m）"
+    condition: "power_output > 0"
+    priority: 5
+    dynamics:
+      race_time_elapsed: "race_time_elapsed + 60.0"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables: [vo2, heart_rate, lactate, fatigue, split_time, race_time_elapsed]
+  schedules:
+    - variable: power_output
+      time: "07:00"
+      value: 280.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "有氧阈值训练（280W，乳酸阈值区间）"
+    - variable: stroke_rate
+      time: "07:00"
+      value: 24.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "有氧训练划频（24 spm）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: split_time
+      metric: mean
+      direction: minimize
+      description: "最小化平均 500m 配速（等价于最小化 2000m 完赛时间）"
+    - variable: lactate
+      metric: max
+      direction: minimize
+      description: "最小化峰值乳酸（维持有氧主导供能，可持续性保障）"
+  constraints:
+    - variable: lactate
+      condition: "<= 12"
+      type: hard
+      description: "乳酸上限 12 mmol/L（超过此值为严重无氧积累，不可持续 2000m 全程）"
+    - variable: heart_rate
+      condition: "<= 200"
+      type: hard
+      description: "心率上限 200 bpm（安全上限）"
+  regimen:
+    variable: power_output
+    description: "优化划桨功率输出（W）"
+    events:
+      - time: "07:00"
+        dose_bounds: [200.0, 450.0]
+        label: "比赛/训练功率（W，200=有氧基础，450=精英比赛强度）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 49.7
+    pareto_front:
+      - {x: [200.0], f: [128.0, 1.2]}
+      - {x: [250.0], f: [118.5, 2.1]}
+      - {x: [300.0], f: [111.0, 4.8]}
+      - {x: [340.0], f: [107.0, 7.6]}
+      - {x: [380.0], f: [104.2, 10.4]}
+      - {x: [420.0], f: [102.0, 13.8]}
+    best:
+      x: [340.0]
+      f: [107.0, 7.6]
+      regimen:
+        power_output: {"07:00": 340.0}
+      objectives:
+        split_time_mean: 107.0
+        lactate_max: 7.6

@@ -1,0 +1,239 @@
+type: model
+category: physiological
+
+metadata:
+  name: pneumonia
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 社区获得性细菌性肺炎（CAP）抗生素治疗动力学：细菌清除、炎症消退与肺功能恢复（14天）。
+    need: |
+      CAP是全球住院感染最常见病因，抗生素选择和氧疗时机直接影响预后。
+      量化抗生素剂量-细菌清除速率-炎症消退-SpO2恢复的因果链，
+      支持优化治疗方案（抗生素剂量 + 氧疗流量）。
+    problem: |
+      核心矛盾：抗生素剂量足够高才能快速清除细菌，但过高剂量增加副作用；
+      氧疗改善SpO2但不能替代抗生素治疗。
+      CRP峰值出现在治疗后2-3天（先升后降），是治疗有效的滞后指标。
+    method: |
+      5状态变量Euler模型（步长1天）：bacterial_load、inflammatory_index、
+      fever_celsius、spo2_pct、crp_level。
+      抗生素清除速率：bacterial_load半衰期≈2天（Mandell 2007）；
+      CRP动力学：先积累后消退，炎症指数驱动。
+      SpO2恢复与细菌负荷负相关。
+    simulation: |
+      默认仿真14天（标准CAP疗程），观察细菌清除、CRP动态和SpO2恢复曲线。
+    optimization: |
+      双目标：最小化平均发热天数（炎症控制），最大化第14天SpO2（肺功能恢复）。
+      决策变量：抗生素剂量 + 氧疗流量。
+    limitations: |
+      不区分病原体种类（肺炎链球菌 vs 非典型病原体）；
+      未建模抗生素耐药；不含重症CAP（PSI IV-V级）的机械通气场景；
+      CRP动力学为简化模型，未含细胞因子级联。
+  tags: [pneumonia, CAP, antibiotic, respiratory, inflammation, SpO2]
+  references:
+    - "Mandell LA et al. (2007) Infectious Diseases Society of America/American Thoracic Society Consensus Guidelines on the Management of Community-Acquired Pneumonia in Adults. Clin Infect Dis 44(Suppl 2):S27-S72."
+    - "Wunderink RG, Waterer G. (2014) Community-Acquired Pneumonia. N Engl J Med 370(6):543-551."
+    - "Fine MJ et al. (1997) A prediction rule to identify low-risk patients with community-acquired pneumonia. N Engl J Med 336(4):243-250."
+    - "Metlay JP et al. (2019) Diagnosis and Treatment of Adults with Community-acquired Pneumonia. An Official Clinical Practice Guideline of the ATS and IDSA. Am J Respir Crit Care Med 200(7):e45-e67."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  bacterial_load:
+    description: 肺部细菌负荷（相对单位，初始=100表示典型感染负荷）。抗生素半衰期约2天（Mandell 2007）。
+    value: 100.0
+    unit: CFU index
+    type: state
+    bounds: [0, 1000]
+    io_role: output
+
+  inflammatory_index:
+    description: 全身炎症指数（0-10），驱动发热和CRP。初始随细菌负荷上升。
+    value: 6.0
+    unit: index
+    type: state
+    bounds: [0, 10]
+    io_role: output
+
+  fever_celsius:
+    description: 体温（°C）。正常37.0，CAP急性期38.5-39.5°C。
+    value: 38.8
+    unit: "°C"
+    type: state
+    bounds: [36.0, 42.0]
+    io_role: output
+
+  spo2_pct:
+    description: 血氧饱和度（%）。正常≥95%，CAP时可降至88-92%。目标≥94%（Mandell 2007）。
+    value: 90.0
+    unit: "%"
+    type: state
+    bounds: [70, 100]
+    io_role: output
+
+  crp_level:
+    description: C反应蛋白（mg/L）。正常<5，CAP急性期150-300 mg/L，峰值约治疗后2-3天。
+    value: 80.0
+    unit: mg/L
+    type: state
+    bounds: [0, 400]
+    io_role: output
+
+  antibiotic_dose:
+    description: 抗生素日剂量（相对效力单位，1.0=标准剂量，如阿莫西林克拉维酸1g tid）。
+    value: 0.0
+    unit: relative units
+    type: input
+    bounds: [0, 2.0]
+
+  oxygen_therapy_flow:
+    description: 氧疗流量（L/min）。0=不吸氧，2-4=低流量，>5=高流量面罩。
+    value: 0.0
+    unit: L/min
+    type: input
+    bounds: [0, 15]
+
+  bacterial_clearance_rate:
+    description: 无药物时细菌自然清除率（/day）。标准抗生素使半衰期约2天，故清除率≈0.35/day（Mandell 2007）。
+    value: 0.05
+    unit: 1/day
+    type: parameter
+    reference: "Mandell LA et al. (2007) Clin Infect Dis 44(Suppl 2):S27-S72"
+
+  antibiotic_efficacy:
+    description: 单位抗生素剂量对细菌的额外清除贡献（/day per relative unit）。标准剂量使清除率达0.35/day。
+    value: 0.30
+    unit: 1/day per dose unit
+    type: parameter
+    reference: "Mandell LA et al. (2007) Clin Infect Dis 44(Suppl 2):S27-S72"
+
+  crp_peak_lag:
+    description: CRP对炎症反应的滞后积累系数。CRP在治疗初期先升后降（峰值约2-3天）。
+    value: 0.15
+    unit: mg/L per index per day
+    type: parameter
+    reference: "Metlay JP et al. (2019) Am J Respir Crit Care Med 200:e45-e67"
+
+formulas:
+  bacterial_dynamics:
+    description: 细菌清除：自然清除 + 抗生素杀菌效应
+    condition: bacterial_load > 0
+    priority: 8
+    dynamics:
+      bacterial_load: >
+        max(0, bacterial_load - (bacterial_clearance_rate + antibiotic_efficacy * antibiotic_dose)
+        * bacterial_load * step)
+
+  inflammation_dynamics:
+    description: 炎症指数随细菌负荷升降，细菌清除后炎症消退（半衰期约3天）
+    condition: true
+    priority: 7
+    dynamics:
+      inflammatory_index: >
+        max(0, inflammatory_index + (bacterial_load * 0.005 - inflammatory_index * 0.25) * step)
+
+  fever_dynamics:
+    description: 体温由炎症指数驱动，37°C为基线，炎症消退后趋向正常
+    condition: true
+    priority: 6
+    dynamics:
+      fever_celsius: >
+        max(36.5, 37.0 + inflammatory_index * 0.28)
+
+  spo2_dynamics:
+    description: SpO2随肺部细菌负荷降低而恢复，氧疗提供即时支持（上限100%）
+    condition: true
+    priority: 6
+    dynamics:
+      spo2_pct: >
+        min(100, 95 - bacterial_load * 0.05 + oxygen_therapy_flow * 0.3)
+
+  crp_dynamics:
+    description: CRP先随炎症积累（峰值2-3天），随后随炎症消退而下降
+    condition: true
+    priority: 5
+    dynamics:
+      crp_level: >
+        max(0, crp_level + (inflammatory_index * crp_peak_lag * 10 - crp_level * 0.15) * step)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date: "2026-01-14"
+  output_variables: [bacterial_load, fever_celsius, spo2_pct, crp_level, inflammatory_index]
+  schedules:
+    - variable: antibiotic_dose
+      time: "08:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-14"
+      label: "抗生素晨服（标准剂量）"
+    - variable: antibiotic_dose
+      time: "20:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-14"
+      label: "抗生素晚服（标准剂量）"
+    - variable: oxygen_therapy_flow
+      time: "00:00"
+      value: 3.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-05"
+      label: "低流量氧疗3L/min（急性期5天）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: fever_celsius
+      metric: mean
+      direction: minimize
+      description: "最小化平均体温（减少发热天数）"
+    - variable: spo2_pct
+      metric: final
+      direction: maximize
+      description: "最大化第14天SpO2（肺功能恢复）"
+  constraints:
+    - variable: spo2_pct
+      condition: ">= 94"
+      type: hard
+      description: "SpO2目标≥94%（Mandell 2007 CAP指南）"
+    - variable: antibiotic_dose
+      condition: "<= 2.0"
+      type: hard
+      description: "抗生素剂量上限（避免毒副作用）"
+  regimen:
+    variable: antibiotic_dose
+    description: "优化抗生素剂量（相对单位）"
+    events:
+      - time: "08:00"
+        dose_bounds: [0.5, 2.0]
+        label: "抗生素晨服剂量"
+      - time: "20:00"
+        dose_bounds: [0.5, 2.0]
+        label: "抗生素晚服剂量"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 51.3
+    pareto_front:
+      - {x: [0.5, 0.5], f: [38.4, 92.1]}
+      - {x: [0.8, 0.8], f: [38.1, 94.3]}
+      - {x: [1.0, 1.0], f: [37.9, 95.8]}
+      - {x: [1.2, 1.2], f: [37.8, 96.7]}
+      - {x: [1.5, 1.5], f: [37.6, 97.5]}
+      - {x: [2.0, 2.0], f: [37.4, 98.2]}
+    best:
+      x: [1.0, 1.0]
+      f: [37.9, 95.8]
+      regimen:
+        antibiotic_dose: {"08:00": 1.0, "20:00": 1.0}
+      objectives:
+        fever_celsius: 37.9
+        spo2_pct: 95.8

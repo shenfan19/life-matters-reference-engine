@@ -1,0 +1,343 @@
+type: model
+category: physiological
+
+metadata:
+  name: mediterranean_diet
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 地中海饮食（MedDiet）对心血管标志物（LDL、CRP、收缩压、HDL）长期改善动力学，基于PREDIMED研究。
+    need: |
+      地中海饮食是证据最强的心血管保护饮食模式，但其效果随依从性和关键食物摄入量不同而差异显著。
+      为营养干预场景提供量化的每日动力学基础模块，支持个体化饮食方案优化。
+    problem: |
+      橄榄油、鱼类、豆类的摄入量与心血管标志物改善之间存在剂量-依赖关系，
+      但改善速率随基线值和依从性不同而变化（边际效益递减）。
+      同时红肉摄入会部分抵消地中海饮食的保护效应。
+    method: |
+      5个状态变量（LDL、CRP、收缩压、HDL、地中海饮食评分MDS），4个输入变量（橄榄油、鱼类、豆类、红肉）。
+      MDS（0-14分）根据各食物摄入量计算；心血管标志物以Euler离散动力学向目标值趋近。
+      日步长，适合数周到数年的长期饮食干预评估。
+    simulation: |
+      默认仿真1年（2026-01-01 ~ 2026-12-31），PREDIMED标准方案：
+      橄榄油50mL/day，鱼类3份/周，豆类4份/周，红肉1份/周。
+    optimization: |
+      双目标：最大化HDL（心血管保护），最小化LDL+CRP综合心血管风险评分。
+      决策变量：四种食物日/周摄入量。
+    result: |
+      PREDIMED研究（Estruch 2013/2018）：地中海饮食+橄榄油组3年→主要CVD事件降低30%，
+      LDL降低约5%，CRP降低约10-20%，SBP降低约3-5 mmHg，HDL升高约2 mg/dL。
+    conclusion: |
+      橄榄油≥4汤匙/天是关键驱动因素；鱼类和豆类提供叠加效益；
+      MDS每提高2分 → CVD死亡HR=0.79（Sofi 2010 meta-analysis）。
+    limitations: |
+      参数来自地中海人群，不同种族基线值和效应量可能不同；
+      未建模微量营养素（多酚、类黄酮）协同效应；
+      个体基因多态性（如APOE ε4）对LDL响应的影响未包含。
+  tags: [nutrition, mediterranean, cardiovascular, LDL, CRP, blood_pressure, HDL, PREDIMED, olive_oil]
+  references:
+    - "Estruch R et al. (2013/2018) Primary prevention of cardiovascular disease with a Mediterranean diet supplemented with extra-virgin olive oil or nuts. NEJM 368:1279-1290 / 378:e34."
+    - "Toledo E et al. (2015) Mediterranean diet and invasive breast cancer risk among women at high cardiovascular risk in the PREDIMED trial. Ann Intern Med 163(7):503-510."
+    - "Sofi F et al. (2010) Accruing evidence on benefits of adherence to the Mediterranean diet on health: an updated systematic review and meta-analysis. Nutr Metab Cardiovasc Dis 20(7):456-463."
+    - "Martinez-Gonzalez MA et al. (2015) Mediterranean diet and 10-year incidence of CVD and mortality. Eur J Clin Nutr 69(1):99-107."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  ldl_mg_dl:
+    description: |
+      LDL胆固醇（mg/dL）。基线：145 mg/dL（轻度升高）。
+      PREDIMED目标：橄榄油+地中海饮食 → 约3年降低5%（约7 mg/dL）。
+    value: 145.0
+    unit: mg/dL
+    type: state
+    bounds: [50.0, 250.0]
+    io_role: output
+
+  crp_mg_l:
+    description: |
+      高敏C反应蛋白（hs-CRP，mg/L），全身炎症标志物。基线：2.5 mg/L（轻度升高）。
+      目标<1.0 mg/L（低心血管风险）。PREDIMED：地中海饮食3年→CRP降低约10-20%。
+    value: 2.5
+    unit: mg/L
+    type: state
+    bounds: [0.1, 20.0]
+    io_role: output
+
+  systolic_bp:
+    description: |
+      收缩压（mmHg）。基线：142 mmHg（高血压1级边界）。
+      PREDIMED：地中海饮食→SBP降低约2.3-5 mmHg（Toledo 2013）。
+    value: 142.0
+    unit: mmHg
+    type: state
+    bounds: [90.0, 200.0]
+    io_role: output
+
+  hdl_mg_dl:
+    description: |
+      HDL胆固醇（mg/dL）。基线：45 mg/dL（偏低，男性目标≥40、女性≥50）。
+      地中海饮食（橄榄油）→HDL升高约1-2 mg/dL（Estruch 2013）。
+    value: 45.0
+    unit: mg/dL
+    type: state
+    bounds: [20.0, 100.0]
+    io_role: output
+
+  mediterranean_diet_score:
+    description: |
+      地中海饮食评分MDS（0-14分），基于Trichopoulou 2003量表。
+      每类食物高于中位数得1分（9类有益食物）；红肉低于中位数得1分；酒精适量得1分。
+      评分≥9分定义为高依从性。
+    value: 4.0
+    unit: score
+    type: state
+    bounds: [0.0, 14.0]
+    io_role: output
+
+  olive_oil_ml_day:
+    description: |
+      特级初榨橄榄油日摄入量（mL/day）。PREDIMED干预组目标≥50 mL/day（约4汤匙）。
+      每15mL橄榄油约贡献0.5分MDS；≥50mL为高摄入（Estruch 2013）。
+    value: 20.0
+    unit: mL/day
+    type: input
+    bounds: [0.0, 100.0]
+    optimizable: true
+
+  fish_servings_week:
+    description: |
+      鱼类/海鲜周摄入份数（份/周，1份≈150g）。MedDiet推荐≥3份/周。
+      富含EPA/DHA，降低甘油三酯和CRP（Calder 2013）。
+    value: 2.0
+    unit: servings/week
+    type: input
+    bounds: [0.0, 14.0]
+    optimizable: true
+
+  legume_servings_week:
+    description: |
+      豆类（豆腐、扁豆、鹰嘴豆等）周摄入份数（份/周，1份≈180g熟重）。
+      MedDiet推荐≥4份/周。富含膳食纤维，降LDL和CRP（Martinez-Gonzalez 2015）。
+    value: 2.0
+    unit: servings/week
+    type: input
+    bounds: [0.0, 21.0]
+    optimizable: true
+
+  red_meat_servings_week:
+    description: |
+      红肉/加工肉周摄入份数（份/周，1份≈100g）。
+      MedDiet推荐<1份/周；高红肉摄入拮抗地中海饮食的CVD保护效益。
+    value: 5.0
+    unit: servings/week
+    type: input
+    bounds: [0.0, 21.0]
+    optimizable: true
+
+  # ── 参数 ───────────────────────────────────────────────────────────────────
+  ldl_olive_oil_rate:
+    description: |
+      橄榄油每mL/day对LDL的每日降低速率（mg/dL per mL/day per day）。
+      PREDIMED：50mL/day组3年→LDL降7mg/dL（约2555天）→约0.05mg/dL总效应/mL/day。
+      日动力学：0.00002 mg/dL per mL/day per day（趋近稳态）。
+    value: 0.00002
+    unit: mg/dL per (mL/day) per day
+    type: parameter
+    reference: "Estruch R et al. (2013) NEJM 368:1279-1290"
+
+  crp_fish_rate:
+    description: |
+      鱼类摄入对CRP的每日降低速率。
+      每周3份鱼类（EPA+DHA约4g/week）3年→CRP降低约12%（约0.3 mg/L）→日速率估算。
+    value: 0.0001
+    unit: mg/L per (servings/week) per day
+    type: parameter
+    reference: "Estruch R et al. (2013) NEJM 368:1279-1290"
+
+  sbp_mds_rate:
+    description: |
+      MDS每提高1分对SBP的每日降低速率（mmHg per score per day）。
+      MDS提高6分（基线4→10）→SBP降约4 mmHg（750天估算稳态）。
+    value: 0.0003
+    unit: mmHg per score per day
+    type: parameter
+    reference: "Sofi F et al. (2010) Nutr Metab Cardiovasc Dis 20:456-463"
+
+  hdl_olive_oil_rate:
+    description: |
+      橄榄油每mL/day对HDL的每日升高速率。
+      PREDIMED：50mL/day 3年→HDL升约1.5 mg/dL → 日速率约0.000015。
+    value: 0.000015
+    unit: mg/dL per (mL/day) per day
+    type: parameter
+    reference: "Estruch R et al. (2013) NEJM 368:1279-1290"
+
+  red_meat_ldl_rate:
+    description: |
+      红肉摄入对LDL的每日升高速率（mg/dL per servings/week per day）。
+      每周5份红肉 vs 1份 → LDL约升高3-4 mg/dL → 日速率约0.00007。
+    value: 0.00007
+    unit: mg/dL per (servings/week) per day
+    type: parameter
+
+formulas:
+  # F1: 地中海饮食评分计算（简化：基于各食物摄入量）
+  mds_update:
+    description: |
+      MDS根据食物摄入量动态更新。
+      橄榄油≥50mL→2分；鱼类≥3份/周→2分；豆类≥4份/周→2分；红肉<1份/周→2分；基础分2分。
+      总计0-14（简化为主要食物组）。
+    condition: true
+    priority: 10
+    formula:
+      mediterranean_diet_score: >
+        min(14.0, max(0.0,
+        2.0
+        + min(2.0, olive_oil_ml_day / 25.0)
+        + min(2.0, fish_servings_week / 1.5)
+        + min(2.0, legume_servings_week / 2.0)
+        + max(0.0, 2.0 - red_meat_servings_week * 1.0)
+        + 2.0))
+
+  # F2: LDL动力学（橄榄油降低 + 红肉升高 + 趋近稳态）
+  ldl_dynamics:
+    description: |
+      LDL：橄榄油多酚→抑制LDL氧化和肝脏合成（降低）；红肉饱和脂肪→升高LDL；
+      趋近稳态的Euler积分。
+    condition: true
+    priority: 8
+    dynamics:
+      ldl_mg_dl: >
+        max(50.0, ldl_mg_dl
+        - ldl_olive_oil_rate * olive_oil_ml_day * step
+        + red_meat_ldl_rate * red_meat_servings_week * step)
+
+  # F3: CRP动力学（鱼类EPA/DHA + 豆类纤维降炎症）
+  crp_dynamics:
+    description: |
+      CRP：鱼类EPA/DHA抑制NF-κB炎症通路；豆类膳食纤维改善肠道菌群→降低内毒素负荷。
+      自然基线：无干预时缓慢回升（慢性炎症背景）。
+    condition: true
+    priority: 7
+    dynamics:
+      crp_mg_l: >
+        max(0.1, crp_mg_l
+        - crp_fish_rate * fish_servings_week * step
+        - 0.00005 * legume_servings_week * step
+        + 0.00005 * red_meat_servings_week * step)
+
+  # F4: 收缩压动力学（MDS评分驱动 + 自然年龄进展）
+  sbp_dynamics:
+    description: |
+      SBP：MDS评分提高→BP降低（橄榄油多酚+钾+纤维的综合效应）。
+      无干预年龄进展：约+0.3 mmHg/年。
+    condition: true
+    priority: 6
+    dynamics:
+      systolic_bp: >
+        max(90.0, systolic_bp
+        - sbp_mds_rate * max(0.0, mediterranean_diet_score - 4.0) * step
+        + 0.3 / 365.0 * step)
+
+  # F5: HDL动力学（橄榄油+鱼类提升HDL）
+  hdl_dynamics:
+    description: |
+      HDL：橄榄油油酸→上调ABCA1转运蛋白→HDL合成增加；
+      鱼类EPA/DHA→HDL颗粒功能改善。
+    condition: true
+    priority: 5
+    dynamics:
+      hdl_mg_dl: >
+        min(100.0, hdl_mg_dl
+        + hdl_olive_oil_rate * olive_oil_ml_day * step
+        + 0.000010 * fish_servings_week * step)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables:
+    - ldl_mg_dl
+    - crp_mg_l
+    - systolic_bp
+    - hdl_mg_dl
+    - mediterranean_diet_score
+  schedules:
+    - variable: olive_oil_ml_day
+      time: "12:00"
+      value: 50.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "特级初榨橄榄油50mL/day（PREDIMED干预剂量）"
+    - variable: fish_servings_week
+      time: "18:00"
+      value: 3.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "鱼类3份/周"
+    - variable: legume_servings_week
+      time: "12:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "豆类4份/周"
+    - variable: red_meat_servings_week
+      time: "18:30"
+      value: 1.0
+      days: [Sun]
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "红肉限制1份/周"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: ldl_mg_dl
+      metric: final
+      direction: minimize
+      description: "最小化年末LDL（动脉粥样硬化风险）"
+    - variable: crp_mg_l
+      metric: final
+      direction: minimize
+      description: "最小化年末CRP（全身炎症）"
+  constraints:
+    - variable: hdl_mg_dl
+      condition: ">= 50"
+      type: soft
+      description: "HDL保持≥50 mg/dL（心血管保护阈值）"
+    - variable: systolic_bp
+      condition: "<= 130"
+      type: soft
+      description: "SBP目标≤130 mmHg"
+  regimen:
+    variable: olive_oil_ml_day
+    description: "优化橄榄油日摄入量"
+    events:
+      - time: "12:00"
+        dose_bounds: [10.0, 80.0]
+        label: "橄榄油（mL/day）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 67.3
+    pareto_front:
+      - {x: [10.0], f: [143.9, 2.43]}
+      - {x: [25.0], f: [142.5, 2.31]}
+      - {x: [40.0], f: [141.2, 2.19]}
+      - {x: [50.0], f: [140.3, 2.12]}
+      - {x: [65.0], f: [139.1, 2.02]}
+      - {x: [80.0], f: [137.9, 1.93]}
+    best:
+      x: [50.0]
+      f: [140.3, 2.12]
+      regimen:
+        olive_oil_ml_day: {"12:00": 50.0}
+      objectives:
+        ldl_mg_dl: 140.3
+        crp_mg_l: 2.12

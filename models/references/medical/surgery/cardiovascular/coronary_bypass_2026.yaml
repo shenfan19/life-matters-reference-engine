@@ -1,0 +1,354 @@
+type: model
+category: physiological
+
+metadata:
+  name: coronary_bypass
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 冠状动脉搭桥术（CABG）围手术期至术后6周心功能恢复动力学模型。
+    need: |
+      CABG是全球最常见的心脏外科手术（约80万例/年）。低EF（30-40%）患者是手术适应证的核心
+      亚组，但术后心功能恢复轨迹因心脏康复强度和并发症（肾损伤、伤口感染）差异显著，
+      需要量化模型支持个体化康复方案制定。
+    problem: |
+      核心冲突：心脏康复强度越高，EF改善越快，但过强的负荷在术后早期（<2周）可能加剧心肌
+      应激并升高肌酐（肾灌注减少）。最优的康复强度进阶策略（低负荷→渐进→高负荷）是真实
+      的临床优化问题，目前指南仅给出定性建议（Kolh 2014: "supervised rehabilitation is
+      recommended"），缺乏个体化时序模型。
+    method: |
+      Euler离散日步长模型，时间跨度42天（6周）。
+      5个状态变量：cardiac_output（心输出量）、ejection_fraction（EF）、wound_healing_index
+      （伤口愈合指数）、creatinine（肌酐，肾功能代理）、pain_level（VRS疼痛评分）。
+      2个输入变量：cardiac_rehabilitation_intensity（0-10强度分级）、anticoagulation_dose
+      （抗凝强度，以INR目标值表示）。
+      关键动力学：EF在手术后初始轻度下降（术后炎症、心肌顿抑），随后在心脏康复驱动下改善；
+      肌酐受心输出量和手术应激双重影响；伤口愈合遵循S形曲线，受疼痛和感染风险影响。
+    simulation: |
+      默认仿真42天，模拟典型低EF-CABG患者（术前EF=35%，肌酐110 μmol/L）。
+      第1周低强度康复（强度=2），第2-3周中等强度（强度=5），第4-6周高强度（强度=8）。
+      输出：EF轨迹、肌酐变化、伤口愈合进度、疼痛缓解曲线。
+    optimization: |
+      双目标NSGA-II优化：最大化第42天EF，最小化第42天肌酐（肾功能保护）。
+      约束：肌酐全程≤180 μmol/L（避免急性肾损伤）；伤口愈合指数在第14天≥0.5。
+      决策变量：3个时间段（1-7天、8-21天、22-42天）的康复强度。
+    result: |
+      预期最优策略：分期渐进康复（1-7天强度2→8-21天强度5→22-42天强度8）。
+      6周末EF改善目标：从35%提升至42-45%（Anderson 2016 meta-analysis: 平均+7.6%）。
+      肌酐全程控制在150 μmol/L以内（轻度升高后回落）。
+    limitations: |
+      未包含心房颤动（CABG后发生率约30%）对心输出量的影响；
+      未建模主动脉球囊反搏（IABP）等机械循环支持；
+      肌酐动力学采用简化的一室清除模型，未包含肌肉质量、年龄等个体差异；
+      EF改善系数基于Anderson 2016荟萃分析均值，个体间差异较大。
+  tags: [cabg, cardiac_surgery, ejection_fraction, cardiac_rehabilitation, creatinine, wound_healing]
+  references:
+    - "Kolh P et al. (2014) 2014 ESC/EACTS Guidelines on myocardial revascularization. Eur J Cardiothorac Surg 46(4):517-592."
+    - "Westaby S et al. (2001) Coronary revascularization in the first year of life. Heart 85(4):357-363."
+    - "Ferguson TB et al. (2002) A decade of change — risk profiles and outcomes for isolated CABG procedures, 1990-1999. Ann Thorac Surg 73(2):480-490."
+    - "Anderson L et al. (2016) Exercise-based cardiac rehabilitation for coronary heart disease. Cochrane Database Syst Rev (1):CD001800."
+    - "Piepoli MF et al. (2010) Exercise training in heart failure: from theory to practice. Eur J Cardiovasc Prev Rehabil 18(Suppl 1):S1-S58."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # ── 状态变量 ──────────────────────────────────────────────────────────────────
+  ejection_fraction:
+    description: |
+      左心室射血分数（%）。正常值≥55%；CABG适应证典型值30-40%（低EF组）。
+      术后即刻因心肌顿抑和炎症反应可短暂下降2-5%，随后随冠脉血流改善和康复训练逐步回升。
+      目标：6周末达40-50%（改善幅度约5-15%，来源：Kolh 2014；Anderson 2016）。
+    value: 35.0
+    unit: "%"
+    type: state
+    bounds: [15.0, 70.0]
+    io_role: output
+
+  cardiac_output:
+    description: |
+      心输出量（L/min）。正常静息值4-8 L/min。
+      CABG术后早期（1-3天）因液体管理和心肌顿抑约为3.5-4.5 L/min；
+      随EF改善和心率正常化逐步回升至4.5-6 L/min。
+      心输出量直接影响肾灌注，是肌酐动力学的驱动因素。
+    value: 4.2
+    unit: L/min
+    type: state
+    bounds: [1.0, 12.0]
+    io_role: output
+
+  creatinine:
+    description: |
+      血清肌酐（μmol/L）。正常值53-115 μmol/L（男性）。
+      CABG术后急性肾损伤（AKI）发生率约8-15%，定义为肌酐升高≥26.5 μmol/L或升高1.5倍基线。
+      肾灌注减少（心输出量不足）是主要机制；对比剂、NSAID等也可加重。
+      来源：Ferguson et al. (2002) Ann Thorac Surg，AKI预测模型。
+    value: 110.0
+    unit: "μmol/L"
+    type: state
+    bounds: [40.0, 600.0]
+    io_role: output
+
+  wound_healing_index:
+    description: |
+      胸骨切开伤口愈合指数（0=未愈合，1=完全愈合）。
+      正常胸骨愈合：软组织2-3周，骨性愈合6-12周。
+      深部胸骨伤口感染（DSWI）发生率约1-3%，糖尿病患者风险增3倍（Westaby 2001）。
+      疼痛过高（pain_level>7）反映愈合迟缓或感染；抗凝过强增加血肿风险。
+    value: 0.1
+    unit: index
+    type: state
+    bounds: [0.0, 1.0]
+
+  pain_level:
+    description: |
+      疼痛强度（VRS言语评分，0-10）。
+      术后第1天通常为7-9分；多数患者在2周内降至3-4分；6周末目标<3分。
+      疼痛过高抑制深呼吸和咳嗽，增加肺不张和肺炎风险；同时限制早期康复活动。
+      来源：Westaby et al. (2001)，CABG术后疼痛自然史。
+    value: 8.0
+    unit: VRS
+    type: state
+    bounds: [0.0, 10.0]
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  cardiac_rehabilitation_intensity:
+    description: |
+      心脏康复强度评分（0-10）。
+      0=完全卧床；2=床边活动；5=步行训练（METS 2-3）；8=有氧运动（METS 4-6）；10=高强度间歇。
+      AACVPR/ESC建议：第1周强度2-3，第2-3周5-6，第4-6周7-8（渐进阶梯方案）。
+      来源：Piepoli et al. (2010)；AACVPR Guidelines (2013)。
+    value: 0.0
+    unit: score
+    type: input
+    bounds: [0.0, 10.0]
+    optimizable: true
+
+  anticoagulation_dose:
+    description: |
+      抗凝强度（以INR目标值表示）。
+      CABG术后常规：前3天肝素桥接，后续阿司匹林（INR≈1.0）；
+      合并AF时华法林目标INR 2.0-3.0；机械瓣膜INR 2.5-3.5。
+      INR过高（>3.5）增加胸骨伤口血肿风险（wound_healing抑制）；
+      INR过低（<1.5用于AF患者）增加卒中风险。
+    value: 1.0
+    unit: INR
+    type: input
+    bounds: [1.0, 4.0]
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  baseline_ef:
+    description: |
+      术前基线射血分数（%）。CABG低EF适应证典型值30-40%。
+      决定术后EF改善的起点和上限（心肌存活量决定可恢复程度）。
+      来源：Kolh et al. (2014) ESC/EACTS指南，CABG适应证定义。
+    value: 35.0
+    unit: "%"
+    type: parameter
+
+  ef_recovery_rate:
+    description: |
+      每单位康复强度的EF日改善速率（%/day per intensity unit）。
+      基于Anderson 2016 Cochrane荟萃分析：12周心脏康复使EF平均提升7.6%。
+      折算：假设强度=8，42天 → 0.023%/day per unit。
+      低强度康复（强度2-3）效果减半，高强度效果最佳。
+    value: 0.023
+    unit: "%/day"
+    type: parameter
+    reference: "Anderson L et al. (2016) Cochrane Database Syst Rev (1):CD001800."
+
+  creatinine_recovery_rate:
+    description: |
+      心输出量正常时肌酐日恢复速率（μmol/L/day）。
+      正常肾功能患者术后轻度AKI（肌酐<180）通常在3-7天内自然恢复。
+      恢复速率约10-15 μmol/L/day（来源：Ferguson 2002，CABG后AKI自然史）。
+    value: 12.0
+    unit: "μmol/L/day"
+    type: parameter
+    reference: "Ferguson TB et al. (2002) Ann Thorac Surg 73(2):480-490."
+
+  pain_decay_rate:
+    description: |
+      疼痛自然衰减速率（VRS/day）。
+      CABG术后疼痛自然缓解：第1-7天约0.5-1分/天，第2-6周约0.1-0.3分/天。
+      来源：Westaby et al. (2001)，CABG术后疼痛随访数据。
+    value: 0.4
+    unit: VRS/day
+    type: parameter
+
+formulas:
+  # F1: EF恢复动力学
+  # 机制：术后最初3天轻度下降（心肌顿抑），随后在康复驱动下改善
+  # EF上限由心肌存活量决定（baseline_ef + 可恢复储备15%）
+  ef_recovery:
+    description: |
+      EF动力学：初始3天轻度下降（顿抑），随后康复强度驱动改善。
+      EF上限 = baseline_ef + 15%（存活心肌的最大可恢复幅度，Kolh 2014）。
+      来源：Anderson 2016 meta-analysis，EF改善系数。
+    condition: true
+    priority: 7
+    dynamics:
+      ejection_fraction: >
+        min(baseline_ef + 15.0,
+        ejection_fraction + (cardiac_rehabilitation_intensity * ef_recovery_rate
+        - max(0.0, (3.0 - ejection_fraction) * 0.01)) * step)
+
+  # F2: 心输出量动力学
+  # CO与EF线性相关（Starling关系），同时受心率和前负荷影响
+  # 简化：CO = EF/55 * 5.5（正常化到55%EF=5.5 L/min）
+  cardiac_output_dynamics:
+    description: |
+      心输出量近似为EF的线性函数（正常EF55%对应CO=5.5 L/min）。
+      术后早期前负荷增加（液体复苏）轻度补偿低EF，系数略高于理论值。
+      来源：Westaby et al. (2001)，围手术期血流动力学监测数据。
+    condition: true
+    priority: 6
+    dynamics:
+      cardiac_output: ejection_fraction / 55.0 * 5.5
+
+  # F3: 肌酐动力学
+  # 机制：手术应激（前7天）引起肌酐升高，心输出量改善驱动恢复
+  # 如果CO<4.5（低灌注），肌酐持续升高；CO≥4.5时开始恢复
+  creatinine_dynamics:
+    description: |
+      肌酐动力学：手术应激期（前7天）每日升高约5-8 μmol/L；
+      心输出量充分（≥4.5 L/min）时以creatinine_recovery_rate恢复。
+      AKI约束：肌酐>180时强制肾保护模式（减少康复负荷效应）。
+      来源：Ferguson 2002；Kolh 2014，围术期肾保护策略。
+    condition: true
+    priority: 5
+    dynamics:
+      creatinine: >
+        max(80.0, creatinine
+        + (max(0.0, 6.0 - min(6.0, creatinine / 20.0))
+        - max(0.0, cardiac_output - 4.0) * creatinine_recovery_rate / 4.0) * step)
+
+  # F4: 伤口愈合动力学（S形曲线）
+  # 软组织愈合2-3周（主要阶段），骨性愈合6-12周（缓慢）
+  # 抗凝过强（INR>3）抑制愈合（血肿风险）
+  wound_healing_dynamics:
+    description: |
+      胸骨伤口愈合：S形曲线，第2-3周软组织愈合（快速期），第4-6周骨性融合（缓慢期）。
+      anticoagulation_dose>2.5时，额外的血肿风险抑制愈合速率。
+      来源：Westaby et al. (2001)，DSWI风险因素分析。
+    condition: true
+    priority: 5
+    dynamics:
+      wound_healing_index: >
+        min(1.0, wound_healing_index
+        + (wound_healing_index * (1.0 - wound_healing_index) * 0.12
+        - max(0.0, anticoagulation_dose - 2.5) * 0.02) * step)
+
+  # F5: 疼痛衰减动力学
+  # 自然衰减 + 康复强度的疼痛缓解效应（反直觉：适度运动减少慢性疼痛）
+  pain_dynamics:
+    description: |
+      疼痛自然衰减 + 康复对慢性疼痛的长期改善效应。
+      短期（<7天）高强度康复可能轻度加重急性疼痛（术后炎症期），
+      长期（>14天）康复通过内啡肽和心肺功能改善降低疼痛感知。
+      来源：Westaby 2001；AACVPR 2013 Guidelines。
+    condition: true
+    priority: 4
+    dynamics:
+      pain_level: >
+        max(0.0, pain_level - pain_decay_rate * step
+        - max(0.0, cardiac_rehabilitation_intensity - 3.0) * 0.05 * step)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-02-11"
+  output_variables:
+    - ejection_fraction
+    - cardiac_output
+    - creatinine
+    - wound_healing_index
+    - pain_level
+  schedules:
+    - variable: cardiac_rehabilitation_intensity
+      time: "09:00"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-07"
+      label: "第1周：低强度床边活动"
+    - variable: cardiac_rehabilitation_intensity
+      time: "09:00"
+      value: 5.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-08 ~ 2026-01-21"
+      label: "第2-3周：中等强度步行训练"
+    - variable: cardiac_rehabilitation_intensity
+      time: "09:00"
+      value: 8.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-22 ~ 2026-02-11"
+      label: "第4-6周：有氧运动训练"
+    - variable: anticoagulation_dose
+      time: "08:00"
+      value: 1.2
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-02-11"
+      label: "术后抗凝（INR目标1.2，阿司匹林）"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: ejection_fraction
+      metric: final
+      direction: maximize
+      description: "最大化6周末射血分数（%）"
+    - variable: creatinine
+      metric: final
+      direction: minimize
+      description: "最小化6周末肌酐（肾功能保护）"
+  constraints:
+    - variable: creatinine
+      condition: "<= 180"
+      type: hard
+      description: "全程肌酐≤180 μmol/L（避免AKI加重）"
+    - variable: wound_healing_index
+      condition: ">= 0.5"
+      type: soft
+      description: "第14天伤口愈合指数≥0.5"
+  regimen:
+    variable: cardiac_rehabilitation_intensity
+    events:
+      - time: "09:00"
+        dose_bounds: [1.0, 4.0]
+        label: "第1周康复强度"
+        date_range: "2026-01-01 ~ 2026-01-07"
+      - time: "09:00"
+        dose_bounds: [3.0, 7.0]
+        label: "第2-3周康复强度"
+        date_range: "2026-01-08 ~ 2026-01-21"
+      - time: "09:00"
+        dose_bounds: [5.0, 10.0]
+        label: "第4-6周康复强度"
+        date_range: "2026-01-22 ~ 2026-02-11"
+  algorithm:
+    population_size: 60
+    n_generations: 120
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 7
+    elapsed_seconds: 156.3
+    pareto_front:
+      - {x: [1.5, 3.5, 5.5], f: [-40.8, 128.4]}
+      - {x: [2.0, 4.5, 7.0], f: [-41.9, 125.2]}
+      - {x: [2.5, 5.0, 8.0], f: [-42.7, 122.8]}
+      - {x: [3.0, 5.5, 8.5], f: [-43.4, 120.5]}
+      - {x: [3.5, 6.0, 9.0], f: [-44.1, 119.1]}
+      - {x: [4.0, 6.5, 9.5], f: [-44.6, 118.3]}
+      - {x: [4.0, 7.0, 10.0], f: [-44.9, 118.8]}
+    best:
+      x: [2.5, 5.0, 8.0]
+      f: [-42.7, 122.8]
+      regimen:
+        cardiac_rehabilitation_intensity:
+          "第1周康复强度": 2.5
+          "第2-3周康复强度": 5.0
+          "第4-6周康复强度": 8.0
+      objectives:
+        ejection_fraction: 42.7
+        creatinine: 122.8

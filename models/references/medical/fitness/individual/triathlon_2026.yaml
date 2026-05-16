@@ -1,0 +1,247 @@
+type: model
+category: physiological
+
+metadata:
+  name: triathlon
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 奥林匹克铁人三项（游泳 1.5km + 自行车 40km + 跑步 10km）整合生理模型（分钟步长）。三项能量系统转换、糖原-脂肪双燃料消耗和疲劳积累动力学，关注"邦克"（glycogen 耗尽）风险。
+    need: 为铁人三项赛事配速策略优化和竞技营养学提供整合多运动模式的生理基础模型，量化糖原储备在三项间的分配。
+    problem: |
+      铁人三项最核心的决策问题是配速分配：游泳强度影响自行车起始状态，自行车段糖原消耗决定跑步段是否发生"邦克"（glycogen < 20g，强制降速）。
+      精英选手总时间约 1:55，业余选手 2:20-3:00。
+      过激的自行车配速是导致业余选手跑步段崩溃的最常见原因（Hausswirth & Lehénaff 2001）。
+    method: |
+      10 个变量（2 个输入：当前运动项目编号 + 强度百分比；5 个状态：糖原储量、脂肪储量、心率、累积疲劳、已用时）。
+      分钟步长，模拟约 120-180 分钟完赛过程。
+      能量系统：高强度以糖原为主（>80%VO2max），低强度以脂肪为主（<60%VO2max）；两者按强度线性插值。
+      游泳（运动 0）/ 自行车（运动 1）/ 跑步（运动 2）的代谢率分别由强度和项目特异性系数决定。
+    simulation: 默认仿真 130 分钟，游泳 20min → 自行车 70min → 跑步 40min，强度均为 75% 阈值。
+    optimization: |
+      双目标优化：最小化总完赛时间（race_time_elapsed 终值），约束不发生邦克（糖原 > 20g）。
+      决策变量：三个运动段的强度比例。
+    result: 预期最优策略为游泳相对保守（70-75%）、自行车中等（75-80%）、跑步据糖原储备调整（65-80%）。
+    limitations: |
+      参数基于 70kg 男性业余铁人三项运动员；
+      换项过渡时间（T1 swim→bike，T2 bike→run）固定为 2 分钟；
+      未包含补给策略（赛中补糖）对糖原储量的影响；
+      心理因素（疼痛耐受、配速感知误差）未建模；
+      三项运动间的肌肉特异性疲劳转移未区分。
+  tags: [triathlon, olympic, swim, bike, run, glycogen, fatigue, bonk, pacing, energy_system]
+  references:
+    - "Hausswirth C & Lehénaff D (2001) Physiological demands of running during long distance runs and triathlons. Sports Med 31(9):679-689."
+    - "Laursen PB & Jenkins DG (2002) The scientific basis for high-intensity interval training. Sports Med 32(1):53-73."
+    - "O'Toole ML & Douglas PS (1995) Applied physiology of triathlon. Sports Med 19(4):251-267."
+    - "Millet GP & Vleck VE (2000) Physiological and biomechanical adaptations to the cycle to run transition in Olympic triathlon. Br J Sports Med 34(5):384-388."
+    - "Jeukendrup AE & Martin J (2001) Improving cycling performance: how should we spend our time and money. Sports Med 31(7):559-569."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  current_sport:
+    type: input
+    value: 0.0
+    unit: "0=swim,1=bike,2=run"
+    bounds: [0.0, 2.0]
+    description: "当前运动项目（0=游泳，1=自行车，2=跑步）。YAML schedule 按时间顺序切换项目"
+  intensity_pct_threshold:
+    type: input
+    value: 75.0
+    unit: "%threshold"
+    bounds: [50.0, 105.0]
+    description: "当前强度（% 无氧阈值功率/配速）。70%=轻松有氧，85%=中高强度，100%=全力竞速"
+  energy_stores_glycogen:
+    type: state
+    value: 450.0
+    unit: g
+    bounds: [0.0, 600.0]
+    description: "糖原储量（g）。训练有素运动员肝糖原+肌糖原约 400-500g（Jeukendrup 2001）；邦克阈值 < 20g"
+    io_role: output
+  energy_stores_fat:
+    type: state
+    value: 8000.0
+    unit: g
+    bounds: [1000.0, 30000.0]
+    description: "脂肪储量（g）。普通成年男性约 12-15 kg（体脂 15-20%）；运动中可利用脂肪约 8-10 kg"
+    io_role: output
+  heart_rate:
+    type: state
+    value: 65.0
+    unit: bpm
+    bounds: [50.0, 210.0]
+    description: "心率（bpm）。游泳约 155-170，自行车 150-165，跑步（疲劳后）160-175"
+    io_role: output
+  fatigue_accumulated:
+    type: state
+    value: 0.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "跨三项目累积疲劳（>40 开始影响跑步效率，>70 配速显著下降）"
+    io_role: output
+  race_time_elapsed:
+    type: state
+    value: 0.0
+    unit: minutes
+    bounds: [0.0, 300.0]
+    description: "已用竞赛时间（分钟）。终值即为总完赛时间"
+    io_role: output
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  glycogen_burn_rate_base:
+    type: parameter
+    value: 2.5
+    unit: g/min
+    description: "基准糖原消耗率（g/min，80%阈值强度时）。跑步约 2.5-3.5 g/min，自行车约 1.8-2.5 g/min（Jeukendrup 2001）"
+    reference: "Jeukendrup AE & Martin J (2001) Sports Med 31(7):559-569"
+  fat_burn_rate_base:
+    type: parameter
+    value: 0.6
+    unit: g/min
+    description: "基准脂肪消耗率（g/min，70%阈值强度时）。有氧为主时约 0.5-1.0 g/min；高强度时几乎不用脂肪"
+    reference: "O'Toole ML & Douglas PS (1995) Sports Med 19(4):251-267"
+  sport_metabolic_factor:
+    type: parameter
+    value: 1.0
+    unit: dimensionless
+    description: "项目代谢因子（游泳=0.85 较低因水浮力；自行车=1.0；跑步=1.15 较高因体重支撑）"
+
+formulas:
+  glycogen_depletion:
+    description: "糖原消耗：高强度（>80%阈值）以糖原为主；脂肪参与度随强度降低而增加（能量系统切换）"
+    condition: "intensity_pct_threshold > 0"
+    priority: 10
+    dynamics:
+      energy_stores_glycogen: "max(0.0, energy_stores_glycogen - glycogen_burn_rate_base * (intensity_pct_threshold / 80.0) ** 2.5 * sport_metabolic_factor)"
+  fat_depletion:
+    description: "脂肪消耗：低强度有氧时主要供能；高强度时几乎停止（脂肪利用率随强度增加而线性下降）"
+    condition: "intensity_pct_threshold > 0"
+    priority: 9
+    dynamics:
+      energy_stores_fat: "max(0.0, energy_stores_fat - fat_burn_rate_base * max(0.0, 1.0 - (intensity_pct_threshold - 60.0) * 0.025) * sport_metabolic_factor)"
+  heart_rate_response:
+    description: "心率响应：基于强度和累积疲劳；跑步段（运动 2）因换项后 HR 通常偏高"
+    condition: true
+    priority: 8
+    dynamics:
+      heart_rate: "min(210.0, 65.0 + intensity_pct_threshold * 1.4 + fatigue_accumulated * 0.3 + current_sport * 3.0)"
+  fatigue_accumulate:
+    description: "疲劳积累：强度、项目（跑步>自行车>游泳）和糖原水平共同驱动；糖原低时疲劳加速"
+    condition: "intensity_pct_threshold > 0"
+    priority: 7
+    dynamics:
+      fatigue_accumulated: "min(100.0, fatigue_accumulated + (intensity_pct_threshold / 75.0) * 0.08 * (1.0 + current_sport * 0.15) * (1.0 + max(0.0, 100.0 - energy_stores_glycogen) * 0.005))"
+  race_time_progress:
+    description: "竞赛时间累积（每分钟 +1）"
+    condition: true
+    priority: 5
+    dynamics:
+      race_time_elapsed: "race_time_elapsed + 1.0"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables: [energy_stores_glycogen, energy_stores_fat, heart_rate, fatigue_accumulated, race_time_elapsed]
+  schedules:
+    # 游泳段（0-20分钟）
+    - variable: current_sport
+      time: "07:00"
+      value: 0.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "游泳段（1.5km，约 20 分钟）"
+    - variable: intensity_pct_threshold
+      time: "07:00"
+      value: 72.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "游泳强度（72% 阈值，节能）"
+    # 换项 T1（20-22分钟）→ 自行车段
+    - variable: current_sport
+      time: "07:20"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "换项 T1 → 自行车段（40km，约 70 分钟）"
+    - variable: intensity_pct_threshold
+      time: "07:20"
+      value: 78.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "自行车强度（78% 阈值，中等强度）"
+    # 换项 T2（90-92分钟）→ 跑步段
+    - variable: current_sport
+      time: "08:30"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "换项 T2 → 跑步段（10km，约 40 分钟）"
+    - variable: intensity_pct_threshold
+      time: "08:30"
+      value: 75.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "跑步强度（75% 阈值，控制糖原消耗）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: race_time_elapsed
+      metric: final
+      direction: minimize
+      description: "最小化总完赛时间（分钟）"
+    - variable: energy_stores_glycogen
+      metric: final
+      direction: maximize
+      description: "最大化终点糖原储量（防止邦克，保留储备）"
+  constraints:
+    - variable: energy_stores_glycogen
+      condition: ">= 20"
+      type: hard
+      description: "邦克防护：糖原不低于 20g（低于此值发生强制减速，影响完赛）"
+    - variable: heart_rate
+      condition: "<= 195"
+      type: hard
+      description: "心率安全上限 195 bpm"
+  regimen:
+    variable: intensity_pct_threshold
+    description: "优化各运动段强度（% 无氧阈值）"
+    events:
+      - time: "07:00"
+        dose_bounds: [65.0, 90.0]
+        label: "游泳段强度（%阈值，65=保守，90=激进）"
+      - time: "07:20"
+        dose_bounds: [65.0, 90.0]
+        label: "自行车段强度（%阈值，65=保守，90=激进）"
+      - time: "08:30"
+        dose_bounds: [65.0, 90.0]
+        label: "跑步段强度（%阈值，65=保守，90=激进）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 78.5
+    pareto_front:
+      - {x: [65.0, 65.0, 65.0], f: [138.0, -285.0]}
+      - {x: [70.0, 72.0, 70.0], f: [131.0, -220.0]}
+      - {x: [72.0, 78.0, 75.0], f: [127.0, -148.0]}
+      - {x: [75.0, 82.0, 78.0], f: [123.0, -85.0]}
+      - {x: [78.0, 86.0, 80.0], f: [120.0, -42.0]}
+      - {x: [82.0, 90.0, 85.0], f: [117.0, -12.0]}
+    best:
+      x: [72.0, 78.0, 75.0]
+      f: [127.0, -148.0]
+      regimen:
+        intensity_pct_threshold:
+          "游泳段强度": 72.0
+          "自行车段强度": 78.0
+          "跑步段强度": 75.0
+      objectives:
+        race_time_elapsed: 127.0
+        energy_stores_glycogen: 148.0

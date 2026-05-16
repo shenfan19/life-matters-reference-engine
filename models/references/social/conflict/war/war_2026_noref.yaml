@@ -1,14 +1,26 @@
 metadata:
   name: war
-  updated: 2026-04-23
+  updated: 2026-05-17
   author: Fan Shen
   description:
-    brief: "战争风险动力学模型：包含区域紧张度（R1）、武装冲突（R2）与社会动荡（R3）。"
-    need: 作为社会动力学参考模块，为历史、文学或经济场景提供可复用机制。
-    method: 包含 7 个变量和 3 个方程，描述 geopolitical_tension、conflict_intensity、social_stability、resource_scarcity 的状态演化。
-    simulation: 默认仿真从 2026-01-01 到 2026-12-31，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  tags: [risk, war, social]
+    brief: 战争风险动力学模型，基于Lewis Fry Richardson方程和Richardson Arms Race Model，量化地缘政治紧张度、冲突烈度与社会代价的动态关系。
+    need: 为历史战争场景（二战、冷战、现代局部冲突）和文学场景提供可复用的冲突动力学基础模块。
+    method: |
+      Richardson军备竞赛框架：紧张度增长由安全恐惧（fatigue系数）和军事扩张（外源刺激）驱动，
+      由怠惰（α衰减）和外交努力缓解。冲突烈度通过阈值触发函数从紧张度派生。
+      月步长，适合年际冲突演化时间尺度。
+    simulation: 默认仿真1年，以中等紧张度（30/100分）为基线，观察不同外交和军事策略的冲突演化路径。
+    limitations: |
+      高度简化模型，未区分核威慑与常规战争；
+      未包含国内政治（民族主义、领导人决策）；
+      Richardson框架原为二元对立（两国），多边冲突需要网络扩展。
+  tags: [war, conflict, geopolitics, Richardson, arms-race, social]
+  references:
+    - "Richardson LF (1960) Arms and Insecurity. Boxwood Press & Quadrangle Books, Pittsburgh."
+    - "Goldstein JS (1992) A conflict-cooperation scale for WEIS events data. J Confl Resolut 36(2):369-385."
+    - "Collier P & Hoeffler A (2004) Greed and grievance in civil war. Oxford Econ Pap 56(4):563-595."
+    - "Fearon JD & Laitin DD (2003) Ethnicity, insurgency, and civil war. Am Polit Sci Rev 97(1):75-90."
+    - "Stockholm International Peace Research Institute (SIPRI) Yearbook 2023. SIPRI, Stockholm."
   step_size:
     value: 1
     unit: month

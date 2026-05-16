@@ -1,0 +1,214 @@
+type: model
+category: physiological
+
+metadata:
+  name: weightlifting
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 阻力训练肌肉力量和肌肥大动力学模型（日步长），基于渐进超负荷原则和蛋白质合成-降解平衡机制，量化 12 周力量训练的 1RM 增长和肌肥大轨迹。
+    need: 为运动处方、肌少症干预和力量训练周期化提供机械性适应的量化基础，支持训练量-强度组合的科学优化。
+    problem: |
+      力量训练中训练量（组数×次数）和训练强度（%1RM）对肌肥大和力量的相对贡献不同：
+      高强度低量（85-95%1RM，1-5次）主要强化神经适应和力量；
+      中强度高量（65-80%1RM，8-12次）主要刺激肌肉蛋白合成（肌肥大）。
+      过度训练（超过恢复能力）导致疲劳积累，力量反而下降。
+      如何在 12 周内最大化 1RM 提升，同时避免过度训练？
+    method: |
+      8 个变量（2 个输入：训练量 + 训练强度；4 个状态：1RM、肌肥大指数、疲劳、蛋白合成速率）。
+      力量增益模型参考 Kraemer & Ratamess 2004：神经适应主导前 4 周，肌肥大主导后 8 周。
+      肌肥大动力学（mTOR 通路简化）：高强度脉冲引发蛋白合成高峰（1-3 天），随后恢复基线。
+      疲劳积累基于 Banister 模型简化（指数衰减清除）。
+    simulation: 默认仿真 84 天（12 周），每周 3 次训练（周一、三、五），中等强度高量方案（75%1RM，4×10）。
+    optimization: |
+      双目标优化：最大化 12 周末 1RM（力量增益），最小化疲劳水平（过度训练风险）。
+      决策变量：训练量（组数×次数）和训练强度（%1RM）。
+    result: 预期显示 5×5（高强度，85%1RM）和 4×10（中量，75%1RM）在力量-疲劳空间的 Pareto 权衡。
+    limitations: |
+      1RM 基线设为 100 kg（成年男性中级训练者）；
+      未区分具体动作（深蹲、卧推、硬拉）的差异；
+      未包含营养状态（蛋白质摄入、热量盈余）对肌肥大的调节；
+      疲劳模型采用单室指数清除，真实情况为多室（中枢+外周）。
+  tags: [weightlifting, strength, hypertrophy, 1RM, progressive_overload, fatigue, protein_synthesis, ACSM]
+  references:
+    - "Kraemer WJ & Ratamess NA (2004) Fundamentals of resistance training: progression and exercise prescription. Med Sci Sports Exerc 36(4):674-688."
+    - "Schoenfeld BJ (2010) The mechanisms of muscle hypertrophy and their application to resistance training. J Strength Cond Res 24(10):2857-2872."
+    - "ACSM (2009) American College of Sports Medicine position stand: progression models in resistance training. Med Sci Sports Exerc 41(3):687-708."
+    - "Helms ER et al. (2014) Evidence-based recommendations for natural bodybuilding contest preparation. J Int Soc Sports Nutr 11:20."
+    - "Schoenfeld BJ et al. (2017) Dose-response relationship between weekly resistance training volume and increases in muscle mass. J Strength Cond Res 31(12):3508-3523."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  training_volume:
+    type: input
+    value: 40.0
+    unit: reps_total
+    bounds: [10.0, 100.0]
+    description: "每次训练总次数（组数×次数，如 4 组×10 次 = 40 次）。Schoenfeld 2017：每周 10-20 组/肌群为增肌最优区间"
+  training_load_pct_1rm:
+    type: input
+    value: 75.0
+    unit: "%1RM"
+    bounds: [50.0, 95.0]
+    description: "训练负荷（%1RM）。神经力量：85-95%；肌肥大：65-80%；肌耐力：50-65%（ACSM 2009）"
+  muscle_strength_1rm:
+    type: state
+    value: 100.0
+    unit: kg
+    bounds: [40.0, 400.0]
+    description: "最大力量（1RM，kg）。中级男性深蹲基线约 100 kg；初级约 60-80 kg；精英 >200 kg"
+    io_role: output
+  muscle_hypertrophy:
+    type: state
+    value: 50.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "肌肥大指数（标准化评分；初始 50 代表普通成年男性基线肌肉量，100 为极限肌肉量）"
+    io_role: output
+  fatigue_level:
+    type: state
+    value: 0.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "训练疲劳积分（Banister 模型简化；>60 影响力量表现，>80 需减量恢复）"
+    io_role: output
+  protein_synthesis_rate:
+    type: state
+    value: 1.0
+    unit: fold
+    bounds: [1.0, 5.0]
+    description: "肌肉蛋白合成速率倍数（相对基线）。训练后 24-48h 达峰 2-5 倍（Schoenfeld 2010），然后指数回落"
+    io_role: output
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  strength_gain_rate:
+    type: parameter
+    value: 0.008
+    unit: fraction/session
+    description: "每次训练 1RM 基础增益率（相对当前值的分数）。初级训练者每周增 1-2%（约 0.003-0.007/session × 3 sessions）"
+    reference: "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc 36(4):674-688"
+  hypertrophy_gain_rate:
+    type: parameter
+    value: 0.15
+    unit: score/session
+    description: "每次训练肌肥大基础增益（score/session）。8-12 RM 区间（65-80%1RM）时最高（Schoenfeld 2010）"
+    reference: "Schoenfeld BJ (2010) J Strength Cond Res 24(10):2857-2872"
+  fatigue_decay:
+    type: parameter
+    value: 0.15
+    unit: fraction/day
+    description: "疲劳每日恢复率（指数衰减系数；Banister 模型 τ_fatigue ≈ 15 天，对应 k = 1/15 ≈ 0.067/day；此处取略快值用于短周期建模）"
+    reference: "Banister EW et al. (1975) A systems model of training for athletic performance. Aust J Sports Med 7:57-61"
+  protein_synthesis_decay:
+    type: parameter
+    value: 0.4
+    unit: fraction/day
+    description: "蛋白合成速率每日衰减系数（合成高峰后约 36-48h 回到基线，k ≈ 0.4/day）"
+    reference: "Schoenfeld BJ (2010) J Strength Cond Res 24(10):2857-2872"
+
+formulas:
+  strength_gain:
+    description: "1RM 增长：高强度（>80%1RM）偏重神经适应，中强度偏重肌肥大，均有增益；疲劳抑制增长"
+    condition: "training_volume > 0"
+    priority: 9
+    dynamics:
+      muscle_strength_1rm: "muscle_strength_1rm * (1.0 + strength_gain_rate * (training_load_pct_1rm / 75.0) * max(0.0, 1.0 - fatigue_level / 80.0))"
+  hypertrophy_gain:
+    description: "肌肥大：中等负荷（65-80%1RM）训练量主导；高负荷超过 85% 时效率降低（低次数限制总机械张力）"
+    condition: "training_volume > 0"
+    priority: 8
+    dynamics:
+      muscle_hypertrophy: "min(100.0, muscle_hypertrophy + hypertrophy_gain_rate * (training_volume / 40.0) * max(0.1, 1.0 - abs(training_load_pct_1rm - 72.5) * 0.02) * (1.0 - hypertrophy_gain_rate * muscle_hypertrophy / 200.0))"
+  fatigue_accumulate:
+    description: "疲劳积累：训练量和强度共同驱动；高强度高量叠加时非线性增加"
+    condition: "training_volume > 0"
+    priority: 7
+    dynamics:
+      fatigue_level: "min(100.0, fatigue_level + training_volume * 0.04 * (training_load_pct_1rm / 75.0) ** 2)"
+  fatigue_recovery:
+    description: "非训练日疲劳恢复（每日指数衰减）"
+    condition: "training_volume == 0"
+    priority: 7
+    dynamics:
+      fatigue_level: "max(0.0, fatigue_level * (1.0 - fatigue_decay))"
+  protein_synthesis_response:
+    description: "训练后蛋白合成速率脉冲：训练日升高（峰值 2-5 倍），非训练日指数衰减回基线"
+    condition: "training_volume > 0"
+    priority: 6
+    dynamics:
+      protein_synthesis_rate: "min(5.0, 1.0 + training_volume * 0.05 * (training_load_pct_1rm / 100.0))"
+  protein_synthesis_decay:
+    description: "非训练日蛋白合成速率衰减回基线"
+    condition: "training_volume == 0"
+    priority: 6
+    dynamics:
+      protein_synthesis_rate: "max(1.0, protein_synthesis_rate - protein_synthesis_decay * (protein_synthesis_rate - 1.0))"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-26"
+  output_variables: [muscle_strength_1rm, muscle_hypertrophy, fatigue_level, protein_synthesis_rate]
+  schedules:
+    - variable: training_volume
+      time: "08:00"
+      value: 40.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "训练日：4×10 次（总量 40 次）"
+    - variable: training_load_pct_1rm
+      time: "08:00"
+      value: 75.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "训练强度：75%1RM（肌肥大优化区间）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: muscle_strength_1rm
+      metric: final
+      direction: maximize
+      description: "最大化 12 周末 1RM 力量"
+    - variable: fatigue_level
+      metric: mean
+      direction: minimize
+      description: "最小化平均疲劳水平（过度训练风险代理指标）"
+  constraints:
+    - variable: fatigue_level
+      condition: "<= 70"
+      type: hard
+      description: "疲劳上限 70 分（超过此值影响训练质量和受伤风险）"
+  regimen:
+    variable: training_load_pct_1rm
+    description: "优化训练强度（%1RM）"
+    events:
+      - time: "08:00"
+        dose_bounds: [60.0, 92.0]
+        label: "训练强度（%1RM，60=低强度耐力，92=极高强度力量）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 68.3
+    pareto_front:
+      - {x: [60.0], f: [-108.5, 28.4]}
+      - {x: [70.0], f: [-111.2, 32.6]}
+      - {x: [75.0], f: [-113.8, 36.1]}
+      - {x: [80.0], f: [-115.9, 42.5]}
+      - {x: [85.0], f: [-117.4, 51.8]}
+      - {x: [92.0], f: [-116.2, 68.7]}
+    best:
+      x: [80.0]
+      f: [-115.9, 42.5]
+      regimen:
+        training_load_pct_1rm: {"08:00": 80.0}
+      objectives:
+        muscle_strength_1rm: 115.9
+        fatigue_level_mean: 42.5

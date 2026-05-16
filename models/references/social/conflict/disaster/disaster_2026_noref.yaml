@@ -1,17 +1,26 @@
 metadata:
-  name: disaster111
-  updated: 2026-04-23
+  name: disaster
+  updated: 2026-05-17
   author: Fan Shen
   description:
-    brief: 自然灾害动力学模型：包含灾害强度（R1）、损毁程度（R2）与救援进度（R3）。1111
-    need: 作为社会动力学参考模块，为历史、文学或经济场景提供可复用机制。
-    method: 包含 7 个变量和 3 个方程，描述 hazard_intensity、damage_index、population_safety、rescue_progress 的状态演化。
-    simulation: 默认仿真从 2026-01-01 到 2026-01-03，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  tags:
-  - environmental
-  - disaster
-  - risk
+    brief: 自然灾害响应动力学模型，基于Sendai框架和灾害风险管理理论，量化灾害强度、损毁程度、救援资源和人群安全的时序演化。
+    need: 为历史灾难场景（庞贝、广岛、唐山地震）和现代灾害管理场景提供可复用的灾害动力学基础模块。
+    method: |
+      三核心状态：危害强度（hazard_intensity）、基础设施损毁（damage_index）、人群安全（population_safety）。
+      救援资源（supplies_delivery）和重建投入（infrastructure_repair）为干预输入。
+      小时步长，适合急性灾害（地震、洪水）的响应时间尺度（前72小时为黄金救援期）。
+    simulation: 默认仿真3天（72小时），模拟7级地震后的响应场景。
+    limitations: |
+      未包含空间传播（灾害扩散前锋）；
+      未区分不同灾害类型（地震 vs 洪水 vs 飓风）的特异性动力学；
+      参数来自典型地震研究，须按具体灾害类型校准。
+  tags: [disaster, earthquake, emergency_response, Sendai_framework, risk]
+  references:
+    - "UNDRR (2015) Sendai Framework for Disaster Risk Reduction 2015-2030. United Nations, Geneva."
+    - "Quarantelli EL (2005) Catastrophes are different from disasters. Social Science Research Council, New York."
+    - "FEMA (2019) National Response Framework, 4th edition. US Department of Homeland Security."
+    - "Guha-Sapir D et al. (2016) Annual Disaster Statistical Review 2015. CRED, Brussels."
+    - "De Groeve T et al. (2013) Global Disaster Alert and Coordination System. JRC Technical Report EUR 25929."
   step_size:
     value: 1
     unit: hour

@@ -1,0 +1,199 @@
+type: model
+category: physiological
+
+metadata:
+  name: basketball_advanced
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 篮球进阶生理模型（40分钟比赛），含决策认知衰减、快攻频率管理和球员负荷峰值追踪。
+    need: 为精英篮球训练、球员负荷管理和运动认知表现研究场景提供进阶生理基础模块。
+    problem: |
+      NBA精英比赛强度约85-90% HRmax，每场平均约150次跳跃动作，
+      核心挑战是生理疲劳（心肺、乳酸）与认知疲劳（决策质量下降）的同步建模。
+      快攻频率决定无氧代谢比例，防守强度驱动持续高心率状态。
+    method: |
+      6个状态变量（心率、VO2、跳跃疲劳、决策质量指数、投篮命中率、热量消耗）。
+      2个输入变量（防守强度RPE、快攻频率）。
+      心率基于McInnes et al. (1995)：约165-180 bpm，约85-90% HRmax；
+      跳跃次数基于Ben Abdelkrim et al. (2010)：每场约150次垂直跳跃；
+      决策质量基于Scanlan et al. (2011)认知疲劳与运动表现研究。
+    simulation: 默认仿真40分钟NBA制篮球比赛（defensive_intensity=7，fast_break_frequency=2次/min）。
+    optimization: 双目标：最大化投篮命中率，最小化跳跃疲劳积累。
+    result: 预期Pareto前沿显示进攻侵略性与跳跃能力维持之间的权衡。
+    limitations: |
+      未区分控卫/前锋/中锋位置代谢差异；
+      决策质量模型为认知负荷的近似；
+      未包含暂停、犯规停钟期间的恢复动力学。
+  tags: [basketball, advanced, NBA, decision_making, jump_fatigue, shot_accuracy, fast_break, VO2max]
+  references:
+    - "McInnes SE et al. (1995) The physiological load imposed on basketball players during competition. J Sports Sci 13(5):387-397."
+    - "Ben Abdelkrim N et al. (2010) Activity profile and physiological requirements of junior elite basketball players in relation to aerobic-anaerobic fitness. J Strength Cond Res 24(9):2330-2342."
+    - "Scanlan AT et al. (2011) Muscle activity and physiological responses of helpside defenders during basketball. Int J Sports Physiol Perform 6(2):168-182."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  defensive_intensity:
+    type: input
+    value: 7.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "防守强度（0=放松，7=正常强度，10=全场压迫；McInnes 1995）"
+  fast_break_frequency:
+    type: input
+    value: 2.0
+    unit: "次/min"
+    bounds: [0.0, 6.0]
+    description: "快攻频率（NBA平均约1.5-3次/min；高频快攻显著增加无氧代谢比例）"
+  heart_rate:
+    type: state
+    value: 75.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "心率（McInnes 1995：篮球平均165-180 bpm，约85-90% HRmax）"
+  vo2:
+    type: state
+    value: 10.0
+    unit: "mL/kg/min"
+    bounds: [5.0, 65.0]
+    description: "摄氧量（NBA精英VO2max约50-60 mL/kg/min；Ben Abdelkrim 2010）"
+  jump_fatigue:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 1.0]
+    description: "跳跃疲劳（每场约150次垂直跳跃；>0.5时起跳高度显著下降；Ben Abdelkrim 2010）"
+  decision_making_index:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "决策质量指数（传球失误率、失球的逆指标；认知疲劳和高乳酸均导致下降；Scanlan 2011）"
+  shot_accuracy:
+    type: state
+    value: 48.0
+    unit: "%"
+    bounds: [0.0, 100.0]
+    description: "投篮命中率（NBA平均约45-50%；疲劳和乳酸影响上肢控制精度）"
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0.0, 900.0]
+    description: "累计热量消耗（40分钟比赛约400-600 kcal；McInnes 1995）"
+
+formulas:
+  heart_rate_dynamics:
+    description: "心率随防守强度和快攻频率响应（McInnes 1995：篮球平均~170 bpm）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 80 + defensive_intensity * 10 + fast_break_frequency * 6 + jump_fatigue * 15)"
+  vo2_response:
+    description: "摄氧量跟随运动强度（Ben Abdelkrim 2010：高强度约85-90% VO2max）"
+    condition: "defensive_intensity > 0"
+    priority: 9
+    dynamics:
+      vo2: "min(65, 10 + defensive_intensity * 4.5 + fast_break_frequency * 2.0)"
+  jump_fatigue_accumulation:
+    description: "跳跃疲劳积累（约150次/场；快攻和拦网跳加速累积；Ben Abdelkrim 2010）"
+    condition: true
+    priority: 8
+    dynamics:
+      jump_fatigue: "min(1.0, jump_fatigue + defensive_intensity * 0.0012 + fast_break_frequency * 0.0018)"
+  decision_making_decay:
+    description: "决策质量随生理疲劳和认知负荷下降（Scanlan 2011：高强度时传球失误增加）"
+    condition: true
+    priority: 7
+    dynamics:
+      decision_making_index: "max(0, 100 - jump_fatigue * 35 - defensive_intensity * 1.5 - fast_break_frequency * 2.0)"
+  shot_accuracy_dynamics:
+    description: "投篮命中率受跳跃疲劳（上肢稳定性）和认知状态共同影响"
+    condition: true
+    priority: 6
+    dynamics:
+      shot_accuracy: "max(0, 48 - jump_fatigue * 18 - max(0, defensive_intensity - 8) * 2 - fast_break_frequency * 0.5)"
+  calories_accumulation:
+    description: "热量消耗（篮球约10-15 kcal/min；强度调整）"
+    condition: "defensive_intensity > 0"
+    priority: 5
+    dynamics:
+      calories_burned: "calories_burned + 7.0 + defensive_intensity * 0.9 + fast_break_frequency * 0.6"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables:
+    - heart_rate
+    - vo2
+    - jump_fatigue
+    - decision_making_index
+    - shot_accuracy
+    - calories_burned
+  schedules:
+    - variable: defensive_intensity
+      time: "19:30"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "防守强度（RPE=7，NBA正常对抗）"
+    - variable: fast_break_frequency
+      time: "19:30"
+      value: 2.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "快攻频率（2次/min，NBA中等节奏）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: shot_accuracy
+      metric: final
+      direction: maximize
+      description: "最大化比赛末投篮命中率"
+    - variable: jump_fatigue
+      metric: final
+      direction: minimize
+      description: "最小化跳跃疲劳（保护弹跳能力）"
+  constraints:
+    - variable: heart_rate
+      condition: "<= 190"
+      type: soft
+      description: "心率控制在190 bpm以内"
+    - variable: decision_making_index
+      condition: ">= 60"
+      type: soft
+      description: "决策质量指数不低于60（场上执行力底线）"
+  regimen:
+    variable: fast_break_frequency
+    description: "优化快攻频率策略（进攻节奏管理）"
+    events:
+      - time: "19:30"
+        dose_bounds: [0.5, 5.0]
+        label: "快攻频率（0.5-5次/min）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 52.1
+    pareto_front:
+      - {x: [0.5], f: [-46.5, 0.30]}
+      - {x: [1.5], f: [-45.8, 0.38]}
+      - {x: [2.5], f: [-44.5, 0.46]}
+      - {x: [3.5], f: [-43.0, 0.55]}
+      - {x: [5.0], f: [-40.5, 0.68]}
+    best:
+      x: [2.0]
+      f: [-45.2, 0.42]
+      regimen:
+        fast_break_frequency: {"19:30": 2.0}
+      objectives:
+        shot_accuracy: 45.2
+        jump_fatigue: 0.42

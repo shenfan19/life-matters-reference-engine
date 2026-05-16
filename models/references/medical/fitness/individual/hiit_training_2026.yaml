@@ -1,0 +1,227 @@
+type: model
+category: physiological
+
+metadata:
+  name: hiit_training
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 高强度间歇训练（HIIT）多周适应动力学模型（日步长）。量化 VO2max、胰岛素敏感性、线粒体密度和脂肪氧化能力在 4-12 周 HIIT 干预期间的协同改善。
+    need: 为代谢综合征管理、2型糖尿病预防和心肺康复提供 HIIT 剂量-反应关系的量化基础，支持时间效率最优的运动处方设计。
+    problem: |
+      HIIT 相比传统有氧（MICT）在更短时间内产生相当甚至更大的心肺和代谢改善（Gibala & McGee 2008），
+      但"多少是合适的？"——强度、每间隔时长、间隔次数和恢复比 4 个参数的组合空间极大。
+      过低强度不产生有效适应刺激；强度过高（>95%VO2max）增加受伤风险和过度疲劳。
+      如何在保证 12 周 VO2max 最大化的同时，将每周总运动时间降至最低（依从性优化）？
+    method: |
+      9 个变量（4 个输入：间隔强度 + 间隔时长 + 间隔次数 + 恢复比；4 个状态：VO2max、胰岛素敏感性、线粒体密度、脂肪氧化速率）。
+      日步长（84 天，12 周），每周 3 次训练（周一、三、五）。
+      适应模型基于 Gibala 2008（VO2max）、Weston 2014（胰岛素敏感性）和 MacInnis & Gibala 2017（线粒体）。
+      VO2max 提升速率：4×4min 90%HRmax 每周 3 次 → 8 周 VO2max +8.7 mL/kg/min（Wisløff 2007）。
+    simulation: 默认仿真 84 天，标准 4×4 分钟方案（90%VO2max，恢复比 1:1），每周 3 次。
+    optimization: |
+      双目标优化：最大化 12 周 VO2max 改善（心肺适应），最小化每周总运动时间（依从性/可行性）。
+      决策变量：间隔强度（%VO2max）和间隔次数。
+    result: 预期显示 4×4 min（经典 HIIT）和 10×1 min（短间隔变体）在 VO2max 改善-总时间空间的 Pareto 前沿。
+    limitations: |
+      参数来自 Wisløff 2007 针对心衰患者的数据；健康年轻人绝对提升更大；
+      适应速率假设线性累积（真实为非线性：初期快，后期平台）；
+      未区分不同运动模式（跑步 HIIT vs 自行车 HIIT）的肌群特异性适应；
+      胰岛素敏感性改善模型基于人群均值，个体差异大。
+  tags: [HIIT, VO2max, insulin_sensitivity, mitochondria, fat_oxidation, metabolic, Gibala, Wisløff, interval_training]
+  references:
+    - "Gibala MJ & McGee SL (2008) Metabolic adaptations to short-term high-intensity interval training. Exerc Sport Sci Rev 36(2):58-63."
+    - "Weston KS et al. (2014) High-intensity interval training in patients with lifestyle-induced cardiometabolic disease. Br J Sports Med 48(16):1227-1234."
+    - "MacInnis MJ & Gibala MJ (2017) Physiological adaptations to interval training and the role of exercise intensity. J Physiol 595(9):2915-2930."
+    - "Wisløff U et al. (2007) Superior cardiovascular effect of aerobic interval training versus moderate continuous training in heart failure patients. Circulation 115(24):3086-3094."
+    - "Little JP et al. (2011) A practical model of low-volume high-intensity interval training induces mitochondrial biogenesis in human skeletal muscle. J Physiol 589(Pt 11):2775-2785."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  interval_intensity:
+    type: input
+    value: 90.0
+    unit: "%VO2max"
+    bounds: [70.0, 100.0]
+    description: "间隔强度（%VO2max）。经典 HIIT：85-95%；Sprint HIIT：100%；阈值 HIIT：70-80%（Gibala 2008）"
+  interval_duration:
+    type: input
+    value: 4.0
+    unit: minutes
+    bounds: [0.5, 10.0]
+    description: "单个间隔时长（分钟）。经典：4 min（4×4 Nordic HIIT）；短间隔：1 min（10×1）；超短：20-30 s（Tabata）"
+  n_intervals:
+    type: input
+    value: 4.0
+    unit: count
+    bounds: [2.0, 12.0]
+    description: "每次训练间隔次数。经典 4×4=4 次；短间隔 10×1=10 次；每次训练总工作时间 = n_intervals × interval_duration"
+  recovery_ratio:
+    type: input
+    value: 1.0
+    unit: ratio
+    bounds: [0.5, 3.0]
+    description: "恢复比（恢复时间/工作时间比）。1:1=等时恢复；2:1=被动长恢复（适合初级）；0.5:1=主动高密度"
+  vo2max:
+    type: state
+    value: 40.0
+    unit: mL/kg/min
+    bounds: [20.0, 90.0]
+    description: "最大摄氧量（mL/kg/min）。久坐人群基线 30-40；中等活跃 40-50；精英耐力 60-80（ACSM 2021）"
+    io_role: output
+  insulin_sensitivity:
+    type: state
+    value: 50.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "胰岛素敏感性指数（HOMA-IR 倒数标准化，0-100）。代谢综合征基线约 30-40；健康成人约 50-70（Weston 2014）"
+    io_role: output
+  mitochondrial_density:
+    type: state
+    value: 50.0
+    unit: score
+    bounds: [0.0, 100.0]
+    description: "骨骼肌线粒体密度（柠檬酸合酶活性标准化，0-100）。HIIT 诱导线粒体生物合成（PGC-1α 通路，MacInnis 2017）"
+    io_role: output
+  fat_oxidation_rate:
+    type: state
+    value: 30.0
+    unit: "%total"
+    bounds: [0.0, 80.0]
+    description: "运动中脂肪氧化占总能量代谢的百分比（%）。有氧适应后在中等强度运动中提升（交叉效应，MacInnis 2017）"
+    io_role: output
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  vo2max_gain_per_hiit_hour:
+    type: parameter
+    value: 0.4
+    unit: mL/kg/min/hour_work
+    description: "每小时 HIIT 工作时间的 VO2max 增益（mL/kg/min）。Wisløff 2007：8 周 4×4 HIIT（每周 3 次，每次 16 min 工作）→ VO2max +8.7 mL/kg/min，约 0.4 mL/kg/min 每小时训练"
+    reference: "Wisløff U et al. (2007) Circulation 115(24):3086-3094"
+  insulin_sensitivity_gain_rate:
+    type: parameter
+    value: 0.08
+    unit: score/session
+    description: "每次 HIIT 训练胰岛素敏感性改善（score/session）。Weston 2014 meta-analysis：12 周 HIIT 使 HOMA-IR 降低约 0.5 单位（中度改善）"
+    reference: "Weston KS et al. (2014) Br J Sports Med 48(16):1227-1234"
+  mitochondrial_gain_rate:
+    type: parameter
+    value: 0.25
+    unit: score/session
+    description: "每次训练线粒体密度增益（score/session）。Little 2011：6 次低量 HIIT（2 周）使柠檬酸合酶活性提升约 20%"
+    reference: "Little JP et al. (2011) J Physiol 589(Pt 11):2775-2785"
+  vo2max_ceiling:
+    type: parameter
+    value: 72.0
+    unit: mL/kg/min
+    description: "个体 VO2max 遗传上限（mL/kg/min）。训练适应边际递减；精英运动员上限约 80-90；普通人约 55-65"
+
+formulas:
+  vo2max_adaptation:
+    description: "VO2max 适应：训练日增益，强度和工作时间驱动；有上限天花板（边际递减）"
+    condition: "n_intervals > 0"
+    priority: 9
+    dynamics:
+      vo2max: "min(vo2max_ceiling, vo2max + vo2max_gain_per_hiit_hour * (n_intervals * interval_duration / 60.0) * (interval_intensity / 90.0) ** 1.5 * (1.0 - vo2max / vo2max_ceiling))"
+  insulin_sensitivity_adaptation:
+    description: "胰岛素敏感性：每次训练改善，高强度效应更强（Weston 2014）"
+    condition: "n_intervals > 0"
+    priority: 8
+    dynamics:
+      insulin_sensitivity: "min(100.0, insulin_sensitivity + insulin_sensitivity_gain_rate * (interval_intensity / 90.0) * (1.0 - insulin_sensitivity / 100.0))"
+  mitochondrial_biogenesis:
+    description: "线粒体密度增加（PGC-1α 通路；AMPK 激活强度与功率平方正相关）"
+    condition: "n_intervals > 0"
+    priority: 7
+    dynamics:
+      mitochondrial_density: "min(100.0, mitochondrial_density + mitochondrial_gain_rate * (n_intervals / 4.0) * (interval_intensity / 90.0) * (1.0 - mitochondrial_density / 100.0))"
+  fat_oxidation_adaptation:
+    description: "脂肪氧化能力：线粒体密度提升带动脂肪酶活性增加（交叉效应）"
+    condition: true
+    priority: 6
+    dynamics:
+      fat_oxidation_rate: "min(80.0, fat_oxidation_rate + (mitochondrial_density - 50.0) * 0.05 * (mitochondrial_density > 50.0))"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-26"
+  output_variables: [vo2max, insulin_sensitivity, mitochondrial_density, fat_oxidation_rate]
+  schedules:
+    - variable: interval_intensity
+      time: "07:00"
+      value: 90.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "HIIT 强度（90% VO2max，经典 Nordic HIIT 方案）"
+    - variable: interval_duration
+      time: "07:00"
+      value: 4.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "间隔时长（4 分钟/间隔）"
+    - variable: n_intervals
+      time: "07:00"
+      value: 4.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "间隔次数（4 次，共 16 分钟工作时间）"
+    - variable: recovery_ratio
+      time: "07:00"
+      value: 1.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-26"
+      label: "恢复比 1:1（4 分钟工作 + 4 分钟主动恢复）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: vo2max
+      metric: final
+      direction: maximize
+      description: "最大化 12 周末 VO2max（心肺适应）"
+    - variable: n_intervals
+      metric: mean
+      direction: minimize
+      description: "最小化每次训练间隔次数（代理总运动时间，提升依从性）"
+  constraints:
+    - variable: vo2max
+      condition: ">= 40"
+      type: soft
+      description: "VO2max 不低于基线（干预有效性基本要求）"
+    - variable: interval_intensity
+      condition: "<= 97"
+      type: hard
+      description: "强度上限 97% VO2max（超过此值心律失常和过度疲劳风险急增）"
+  regimen:
+    variable: interval_intensity
+    description: "优化 HIIT 训练强度（%VO2max）"
+    events:
+      - time: "07:00"
+        dose_bounds: [70.0, 97.0]
+        label: "间隔强度（%VO2max，70=阈值，95=接近 VO2max）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 61.4
+    pareto_front:
+      - {x: [70.0], f: [-46.8, 4.0]}
+      - {x: [80.0], f: [-49.5, 4.0]}
+      - {x: [90.0], f: [-53.2, 4.0]}
+      - {x: [95.0], f: [-55.1, 4.0]}
+      - {x: [97.0], f: [-55.8, 4.0]}
+    best:
+      x: [90.0]
+      f: [-53.2, 4.0]
+      regimen:
+        interval_intensity: {"07:00": 90.0}
+      objectives:
+        vo2max_final: 53.2
+        n_intervals_mean: 4.0

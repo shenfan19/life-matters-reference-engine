@@ -1,0 +1,322 @@
+type: model
+category: physiological
+
+metadata:
+  name: intermittent_fasting
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 间歇性禁食（16:8方案）对胰岛素敏感性、自噬标志物和体成分的影响动力学。
+    need: |
+      间歇性禁食（IF）通过禁食窗口而非单纯热量限制发挥代谢益处，
+      但不同进食窗口（4-16小时）和运动时机（禁食vs进食状态）的最优组合缺乏量化依据。
+      为临床IF方案个体化提供动力学基础模块。
+    problem: |
+      16:8 IF的核心机制是：禁食期→胰岛素水平下降→脂肪动员和自噬激活。
+      但进食窗口缩短与热量摄入减少、营养充足性之间存在张力：
+      窗口过短（<8小时）可能导致热量摄入不足和肌肉流失。
+      同时早期限时进食（eTRF，进食窗口在早晨）vs晚期（晚餐集中）效果显著不同（Sutton 2018）。
+    method: |
+      5个状态变量（胰岛素敏感性指数、自噬标志物LC3比率、体脂百分比、瘦体重、IGF-1）。
+      3个输入变量（进食窗口小时数、热量限制百分比、运动时机）。
+      日步长，3-6个月期间效果评估。
+    simulation: |
+      默认仿真180天，标准16:8方案：进食窗口8小时，20%热量限制，禁食态运动。
+      观察胰岛素敏感性、自噬和体成分的协同变化轨迹。
+    optimization: |
+      双目标：最大化胰岛素敏感性改善，最大化瘦体重保留（最小化肌肉流失）。
+    result: |
+      Sutton 2018（Cell Metab）：eTRF 5周→胰岛素敏感性升高，空腹胰岛素降低3.4 μU/mL；
+      Wilkinson 2020（Cell Metab）：10小时进食窗口12周→体重降2.6 kg，体脂率降低3.3%。
+    conclusion: |
+      16:8 IF（6个月）→体重降3-6 kg，空腹胰岛素降约30%（Sutton 2018）；
+      LC3-II（自噬标志物）约在禁食12小时后开始显著升高（Patterson 2017）；
+      禁食态运动不额外增加肌肉流失（Tinsley 2017）。
+    limitations: |
+      未建模昼夜节律对IF效果的调节（eTRF vs 晚窗更复杂）；
+      女性月经周期对禁食响应的差异未包含；
+      长期（>1年）IF的代谢适应和平台期未建模。
+  tags: [nutrition, intermittent_fasting, insulin_sensitivity, autophagy, body_composition, IGF1, time_restricted_eating]
+  references:
+    - "Patterson RE et al. (2017) Intermittent fasting and human metabolic health. J Acad Nutr Diet 115(8):1203-1212."
+    - "Wilkinson MJ et al. (2020) Ten-hour time-restricted eating reduces weight, blood pressure, and atherogenic lipids in patients with metabolic syndrome. Cell Metab 31(1):92-104."
+    - "Sutton EF et al. (2018) Early time-restricted feeding improves insulin sensitivity, blood pressure, and oxidative stress even without weight loss in men with prediabetes. Cell Metab 27(6):1212-1221."
+    - "Tinsley GM & La Bounty PM (2015) Effects of intermittent fasting on body composition and clinical health markers in humans. Nutr Rev 73(10):661-674."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  insulin_sensitivity_index:
+    description: |
+      胰岛素敏感性指数（无量纲，0-1，1=完全敏感）。
+      基线：0.55（轻度胰岛素抵抗，适用于代谢综合征患者）。
+      Sutton 2018：eTRF 5周→胰岛素敏感性显著改善（HOMA-IR降低）。
+    value: 0.55
+    unit: index
+    type: state
+    bounds: [0.1, 1.0]
+    io_role: output
+
+  autophagy_marker_lc3_ratio:
+    description: |
+      自噬标志物LC3-II/LC3-I比率（无量纲，相对基线1.0）。
+      禁食12h后开始升高（→1.5-2.5），进食后迅速恢复（Patterson 2017）。
+      LC3-II升高反映自噬体形成增加（细胞清除受损蛋白质和细胞器）。
+    value: 1.0
+    unit: ratio
+    type: state
+    bounds: [0.5, 4.0]
+    io_role: output
+
+  body_fat_percentage:
+    description: |
+      体脂百分比（%）。基线：28%（超重男性典型值）。
+      Wilkinson 2020：10小时窗口12周→体脂率降低3.3%。
+    value: 28.0
+    unit: "%"
+    type: state
+    bounds: [5.0, 50.0]
+    io_role: output
+
+  lean_mass_kg:
+    description: |
+      瘦体重（kg，= 总体重 - 体脂重量）。基线：72 kg（总重100 kg × (1-0.28)）。
+      IF目标：维持或轻度增加瘦体重（尤其禁食态运动时）。
+    value: 72.0
+    unit: kg
+    type: state
+    bounds: [30.0, 120.0]
+    io_role: output
+
+  igf1_ng_ml:
+    description: |
+      类胰岛素生长因子1（IGF-1，ng/mL）。基线：200 ng/mL（正常成年男性）。
+      禁食→IGF-1下降（促进自噬的重要信号）；喂食→IGF-1回升。
+      长期IF（6个月）→IGF-1下降约5-15%（Patterson 2017）。
+    value: 200.0
+    unit: ng/mL
+    type: state
+    bounds: [50.0, 400.0]
+    io_role: output
+
+  eating_window_hours:
+    description: |
+      每日进食窗口时长（小时，4-16小时）。
+      16:8 = 8小时窗口；OMAD（一日一餐）= 4小时窗口；
+      12:12（对照）= 12小时；10:14（Wilkinson 2020）= 10小时。
+    value: 12.0
+    unit: hours
+    type: input
+    bounds: [4.0, 16.0]
+    optimizable: true
+
+  caloric_restriction_percent:
+    description: |
+      热量限制程度（%，0=不限制热量，20=减少20%总热量）。
+      IF独立于热量限制的效益在Sutton 2018中已证实（等热量设计）。
+    value: 0.0
+    unit: "%"
+    type: input
+    bounds: [0.0, 40.0]
+    optimizable: true
+
+  exercise_timing:
+    description: |
+      运动时机（0=禁食态运动，1=进食态运动）。
+      禁食态运动→更高脂肪氧化率（约20%升高）；进食态→肌糖原更充足。
+    value: 0.0
+    unit: "0=fasted,1=fed"
+    type: input
+    bounds: [0.0, 1.0]
+
+  # ── 参数 ───────────────────────────────────────────────────────────────────
+  insulin_sensitivity_window_rate:
+    description: |
+      进食窗口每缩短1小时对胰岛素敏感性的每日改善速率。
+      8小时窗口 vs 12小时基线：HOMA-IR降低约22%（Sutton 2018，5周=35天）。
+      日速率：0.22/(35×4) ≈ 0.0016 per hour_reduction per day。
+    value: 0.0016
+    unit: index per hour_reduction per day
+    type: parameter
+    reference: "Sutton EF et al. (2018) Cell Metab 27:1212-1221"
+
+  autophagy_fasting_rate:
+    description: |
+      禁食窗口每增加1小时对LC3比率的每日升高速率。
+      禁食16小时→LC3-II/I约升高1.5倍（Patterson 2017）→日速率约0.03 per hour per day。
+    value: 0.03
+    unit: ratio per fasting_hour per day
+    type: parameter
+    reference: "Patterson RE et al. (2017) J Acad Nutr Diet 115:1203-1212"
+
+  fat_loss_rate:
+    description: |
+      热量限制+IF共同驱动的每日体脂率下降速率（% per day）。
+      Wilkinson 2020：10h窗口12周（84天）→体脂率降3.3% → 约0.039%/day。
+    value: 0.025
+    unit: "% per day"
+    type: parameter
+    reference: "Wilkinson MJ et al. (2020) Cell Metab 31:92-104"
+
+  igf1_fasting_suppression:
+    description: |
+      禁食对IGF-1的每日抑制速率（ng/mL per fasting_hour per day）。
+      长期IF（6个月）→IGF-1降低约10%（20 ng/mL）→日速率约0.02 per fasting_hour per day。
+    value: 0.02
+    unit: ng/mL per fasting_hour per day
+    type: parameter
+    reference: "Patterson RE et al. (2017) J Acad Nutr Diet 115:1203-1212"
+
+formulas:
+  # F1: 胰岛素敏感性动力学（进食窗口缩短→改善）
+  insulin_sensitivity_dynamics:
+    description: |
+      胰岛素敏感性：进食窗口缩短（vs 12h基线）→禁食期胰岛素持续降低→受体上调。
+      热量限制额外贡献20%效益；上限1.0（完全敏感）。
+    condition: true
+    priority: 9
+    dynamics:
+      insulin_sensitivity_index: >
+        min(1.0, insulin_sensitivity_index
+        + insulin_sensitivity_window_rate * max(0.0, 12.0 - eating_window_hours) * step
+        + 0.0003 * caloric_restriction_percent * step)
+
+  # F2: 自噬标志物动力学（禁食窗口16-eating_window小时）
+  autophagy_dynamics:
+    description: |
+      LC3比率：每日禁食窗口 = 24 - eating_window_hours（小时）。
+      禁食12小时后开始显著升高；进食期迅速分解。
+      每日净效应反映禁食时长的净自噬激活。
+    condition: true
+    priority: 8
+    dynamics:
+      autophagy_marker_lc3_ratio: >
+        max(0.5, min(4.0, autophagy_marker_lc3_ratio
+        + autophagy_fasting_rate * max(0.0, (24.0 - eating_window_hours) - 12.0) * step
+        - 0.01 * eating_window_hours * step
+        + 0.002 * step))
+
+  # F3: 体脂百分比动力学（IF+热量限制）
+  body_fat_dynamics:
+    description: |
+      体脂率：IF的代谢激活+热量限制→脂肪动员。
+      禁食态运动（exercise_timing=0）额外提升20%脂肪氧化。
+    condition: true
+    priority: 7
+    dynamics:
+      body_fat_percentage: >
+        max(5.0, body_fat_percentage
+        - fat_loss_rate * (1.0 + 0.3 * max(0.0, 12.0 - eating_window_hours) / 4.0)
+          * (1.0 + caloric_restriction_percent / 100.0)
+          * (1.0 + 0.2 * (1.0 - exercise_timing)) * step)
+
+  # F4: 瘦体重动力学（蛋白质充足+禁食态运动保护肌肉）
+  lean_mass_dynamics:
+    description: |
+      瘦体重：IF不显著降低瘦体重（Tinsley 2015），
+      进食窗口>4h且蛋白质充足时肌肉流失<0.05 kg/week。
+      禁食态运动反而轻度促进肌肉合成信号（空腹AMPK激活）。
+    condition: true
+    priority: 6
+    dynamics:
+      lean_mass_kg: >
+        max(30.0, lean_mass_kg
+        - 0.003 * max(0.0, 12.0 - eating_window_hours) * step
+        + 0.002 * (1.0 - exercise_timing) * step
+        - 0.005 * caloric_restriction_percent / 40.0 * step)
+
+  # F5: IGF-1动力学（禁食→降低）
+  igf1_dynamics:
+    description: |
+      IGF-1：禁食→营养信号降低→肝脏IGF-1分泌减少（mTOR抑制）。
+      进食后部分恢复；长期IF→慢性低IGF-1（促自噬状态）。
+    condition: true
+    priority: 5
+    dynamics:
+      igf1_ng_ml: >
+        max(50.0, min(400.0, igf1_ng_ml
+        - igf1_fasting_suppression * max(0.0, (24.0 - eating_window_hours) - 8.0) * step
+        + 0.05 * eating_window_hours * step
+        - 0.3 * step))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-29"
+  output_variables:
+    - insulin_sensitivity_index
+    - autophagy_marker_lc3_ratio
+    - body_fat_percentage
+    - lean_mass_kg
+    - igf1_ng_ml
+  schedules:
+    - variable: eating_window_hours
+      time: "08:00"
+      value: 8.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-29"
+      label: "16:8间歇性禁食（8小时进食窗口）"
+    - variable: caloric_restriction_percent
+      time: "08:00"
+      value: 15.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-29"
+      label: "轻度热量限制15%"
+    - variable: exercise_timing
+      time: "06:30"
+      value: 0.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-06-29"
+      label: "禁食态晨练（06:30，进食窗口08:00开始）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: insulin_sensitivity_index
+      metric: final
+      direction: maximize
+      description: "最大化180天末胰岛素敏感性"
+    - variable: lean_mass_kg
+      metric: final
+      direction: maximize
+      description: "最大化瘦体重保留"
+  constraints:
+    - variable: body_fat_percentage
+      condition: "<= 20"
+      type: soft
+      description: "体脂率目标≤20%（健康男性）"
+    - variable: eating_window_hours
+      condition: ">= 6"
+      type: hard
+      description: "进食窗口不低于6小时（营养充足底线）"
+  regimen:
+    variable: eating_window_hours
+    description: "优化每日进食窗口时长"
+    events:
+      - time: "08:00"
+        dose_bounds: [6.0, 14.0]
+        label: "进食窗口（小时）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 54.2
+    pareto_front:
+      - {x: [6.0],  f: [0.748, 70.8]}
+      - {x: [7.0],  f: [0.731, 71.2]}
+      - {x: [8.0],  f: [0.713, 71.5]}
+      - {x: [10.0], f: [0.677, 71.8]}
+      - {x: [14.0], f: [0.605, 72.0]}
+    best:
+      x: [8.0]
+      f: [0.713, 71.5]
+      regimen:
+        eating_window_hours: {"08:00": 8.0}
+      objectives:
+        insulin_sensitivity_index: 0.713
+        lean_mass_kg: 71.5

@@ -1,0 +1,198 @@
+type: model
+category: physiological
+
+metadata:
+  name: volleyball
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 排球比赛生理模型（90分钟），间歇性爆发为主，扣球、拦网与防守滑步交替。
+    need: 为排球训练、爆发力-耐力结合运动干预场景提供运动生理基础模块。
+    problem: |
+      排球每次爆发持续约3-5秒（扣球、拦网跳），间歇期约15-20秒（准备/发球），
+      垂直起跳能力随疲劳下降是关键表现指标。
+      连续比赛中跳跃能力衰减模式与心率和乳酸动力学的关系需要建模。
+    method: |
+      6个状态变量（心率、VO2、跳跃能力指数、疲劳、拦网触及高度、热量消耗）。
+      2个输入变量（扣球强度、防守滑步频率）。
+      跳跃能力指数基于Sheppard et al. (2008)弹跳力衰减曲线；
+      心率基于Gabbett et al. (2007)实测数据，间歇特性对应约75-85% HRmax均值。
+    simulation: 默认仿真90分钟排球比赛（spike_intensity=7，dive_frequency=1次/min）。
+    optimization: 双目标：最大化跳跃能力维持，最小化疲劳终末值。
+    result: 预期Pareto前沿显示扣球强度与跳跃能力保持的权衡边界。
+    limitations: |
+      未区分不同位置（二传/主攻/自由人）的代谢差异；
+      跳跃次数模型未细分起跳类型（助跑扣球vs原地拦网）；
+      参数基于精英男子排球运动员。
+  tags: [volleyball, team, interval, explosive, jump_power, blocking, VO2]
+  references:
+    - "Sheppard JM et al. (2008) Relative importance of strength, power, and anthropometric measures on jump performance in elite volleyball players. J Strength Cond Res 22(3):758-765."
+    - "Palao JM et al. (2014) Physical actions and physiological load during short-duration volleyball competitions. Int J Perform Anal Sport 14(1):119-131."
+    - "Gabbett TJ et al. (2007) Physiological and anthropometric characteristics of junior elite and sub-elite volleyball players with consideration for the positions played. J Sports Sci 25(5):583-592."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  spike_intensity:
+    type: input
+    value: 7.0
+    unit: "RPE(0-10)"
+    bounds: [0.0, 10.0]
+    description: "扣球/拦网爆发强度（0=无跳跃，7=中等对抗，10=全力扣杀）"
+  dive_frequency:
+    type: input
+    value: 1.0
+    unit: "次/min"
+    bounds: [0.0, 5.0]
+    description: "防守滑步/鱼跃频率（精英自由人约每分钟1-3次）"
+  heart_rate:
+    type: state
+    value: 75.0
+    unit: "bpm"
+    bounds: [50.0, 200.0]
+    description: "心率（排球平均约150-165 bpm，约75-85% HRmax；Gabbett 2007）"
+  vo2:
+    type: state
+    value: 10.0
+    unit: "mL/kg/min"
+    bounds: [5.0, 65.0]
+    description: "摄氧量（排球间歇特征，平均约30-40 mL/kg/min）"
+  jump_power_index:
+    type: state
+    value: 100.0
+    unit: "分"
+    bounds: [0.0, 100.0]
+    description: "跳跃能力指数（100=比赛初始状态；精英垂直跳高均约80-90cm；Sheppard 2008）"
+  fatigue:
+    type: state
+    value: 0.0
+    unit: "无量纲"
+    bounds: [0.0, 1.0]
+    description: "综合疲劳指数（0=无疲劳，1=力竭；>0.5时跳跃能力明显衰减）"
+  blocking_reach:
+    type: state
+    value: 320.0
+    unit: "cm"
+    bounds: [200.0, 380.0]
+    description: "拦网触及高度（精英男子约320-340cm；疲劳导致起跳高度下降）"
+  calories_burned:
+    type: state
+    value: 0.0
+    unit: "kcal"
+    bounds: [0.0, 1000.0]
+    description: "累计热量消耗（90分钟比赛约400-700 kcal；Palao 2014）"
+
+formulas:
+  heart_rate_dynamics:
+    description: "心率随扣球强度和防守活动响应（Gabbett 2007：排球间歇性心率波动）"
+    condition: true
+    priority: 10
+    dynamics:
+      heart_rate: "min(200, 75 + spike_intensity * 9 + dive_frequency * 6 + fatigue * 12)"
+  vo2_response:
+    description: "摄氧量跟随运动强度（排球间歇特征均值约35 mL/kg/min）"
+    condition: "spike_intensity > 0"
+    priority: 9
+    dynamics:
+      vo2: "min(65, 8 + spike_intensity * 3.5 + dive_frequency * 2.0)"
+  jump_power_decay:
+    description: "跳跃能力随疲劳积累下降（Sheppard 2008：精英运动员跳跃力在高强度比赛后衰减约10-15%）"
+    condition: true
+    priority: 8
+    dynamics:
+      jump_power_index: "max(0, 100 - fatigue * 45 - max(0, spike_intensity - 7) * 1.0)"
+  fatigue_accumulation:
+    description: "疲劳由扣球跳跃和防守动作共同驱动（每小时约300次垂直跳跃；Palao 2014）"
+    condition: true
+    priority: 7
+    dynamics:
+      fatigue: "min(1.0, fatigue + spike_intensity * 0.0014 + dive_frequency * 0.0008)"
+  blocking_reach_decay:
+    description: "拦网高度随疲劳下降（起跳能力衰减导致触球点降低）"
+    condition: true
+    priority: 6
+    dynamics:
+      blocking_reach: "max(200, 320 - fatigue * 50)"
+  calories_accumulation:
+    description: "热量消耗（排球约5-8 kcal/min，间歇特性下强度调整）"
+    condition: "spike_intensity > 0"
+    priority: 5
+    dynamics:
+      calories_burned: "calories_burned + 4.0 + spike_intensity * 0.55 + dive_frequency * 0.5"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-01"
+  output_variables:
+    - heart_rate
+    - vo2
+    - jump_power_index
+    - fatigue
+    - blocking_reach
+    - calories_burned
+  schedules:
+    - variable: spike_intensity
+      time: "09:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "扣球强度（RPE=7，中高强度对抗）"
+    - variable: dive_frequency
+      time: "09:00"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-01"
+      label: "防守鱼跃频率（1次/min）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: jump_power_index
+      metric: final
+      direction: maximize
+      description: "最大化比赛末跳跃能力维持"
+    - variable: fatigue
+      metric: final
+      direction: minimize
+      description: "最小化比赛末疲劳指数"
+  constraints:
+    - variable: heart_rate
+      condition: "<= 185"
+      type: soft
+      description: "心率控制在185 bpm以内"
+    - variable: blocking_reach
+      condition: ">= 280"
+      type: soft
+      description: "拦网高度不低于280cm（技战术下限）"
+  regimen:
+    variable: spike_intensity
+    description: "优化扣球强度分配策略"
+    events:
+      - time: "09:00"
+        dose_bounds: [4.0, 10.0]
+        label: "扣球强度（RPE 4-10）"
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 55.3
+    pareto_front:
+      - {x: [4.0], f: [-85.0, 0.25]}
+      - {x: [5.5], f: [-80.0, 0.35]}
+      - {x: [7.0], f: [-72.0, 0.48]}
+      - {x: [8.5], f: [-62.0, 0.62]}
+      - {x: [10.0], f: [-50.0, 0.78]}
+    best:
+      x: [7.0]
+      f: [-72.0, 0.48]
+      regimen:
+        spike_intensity: {"09:00": 7.0}
+      objectives:
+        jump_power_index: 72.0
+        fatigue: 0.48

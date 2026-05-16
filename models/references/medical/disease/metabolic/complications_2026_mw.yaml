@@ -18,8 +18,8 @@ metadata:
     value: 1
     unit: minute
 imports:
-- glucose_regulation
-- inflammation
+- references/medical/physiology/glucose_regulation_2026_mw
+- references/medical/disease/metabolic/inflammation_2026_mw
 variables:
   neuropathy_severity:
     description: 神经病变严重程度
@@ -81,16 +81,9 @@ formulas:
     priority: 7
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-04-01"
   output_variables:
   - neuropathy_severity
   - nephropathy_severity
   - retinopathy_severity
   - cardiovascular_risk
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - cardiovascular_risk
-  variables_to_optimize:
-  - kidney_function

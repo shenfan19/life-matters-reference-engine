@@ -1,14 +1,26 @@
 metadata:
   name: labor
-  updated: 2026-04-23
+  updated: 2026-05-17
   author: Fan Shen
   description:
-    brief: "劳动力与经济动力学模型：包含工作量（R1）、收入与储蓄（R2）与疲劳度（R3）。"
-    need: 作为社会动力学参考模块，为历史、文学或经济场景提供可复用机制。
-    method: 包含 8 个变量和 3 个方程，描述 work_load、productivity、income_rate、savings 的状态演化。
-    simulation: 默认仿真从 2026-01-01 到 2026-12-31，用于观察核心状态随时间变化。
-    limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
-  tags: [social, socio_economic, labor]
+    brief: 劳动力经济动力学模型，基于人力资本理论和效率工资理论，量化工作量、收入、储蓄与疲劳的动态关系。
+    need: 为历史劳动场景（产业革命工人、现代职场压力）和经济政策分析（最低工资、劳工保护）提供可复用的经济-健康基础模块。
+    method: |
+      三核心状态（工作负荷、生产力、储蓄）+ 疲劳度状态。
+      基于效率工资理论（Shapiro & Stiglitz 1984）：高疲劳降低生产力；
+      技能培训通过人力资本积累（Becker 1964）提升时薪。
+      周步长，适合年度到数十年的劳动经济时间尺度。
+    simulation: 默认仿真1年（52周），标准工作制（40h/week）观察储蓄和疲劳动态。
+    limitations: |
+      未包含通货膨胀、失业风险和社会保障；
+      个体间差异（技能初值、行业类型）通过参数调整；
+      单个劳动者模型，不反映市场均衡和宏观动态。
+  tags: [labor, economics, human_capital, efficiency_wage, fatigue, savings]
+  references:
+    - "Becker GS (1964) Human Capital: A Theoretical and Empirical Analysis. Columbia University Press, New York."
+    - "Shapiro C & Stiglitz JE (1984) Equilibrium unemployment as a worker discipline device. Am Econ Rev 74(3):433-444."
+    - "OECD (2023) Hours Worked: Average annual hours actually worked per worker. OECD Employment Database."
+    - "Kivimäki M et al. (2015) Long working hours and risk of coronary heart disease and stroke. Lancet 385(9972):1739-1746."
   step_size:
     value: 1
     unit: week

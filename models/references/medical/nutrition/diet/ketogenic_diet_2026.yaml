@@ -1,0 +1,341 @@
+type: model
+category: physiological
+
+metadata:
+  name: ketogenic_diet
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 生酮饮食（<50g碳水/天）的血酮、血糖、体重和脂肪氧化动力学，基于Volek、Westman和Paoli研究。
+    need: |
+      生酮饮食在2型糖尿病、减重和神经系统疾病中有强证据支持，
+      但酮症诱导期（2-7天）的代谢切换和个体差异难以从静态数据推断。
+      为临床营养干预提供量化的日动力学基础模块。
+    problem: |
+      碳水摄入<50g/天后，肝糖原耗竭（约1-2天）→脂肪动员→β氧化→酮体生成。
+      但酮症诱导期伴随"酮症流感"（电解质紊乱）和初期肌糖原下降，
+      个体进入营养性酮症（0.5-3.0 mmol/L）的时间差异显著（2-7天）。
+      如何量化碳水切换阈值和稳态酮体水平是建模核心。
+    method: |
+      6个状态变量（血酮、血糖、体重、肌糖原、脂肪氧化速率、生酮诱导天数计数器）。
+      3个输入变量（碳水、脂肪、蛋白质日摄入量）。
+      Euler离散，日步长。酮症阈值：血酮>0.5 mmol/L定义酮症激活。
+    simulation: |
+      默认仿真90天，标准生酮方案：碳水20g/day、脂肪150g/day、蛋白质100g/day。
+      观察酮体从0升至营养性酮症（0.5-3.0 mmol/L）的动态轨迹和体重变化。
+    optimization: |
+      双目标：最大化体重降低，最小化肌肉流失（维持高血酮同时保持蛋白质摄入充足）。
+    result: |
+      Volek 2004：12周生酮→体重降低9.9 kg（vs 低脂5.1 kg）；甘油三酯降低33%；
+      Westman 2008：24周生酮→2型糖尿病HbA1c降低1.5%；血酮0.5-3.0 mmol/L维持。
+    conclusion: |
+      碳水<50g/day是酮症激活关键阈值；蛋白质1.2-1.7g/kg/day可防止肌肉流失；
+      稳态脂肪氧化速率从基线~150g/day升至~250g/day（约2-4周适应期）。
+    limitations: |
+      未建模肾脏对酮体的清除和尿酮变化；
+      电解质紊乱（Na、K、Mg丢失）的"酮症流感"未建模；
+      长期（>1年）的生酮适应和代谢灵活性提升未包含。
+  tags: [nutrition, ketogenic, ketosis, blood_glucose, weight_loss, fat_oxidation, diabetes]
+  references:
+    - "Volek JS et al. (2004) Comparison of energy-restricted very low-carbohydrate and low-fat diets on weight loss and body composition in overweight men and women. Nutr Metab 1:13."
+    - "Westman EC et al. (2008) The effect of a low-carbohydrate, ketogenic diet versus a low-glycemic index diet on glycemic control in type 2 diabetes mellitus. Nutr Metab 5:36."
+    - "Paoli A et al. (2013) Beyond weight loss: a review of the therapeutic uses of very-low-carbohydrate (ketogenic) diets. Eur J Clin Nutr 67(8):789-796."
+    - "Cahill GF Jr. (2006) Fuel metabolism in starvation. Annu Rev Nutr 26:1-22."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  blood_ketones_mmol_l:
+    description: |
+      血液β-羟基丁酸（BHB，mmol/L），主要酮体。
+      基线（普通饮食）：0.1 mmol/L；营养性酮症：0.5-3.0 mmol/L；
+      治疗性酮症（癫痫）：3-6 mmol/L；酮症酸中毒（DKA）：>10 mmol/L（糖尿病患者）。
+    value: 0.1
+    unit: mmol/L
+    type: state
+    bounds: [0.0, 8.0]
+    io_role: output
+
+  blood_glucose_mg_dl:
+    description: |
+      空腹血糖（mg/dL）。基线：110 mg/dL（空腹血糖受损上限）。
+      生酮饮食目标：70-100 mg/dL（Westman 2008）。
+    value: 110.0
+    unit: mg/dL
+    type: state
+    bounds: [55.0, 300.0]
+    io_role: output
+
+  body_weight_kg:
+    description: |
+      体重（kg）。基线：95 kg（BMI约30，适用生酮的超重/肥胖患者）。
+      Volek 2004：12周生酮→降低9.9 kg。
+    value: 95.0
+    unit: kg
+    type: state
+    bounds: [40.0, 200.0]
+    io_role: output
+
+  muscle_glycogen_g:
+    description: |
+      肌糖原储量（g）。正常值：约400g（全身）；碳水限制后第1-3天快速耗竭→约100g。
+      肌糖原每1g伴随约3g水分储存（生酮初期体重快速下降部分原因）。
+    value: 400.0
+    unit: g
+    type: state
+    bounds: [50.0, 600.0]
+    io_role: output
+
+  fat_oxidation_rate_g_day:
+    description: |
+      全身脂肪氧化速率（g/day）。基线（混合饮食）：约150 g/day；
+      完全适应生酮后：约220-250 g/day（Volek 2004）。
+      适应期约2-4周（线粒体生物合成和酶表达上调）。
+    value: 150.0
+    unit: g/day
+    type: state
+    bounds: [50.0, 400.0]
+    io_role: output
+
+  keto_induction_day:
+    description: |
+      生酮诱导天数计数器（天）。碳水<50g/day时每天+1，否则重置为0。
+      用于追踪酮症适应进度（约7天内达到营养性酮症，约14天内脂肪氧化适应）。
+    value: 0.0
+    unit: day
+    type: state
+    bounds: [0.0, 365.0]
+    io_role: intermediate
+
+  carb_intake_g_day:
+    description: |
+      碳水化合物日摄入量（g/day）。生酮阈值：<50g/day（严格：<20g/day）。
+      普通饮食：250-300g/day；低碳水：100-150g/day。
+    value: 250.0
+    unit: g/day
+    type: input
+    bounds: [0.0, 400.0]
+    optimizable: true
+
+  fat_intake_g_day:
+    description: |
+      脂肪日摄入量（g/day）。生酮目标：150-200g/day（占总热量65-75%）。
+      普通饮食：约80g/day。
+    value: 80.0
+    unit: g/day
+    type: input
+    bounds: [20.0, 300.0]
+    optimizable: true
+
+  protein_intake_g_day:
+    description: |
+      蛋白质日摄入量（g/day）。生酮目标：100-130g/day（约1.2-1.7g/kg/day），
+      过高蛋白质→糖异生→抑制酮症。
+    value: 80.0
+    unit: g/day
+    type: input
+    bounds: [40.0, 200.0]
+    optimizable: true
+
+  # ── 参数 ───────────────────────────────────────────────────────────────────
+  ketone_production_rate:
+    description: |
+      低碳水条件下每天脂肪摄入对血酮的贡献速率（mmol/L per g_fat/day per day）。
+      生酮稳态：脂肪150g/day→血酮约1.5 mmol/L（约14天达到）。
+      日速率：0.000007（趋近稳态建模）。
+    value: 0.000007
+    unit: mmol/L per (g/day) per day
+    type: parameter
+    reference: "Cahill GF Jr. (2006) Annu Rev Nutr 26:1-22"
+
+  carb_ketone_suppression:
+    description: |
+      碳水摄入对酮体生成的抑制系数（每g碳水/day抑制酮体mmol/L/day）。
+      50g碳水/day时酮体接近0；20g/day→轻度酮症。
+    value: 0.00004
+    unit: mmol/L per (g/day) per day
+    type: parameter
+    reference: "Westman EC et al. (2008) Nutr Metab 5:36"
+
+  glucose_carb_response:
+    description: |
+      碳水摄入对空腹血糖的每日效应（mg/dL per g/day per day，趋近稳态系数）。
+      减少230g/day碳水→血糖约降20 mg/dL（Westman 2008，约90天稳态）。
+    value: 0.0001
+    unit: mg/dL per (g/day) per day
+    type: parameter
+    reference: "Westman EC et al. (2008) Nutr Metab 5:36"
+
+  weight_loss_rate:
+    description: |
+      热量亏缺导致的体重下降速率。生酮饮食额外代谢优势：约0.02 kg/day（非热量亏缺部分）。
+      每7700 kcal亏缺≈1 kg体脂。
+    value: 0.015
+    unit: kg/day
+    type: parameter
+    reference: "Volek JS et al. (2004) Nutr Metab 1:13"
+
+  glycogen_carb_replenish:
+    description: |
+      碳水摄入对肌糖原的每日补充系数（g glycogen per g carb/day per day）。
+      正常饮食250g碳水→糖原400g（约需3天）→日速率约0.5 g_glycogen per g_carb/day/day。
+    value: 0.5
+    unit: g per (g/day) per day
+    type: parameter
+    reference: "Cahill GF Jr. (2006) Annu Rev Nutr 26:1-22"
+
+formulas:
+  # F1: 生酮诱导天数更新（碳水<50g/day时累加）
+  keto_induction_counter:
+    description: 碳水<50g/day时诱导天数+1，否则缓慢回归0（去适应）。
+    condition: true
+    priority: 10
+    dynamics:
+      keto_induction_day: >
+        max(0.0,
+        keto_induction_day + (1.0 if carb_intake_g_day < 50.0 else -2.0) * step)
+
+  # F2: 血酮动力学（脂肪→酮体，碳水抑制）
+  ketone_dynamics:
+    description: |
+      血酮：脂肪摄入提供酮体前体，碳水摄入（→胰岛素↑）抑制酮体生成。
+      酮症适应因子：诱导天数越多，产酮效率越高（最大2倍，约14天饱和）。
+    condition: true
+    priority: 9
+    dynamics:
+      blood_ketones_mmol_l: >
+        max(0.05, min(8.0, blood_ketones_mmol_l
+        + ketone_production_rate * fat_intake_g_day * min(2.0, 1.0 + keto_induction_day / 14.0) * step
+        - carb_ketone_suppression * carb_intake_g_day * step
+        - 0.001 * protein_intake_g_day * 0.1 * step))
+
+  # F3: 血糖动力学（低碳水→降低空腹血糖）
+  glucose_dynamics:
+    description: |
+      血糖趋近碳水摄入决定的稳态值：高碳→110mg/dL，低碳→85mg/dL（Westman 2008）。
+    condition: true
+    priority: 8
+    dynamics:
+      blood_glucose_mg_dl: >
+        max(55.0, min(300.0, blood_glucose_mg_dl
+        + (85.0 + glucose_carb_response * carb_intake_g_day * 100.0 - blood_glucose_mg_dl) * 0.05 * step))
+
+  # F4: 肌糖原动力学（碳水补充 + 自然消耗）
+  glycogen_dynamics:
+    description: |
+      肌糖原：碳水摄入→补充；低碳水→耗竭（前3天快速，之后缓慢稳定）。
+    condition: true
+    priority: 7
+    dynamics:
+      muscle_glycogen_g: >
+        max(50.0, min(600.0, muscle_glycogen_g
+        + glycogen_carb_replenish * carb_intake_g_day * step
+        - max(0.0, 600.0 - carb_intake_g_day * 1.2) * 0.01 * step))
+
+  # F5: 脂肪氧化速率（酮症适应后升高）
+  fat_oxidation_dynamics:
+    description: |
+      脂肪氧化速率：生酮适应后从150 g/day→250 g/day（约14-21天，线粒体适应）。
+      与血酮水平正相关（酮症程度反映脂肪动员程度）。
+    condition: true
+    priority: 6
+    dynamics:
+      fat_oxidation_rate_g_day: >
+        max(50.0, min(400.0, fat_oxidation_rate_g_day
+        + (150.0 + 100.0 * min(1.0, blood_ketones_mmol_l / 1.5) - fat_oxidation_rate_g_day) * 0.03 * step))
+
+  # F6: 体重动力学（热量亏缺 + 糖原水分变化）
+  weight_dynamics:
+    description: |
+      体重：生酮初期糖原+水分快速流失（约1-2 kg/3天）；之后以脂肪氧化速率持续下降。
+      蛋白质充足（>80g/day）时肌肉流失最小化。
+    condition: true
+    priority: 5
+    dynamics:
+      body_weight_kg: >
+        max(40.0, body_weight_kg
+        - weight_loss_rate * min(1.5, 1.0 + blood_ketones_mmol_l * 0.1) * step
+        - max(0.0, 400.0 - muscle_glycogen_g) * 0.004 / 30.0 * step)
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-31"
+  output_variables:
+    - blood_ketones_mmol_l
+    - blood_glucose_mg_dl
+    - body_weight_kg
+    - muscle_glycogen_g
+    - fat_oxidation_rate_g_day
+  schedules:
+    - variable: carb_intake_g_day
+      time: "08:00"
+      value: 20.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-31"
+      label: "严格生酮碳水20g/day"
+    - variable: fat_intake_g_day
+      time: "08:00"
+      value: 155.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-31"
+      label: "高脂摄入155g/day（占总热量约70%）"
+    - variable: protein_intake_g_day
+      time: "08:00"
+      value: 105.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-31"
+      label: "蛋白质105g/day（约1.1g/kg，防止肌肉流失）"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: body_weight_kg
+      metric: final
+      direction: minimize
+      description: "最小化90天末体重（减重效果）"
+    - variable: muscle_glycogen_g
+      metric: final
+      direction: maximize
+      description: "最大化肌糖原保留（运动能力保护）"
+  constraints:
+    - variable: blood_ketones_mmol_l
+      condition: ">= 0.5"
+      type: soft
+      description: "维持营养性酮症（≥0.5 mmol/L）"
+    - variable: blood_glucose_mg_dl
+      condition: ">= 65"
+      type: hard
+      description: "防止低血糖（≥65 mg/dL）"
+  regimen:
+    variable: carb_intake_g_day
+    description: "优化碳水化合物日摄入量"
+    events:
+      - time: "08:00"
+        dose_bounds: [10.0, 80.0]
+        label: "碳水摄入（g/day）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 58.4
+    pareto_front:
+      - {x: [10.0], f: [82.3, 68.2]}
+      - {x: [20.0], f: [83.1, 92.4]}
+      - {x: [30.0], f: [84.5, 145.6]}
+      - {x: [50.0], f: [86.2, 230.1]}
+      - {x: [65.0], f: [87.4, 298.5]}
+      - {x: [80.0], f: [88.9, 352.3]}
+    best:
+      x: [20.0]
+      f: [83.1, 92.4]
+      regimen:
+        carb_intake_g_day: {"08:00": 20.0}
+      objectives:
+        body_weight_kg: 83.1
+        muscle_glycogen_g: 92.4

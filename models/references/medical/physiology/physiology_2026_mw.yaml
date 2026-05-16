@@ -18,8 +18,8 @@ metadata:
     value: 1
     unit: minute
 imports:
-- insulin_system
-- glucose_regulation
+- references/medical/physiology/insulin_system_2026_mw
+- references/medical/physiology/glucose_regulation_2026_mw
 variables:
   liver_function:
     description: 肝功能系数
@@ -156,17 +156,10 @@ formulas:
     priority: 2
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-08"
   output_variables:
   - liver_function
   - pancreatic_function
   - gastric_function
   - intestinal_function
   - kidney_function
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - energy_expenditure
-  variables_to_optimize:
-  - insulin_sensitivity

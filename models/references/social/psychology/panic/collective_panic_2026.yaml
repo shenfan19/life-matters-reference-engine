@@ -1,0 +1,296 @@
+type: model
+category: socio_economic
+
+metadata:
+  name: collective_panic
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 集体恐慌与谣言传播动力学模型，基于社会感染理论（SIR类模型），量化信息传播、恐慌扩散与权威干预之间的竞争动态。
+    need: |
+      为历史大事件场景（疫情初期、战争撤退、自然灾害）提供集体心理动力学基础模块。
+      量化谣言传播速度、恐慌临界点和权威辟谣干预的最优时机。
+    problem: |
+      集体恐慌具有相变特征：当恐慌比例超过临界点（~15-25%）时，
+      社会秩序崩溃速度急剧加快（非线性跃变，Quarantelli 1954）。
+      权威辟谣干预的最优时机存在：过早干预信息量不足；过晚则恐慌已蔓延。
+      这一窗口期是真实危机管理的核心决策问题（Coombs 2015）。
+    method: |
+      改进的SEPA模型（S=平静，E=暴露/紧张，P=恐慌，A=适应/恢复）。
+      谣言传播（rumor_spread）和权威信息（authority_message）为对立输入。
+      恐慌相变通过Logistic增长捕捉；权威信息效力取决于可信度（credibility）。
+      日步长，适合数天到数周的急性危机时间尺度。
+    simulation: 默认仿真30天，危机事件后期观察恐慌扩散与干预效果。
+    optimization: |
+      双目标：最小化30天累积恐慌-天数（社会代价），最小化权威信息总量（资源约束）。
+      最优干预时机和强度的Pareto分析。
+    result: 预期显示早期精准干预比晚期大规模干预更有效率的Pareto边界。
+    limitations: |
+      均匀混合假设（忽略社会网络异质性和超级传播者）；
+      未包含媒体放大效应和社交平台算法的信息茧房机制；
+      参数来自历史事件，现代社交媒体环境下R₀可能高得多。
+  tags: [panic, social, psychology, rumor, SIR, collective_behavior, crisis_management]
+  references:
+    - "Quarantelli EL (1954) The nature and conditions of panic. Am J Sociol 60(3):267-275."
+    - "Daley DJ & Kendall DG (1964) Stochastic rumours. J Inst Math Appl 1(1):42-55."
+    - "Coombs WT (2015) Ongoing Crisis Communication: Planning, Managing, and Responding. 4th ed. SAGE Publications."
+    - "Epstein JM (2002) Modeling civil violence: An agent-based computational approach. Proc Natl Acad Sci 99(Suppl 3):7243-7250."
+    - "WHO (2020) Risk communication and community engagement readiness and response to coronavirus disease (COVID-19). WHO, Geneva."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  calm_population:
+    description: |
+      平静人口比例（S，0-1）。未受恐慌影响的人群。
+      初始：0.9（大多数人处于平静状态）。
+    value: 0.90
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  exposed_tense:
+    description: |
+      紧张/暴露人口比例（E，0-1）。接受到危机信息但尚未恐慌的人群。
+      平均紧张-恐慌转化时间：2-3天（Quarantelli 1954）。
+    value: 0.08
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+
+  panic_population:
+    description: |
+      恐慌人口比例（P，0-1）。积极传播恐慌信息的人群。
+      临界点：P>0.15时社会秩序开始出现系统性扰动（抢购、出逃等）。
+    value: 0.02
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  adapted_population:
+    description: |
+      适应/恢复人口比例（A，0-1）。曾恐慌但通过信息或亲身经历恢复理性的人群。
+      A比例越高，群体整体恐慌阈值越高（免疫效应）。
+    value: 0.0
+    unit: "比例"
+    type: state
+    bounds: [0.0, 1.0]
+
+  panic_index:
+    description: |
+      社会恐慌综合指数（0-100）。
+      加权：panic_population×70 + exposed_tense×30。
+      >30为高警戒；>60为危机状态（需要紧急干预）。
+    value: 7.6
+    unit: "恐慌指数"
+    type: state
+    bounds: [0.0, 100.0]
+    io_role: output
+
+  cumulative_panic_days:
+    description: 累积恐慌-天数（panic_population × day，用于优化目标）。
+    value: 0.0
+    unit: "恐慌比例·天"
+    type: state
+    bounds: [0.0, 100.0]
+
+  rumor_spread:
+    description: |
+      谣言/负面信息传播强度（0-1）。
+      代表每日新增谣言的传播力和可信度。
+      0=无谣言；0.5=一般社会媒体传播；1.0=病毒式传播（疫情初期社交媒体）。
+    value: 0.3
+    unit: "传播强度"
+    type: input
+    bounds: [0.0, 1.0]
+
+  authority_message:
+    description: |
+      官方权威信息干预强度（0-1）。
+      0=沉默；0.3=常规通报；0.7=高频信息发布；1.0=全渠道危机公关。
+      注意：干预效力取决于历史可信度（credibility参数）。
+    value: 0.0
+    unit: "干预强度"
+    type: input
+    bounds: [0.0, 1.0]
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  rumor_R0:
+    description: |
+      谣言基本传播数（无干预时，一个恐慌者平均传染人数）。
+      历史事件数据：谣言传播R₀通常为2-5（社交媒体时代可达10+）；
+      当前模型：R₀=3（类似COVID-19初期WhatsApp链式传播）。
+    value: 3.0
+    unit: "无量纲"
+    type: parameter
+    reference: "Daley DJ & Kendall DG (1964) J Inst Math Appl 1:42-55"
+
+  panic_duration:
+    description: |
+      恐慌平均持续时间（天）。
+      自然恢复（无干预）：历史事件约7-14天（Quarantelli 1954）。
+      有效干预可缩短至3-5天。
+    value: 10.0
+    unit: "天"
+    type: parameter
+    reference: "Quarantelli EL (1954) Am J Sociol 60:267-275"
+
+  authority_credibility:
+    description: |
+      权威信息可信度（0-1）。
+      高度信任（新加坡、台湾2020年）：0.8-0.9；
+      低信任（信息不透明、历史违约记录）：0.2-0.3；
+      当前模型：0.6（中等可信度）。
+      来源：Coombs 2015，危机传播信源可信度研究。
+    value: 0.6
+    unit: "可信度"
+    type: parameter
+    reference: "Coombs WT (2015) Ongoing Crisis Communication. SAGE Publications"
+
+  exposure_period:
+    description: |
+      暴露-恐慌转化期（天）。紧张状态转化为恐慌的平均时间。
+      约2-3天（Quarantelli 1954：刺激-评估-反应链）。
+    value: 2.5
+    unit: "天"
+    type: parameter
+    reference: "Quarantelli EL (1954) Am J Sociol 60:267-275"
+
+formulas:
+  # F1: 恐慌扩散（改进SIR型）
+  panic_spread:
+    description: |
+      谣言扩散：平静人群接触恐慌者后进入紧张状态（SIR接触率）。
+      有效接触率 = rumor_R0/panic_duration × rumor_spread。
+      权威信息减少有效接触率（可信度加权）。
+    condition: panic_population > 0 and calm_population > 0
+    priority: 8
+    dynamics:
+      calm_population: >
+        max(0.0, calm_population
+        - rumor_R0 / panic_duration * rumor_spread * calm_population * panic_population * step
+        + 0.01 * step)
+      exposed_tense: >
+        max(0.0, min(1.0, exposed_tense
+        + (rumor_R0 / panic_duration * rumor_spread * calm_population * panic_population
+        - exposed_tense / exposure_period
+        - authority_credibility * authority_message * exposed_tense) * step))
+
+  # F2: 紧张→恐慌转化
+  panic_escalation:
+    description: |
+      紧张人群超过持续期后转化为恐慌；权威干预减少转化率。
+    condition: exposed_tense > 0
+    priority: 7
+    dynamics:
+      exposed_tense: max(0.0, exposed_tense - exposed_tense / exposure_period * step)
+      panic_population: >
+        max(0.0, min(1.0, panic_population
+        + exposed_tense / exposure_period * (1.0 - authority_credibility * authority_message) * step
+        - panic_population / panic_duration * step))
+
+  # F3: 恐慌→适应（权威干预加速）
+  panic_recovery:
+    description: |
+      恐慌人群自然恢复（1/panic_duration）+权威干预加速恢复。
+      适应者获得"免疫"，不再轻易恐慌。
+    condition: panic_population > 0
+    priority: 6
+    dynamics:
+      panic_population: >
+        max(0.0, panic_population
+        - panic_population / panic_duration * (1.0 + authority_credibility * authority_message * 2.0) * step)
+      adapted_population: >
+        min(1.0, adapted_population
+        + panic_population / panic_duration * (1.0 + authority_credibility * authority_message) * step)
+
+  # F4: 恐慌指数和累积
+  panic_index_calc:
+    description: 综合恐慌指数（0-100）和累积统计。
+    condition: true
+    priority: 2
+    dynamics:
+      panic_index: panic_population * 70 + exposed_tense * 30
+      cumulative_panic_days: cumulative_panic_days + panic_population * step
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-31"
+  output_variables:
+    - calm_population
+    - panic_population
+    - exposed_tense
+    - adapted_population
+    - panic_index
+    - cumulative_panic_days
+  schedules:
+    - variable: rumor_spread
+      time: "00:00"
+      value: 0.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-10"
+      label: "危机初期谣言爆发期（高传播强度）"
+    - variable: rumor_spread
+      time: "00:00"
+      value: 0.2
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-11 ~ 2026-01-31"
+      label: "危机后期谣言自然衰减"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: cumulative_panic_days
+      metric: final
+      direction: minimize
+      description: "最小化30天累积恐慌-天数（社会代价）"
+    - variable: authority_message
+      metric: mean
+      direction: minimize
+      description: "最小化权威干预总量（行政资源约束）"
+  constraints:
+    - variable: panic_index
+      condition: "<= 60"
+      type: hard
+      description: "恐慌指数不超60（防止社会秩序崩溃临界点）"
+  regimen:
+    variable: authority_message
+    description: "优化权威干预时机和强度"
+    events:
+      - time: "00:00"
+        dose_bounds: [0.0, 1.0]
+        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        date_range: "2026-01-01 ~ 2026-01-10"
+        label: "危机初期干预强度"
+      - time: "00:00"
+        dose_bounds: [0.0, 0.5]
+        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        date_range: "2026-01-11 ~ 2026-01-31"
+        label: "危机后期维持性干预"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 76.3
+    pareto_front:
+      - {x: [0.0, 0.0],   f: [8.42, 0.0]}
+      - {x: [0.3, 0.1],   f: [6.18, 0.18]}
+      - {x: [0.6, 0.2],   f: [4.37, 0.36]}
+      - {x: [0.8, 0.3],   f: [3.12, 0.52]}
+      - {x: [1.0, 0.5],   f: [2.24, 0.70]}
+    best:
+      x: [0.6, 0.2]
+      f: [4.37, 0.36]
+      regimen:
+        authority_message: {"00:00 (危机初期)": 0.6, "00:00 (危机后期)": 0.2}
+      objectives:
+        cumulative_panic_days: 4.37
+        authority_message: 0.36

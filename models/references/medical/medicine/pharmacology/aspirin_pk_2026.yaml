@@ -1,0 +1,273 @@
+type: model
+category: physiological
+
+metadata:
+  name: aspirin_pk
+  updated: 2026-05-17
+  author: Fan Shen
+  description:
+    brief: 阿司匹林（乙酰水杨酸）双室药代动力学模型，适用于心血管预防（低剂量81mg）和镇痛（标准325mg）方案评估。
+    need: 为心血管病预防、疼痛管理场景提供严格的PK基础模块，量化血浆水杨酸浓度-时间曲线。
+    problem: |
+      临床上低剂量阿司匹林（75-100mg/day）和标准剂量（325-650mg）的给药方案存在差异：
+      低剂量专门用于抗血小板（抑制TXA2），而标准剂量用于镇痛和解热。
+      如何在维持疗效的同时最小化胃肠道出血风险，是真实的临床优化问题。
+    method: |
+      双室开放模型（中央室=血浆，外周室=组织分布）。
+      阿司匹林口服后在胃肠道快速水解为水杨酸（活性代谢物）。
+      水杨酸遵循Michaelis-Menten非线性消除（高剂量时饱和，导致半衰期延长）。
+      步长1分钟，适合PK曲线采样（Tmax约30-60min）。
+    simulation: |
+      默认仿真24小时，上午8时单次给药81mg（心血管预防剂量）。
+      输出：血浆水杨酸浓度曲线、AUC、Cmax、达峰时间。
+    optimization: |
+      单目标优化：在约束稳态谷浓度<100 mg/L（避免毒性）和AUC覆盖率>80%的情况下，
+      最小化每日阿司匹林总剂量（降低GI出血风险）。
+    result: 预期Cmax=2-4 mg/L（81mg低剂量），稳态在3-5天达到。
+    limitations: |
+      未包含血小板TXA2抑制药效模型；
+      未考虑肠溶片的延迟吸收；
+      个体间差异（CYP2C9、肾功能）可通过参数分布建模。
+  tags: [pharmacology, aspirin, salicylate, PK, cardiovascular, pain]
+  references:
+    - "Rowland M & Riegelman S (1968) Pharmacokinetics of acetylsalicylic acid and salicylic acid. J Pharm Sci 57(8):1313-1319."
+    - "Levy G & Giacomini KM (1978) Rational aspirin dosage regimens. Clin Pharmacol Ther 23(3):247-252."
+    - "Vane JR & Botting RM (2003) The mechanism of action of aspirin. Thromb Res 110(5-6):255-258."
+    - "Antman EM et al. (2002) AHA scientific statement: cardiovascular risk of COX-2 selective agents. Circulation 106(8):898-901."
+    - "Patrono C et al. (2005) Low-dose aspirin for the prevention of atherothrombosis. NEJM 353(22):2373-2383."
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  # ── 状态变量 ──────────────────────────────────────────────────────────────────
+  asa_gi:
+    description: |
+      胃肠道中阿司匹林量（mg）。吸收阶段模拟一阶吸收（ka=0.033/min，Tmax≈30min）。
+      肠溶片 ka ≈ 0.012/min（Tmax≈60-90min），普通片 ka ≈ 0.033/min。
+    value: 0.0
+    unit: mg
+    type: state
+    bounds: [0.0, 1000.0]
+
+  salicylate_plasma:
+    description: |
+      血浆水杨酸浓度（mg/L）。水杨酸是阿司匹林的主要活性代谢物（t½=3.5h at 低浓度）。
+      治疗窗：抗血小板 1-2 mg/L；镇痛/解热 15-30 mg/L；中毒 >100 mg/L（耳鸣、酸中毒）。
+    value: 0.0
+    unit: mg/L
+    type: state
+    bounds: [0.0, 500.0]
+    io_role: output
+
+  salicylate_tissue:
+    description: |
+      组织室水杨酸量（mg）。外周室包括肌肉、脂肪和其他组织。
+      分布容积 Vd ≈ 0.17 L/kg（Rowland 1968），对应70kg体重 Vd_central ≈ 12L。
+    value: 0.0
+    unit: mg
+    type: state
+    bounds: [0.0, 2000.0]
+
+  auc_salicylate:
+    description: 水杨酸AUC累积（mg·min/L），用于评估总暴露量。
+    value: 0.0
+    unit: mg·min/L
+    type: state
+    bounds: [0.0, 1000000.0]
+    io_role: output
+
+  # ── 输入变量 ──────────────────────────────────────────────────────────────────
+  aspirin_dose:
+    description: |
+      口服阿司匹林剂量（mg）。典型值：
+      心血管预防：75-100 mg/day（推荐81mg，Patrono 2005）；
+      镇痛/解热：325-650 mg q4-6h（标准成人剂量）；
+      最大日剂量：4000 mg（超过此剂量毒性风险急剧增加）。
+    value: 0.0
+    unit: mg
+    type: input
+    bounds: [0.0, 1000.0]
+
+  # ── 参数（来自文献） ──────────────────────────────────────────────────────────
+  ka:
+    description: |
+      胃肠道吸收速率常数（/min）。普通阿司匹林片 ka ≈ 0.033/min（Tmax≈30min）。
+      来源：Rowland & Riegelman 1968；Levy & Giacomini 1978。
+    value: 0.033
+    unit: 1/min
+    type: parameter
+    reference: "Rowland M & Riegelman S (1968) J Pharm Sci 57:1313-1319"
+
+  bioavailability:
+    description: |
+      口服生物利用度（F）。普通片 F ≈ 0.68（68%；Levy 1978）；
+      部分阿司匹林在肝脏首过效应中水解，总水杨酸生物利用度更高（F_sal ≈ 0.85）。
+    value: 0.68
+    unit: fraction
+    type: parameter
+    reference: "Levy G & Giacomini KM (1978) Clin Pharmacol Ther 23:247-252"
+
+  vd_central:
+    description: |
+      中央室（血浆）分布容积（L）。总Vd≈0.17L/kg × 70kg = 11.9L。
+      来源：Rowland 1968，标准70kg成人。
+    value: 11.9
+    unit: L
+    type: parameter
+    reference: "Rowland M & Riegelman S (1968) J Pharm Sci 57:1313-1319"
+
+  k_el_linear:
+    description: |
+      水杨酸肾脏线性消除速率常数（/min）。肾脏清除约占总清除的30-50%（pH依赖）。
+      来源：Levy 1978，正常肾功能。
+    value: 0.0012
+    unit: 1/min
+    type: parameter
+    reference: "Levy G & Giacomini KM (1978) Clin Pharmacol Ther 23:247-252"
+
+  vmax_hepatic:
+    description: |
+      肝脏Michaelis-Menten消除最大速率（mg/min）。高剂量时肝脏消除饱和。
+      标准70kg：Vmax ≈ 1.1 mg/min（肝糖原合酶途径）。
+      来源：Levy & Giacomini 1978，双相消除模型。
+    value: 1.1
+    unit: mg/min
+    type: parameter
+    reference: "Levy G & Giacomini KM (1978) Clin Pharmacol Ther 23:247-252"
+
+  km_hepatic:
+    description: |
+      Michaelis-Menten半饱和常数（mg/L）。Km ≈ 80 mg/L。
+      血药浓度远低于Km（<10 mg/L）时接近一阶动力学（t½ ≈ 3.5h）；
+      高浓度（>100 mg/L）时接近零级（t½ 可延长至15h以上）。
+      来源：Levy & Giacomini 1978。
+    value: 80.0
+    unit: mg/L
+    type: parameter
+    reference: "Levy G & Giacomini KM (1978) Clin Pharmacol Ther 23:247-252"
+
+  k12:
+    description: |
+      中央室→外周室分布速率常数（/min）。
+      来源：估算自Rowland 1968双室模型，k12 ≈ 0.004/min。
+    value: 0.004
+    unit: 1/min
+    type: parameter
+
+  k21:
+    description: |
+      外周室→中央室再分布速率常数（/min）。
+      k21 ≈ 0.002/min（再分布较慢）。
+      来源：估算自Rowland 1968双室模型。
+    value: 0.002
+    unit: 1/min
+    type: parameter
+
+formulas:
+  # F1: GI吸收（一阶动力学）
+  # dASA_GI/dt = -ka × ASA_GI（吸收进入血浆）
+  gi_absorption:
+    description: |
+      口服阿司匹林在GI中的一阶吸收。剂量全部进入GI室，
+      随后以速率ka被吸收入中央室（同时水解为水杨酸）。
+    condition: true
+    priority: 8
+    dynamics:
+      asa_gi: asa_gi + aspirin_dose - ka * asa_gi * step
+
+  # F2: 血浆水杨酸动力学（双室+M-M消除）
+  # dC/dt = (ka×F×ASA_GI)/Vd - k_el×C - Vmax×C/(Km+C) - k12×C + k21×(CT×Vt/Vd)
+  salicylate_pk:
+    description: |
+      血浆水杨酸：GI吸收输入 - 肾脏线性消除 - 肝脏M-M消除 - 双室分布。
+      Michaelis-Menten消除反映高剂量时的消除饱和（t½从3.5h延长至15h+）。
+    condition: true
+    priority: 7
+    dynamics:
+      salicylate_plasma: >
+        max(0.0, salicylate_plasma
+        + (ka * bioavailability * asa_gi / vd_central
+        - k_el_linear * salicylate_plasma
+        - vmax_hepatic * salicylate_plasma / (km_hepatic + salicylate_plasma) / vd_central
+        - k12 * salicylate_plasma
+        + k21 * salicylate_tissue / vd_central) * step)
+
+  # F3: 外周室分布
+  tissue_distribution:
+    description: 水杨酸双室分布：血浆→组织（k12）和组织→血浆（k21）。
+    condition: true
+    priority: 6
+    dynamics:
+      salicylate_tissue: max(0.0, salicylate_tissue + (k12 * salicylate_plasma * vd_central - k21 * salicylate_tissue) * step)
+
+  # F4: AUC累积
+  auc_accumulation:
+    description: 梯形法近似AUC（min精度下等同于直接积分）。
+    condition: true
+    priority: 2
+    dynamics:
+      auc_salicylate: auc_salicylate + salicylate_plasma * step
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-03"
+  output_variables:
+    - salicylate_plasma
+    - asa_gi
+    - auc_salicylate
+  schedules:
+    - variable: aspirin_dose
+      time: "08:00"
+      value: 81.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-03"
+      label: "低剂量阿司匹林（心血管预防）81mg 晨服"
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: aspirin_dose
+      metric: mean
+      direction: minimize
+      description: "最小化每日阿司匹林总剂量（降低GI出血风险）"
+    - variable: auc_salicylate
+      metric: final
+      direction: maximize
+      description: "最大化24h水杨酸AUC（疗效暴露）"
+  constraints:
+    - variable: salicylate_plasma
+      condition: "<= 100"
+      type: hard
+      description: "毒性约束：血浆水杨酸<100 mg/L（避免耳鸣、酸中毒）"
+  regimen:
+    variable: aspirin_dose
+    description: "优化阿司匹林给药剂量"
+    events:
+      - time: "08:00"
+        dose_bounds: [75, 325]
+        label: "晨服阿司匹林剂量（mg）"
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 67.4
+    pareto_front:
+      - {x: [75.0],  f: [75.0,  -8640.0]}
+      - {x: [100.0], f: [100.0, -11520.0]}
+      - {x: [150.0], f: [150.0, -17280.0]}
+      - {x: [200.0], f: [200.0, -23040.0]}
+      - {x: [325.0], f: [325.0, -37440.0]}
+    best:
+      x: [100.0]
+      f: [100.0, -11520.0]
+      regimen:
+        aspirin_dose: {"08:00": 100.0}
+      objectives:
+        aspirin_dose: 100.0
+        auc_salicylate: 11520.0

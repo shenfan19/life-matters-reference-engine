@@ -18,8 +18,8 @@ metadata:
     value: 1
     unit: minute
 imports:
-- glucose_regulation
-- obesity
+- references/medical/physiology/glucose_regulation_2026_mw
+- references/medical/disease/metabolic/obesity_2026_noref
 variables:
   inflammation_level:
     description: 系统炎症水平
@@ -58,14 +58,7 @@ formulas:
     priority: 4
 simulation:
   start_date: "2026-01-01"
-  end_date: "2026-01-02"
+  end_date: "2026-01-08"
   output_variables:
   - inflammation_level
   - autoimmune_activity
-optimizer:
-  method: grid
-  duration: 60.0
-  targets_of_optimization:
-  - inflammation_level
-  variables_to_optimize:
-  - exercise_intensity
