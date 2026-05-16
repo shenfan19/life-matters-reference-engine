@@ -760,29 +760,45 @@ const Simulator: React.FC<SimulatorProps> = ({
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
   };
 
-  // ── opt results: save back to model YAML + download ───────────────────────────
-  const saveOptResults = async (results: any): Promise<boolean> => {
-    if (!selectedModel?.key) return false;
-    // Strip the leading "models/" that the tree key may include
+  // ── download model YAML with opt results embedded (server does NOT write to disk) ──
+  const downloadModelYAML = async () => {
+    if (!selectedModel?.key || !optResult) return;
     const modelKey = selectedModel.key.replace(/^models\//, '');
+
+    // Build optimizer.results block from current optResult state
+    const regVar: string = optResult.regimen_variable || '';
+    const labels: string[] = optResult.regimen_event_labels || [];
+    const bestRegimen: Record<string, Record<string, number>> = {};
+    if (regVar && labels.length && optResult.best_x) {
+      bestRegimen[regVar] = {};
+      labels.forEach((lbl: string, i: number) => {
+        if (optResult.best_x[i] != null) bestRegimen[regVar][lbl] = Number(optResult.best_x[i].toFixed(4));
+      });
+    }
+    const bestObjectives: Record<string, number> = {};
+    (optResult.objectives || []).forEach((o: any, i: number) => {
+      if (optResult.best_f?.[i] != null) bestObjectives[o.variable] = Number(optResult.best_f[i].toFixed(4));
+    });
+    const results = {
+      generated_at: new Date().toISOString().slice(0, 10),
+      method: optResult.method || 'nsga2',
+      n_solutions: optResult.n_solutions || 0,
+      elapsed_seconds: Math.round(optElapsed * 10) / 10,
+      pareto_front: optResult.pareto_front || [],
+      best: {
+        x: optResult.best_x,
+        f: optResult.best_f,
+        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
+        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
+      },
+    };
+
     try {
-      const r = await fetch(`${API_BASE}/optimizer/write-results`, {
+      const r = await fetch(`${API_BASE}/optimizer/export-model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model_key: modelKey, results }),
       });
-      const d = await r.json();
-      return !!d.success;
-    } catch {
-      return false;
-    }
-  };
-
-  const downloadModelYAML = async () => {
-    if (!selectedModel?.key) return;
-    const modelKey = selectedModel.key.replace(/^models\//, '');
-    try {
-      const r = await fetch(`${API_BASE}/file-raw/${modelKey}`);
       const d = await r.json();
       if (!d.success || !d.text) return;
       const name = selectedModel.content?.metadata?.name || modelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'model';
@@ -1218,7 +1234,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                   setInputEvents={setInputEvents}
                   setMode={setMode}
                   setCenterTab={switchCenterTab}
-                  onSaveResults={saveOptResults}
                   onDownloadModel={downloadModelYAML}
                   hasExistingResults={!!(selectedModel?.content?.optimizer?.results?.pareto_front?.length)}
                 />

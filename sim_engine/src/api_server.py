@@ -1344,16 +1344,16 @@ async def get_optimizer_status(job_id: str):
     }
 
 
-class WriteOptResultsRequest(BaseModel):
+class ExportModelRequest(BaseModel):
     model_key: str          # path relative to models/, e.g. "published/paper2/foo.yaml"
-    results: Dict[str, Any] # the optimizer.results block to write
+    results: Dict[str, Any] # the optimizer.results block to embed
 
 
-@app.post("/api/optimizer/write-results")
-async def write_opt_results(request: WriteOptResultsRequest):
-    """Write optimizer.results back into the model YAML file.
-    Called by the frontend after opt completes; the model file becomes the
-    persistent record of the best Pareto front found so far.
+@app.post("/api/optimizer/export-model")
+async def export_model_with_results(request: ExportModelRequest):
+    """Read model YAML, embed optimizer.results in memory, return YAML text.
+    The server file is NEVER modified — this is a stateless operation.
+    The client downloads the returned text as a .yaml file.
     """
     try:
         models_root = PROJECT_ROOT / "models"
@@ -1369,21 +1369,17 @@ async def write_opt_results(request: WriteOptResultsRequest):
         if 'optimizer' not in data or not isinstance(data['optimizer'], dict):
             raise HTTPException(status_code=400, detail="Model has no optimizer: block")
 
+        # Embed results in memory — no disk write
         data['optimizer']['results'] = request.results
 
-        with open(target, 'w', encoding='utf-8') as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False,
-                      sort_keys=False, indent=2)
-
-        if loader_engine:
-            loader_engine.models_cache.clear()
-
-        logger.info(f"optimizer.results written to {target}")
-        return {'success': True}
+        text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
+                         sort_keys=False, indent=2)
+        name = (data.get('metadata') or {}).get('name', target.stem)
+        return {'success': True, 'text': text, 'filename': f"{name}.yaml"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"write_opt_results error: {e}")
+        logger.error(f"export_model_with_results error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Empty, message, Tooltip } from 'antd';
-import { CloudUploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Button, Empty, Tooltip } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import type { InputEvent } from '../types';
 import ParetoChart from './ParetoChart';
@@ -24,7 +24,6 @@ interface SimOptTabProps {
   setInputEvents: React.Dispatch<React.SetStateAction<InputEvent[]>>;
   setMode: (m: 'sim' | 'opt') => void;
   setCenterTab: (tab: string) => void;
-  onSaveResults: (results: any) => Promise<boolean>;
   onDownloadModel: () => void;
   hasExistingResults: boolean;
 }
@@ -33,9 +32,8 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
   setInputEvents, setMode, setCenterTab,
-  onSaveResults, onDownloadModel, hasExistingResults,
+  onDownloadModel, hasExistingResults,
 }) => {
-  const [saving, setSaving] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
 
@@ -151,44 +149,6 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     </div>
   );
 
-  const buildResults = (result: any) => {
-    const regVar = result.regimen_variable;
-    const labels: string[] = result.regimen_event_labels || [];
-    const bestRegimen: Record<string, Record<string, number>> = {};
-    if (regVar && labels.length && result.best_x) {
-      bestRegimen[regVar] = {};
-      labels.forEach((lbl: string, i: number) => {
-        if (result.best_x[i] != null) bestRegimen[regVar][lbl] = Number(result.best_x[i].toFixed(4));
-      });
-    }
-    const bestObjectives: Record<string, number> = {};
-    (result.objectives || []).forEach((o: any, i: number) => {
-      if (result.best_f?.[i] != null) bestObjectives[o.variable] = Number(result.best_f[i].toFixed(4));
-    });
-    return {
-      generated_at: new Date().toISOString().slice(0, 10),
-      method: result.method || 'nsga2',
-      n_solutions: result.n_solutions || 0,
-      elapsed_seconds: Math.round(optElapsed * 10) / 10,
-      pareto_front: result.pareto_front || [],
-      best: {
-        x: result.best_x,
-        f: result.best_f,
-        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
-        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
-      },
-    };
-  };
-
-  const handleSave = async () => {
-    if (!optResult) return;
-    setSaving(true);
-    const ok = await onSaveResults(buildResults(optResult));
-    setSaving(false);
-    if (ok) message.success('结果已写回模型文件，下次续跑将从此前沿热启动');
-    else message.error('保存失败，请检查模型文件路径');
-  };
-
   const bestPanel = optResult?.best_x != null ? (
     <div style={{ padding: '2px 0' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
@@ -224,12 +184,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
             setCenterTab('simulation');
           }}
         >以此解运行仿真 →</Button>
-        <Tooltip title="将 Pareto 前沿写回模型 YAML — 下次续跑自动热启动，发布模型即发布结果">
-          <Button size="small" icon={<CloudUploadOutlined />} loading={saving} onClick={handleSave}>
-            保存结果到模型
-          </Button>
-        </Tooltip>
-        <Tooltip title="下载模型 YAML（含优化结果）">
+        <Tooltip title="下载模型 YAML（含此次 Pareto 前沿），可上传继续搜索">
           <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>
             下载模型
           </Button>
