@@ -2,9 +2,10 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, InputNumber, message, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
+import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
+import { BuildOutlined, CloseOutlined, DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent } from '../types';
+import ModelBuilder from './ModelBuilder';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
@@ -40,7 +41,7 @@ const SIM_PERSIST_KEY = 'sim_persist';
 const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
 const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
-type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report';
+type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
 
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
@@ -74,6 +75,76 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── center tab ───────────────────────────────────────────────────────────────
   const [centerTab, setCenterTab] = useState<CenterTab>('intro');
+  const prevTabRef = useRef<CenterTab>('intro');
+
+  // ── builder mode ─────────────────────────────────────────────────────────────
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderCheckedFiles, setBuilderCheckedFiles] = useState<string[]>([]);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeOutPath, setMergeOutPath] = useState('models/scenarios/merged.yaml');
+  const [newFileDialogOpen, setNewFileDialogOpen] = useState(false);
+  const [newFilePath, setNewFilePath] = useState('');
+  const [merging, setMerging] = useState(false);
+  const [creatingFile, setCreatingFile] = useState(false);
+
+  const openBuilder = () => {
+    prevTabRef.current = centerTab === 'builder' ? 'intro' : centerTab as CenterTab;
+    setBuilderOpen(true);
+    setCenterTab('builder');
+  };
+
+  const closeBuilder = () => {
+    setBuilderOpen(false);
+    setBuilderCheckedFiles([]);
+    setCenterTab(prevTabRef.current);
+    loadFileTree(); // reload tree after edits
+  };
+
+  const toggleBuilderFile = (key: string) => {
+    setBuilderCheckedFiles(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleMerge = async () => {
+    setMerging(true);
+    try {
+      const r = await fetch('/api/merge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: builderCheckedFiles, output_path: mergeOutPath }),
+      });
+      const d = await r.json();
+      if (d.success || d.message) {
+        message.success('合并成功');
+        setMergeDialogOpen(false);
+        loadFileTree();
+      } else {
+        message.error('合并失败: ' + (d.detail || d.error || ''));
+      }
+    } catch (e: any) { message.error(String(e)); }
+    finally { setMerging(false); }
+  };
+
+  const handleCreateFile = async () => {
+    if (!newFilePath.trim()) { message.warning('请填写文件路径'); return; }
+    let path = newFilePath.trim();
+    if (!path.endsWith('.yaml') && !path.endsWith('.yml')) path += '.yaml';
+    setCreatingFile(true);
+    try {
+      const r = await fetch('/api/file-new', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, template: 'model' }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        message.success('文件已创建');
+        setNewFileDialogOpen(false);
+        setNewFilePath('');
+        loadFileTree();
+      } else message.error('创建失败: ' + (d.detail || ''));
+    } catch (e: any) { message.error(String(e)); }
+    finally { setCreatingFile(false); }
+  };
 
   // ── report tab ───────────────────────────────────────────────────────────────
   const [reportSections, setReportSections] = useState<Set<string>>(
@@ -109,6 +180,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [optMethod, setOptMethod] = useState('');
   const switchCenterTab = (tab: string) => {
+    if (builderOpen) return; // locked while builder is open
     if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
       setCenterTab('simulation');
     } else if (tab === 'opt' || tab === 'optimization') {
@@ -523,7 +595,6 @@ const Simulator: React.FC<SimulatorProps> = ({
               };
             }
           }
-          const isModel = item.key?.startsWith('models/');
           return {
             title: item.type === 'file' ? titleStr : item.title,
             key: item.key,
@@ -535,17 +606,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         });
         const modelsNode = result.data.find((n: any) => n.key === 'models');
         if (modelsNode?.children) {
-          const combined: DataNode[] = modelsNode.children
-            .flatMap((child: any) => {
-              const items = convert(child.children || []);
-              if (!items.length) return [];
-              return [{
-                key: `__group_${child.key}`,
-                title: child.key.toUpperCase(),
-                isLeaf: false, selectable: false, icon: undefined, children: items,
-              } as DataNode];
-            });
-          setStoryTree(combined);
+          setStoryTree(convert(modelsNode.children));
         }
       }
     } catch (e: any) {
@@ -1075,8 +1136,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   const WorkspacePage = ({ controls, setup, result, progress }: { controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode }) => (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: `1px solid ${c.border}` }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
+        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {setup}
         </div>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1118,6 +1179,12 @@ const Simulator: React.FC<SimulatorProps> = ({
             setSimData([]);
             setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
           }}
+          builderMode={builderOpen}
+          builderCheckedFiles={builderCheckedFiles}
+          onToggleBuilderFile={toggleBuilderFile}
+          onOpenBuilder={openBuilder}
+          onNewFile={() => setNewFileDialogOpen(true)}
+          onMergeFiles={() => setMergeDialogOpen(true)}
         />
 
         <div
@@ -1132,20 +1199,50 @@ const Simulator: React.FC<SimulatorProps> = ({
           {/* Center tab bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 8 }}>
             {([
-              { key: 'intro',  label: 'Overview' },
-              { key: 'simulation', label: 'simulation' },
-              { key: 'optimization', label: 'optimization' },
-              { key: 'report', label: t('sim.tab.report')  || '报告' },
+              { key: 'intro',        label: 'Overview' },
+              { key: 'simulation',   label: 'Simulation' },
+              { key: 'optimization', label: 'Optimization' },
+              { key: 'report',       label: t('sim.tab.report') || '报告' },
             ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
-              const color = isActive ? c.primary : c.textMute;
-              const underline = isActive ? `2px solid ${c.primary}` : '2px solid transparent';
+              const locked = builderOpen;
+              const color = locked ? c.textMute : (isActive ? c.primary : c.textMute);
+              const underline = (!locked && isActive) ? `2px solid ${c.primary}` : '2px solid transparent';
               return (
-                <button key={tab.key} onClick={() => { setCenterTab(tab.key); if (tab.key === 'simulation') setMode('sim'); if (tab.key === 'optimization') setMode('opt'); }} style={{ padding: '6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color, fontWeight: isActive ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s' }}>
-                  {tab.label}
-                </button>
+                <Tooltip key={tab.key} title={locked ? '请先关闭模型库编辑' : undefined}>
+                  <button
+                    onClick={() => {
+                      if (locked) return;
+                      setCenterTab(tab.key);
+                      if (tab.key === 'simulation') setMode('sim');
+                      if (tab.key === 'optimization') setMode('opt');
+                    }}
+                    style={{ padding: '6px 16px', border: 'none', cursor: locked ? 'not-allowed' : 'pointer', background: 'transparent', color, fontWeight: (!locked && isActive) ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: locked ? 0.4 : 1 }}
+                  >
+                    {tab.label}
+                  </button>
+                </Tooltip>
               );
             })}
+            {/* Dynamic Builder tab */}
+            {builderOpen && (
+              <div style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
+                <button
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px 6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.primary, fontWeight: 600, borderBottom: `2px solid ${c.primary}`, marginBottom: -1, outline: 'none' }}
+                >
+                  <BuildOutlined style={{ fontSize: 12 }} />
+                  模型库
+                </button>
+                <Tooltip title="关闭编辑（完成）">
+                  <button
+                    onClick={closeBuilder}
+                    style={{ padding: '4px 6px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', borderRadius: 4, display: 'flex', alignItems: 'center' }}
+                  >
+                    <CloseOutlined style={{ fontSize: 11 }} />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
           </div>
 
           {centerTab === 'intro' && (
@@ -1260,8 +1357,65 @@ const Simulator: React.FC<SimulatorProps> = ({
             />
           )}
 
+          {centerTab === 'builder' && (
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <ModelBuilder
+                isDarkMode={isDarkMode} c={c}
+                embedded
+                controlledFiles={builderCheckedFiles}
+                onReloadTree={loadFileTree}
+                onUncheckedFile={key => setBuilderCheckedFiles(prev => prev.filter(k => k !== key))}
+              />
+            </div>
+          )}
+
         </div>
       </div>
+
+      {/* ── Merge dialog ── */}
+      <Modal
+        open={mergeDialogOpen}
+        title="合并模型文件"
+        okText="合并"
+        cancelText="取消"
+        confirmLoading={merging}
+        onOk={handleMerge}
+        onCancel={() => setMergeDialogOpen(false)}
+      >
+        <div style={{ marginBottom: 12, color: c.textSec }}>
+          选中的 {builderCheckedFiles.length} 个文件将合并为一个 YAML 文件：
+          {builderCheckedFiles.map(f => (
+            <div key={f} style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 2, color: c.textMute }}>• {f}</div>
+          ))}
+        </div>
+        <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>输出路径（相对 models/）：</div>
+        <Input
+          value={mergeOutPath}
+          onChange={e => setMergeOutPath(e.target.value)}
+          placeholder="models/scenarios/merged.yaml"
+          style={{ fontFamily: 'monospace' }}
+        />
+      </Modal>
+
+      {/* ── New file dialog ── */}
+      <Modal
+        open={newFileDialogOpen}
+        title="新建模型文件"
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={creatingFile}
+        onOk={handleCreateFile}
+        onCancel={() => { setNewFileDialogOpen(false); setNewFilePath(''); }}
+      >
+        <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>文件路径（相对 models/）：</div>
+        <Input
+          value={newFilePath}
+          onChange={e => setNewFilePath(e.target.value)}
+          placeholder="models/in_process/my_model.yaml"
+          style={{ fontFamily: 'monospace' }}
+          onPressEnter={handleCreateFile}
+        />
+      </Modal>
 
     </div>
   );

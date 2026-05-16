@@ -63,6 +63,8 @@
 | [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
 | [0069](decisions/0069-2026-05-16_sim_optimizer-results-stateless-design.md) | **optimizer.results 内嵌 + 无状态服务 + warm-start + CSV 导出** | ⭐⭐ | ✅ |
 | [0071](decisions/0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | **全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序** | ⭐ | ✅ |
+| [0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md) | **多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行** | ⭐⭐ | 待实现 |
+| [0074](decisions/0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | **单层标签组导航：移除顶层 Tools/Sim 双层；动态 Builder Tab + 统一目录树双模式** | ⭐ | ✅ |
 
 ---
 
