@@ -78,6 +78,15 @@ export interface SimulationDataPoint {
     [key: string]: number;
 }
 
+export interface PlanResult {
+  id: string;
+  label: string;
+  color: string;
+  data: SimulationDataPoint[];
+  runsData: SimulationDataPoint[][];
+  running?: boolean;
+}
+
 export interface SimulationState {
     status: 'idle' | 'running' | 'paused' | 'completed';
     progress: number;

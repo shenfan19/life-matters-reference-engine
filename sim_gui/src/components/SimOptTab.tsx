@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import type { InputEvent } from '../types';
 import ParetoChart from './ParetoChart';
@@ -26,16 +26,18 @@ interface SimOptTabProps {
   setCenterTab: (tab: string) => void;
   onDownloadModel: () => void;
   hasExistingResults: boolean;
+  onRunCompared?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
   setInputEvents, setMode, setCenterTab,
-  onDownloadModel, hasExistingResults,
+  onDownloadModel, hasExistingResults, onRunCompared,
 }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
+  const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -251,9 +253,37 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       <Section id="data" title="Solutions" badge={hasPareto ? `${resultRows.length} 行` : undefined}>
         {hasPareto ? (
           <div style={{ overflowX: 'auto' }}>
+            {onRunCompared && checkedIdx.size > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+                  style={{ background: c.primary, borderColor: c.primary }}
+                  onClick={() => {
+                    const rows = [...checkedIdx].map(idx => ({
+                      x: optResult.pareto_front[idx]?.x || [],
+                      f: optResult.pareto_front[idx]?.f || [],
+                      rank: idx + 1,
+                    }));
+                    onRunCompared(rows);
+                    setCheckedIdx(new Set());
+                  }}
+                >Compare ({checkedIdx.size})</Button>
+                <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
+              </div>
+            )}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
               <thead>
                 <tr style={{ color: c.textMute, borderBottom: `1px solid ${c.border}` }}>
+                  {onRunCompared && (
+                    <th style={{ padding: 4, width: 24 }}>
+                      <input type="checkbox"
+                        checked={checkedIdx.size === Math.min(resultRows.length, 80) && resultRows.length > 0}
+                        onChange={e => {
+                          if (e.target.checked) setCheckedIdx(new Set(resultRows.slice(0, 80).map((_: any, i: number) => i)));
+                          else setCheckedIdx(new Set());
+                        }}
+                      />
+                    </th>
+                  )}
                   <th style={{ textAlign: 'left', padding: 4 }}>#</th>
                   {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i + 1}`)).map((name: string, i: number) => (
                     <th key={`x-${i}`} style={{ textAlign: 'right', padding: 4 }}>{name}</th>
@@ -266,6 +296,18 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
               <tbody>
                 {resultRows.slice(0, 80).map((row: any, rIdx: number) => (
                   <tr key={row.key} style={{ borderBottom: `1px solid ${c.border}` }}>
+                    {onRunCompared && (
+                      <td style={{ padding: 4 }}>
+                        <input type="checkbox"
+                          checked={checkedIdx.has(rIdx)}
+                          onChange={e => {
+                            const next = new Set(checkedIdx);
+                            if (e.target.checked) next.add(rIdx); else next.delete(rIdx);
+                            setCheckedIdx(next);
+                          }}
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: 4, color: c.textMute }}>{row.rank}</td>
                     {(optResult.best_x || []).map((_: any, i: number) => (
                       <td key={`xv-${i}`} style={{ textAlign: 'right', padding: 4, fontFamily: 'monospace' }}>{row[`x${i + 1}`]?.toFixed?.(4) ?? '-'}</td>
