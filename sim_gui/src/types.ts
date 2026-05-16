@@ -78,6 +78,13 @@ export interface SimulationDataPoint {
     [key: string]: number;
 }
 
+export interface SimPlan {
+  id: string;
+  label: string;
+  color: string;
+  inputEvents: InputEvent[];
+}
+
 export interface PlanResult {
   id: string;
   label: string;
