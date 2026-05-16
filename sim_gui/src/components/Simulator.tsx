@@ -991,16 +991,17 @@ const Simulator: React.FC<SimulatorProps> = ({
     switchCenterTab('simulation');
   };
 
-  // Run all plans sequentially (not parallel) to avoid overloading the backend.
-  // Each plan uses the batched loop pattern identical to startSimulation.
+  // Run all plans in parallel with synchronized batch rounds.
+  // Phase 1: start all N sessions simultaneously.
+  // Phase 2: each round sends a batch for every incomplete plan in parallel →
+  //          all curves grow together in sync. Chunk size 500 keeps backend load low.
   const runAllPlans = async () => {
     if (!selectedModel) return;
     const currentPlans = plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p);
 
-    const initResults: PlanResult[] = currentPlans.map(plan => ({
+    setComparedPlans(currentPlans.map(plan => ({
       id: plan.id, label: plan.label, color: plan.color, data: [], runsData: [], running: true,
-    }));
-    setComparedPlans(initResults);
+    })));
     setSimData([]);
     set('status', 'running'); set('progress', 0); set('currentStep', 0);
     isRunningRef.current = true;
@@ -1009,64 +1010,78 @@ const Simulator: React.FC<SimulatorProps> = ({
     const timeHours = dateToHours(simStartDate, simEndDate);
     const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
     const localInputVarNames = new Set(inputVars.map((v: any) => v.name));
+    const CHUNK = 500; // steps per batch — balances speed vs backend load
 
-    let anyFailed = false;
+    type Session = { sid: string; total: number; done: boolean; failed: boolean; planIdx: number };
 
-    for (let i = 0; i < currentPlans.length; i++) {
-      if (!isRunningRef.current) break; // stopped by user
-      const plan = currentPlans[i];
-      try {
-        const regimens = plan.inputEvents
-          .filter(ev => localInputVarNames.has(ev.variable))
-          .map(ev => ({ variable: ev.variable, events: [{ id: ev.id, time: ev.time, value: ev.value }], days_enabled: ev.daysEnabled, days: ev.days, valid_range_enabled: ev.validRangeEnabled, valid_start: ev.validStart, valid_end: ev.validEnd }));
-        const startResult = await fetch(`${API_BASE}/simulation/start`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
-        }).then(r => r.json());
-        if (!startResult.success) throw new Error(startResult.error || '启动失败');
+    // Phase 1: start all sessions in parallel
+    const startResults = await Promise.allSettled(currentPlans.map(async (plan, i) => {
+      const regimens = plan.inputEvents
+        .filter(ev => localInputVarNames.has(ev.variable))
+        .map(ev => ({ variable: ev.variable, events: [{ id: ev.id, time: ev.time, value: ev.value }], days_enabled: ev.daysEnabled, days: ev.days, valid_range_enabled: ev.validRangeEnabled, valid_start: ev.validStart, valid_end: ev.validEnd }));
+      const r = await fetch(`${API_BASE}/simulation/start`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
+      }).then(res => res.json());
+      if (!r.success) throw new Error(r.error || '启动失败');
+      return { sid: r.data.session_id, total: r.data.total_steps, planIdx: i, outputVars: r.data.output_variables };
+    }));
 
-        const sid = startResult.data.session_id;
-        const totalSteps = startResult.data.total_steps;
-        let planData: any[] = [];
-        let planRunsData: any[][] = [];
-        let completed = false;
-        let stepsRan = 0;
-
-        // Batch loop — same pattern as startSimulation, avoids sending all steps at once
-        while (!completed && isRunningRef.current) {
-          const remaining = totalSteps - stepsRan;
-          const chunk = Math.min(batchSize > 0 ? batchSize : 200, remaining, 500);
-          const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sid, steps: chunk, input_changes: inputParams }),
-          }).then(r => r.json());
-          if (!batchResult.success) throw new Error(batchResult.error || '批处理失败');
-          planData = [...planData, ...(batchResult.data.outputs || [])];
-          if (batchResult.data.outputs_per_run?.length > 1) {
-            const inc: any[][] = batchResult.data.outputs_per_run;
-            if (planRunsData.length === 0) planRunsData = inc.map(() => []);
-            inc.forEach((run, ri) => { planRunsData[ri] = [...(planRunsData[ri] || []), ...run]; });
-          }
-          stepsRan += batchResult.data.steps_executed ?? chunk;
-          completed = batchResult.data.completed;
-        }
-
-        setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : {
-          ...r, data: planData, runsData: planRunsData, running: false,
-        }));
-        // Update progress: fraction of plans done
-        set('progress', Math.round(((i + 1) / currentPlans.length) * 100));
-      } catch (e: any) {
-        console.error(`Plan "${plan.label}" failed:`, e);
-        message.error(`方案 "${plan.label}" 运行失败: ${e.message}`);
+    const sessions: Session[] = startResults.map((res, i) => {
+      if (res.status === 'rejected') {
+        message.error(`方案 "${currentPlans[i].label}" 启动失败`);
         setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : { ...r, running: false }));
-        anyFailed = true;
+        return { sid: '', total: 0, done: true, failed: true, planIdx: i };
       }
+      return { ...res.value, done: false, failed: false };
+    });
+    const firstOV = (startResults as PromiseFulfilledResult<any>[])
+      .find(r => r.status === 'fulfilled' && Array.isArray(r.value?.outputVars))?.value?.outputVars;
+    if (firstOV) setRunOutputVars(firstOV);
+
+    // Per-plan accumulated data (mutated in-place for performance)
+    const planData: any[][] = currentPlans.map(() => []);
+    const planRunsData: any[][][] = currentPlans.map(() => []);
+
+    // Phase 2: synchronized batch loop — all plans advance together each round
+    while (sessions.some(s => !s.done) && isRunningRef.current) {
+      const active = sessions.filter(s => !s.done);
+      const batchResults = await Promise.allSettled(active.map(s =>
+        fetch(`${API_BASE}/simulation/batch`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: s.sid, steps: CHUNK, input_changes: inputParams }),
+        }).then(res => res.json()).then(r => ({ s, r }))
+      ));
+
+      for (const res of batchResults) {
+        if (res.status === 'rejected') continue;
+        const { s, r } = res.value;
+        if (!r.success) { s.done = true; s.failed = true; continue; }
+        const idx = s.planIdx;
+        planData[idx].push(...(r.data.outputs || []));
+        if (r.data.outputs_per_run?.length > 1) {
+          const inc: any[][] = r.data.outputs_per_run;
+          if (planRunsData[idx].length === 0) planRunsData[idx] = inc.map(() => []);
+          inc.forEach((run: any[], ri: number) => planRunsData[idx][ri].push(...run));
+        }
+        if (r.data.completed) s.done = true;
+      }
+
+      // Update all curves simultaneously
+      const totalSteps = sessions.reduce((sum, s) => sum + s.total, 0) || 1;
+      const doneSteps = planData.reduce((sum, pd) => sum + pd.length, 0);
+      set('progress', Math.round((doneSteps / totalSteps) * 100));
+      setComparedPlans(prev => prev.map((r, i) => {
+        const s = sessions.find(s => s.planIdx === i);
+        return { ...r, data: [...planData[i]], runsData: planRunsData[i].map(rd => [...rd]), running: s ? !s.done : false };
+      }));
     }
 
     set('status', 'completed');
     isRunningRef.current = false;
-    if (!anyFailed) message.success(`${currentPlans.length} 个方案仿真完成`);
+    const failed = sessions.filter(s => s.failed).length;
+    if (failed === 0) message.success(`${currentPlans.length} 个方案仿真完成`);
+    else message.warning(`完成，${failed} 个方案失败`);
   };
 
   // ── apply opt best solution to sim ───────────────────────────────────────────
@@ -1684,8 +1699,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                   onDownloadModel={downloadModelYAML}
                   onSaveResults={saveResultsToFile}
                   hasExistingResults={hasExistingResults}
-                  onRunCompared={handleRunCompared}
-                  onApplyBestToSim={applyBestToSim}
                   onSendToSim={addPlansFromOpt}
                 />
               }

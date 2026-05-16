@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
-import { DownloadOutlined, ExportOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design/icons';
+import { DownloadOutlined, ExportOutlined, SaveOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import ParetoChart from './ParetoChart';
 import OptProgressChart from './OptProgressChart';
@@ -23,15 +23,13 @@ interface SimOptTabProps {
   onDownloadModel: () => void;
   onSaveResults?: () => void;
   hasExistingResults: boolean;
-  onRunCompared?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
-  onApplyBestToSim?: () => void;
   onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, onSaveResults, hasExistingResults, onRunCompared, onApplyBestToSim, onSendToSim,
+  onDownloadModel, onSaveResults, hasExistingResults, onSendToSim,
 }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
@@ -167,14 +165,10 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         ))}
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-        <Tooltip title="将推荐解填入仿真输入，切换到 Sim 面板运行">
-          <Button size="small" type="primary" style={{ background: c.primary, borderColor: c.primary }}
-            onClick={onApplyBestToSim} disabled={!onApplyBestToSim}
-          >运行仿真 →</Button>
-        </Tooltip>
         {onSendToSim && (
           <Tooltip title="将推荐解添加为仿真方案（Sim 面板方案管理器）">
-            <Button size="small" icon={<ExportOutlined />}
+            <Button size="small" type="primary" icon={<ExportOutlined />}
+              style={{ background: c.primary, borderColor: c.primary }}
               onClick={() => onSendToSim([{ x: optResult.best_x || [], f: optResult.best_f || [], rank: 0 }])}
             >发送到仿真</Button>
           </Tooltip>
@@ -250,23 +244,10 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
           <div style={{ overflowX: 'auto' }}>
             {checkedIdx.size > 0 && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                {onRunCompared && (
-                  <Button size="small" type="primary" icon={<PlayCircleOutlined />}
-                    style={{ background: c.primary, borderColor: c.primary }}
-                    onClick={() => {
-                      const rows = [...checkedIdx].map(idx => ({
-                        x: optResult.pareto_front[idx]?.x || [],
-                        f: optResult.pareto_front[idx]?.f || [],
-                        rank: idx + 1,
-                      }));
-                      onRunCompared(rows);
-                      setCheckedIdx(new Set());
-                    }}
-                  >仿真对比 ({checkedIdx.size})</Button>
-                )}
                 {onSendToSim && (
                   <Tooltip title="将选中的 Pareto 解添加为仿真方案（Sim 面板的方案管理器）">
-                    <Button size="small" icon={<ExportOutlined />}
+                    <Button size="small" type="primary" icon={<ExportOutlined />}
+                      style={{ background: c.primary, borderColor: c.primary }}
                       onClick={() => {
                         const rows = [...checkedIdx].map(idx => ({
                           x: optResult.pareto_front[idx]?.x || [],
@@ -285,7 +266,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
               <thead>
                 <tr style={{ color: c.textMute, borderBottom: `1px solid ${c.border}` }}>
-                  {onRunCompared && (
+                  {onSendToSim && (
                     <th style={{ padding: 4, width: 24 }}>
                       <input type="checkbox"
                         checked={checkedIdx.size === Math.min(resultRows.length, 80) && resultRows.length > 0}
@@ -308,7 +289,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
               <tbody>
                 {resultRows.slice(0, 80).map((row: any, rIdx: number) => (
                   <tr key={row.key} style={{ borderBottom: `1px solid ${c.border}` }}>
-                    {onRunCompared && (
+                    {onSendToSim && (
                       <td style={{ padding: 4 }}>
                         <input type="checkbox"
                           checked={checkedIdx.has(rIdx)}
