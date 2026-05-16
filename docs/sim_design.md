@@ -209,6 +209,108 @@ model.yaml ─────────────────→ story.yaml ─
 
 ---
 
+## GUI Working State Layer（GUI 工作状态层）
+
+> 对应需求 F-1；架构决策见 ADR 0074。
+
+### 概念
+
+GUI Working State Layer 是 Sim 面板中 `inputEvents[]` 的集合——它是用户可见、可编辑的输入配置，代表"本次仿真实际使用什么值"。**它的优先级永远高于 YAML schedule。**
+
+```
+加载流程：
+  YAML 文件 → Loader 解析 → inputEvents（GUI 工作状态）← 用户编辑 / Opt 结果注入
+                                     ↓
+                              引擎 session 启动
+                                     ↓
+              manual_overrides ← GUI 受控变量列表（禁止 YAML schedule 覆盖）
+                                     ↓
+                              每步：_apply_regimens（GUI 值）
+                              每步：model.step() → _apply_schedules（跳过 manual_overrides 里的变量）
+```
+
+### 优先级规则
+
+| 来源 | 优先级 | 适用范围 |
+|------|--------|---------|
+| GUI inputEvents（`_apply_regimens`） | **高** | 有 GUI regimen 的 input 变量 |
+| YAML schedule（`_apply_schedules`） | 低（被跳过） | GUI 受控变量自动跳过 |
+| YAML schedule（`_apply_schedules`） | **高**（正常应用） | 没有 GUI regimen 的变量 |
+
+关键：`_apply_schedules` 内已有 `manual_overrides` 跳过机制（[simulation.py:74](../sim_engine/src/model_structure/simulation.py#L74)）。引擎改动只需在 session 启动时，将有 GUI regimen 的变量写入 `model.manual_overrides`。
+
+### 初始化规则
+
+| 事件 | inputEvents（GUI 层）的变化 |
+|------|--------------------------|
+| 加载新模型 | 从 `simulation.schedules` 解析，填充 inputEvents |
+| 加载含 `optimizer.results.best.regimen` 的模型 | 询问用户是否预填推荐解，选"是"则覆盖对应 inputEvents |
+| Opt 完成，用户点击"Apply to Sim" | 按 `decision_vars` 映射将 best_x 写入对应 inputEvents |
+| 用户手动编辑 | 直接修改 inputEvents |
+
+### F-MPLAN 扩展
+
+多方案时，每个 Plan 有独立的 `inputEvents[]`，对应独立的 session。每个 session 各自有 `manual_overrides`，方案间隔离，互不影响。
+
+---
+
+## Opt → Sim：N-N 重组架构
+
+> 对应需求 F-5、F-2、F-3。
+
+### 设计原则
+
+Opt 产出 N 组输入组合（Pareto 前沿）；Sim 是下游，必须能接住 N 组。软件层负责重组，Opt 结果保持原始格式（`{x, f}` 向量）。
+
+```
+YAML: optimizer.inputs          pareto_front[i].x
+           ↓                           ↓
+    xToInputEvents(x, optimizerInputs, baseInputEvents)
+           ↓
+    Plan[i].inputEvents[]   →   独立 session → 仿真曲线 i
+```
+
+### xToInputEvents 函数
+
+**职责**：将 Pareto 解的 `x` 向量还原为 Sim 可执行的 `InputEvent[]`。
+
+**输入**：
+- `x: number[]` — 某个 Pareto 解的决策变量值
+- `optimizerInputs: object` — 当前 YAML 中 `optimizer.inputs`（或 `optimizer.regimen`）的原始对象
+- `baseInputEvents: InputEvent[]` — 当前 Sim 的基础 inputEvents（提供 `days`、`valid_range_enabled` 等非优化字段）
+
+**映射规则**（与 Python 后端构建 x 向量的顺序完全一致）：
+
+```
+对 optimizer.inputs 中每个变量名（按键名字典序或声明顺序）:
+  对该变量下 events 列表中每个事件（按列表顺序）:
+    x[idx++] → 在 baseInputEvents 中匹配 variable=varName AND time=event.time 的那条记录
+    将其 value 更新为 x[idx] 的值
+```
+
+**输出**：返回新的 `InputEvent[]`，只更新了 `optimizeValue=true` 事件的 value，其余字段不变。
+
+**调用场景**：
+
+| 场景 | 调用方式 |
+|------|---------|
+| 加载模型，预填推荐解 | `xToInputEvents(best.x, yaml.optimizer.inputs, current)` |
+| "以此解运行仿真"（best） | 同上，结果设为当前 Sim Plan 的 inputEvents |
+| Run Compared（N 个 Pareto 解） | 对每个勾选的解调用，得到 N 个 Plan |
+
+### 数量关系
+
+| | 1-1（MVP） | N-N（目标） |
+|--|------------|------------|
+| Opt → Sim | best_x → 1 个 inputEvents | pareto_front[0..N-1].x → N 个 Plan |
+| Sim 运行 | 1 个 session | N 个并行 session |
+| 图表 | 1 条曲线 | N 条曲线（F-MPLAN） |
+| 代码差异 | `xToInputEvents` × 1 | `xToInputEvents` × N + SimChart 多曲线 |
+
+`xToInputEvents` 函数本身是共用的，N-N 仅比 1-1 多了"调用 N 次"和 SimChart 多数据集渲染。SimChart 改造是 F-MPLAN 必要工作，与 1-N 无关。因此**实现 N-N 的额外代价极小**，直接做 N-N。
+
+---
+
 ## 优化: Pareto输出的形态
 
 ### Pareto前沿是什么
