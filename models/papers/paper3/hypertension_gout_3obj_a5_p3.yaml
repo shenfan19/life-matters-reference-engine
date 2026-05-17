@@ -76,7 +76,7 @@ optimizer:
       - {x: [31.2], f: [117.3, 372.1, 82.8]}
       - {x: [38.8], f: [115.1, 384.5, 82.6]}
       - {x: [46.0], f: [113.4, 392.8, 82.4]}
-    best:
+    reference:
       x: [24.5]
       f: [120.6, 357.3, 83.1]
       regimen:
@@ -89,5 +89,35 @@ optimizer:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-07-01"
-  output_variables: [blood_pressure, uric_acid, body_weight, testser2]
-  schedules: []    # TODO 从 paper2 版本复制
+  output_variables: [blood_pressure, uric_acid, body_weight]
+  schedules:
+    - variable: thiazide_dose
+      time: "08:00"
+      value: 24.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "HCTZ 晨服（三目标平衡参考点）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 500.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "每日热量缺口"
+
+  # 预定义多方案：对应三目标 Pareto 面的代表点，供论文图表直接复现
+  plans:
+    - id: "low_ua_weight"
+      label: "尿酸+减重友好（HCTZ 8.2mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 8.2, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
+    - id: "balanced"
+      label: "三目标平衡方案（HCTZ 24.5mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 24.5, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
+    - id: "best_bp"
+      label: "血压控制最优（BP 端点，HCTZ 46.0mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 46.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}

@@ -155,7 +155,7 @@ optimizer:
     elapsed_seconds: 124.7
     pareto_front:
       - {x: [7.8, 3.2], f: [19.4]}
-    best:
+    reference:
       x: [7.8, 3.2]
       f: [19.4]
       regimen:
