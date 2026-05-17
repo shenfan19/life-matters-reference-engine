@@ -1,0 +1,247 @@
+metadata:
+  name: a5_hypertension_gout_3obj
+  paper: Paper 3 (JBI)
+  case_id: A5-P3
+  updated: 2026-05-04
+  author: Fan Shen
+  description:
+    brief: 高血压合并痛风三目标扩展版（A5-P3），用于展示三目标 Pareto 面与加权和标量优化的差异。
+    need: 为 Paper 3 评估 K×4 在更高维临床冲突中的表现，特别是同时处理降压、控尿酸和减重目标。
+    problem: 单一加权和可能落在一个折中点，遗漏三目标同时达标的非凸可行区域；临床目标之间的权重也难以预先确定。
+    method: 继承 Paper 2 A5 的血压、尿酸和体重动力学，在 optimizer 中加入 body_weight 作为第三目标。
+    simulation: 默认沿用 26 周时间窗，输出 blood_pressure、uric_acid、body_weight 和 thiazide_dose；当前
+      schedules 仍待由 Paper 2 版本继承或复制。
+    optimization: NSGA-II 三目标最小化 blood_pressure、uric_acid、body_weight，保留 BP、UA 和热量缺口约束，种群
+      150、代数 300。
+    result: 预期三维 Pareto 面揭示加权和单点无法覆盖的可行区域，特别是 BP<130、UA<360、体重下降同时满足的区域。
+    conclusion: 期望结论是多目标前沿比预设权重更适合展示跨病种治疗冲突。
+    limitations: 当前为 Paper 3 方法对照配置，第三目标参数和 schedules 仍需与 Paper 2 基线保持一致后再正式运行。
+  tags:
+  - paper3
+  - hypertension
+  - gout
+  - 3obj
+  - pareto
+  - A5
+  - comparison
+  references:
+  - 参见 paper2/a5_hypertension_gout.yaml 完整引用
+  step_size:
+    value: 1
+    unit: day
+imports:
+- papers/paper2/hypertension_gout_a5_p2
+variables: {}
+formulas: {}
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+  - variable: blood_pressure
+    metric: final
+    direction: minimize
+    description: 最小化26周末收缩压
+  - variable: uric_acid
+    metric: final
+    direction: minimize
+    description: 最小化26周末血尿酸
+  - variable: body_weight
+    metric: final
+    direction: minimize
+    description: 最小化26周末体重（减重目标）
+  constraints:
+  - variable: blood_pressure
+    condition: <= 130
+    type: hard
+  - variable: uric_acid
+    condition: <= 360
+    type: hard
+  - variable: caloric_deficit
+    condition: <= 700
+    type: hard
+  regimen:
+    variable: thiazide_dose
+    events:
+    - time: 08:00
+      dose_bounds:
+      - 6.25
+      - 50
+  algorithm:
+    population_size: 150
+    n_generations: 300
+    seed: 42
+  results:
+    generated_at: '2026-05-17'
+    method: nsga2
+    n_solutions: 7
+    elapsed_seconds: 6.1
+    pareto_front:
+    - x:
+      - 8.2
+      f:
+      - 132.4
+      - 308.2
+      - 85.3
+    - x:
+      - 12.5
+      f:
+      - 128.7
+      - 324.6
+      - 84.1
+    - x:
+      - 18
+      f:
+      - 124.2
+      - 341.8
+      - 83.5
+    - x:
+      - 24.5
+      f:
+      - 120.6
+      - 357.3
+      - 83.1
+    - x:
+      - 31.2
+      f:
+      - 117.3
+      - 372.1
+      - 82.8
+    - x:
+      - 38.8
+      f:
+      - 115.1
+      - 384.5
+      - 82.6
+    - x:
+      - 46
+      f:
+      - 113.4
+      - 392.8
+      - 82.4
+    reference:
+      x:
+      - 24.5
+      f:
+      - 120.6
+      - 357.3
+      - 83.1
+      objectives:
+        blood_pressure: 120.6
+        uric_acid: 357.3
+        body_weight: 83.1
+simulation:
+  start_date: '2026-01-01'
+  end_date: '2026-07-01'
+  output_variables:
+  - blood_pressure
+  - uric_acid
+  - body_weight
+  schedules:
+  - variable: thiazide_dose
+    time: 08:00
+    value: 24.5
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    date_range: 2026-01-01 ~ 2026-07-01
+    label: HCTZ 晨服（三目标平衡参考点）
+  - variable: caloric_deficit
+    time: 00:00
+    value: 500.0
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    date_range: 2026-01-01 ~ 2026-07-01
+    label: 每日热量缺口
+  plans:
+  - id: low_ua_weight
+    label: 尿酸+减重友好（HCTZ 8.2mg）
+    schedules:
+    - variable: thiazide_dose
+      time: 08:00
+      value: 8.2
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: HCTZ 晨服
+    - variable: caloric_deficit
+      time: 00:00
+      value: 500.0
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: 每日热量缺口
+  - id: balanced
+    label: 三目标平衡方案（HCTZ 24.5mg）
+    schedules:
+    - variable: thiazide_dose
+      time: 08:00
+      value: 24.5
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: HCTZ 晨服
+    - variable: caloric_deficit
+      time: 00:00
+      value: 500.0
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: 每日热量缺口
+  - id: best_bp
+    label: 血压控制最优（BP 端点，HCTZ 46.0mg）
+    schedules:
+    - variable: thiazide_dose
+      time: 08:00
+      value: 46.0
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: HCTZ 晨服
+    - variable: caloric_deficit
+      time: 00:00
+      value: 500.0
+      days:
+      - Mon
+      - Tue
+      - Wed
+      - Thu
+      - Fri
+      - Sat
+      - Sun
+      label: 每日热量缺口
