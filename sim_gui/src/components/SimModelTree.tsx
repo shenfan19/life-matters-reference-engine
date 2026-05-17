@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Button, Empty, Input, Popover, Spin, Tooltip, Tree } from 'antd';
+import { Button, Empty, Input, Spin, Tooltip, Tree } from 'antd';
 import {
-  BookOutlined, ClusterOutlined, FileOutlined, FilterOutlined,
+  BookOutlined, ClusterOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, LockOutlined, ReloadOutlined, UnlockOutlined,
-  UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined,
+  UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import type { DataNode, ModelFile, SimulationState } from '../types';
 import { getC } from '../core/theme';
@@ -41,6 +42,10 @@ interface SimModelTreeProps {
   onOpenBuilder?: () => void;
   onNewFile?: () => void;
   onMergeFiles?: () => void;
+  onImportFile?: () => void;
+  sessionModels?: ModelFile[];
+  onSelectSessionModel?: (model: ModelFile) => void;
+  onClearSessionModel?: (key: string) => void;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -56,6 +61,10 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onOpenBuilder,
   onNewFile,
   onMergeFiles,
+  onImportFile,
+  sessionModels = [],
+  onSelectSessionModel,
+  onClearSessionModel,
 }) => {
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
@@ -92,6 +101,48 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         </span>
       </span>
     );
+  };
+
+  // Normal mode title render — owns all icons so antd showIcon is OFF
+  const normalTitleRender = (node: any) => {
+    if (!node.isLeaf) {
+      // Folder: bold, muted color, folder icon
+      return (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <FolderOutlined style={{ fontSize: 12, color: isDarkMode ? '#6b9e6b' : '#4a7c4a', flexShrink: 0 }} />
+          <span style={{ fontWeight: 600, color: c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
+            {node.titleStr || node.title}
+          </span>
+        </span>
+      );
+    }
+    const isSelected = node.key === selectedKey;
+    const dimmed = isLocked && !isSelected;
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: dimmed ? 0.4 : 1 }}>
+        {isSelected ? (
+          <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，锁定后可仿真'}>
+            <span
+              onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+              style={{ width: 14, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: isLocked ? '#52c41a' : '#fa8c16' }}
+            >
+              {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
+            </span>
+          </Tooltip>
+        ) : (
+          <BookOutlined style={{ fontSize: 11, color: c.textMute, flexShrink: 0, width: 14 }} />
+        )}
+        <span style={{ color: isSelected ? c.text : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          {node.titleStr || node.title}
+        </span>
+      </span>
+    );
+  };
+
+  const handleSelectGuarded = (keys: React.Key[]) => {
+    if (isLocked) { return; } // silently ignore when locked; lock icon itself handles unlock
+    handleSelect(keys);
   };
 
   return (
@@ -132,8 +183,14 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             </Tooltip>
           </>
         ) : (
-          // Normal mode: Reload + Lock + Edit Library entry
+          // Normal mode: Import + Reload + Edit Library
           <>
+            <Tooltip title="从本地导入 YAML 模型文件">
+              <Button size="small" type="text" icon={<UploadOutlined />}
+                onClick={onImportFile}
+                style={{ color: c.textMute, padding: '0 3px' }}
+              />
+            </Tooltip>
             {selectedKey && (
               <Tooltip title="重新读取当前 YAML">
                 <Button
@@ -143,32 +200,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                   style={{ color: c.textMute, padding: '0 3px' }}
                 />
               </Tooltip>
-            )}
-            {selectedKey && (
-              <Popover
-                open={validationResult !== null && !validationResult.valid}
-                placement="rightTop"
-                onOpenChange={open => { if (!open) setValidationResult(null); }}
-                content={
-                  <div style={{ maxWidth: 300, maxHeight: 200, overflow: 'auto' }}>
-                    <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: 6 }}>{t('sim.msg.validation_fail')}</div>
-                    {validationResult?.errors.map((err, i) => (
-                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', marginBottom: 3 }}>• {err}</div>
-                    ))}
-                  </div>
-                }
-              >
-                <Button
-                  size="small"
-                  type={isLocked ? 'default' : 'dashed'}
-                  icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
-                  loading={validating}
-                  style={isLocked ? { color: '#52c41a', borderColor: '#52c41a' } : { color: '#faad14', borderColor: '#faad14' }}
-                  onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
-                >
-                  {isLocked ? t('sim.scene.locked') : t('sim.control.pending')}
-                </Button>
-              </Popover>
             )}
             <Tooltip title="编辑模型库">
               <Button size="small" type="text" icon={<EditOutlined />}
@@ -181,6 +212,56 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+        {/* Session imports section */}
+        {sessionModels.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '2px 4px 4px', gap: 4 }}>
+              <span style={{ flex: 1, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Session
+              </span>
+              <Tooltip title="页面刷新后 session 模型仍保留（localStorage）">
+                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, cursor: 'default' }}>💾</span>
+              </Tooltip>
+            </div>
+            {sessionModels.map(m => {
+              const isSel = selectedKey === m.key;
+              const dimSess = isLocked && !isSel;
+              return (
+              <div key={m.key}
+                onClick={() => { if (!isLocked) onSelectSessionModel?.(m); }}
+                style={{ display: 'flex', alignItems: 'center', padding: '3px 6px', borderRadius: 4,
+                  cursor: isLocked && !isSel ? 'default' : 'pointer',
+                  opacity: dimSess ? 0.4 : 1,
+                  background: isSel ? (isDarkMode ? '#1a3a22' : '#f0faf0') : 'transparent' }}>
+                {isSel ? (
+                  <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
+                    <span
+                      onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+                      style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
+                    >
+                      {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <span style={{ width: 16, flexShrink: 0, display: 'inline-block', marginRight: 4 }} />
+                )}
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: isSel ? c.primary : c.text }}>
+                  {m.title}
+                </span>
+                <Tooltip title="从 session 中移除">
+                  <CloseOutlined
+                    onClick={e => { e.stopPropagation(); onClearSessionModel?.(m.key); }}
+                    style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}
+                  />
+                </Tooltip>
+              </div>
+              );
+            })}
+            <div style={{ borderBottom: `1px solid ${c.border}`, margin: '6px 0' }} />
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
           <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
             onChange={e => setStoryFilter(e.target.value)}
@@ -196,12 +277,11 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
           )}
         </div>
 
-        <div style={{ opacity: (isLocked && !builderMode) ? 0.4 : 1, pointerEvents: (isLocked && !builderMode) ? 'none' : 'auto' }}>
+        <div>
           <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
             {builderMode ? (
               // Builder mode: always show tree with checkboxes
               <Tree
-                showIcon
                 expandedKeys={expandedKeys}
                 onExpand={setExpandedKeys}
                 selectedKeys={[]}
@@ -210,22 +290,45 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 titleRender={builderTitleRender}
               />
             ) : storyViewMode === 'tree' ? (
-              <Tree showIcon expandedKeys={expandedKeys} onExpand={setExpandedKeys}
+              <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
                 selectedKeys={selectedKey ? [selectedKey] : []}
-                onSelect={handleSelect}
+                onSelect={handleSelectGuarded}
                 onClick={handleTreeNodeClick}
-                treeData={storyTree} />
+                treeData={storyTree}
+                titleRender={normalTitleRender}
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {storyList.length === 0
                   ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
-                  : storyList.map((m: any) => (
-                      <div key={m.key} onClick={() => handleSelect([m.key])}
-                        style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: selectedKey === m.key ? c.rowHover : 'transparent', color: c.text }}>
-                        <BookOutlined style={{ marginRight: 6, color: c.textMute }} />
+                  : storyList.map((m: any) => {
+                      const isSelected = selectedKey === m.key;
+                      const dimmed = isLocked && !isSelected;
+                      return (
+                      <div key={m.key}
+                        onClick={() => { if (!isLocked) handleSelect([m.key]); }}
+                        style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4,
+                          cursor: isLocked && !isSelected ? 'default' : 'pointer',
+                          opacity: dimmed ? 0.4 : 1,
+                          background: isSelected ? c.rowHover : 'transparent', color: c.text }}>
+                        {/* Fixed-width lock slot — name never shifts */}
+                        {isSelected ? (
+                          <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
+                            <span
+                              onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+                              style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
+                            >
+                              {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <BookOutlined style={{ width: 16, marginRight: 4, color: c.textMute, flexShrink: 0 }} />
+                        )}
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.displayTitle}</span>
                       </div>
-                    ))
+                    );
+                  })
                 }
               </div>
             )}

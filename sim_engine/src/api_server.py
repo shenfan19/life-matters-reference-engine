@@ -687,6 +687,33 @@ async def save_file_raw(file_path: str, payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/model/upload-temp")
+async def upload_model_temp(payload: dict):
+    """Upload YAML text to models/temp/. Returns key so the frontend can load via /api/models/."""
+    import re as _re
+    text = payload.get("text", "")
+    raw_name = payload.get("filename", f"import_{uuid.uuid4().hex[:8]}.yaml")
+    safe_name = _re.sub(r'[^a-zA-Z0-9_\-.]', '_', raw_name)
+    if not safe_name.lower().endswith(('.yaml', '.yml')):
+        safe_name += '.yaml'
+
+    models_root = PROJECT_ROOT / "models"
+    temp_dir = models_root / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    target = temp_dir / safe_name
+
+    try:
+        yaml.safe_load(text)  # validate before writing
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+
+    target.write_text(text, encoding='utf-8')
+    if loader_engine:
+        loader_engine.models_cache.clear()
+
+    return {"success": True, "key": f"temp/{safe_name}", "filename": safe_name}
+
+
 # ========== Save File 端点 ==========
 @app.post("/api/save-file")
 async def save_file_endpoint(request: SaveFileRequest):

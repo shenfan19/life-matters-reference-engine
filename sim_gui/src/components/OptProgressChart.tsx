@@ -59,7 +59,7 @@ const OptProgressChart: React.FC<{
   if (points.length === 0) {
     return (
       <div style={{
-        height: 120,
+        height: 80,
         border: `1px dashed ${c.border}`,
         borderRadius: 4,
         background: isDarkMode ? '#111' : '#fff',
@@ -84,7 +84,7 @@ const OptProgressChart: React.FC<{
       </div>
     );
   }
-  return <canvas ref={canvasRef} style={{ width: '100%', height: 120, display: 'block' }} />;
+  return <canvas ref={canvasRef} style={{ width: '100%', height: 80, display: 'block' }} />;
 };
 
 export default OptProgressChart;

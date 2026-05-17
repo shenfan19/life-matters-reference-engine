@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Empty, Tooltip } from 'antd';
-import { DownloadOutlined, ExportOutlined, SaveOutlined } from '@ant-design/icons';
+import { DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import ParetoChart from './ParetoChart';
 import OptProgressChart from './OptProgressChart';
@@ -21,7 +21,6 @@ interface SimOptTabProps {
   t: (key: string) => string;
   fontSize: number;
   onDownloadModel: () => void;
-  onSaveResults?: () => void;
   hasExistingResults: boolean;
   onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
 }
@@ -29,10 +28,10 @@ interface SimOptTabProps {
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, onSaveResults, hasExistingResults, onSendToSim,
+  onDownloadModel, hasExistingResults, onSendToSim,
 }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'process', 'solutions', 'log']));
   const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -71,8 +70,17 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   const latestHist = optHistory.length > 0 ? optHistory[optHistory.length - 1] : null;
   const liveResult = latestHist?.pareto_front?.length ? { ...optResult, pareto_front: latestHist.pareto_front, objectives } : optResult;
   useEffect(() => {
-    if (hasPareto) setOpenSections(prev => new Set([...prev, 'data']));
+    if (hasPareto) setOpenSections(prev => new Set([...prev, 'solutions']));
   }, [hasPareto]);
+
+  const refRowIdx = useMemo(() => {
+    if (!optResult?.best_x || !optResult?.pareto_front?.length) return -1;
+    const bx: number[] = optResult.best_x;
+    return (optResult.pareto_front as any[]).findIndex((pt: any) => {
+      const px: number[] = pt.x || [];
+      return px.length === bx.length && px.every((v: number, i: number) => Math.abs(v - bx[i]) < 1e-6);
+    });
+  }, [optResult]);
 
   const toggleSection = (key: string) => setOpenSections(prev => {
     const next = new Set(prev);
@@ -141,9 +149,9 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   });
 
   const metric = (label: string, value: any, tone = c.text) => (
-    <div style={{ border: `1px solid ${c.border}`, borderRadius: 5, padding: '7px 8px', background: c.panel, minWidth: 110 }}>
-      <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-      <div style={{ color: tone, fontWeight: 700, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 1.0714)' }}>{value ?? '-'}</div>
+    <div style={{ border: `1px solid ${c.border}`, borderRadius: 5, padding: '4px 8px', background: c.panel, minWidth: 80 }}>
+      <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+      <div style={{ color: tone, fontWeight: 700, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>{value ?? '-'}</div>
     </div>
   );
 
@@ -174,136 +182,97 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     </div>
   );
 
-  const bestPanel = optResult?.best_x != null ? (
-    <div style={{ padding: '2px 0' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-        {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i}`))
-          .map((label: string, i: number) => (
-            <div key={i}>
-              <span style={{ color: c.textMute }}>{label}: </span>
-              <span style={{ color: c.primary, fontWeight: 600 }}>{optResult.best_x?.[i]?.toFixed(3)}</span>
-            </div>
-          ))}
-        {(optResult.objectives || []).map((o: any, i: number) => (
-          <div key={`obj-${i}`}>
-            <span style={{ color: c.textMute }}>{o.variable}: </span>
-            <span style={{ color: c.text }}>{optResult.best_f?.[i]?.toFixed(4)}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-        {onSendToSim && (
-          <Tooltip title="将推荐解添加为仿真方案（Sim 面板方案管理器）">
-            <Button size="small" type="primary" icon={<ExportOutlined />}
-              style={{ background: c.primary, borderColor: c.primary }}
-              onClick={() => onSendToSim([{ x: optResult.best_x || [], f: optResult.best_f || [], rank: 0 }])}
-            >发送到仿真</Button>
-          </Tooltip>
-        )}
-        {onSaveResults && (
-          <Tooltip title="将优化结果（Pareto 前沿 + 推荐解）写回模型 YAML 文件">
-            <Button size="small" icon={<SaveOutlined />} onClick={onSaveResults}>
-              保存到文件
-            </Button>
-          </Tooltip>
-        )}
-        <Tooltip title="下载含 Pareto 前沿的模型 YAML，可上传继续搜索">
-          <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>
-            下载
-          </Button>
-        </Tooltip>
-      </div>
-    </div>
-  ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="完成后显示推荐解" />;
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
       <div style={{ padding: '6px 4px' }}>{optSummary}</div>
 
+      {/* Front — Pareto chart, reduced height */}
       <Section id="front" title="Front" badge={`${optResult?.n_solutions ?? latestHist?.pareto_count ?? 0} 解`}>
-        <div style={{ height: 340, overflow: 'hidden' }}>
+        <div style={{ height: 240, overflow: 'hidden' }}>
           {liveResult?.pareto_front?.length
             ? <ParetoChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
             : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optRunning ? '等待第一代前沿点' : '运行后显示 Pareto 前沿'} />}
         </div>
       </Section>
 
-      <Section id="live" title="Live" badge={optCurGen > 0 ? `Gen ${optCurGen}` : undefined}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {/* Process — live metric cards + progress charts (merged from Live) */}
+      <Section id="process" title="Process" badge={optCurGen > 0 ? `Gen ${optCurGen}/${optTotalGen || '-'}` : `${optHistory.length} 点`}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {metric('Gen', optCurGen > 0 ? `${optCurGen}/${optTotalGen || '-'}` : '-')}
           {metric('Eval', latestHist?.n_eval ?? '-')}
           {metric('Front', latestHist?.pareto_count ?? optResult?.n_solutions ?? '-')}
           {metric('Feasible', latestHist?.feasible_ratio != null ? `${(latestHist.feasible_ratio * 100).toFixed(0)}%` : '-', latestHist?.feasible_ratio === 0 ? '#ff7875' : c.primary)}
           {metric('Mean CV', latestHist?.mean_cv?.toFixed?.(4) ?? '-')}
           {metric('Elapsed', displaySecs > 0 ? formatHMS(displaySecs) : '-')}
-          {latestHist?.objective_ranges?.length > 0 && (
-            <div style={{ width: '100%', marginTop: 4 }}>
-              {latestHist.objective_ranges.map((r: any, i: number) => {
-                const obj = objectives[i] || optResult?.objectives?.[i];
-                return (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textSec, borderTop: `1px solid ${c.border}`, paddingTop: 4 }}>
-                    <span>{obj?.variable || `f${i + 1}`}</span>
-                    <span>{r.min?.toFixed?.(4)} .. {r.max?.toFixed?.(4)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
-      </Section>
-
-      <Section id="process" title="Process" badge={`${optHistory.length} 点`}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8 }}>
-          <OptProgressChart history={hvHistory} metric="hypervolume" label="Hypervolume (normalized)" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+        {latestHist?.objective_ranges?.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            {latestHist.objective_ranges.map((r: any, i: number) => {
+              const obj = objectives[i] || optResult?.objectives?.[i];
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textSec, borderTop: `1px solid ${c.border}`, paddingTop: 4 }}>
+                  <span>{obj?.variable || `f${i + 1}`}</span>
+                  <span>{r.min?.toFixed?.(4)} .. {r.max?.toFixed?.(4)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
+          <OptProgressChart history={hvHistory} metric="hypervolume" label="Hypervolume" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
           <OptProgressChart history={optHistory} metric="pareto_count" label="Pareto count" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
           <OptProgressChart history={optHistory} metric="feasible_ratio" label="Feasible ratio" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
           <OptProgressChart history={optHistory} metric="n_eval" label="Evaluations" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-          <OptProgressChart history={optHistory} metric="mean_cv" label="Mean constraint violation" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <OptProgressChart history={optHistory} metric="mean_cv" label="Mean CV" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
         </div>
       </Section>
 
-      <Section id="best" title="Best">
-        {bestPanel}
-      </Section>
-
-      <Section id="data" title="Solutions" badge={hasPareto ? `${resultRows.length} 行` : undefined}>
+      {/* Solutions — action bar + Pareto table with reference row highlighted (merged from Best) */}
+      <Section id="solutions" title="Solutions" badge={hasPareto ? `${resultRows.length} 行` : undefined}>
+        {/* Action bar — always visible when results exist */}
+        {(hasPareto || optResult?.best_x != null) && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {onSendToSim && (
+              <Tooltip title={checkedIdx.size > 0 ? '将选中的 Pareto 解添加为仿真方案' : '请先在表格中勾选解'}>
+                <Button size="small" type="primary" icon={<ExportOutlined />}
+                  disabled={checkedIdx.size === 0}
+                  style={checkedIdx.size > 0 ? { background: c.primary, borderColor: c.primary } : {}}
+                  onClick={() => {
+                    const rows = [...checkedIdx].map(idx => ({
+                      x: optResult.pareto_front[idx]?.x || [],
+                      f: optResult.pareto_front[idx]?.f || [],
+                      rank: idx + 1,
+                    }));
+                    onSendToSim!(rows);
+                    setCheckedIdx(new Set());
+                  }}
+                >{checkedIdx.size > 0 ? `选中 ${checkedIdx.size} 项→仿真` : '选中→仿真'}</Button>
+              </Tooltip>
+            )}
+            {checkedIdx.size > 0 && (
+              <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
+            )}
+            <div style={{ flex: 1 }} />
+            <Tooltip title="下载含 Pareto 前沿的模型 YAML，可上传继续搜索">
+              <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>下载</Button>
+            </Tooltip>
+          </div>
+        )}
         {hasPareto ? (
           <div style={{ overflowX: 'auto' }}>
-            {checkedIdx.size > 0 && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                {onSendToSim && (
-                  <Tooltip title="将选中的 Pareto 解添加为仿真方案（Sim 面板的方案管理器）">
-                    <Button size="small" type="primary" icon={<ExportOutlined />}
-                      style={{ background: c.primary, borderColor: c.primary }}
-                      onClick={() => {
-                        const rows = [...checkedIdx].map(idx => ({
-                          x: optResult.pareto_front[idx]?.x || [],
-                          f: optResult.pareto_front[idx]?.f || [],
-                          rank: idx + 1,
-                        }));
-                        onSendToSim(rows);
-                        setCheckedIdx(new Set());
-                      }}
-                    >发送到仿真 ({checkedIdx.size})</Button>
-                  </Tooltip>
-                )}
-                <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
-              </div>
-            )}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
               <thead>
                 <tr style={{ color: c.textMute, borderBottom: `1px solid ${c.border}` }}>
-                  {onSendToSim && (
-                    <th style={{ padding: 4, width: 24 }}>
-                      <input type="checkbox"
-                        checked={checkedIdx.size === Math.min(resultRows.length, 80) && resultRows.length > 0}
-                        onChange={e => {
-                          if (e.target.checked) setCheckedIdx(new Set(resultRows.slice(0, 80).map((_: any, i: number) => i)));
-                          else setCheckedIdx(new Set());
-                        }}
-                      />
-                    </th>
-                  )}
+                  {onSendToSim && <th style={{ padding: 4, width: 24 }}>
+                    <input type="checkbox"
+                      checked={checkedIdx.size === Math.min(resultRows.length, 80) && resultRows.length > 0}
+                      onChange={e => {
+                        if (e.target.checked) setCheckedIdx(new Set(resultRows.slice(0, 80).map((_: any, i: number) => i)));
+                        else setCheckedIdx(new Set());
+                      }}
+                    />
+                  </th>}
                   <th style={{ textAlign: 'left', padding: 4 }}>#</th>
                   {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i + 1}`)).map((name: string, i: number) => (
                     <th key={`x-${i}`} style={{ textAlign: 'right', padding: 4 }}>{name}</th>
@@ -314,10 +283,11 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {resultRows.slice(0, 80).map((row: any, rIdx: number) => (
-                  <tr key={row.key} style={{ borderBottom: `1px solid ${c.border}` }}>
-                    {onSendToSim && (
-                      <td style={{ padding: 4 }}>
+                {resultRows.slice(0, 80).map((row: any, rIdx: number) => {
+                  const isRef = rIdx === refRowIdx;
+                  return (
+                    <tr key={row.key} style={{ borderBottom: `1px solid ${c.border}`, background: isRef ? (isDarkMode ? '#1a3a22' : '#f0faf0') : undefined }}>
+                      {onSendToSim && <td style={{ padding: 4 }}>
                         <input type="checkbox"
                           checked={checkedIdx.has(rIdx)}
                           onChange={e => {
@@ -326,21 +296,23 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
                             setCheckedIdx(next);
                           }}
                         />
+                      </td>}
+                      <td style={{ padding: 4, color: isRef ? c.primary : c.textMute, fontWeight: isRef ? 700 : 400 }}>
+                        {isRef ? '★' : row.rank}
                       </td>
-                    )}
-                    <td style={{ padding: 4, color: c.textMute }}>{row.rank}</td>
-                    {(optResult.best_x || []).map((_: any, i: number) => (
-                      <td key={`xv-${i}`} style={{ textAlign: 'right', padding: 4, fontFamily: 'monospace' }}>{row[`x${i + 1}`]?.toFixed?.(4) ?? '-'}</td>
-                    ))}
-                    {(optResult.objectives || []).map((_: any, i: number) => (
-                      <td key={`fv-${i}`} style={{ textAlign: 'right', padding: 4, fontFamily: 'monospace', color: rIdx === 0 ? c.primary : c.text }}>{row[`f${i + 1}`]?.toFixed?.(4) ?? '-'}</td>
-                    ))}
-                  </tr>
-                ))}
+                      {(optResult.best_x || []).map((_: any, i: number) => (
+                        <td key={`xv-${i}`} style={{ textAlign: 'right', padding: 4, fontFamily: 'monospace', color: isRef ? c.primary : undefined }}>{row[`x${i + 1}`]?.toFixed?.(4) ?? '-'}</td>
+                      ))}
+                      {(optResult.objectives || []).map((_: any, i: number) => (
+                        <td key={`fv-${i}`} style={{ textAlign: 'right', padding: 4, fontFamily: 'monospace', color: isRef ? c.primary : c.text }}>{row[`f${i + 1}`]?.toFixed?.(4) ?? '-'}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="完成后显示解表" />}
+        ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optResult?.best_x ? '无 Pareto 表（单目标）' : '完成后显示解表'} />}
       </Section>
 
       <Section id="log" title="Log" badge={`${optLogs.length} 条`}>
