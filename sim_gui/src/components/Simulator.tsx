@@ -376,10 +376,61 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (restoreFromSaved) {
         // Keep saved inputEvents
       } else {
-        setInputEvents(newInputEvents);
-        // Reset to single plan on new model load
-        setPlans([{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
-        setActivePlanId('plan-1');
+        const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
+        if (yamlPlans.length > 0) {
+          const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
+            const planSchedList: any[] = Array.isArray(plan.schedules) ? plan.schedules : [];
+            const planEvents: InputEvent[] = [];
+            Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
+              if (vdata.type !== 'input') return;
+              const entries = planSchedList.filter((s: any) => s.variable === name);
+              if (entries.length > 0) {
+                entries.forEach((s: any, j: number) => {
+                  const dl: string[] = Array.isArray(s.days) ? s.days : [];
+                  const hasDays = dl.length > 0 && dl.length < 7;
+                  let vs = s.valid_start ?? '';
+                  let ve = s.valid_end ?? '';
+                  if (!vs && !ve && s.date_range) {
+                    const parts = String(s.date_range).split('~');
+                    if (parts.length === 2) { vs = parts[0].trim(); ve = parts[1].trim(); }
+                  }
+                  planEvents.push({
+                    id: `${plan.id ?? `plan${i}`}-${name}-${j}`,
+                    variable: name,
+                    time: s.time ?? '08:00', timeEnabled: !!s.time,
+                    value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
+                    daysEnabled: hasDays,
+                    days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
+                    validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
+                    optimizeValue: false, valueBounds: varBounds(vdata),
+                  });
+                });
+              } else {
+                planEvents.push({
+                  id: `${plan.id ?? `plan${i}`}-${name}-ev0`,
+                  variable: name, time: '08:00', timeEnabled: false,
+                  value: vdata.value ?? 0, label: '',
+                  daysEnabled: false, days: [true,true,true,true,true,true,true],
+                  validRangeEnabled: false, validStart: '', validEnd: '',
+                  optimizeValue: false, valueBounds: varBounds(vdata),
+                });
+              }
+            });
+            return {
+              id: plan.id ?? `plan-${i + 1}`,
+              label: plan.label ?? `方案 ${i + 1}`,
+              color: PLAN_COLORS[i % PLAN_COLORS.length],
+              inputEvents: planEvents,
+            };
+          });
+          setPlans(loadedPlans);
+          setActivePlanId(loadedPlans[0].id);
+          setInputEvents(loadedPlans[0].inputEvents);
+        } else {
+          setInputEvents(newInputEvents);
+          setPlans([{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
+          setActivePlanId('plan-1');
+        }
         freshInputInit = true;
       }
       const ranges: typeof optRanges = {};
