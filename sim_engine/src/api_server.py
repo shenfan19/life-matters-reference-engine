@@ -1344,7 +1344,7 @@ async def get_optimizer_status(job_id: str):
 
 
 class ExportModelRequest(BaseModel):
-    model_key: str          # path relative to models/, e.g. "published/paper2/foo.yaml"
+    model_key: str          # path relative to models/, e.g. "papers/paper2/foo.yaml"
     results: Dict[str, Any] # the optimizer.results block to embed
 
 

@@ -1750,7 +1750,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         <Input
           value={newFilePath}
           onChange={e => setNewFilePath(e.target.value)}
-          placeholder="models/in_process/my_model.yaml"
+          placeholder="models/temp/my_model.yaml"
           style={{ fontFamily: 'monospace' }}
           onPressEnter={handleCreateFile}
         />

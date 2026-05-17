@@ -4,10 +4,10 @@
 
 `references/` 存放**可复用的生理/社会动力学子模型**，是整个模型生态的基础构件层。
 
-每个文件描述一个独立的生理系统或机制（肾功能、运动疲劳、PK/PD 等），供上层场景（`in_process/`、`published/`）通过 `imports:` 机制组合调用。
+每个文件描述一个独立的生理系统或机制（肾功能、运动疲劳、PK/PD 等），供上层场景（`temp/`、`papers/`）通过 `imports:` 机制组合调用。
 
 **不在这里放的内容**：
-- 完整可运行的仿真场景（放 `in_process/` 或 `published/`）
+- 完整可运行的仿真场景（放 `temp/` 或 `papers/`）
 - 游戏内容（放 `stories/`）
 
 ## 目录结构
@@ -33,7 +33,7 @@ components/
 ## 使用方式
 
 ```yaml
-# 在 in_process/ 或 published/ 的场景文件中通过 imports 引用
+# 在 temp/ 或 papers/ 的场景文件中通过 imports 引用
 imports:
   - components/medical/physiology/banister_fitness_fatigue
   - components/medical/disease/ckd_renal_filtration

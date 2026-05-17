@@ -104,11 +104,11 @@ class Loader:
                 imp_name_normalized = imp_name.replace('\\', '/')
                 
                 # Rooted model path: relative to the models/ directory.
-                # Accept both "published/foo" and legacy "models/published/foo".
+                # Accept both "papers/foo" and legacy "models/papers/foo".
                 if os.path.isabs(imp_name) or imp_name_normalized.startswith('/'):
                     raise ValueError(
                         f"导入模型 {imp_name} 使用了文件系统绝对路径。"
-                        "请使用 models 根路径（如 published/paper2/foo）或相对路径（./foo, ../foo）。"
+                        "请使用 models 根路径（如 papers/paper2/foo）或相对路径（./foo, ../foo）。"
                     )
 
                 if imp_name_normalized.startswith('.'):
@@ -126,7 +126,7 @@ class Loader:
                 else:
                     raise ValueError(
                         f"导入模型 {imp_name} 不是显式路径。"
-                        "请写成 models 根路径（如 published/paper2/foo）或相对路径（./foo, ../foo）。"
+                        "请写成 models 根路径（如 papers/paper2/foo）或相对路径（./foo, ../foo）。"
                     )
 
                 if imp_path and models_root:
@@ -137,7 +137,7 @@ class Loader:
 
                 if not imp_path or not os.path.exists(imp_path):
                     raise FileNotFoundError(
-                        f"导入模型 {imp_name} 未找到。支持相对路径或 models 根路径（如 published/paper2/foo）。"
+                        f"导入模型 {imp_name} 未找到。支持相对路径或 models 根路径（如 papers/paper2/foo）。"
                         f"尝试路径: {imp_path}"
                     )
 
