@@ -31,13 +31,41 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
   onDownloadModel, onSaveResults, hasExistingResults, onSendToSim,
 }) => {
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'live', 'process', 'log']));
   const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = logContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [optLogs.length]);
+
+  // Client-side stopwatch
+  const [displaySecs, setDisplaySecs] = useState(0);
+  const startTsRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!optRunning) {
+      if (optElapsed > 0) setDisplaySecs(Math.round(optElapsed));
+      return;
+    }
+    // Sync start with server offset in case component mounted mid-run
+    const startTs = Date.now() - optElapsed * 1000;
+    startTsRef.current = startTs;
+    const timer = setInterval(() => {
+      setDisplaySecs(Math.floor((Date.now() - startTs) / 1000));
+    }, 100);
+    return () => clearInterval(timer);
+  }, [optRunning]);
+
+  const formatHMS = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(sec).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  };
 
   const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
   const latestHist = optHistory.length > 0 ? optHistory[optHistory.length - 1] : null;
@@ -120,14 +148,13 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   );
 
   const logPanel = (
-    <div style={{ maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
+    <div ref={logContainerRef} style={{ maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
       {optLogs.length === 0 && <span style={{ color: c.textMute }}>暂无日志</span>}
       {optLogs.map((l, i) => {
         const d = new Date(l.t * 1000);
         const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
         return <div key={i} style={{ lineHeight: 1.5 }}><span style={{ color: c.textMute }}>{ts}</span> {l.msg}</div>;
       })}
-      <div ref={logEndRef} />
     </div>
   );
 
@@ -142,7 +169,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       ))}
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
         {(optResult?.n_solutions ?? latestHist?.pareto_count ?? 0)} 解 · {(optResult?.method || optMethod || 'nsga2')}
-        {optElapsed > 0 ? ` · ${optElapsed.toFixed(1)}s` : ''}
+        {displaySecs > 0 ? ` · ${formatHMS(displaySecs)}` : ''}
       </span>
     </div>
   );
@@ -208,7 +235,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
           {metric('Front', latestHist?.pareto_count ?? optResult?.n_solutions ?? '-')}
           {metric('Feasible', latestHist?.feasible_ratio != null ? `${(latestHist.feasible_ratio * 100).toFixed(0)}%` : '-', latestHist?.feasible_ratio === 0 ? '#ff7875' : c.primary)}
           {metric('Mean CV', latestHist?.mean_cv?.toFixed?.(4) ?? '-')}
-          {metric('Elapsed', optElapsed > 0 ? `${optElapsed.toFixed(1)}s` : '-')}
+          {metric('Elapsed', displaySecs > 0 ? formatHMS(displaySecs) : '-')}
           {latestHist?.objective_ranges?.length > 0 && (
             <div style={{ width: '100%', marginTop: 4 }}>
               {latestHist.objective_ranges.map((r: any, i: number) => {

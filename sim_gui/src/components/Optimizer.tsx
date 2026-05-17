@@ -179,13 +179,14 @@ const LogConsole: React.FC<{
   isDark: boolean;
   c: ReturnType<typeof getC>;
 }> = ({ logs, isDark, c }) => {
-  const endRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = containerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [logs.length]);
 
   return (
-    <div style={{
+    <div ref={containerRef} style={{
       height: '100%', overflowY: 'auto',
       background: isDark ? '#0d1710' : '#f0f7f0',
       border: `1px solid ${c.border}`,
@@ -207,7 +208,6 @@ const LogConsole: React.FC<{
           </div>
         );
       })}
-      <div ref={endRef} />
     </div>
   );
 };
@@ -235,6 +235,34 @@ const Optimizer: React.FC<OptimizerProps> = ({
   const [jobResult, setJobResult] = useState<any>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Client-side stopwatch (purely for display, no computation impact)
+  const [displaySecs, setDisplaySecs] = useState(0);
+  const startTsRef = useRef<number | null>(null);
+  const displayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const formatHMS = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(sec).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  };
+
+  const startDisplayTimer = useCallback(() => {
+    if (displayTimerRef.current) clearInterval(displayTimerRef.current);
+    startTsRef.current = Date.now();
+    setDisplaySecs(0);
+    displayTimerRef.current = setInterval(() => {
+      setDisplaySecs(Math.floor((Date.now() - startTsRef.current!) / 1000));
+    }, 100);
+  }, []);
+
+  const stopDisplayTimer = useCallback((finalSecs?: number) => {
+    if (displayTimerRef.current) { clearInterval(displayTimerRef.current); displayTimerRef.current = null; }
+    if (finalSecs != null) setDisplaySecs(finalSecs);
+  }, []);
 
   const setStatus = (val: typeof state.status) => setState(prev => ({ ...prev, status: val }));
   const setInputParams = (val: Record<string, number>) => setState(prev => ({ ...prev, inputParams: val }));
@@ -270,7 +298,10 @@ const Optimizer: React.FC<OptimizerProps> = ({
   }, [selectedModel]);
 
   useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (displayTimerRef.current) clearInterval(displayTimerRef.current);
+    };
   }, []);
 
   const stopPolling = useCallback(() => {
@@ -296,15 +327,18 @@ const Optimizer: React.FC<OptimizerProps> = ({
           setStatus('completed');
           setJobResult(data.result);
           stopPolling();
+          stopDisplayTimer(Math.round(data.elapsed || 0));
           message.success('优化完成！');
         } else if (data.status === 'failed') {
           setStatus('idle');
           setJobError(data.error || '优化失败');
           stopPolling();
+          stopDisplayTimer(Math.round(data.elapsed || 0));
           message.error(data.error || '优化失败');
         } else if (data.status === 'cancelled') {
           setStatus('idle');
           stopPolling();
+          stopDisplayTimer(Math.round(data.elapsed || 0));
         }
       } catch { /* ignore poll errors */ }
     }, 1500);
@@ -316,6 +350,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
     setStatus('running'); setLiveHistory([]); setLiveLogs([]);
     setElapsed(0); setJobResult(null); setJobError(null);
     setState(prev => ({ ...prev, progress: 0, optimizationData: [] }));
+    startDisplayTimer();
 
     // 优先用完整相对路径，find_model_file 支持带 / 的路径直接查找
     const modelName = selectedModel.key || selectedModel.content?.metadata?.name || '';
@@ -446,7 +481,7 @@ const Optimizer: React.FC<OptimizerProps> = ({
       }}>
         {statusTag}
         <span style={{ color: c.textMute }}>
-          elapsed: <span style={{ fontFamily: 'monospace', color: c.text }}>{elapsed.toFixed(1)}s</span>
+          elapsed: <span style={{ fontFamily: 'monospace', color: c.text }}>{formatHMS(displaySecs)}</span>
         </span>
         <span style={{ color: c.textMute }}>
           iterations: <span style={{ fontFamily: 'monospace', color: c.text }}>{liveHistory.length}</span>

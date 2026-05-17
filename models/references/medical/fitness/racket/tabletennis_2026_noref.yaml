@@ -26,7 +26,7 @@ variables:
     - 1.0
     - 10.0
     description: 回合节奏（1=慢速练习，10=高速比赛对决）
-    type: parameter
+    type: input
     unit: RPE
     value: 7.0
   spin_intensity:
@@ -34,7 +34,7 @@ variables:
     - 0.0
     - 10.0
     description: 旋转/变化球强度（影响神经负荷）
-    type: parameter
+    type: input
     unit: 强度
     value: 5.0
   heart_rate:
@@ -181,6 +181,15 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
+  schedules:
+    - variable: rally_pace
+      time: "09:00"
+      value: 7.0
+      label: 回合节奏
+    - variable: spin_intensity
+      time: "09:00"
+      value: 5.0
+      label: 旋转强度
   output_variables:
   - heart_rate
   - calories_burned
@@ -192,3 +201,36 @@ simulation:
   - footwork_speed
   - concentration
   - performance
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance
+      direction: maximize
+      metric: final
+      description: 最大化综合比赛表现
+    - variable: neural_fatigue
+      direction: minimize
+      metric: final
+      description: 最小化神经疲劳（保护反应速度）
+  constraints:
+    - variable: heart_rate
+      condition: <= 180
+      type: hard
+      description: 心率不超过上限
+    - variable: reaction_time
+      condition: <= 350
+      type: soft
+      description: 反应时间控制在 350ms 以内
+  regimen:
+    variable: rally_pace
+    description: 优化乒乓球回合节奏策略
+    events:
+      - time: "09:00"
+        dose_bounds: [3.0, 9.0]
+        label: 回合节奏（RPE 3-9）
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

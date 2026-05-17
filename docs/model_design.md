@@ -457,6 +457,17 @@ accumulators:
 
 完整 L3 细分见 `docs/decisions/0022-models-three-level-taxonomy.md`。
 
+### `references/` 目录约定
+
+`references/` 下的模型分两类，optimizer 要求不同：
+
+| 类型 | 特征 | optimizer 要求 |
+|------|------|--------------|
+| **可独立分析的参考模型**（fitness、disease、nutrition 等）| 有自己的 `input` 变量和 `simulation.schedules`，可直接运行 | **应有** `optimizer` 块 |
+| **深层生理组件**（physiology/ 下的 `_mw` 系列，如 `digestive_system`、`insulin_system`、`glucose_regulation` 等）| 无 `input` 变量，主要为 `import` 的积木，单独运行无生理意义 | **不需要** `optimizer` |
+
+判断原则：若模型的 `variables` 中没有 `type: input` 的变量，说明它是纯组件，不需要 optimizer。
+
 ---
 
 ## optimizer.results — 优化结果内嵌格式
