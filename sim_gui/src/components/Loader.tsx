@@ -2,7 +2,7 @@
 // Scenario (story) loader: single select, show info on select, validate+lock.
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Button, Input, message, Spin, Descriptions, Empty, Alert, Tabs } from 'antd';
+import { Tag, Button, Input, message, Spin, Descriptions, Empty, Alert, Tabs, Tooltip } from 'antd';
 import {
   BookOutlined,
   FileOutlined,
@@ -424,19 +424,18 @@ const Loader: React.FC<LoaderProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
                   {selectedStory.title}
-                  {isLocked && <Tag color="green" style={{ marginLeft: 8 }} icon={<LockOutlined />}>已锁定</Tag>}
                 </span>
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={isLocked ? <LockOutlined /> : <CheckCircleOutlined />}
-                  loading={validating}
-                  onClick={isLocked ? () => { setIsLocked(false); setValidationResult(null); } : handleValidateAndLock}
-                  disabled={isSimulating}
-                  danger={isLocked}
-                >
-                  {isLocked ? '解锁' : '验证并锁定'}
-                </Button>
+                <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '验证并锁定'}>
+                  <Button
+                    type={isLocked ? 'primary' : 'default'}
+                    size="small"
+                    icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
+                    loading={validating}
+                    onClick={isLocked ? () => { setIsLocked(false); setValidationResult(null); } : handleValidateAndLock}
+                    disabled={isSimulating}
+                    danger={isLocked}
+                  />
+                </Tooltip>
               </div>
 
               {/* 验证结果内联显示 */}
