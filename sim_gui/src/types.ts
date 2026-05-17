@@ -5,7 +5,6 @@ import type { DataNode as AntDataNode } from 'antd/es/tree';
 
 export interface DataNode extends AntDataNode {
     titleStr?: string;
-    model_type?: string;
     path?: string;
     isLeaf?: boolean;
     displayTitle?: string;

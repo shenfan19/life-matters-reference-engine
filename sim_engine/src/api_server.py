@@ -550,7 +550,6 @@ async def list_files():
                         with open(item_path, 'r', encoding='utf-8') as f:
                             data = yaml.safe_load(f)
                             if isinstance(data, dict):
-                                file_metadata['model_type'] = data.get('type', 'unknown')
                                 file_metadata['category'] = data.get('category', 'unknown')
                                 file_metadata['description'] = data.get('description', '')
                                 file_metadata['difficulty'] = data.get('difficulty', '')

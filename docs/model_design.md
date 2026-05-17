@@ -59,7 +59,6 @@ LM 引擎以 pulse 模式执行 input 变量：schedule 触发时写入值，其
 ## 完整 YAML Schema
 
 ```yaml
-type: model | story
 category: physiological | socio_economic | environmental | risk | simple
 
 metadata:
@@ -457,8 +456,6 @@ accumulators:
 | social | economy / conflict / law / psychology / technology / demography | 社会经济与社会学 |
 
 完整 L3 细分见 `docs/decisions/0022-models-three-level-taxonomy.md`。
-
-`standalone: true`（或省略）= 可独立运行；`standalone: false` = 库组件，需被 import。
 
 ---
 

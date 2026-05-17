@@ -115,20 +115,18 @@ const Loader: React.FC<LoaderProps> = ({
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <FolderOutlined style={{ color: '#007A33' }} />,
-                title: <span>{item.title} <Tag color="blue" style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>pkg</Tag></span>,
-                titleStr: item.title, model_type: 'story',
+                title: item.title,
+                titleStr: item.title,
               };
             }
           }
           return {
-            title: item.type === 'file'
-              ? <span>{titleStr}{item.model_type && <Tag color="blue" style={{ marginLeft: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{item.model_type}</Tag>}</span>
-              : item.title,
+            title: item.type === 'file' ? titleStr : item.title,
             key: item.key,
             icon: item.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
             isLeaf: item.type === 'file',
             children: item.children ? convert(item.children) : undefined,
-            titleStr, model_type: item.model_type,
+            titleStr,
           };
         });
         const modelsNode = result.data.find((n: any) => n.key === 'models');
