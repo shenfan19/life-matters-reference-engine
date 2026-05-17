@@ -90,6 +90,15 @@ const Simulator: React.FC<SimulatorProps> = ({
     simRuns, sessionSeed,
   } = state;
 
+  // ── session imports (localStorage-persisted) ─────────────────────────────────
+  const SESSION_KEY = 'lm_session_imports';
+  const [sessionModels, setSessionModels] = useState<ModelFile[]>(() => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || '[]'); } catch { return []; }
+  });
+  const saveSession = (models: ModelFile[]) => {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(models)); } catch {}
+  };
+
   // ── loader state ─────────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
@@ -823,6 +832,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     } else {
       setValidationResult(result);
       setIsLocked(false);
+      const firstErrors = (result.errors || []).slice(0, 3).join('；');
+      message.error(`验证失败：${firstErrors}${result.errors.length > 3 ? `…（共 ${result.errors.length} 个错误）` : ''}`);
     }
     setValidating(false);
   };
@@ -1262,6 +1273,37 @@ const Simulator: React.FC<SimulatorProps> = ({
     } catch (e: any) { message.error(e.message); }
   };
 
+  // ── import local YAML file ────────────────────────────────────────────────────
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!importFileRef.current) return;
+    importFileRef.current.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const resp = await fetch(`${API_BASE}/model/upload-temp`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, filename: file.name }),
+      });
+      const data = await resp.json();
+      if (!data.success) { message.error(data.error || '导入失败'); return; }
+
+      // Use standard loadFileContent so imports are resolved via /api/models/ (loader_engine.fetch)
+      const model = await loadFileContent(data.key);
+      if (!model) { message.error('模型加载失败，请检查 imports 路径'); return; }
+
+      setSelectedKey(data.key);
+      setSessionModels(prev => {
+        const next = [model, ...prev.filter(m => m.key !== model.key)].slice(0, 10);
+        saveSession(next);
+        return next;
+      });
+      message.success(`已导入 ${data.filename}`);
+    } catch (err: any) { message.error(err.message || '读取文件失败'); }
+  };
+
   const startOptimization = async () => {
     if (!selectedModel) return;
     setCenterTab('optimization');
@@ -1539,6 +1581,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── render ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Hidden file input for local YAML import */}
+      <input ref={importFileRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleImportFile} />
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         <SimModelTree
@@ -1573,6 +1617,22 @@ const Simulator: React.FC<SimulatorProps> = ({
           onOpenBuilder={openBuilder}
           onNewFile={() => setNewFileDialogOpen(true)}
           onMergeFiles={() => setMergeDialogOpen(true)}
+          onImportFile={() => importFileRef.current?.click()}
+          sessionModels={sessionModels}
+          onSelectSessionModel={model => {
+            setSelectedKey(model.key);
+            setConfirmedModel(model);
+            onModelSelect(model);
+            setCenterTab('intro');
+          }}
+          onClearSessionModel={key => {
+            setSessionModels(prev => {
+              const next = prev.filter(m => m.key !== key);
+              saveSession(next);
+              return next;
+            });
+            if (selectedKey === key) { setSelectedKey(null); setConfirmedModel(null); onModelSelect(null); }
+          }}
         />
 
         <div
@@ -1720,7 +1780,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                   objectives={objectives} constraints={constraints}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
                   onDownloadModel={downloadModelYAML}
-                  onSaveResults={saveResultsToFile}
                   hasExistingResults={hasExistingResults}
                   onSendToSim={addPlansFromOpt}
                 />
@@ -1815,7 +1874,7 @@ function WorkspacePage({ controls, setup, result, progress }: { controls: React.
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 10px' }}>
         <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {setup}
         </div>
