@@ -57,4 +57,39 @@ schedules:
 simulation:
   start_date: "1462-06-01"
   end_date: "1562-05-31"
-  output_variables: [blood_reserve, thirst_level, sun_exposure]
+  schedules:
+    - variable: hunt_intensity
+      time: "22:00"
+      value: 1.0
+      days: [Mon, Wed, Fri]
+      label: 夜间狩猎（每周三次）
+  output_variables: [blood_reserve, thirst_level, sun_exposure, hunt_intensity]
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: blood_reserve
+      direction: maximize
+      metric: final
+      description: 最大化血液储备（生存资源）
+    - variable: thirst_level
+      direction: minimize
+      metric: final
+      description: 最小化饥渴程度（生活质量）
+  constraints:
+    - variable: blood_reserve
+      condition: ">= 10"
+      type: hard
+      description: 血液储备不得低于 10%（死亡线）
+  regimen:
+    variable: hunt_intensity
+    description: 优化夜间狩猎强度策略
+    events:
+      - time: "22:00"
+        dose_bounds: [0.0, 3.0]
+        label: 夜间狩猎强度（0=不猎，3=全力）
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

@@ -25,7 +25,7 @@ variables:
     - 0.0
     - 10.0
     description: 回合强度（RPE 0-10），高值=长回合/快节奏
-    type: parameter
+    type: input
     unit: RPE
     value: 7.0
   serve_speed:
@@ -33,7 +33,7 @@ variables:
     - 100.0
     - 220.0
     description: 发球速度
-    type: parameter
+    type: input
     unit: km/h
     value: 160.0
   heart_rate:
@@ -172,6 +172,15 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
+  schedules:
+    - variable: rally_intensity
+      time: "10:00"
+      value: 7.0
+      label: 比赛回合强度
+    - variable: serve_speed
+      time: "10:00"
+      value: 160.0
+      label: 发球速度
   output_variables:
   - heart_rate
   - calories_burned
@@ -182,3 +191,36 @@ simulation:
   - footwork_quality
   - shot_consistency
   - performance
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance
+      direction: maximize
+      metric: final
+      description: 最大化比赛综合表现评分
+    - variable: fatigue
+      direction: minimize
+      metric: final
+      description: 最小化比赛结束时疲劳
+  constraints:
+    - variable: heart_rate
+      condition: <= 190
+      type: hard
+      description: 心率不超过 95% HRmax
+    - variable: lactate
+      condition: <= 10.0
+      type: soft
+      description: 血乳酸控制在 10 mmol/L 以内
+  regimen:
+    variable: rally_intensity
+    description: 优化网球比赛回合强度策略
+    events:
+      - time: "10:00"
+        dose_bounds: [3.0, 9.0]
+        label: 回合强度（RPE 3-9）
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

@@ -2,13 +2,13 @@ category: dynamics
 
 metadata:
   name: "simple_nutrition"
-  updated: 2026-04-23
+  updated: 2026-05-17
   author: "Antigravity"
   description:
     brief: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
-    method: 包含 8 个变量和 1 个方程，描述 food_carbohydrate、food_protein、food_fat、water_intake 的基础动态。
-    simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
+    method: 包含 8 个变量和 1 个方程，描述三餐营养摄入（碳水、蛋白质、脂肪、水分）向胃部转移的基础动态。
+    simulation: 默认仿真从 2026-01-01 到 2026-01-02，三餐 schedule 触发，观察胃部营养蓄积。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   tags: [nutrition, simple, demo]
   step_size:
@@ -16,36 +16,34 @@ metadata:
     unit: minute
 
 variables:
-  # ========== 来自食物模型的输入 (匹配 banana.yaml 的输出) ==========
   food_carbohydrate:
-    type: state
-    value: 0
+    type: input
+    value: 60.0
     unit: "g"
-    io_role: intermediate
-    description: "待转化的碳水化合物"
+    bounds: [0.0, 200.0]
+    description: "单次餐食碳水化合物摄入量"
 
   food_protein:
-    type: state
-    value: 0
+    type: input
+    value: 20.0
     unit: "g"
-    io_role: intermediate
-    description: "待转化的蛋白质"
+    bounds: [0.0, 100.0]
+    description: "单次餐食蛋白质摄入量"
 
   food_fat:
-    type: state
-    value: 0
+    type: input
+    value: 15.0
     unit: "g"
-    io_role: intermediate
-    description: "待转化的脂肪"
+    bounds: [0.0, 80.0]
+    description: "单次餐食脂肪摄入量"
 
   water_intake:
-    type: state
-    value: 0
+    type: input
+    value: 300.0
     unit: "ml"
-    io_role: intermediate
-    description: "待转化的水分"
+    bounds: [0.0, 1000.0]
+    description: "单次饮水量"
 
-  # ========== 身体状态变量 ==========
   gastric_carbohydrate:
     type: state
     value: 0
@@ -83,13 +81,57 @@ formulas:
       gastric_protein: "gastric_protein + food_protein"
       gastric_fat: "gastric_fat + food_fat"
       body_water: "body_water + water_intake"
-      # 清零输入，防止重复累加
-      food_carbohydrate: 0
-      food_protein: 0
-      food_fat: 0
-      water_intake: 0
 
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
+  schedules:
+    - variable: food_carbohydrate
+      time: "07:30"
+      value: 60.0
+      label: 早餐碳水
+    - variable: food_protein
+      time: "07:30"
+      value: 15.0
+      label: 早餐蛋白质
+    - variable: food_fat
+      time: "07:30"
+      value: 10.0
+      label: 早餐脂肪
+    - variable: water_intake
+      time: "07:30"
+      value: 300.0
+      label: 早餐饮水
+    - variable: food_carbohydrate
+      time: "12:00"
+      value: 80.0
+      label: 午餐碳水
+    - variable: food_protein
+      time: "12:00"
+      value: 25.0
+      label: 午餐蛋白质
+    - variable: food_fat
+      time: "12:00"
+      value: 20.0
+      label: 午餐脂肪
+    - variable: water_intake
+      time: "12:00"
+      value: 400.0
+      label: 午餐饮水
+    - variable: food_carbohydrate
+      time: "18:30"
+      value: 70.0
+      label: 晚餐碳水
+    - variable: food_protein
+      time: "18:30"
+      value: 20.0
+      label: 晚餐蛋白质
+    - variable: food_fat
+      time: "18:30"
+      value: 18.0
+      label: 晚餐脂肪
+    - variable: water_intake
+      time: "18:30"
+      value: 350.0
+      label: 晚餐饮水
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]

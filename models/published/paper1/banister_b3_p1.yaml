@@ -10,7 +10,7 @@
     problem: 训练负荷同时带来适应和疲劳，两者时间常数不同；减量期的表现峰值依赖二者相对衰减速度。
     method: 三个状态变量 fitness、fatigue、performance 加一个训练负荷输入 training_load；fitness 慢衰减，fatigue 快衰减，performance = p0 + fitness - fatigue。
     simulation: 默认配置 V2 协议：10 周渐进训练、2 周减量、4 周维持，输出 fitness、fatigue、performance、training_load。
-    optimization: 本模型不启用优化，定位是数值验证与复现实验。
+    optimization: 优化三阶段训练负荷分配——渐进期、减量期、维持期各阶段最优强度，在最大化末期表现的同时控制疲劳积累。
     result: 预期第 16 周末 performance 落在 520–560 AU 附近，并在减量开始后 5–10 天出现超量恢复峰值。
     conclusion: 期望结论是 LM 可复现 Banister/Morton 训练适应-疲劳曲线，可作为积分器和 schedule 机制的基准案例。
     limitations: 参数采用文献标准值和演示协议，未针对具体运动员个体校准。
@@ -147,3 +147,42 @@ simulation:
 # ── 验证目标 ──────────────────────────────────────────────────────────────────
 # V2 通过标准：第 16 周末（4月22日）performance 在 520–560 AU 范围内
 # V3 通过标准：减量开始后（3月12日起）5–10天内出现 performance 峰值
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: performance
+      direction: maximize
+      metric: final
+      description: 最大化第16周末综合表现（AU）
+    - variable: fatigue
+      direction: minimize
+      metric: final
+      description: 最小化训练结束时疲劳积累（AU）
+  constraints:
+    - variable: fatigue
+      condition: "<= 800"
+      type: hard
+      description: 疲劳上限 800 AU，防止过度训练
+    - variable: performance
+      condition: ">= 480"
+      type: soft
+      description: 表现不低于基础值 480 AU
+  regimen:
+    variable: training_load
+    description: 优化三阶段训练负荷（渐进期07:00 / 减量期09:00 / 维持期11:00）
+    events:
+      - time: "07:00"
+        dose_bounds: [40.0, 120.0]
+        label: 渐进训练期负荷（第1-10周）
+      - time: "09:00"
+        dose_bounds: [10.0, 50.0]
+        label: 减量期负荷（第11-12周）
+      - time: "11:00"
+        dose_bounds: [40.0, 100.0]
+        label: 维持期负荷（第13-16周）
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

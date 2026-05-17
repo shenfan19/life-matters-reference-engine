@@ -26,7 +26,7 @@ variables:
     - 0.0
     - 10.0
     description: 当前运动强度（RPE 0-10）
-    type: parameter
+    type: input
     unit: RPE
     value: 6.0
   sprint_ratio:
@@ -34,7 +34,7 @@ variables:
     - 0.0
     - 1.0
     description: 冲刺占比（0-1），高值=快速反击/逼抢战术
-    type: parameter
+    type: input
     unit: 比例
     value: 0.25
   heart_rate:
@@ -195,6 +195,15 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
+  schedules:
+    - variable: game_intensity
+      time: "15:00"
+      value: 6.0
+      label: 比赛强度
+    - variable: sprint_ratio
+      time: "15:00"
+      value: 0.25
+      label: 冲刺占比
   output_variables:
   - heart_rate
   - vo2
@@ -206,3 +215,36 @@ simulation:
   - muscle_glycogen
   - technical_performance
   - performance
+
+optimizer:
+  enabled: true
+  method: nsga2
+  objectives:
+    - variable: distance_covered
+      direction: maximize
+      metric: final
+      description: 最大化全场跑动距离
+    - variable: fatigue
+      direction: minimize
+      metric: final
+      description: 最小化比赛结束时疲劳
+  constraints:
+    - variable: lactate
+      condition: <= 12.0
+      type: hard
+      description: 血乳酸不超过 12 mmol/L
+    - variable: muscle_glycogen
+      condition: >= 20
+      type: soft
+      description: 保留 20% 肌糖原储备
+  regimen:
+    variable: game_intensity
+    description: 优化足球比赛强度与冲刺分配策略
+    events:
+      - time: "15:00"
+        dose_bounds: [3.0, 9.0]
+        label: 比赛强度（RPE 3-9）
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
