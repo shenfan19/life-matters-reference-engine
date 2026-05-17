@@ -191,7 +191,7 @@ optimizer:
       - {x: [31.0], f: [118.6, 364.5]}
       - {x: [40.5], f: [115.3, 379.8]}
       - {x: [48.2], f: [113.1, 391.3]}
-    best:
+    reference:
       x: [22.8]
       f: [122.4, 348.2]
       regimen:
@@ -222,3 +222,21 @@ simulation:
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: "2026-01-01 ~ 2026-07-01"
       label: "每日热量缺口"
+
+  # 预定义多方案：对应 Pareto 前沿端点与平衡点，供论文图表直接复现
+  plans:
+    - id: "low_ua_risk"
+      label: "痛风风险最低（UA 端点，HCTZ 10.5mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 10.5, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
+    - id: "balanced"
+      label: "临床平衡方案（HCTZ 22.8mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 22.8, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
+    - id: "best_bp"
+      label: "血压控制最优（BP 端点，HCTZ 48.2mg）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 48.2, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}

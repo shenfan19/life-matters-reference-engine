@@ -172,13 +172,23 @@ simulation:
   # step / step_unit 已移至 metadata.step_size，此处不再声明
   output_variables: [var1, var2]   # 可选；指定按名字输出的变量
   output_types: [input, state]     # 可选；input | parameter | state，按类型输出变量
-  schedules:                      # 可选；扁平列表，每条对应一个 input 变量的时间事件
+  schedules:                      # 可选；单方案默认调度（向后兼容）
     - variable: var_name          # 必须是 variables 中 type: input 的变量
       time: "HH:MM"               # 24 小时制，触发时刻
       value: 1.5                  # 触发时写入变量的值（pulse 模式：其他步自动为 0）
       days: [Mon, Wed, Fri]       # 可选；三字母缩写 Mon–Sun；缺席 = 每天
       date_range: "YYYY-MM-DD ~ YYYY-MM-DD"  # 可选；条目仅在此区间生效；缺席 = 全程
       label: "说明"               # 可选；GUI 展示用
+  plans:                          # 可选；预定义的多方案比较（GUI 直接加载为 Plan 列表）
+    - id: "plan_id"               # 方案唯一标识（小写加下划线）
+      label: "方案显示名称"        # GUI 显示标签
+      schedules:                  # 与 simulation.schedules 格式完全相同
+        - variable: var_name
+          time: "HH:MM"
+          value: 1.5
+          days: [Mon, Wed, Fri]
+          date_range: "YYYY-MM-DD ~ YYYY-MM-DD"
+          label: "说明"
 ```
 
 ### `metadata.description`
@@ -409,6 +419,87 @@ YAML Schedule 的优先级**高于** GUI Regimen（用户在界面上填写的�
 
 ---
 
+## simulation.plans — 预定义多方案比较
+
+`simulation.plans` 允许建模者在 YAML 中预置多个命名方案，GUI 加载模型时直接呈现为 Plan 列表供多方案并行仿真（F-MPLAN）。
+
+**使用场景**：
+- 论文模型（papers/）：将 Pareto 前沿的代表点写成具名方案，读者打开即可比较"肾保护优先"vs"肌肉保留优先"
+- 临床对照：预置"指南标准剂量"与"优化剂量"方案，直接展示论文图表对应的输入
+
+**格式**：
+
+```yaml
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  plans:
+    - id: "kidney_protect"
+      label: "肾保护优先（Pareto 端点）"
+      schedules:
+        - variable: dietary_protein
+          time: "08:00"
+          value: 0.22
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "早餐蛋白质"
+        - variable: dietary_protein
+          time: "12:00"
+          value: 0.21
+          label: "午餐蛋白质"
+        - variable: dietary_protein
+          time: "18:00"
+          value: 0.22
+          label: "晚餐蛋白质"
+    - id: "balanced"
+      label: "临床平衡方案"
+      schedules:
+        - variable: dietary_protein
+          time: "08:00"
+          value: 0.29
+          label: "早餐蛋白质"
+        - variable: dietary_protein
+          time: "12:00"
+          value: 0.27
+          label: "午餐蛋白质"
+        - variable: dietary_protein
+          time: "18:00"
+          value: 0.28
+          label: "晚餐蛋白质"
+    - id: "muscle_preserve"
+      label: "肌肉保留优先（Pareto 端点）"
+      schedules:
+        - variable: dietary_protein
+          time: "08:00"
+          value: 0.38
+          label: "早餐蛋白质"
+        - variable: dietary_protein
+          time: "12:00"
+          value: 0.36
+          label: "午餐蛋白质"
+        - variable: dietary_protein
+          time: "18:00"
+          value: 0.37
+          label: "晚餐蛋白质"
+```
+
+**字段说明**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | string | ✅ | 方案唯一标识（小写加下划线） |
+| `label` | string | ✅ | GUI 显示名称 |
+| `schedules` | list | ✅ | 与 `simulation.schedules` 格式完全相同 |
+
+**与 `simulation.schedules` 的关系**：
+- 两者可共存：`schedules` 作为向后兼容的"默认单方案"，`plans` 提供多方案选择
+- 仅有 `schedules` 时，GUI 将其视为一个未命名的默认方案（单方案模式）
+- 仅有 `plans` 时，GUI 加载所有预置方案
+- `plans` 中每个方案的 `schedules` 优先级与顶层 `simulation.schedules` 一致，高于 GUI Regimen
+
+**Plan 的 session 语义**：Plan 是 GUI 运行时对象，建模者在 YAML 中预置的是初始状态；用户在 GUI 中可继续添加、修改、删除方案，不会回写到 YAML 文件。
+
+---
+
 ## daily_inputs 与 accumulators
 
 `daily_inputs` 以天为单位指定输入值，引擎自动转秒级时间戳：
@@ -492,7 +583,7 @@ optimizer:
     pareto_front:                  # 所有非支配解（flow-style，每行一个解）
       - {x: [0.30, 0.29, 0.30], f: [65.8, 47.1]}
       - {x: [0.35, 0.33, 0.34], f: [66.9, 44.8]}
-    best:                          # 推荐解（Pareto 前沿中的平衡点）
+    reference:                     # 建模者从 Pareto 前沿中标注的参考点（非唯一最优）
       x: [0.30, 0.29, 0.30]       # 决策变量值（与 optimizer.inputs 事件顺序对应）
       f: [65.8, 47.1]             # 目标函数值（与 objectives 顺序对应）
       regimen:                    # 人类可读的方案（变量名 → 时间标签 → 值）
@@ -514,10 +605,10 @@ optimizer:
 | `n_solutions` | int | Pareto 前沿解的数量 |
 | `elapsed_seconds` | float | 本次运行耗时 |
 | `pareto_front` | list | 所有非支配解，每个元素为 `{x: [...], f: [...]}` |
-| `best.x` | list | 推荐解的决策变量值 |
-| `best.f` | list | 推荐解的目标值 |
-| `best.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}）；供人类阅读，不用于程序反解 |
-| `best.objectives` | dict | 人类可读的目标结果（变量名: 值） |
+| `reference.x` | list | 参考点的决策变量值（建模者从 Pareto 前沿中选定，非唯一最优） |
+| `reference.f` | list | 参考点的目标值 |
+| `reference.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}）；供人类阅读，不用于程序反解 |
+| `reference.objectives` | dict | 人类可读的目标结果（变量名: 值） |
 
 **`x` 向量与 inputEvents 的映射关系**：`x[i]` 对应 `optimizer.inputs`（或 `optimizer.regimen`）中按变量名顺序、再按 events 列表顺序展开的第 i 个可优化事件。此映射关系由 `optimizer.inputs` 的结构隐含，不需要额外存储。软件（前端）在将 Pareto 解转化为 Sim Plans 时，按相同顺序解析 `optimizer.inputs` 还原映射（见 `xToInputEvents` 函数，sim_design.md）。
 
@@ -526,9 +617,10 @@ optimizer:
 - **`results` 整体覆写**：每次保存时用新前沿完整替换旧 `results`，不保留历史；Pareto 前沿只会随搜索改善或持平，不会退化。
 - **格式统一**：`pareto_front` 使用 YAML flow-style（`{x: [...], f: [...]}` 单行），50 个解 = 50 行，不破坏模型可读性。
 - **热/冷启动（用户选择）**：加载有 `results` 的模型时，Opt 面板显示历史解数量和日期，由用户显式选择"热启动"（以历史前沿为初始种群继续搜索）或"冷启动"（从随机初始种群重新搜索）；不自动决定。
-- **Sim 读取 opt 结果**：加载含 `best.regimen` 的模型时，Sim 面板询问是否将推荐解预填为当前 inputEvents；用户可选择加载或忽略。
+- **Sim 读取 opt 结果**：加载含 `reference.regimen` 的模型时，Sim 面板询问是否将参考点预填为当前 inputEvents；用户可选择加载或忽略。
 - **Opt→Sim 多输出（N-N）**：Pareto 前沿是 N 组输入组合；软件将 N 个 Pareto 解各自重组为合规的 Sim inputEvents（Plan），供 F-MPLAN 并行仿真和比较；opt.results 仅保留原始 x/f 向量。
-- **发布即结果**：建模者运行优化、保存模型、上传 YAML，接收者打开即看到 Pareto 前沿和推荐解；`results` 可独立阅读。
+- **`reference` 不代表唯一最优**：多目标优化没有单一"最优解"，`reference` 是建模者标注的平衡点，用户应结合 `pareto_front` 自行权衡选择。
+- **发布即结果**：建模者运行优化、保存模型、上传 YAML，接收者打开即看到 Pareto 前沿和参考点；`results` 可独立阅读。
 - **无结果也合法**：`optimizer.results` 是可选块；没有该字段的模型正常运行，从随机初始种群开始搜索。
 
 ### 工作流

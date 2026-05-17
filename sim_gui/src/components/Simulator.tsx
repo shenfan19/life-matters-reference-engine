@@ -533,8 +533,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
       const preloaded = {
         pareto_front: rawResults.pareto_front,
-        best_x: rawResults.best?.x ?? [],
-        best_f: rawResults.best?.f ?? [],
+        best_x: rawResults.reference?.x ?? [],
+        best_f: rawResults.reference?.f ?? [],
         objectives: preloadObjs,
         n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
         method: rawResults.method ?? 'nsga2',
@@ -547,9 +547,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptResult(null);
     }
 
-    // F-5-2: offer to pre-fill inputEvents from optimizer.results.best.x
-    if (freshInputInit && optBlock?.results?.best?.x?.length > 0) {
-      const bestX: number[] = optBlock.results.best.x;
+    // F-5-2: offer to pre-fill inputEvents from optimizer.results.reference.x
+    if (freshInputInit && optBlock?.results?.reference?.x?.length > 0) {
+      const bestX: number[] = optBlock.results.reference.x;
       Modal.confirm({
         title: '检测到优化结果',
         content: `模型包含推荐解（${bestX.length} 个决策变量），是否将其预填为当前输入方案？`,
@@ -1082,7 +1082,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── apply opt best solution to sim ───────────────────────────────────────────
   const applyBestToSim = () => {
     const optimizer = selectedModel?.content?.optimizer;
-    const bestX = optimizer?.results?.best?.x;
+    const bestX = optimizer?.results?.reference?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
       message.warning('无推荐解可用'); return;
     }
@@ -1139,7 +1139,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       n_solutions: optResult.n_solutions || 0,
       elapsed_seconds: Math.round(optElapsed * 10) / 10,
       pareto_front: optResult.pareto_front || [],
-      best: {
+      reference: {
         x: optResult.best_x,
         f: optResult.best_f,
         ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
@@ -1186,7 +1186,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       n_solutions: optResult.n_solutions || 0,
       elapsed_seconds: Math.round(optElapsed * 10) / 10,
       pareto_front: optResult.pareto_front || [],
-      best: {
+      reference: {
         x: optResult.best_x, f: optResult.best_f,
         ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
         ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
