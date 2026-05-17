@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
-import { BuildOutlined, CloseOutlined, DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
+import { BuildOutlined, CloseOutlined, DownloadOutlined, LeftOutlined, PauseOutlined, PlayCircleOutlined, RightOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan } from '../types';
 
 const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
@@ -81,6 +81,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t } = useI18n();
   const c = getC(isDarkMode);
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
+  const { width: setupW, startDrag: startSetupDrag } = useResize(390, 220, 700);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
   const SECTION_H = 26;
 
   const {
@@ -769,8 +771,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       let resolvedContent = content;
       try {
         const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
-        const resolved = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`).then(r => r.json());
-        if (resolved?.success && resolved.data) resolvedContent = { ...content, ...resolved.data };
+        const res = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`);
+        const resolved = await res.json();
+        if (resolved?.success && resolved.data) {
+          resolvedContent = { ...content, ...resolved.data };
+        } else if (!res.ok) {
+          console.warn('Model resolution failed:', resolved?.detail || 'unknown error');
+        }
       } catch (e) {
         console.warn('Resolved model load failed, using raw YAML', e);
       }
@@ -1292,7 +1299,13 @@ const Simulator: React.FC<SimulatorProps> = ({
 
       // Use standard loadFileContent so imports are resolved via /api/models/ (loader_engine.fetch)
       const model = await loadFileContent(data.key);
-      if (!model) { message.error('模型加载失败，请检查 imports 路径'); return; }
+      if (!model) { message.error('模型加载失败，请检查 YAML 格式'); return; }
+
+      // Warn if imports couldn't be resolved (resolved flag is set by the API on success)
+      const rawImports = model.rawContent?.imports;
+      if (!(model.content as any)?.resolved && Array.isArray(rawImports) && rawImports.length > 0) {
+        message.warning('模型已导入，但 imports 无法解析。路径从 models/ 根出发、不写 models/ 前缀，如 papers/paper2/my_model 或 references/medical/physiology/my_model');
+      }
 
       setSelectedKey(data.key);
       setSessionModels(prev => {
@@ -1585,7 +1598,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       <input ref={importFileRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleImportFile} />
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        <SimModelTree
+        {!leftCollapsed && <SimModelTree
           width={leftW} SECTION_H={SECTION_H}
           storyTree={storyTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
           storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
@@ -1633,19 +1646,30 @@ const Simulator: React.FC<SimulatorProps> = ({
             });
             if (selectedKey === key) { setSelectedKey(null); setConfirmedModel(null); onModelSelect(null); }
           }}
-        />
+        />}
 
-        <div
-          onMouseDown={startLeftDrag}
-          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent', transition: 'background 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        />
+        {!leftCollapsed && (
+          <div
+            onMouseDown={startLeftDrag}
+            style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent', transition: 'background 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          />
+        )}
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Center tab bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 4 }}>
+            {/* Left panel collapse/expand toggle — always visible before Overview */}
+            <Tooltip title={leftCollapsed ? '展开模型库' : '折叠模型库'}>
+              <button
+                onClick={() => setLeftCollapsed(v => !v)}
+                style={{ padding: '5px 8px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', display: 'flex', alignItems: 'center', flexShrink: 0, borderBottom: '2px solid transparent', marginBottom: -1 }}
+              >
+                {leftCollapsed ? <RightOutlined style={{ fontSize: 11 }} /> : <LeftOutlined style={{ fontSize: 11 }} />}
+              </button>
+            </Tooltip>
             {([
               { key: 'intro',        label: 'Overview' },
               { key: 'simulation',   label: 'Simulation' },
@@ -1706,6 +1730,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'simulation' && (
             <WorkspacePage
+              setupW={setupW} startSetupDrag={startSetupDrag} c={c}
               controls={SimControls}
               setup={
                 <SimSetupTab
@@ -1750,6 +1775,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'optimization' && (
             <WorkspacePage
+              setupW={setupW} startSetupDrag={startSetupDrag} c={c}
               controls={OptControls}
               setup={
                 <SimSetupTab
@@ -1870,15 +1896,24 @@ const Simulator: React.FC<SimulatorProps> = ({
   );
 };
 
-function WorkspacePage({ controls, setup, result, progress }: { controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode }) {
+function WorkspacePage({ controls, setup, result, progress, setupW, startSetupDrag, c }: {
+  controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode;
+  setupW: number; startSetupDrag: (e: React.MouseEvent) => void; c: ReturnType<typeof getC>;
+}) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 10px' }}>
-        <div style={{ width: '34%', minWidth: 260, maxWidth: 440, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 0, padding: '6px 0 6px 10px' }}>
+        <div style={{ width: setupW, minWidth: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {setup}
         </div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div
+          onMouseDown={startSetupDrag}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent', transition: 'background 0.15s', margin: '0 4px' }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingRight: 10 }}>
           {result}
         </div>
       </div>

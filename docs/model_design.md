@@ -82,7 +82,7 @@ metadata:
     unit: minute       # second | minute | hour | day；决定公式中 step 的含义
 
 imports:
-  - published/paper2/ckd_protein_a4_p2   # 从 models/ 根出发，不写 .yaml
+  - papers/paper2/ckd_protein_a4_p2     # 从 models/ 根出发，不写 .yaml，不写 models/ 前缀
   - ./local_component                   # 或从当前 YAML 文件出发的相对路径
 
 variables:
@@ -232,11 +232,11 @@ description:
 
 `imports` 只支持显式路径：
 
-- `published/paper2/ckd_protein_a4_p2`：从 `models/` 根目录出发，省略 `.yaml`。
-- `models/published/paper2/ckd_protein_a4_p2`：兼容旧写法，等价于上一条。
-- `./local_component`、`../paper2/foo`：从当前 YAML 所在目录出发。
+- `papers/paper2/ckd_protein_a4_p2`：从 `models/` 根目录出发，省略 `.yaml`，不写 `models/` 前缀。
+- `references/medical/physiology/glucose_regulation_2026_mw`：同上，深层路径写全即可。
+- `./local_component`、`../paper1/foo`：从当前 YAML 所在目录出发。
 
-裸名字检索已经禁用，例如 `imports: a4_ckd_protein` 不再递归搜索整个 `models/`。这样可以避免同名模型被意外导入。
+裸名字检索已禁用，例如 `imports: ckd_protein_a4_p2` 不递归搜索 `models/`，须写出完整相对路径。
 
 ### 合并顺序
 
