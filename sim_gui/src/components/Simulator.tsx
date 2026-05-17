@@ -672,7 +672,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               return {
                 key: child.key, isLeaf: true, ...child,
                 icon: <React.Fragment />,
-                title: item.title, titleStr: item.title, model_type: 'story',
+                title: item.title, titleStr: item.title,
               };
             }
           }
@@ -682,7 +682,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             icon: undefined,
             isLeaf: item.type === 'file',
             children: item.children ? convert(item.children) : undefined,
-            titleStr, model_type: item.model_type,
+            titleStr,
           };
         });
         const modelsNode = result.data.find((n: any) => n.key === 'models');
@@ -768,12 +768,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (result.valid) {
       setValidationResult(null);
       setIsLocked(true);
-      const isComponent = selectedModel?.content?.metadata?.standalone === false;
-      if (isComponent) {
-        message.warning(t('sim.msg.validation_ok') + ' — ' + t('sim.msg.component_model_hint'));
-      } else {
-        message.success(t('sim.msg.validation_ok'));
-      }
+      message.success(t('sim.msg.validation_ok'));
     } else {
       setValidationResult(result);
       setIsLocked(false);
