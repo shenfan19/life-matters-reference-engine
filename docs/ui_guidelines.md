@@ -15,7 +15,8 @@
 - **标签页内容区**（Overview / Simulation / Optimization / Report 及任何新标签）：外层容器须显式设 `width: '100%'`，不依赖 flex-column 的默认 stretch 行为（因在不同浏览器/嵌套层级中可能失效）。
 - **顶部导航/标签栏**（tab bar）：同样须 `width: '100%'`，确保 `borderBottom` 横线贯穿全宽而非仅覆盖 tabs 按钮范围。
 - **控制栏（toolbar）**：SimControls、OptControls 等 `flexShrink: 0` 的工具条，必须同时声明 `width: '100%'`，而非仅依赖父容器 flex-stretch。
-- **分列布局**（如 setup + drag + result 两栏）：内容行须对称 padding（`padding: '6px 10px'`），禁止单侧 padding + 子元素补偿的非对称做法，防止内容区宽度计算不对称导致空白。
+- **分列布局**（如 setup + result 两栏）：列宽用 `flex: '0 0 X%'`（如 `'0 0 40%'` / `'0 0 60%'`），不用固定像素；两栏均须 `minWidth: 0` 防止 flex 子元素最小宽度约束撑破容器；行容器须对称 `padding: '6px 10px'`，禁止单侧 padding + 子元素补偿做法。详见 ADR 0079。
+- **flex item 必须声明 `flex: 1` 或 `width: 100%`**：flex item 在 row flex 父容器中若无 `flex: 1`，宽度退化为 intrinsic content width，导致整个组件随内容缩窄。凡在 row flex 父容器中的顶层容器（如 Simulator 根 div）须显式设 `flex: 1, minWidth: 0`。
 - **验收标准**：任意屏幕宽度下，各标签的底部分隔线、工具栏背景色都应横贯整个中央面板宽度，右侧无意义不明的空白区域。
 
 - **所有内容区必须支持换行**：行内元素组使用 `display: flex; flexWrap: 'wrap'`，而非固定宽度的单行排列。
@@ -155,6 +156,7 @@ Tabs: {
 - **删除操作**：使用红色图标按钮（`danger`），不需要二次确认弹窗（低风险操作），但操作必须可撤销或可重新添加。
 - **空状态**：每个列表/数据区在空数据时必须显示 `<Empty>`，不允许显示空白区域。
 - **加载状态**：API 请求期间必须有 loading 反馈（`Spin` 或 skeleton），不允许静默等待。
+- **可折叠侧栏**：侧栏（如左侧模型库）须支持折叠/展开，**展开触发按钮必须在折叠状态下仍然可见**——通常放在对面的固定区域（如中央 tab 栏最左侧），而非放在侧栏内部（折叠后消失）。折叠状态用方向箭头图标（`◀`/`▶`）配合 Tooltip 说明功能。
 
 ---
 
