@@ -43,9 +43,11 @@ interface SimModelTreeProps {
   onNewFile?: () => void;
   onMergeFiles?: () => void;
   onImportFile?: () => void;
+  onBuilderUpload?: () => void;
   sessionModels?: ModelFile[];
   onSelectSessionModel?: (model: ModelFile) => void;
   onClearSessionModel?: (key: string) => void;
+  scsMode?: boolean;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -62,9 +64,11 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onNewFile,
   onMergeFiles,
   onImportFile,
+  onBuilderUpload,
   sessionModels = [],
   onSelectSessionModel,
   onClearSessionModel,
+  scsMode = false,
 }) => {
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
@@ -120,18 +124,16 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     const dimmed = isLocked && !isSelected;
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: dimmed ? 0.4 : 1 }}>
-        {isSelected ? (
+        {isSelected && (
           <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，锁定后可仿真'}>
             <span
               onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
-              style={{ width: 14, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: isLocked ? '#52c41a' : '#fa8c16' }}
             >
-              {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
+              {validating ? <LoadingOutlined style={{ fontSize: 13 }} /> : isLocked ? <LockOutlined style={{ fontSize: 14 }} /> : <UnlockOutlined style={{ fontSize: 13 }} />}
             </span>
           </Tooltip>
-        ) : (
-          <BookOutlined style={{ fontSize: 11, color: c.textMute, flexShrink: 0, width: 14 }} />
         )}
         <span style={{ color: isSelected ? c.text : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
           {node.titleStr || node.title}
@@ -174,6 +176,12 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 style={{ color: c.primary, padding: '0 4px' }}
               />
             </Tooltip>
+            <Tooltip title="上传本地 YAML 到 Session">
+              <Button size="small" type="text" icon={<UploadOutlined />}
+                onClick={onBuilderUpload}
+                style={{ color: c.primary, padding: '0 4px' }}
+              />
+            </Tooltip>
             <Tooltip title={builderCheckedFiles.length >= 2 ? '合并选中文件' : '请先选择 2 个以上文件'}>
               <Button size="small" type="text" icon={<MergeCellsOutlined />}
                 onClick={onMergeFiles}
@@ -191,7 +199,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 style={{ color: c.textMute, padding: '0 3px' }}
               />
             </Tooltip>
-            {selectedKey && (
+            {selectedKey && !selectedKey.startsWith('session/') && (
               <Tooltip title="重新读取当前 YAML">
                 <Button
                   size="small" type="text" icon={<ReloadOutlined />}
@@ -233,14 +241,20 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                   cursor: isLocked && !isSel ? 'default' : 'pointer',
                   opacity: dimSess ? 0.4 : 1,
                   background: isSel ? (isDarkMode ? '#1a3a22' : '#f0faf0') : 'transparent' }}>
-                {isSel ? (
+                {builderMode ? (
+                  <input type="checkbox" readOnly
+                    checked={builderCheckedFiles.includes(m.key)}
+                    onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(m.key); }}
+                    style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0, marginRight: 4 }}
+                  />
+                ) : isSel ? (
                   <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
                     <span
                       onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
                       style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
                     >
-                      {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
+                      {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 14 }} /> : <UnlockOutlined style={{ fontSize: 13 }} />}
                     </span>
                   </Tooltip>
                 ) : (
@@ -288,6 +302,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 onClick={handleTreeNodeClick}
                 treeData={storyTree}
                 titleRender={builderTitleRender}
+                indent={12}
               />
             ) : storyViewMode === 'tree' ? (
               <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
@@ -296,6 +311,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 onClick={handleTreeNodeClick}
                 treeData={storyTree}
                 titleRender={normalTitleRender}
+                indent={12}
               />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
