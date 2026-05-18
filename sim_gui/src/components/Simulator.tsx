@@ -81,7 +81,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t } = useI18n();
   const c = getC(isDarkMode);
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
-  const { width: setupW, startDrag: startSetupDrag } = useResize(390, 220, 700);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const SECTION_H = 26;
 
@@ -1722,11 +1721,11 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Hidden file inputs */}
       <input ref={importFileRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleImportFile} />
       <input ref={builderUploadRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleBuilderUpload} />
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, width: '100%', minWidth: 0, display: 'flex', overflow: 'hidden' }}>
 
         {!leftCollapsed && <SimModelTree
           width={leftW} SECTION_H={SECTION_H}
@@ -1870,7 +1869,6 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'simulation' && (
             <WorkspacePage
-              setupW={setupW} startSetupDrag={startSetupDrag} c={c}
               controls={SimControls}
               setup={
                 <SimSetupTab
@@ -1915,7 +1913,6 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'optimization' && (
             <WorkspacePage
-              setupW={setupW} startSetupDrag={startSetupDrag} c={c}
               controls={OptControls}
               setup={
                 <SimSetupTab
@@ -2055,24 +2052,17 @@ const Simulator: React.FC<SimulatorProps> = ({
   );
 };
 
-function WorkspacePage({ controls, setup, result, progress, setupW, startSetupDrag, c }: {
+function WorkspacePage({ controls, setup, result, progress }: {
   controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode;
-  setupW: number; startSetupDrag: (e: React.MouseEvent) => void; c: ReturnType<typeof getC>;
 }) {
   return (
     <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', padding: '6px 10px' }}>
-        <div style={{ width: setupW, minWidth: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 10px' }}>
+        <div style={{ flex: '0 0 40%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {setup}
         </div>
-        <div
-          onMouseDown={startSetupDrag}
-          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent', transition: 'background 0.15s', margin: '0 4px' }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: '0 0 60%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {result}
         </div>
       </div>
