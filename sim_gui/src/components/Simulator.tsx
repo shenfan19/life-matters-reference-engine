@@ -28,7 +28,7 @@ function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEven
   });
   return result;
 }
-import ModelBuilder from './ModelBuilder';
+import FileEditor from './FileEditor';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
@@ -92,6 +92,12 @@ const Simulator: React.FC<SimulatorProps> = ({
     simRuns, sessionSeed,
   } = state;
 
+  // ── SCS mode ─────────────────────────────────────────────────────────────────
+  const [scsMode, setScsMode] = useState(false);
+  useEffect(() => {
+    fetch(`${API_BASE}/config`).then(r => r.json()).then(d => setScsMode(!!d.scs_mode)).catch(() => {});
+  }, []);
+
   // ── session imports (localStorage-persisted) ─────────────────────────────────
   const SESSION_KEY = 'lm_session_imports';
   const [sessionModels, setSessionModels] = useState<ModelFile[]>(() => {
@@ -114,6 +120,8 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── builder mode ─────────────────────────────────────────────────────────────
   const [builderOpen, setBuilderOpen] = useState(false);
   const [builderCheckedFiles, setBuilderCheckedFiles] = useState<string[]>([]);
+  const [builderSessionMetas, setBuilderSessionMetas] = useState<Record<string, any>>({});
+  const [builderAutoEditKey, setBuilderAutoEditKey] = useState<string | undefined>();
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeOutPath, setMergeOutPath] = useState('models/scenarios/merged.yaml');
   const [newFileDialogOpen, setNewFileDialogOpen] = useState(false);
@@ -134,10 +142,38 @@ const Simulator: React.FC<SimulatorProps> = ({
     loadFileTree(); // reload tree after edits
   };
 
+  const handleBuilderSessionUpdate = (key: string, content: any) => {
+    const filename = key.replace(/^session\//, '');
+    const modelName = content?.metadata?.name || filename.replace(/\.ya?ml$/i, '');
+    const model: ModelFile = {
+      key, title: modelName, path: key,
+      type: content.type, category: content.category,
+      content, rawContent: content,
+      metadata: content.metadata, variables: content.variables,
+      formulas: content.formulas, simulator: content.simulator,
+      optimizer: content.optimizer, imports: content.imports,
+      folder: 'session', validated: undefined, validationErrors: [],
+    };
+    setBuilderSessionMetas(p => ({ ...p, [key]: content }));
+    setBuilderCheckedFiles(prev => prev.includes(key) ? prev : [...prev, key]);
+    setBuilderAutoEditKey(key);
+    setSessionModels(prev => {
+      const next = [model, ...prev.filter(m => m.key !== key)].slice(0, 10);
+      saveSession(next);
+      return next;
+    });
+  };
+
   const toggleBuilderFile = (key: string) => {
-    setBuilderCheckedFiles(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
+    setBuilderCheckedFiles(prev => {
+      if (prev.includes(key)) return prev.filter(k => k !== key);
+      // For session keys, ensure content is in builderSessionMetas
+      if (key.startsWith('session/')) {
+        const sm = sessionModels.find(m => m.key === key);
+        if (sm) setBuilderSessionMetas(p => ({ ...p, [key]: sm.rawContent || sm.content }));
+      }
+      return [...prev, key];
+    });
   };
 
   const handleMerge = async () => {
@@ -148,20 +184,64 @@ const Simulator: React.FC<SimulatorProps> = ({
         body: JSON.stringify({ files: builderCheckedFiles, output_path: mergeOutPath }),
       });
       const d = await r.json();
-      if (d.success || d.message) {
-        message.success('合并成功');
-        setMergeDialogOpen(false);
-        loadFileTree();
+      if (!d.success) { message.error('合并失败: ' + (d.detail || d.error || '')); return; }
+
+      if (d.scs_mode && d.raw) {
+        // SCS mode: load merged content as a session model
+        const raw = d.raw;
+        const baseName = (mergeOutPath.trim() || 'merged').replace(/\.ya?ml$/i, '').replace(/[^a-zA-Z0-9_\-.]/g, '_');
+        const filename = `${baseName}.yaml`;
+        const modelKey = `session/${filename}`;
+        const modelName = raw?.metadata?.name || filename.replace(/\.ya?ml$/i, '');
+        const model: ModelFile = {
+          key: modelKey, title: modelName, path: modelKey,
+          type: raw.type, category: raw.category,
+          content: raw, rawContent: raw,
+          metadata: raw.metadata, variables: raw.variables,
+          formulas: raw.formulas, simulator: raw.simulator,
+          optimizer: raw.optimizer, imports: raw.imports,
+          folder: 'session', validated: undefined, validationErrors: [],
+        };
+        setSelectedKey(modelKey);
+        setBuilderSessionMetas(p => ({ ...p, [modelKey]: d.raw }));
+        setBuilderCheckedFiles(prev => prev.includes(modelKey) ? prev : [...prev, modelKey]);
+        setBuilderAutoEditKey(modelKey);
+        openBuilder();
+        setSessionModels(prev => {
+          const next = [model, ...prev.filter(m => m.key !== modelKey)].slice(0, 10);
+          saveSession(next);
+          return next;
+        });
+        message.success('合并完成，已在编辑器中打开');
       } else {
-        message.error('合并失败: ' + (d.detail || d.error || ''));
+        message.success('合并成功');
+        loadFileTree();
       }
+      setMergeDialogOpen(false);
     } catch (e: any) { message.error(String(e)); }
     finally { setMerging(false); }
   };
 
   const handleCreateFile = async () => {
-    if (!newFilePath.trim()) { message.warning('请填写文件路径'); return; }
-    let path = newFilePath.trim();
+    if (!newFilePath.trim()) { message.warning('请填写名称'); return; }
+    const rawName = newFilePath.trim();
+    if (scsMode) {
+      const safeName = rawName.replace(/[^a-zA-Z0-9_\-.]/g, '_').replace(/\.ya?ml$/i, '');
+      const key = `session/${safeName}.yaml`;
+      const template = {
+        metadata: { name: safeName, version: '1.0', description: '', tags: [] },
+        variables: {}, formulas: {},
+        simulation: { start_date: '', end_date: '' },
+      };
+      handleBuilderSessionUpdate(key, template);
+      setBuilderAutoEditKey(key);
+      openBuilder();
+      setNewFileDialogOpen(false);
+      setNewFilePath('');
+      message.success('已在 Session 中创建新模型');
+      return;
+    }
+    let path = rawName;
     if (!path.endsWith('.yaml') && !path.endsWith('.yml')) path += '.yaml';
     setCreatingFile(true);
     try {
@@ -1282,6 +1362,29 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── import local YAML file ────────────────────────────────────────────────────
   const importFileRef = useRef<HTMLInputElement>(null);
+  const builderUploadRef = useRef<HTMLInputElement>(null);
+
+  const handleBuilderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!builderUploadRef.current) return;
+    builderUploadRef.current.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const resp = await fetch(`${API_BASE}/model/upload-temp`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, filename: file.name }),
+      });
+      const data = await resp.json();
+      if (!data.success) { message.error(data.error || '上传失败'); return; }
+      const content = { ...data.raw, ...data.resolved };
+      const key = `session/${data.filename}`;
+      handleBuilderSessionUpdate(key, content);
+      setBuilderAutoEditKey(key);
+      openBuilder();
+      message.success(`已上传到 Session: ${data.filename}`);
+    } catch (err: any) { message.error(err.message || '读取文件失败'); }
+  };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1297,19 +1400,37 @@ const Simulator: React.FC<SimulatorProps> = ({
       const data = await resp.json();
       if (!data.success) { message.error(data.error || '导入失败'); return; }
 
-      // Use standard loadFileContent so imports are resolved via /api/models/ (loader_engine.fetch)
-      const model = await loadFileContent(data.key);
-      if (!model) { message.error('模型加载失败，请检查 YAML 格式'); return; }
+      // Backend resolved imports inline and deleted the temp file.
+      // Build ModelFile directly from response — no second server call needed.
+      const raw = data.raw || {};
+      const resolved = data.resolved || {};
+      const content = { ...raw, ...resolved };
+      const modelKey = `session/${data.filename}`;
+      const modelName = content.metadata?.name || data.filename.replace(/\.ya?ml$/i, '');
 
-      // Warn if imports couldn't be resolved (resolved flag is set by the API on success)
-      const rawImports = model.rawContent?.imports;
-      if (!(model.content as any)?.resolved && Array.isArray(rawImports) && rawImports.length > 0) {
-        message.warning('模型已导入，但 imports 无法解析。路径从 models/ 根出发、不写 models/ 前缀，如 papers/paper2/my_model 或 references/medical/physiology/my_model');
+      const model: ModelFile = {
+        key: modelKey, title: modelName, path: modelKey,
+        type: content.type, category: content.category,
+        content, rawContent: raw,
+        metadata: content.metadata, variables: content.variables,
+        formulas: content.formulas, simulator: content.simulator,
+        optimizer: content.optimizer, imports: content.imports,
+        provenance: content.provenance,
+        folder: 'session',
+        validated: undefined, validationErrors: [],
+      };
+
+      const rawImports = raw?.imports;
+      if (!resolved?.resolved && Array.isArray(rawImports) && rawImports.length > 0) {
+        message.warning('模型已导入，但 imports 无法解析。路径从 models/ 根出发，如 papers/paper2/my_model');
       }
 
-      setSelectedKey(data.key);
+      setSelectedKey(modelKey);
+      setConfirmedModel(model);
+      onModelSelect(model);
+      setCenterTab('intro');
       setSessionModels(prev => {
-        const next = [model, ...prev.filter(m => m.key !== model.key)].slice(0, 10);
+        const next = [model, ...prev.filter(m => m.key !== modelKey)].slice(0, 10);
         saveSession(next);
         return next;
       });
@@ -1498,16 +1619,20 @@ const Simulator: React.FC<SimulatorProps> = ({
 
 
   const SimControls = (
-    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Button
-        type="primary" size="small"
-        icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
-        onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation}
-        disabled={!isLocked || status === 'completed'}
-        style={{ whiteSpace: 'nowrap' }}
-      >
-        {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `运行全部 ${plans.length} 方案` : t('sim.control.run')}
-      </Button>
+    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      <Tooltip title={!isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定' : undefined}>
+        <span>
+          <Button
+            type="primary" size="small"
+            icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
+            onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation}
+            disabled={!isLocked || status === 'completed'}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `运行全部 ${plans.length} 方案` : t('sim.control.run')}
+          </Button>
+        </span>
+      </Tooltip>
       <Button size="small" icon={<StepForwardOutlined />}
         onClick={runSingleStep}
         disabled={!isLocked || !sessionId || status === 'running' || status === 'completed'}
@@ -1559,16 +1684,20 @@ const Simulator: React.FC<SimulatorProps> = ({
   const existingResults = selectedModel?.content?.optimizer?.results;
   const hasExistingResults = !!(existingResults?.pareto_front?.length);
   const OptControls = (
-    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Button
-        type="primary" size="small"
-        icon={optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
-        onClick={optRunning ? cancelOptimization : startOptimization}
-        disabled={!isLocked}
-        style={{ whiteSpace: 'nowrap' }}
-      >
-        {optRunning ? '停止优化' : t('sim.control.run')}
-      </Button>
+    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      <Tooltip title={!isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定' : undefined}>
+        <span>
+          <Button
+            type="primary" size="small"
+            icon={optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
+            onClick={optRunning ? cancelOptimization : startOptimization}
+            disabled={!isLocked}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {optRunning ? '停止优化' : t('sim.control.run')}
+          </Button>
+        </span>
+      </Tooltip>
       {hasExistingResults && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
           <input type="checkbox" checked={warmStartEnabled}
@@ -1594,8 +1723,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── render ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Hidden file input for local YAML import */}
+      {/* Hidden file inputs */}
       <input ref={importFileRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleImportFile} />
+      <input ref={builderUploadRef} type="file" accept=".yaml,.yml" style={{ display: 'none' }} onChange={handleBuilderUpload} />
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {!leftCollapsed && <SimModelTree
@@ -1631,12 +1761,22 @@ const Simulator: React.FC<SimulatorProps> = ({
           onNewFile={() => setNewFileDialogOpen(true)}
           onMergeFiles={() => setMergeDialogOpen(true)}
           onImportFile={() => importFileRef.current?.click()}
+          onBuilderUpload={() => builderUploadRef.current?.click()}
+          scsMode={scsMode}
           sessionModels={sessionModels}
           onSelectSessionModel={model => {
-            setSelectedKey(model.key);
-            setConfirmedModel(model);
-            onModelSelect(model);
-            setCenterTab('intro');
+            if (builderOpen) {
+              // Builder is open: show model as edit card
+              const content = model.rawContent || model.content;
+              setBuilderSessionMetas(p => ({ ...p, [model.key]: content }));
+              setBuilderCheckedFiles(prev => prev.includes(model.key) ? prev : [...prev, model.key]);
+              setBuilderAutoEditKey(model.key);
+            } else {
+              setSelectedKey(model.key);
+              setConfirmedModel(model);
+              onModelSelect(model);
+              setCenterTab('intro');
+            }
           }}
           onClearSessionModel={key => {
             setSessionModels(prev => {
@@ -1660,7 +1800,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Center tab bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 4 }}>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 4 }}>
             {/* Left panel collapse/expand toggle — always visible before Overview */}
             <Tooltip title={leftCollapsed ? '展开模型库' : '折叠模型库'}>
               <button
@@ -1718,7 +1858,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           </div>
 
           {centerTab === 'intro' && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <SimIntroTab
                 selectedModel={selectedModel} outputVars={outputVars}
                 formulas={formulas} provenance={provenance}
@@ -1834,12 +1974,15 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'builder' && (
             <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              <ModelBuilder
+              <FileEditor
                 isDarkMode={isDarkMode} c={c}
-                embedded
+                scsMode={scsMode}
                 controlledFiles={builderCheckedFiles}
                 onReloadTree={loadFileTree}
-                onUncheckedFile={key => setBuilderCheckedFiles(prev => prev.filter(k => k !== key))}
+                onUncheckedFile={(key: string) => setBuilderCheckedFiles(prev => prev.filter(k => k !== key))}
+                preloadedMetas={builderSessionMetas}
+                onSessionModelUpdate={handleBuilderSessionUpdate}
+                autoEditKey={builderAutoEditKey}
               />
             </div>
           )}
@@ -1858,35 +2001,51 @@ const Simulator: React.FC<SimulatorProps> = ({
         onCancel={() => setMergeDialogOpen(false)}
       >
         <div style={{ marginBottom: 12, color: c.textSec }}>
-          选中的 {builderCheckedFiles.length} 个文件将合并为一个 YAML 文件：
+          选中的 {builderCheckedFiles.length} 个文件将合并：
           {builderCheckedFiles.map(f => (
             <div key={f} style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 2, color: c.textMute }}>• {f}</div>
           ))}
         </div>
-        <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>输出路径（相对 models/）：</div>
-        <Input
-          value={mergeOutPath}
-          onChange={e => setMergeOutPath(e.target.value)}
-          placeholder="models/scenarios/merged.yaml"
-          style={{ fontFamily: 'monospace' }}
-        />
+        {scsMode ? (
+          <>
+            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>文件名（保存到 Session）：</div>
+            <Input
+              value={mergeOutPath.replace(/^.*\//, '').replace(/\.ya?ml$/i, '')}
+              onChange={e => setMergeOutPath(e.target.value)}
+              placeholder="merged"
+              style={{ fontFamily: 'monospace' }}
+            />
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>输出路径（相对 models/）：</div>
+            <Input
+              value={mergeOutPath}
+              onChange={e => setMergeOutPath(e.target.value)}
+              placeholder="models/scenarios/merged.yaml"
+              style={{ fontFamily: 'monospace' }}
+            />
+          </>
+        )}
       </Modal>
 
       {/* ── New file dialog ── */}
       <Modal
         open={newFileDialogOpen}
-        title="新建模型文件"
+        title={scsMode ? '新建 Session 模型' : '新建模型文件'}
         okText="创建"
         cancelText="取消"
         confirmLoading={creatingFile}
         onOk={handleCreateFile}
         onCancel={() => { setNewFileDialogOpen(false); setNewFilePath(''); }}
       >
-        <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>文件路径（相对 models/）：</div>
+        <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>
+          {scsMode ? '模型名称：' : '文件路径（相对 models/）：'}
+        </div>
         <Input
           value={newFilePath}
           onChange={e => setNewFilePath(e.target.value)}
-          placeholder="models/temp/my_model.yaml"
+          placeholder={scsMode ? 'my_model' : 'models/temp/my_model.yaml'}
           style={{ fontFamily: 'monospace' }}
           onPressEnter={handleCreateFile}
         />
@@ -1901,9 +2060,9 @@ function WorkspacePage({ controls, setup, result, progress, setupW, startSetupDr
   setupW: number; startSetupDrag: (e: React.MouseEvent) => void; c: ReturnType<typeof getC>;
 }) {
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {controls}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', gap: 0, padding: '6px 0 6px 10px' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', padding: '6px 10px' }}>
         <div style={{ width: setupW, minWidth: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {setup}
         </div>
@@ -1913,7 +2072,7 @@ function WorkspacePage({ controls, setup, result, progress, setupW, startSetupDr
           onMouseEnter={e => { e.currentTarget.style.background = `${c.primary}55`; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingRight: 10 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {result}
         </div>
       </div>

@@ -68,3 +68,7 @@
 | [0073](0073-2026-05-16_sim_multi-plan-simulation.md) | 多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行 | 待实现 | 2026-05-16 |
 | [0074](0074-2026-05-16_sim_gui-working-state-priority.md) | GUI Working State 优先级高于 YAML Schedule（反转 ADR 0053 GUI 变量规则） | 待实现 | 2026-05-16 |
 | [0074](0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | 单层标签组导航：动态 Builder Tab + 统一目录树双模式 | ✅ 已实施 | 2026-05-16 |
+| [0075](0075-2026-05-17_model_remove-type-standalone-fields.md) | 移除 type/standalone 顶层字段 | ✅ 已实施 | 2026-05-17 |
+| [0076](0076-2026-05-17_sim_yaml-simulation-plans.md) | YAML simulation.plans 预置多方案 | ✅ 已实施 | 2026-05-17 |
+| [0077](0077-2026-05-17_sim_session-model-import.md) | Session 模型导入：原子上传（UUID + 内联解析 + 即时删除）→ localStorage | ✅ 已实施（2026-05-18 重写） | 2026-05-17 |
+| [0078](0078-2026-05-18_project_scs-mode-design.md) | SCS_MODE：云端部署写操作保护 + 前端行为适配 + 合并→session model | ✅ 已实施 | 2026-05-18 |

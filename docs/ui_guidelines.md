@@ -8,6 +8,16 @@
 
 ## 1. 响应式布局 —— 宽度自适应，禁止溢出
 
+### 1.0 全局全宽原则（Global Full-Width Rule）
+
+**所有标签页内容区和导航/控制栏必须占满父容器的 100% 宽度，不允许依赖内容收缩（shrink-to-content）。**
+
+- **标签页内容区**（Overview / Simulation / Optimization / Report 及任何新标签）：外层容器须显式设 `width: '100%'`，不依赖 flex-column 的默认 stretch 行为（因在不同浏览器/嵌套层级中可能失效）。
+- **顶部导航/标签栏**（tab bar）：同样须 `width: '100%'`，确保 `borderBottom` 横线贯穿全宽而非仅覆盖 tabs 按钮范围。
+- **控制栏（toolbar）**：SimControls、OptControls 等 `flexShrink: 0` 的工具条，必须同时声明 `width: '100%'`，而非仅依赖父容器 flex-stretch。
+- **分列布局**（如 setup + drag + result 两栏）：内容行须对称 padding（`padding: '6px 10px'`），禁止单侧 padding + 子元素补偿的非对称做法，防止内容区宽度计算不对称导致空白。
+- **验收标准**：任意屏幕宽度下，各标签的底部分隔线、工具栏背景色都应横贯整个中央面板宽度，右侧无意义不明的空白区域。
+
 - **所有内容区必须支持换行**：行内元素组使用 `display: flex; flexWrap: 'wrap'`，而非固定宽度的单行排列。
 - **工具栏（toolbar）**：必须加 `flexWrap: 'wrap'`，窄屏时按钮/控件自动换行，不允许出现横向滚动条。
 - **三列/多列 block 布局**：使用 `flex-grow` 比例（如 3:3:4），配合 `minWidth` 兜底，窄屏时自动折叠为单列。

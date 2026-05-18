@@ -40,6 +40,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ========== SCS 模式 ==========
+SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
+
+def _check_write():
+    if SCS_MODE:
+        raise HTTPException(status_code=403, detail="SCS mode: write operations are disabled")
+
 # 全局实例
 plugin_manager = None
 loader_engine = None
@@ -517,6 +524,12 @@ async def get_model(model_name: str, folder: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ========== Config 端点 ==========
+@app.get("/api/config")
+async def get_config():
+    return {"scs_mode": SCS_MODE}
+
+
 # ========== Files 端点（文件树）==========
 @app.get("/api/files")
 async def list_files():
@@ -620,6 +633,7 @@ async def validate_file(file_path: str):
 @app.post("/api/file-structured/{file_path:path}")
 async def save_file_structured(file_path: str, payload: dict):
     """Receive a JSON object, serialize to YAML, and save to models/"""
+    _check_write()
     target = PROJECT_ROOT / "models" / file_path.lstrip('/')
     target.parent.mkdir(parents=True, exist_ok=True)
     data = payload.get('data', {})
@@ -672,6 +686,7 @@ async def get_file_raw(file_path: str):
 @app.post("/api/file-raw/{file_path:path}")
 async def save_file_raw(file_path: str, payload: dict):
     """Save raw text to a file in models/ (creates parent dirs as needed)"""
+    _check_write()
     try:
         target = PROJECT_ROOT / "models" / file_path.lstrip('/')
         if not str(target.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
@@ -689,7 +704,7 @@ async def save_file_raw(file_path: str, payload: dict):
 
 @app.post("/api/model/upload-temp")
 async def upload_model_temp(payload: dict):
-    """Upload YAML text to models/temp/. Returns key so the frontend can load via /api/models/."""
+    """Upload YAML, resolve imports in-process, delete temp file, return raw+resolved content."""
     import re as _re
     text = payload.get("text", "")
     raw_name = payload.get("filename", f"import_{uuid.uuid4().hex[:8]}.yaml")
@@ -697,27 +712,65 @@ async def upload_model_temp(payload: dict):
     if not safe_name.lower().endswith(('.yaml', '.yml')):
         safe_name += '.yaml'
 
-    models_root = PROJECT_ROOT / "models"
-    temp_dir = models_root / "temp"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    target = temp_dir / safe_name
-
     try:
-        yaml.safe_load(text)  # validate before writing
+        raw = yaml.safe_load(text)
     except yaml.YAMLError as e:
         raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
 
-    target.write_text(text, encoding='utf-8')
-    if loader_engine:
-        loader_engine.models_cache.clear()
+    if loader_engine is None:
+        raise HTTPException(status_code=503, detail="Models system not initialized")
 
-    return {"success": True, "key": f"temp/{safe_name}", "filename": safe_name}
+    temp_dir = PROJECT_ROOT / "models" / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_name = f"{uuid.uuid4().hex}_{safe_name}"
+    temp_path = temp_dir / temp_name
+
+    try:
+        temp_path.write_text(text, encoding='utf-8')
+        model = loader_engine.fetch(temp_name, folder='temp', use_cache=False)
+        if model is None:
+            raise HTTPException(status_code=400, detail="Model could not be resolved — check imports paths")
+
+        provenance = getattr(model, 'provenance', {}) or {}
+        resolved = {
+            "metadata": {
+                "name": model.metadata.name if model.metadata else "",
+                "version": model.metadata.version if model.metadata else "",
+                "author": model.metadata.author if model.metadata else "",
+                "description": model.metadata.description if model.metadata else "",
+            },
+            "variables": {
+                k: {
+                    "description": v.description, "value": v.value, "unit": v.unit,
+                    "type": v.type.value if hasattr(v.type, 'value') else str(v.type),
+                }
+                for k, v in model.variables.items()
+            },
+            "formulas": {
+                k: {
+                    "description": f.description, "condition": f.condition,
+                    "priority": f.priority, "dynamics": f.dynamics, "formula": f.formula,
+                }
+                for k, f in model.formulas.items()
+            },
+            "simulation": model.simulator,
+            "simulator": model.simulator,
+            "optimizer": model.optimizer,
+            "imports": provenance.get('imports', []),
+            "provenance": provenance,
+            "resolved": True,
+        }
+        return {"success": True, "raw": raw, "resolved": resolved, "filename": safe_name}
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 # ========== Save File 端点 ==========
 @app.post("/api/save-file")
 async def save_file_endpoint(request: SaveFileRequest):
     """保存文件到 models 目录（用于构建新 scenario）"""
+    _check_write()
     try:
         target = PROJECT_ROOT / "models" / request.path.lstrip('/')
         if not str(target.resolve()).startswith(str((PROJECT_ROOT / "models").resolve())):
@@ -743,6 +796,7 @@ async def save_file_endpoint(request: SaveFileRequest):
 @app.delete("/api/file/{file_path:path}")
 async def delete_file(file_path: str):
     """Delete a file inside the models directory."""
+    _check_write()
     models_root = PROJECT_ROOT / "models"
     target = models_root / file_path.lstrip('/')
     if not str(target.resolve()).startswith(str(models_root.resolve())):
@@ -761,6 +815,7 @@ async def delete_file(file_path: str):
 @app.post("/api/file-move")
 async def move_file(request: FileMoveRequest):
     """Move / rename a file inside the models directory."""
+    _check_write()
     import shutil
     models_root = PROJECT_ROOT / "models"
     src = models_root / request.src.lstrip('/')
@@ -797,6 +852,7 @@ _FILE_TEMPLATES = {
 @app.post("/api/file-new")
 async def create_new_file(request: FileNewRequest):
     """Create a new YAML file from a template inside the models directory."""
+    _check_write()
     models_root = PROJECT_ROOT / "models"
     target = models_root / request.path.lstrip('/')
     if not str(target.resolve()).startswith(str(models_root.resolve())):
@@ -841,35 +897,42 @@ def _simple_yaml_merge(files, output_path, project_root):
 
 @app.post("/api/merge")
 async def merge_models(request: MergeRequest):
-    """合并模型"""
-    # Try loader_engine first, fall back to simple YAML merge on failure
+    """合并模型。SCS 模式下不写盘，返回合并内容供前端创建 session model。"""
+    if not SCS_MODE:
+        _check_write()
+
+    # Determine output path: None in SCS mode (no disk write)
+    out_path = None if SCS_MODE else request.output_path
+
+    merged = None
     if loader_engine is not None:
         try:
-            abs_out = str(PROJECT_ROOT / "models" / request.output_path) if request.output_path and not os.path.isabs(request.output_path) else request.output_path
+            abs_out = (str(PROJECT_ROOT / "models" / out_path)
+                       if out_path and not os.path.isabs(out_path) else out_path)
             result = loader_engine.merge_models(
                 model_names=request.files,
                 folders=request.folders,
                 output_path=abs_out
             )
             if result['success']:
-                return {'success': True, 'data': {
-                    'variables': result['variables'],
-                    'formulas': result['formulas'],
-                    'output_path': request.output_path
-                }}
+                merged = result.get('merged') or result
         except Exception as e:
             logger.warning(f"Loader merge failed, falling back to simple merge: {e}")
 
-    # Simple YAML merge fallback
-    try:
-        merged = _simple_yaml_merge(request.files, request.output_path, PROJECT_ROOT)
-        return {'success': True, 'message': f'合并完成（简单模式）',
-                'data': {'variables': len(merged['variables']),
-                         'formulas': len(merged['formulas']),
-                         'output_path': request.output_path}}
-    except Exception as e:
-        logger.error(f"Simple merge error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    if merged is None:
+        merged = _simple_yaml_merge(request.files, out_path, PROJECT_ROOT)
+
+    if SCS_MODE:
+        yaml_text = yaml.dump(merged, allow_unicode=True, default_flow_style=False,
+                              sort_keys=False, indent=2)
+        return {'success': True, 'scs_mode': True, 'raw': merged, 'yaml_text': yaml_text,
+                'filename': (out_path or 'merged').split('/')[-1]}
+
+    return {'success': True, 'data': {
+        'variables': merged.get('variables', {}),
+        'formulas': merged.get('formulas', {}),
+        'output_path': request.output_path
+    }}
 
 
 # ========== Validate 端点 ==========
@@ -1004,6 +1067,7 @@ async def validate_model(request: ValidateRequest):
 @app.post("/api/split")
 async def split_model(request: SplitRequest):
     """拆分模型"""
+    _check_write()
     if loader_engine is None:
         raise HTTPException(status_code=503, detail="Models system not initialized")
     

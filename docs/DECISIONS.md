@@ -66,6 +66,7 @@
 | [0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md) | **多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行** | ⭐⭐ | 待实现 |
 | [0074](decisions/0074-2026-05-16_sim_gui-working-state-priority.md) | **GUI Working State 优先级高于 YAML Schedule（反转 ADR 0053 对 GUI 变量的规则）** | ⭐⭐ | 待实现 |
 | [0074](decisions/0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | **单层标签组导航：移除顶层 Tools/Sim 双层；动态 Builder Tab + 统一目录树双模式** | ⭐ | ✅ |
+| [0077](decisions/0077-2026-05-17_sim_session-model-import.md) | **Session 模型导入：原子上传（UUID 临时文件 + 内联解析 + 即时删除）→ localStorage；session/ key 前缀** | ⭐ | ✅（2026-05-18 重写，原两步法已废弃）|
 
 ---
 
@@ -77,7 +78,8 @@
 | [0042](decisions/0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名 | | ✅ |
 | [0055](decisions/0055-2026-05-04_project_docs-go-public-private-split.md) | **docs/ 公开 / go/ 内部不发布 分界规则** | ⭐⭐ | ✅ |
 | [0060](decisions/0060-2026-05-05_project_game-repo-separation.md) | **Game repo 独立（sim 和 game 分离为独立 repo）** | ⭐⭐ | ✅ |
-| [0061](decisions/0061-2026-05-06_project_temp-storage-no-user-accounts.md) | 临时存储方案，不做用户账号系统 | ⭐ | ✅ |
+| [0061](decisions/0061-2026-05-06_project_temp-storage-no-user-accounts.md) | 临时存储方案，不做用户账号系统（upload-temp 并发问题见 ADR 0077 修订） | ⭐ | ✅ |
+| [0078](decisions/0078-2026-05-18_project_scs-mode-design.md) | **SCS_MODE：云端部署写操作保护、前端行为适配、合并→session model** | ⭐ | ✅ |
 | [0072](decisions/0072-2026-05-15_project_gui-only-no-cli.md) | **GUI-only：CLI 不是正式接口，不新增功能，批量场景用 HTTP API** | ⭐⭐ | ✅ |
 
 ---
