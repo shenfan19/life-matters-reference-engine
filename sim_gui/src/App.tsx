@@ -111,7 +111,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
           content={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 160 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>字号</span>
+                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>{t('settings.font_size')}</span>
                 <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
                   {([12, 14, 16] as const).map(size => (
                     <button key={size} onClick={() => onFontSize(size)} style={{
@@ -124,7 +124,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>语言</span>
+                <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>{t('settings.language')}</span>
                 <select value={language} onChange={e => onLanguage(e.target.value as Language)} style={{
                   flex: 1, padding: '3px 6px', borderRadius: 6,
                   border: `1px solid ${c.border}`, background: c.panel, color: c.textSec,

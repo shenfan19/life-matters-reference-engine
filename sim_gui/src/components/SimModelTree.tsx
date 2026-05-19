@@ -125,7 +125,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: dimmed ? 0.4 : 1 }}>
         {isSelected && (
-          <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，锁定后可仿真'}>
+          <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip')}>
             <span
               onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
               style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -170,19 +170,19 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         {builderMode ? (
           // Builder mode: New + Merge buttons
           <>
-            <Tooltip title="新建模型文件">
+            <Tooltip title={t('sim.tree.new_file')}>
               <Button size="small" type="text" icon={<PlusOutlined />}
                 onClick={onNewFile}
                 style={{ color: c.primary, padding: '0 4px' }}
               />
             </Tooltip>
-            <Tooltip title="上传本地 YAML 到 Session">
+            <Tooltip title={t('sim.tree.upload_yaml')}>
               <Button size="small" type="text" icon={<UploadOutlined />}
                 onClick={onBuilderUpload}
                 style={{ color: c.primary, padding: '0 4px' }}
               />
             </Tooltip>
-            <Tooltip title={builderCheckedFiles.length >= 2 ? '合并选中文件' : '请先选择 2 个以上文件'}>
+            <Tooltip title={builderCheckedFiles.length >= 2 ? t('sim.tree.merge_files') : t('sim.tree.select_files')}>
               <Button size="small" type="text" icon={<MergeCellsOutlined />}
                 onClick={onMergeFiles}
                 disabled={builderCheckedFiles.length < 2}
@@ -193,14 +193,14 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         ) : (
           // Normal mode: Import + Reload + Edit Library
           <>
-            <Tooltip title="从本地导入 YAML 模型文件">
+            <Tooltip title={t('sim.tree.import_yaml')}>
               <Button size="small" type="text" icon={<UploadOutlined />}
                 onClick={onImportFile}
                 style={{ color: c.textMute, padding: '0 3px' }}
               />
             </Tooltip>
             {selectedKey && !selectedKey.startsWith('session/') && (
-              <Tooltip title="重新读取当前 YAML">
+              <Tooltip title={t('sim.tree.reload_yaml')}>
                 <Button
                   size="small" type="text" icon={<ReloadOutlined />}
                   disabled={isLocked || treeLoading}
@@ -209,7 +209,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 />
               </Tooltip>
             )}
-            <Tooltip title="编辑模型库">
+            <Tooltip title={t('sim.tree.edit_library')}>
               <Button size="small" type="text" icon={<EditOutlined />}
                 onClick={onOpenBuilder}
                 style={{ color: c.textMute, padding: '0 3px' }}
@@ -227,7 +227,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               <span style={{ flex: 1, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Session
               </span>
-              <Tooltip title="页面刷新后 session 模型仍保留（localStorage）">
+              <Tooltip title={t('sim.tree.session_persist')}>
                 <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, cursor: 'default' }}>💾</span>
               </Tooltip>
             </div>
@@ -248,7 +248,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                     style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0, marginRight: 4 }}
                   />
                 ) : isSel ? (
-                  <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
+                  <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip2')}>
                     <span
                       onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
                       style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -264,7 +264,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                   fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: isSel ? c.primary : c.text }}>
                   {m.title}
                 </span>
-                <Tooltip title="从 session 中移除">
+                <Tooltip title={t('sim.tree.remove_session')}>
                   <CloseOutlined
                     onClick={e => { e.stopPropagation(); onClearSessionModel?.(m.key); }}
                     style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}

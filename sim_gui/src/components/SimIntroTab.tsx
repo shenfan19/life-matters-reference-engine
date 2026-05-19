@@ -22,7 +22,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
 }) => {
   if (!selectedModel) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty') || '请选择一个模型'} />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.empty')} />
     </div>
   );
 
@@ -64,7 +64,10 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
     );
   };
 
-  const varTypeBadge = (type: string) => ({ state: '状态', input: '输入', parameter: '参数', evidence: '证据' })[type] || type || '—';
+  const varTypeBadge = (type: string) => ({
+    state: t('sim.var.type.state'), input: t('sim.var.type.input'),
+    parameter: t('sim.var.type.parameter'), evidence: t('sim.var.type.evidence'),
+  })[type] || type || '—';
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
@@ -79,7 +82,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                 </div>
               ))}
             </div>
-          : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>暂无描述</div>
+          : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_description')}</div>
         }
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
           {meta.updated && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
@@ -89,13 +92,13 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         </div>
       </Section>
 
-      <Section id="variables" title={t('sim.tabs.variables') || '变量'} badge={`${Object.keys(allV).length} 个`}>
+      <Section id="variables" title={t('sim.tabs.variables')} badge={`${Object.keys(allV).length} 个`}>
         {Object.keys(allV).length === 0
-          ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无变量</span>
+          ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_variables')}</span>
           : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead><tr>
                 <th style={{ ...thS, width: '22%' }}>Name</th><th style={thS}>Description</th>
-                <th style={thS}>类型</th><th style={thS}>初始值</th><th style={thS}>单位</th><th style={thS}>来源</th>
+                <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.init_value')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
               </tr></thead>
               <tbody>
                 {Object.entries(allV).map(([name, d]: [string, any]) => (
@@ -113,13 +116,13 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         }
       </Section>
 
-      <Section id="outputs" title="输出变量" badge={`${outputVars.length} 个`}>
+      <Section id="outputs" title={t('sim.intro.output_vars')} badge={`${outputVars.length} 个`}>
         {outputVars.length === 0
-          ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>无输出变量</span>
+          ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_outputs')}</span>
           : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead><tr>
                 <th style={{ ...thS, width: '22%' }}>Name</th><th style={thS}>Description</th>
-                <th style={thS}>类型</th><th style={thS}>单位</th><th style={thS}>来源</th>
+                <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
               </tr></thead>
               <tbody>
                 {outputVars.map(name => {
@@ -140,11 +143,11 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
       </Section>
 
       {Object.keys(formulas).length > 0 && (
-        <Section id="formulas" title={t('sim.tabs.formulas') || '公式'} badge={`${Object.keys(formulas).length} 个`}>
+        <Section id="formulas" title={t('sim.tabs.formulas')} badge={`${Object.keys(formulas).length} 个`}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead><tr>
               <th style={{ ...thS, width: '20%' }}>Name</th><th style={{ ...thS, width: '26%' }}>Description</th>
-              <th style={thS}>Expression</th><th style={{ ...thS, width: '14%' }}>Condition</th><th style={{ ...thS, width: '12%' }}>来源</th>
+              <th style={thS}>Expression</th><th style={{ ...thS, width: '14%' }}>Condition</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th>
             </tr></thead>
             <tbody>
               {Object.entries(formulas).map(([name, fd]: [string, any]) => {

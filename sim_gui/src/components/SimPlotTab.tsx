@@ -62,7 +62,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
     : !isLocked
       ? t('sim.scene.select_hint')
       : mode === 'opt'
-        ? '优化模式下仿真结果会在运行仿真后显示'
+        ? t('sim.plot.opt_mode_hint')
         : status === 'idle'
           ? t('sim.scene.click_to_start')
           : t('sim.scene.calculating');
@@ -79,7 +79,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   // Plan visibility toggle row — shown above charts when multi-plan results exist
   const planToggleBar = isMultiPlan && comparedPlans && comparedPlans.length > 0 ? (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '4px 8px', borderBottom: `1px solid ${c.border}`, background: c.sectionHd, flexShrink: 0 }}>
-      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>显示</span>
+      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('sim.plot.show')}</span>
       {comparedPlans.map(plan => (
         <label key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none' }}>
           <input type="checkbox"

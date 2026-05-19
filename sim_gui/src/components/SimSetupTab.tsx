@@ -52,7 +52,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
   plans, activePlanId, onSelectPlan, onAddPlan, onRemovePlan,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
-  const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+  const DAY_LABELS = t('sim.setup.day_labels').split(',');
 
   // Local state for slider/input — only propagate to parent on commit (mouseup / blur / Enter)
   const [localPop, setLocalPop] = useState(optPop);
@@ -91,7 +91,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
     <div style={{ padding: '4px 0' }}>
       {visibleEvents.length === 0 && (
         <div style={{ textAlign: 'center', color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: 8 }}>
-          {mode === 'opt' ? '未定义优化变量（检查 YAML optimizer.inputs 块）' : '暂无输入事件'}
+          {mode === 'opt' ? t('sim.setup.no_opt_vars') : t('sim.setup.no_events')}
         </div>
       )}
       {visibleEvents.map(ev => {
@@ -107,10 +107,10 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                   variable: val,
                   valueBounds: [(inputVars.find(v => v.name === val)?.bounds as any)?.[0] ?? 0, (inputVars.find(v => v.name === val)?.bounds as any)?.[1] ?? 1],
                 })} />
-              <Tog label="值" active disabled title="值始终启用" onToggle={() => {}} />
-              <Tog label="时" active={ev.timeEnabled} title="指定触发时刻" onToggle={() => updateInputEvent(ev.id, { timeEnabled: !ev.timeEnabled })} />
-              <Tog label="日" active={ev.daysEnabled} title="指定执行日" onToggle={() => updateInputEvent(ev.id, { daysEnabled: !ev.daysEnabled })} />
-              <Tog label="范" active={ev.validRangeEnabled} title="指定有效期" onToggle={() => updateInputEvent(ev.id, { validRangeEnabled: !ev.validRangeEnabled })} />
+              <Tog label={t('sim.setup.tog.value')} active disabled title={t('sim.setup.tog.value_tip')} onToggle={() => {}} />
+              <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled} title={t('sim.setup.tog.time_tip')} onToggle={() => updateInputEvent(ev.id, { timeEnabled: !ev.timeEnabled })} />
+              <Tog label={t('sim.setup.tog.day')} active={ev.daysEnabled} title={t('sim.setup.tog.day_tip')} onToggle={() => updateInputEvent(ev.id, { daysEnabled: !ev.daysEnabled })} />
+              <Tog label={t('sim.setup.tog.range')} active={ev.validRangeEnabled} title={t('sim.setup.tog.range_tip')} onToggle={() => updateInputEvent(ev.id, { validRangeEnabled: !ev.validRangeEnabled })} />
               <div style={{ flex: 1 }} />
               <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
                 style={{ padding: '0 2px' }} onClick={() => removeInputEvent(ev.id)} />
@@ -120,7 +120,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                 onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })} />
               {varDef?.unit && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>}
               {mode === 'opt' && (
-                <Tooltip title={ev.optimizeValue ? '取消优化' : '加入优化范围'}>
+                <Tooltip title={ev.optimizeValue ? t('sim.setup.unopt') : t('sim.setup.addopt')}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
                     <input type="checkbox" checked={ev.optimizeValue}
                       onChange={e => updateInputEvent(ev.id, {
@@ -179,7 +179,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
       <Button size="small" icon={<PlusOutlined />} block onClick={addInputEvent}
         disabled={inputVars.length === 0}
         style={{ borderColor: c.border, color: c.textSec, marginTop: 4 }}>
-        添加输入事件
+        {t('sim.setup.add_event')}
       </Button>
     </div>
   );
@@ -188,7 +188,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
     <div style={{ padding: '8px 0' }}>
       {!!(selectedModel?.content?.optimizer?.enabled !== false && selectedModel?.content?.optimizer) && (
         <div style={{ background: c.sectionHd, border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px', marginBottom: 10, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textSec }}>
-          已从模型 <code style={{ fontFamily: 'monospace' }}>optimizer:</code> 块读取配置，可在下方修改
+          {t('sim.setup.opt_config_hint')}
         </div>
       )}
       <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.objectives')}</div>
@@ -233,10 +233,10 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
       <div style={{ fontWeight: 700, color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{t('sim.opt.algorithm')}</div>
       <Select size="small" value={optAlgo}
         options={[
-          { label: 'NSGA-II（多目标 Pareto）', value: 'NSGA-II' },
-          { label: 'MOEA/D（多目标分解）', value: 'MOEA/D' },
-          { label: 'L-BFGS-B（单目标梯度）', value: 'l-bfgs-b' },
-          { label: 'Nelder-Mead（单目标无梯度）', value: 'nelder-mead' },
+          { label: t('sim.setup.algo.nsga2'), value: 'NSGA-II' },
+          { label: t('sim.setup.algo.moead'), value: 'MOEA/D' },
+          { label: t('sim.setup.algo.lbfgsb'), value: 'l-bfgs-b' },
+          { label: t('sim.setup.algo.nelder'), value: 'nelder-mead' },
         ]}
         onChange={v => setOptAlgo(v as any)} style={{ width: '100%', marginBottom: 10 }} />
       {(optAlgo === 'NSGA-II' || optAlgo === 'MOEA/D') && (() => {
@@ -327,7 +327,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
         {/* Plan Manager — shown in sim mode when plan callbacks are provided */}
         {mode === 'sim' && plans && onSelectPlan && onAddPlan && onRemovePlan && (
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderBottom: `1px solid ${c.border}`, background: c.sectionHd, flexWrap: 'wrap' }}>
-            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>方案</span>
+            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>{t('sim.setup.plans')}</span>
             {plans.map(plan => {
               const isActive = plan.id === activePlanId;
               return (
@@ -343,7 +343,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
               );
             })}
             <button onClick={onAddPlan} style={{ border: `1px dashed ${c.border}`, borderRadius: 4, padding: '2px 7px', background: 'transparent', color: c.textMute, cursor: 'pointer', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8)', flexShrink: 0 }}>
-              + 添加
+              {t('sim.setup.add_plan')}
             </button>
           </div>
         )}
