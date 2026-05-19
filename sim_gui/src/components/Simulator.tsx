@@ -1263,7 +1263,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   // ── download model YAML with opt results embedded (server does NOT write to disk) ──
-  const downloadModelYAML = async () => {
+  const downloadModelYAML = async (flattenImports = false) => {
     if (!selectedModel?.key || !optResult) return;
     const modelKey = selectedModel.key.replace(/^models\//, '');
 
@@ -1299,7 +1299,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       const r = await fetch(`${API_BASE}/optimizer/export-model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_key: modelKey, results }),
+        body: JSON.stringify({ model_key: modelKey, results, flatten_imports: flattenImports }),
       });
       const d = await r.json();
       if (!d.success || !d.text) return;

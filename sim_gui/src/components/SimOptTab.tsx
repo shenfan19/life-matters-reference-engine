@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Empty, Tooltip } from 'antd';
+import { Button, Dropdown, Empty, Tooltip } from 'antd';
 import { DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { getC } from '../core/theme';
 import ParetoChart from './ParetoChart';
@@ -20,7 +20,7 @@ interface SimOptTabProps {
   c: ReturnType<typeof getC>;
   t: (key: string) => string;
   fontSize: number;
-  onDownloadModel: () => void;
+  onDownloadModel: (flattenImports: boolean) => void;
   hasExistingResults: boolean;
   onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
 }
@@ -254,9 +254,14 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
               <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
             )}
             <div style={{ flex: 1 }} />
-            <Tooltip title="下载含 Pareto 前沿的模型 YAML，可上传继续搜索">
-              <Button size="small" icon={<DownloadOutlined />} onClick={onDownloadModel}>下载</Button>
-            </Tooltip>
+            <Dropdown placement="bottomRight" menu={{ items: [
+              { key: 'ref', label: '引用 imports（简练）', onClick: () => onDownloadModel(false) },
+              { key: 'flat', label: '合并 imports（可独立迁移）', onClick: () => onDownloadModel(true) },
+            ]}}>
+              <Tooltip title="下载含 Pareto 前沿的模型 YAML">
+                <Button size="small" icon={<DownloadOutlined />}>下载</Button>
+              </Tooltip>
+            </Dropdown>
           </div>
         )}
         {hasPareto ? (
