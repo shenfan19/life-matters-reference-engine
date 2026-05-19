@@ -83,12 +83,12 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
   Object.values(formulas).forEach((fd: any) => collectRefs(fd.reference));
 
   function sectionBadge(key: ReportSection): string {
-    if (key === 'intro')     return metaDescText ? '有描述' : '无描述';
+    if (key === 'intro')     return metaDescText ? t('sim.report.badge.has_desc') : t('sim.report.badge.no_desc');
     if (key === 'overview')  return `${stateVars.length + inputVars.length} 个变量`;
     if (key === 'formulas')  return `${Object.keys(formulas).length} 个`;
     if (key === 'variables') return `${Object.keys(allV).length} 个`;
     if (key === 'simcfg')    return `${Object.keys(inputParams).length} 项输入`;
-    if (key === 'plots')     return hasData ? `${outputVars.length} 条曲线` : '需先仿真';
+    if (key === 'plots')     return hasData ? `${outputVars.length} 条曲线` : t('sim.report.badge.no_data');
     if (key === 'opt')       return `${objectives.length} 目标`;
     if (key === 'refs')      return allRefs.length > 0 ? `${allRefs.length} 条` : '无';
     return '';
@@ -106,31 +106,31 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, lineHeight: 1.8 }}>
         {metaDescText
           ? <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{metaDescText}</p>
-          : <span style={{ color: c.textMute }}>暂无简介</span>
+          : <span style={{ color: c.textMute }}>{t('sim.report.no_intro')}</span>
         }
-        {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>标签：{meta.tags.join('  ·  ')}</div> : null}
+        {meta.tags?.length ? <div style={{ marginTop: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{t('sim.report.tags')}{meta.tags.join('  ·  ')}</div> : null}
       </div>
     );
     if (key === 'overview') return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
-        <tr><TD>名称</TD><TD mono>{meta.name || selectedModel?.title || '—'}</TD></tr>
-        <tr><TD>描述</TD><TD>{(metaDescSummary || '—').slice(0, 120)}</TD></tr>
-        {meta.tags?.length ? <tr><TD>标签</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
-        <tr><TD>状态变量</TD><TD mono>{stateVars.length} 个</TD></tr>
-        <tr><TD>输入变量</TD><TD mono>{inputVars.length} 个</TD></tr>
-        <tr><TD>方程数</TD><TD mono>{Object.keys(formulas).length} 个</TD></tr>
+        <tr><TD>{t('sim.report.overview.name')}</TD><TD mono>{meta.name || selectedModel?.title || '—'}</TD></tr>
+        <tr><TD>{t('sim.report.overview.desc')}</TD><TD>{(metaDescSummary || '—').slice(0, 120)}</TD></tr>
+        {meta.tags?.length ? <tr><TD>{t('sim.report.overview.tags')}</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
+        <tr><TD>{t('sim.report.overview.state_vars')}</TD><TD mono>{stateVars.length} 个</TD></tr>
+        <tr><TD>{t('sim.report.overview.input_vars')}</TD><TD mono>{inputVars.length} 个</TD></tr>
+        <tr><TD>{t('sim.report.overview.formula_count')}</TD><TD mono>{Object.keys(formulas).length} 个</TD></tr>
       </tbody></table>
     );
     if (key === 'simcfg') return (
       <div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}><tbody>
-          <tr><TD>时间范围</TD><TD mono>{simStartDate} ~ {simEndDate}</TD></tr>
-          <tr><TD>步长</TD><TD mono>{stepValue} {stepUnit}</TD></tr>
-          <tr><TD>批量大小</TD><TD mono>{batchSize}</TD></tr>
+          <tr><TD>{t('sim.report.simcfg.time_range')}</TD><TD mono>{simStartDate} ~ {simEndDate}</TD></tr>
+          <tr><TD>{t('sim.report.simcfg.step')}</TD><TD mono>{stepValue} {stepUnit}</TD></tr>
+          <tr><TD>{t('sim.report.simcfg.batch')}</TD><TD mono>{batchSize}</TD></tr>
         </tbody></table>
         {Object.keys(inputParams).length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><TH>变量</TH><TH>含义</TH><TH>值</TH></tr></thead>
+            <thead><tr><TH>{t('sim.report.simcfg.variable')}</TH><TH>{t('sim.report.simcfg.meaning')}</TH><TH>{t('sim.report.simcfg.value')}</TH></tr></thead>
             <tbody>{Object.entries(inputParams).map(([k, v]) => (
               <tr key={k}><TD mono>{k}</TD><TD>{allV[k]?.description || '—'}</TD><TD mono>{String(v)}</TD></tr>
             ))}</tbody>
@@ -140,7 +140,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
     );
     if (key === 'variables') return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><TH>变量名</TH><TH>含义</TH><TH>类型</TH><TH>初始值</TH><TH>最终值</TH><TH>单位</TH></tr></thead>
+        <thead><tr><TH>{t('sim.report.var.name')}</TH><TH>{t('sim.report.var.meaning')}</TH><TH>{t('sim.report.var.type')}</TH><TH>{t('sim.report.var.init')}</TH><TH>{t('sim.report.var.final')}</TH><TH>{t('sim.report.var.unit')}</TH></tr></thead>
         <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
           const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
           const cite = citeStr(d.reference);
@@ -152,9 +152,9 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
     );
     if (key === 'formulas') return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><TH>方程名</TH><TH>含义</TH><TH>条件</TH><TH>影响变量</TH></tr></thead>
+        <thead><tr><TH>{t('sim.report.formula.name')}</TH><TH>{t('sim.report.formula.meaning')}</TH><TH>{t('sim.report.formula.condition')}</TH><TH>{t('sim.report.formula.affect')}</TH></tr></thead>
         <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
-          const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
+          const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : t('sim.report.formula.always');
           const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
           const cite = citeStr(fd.reference);
           return <tr key={name}><TD mono>{name}</TD>
@@ -164,7 +164,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       </table>
     );
     if (key === 'plots') {
-      if (!hasData) return <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '8px 0' }}>尚无数据，请先运行仿真</div>;
+      if (!hasData) return <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', padding: '8px 0' }}>{t('sim.report.no_data')}</div>;
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {outputVars.map((varName, idx) => {
@@ -186,7 +186,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
     if (key === 'refs') return (
       <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, lineHeight: 1.9 }}>
         {allRefs.length === 0
-          ? <span style={{ color: c.textMute }}>当前模型无参考文献</span>
+          ? <span style={{ color: c.textMute }}>{t('sim.report.no_refs')}</span>
           : allRefs.map((ref, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
                 <span style={{ color: c.primary, fontWeight: 700, flexShrink: 0, fontFamily: 'monospace', minWidth: 28 }}>[{i + 1}]</span>
@@ -198,13 +198,13 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
     );
     if (key === 'opt') return (
       <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
-        {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>目标函数</div>
+        {objectives.length > 0 && <><div style={{ fontWeight: 700, marginBottom: 4 }}>{t('sim.report.objective_fn')}</div>
           {objectives.map((o, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
             {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}</div>)}</>}
-        {constraints.length > 0 && <><div style={{ fontWeight: 700, margin: '8px 0 4px' }}>约束条件</div>
+        {constraints.length > 0 && <><div style={{ fontWeight: 700, margin: '8px 0 4px' }}>{t('sim.report.constraints')}</div>
           {constraints.map((c2, i) => <div key={i} style={{ fontFamily: 'monospace', paddingLeft: 8 }}>
             {c2.variable} {c2.op} {c2.value}</div>)}</>}
-        <div style={{ marginTop: 8, color: c.textMute }}>算法: {optAlgo} · 种群: {optPop} · 代数: {optGen}</div>
+        <div style={{ marginTop: 8, color: c.textMute }}>{t('sim.report.algo_label')}: {optAlgo} · {t('sim.report.pop_label')}: {optPop} · {t('sim.report.gen_label')}: {optGen}</div>
       </div>
     );
     return null;
@@ -320,7 +320,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, padding: '10px 16px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
         <button onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); } }}
           disabled={!canExport} style={{ ...btnBase, border: `1px solid ${c.primary}`, background: 'transparent', color: c.primary, opacity: canExport ? 1 : 0.4 }}>
-          ⬡ HTML 预览
+          {t('sim.report.html_preview')}
         </button>
         <button
           onClick={() => {
@@ -334,7 +334,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
           }}
           disabled={!canExport || reportGenerating}
           style={{ ...btnBase, border: 'none', background: canExport ? c.primary : c.border, color: '#fff', opacity: canExport && !reportGenerating ? 1 : 0.4 }}>
-          {reportGenerating ? '生成中…' : '↓ 导出 .md'}
+          {reportGenerating ? t('sim.report.generating') : t('sim.report.export_md')}
         </button>
         <button
           onClick={() => {
@@ -357,24 +357,24 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
           }}
           disabled={!hasData}
           style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: hasData ? c.text : c.textMute, opacity: hasData ? 1 : 0.4 }}>
-          ↓ 轨迹 .csv
+          {t('sim.report.export_csv')}
         </button>
         <Tooltip title="DOCX 导出功能开发中">
           <button disabled style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: c.textMute, cursor: 'not-allowed', opacity: 0.4 }}>
-            ↓ 导出 .docx
+            {t('sim.report.export_docx')}
           </button>
         </Tooltip>
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 8px' }}>
         <div style={{ width: 160, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 4px 6px' }}>输出章节</div>
+          <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', fontWeight: 700, color: c.textMute, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 4px 6px' }}>{t('sim.report.sections_label')}</div>
           {ALL_REPORT_SECTIONS.map(s => {
             const checked = reportSections.has(s.key);
             const disabledPlots = s.key === 'plots' && !hasData;
             const disabledOpt = s.key === 'opt' && mode !== 'opt';
             const isDisabled = disabledPlots || disabledOpt;
-            const tooltipText = disabledPlots ? '需先完成仿真才能显示曲线' : disabledOpt ? '仅在优化模式下可用' : '';
+            const tooltipText = disabledPlots ? t('sim.report.need_sim_first') : disabledOpt ? t('sim.report.opt_only') : '';
             const row = (
               <label key={s.key} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
@@ -389,7 +389,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
                     setOpenReportPreviews(p => { const s2 = new Set(p); checked ? s2.delete(s.key) : s2.add(s.key); return s2; });
                   }}
                   style={{ accentColor: c.primary, width: 12, height: 12, flexShrink: 0 }} />
-                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: checked && !isDisabled ? c.primary : c.text }}>{s.label}</span>
+                <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: checked && !isDisabled ? c.primary : c.text }}>{t(`sim.report.section.${s.key}`)}</span>
               </label>
             );
             return tooltipText ? <Tooltip key={s.key} title={tooltipText} placement="right">{row}</Tooltip> : row;
@@ -398,7 +398,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {reportSections.size === 0 && (
-            <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', padding: '32px 0', textAlign: 'center' }}>请在左侧勾选章节</div>
+            <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', padding: '32px 0', textAlign: 'center' }}>{t('sim.report.select_sections')}</div>
           )}
           {ALL_REPORT_SECTIONS.filter(s => reportSections.has(s.key)).map(s => {
             const isOpen = openReportPreviews.has(s.key);
@@ -410,7 +410,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', background: isOpen ? c.sectionHd : 'transparent', userSelect: 'none' }}
                 >
                   <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', color: c.textMute, transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
-                  <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, flex: 1 }}>{s.label}</span>
+                  <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text, flex: 1 }}>{t(`sim.report.section.${s.key}`)}</span>
                   {badge && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.primary, fontFamily: 'monospace', background: c.primary + '15', padding: '1px 7px', borderRadius: 8 }}>{badge}</span>}
                 </div>
                 {isOpen && (

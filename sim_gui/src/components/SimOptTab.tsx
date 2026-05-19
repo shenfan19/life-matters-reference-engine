@@ -157,7 +157,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
 
   const logPanel = (
     <div ref={logContainerRef} style={{ maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
-      {optLogs.length === 0 && <span style={{ color: c.textMute }}>暂无日志</span>}
+      {optLogs.length === 0 && <span style={{ color: c.textMute }}>{t('sim.opt.no_logs')}</span>}
       {optLogs.map((l, i) => {
         const d = new Date(l.t * 1000);
         const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
@@ -168,7 +168,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
 
   const optSummary = (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-      <span style={{ fontWeight: 600, color: c.text }}>{hasPareto ? 'Pareto 前沿' : latestHist ? '当前前沿预览' : 'Optimization'}</span>
+      <span style={{ fontWeight: 600, color: c.text }}>{hasPareto ? t('sim.opt.pareto_front') : latestHist ? t('sim.opt.current_front') : t('sim.opt.optimization')}</span>
       {((optResult?.objectives || objectives) || []).map((o: any, i: number) => (
         <span key={i} style={{ padding: '1px 6px', borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace', color: c.primary, background: isDarkMode ? '#1e3824' : '#f0f7f0', border: `1px solid ${c.border}` }}>
           {o.direction === 'maximize' ? '↑' : '↓'} {o.variable}
@@ -192,7 +192,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         <div style={{ height: 240, overflow: 'hidden' }}>
           {liveResult?.pareto_front?.length
             ? <ParetoChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-            : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optRunning ? '等待第一代前沿点' : '运行后显示 Pareto 前沿'} />}
+            : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optRunning ? t('sim.opt.waiting_first') : t('sim.opt.show_after_run')} />}
         </div>
       </Section>
 
@@ -234,7 +234,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         {(hasPareto || optResult?.best_x != null) && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {onSendToSim && (
-              <Tooltip title={checkedIdx.size > 0 ? '将选中的 Pareto 解添加为仿真方案' : '请先在表格中勾选解'}>
+              <Tooltip title={checkedIdx.size > 0 ? t('sim.opt.send_tooltip_on') : t('sim.opt.send_tooltip_off')}>
                 <Button size="small" type="primary" icon={<ExportOutlined />}
                   disabled={checkedIdx.size === 0}
                   style={checkedIdx.size > 0 ? { background: c.primary, borderColor: c.primary } : {}}
@@ -247,19 +247,19 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
                     onSendToSim!(rows);
                     setCheckedIdx(new Set());
                   }}
-                >{checkedIdx.size > 0 ? `选中 ${checkedIdx.size} 项→仿真` : '选中→仿真'}</Button>
+                >{checkedIdx.size > 0 ? `${t('sim.opt.send_selected')} (${checkedIdx.size})` : t('sim.opt.send_selected')}</Button>
               </Tooltip>
             )}
             {checkedIdx.size > 0 && (
-              <Button size="small" onClick={() => setCheckedIdx(new Set())}>清除</Button>
+              <Button size="small" onClick={() => setCheckedIdx(new Set())}>{t('sim.opt.clear')}</Button>
             )}
             <div style={{ flex: 1 }} />
             <Dropdown placement="bottomRight" menu={{ items: [
-              { key: 'ref', label: '引用 imports（简练）', onClick: () => onDownloadModel(false) },
-              { key: 'flat', label: '合并 imports（可独立迁移）', onClick: () => onDownloadModel(true) },
+              { key: 'ref', label: t('sim.opt.ref_imports'), onClick: () => onDownloadModel(false) },
+              { key: 'flat', label: t('sim.opt.merge_imports'), onClick: () => onDownloadModel(true) },
             ]}}>
-              <Tooltip title="下载含 Pareto 前沿的模型 YAML">
-                <Button size="small" icon={<DownloadOutlined />}>下载</Button>
+              <Tooltip title={t('sim.opt.download_tip')}>
+                <Button size="small" icon={<DownloadOutlined />}>{t('sim.opt.download')}</Button>
               </Tooltip>
             </Dropdown>
           </div>
@@ -317,7 +317,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
               </tbody>
             </table>
           </div>
-        ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optResult?.best_x ? '无 Pareto 表（单目标）' : '完成后显示解表'} />}
+        ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optResult?.best_x ? t('sim.opt.no_pareto_table') : t('sim.opt.show_after_complete')} />}
       </Section>
 
       <Section id="log" title="Log" badge={`${optLogs.length} 条`}>
