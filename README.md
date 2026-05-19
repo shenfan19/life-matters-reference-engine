@@ -21,6 +21,7 @@
 2. 在统一框架内同时运行异尺度模型（分钟–小时–天–年）
 3. 对行为干预方案（Regimen）做多目标 Pareto 优化
 4. 把科研模型输出为游戏化场景，供 [life-matters-game](https://github.com/shenfan19/life-matters-game) 消费
+5. 把多篇文献的参数装进同一框架，检验它们是否互相自洽（Simulation-as-Validation）
 
 ### 与经典工具的层级关系
 

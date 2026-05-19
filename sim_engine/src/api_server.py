@@ -1435,8 +1435,9 @@ async def get_optimizer_status(job_id: str):
 
 
 class ExportModelRequest(BaseModel):
-    model_key: str          # path relative to models/, e.g. "papers/paper2/foo.yaml"
-    results: Dict[str, Any] # the optimizer.results block to embed
+    model_key: str           # path relative to models/, e.g. "papers/paper2/foo.yaml"
+    results: Dict[str, Any]  # the optimizer.results block to embed
+    flatten_imports: bool = False  # if True, resolve all imports into a single flat YAML
 
 
 @app.post("/api/optimizer/export-model")
@@ -1444,6 +1445,8 @@ async def export_model_with_results(request: ExportModelRequest):
     """Read model YAML, embed optimizer.results in memory, return YAML text.
     The server file is NEVER modified — this is a stateless operation.
     The client downloads the returned text as a .yaml file.
+    If flatten_imports=True, all imported models are merged in first so the
+    exported file has no external dependencies.
     """
     try:
         models_root = PROJECT_ROOT / "models"
@@ -1453,10 +1456,22 @@ async def export_model_with_results(request: ExportModelRequest):
         if not target.exists():
             raise HTTPException(status_code=404, detail=f"Model file not found: {request.model_key}")
 
-        with open(target, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f) or {}
+        if request.flatten_imports:
+            try:
+                from src.model_structure import ModelStructure
+                ms = ModelStructure(str(models_root), 'zh')
+                data = ms._load_model_data(str(target), request.model_key)
+                data.pop('_sources', None)
+                data['imports'] = []
+            except Exception as flat_err:
+                logger.warning(f"flatten_imports failed, falling back to raw load: {flat_err}")
+                with open(target, 'r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f) or {}
+        else:
+            with open(target, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
 
-        if 'optimizer' not in data or not isinstance(data['optimizer'], dict):
+        if not isinstance(data.get('optimizer'), dict):
             raise HTTPException(status_code=400, detail="Model has no optimizer: block")
 
         # Embed results in memory — no disk write
