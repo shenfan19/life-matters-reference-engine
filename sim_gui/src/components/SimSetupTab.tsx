@@ -146,31 +146,129 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
             </div>
             {hasDetails && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
-                {ev.timeEnabled && (
-                  <Input size="small" value={ev.time} placeholder="HH:mm"
-                    style={{ width: 58, fontFamily: 'monospace' }}
-                    onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
-                )}
+                {/* 时间：固定时间点 or 时窗（~ = 可优化） */}
+                {ev.timeEnabled && (<>
+                  {mode === 'opt' && ev.optimizeValue && ev.optimizeTime ? (
+                    // 时窗模式：~ 分隔表示可优化
+                    <>
+                      <Input size="small"
+                        value={(ev.timeWindow ?? '').split('~')[0]?.trim()}
+                        placeholder="HH:MM"
+                        style={{ width: 52, fontFamily: 'monospace' }}
+                        onChange={e => {
+                          const end = (ev.timeWindow ?? '~').split('~')[1]?.trim() ?? '';
+                          updateInputEvent(ev.id, { timeWindow: `${e.target.value}~${end}` });
+                        }} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Input size="small"
+                        value={(ev.timeWindow ?? '~').split('~')[1]?.trim()}
+                        placeholder="HH:MM"
+                        style={{ width: 52, fontFamily: 'monospace' }}
+                        onChange={e => {
+                          const start = (ev.timeWindow ?? '~').split('~')[0]?.trim() ?? '';
+                          updateInputEvent(ev.id, { timeWindow: `${start}~${e.target.value}` });
+                        }} />
+                      <Select size="small" value={ev.optStep ?? '1h'} style={{ width: 64 }}
+                        options={[{ value: '1h', label: '1h' }, { value: '15min', label: '15min' }]}
+                        onChange={v => updateInputEvent(ev.id, { optStep: v })} />
+                    </>
+                  ) : (
+                    // 固定时间点
+                    <Input size="small" value={ev.time} placeholder="HH:mm"
+                      style={{ width: 58, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
+                  )}
+                  {/* ~ checkbox：切换时窗优化 */}
+                  {mode === 'opt' && ev.optimizeValue && (
+                    <Tooltip title={ev.optimizeTime ? t('sim.setup.opt.time_win_tip') : t('sim.setup.opt.time_win')}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
+                        <input type="checkbox" checked={ev.optimizeTime ?? false}
+                          onChange={e => updateInputEvent(ev.id, {
+                            optimizeTime: e.target.checked,
+                            timeWindow: e.target.checked ? `${ev.time}~${ev.time}` : ev.timeWindow,
+                          })}
+                          style={{ accentColor: c.primary, width: 11, height: 11 }} />
+                        <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: (ev.optimizeTime ?? false) ? c.primary : c.textMute }}>opt</span>
+                      </label>
+                    </Tooltip>
+                  )}
+                </>)}
+                {/* 星期：粗框选中态；T3 ~ checkbox（仅 YAML 提供 daysOptions 时出现） */}
                 {ev.daysEnabled && (
-                  <div style={{ display: 'flex', gap: 2 }}>
+                  <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     {DAY_LABELS.map((d, i) => (
                       <button key={i}
                         onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
-                        style={{ width: 20, height: 20, border: `1px solid ${c.border}`, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute, padding: 0 }}>{d}</button>
+                        style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
+                          ...(ev.optimizeDays
+                            ? { background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute, border: `1px solid ${c.border}` }
+                            : { background: c.panel, color: ev.days[i] ? c.primary : c.textMute, border: ev.days[i] ? `2px solid ${c.primary}` : `1px solid ${c.border}`, fontWeight: ev.days[i] ? 700 : 400 })
+                        }}>{d}</button>
                     ))}
+                    {mode === 'opt' && ev.optimizeValue && (
+                      <Tooltip title={(ev.daysOptions?.length ?? 0) > 0
+                        ? ev.daysOptions!.map(p => p.join(' ')).join(' | ')
+                        : t('sim.setup.tog.day_opt_tip')}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', marginLeft: 2, flexShrink: 0 }}>
+                          <input type="checkbox" checked={ev.optimizeDays ?? false}
+                            onChange={e => updateInputEvent(ev.id, { optimizeDays: e.target.checked })}
+                            style={{ accentColor: c.primary, width: 11, height: 11 }} />
+                          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeDays ? c.primary : c.textMute }}>opt</span>
+                        </label>
+                      </Tooltip>
+                    )}
                   </div>
                 )}
-                {ev.validRangeEnabled && (
-                  <>
-                    <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                      onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>~</span>
-                    <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                      onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
-                  </>
-                )}
+                {/* 有效期：固定用 -，滑动窗口用 ~ */}
+                {ev.validRangeEnabled && (<>
+                  {mode === 'opt' && ev.optimizeValue && ev.optimizeDateStart ? (
+                    // 窗口模式：~ 分隔表示可优化
+                    <>
+                      <Input size="small"
+                        value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()}
+                        placeholder="YYYY-MM-DD"
+                        style={{ width: 90, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => {
+                          const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? '';
+                          updateInputEvent(ev.id, { dateStartWindow: `${e.target.value}~${end}` });
+                        }} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Input size="small"
+                        value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()}
+                        placeholder="YYYY-MM-DD"
+                        style={{ width: 90, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => {
+                          const start = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? '';
+                          updateInputEvent(ev.id, { dateStartWindow: `${start}~${e.target.value}` });
+                        }} />
+                    </>
+                  ) : (
+                    // 固定范围：- 分隔表示确定
+                    <>
+                      <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
+                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
+                      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>-</span>
+                      <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
+                        style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
+                    </>
+                  )}
+                  {/* ~ checkbox：切换滑动窗口优化 */}
+                  {mode === 'opt' && ev.optimizeValue && (
+                    <Tooltip title={ev.optimizeDateStart ? t('sim.setup.opt.date_win_tip') : t('sim.setup.opt.date_win')}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
+                        <input type="checkbox" checked={ev.optimizeDateStart ?? false}
+                          onChange={e => updateInputEvent(ev.id, {
+                            optimizeDateStart: e.target.checked,
+                            dateStartWindow: e.target.checked ? `${ev.validStart}~${ev.validEnd}` : ev.dateStartWindow,
+                          })}
+                          style={{ accentColor: c.primary, width: 11, height: 11 }} />
+                        <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: (ev.optimizeDateStart ?? false) ? c.primary : c.textMute }}>opt</span>
+                      </label>
+                    </Tooltip>
+                  )}
+                </>)}
               </div>
             )}
           </div>
@@ -196,7 +294,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
         <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
           <span style={{ color: c.textMute, width: 14 }}>{i + 1}.</span>
           <Select size="small" value={obj.variable} style={{ flex: 1 }}
-            options={allVarNames.map(n => ({ label: n, value: n }))}
+            options={allVarNames.map(n => ({ label: n === 'lm_score' ? `⭐ ${n}` : n, value: n }))}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, variable: v } : o))} />
           <Select size="small" value={obj.direction} style={{ width: 80 }}
             options={[{ label: t('sim.opt.minimize'), value: 'minimize' }, { label: t('sim.opt.maximize'), value: 'maximize' }]}

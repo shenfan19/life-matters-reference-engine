@@ -189,6 +189,57 @@ simulation:
           days: [Mon, Wed, Fri]
           date_range: "YYYY-MM-DD ~ YYYY-MM-DD"
           label: "说明"
+
+optimizer:                          # 可选；优化器配置；详见「optimizer — 决策变量与调度优化」章节
+  method: nsga2                     # nsga2（默认，多目标）| l-bfgs-b | nelder-mead（单目标）
+  objectives:
+    - variable: outcome_var
+      metric: final                 # final | max | min | mean
+      direction: maximize           # maximize | minimize
+  constraints:                      # 可选
+    - variable: side_effect
+      condition: "<= 10"            # 支持 <= >= < > ==
+      type: hard                    # hard | soft
+  algorithm:                        # 可选；缺省 pop=50, gen=80, seed=42
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  mc:                               # 可选；Monte Carlo 模式
+    enabled: false
+    sim_runs: 30
+  inputs:                           # 决策变量列表（T1–T4 可任意组合）
+    - variable: var_name            # T1：仅值优化
+      time: "HH:MM"
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+    - variable: var_name            # T2：值 + 时间窗优化
+      time_window: "HH:MM~HH:MM"
+      opt_step: 1h                  # 时间槽粒度；缺省 1h；精细场景可设 15min
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        time: true
+    - variable: var_name            # T3：值 + 星期模式选择
+      time: "HH:MM"
+      days_options:                 # 优化器从候选模式中选一个
+        - [Mon, Wed, Fri]
+        - [Sat, Sun]
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        days: true
+    - variable: var_name            # T4：值 + 干预起始日优化
+      time: "HH:MM"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "YYYY-MM-DD~YYYY-MM-DD"  # 起始日在窗口内优化
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        date_start: true
+    - variable: fixed_var           # 固定输入（无 optimize 块）——每次评估以固定值注入
+      time: "HH:MM"
+      value: 1.5
 ```
 
 ### `metadata.description`
@@ -225,6 +276,16 @@ description:
     第一段。
     第二段。
 ```
+
+---
+
+## 变量与公式数据规范
+
+所有 YAML 中的 `variables` 和 `formulas` 条目须遵守：
+
+1. **强制 `description`**：简洁说明该变量/公式的物理或医学意义。
+2. **强制 `reference`**：所有数值（`value`）、范围（`bounds`）和动力学公式（`dynamics`）必须标注数据来源。格式不限，但须包含足够信息（DOI、PMID、简写引用或 URL）让读者在 30 秒内定位原始文献。暂无来源时填 `["TODO:SOURCE"]` 并在 `description` 中注明估算逻辑。
+3. **可选 `comments`**：记录多文献冲突时的选择理由或参数微调过程，不替代 `description` 和 `reference`。
 
 ---
 
@@ -561,6 +622,214 @@ accumulators:
 
 ---
 
+## lm_score — Life Matters 健康时长核心指标
+
+`lm_score` 是 Life Matters 框架的约定核心变量，表示**关键指标同时满足健康条件的累计时长**。它是普通的 `state` 变量 + 标准公式，建模者在 YAML 中完整写出，无任何引擎特殊处理。变量名 `lm_score` 是约定俗成，可自由覆盖或重命名。
+
+### 两种积累语义
+
+| 语义 | 描述 | 适用场景 |
+|------|------|---------|
+| **可恢复**（cumulative） | 条件满足期间累加，不满足期间暂停；恢复后继续累计 | 慢性病管理、低血糖可扛过、轻度症状 |
+| **不可逆**（latch） | 条件一旦不满足，`lm_alive` 标志永久归零，之后即使恢复也不再累计 | 器官衰竭、不可逆死亡事件 |
+
+### YAML 写法
+
+**可恢复模式**（推荐默认）：
+
+```yaml
+variables:
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: "健康时长：GFR 与血压同时在安全范围内的累计仿真天数"
+    reference: "Life Matters Framework core metric"
+
+formulas:
+  lm_score_update:
+    dynamics:
+      lm_score: "lm_score + step if (GFR >= 15 and SBP <= 160) else lm_score"
+    description: "累加健康时长（可恢复）"
+```
+
+**不可逆模式**（latch，适合死亡/器官衰竭）：
+
+```yaml
+variables:
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: "健康时长：首次崩溃前的累计天数（不可逆）"
+    reference: "Life Matters Framework core metric"
+  lm_alive:
+    type: state
+    value: 1.0
+    description: "存活标志：0 = 不可逆崩溃，1 = 存活"
+
+formulas:
+  lm_alive_check:
+    condition: "not (GFR >= 15 and SBP <= 160)"
+    formula:
+      lm_alive: "0.0"                    # 一旦触发，永久为 0
+    description: "检测崩溃并锁定存活标志"
+  lm_score_update:
+    dynamics:
+      lm_score: "lm_score + lm_alive * step"
+    description: "累加健康时长（不可逆）"
+```
+
+### 作为优化目标
+
+```yaml
+optimizer:
+  objectives:
+    - variable: lm_score
+      metric: final          # 仿真结束时的累计健康天数
+      direction: maximize    # 最大化健康时长
+```
+
+### 多模型 Import 的合并
+
+当多个子模型各自定义了 `lm_score`（条件不同），import 时后者会覆盖前者（遵循标准 import 覆盖规则）。若需 AND 合并多个子模型的条件，建模者在顶层模型中显式重写 `lm_score_update` 公式：
+
+```yaml
+# 顶层模型：显式合并 Model A（GFR 条件）和 Model B（SBP 条件）
+formulas:
+  lm_score_update:
+    dynamics:
+      lm_score: "lm_score + step if (GFR >= 15 and SBP <= 160) else lm_score"
+```
+
+### 设计原则
+
+- `lm_score` 是普通变量，完全透明，所有仿真步的值均可输出和查看
+- 条件表达式使用与公式相同的 asteval 沙箱，可引用模型中任意变量
+- 多个健康条件用 `and`/`or` 自由组合
+- GUI 目标变量选择器中，`lm_score` 显示 ⭐ 标记以便识别，无其他特殊行为
+
+---
+
+## optimizer — 决策变量与调度优化
+
+优化器将干预方案的参数化搜索分为四个粒度层（Tier），按科学价值与计算复杂度排序：
+
+| Tier | 优化对象 | 变量类型 | 典型场景 |
+|------|---------|---------|---------|
+| T1 | 事件值（剂量/强度） | 连续实数 | 药物剂量、营养摄入量 |
+| T2 | 事件时刻（在时间窗内） | 离散整数（时间槽索引） | 进食窗口、给药时机、昼夜节律 |
+| T3 | 星期模式（从候选集选一） | 离散整数（模式索引） | 运动频率、断食日安排 |
+| T4 | 干预起始日（在日期窗内） | 整数（天偏移） | 治疗时机、季节性干预 |
+
+每个 `inputs` 条目可独立启用任意 Tier 组合；x 向量是所有已启用维度按顺序拼接的结果。
+
+### T2：时间窗优化
+
+```yaml
+inputs:
+  - variable: meal_carbs
+    time_window: "07:00~09:00"   # 进食时刻在窗口内优化
+    opt_step: 1h                 # 时间槽粒度；缺省 1h；精细胰岛素/消化场景可设 15min
+    label: "早餐碳水"
+    optimize:
+      value: [30, 80]
+      time: true
+```
+
+- `time_window` 格式：`"HH:MM~HH:MM"`（24 小时制，起止含边界）。
+- `opt_step` 合法值：`1h`（缺省）、`15min`。引擎加载时将窗口展开为离散时间槽列表，例如 `"07:00~09:00"` + `1h` → `["07:00", "08:00", "09:00"]`（3 个槽）。
+- 同一 `inputs` 列表中的多个条目，时间窗设计上应不重叠，以避免同一步内脉冲意外累加。
+- 科学意义：时间生物学（Chrono-nutrition / Chronopharmacology）中，干预时机本身是关键决策变量，本框架将其显式纳入优化搜索空间。
+
+### T3：星期模式选择
+
+```yaml
+inputs:
+  - variable: exercise_load
+    time: "17:00"
+    days_options:                # 优化器从候选模式中选一个
+      - [Mon, Wed, Fri]
+      - [Tue, Thu, Sat]
+      - [Sat, Sun]
+    label: "运动"
+    optimize:
+      value: [30, 90]
+      days: true
+```
+
+- `days_options` 是候选模式列表，每个模式是三字母缩写列表（Mon–Sun），格式与 `simulation.schedules.days` 相同。
+- 优化器将模式索引（0 到 N-1）编码为一个整数决策变量；建议候选数 N ≤ 6 以控制搜索空间。
+- 不同条目可以独立定义各自的候选集（如游泳只选周末，骑车只选工作日）。
+- 不启用 T3 时，`days` 字段作为固定参数传入（行为与 `simulation.schedules.days` 一致）。
+
+### T4：干预起始日优化
+
+```yaml
+inputs:
+  - variable: caloric_restriction
+    time: "08:00"
+    days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+    date_start_window: "2026-05-01~2026-05-30"  # 起始日在窗口内优化
+    label: "热量限制"
+    optimize:
+      value: [400, 800]
+      date_start: true
+```
+
+- `date_start_window` 格式：`"YYYY-MM-DD~YYYY-MM-DD"`。
+- 引擎将窗口天数（整数偏移 0 到 D-1）作为一个整数决策变量，解码为具体日期。
+- `date_start` 优化改变该条目的有效区间起始日，结束日默认沿用 `simulation.end_date`。
+- 典型场景：治疗介入时机、季节性干预窗口、灾后救援资源投放时机。
+
+### x 向量编码规则
+
+x 向量按 `inputs` 列表顺序展开，每个条目按 `[value, time?, days?, date_start?]` 顺序贡献维度：
+
+| 条目启用的 Tier | x 贡献维度 | 变量类型 |
+|--------------|-----------|---------|
+| T1 only | 1（value） | 连续实数 |
+| T1 + T2 | 2（value, time_slot_idx） | 实数 + 整数 |
+| T1 + T3 | 2（value, pattern_idx） | 实数 + 整数 |
+| T1 + T4 | 2（value, day_offset） | 实数 + 整数 |
+| T1 + T2 + T3 | 3 | 实数 + 整数×2 |
+| T1 + T2 + T3 + T4 | 4 | 实数 + 整数×3 |
+| 固定输入（无 optimize） | 0 | — |
+
+混合整数向量由 NSGA-II（pymoo `MixedVariableProblem`）原生支持。单目标算法（L-BFGS-B / Nelder-Mead）不支持整数变量，启用 T2/T3/T4 时自动切换为 NSGA-II 并给出警告。
+
+**示例**：`meal_carbs`（T1+T2）和 `exercise_load`（T1+T3）各贡献 2 维，x 长度为 4：
+
+```
+x = [carbs_value, time_slot_idx, exercise_value, pattern_idx]
+    [   55.3,           1,            62.0,            2      ]
+# time_slot_idx=1 → slots[1] = "08:00"
+# pattern_idx=2   → days_options[2] = [Sat, Sun]
+```
+
+`reference.regimen` 存储解码后的人类可读结果。当条目启用了 T2/T3/T4 时，regimen 值从标量改为字典：
+
+```yaml
+reference:
+  regimen:
+    meal_carbs:
+      "早餐碳水":
+        value: 55.3
+        time: "08:00"             # T2 解码结果
+    exercise_load:
+      "运动":
+        value: 62.0
+        days: [Sat, Sun]          # T3 解码结果
+    caloric_restriction:
+      "热量限制":
+        value: 620.0
+        date_start: "2026-05-08"  # T4 解码结果
+```
+
+仅 T1 的条目维持标量格式（向后兼容）。
+
+---
+
 ## optimizer.results — 优化结果内嵌格式
 
 优化完成后，结果写回 `optimizer.results` 块，与配置并列存于同一 YAML 文件。
@@ -610,7 +879,7 @@ optimizer:
 | `reference.regimen` | dict | 人类可读的方案（变量名 → {时间标签: 值}）；供人类阅读，不用于程序反解 |
 | `reference.objectives` | dict | 人类可读的目标结果（变量名: 值） |
 
-**`x` 向量与 inputEvents 的映射关系**：`x[i]` 对应 `optimizer.inputs`（或 `optimizer.regimen`）中按变量名顺序、再按 events 列表顺序展开的第 i 个可优化事件。此映射关系由 `optimizer.inputs` 的结构隐含，不需要额外存储。软件（前端）在将 Pareto 解转化为 Sim Plans 时，按相同顺序解析 `optimizer.inputs` 还原映射（见 `xToInputEvents` 函数，sim_design.md）。
+**`x` 向量与 inputEvents 的映射关系**：x 向量按 `optimizer.inputs` 列表顺序展开，每个条目贡献 1–4 维（取决于启用的 Tier）：T1 贡献 1 维连续实数（value），T2/T3/T4 各贡献 1 维整数（时间槽索引 / 模式索引 / 天偏移）。详见「optimizer — 决策变量与调度优化」章节的 x 向量编码规则。此映射关系由 `optimizer.inputs` 的结构隐含，不需要额外存储；前端 `xToInputEvents` 函数按相同顺序解析（见 `sim_design.md`）。
 
 ### 设计原则
 
