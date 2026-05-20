@@ -274,6 +274,16 @@ class SimulatorEngine:
                     if dow not in allowed:
                         continue
 
+                # T4 起始日检查（event 级，optimizer 路径）
+                ev_valid_start = ev.get('valid_start', '')
+                if ev_valid_start:
+                    sim_date = _EPOCH + timedelta(days=prev_day_idx)
+                    try:
+                        if sim_date < date.fromisoformat(ev_valid_start):
+                            continue
+                    except ValueError:
+                        pass
+
                 time_str = ev.get('time', '08:00')
                 try:
                     hh, mm = map(int, time_str.split(':'))

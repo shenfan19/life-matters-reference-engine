@@ -20,6 +20,12 @@
 | R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
 | R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
 | R7  | 支持任务取消（标记 cancelled，当前迭代完成后停止）                   |
+| R8  | **T2**：支持在建模者指定时间窗（`time_window`）内优化给药/进食时刻，粒度 `opt_step` 可选 `1h`（缺省）或 `15min` |
+| R9  | **T3**：支持从建模者预定义的候选星期模式列表（`days_options`）中选择一个，不在全 2⁷ 空间搜索 |
+| R10 | **T4**：支持在建模者指定日期窗口（`date_start_window`）内优化干预起始日 |
+| R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
+| R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
+| R13 | 搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告 |
 
 ### 1.2 依赖
 
@@ -53,7 +59,7 @@ from pymoo.termination import get_termination
 | 端点 | `POST /api/optimizer/run_yaml` |
 | 核心模块 | `sim_engine/src/yaml_optimizer.py` |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
-| 优化对象 | YAML `optimizer.inputs` 或 `optimizer.regimen` 中定义的决策变量 |
+| 优化对象 | YAML `optimizer.inputs` 中定义的决策变量（T1–T4），或 `optimizer.regimen`（向后兼容） |
 | 目标函数来源 | YAML `optimizer.objectives` |
 | 进度回调 | pymoo `Callback` 每代调用一次 |
 | 进度展示 | 前端 1.5s 轮询 `/api/optimizer/status/{job_id}` |
@@ -145,6 +151,19 @@ UI:
   !optRunning && pareto_front → ParetoChart
   !optRunning && !optResult  → 占位提示
 ```
+
+### 2.5 T2/T3/T4 调度粒度优化（ADR 0080）
+
+x 向量按 `inputs` 列表顺序展开，每个条目按 `[value, time?, days?, date_start?]` 顺序贡献维度：
+
+| Tier | YAML 字段 | x 维度 | 类型（连续松弛） |
+|------|----------|-------|--------------|
+| T1 值 | `optimize.value: [lo, hi]` | 1 | float |
+| T2 时间窗 | `time_window`, `opt_step`, `optimize.time: true` | +1 | float → slot idx |
+| T3 星期模式 | `days_options`, `optimize.days: true` | +1 | float → pattern idx |
+| T4 起始日 | `date_start_window`, `optimize.date_start: true` | +1 | float → day offset |
+
+`OptResult.pareto_front` 中的 `x` 向量维度随之增加；`reference.regimen` 叶值在有 T2/T3/T4 时从标量改为字典（见 `docs/model.md`）。
 
 ---
 
@@ -283,4 +302,21 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 **症状：轮询返回 404**
 1. 后端重启了（job 在内存中，重启清空）
+
+### 3.6 T2/T3/T4 实现（ADR 0080，2026-05-20）
+
+**后端（`optimizer_engine.py`）**
+
+- `_expand_time_window(window, opt_step)` → slot 列表
+- `run_optimizer` inputs 解析段：逐条目按 T1/T2/T3/T4 追加 `var_specs` 条目和 bounds
+- `_build_regimen_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
+- `simulator_engine._apply_regimens` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
+
+**前端（`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`）**
+
+- `InputEvent` 新增 7 个可选字段：`timeWindow`, `optStep`, `optimizeTime`, `daysOptions`, `optimizeDays`, `dateStartWindow`, `optimizeDateStart`
+- `xToInputEvents` 完全重写：修复了原有函数对 list-format inputs 的解析 bug，按 var_specs 顺序解码 T1–T4
+- init useEffect：从 YAML `inputs:` 块读入所有 T2/T3/T4 字段
+- `startOptimization`：从 `regimen:` 格式切换为 `inputs:` 格式（支持多变量），透传 T2/T3/T4 字段
+- `SimSetupTab` opt 模式下，值 bounds 下方新增 T2/T3/T4 行（仅当 YAML 有对应字段时显示）
 2. job_id 未正确传递给轮询

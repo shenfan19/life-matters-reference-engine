@@ -19,6 +19,19 @@ logger = logging.getLogger(__name__)
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
+def _expand_time_window(window: str, opt_step: str = '1h') -> List[str]:
+    """Expand "HH:MM~HH:MM" to discrete slot list at given granularity."""
+    start_str, end_str = [s.strip() for s in window.split('~')]
+    h0, m0 = map(int, start_str.split(':'))
+    h1, m1 = map(int, end_str.split(':'))
+    step_min = 15 if opt_step == '15min' else 60
+    slots, t, end_t = [], h0 * 60 + m0, h1 * 60 + m1
+    while t <= end_t:
+        slots.append(f'{t // 60:02d}:{t % 60:02d}')
+        t += step_min
+    return slots
+
+
 def _parse_condition(cond: str) -> Tuple[str, float]:
     m = re.match(r'^([<>]=?)\s*(-?\d+(?:\.\d+)?)', cond.strip())
     if m:
@@ -151,27 +164,63 @@ def run_optimizer(simulator_engine, model_name: str,
     # ── parse decision variables: inputs: (new) or regimen: (legacy) ─────────
     inputs_def = opt_block.get('inputs', [])
     if inputs_def:
-        # New format: each entry with 'optimize' sub-block is a decision variable
+        # New format: each entry with 'optimize' sub-block is a decision variable.
+        # Each entry may enable T1 (value), T2 (time), T3 (days), T4 (date_start).
+        # Integer dims use continuous relaxation: bounds stored as float, rounded on decode.
         opt_entries = [e for e in inputs_def if 'optimize' in e]
         fixed_entries = [e for e in inputs_def if 'optimize' not in e]
         if not opt_entries:
             return {"success": False, "error": "No inputs with optimize: sub-block defined"}
 
-        decisions = [{
-            'variable': e.get('variable', ''),
-            'time': e.get('time', '08:00'),
-            'label': e.get('label', f"{e.get('variable','')} {e.get('time','')}"),
-            'dose_bounds': e.get('optimize', {}).get('value', [0.0, 1.0]),
-        } for e in opt_entries]
+        # var_specs: ordered list of (kind, metadata) for each x dimension
+        var_specs: List[Dict] = []
+        lo_list: List[float] = []
+        hi_list: List[float] = []
 
-        reg_variable = decisions[0]['variable']  # primary var (for result field)
-        reg_events = decisions  # used for labels at result
+        for e in opt_entries:
+            opt = e.get('optimize', {})
+            var = e.get('variable', '')
+            time_val = e.get('time', '08:00')
+            label = e.get('label', f"{var} {time_val}")
 
-        bounds_lo = np.array([d['dose_bounds'][0] for d in decisions], dtype=float)
-        bounds_hi = np.array([d['dose_bounds'][1] for d in decisions], dtype=float)
-        n_var = len(decisions)
+            # T1: value (always present when optimize: block exists)
+            val_bounds = opt.get('value', [0.0, 1.0])
+            var_specs.append({'kind': 'value', 'variable': var, 'time': time_val,
+                              'label': label, 'entry': e})
+            lo_list.append(float(val_bounds[0])); hi_list.append(float(val_bounds[1]))
 
-        # Pre-build fixed inputs (not decision vars, fire every step)
+            # T2: time window → integer slot index (continuous relaxation)
+            if opt.get('time') and e.get('time_window'):
+                slots = _expand_time_window(e['time_window'], e.get('opt_step', '1h'))
+                var_specs.append({'kind': 'time', 'variable': var, 'slots': slots, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(len(slots) - 1))
+
+            # T3: days pattern → integer pattern index (continuous relaxation)
+            if opt.get('days') and e.get('days_options'):
+                patterns = e['days_options']
+                var_specs.append({'kind': 'days', 'variable': var, 'patterns': patterns, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(len(patterns) - 1))
+
+            # T4: date start → integer day offset (continuous relaxation)
+            if opt.get('date_start') and e.get('date_start_window'):
+                from datetime import date as _date
+                w_parts = e['date_start_window'].split('~')
+                w_start = w_parts[0].strip(); w_end = w_parts[1].strip()
+                n_days = (_date.fromisoformat(w_end) - _date.fromisoformat(w_start)).days
+                var_specs.append({'kind': 'date_start', 'variable': var,
+                                  'window_start': w_start, 'n_days': n_days, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(n_days))
+
+        # Build labels and reg_variable for result metadata
+        reg_variable = opt_entries[0].get('variable', '')
+        reg_events = [{'label': s['label'], 'variable': s['variable']}
+                      for s in var_specs if s['kind'] == 'value']
+
+        bounds_lo = np.array(lo_list, dtype=float)
+        bounds_hi = np.array(hi_list, dtype=float)
+        n_var = len(var_specs)
+
+        # Pre-build fixed inputs map
         fixed_events_map: Dict[str, List[Dict]] = {}
         for e in fixed_entries:
             v = e.get('variable', '')
@@ -181,11 +230,40 @@ def run_optimizer(simulator_engine, model_name: str,
                 )
 
         def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+            from datetime import date as _date, timedelta
             events_map: Dict[str, List[Dict]] = {k: list(v) for k, v in fixed_events_map.items()}
-            for i, d in enumerate(decisions):
-                events_map.setdefault(d['variable'], []).append(
-                    {'time': d['time'], 'value': float(x[i])}
-                )
+            # First pass: collect decoded values per entry (keyed by entry id)
+            decoded: Dict[int, Dict] = {}
+            for i, spec in enumerate(var_specs):
+                eid = id(spec['entry'])
+                if eid not in decoded:
+                    decoded[eid] = {
+                        'variable': spec['variable'],
+                        'time': spec['entry'].get('time', '08:00'),
+                        'days': spec['entry'].get('days'),
+                        'valid_start': None,
+                    }
+                d = decoded[eid]
+                if spec['kind'] == 'value':
+                    d['value'] = float(x[i])
+                elif spec['kind'] == 'time':
+                    si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
+                    d['time'] = spec['slots'][si]
+                elif spec['kind'] == 'days':
+                    pi = max(0, min(len(spec['patterns']) - 1, int(round(float(x[i])))))
+                    d['days'] = spec['patterns'][pi]
+                elif spec['kind'] == 'date_start':
+                    offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
+                    d['valid_start'] = str(_date.fromisoformat(spec['window_start'])
+                                          + timedelta(days=offset))
+            # Second pass: build events list
+            for d in decoded.values():
+                ev: Dict = {'time': d['time'], 'value': float(d.get('value', 0))}
+                if d.get('days') is not None:
+                    ev['days'] = d['days']
+                if d.get('valid_start'):
+                    ev['valid_start'] = d['valid_start']
+                events_map.setdefault(d['variable'], []).append(ev)
             return events_map
     else:
         # Legacy regimen: format (single variable)

@@ -169,6 +169,16 @@ export interface InputEvent {
   validEnd: string;
   optimizeValue: boolean;
   valueBounds: [number, number];
+  // T2: time window optimization
+  timeWindow?: string;      // "07:00~09:00"
+  optStep?: string;         // "1h" | "15min"; default "1h"
+  optimizeTime?: boolean;
+  // T3: day pattern selection
+  daysOptions?: string[][]; // [[Mon,Wed,Fri], [Sat,Sun], ...]
+  optimizeDays?: boolean;
+  // T4: start date optimization
+  dateStartWindow?: string; // "2026-05-01~2026-05-30"
+  optimizeDateStart?: boolean;
 }
 
 export interface OptimizerProps {
