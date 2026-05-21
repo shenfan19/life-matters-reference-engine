@@ -176,9 +176,11 @@ export interface InputEvent {
   // T3: day pattern selection
   daysOptions?: string[][]; // [[Mon,Wed,Fri], [Sat,Sun], ...]
   optimizeDays?: boolean;
-  // T4: start date optimization
-  dateStartWindow?: string; // "2026-05-01~2026-05-30"
+  // T4: start/end date optimization (each window independent)
+  dateStartWindow?: string; // "2026-05-01~2026-05-15"
   optimizeDateStart?: boolean;
+  dateEndWindow?: string;   // "2026-05-20~2026-06-30"
+  optimizeDateEnd?: boolean;
 }
 
 export interface OptimizerProps {

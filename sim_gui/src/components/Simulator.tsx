@@ -57,13 +57,23 @@ function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEven
         }
         xi++;
       }
-      // T4: date start offset
+      // T4a: date start offset
       if (inp.optimize.date_start && inp.date_start_window) {
         const wStart = inp.date_start_window.split('~')[0].trim();
         const offset = Math.max(0, Math.round(x[xi] ?? 0));
         if (idx >= 0) {
           const d = new Date(wStart); d.setDate(d.getDate() + offset);
           result[idx] = { ...result[idx], validStart: d.toISOString().slice(0, 10), validRangeEnabled: true };
+        }
+        xi++;
+      }
+      // T4b: date end offset
+      if (inp.optimize.date_end && inp.date_end_window) {
+        const wStart = inp.date_end_window.split('~')[0].trim();
+        const offset = Math.max(0, Math.round(x[xi] ?? 0));
+        if (idx >= 0) {
+          const d = new Date(wStart); d.setDate(d.getDate() + offset);
+          result[idx] = { ...result[idx], validEnd: d.toISOString().slice(0, 10), validRangeEnabled: true };
         }
         xi++;
       }
@@ -694,6 +704,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               optimizeDays: !!inp.optimize?.days,
               dateStartWindow: inp.date_start_window ?? ev.dateStartWindow,
               optimizeDateStart: !!inp.optimize?.date_start,
+              dateEndWindow: inp.date_end_window ?? ev.dateEndWindow,
+              optimizeDateEnd: !!inp.optimize?.date_end,
             };
           }));
         }
@@ -1519,6 +1531,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (ev.optimizeTime) opt.time = true;
       if (ev.optimizeDays) opt.days = true;
       if (ev.optimizeDateStart) opt.date_start = true;
+      if (ev.optimizeDateEnd) opt.date_end = true;
       const inp: Record<string, any> = {
         variable: ev.variable,
         label: ev.label || `${ev.variable} ${ev.time}`,
@@ -1532,6 +1545,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       }
       if (ev.daysOptions?.length) inp.days_options = ev.daysOptions;
       if (ev.dateStartWindow) inp.date_start_window = ev.dateStartWindow;
+      if (ev.dateEndWindow && ev.optimizeDateEnd) inp.date_end_window = ev.dateEndWindow;
       if (ev.daysEnabled && !ev.optimizeDays)
         inp.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
       if (ev.validRangeEnabled && !ev.optimizeDateStart) {
