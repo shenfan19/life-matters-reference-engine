@@ -162,6 +162,8 @@
     "sim.setup.tog.day_opt_tip": "勾選後優化執行日（需在 YAML days_options 中定義候選模式）",
     "sim.setup.tog.range": "範",
     "sim.setup.tog.range_tip": "指定有效期",
+    "sim.setup.opt.date_start_label": "起",
+    "sim.setup.opt.date_end_label": "止",
     "sim.setup.opt.time_win": "切換到時間窗優化",
     "sim.setup.opt.time_win_tip": "退出時間窗，恢復時間點",
     "sim.setup.opt.date_win": "切換到起始日窗口優化",

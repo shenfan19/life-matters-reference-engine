@@ -148,7 +148,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
                 {/* 时间：固定时间点 or 时窗（~ = 可优化） */}
                 {ev.timeEnabled && (<>
-                  {mode === 'opt' && ev.optimizeValue && ev.optimizeTime ? (
+                  {mode === 'opt' && ev.optimizeTime ? (
                     // 时窗模式：~ 分隔表示可优化
                     <>
                       <Input size="small"
@@ -178,8 +178,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                       style={{ width: 58, fontFamily: 'monospace' }}
                       onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
                   )}
-                  {/* ~ checkbox：切换时窗优化 */}
-                  {mode === 'opt' && ev.optimizeValue && (
+                  {mode === 'opt' && (
                     <Tooltip title={ev.optimizeTime ? t('sim.setup.opt.time_win_tip') : t('sim.setup.opt.time_win')}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
                         <input type="checkbox" checked={ev.optimizeTime ?? false}
@@ -205,7 +204,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                             : { background: c.panel, color: ev.days[i] ? c.primary : c.textMute, border: ev.days[i] ? `2px solid ${c.primary}` : `1px solid ${c.border}`, fontWeight: ev.days[i] ? 700 : 400 })
                         }}>{d}</button>
                     ))}
-                    {mode === 'opt' && ev.optimizeValue && (
+                    {mode === 'opt' && (
                       <Tooltip title={(ev.daysOptions?.length ?? 0) > 0
                         ? ev.daysOptions!.map(p => p.join(' ')).join(' | ')
                         : t('sim.setup.tog.day_opt_tip')}>
@@ -219,31 +218,49 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                     )}
                   </div>
                 )}
-                {/* 有效期：固定用 -，滑动窗口用 ~ */}
+                {/* 有效期：固定用 -，优化窗口用 ~ */}
                 {ev.validRangeEnabled && (<>
-                  {mode === 'opt' && ev.optimizeValue && ev.optimizeDateStart ? (
-                    // 窗口模式：~ 分隔表示可优化
-                    <>
-                      <Input size="small"
-                        value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()}
-                        placeholder="YYYY-MM-DD"
-                        style={{ width: 90, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => {
-                          const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? '';
-                          updateInputEvent(ev.id, { dateStartWindow: `${e.target.value}~${end}` });
-                        }} />
-                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small"
-                        value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()}
-                        placeholder="YYYY-MM-DD"
-                        style={{ width: 90, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => {
-                          const start = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? '';
-                          updateInputEvent(ev.id, { dateStartWindow: `${start}~${e.target.value}` });
-                        }} />
-                    </>
-                  ) : (
-                    // 固定范围：- 分隔表示确定
+                  {mode === 'opt' && ev.optimizeDateStart ? (<>
+                    {/* 起始日窗口 */}
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', flexShrink: 0 }}>{t('sim.setup.opt.date_start_label')}</span>
+                    <Input size="small"
+                      value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()}
+                      placeholder="YYYY-MM-DD"
+                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      onChange={e => {
+                        const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? '';
+                        updateInputEvent(ev.id, { dateStartWindow: `${e.target.value}~${end}` });
+                      }} />
+                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                    <Input size="small"
+                      value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()}
+                      placeholder="YYYY-MM-DD"
+                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      onChange={e => {
+                        const s = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? '';
+                        updateInputEvent(ev.id, { dateStartWindow: `${s}~${e.target.value}` });
+                      }} />
+                    {/* 结束日窗口 */}
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', flexShrink: 0, marginLeft: 4 }}>{t('sim.setup.opt.date_end_label')}</span>
+                    <Input size="small"
+                      value={(ev.dateEndWindow ?? '').split('~')[0]?.trim()}
+                      placeholder="YYYY-MM-DD"
+                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      onChange={e => {
+                        const end = (ev.dateEndWindow ?? '~').split('~')[1]?.trim() ?? '';
+                        updateInputEvent(ev.id, { dateEndWindow: `${e.target.value}~${end}`, optimizeDateEnd: true });
+                      }} />
+                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                    <Input size="small"
+                      value={(ev.dateEndWindow ?? '~').split('~')[1]?.trim()}
+                      placeholder="YYYY-MM-DD"
+                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      onChange={e => {
+                        const s = (ev.dateEndWindow ?? '~').split('~')[0]?.trim() ?? '';
+                        updateInputEvent(ev.id, { dateEndWindow: `${s}~${e.target.value}`, optimizeDateEnd: !!s || !!e.target.value });
+                      }} />
+                  </>) : (
+                    // 固定范围：- 分隔
                     <>
                       <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
                         style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
@@ -254,14 +271,15 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
                         onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
                     </>
                   )}
-                  {/* ~ checkbox：切换滑动窗口优化 */}
-                  {mode === 'opt' && ev.optimizeValue && (
+                  {mode === 'opt' && (
                     <Tooltip title={ev.optimizeDateStart ? t('sim.setup.opt.date_win_tip') : t('sim.setup.opt.date_win')}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0 }}>
                         <input type="checkbox" checked={ev.optimizeDateStart ?? false}
                           onChange={e => updateInputEvent(ev.id, {
                             optimizeDateStart: e.target.checked,
                             dateStartWindow: e.target.checked ? `${ev.validStart}~${ev.validEnd}` : ev.dateStartWindow,
+                            dateEndWindow: e.target.checked ? (ev.dateEndWindow ?? '') : ev.dateEndWindow,
+                            optimizeDateEnd: e.target.checked ? (ev.optimizeDateEnd ?? false) : false,
                           })}
                           style={{ accentColor: c.primary, width: 11, height: 11 }} />
                         <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: (ev.optimizeDateStart ?? false) ? c.primary : c.textMute }}>opt</span>

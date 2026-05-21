@@ -201,13 +201,23 @@ def run_optimizer(simulator_engine, model_name: str,
                 var_specs.append({'kind': 'days', 'variable': var, 'patterns': patterns, 'entry': e})
                 lo_list.append(0.0); hi_list.append(float(len(patterns) - 1))
 
-            # T4: date start → integer day offset (continuous relaxation)
+            # T4a: date start → integer day offset (continuous relaxation)
             if opt.get('date_start') and e.get('date_start_window'):
                 from datetime import date as _date
                 w_parts = e['date_start_window'].split('~')
                 w_start = w_parts[0].strip(); w_end = w_parts[1].strip()
                 n_days = (_date.fromisoformat(w_end) - _date.fromisoformat(w_start)).days
                 var_specs.append({'kind': 'date_start', 'variable': var,
+                                  'window_start': w_start, 'n_days': n_days, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(n_days))
+
+            # T4b: date end → integer day offset (continuous relaxation)
+            if opt.get('date_end') and e.get('date_end_window'):
+                from datetime import date as _date
+                w_parts = e['date_end_window'].split('~')
+                w_start = w_parts[0].strip(); w_end = w_parts[1].strip()
+                n_days = (_date.fromisoformat(w_end) - _date.fromisoformat(w_start)).days
+                var_specs.append({'kind': 'date_end', 'variable': var,
                                   'window_start': w_start, 'n_days': n_days, 'entry': e})
                 lo_list.append(0.0); hi_list.append(float(n_days))
 
@@ -256,6 +266,10 @@ def run_optimizer(simulator_engine, model_name: str,
                     offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
                     d['valid_start'] = str(_date.fromisoformat(spec['window_start'])
                                           + timedelta(days=offset))
+                elif spec['kind'] == 'date_end':
+                    offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
+                    d['valid_end'] = str(_date.fromisoformat(spec['window_start'])
+                                        + timedelta(days=offset))
             # Second pass: build events list
             for d in decoded.values():
                 ev: Dict = {'time': d['time'], 'value': float(d.get('value', 0))}
@@ -263,6 +277,8 @@ def run_optimizer(simulator_engine, model_name: str,
                     ev['days'] = d['days']
                 if d.get('valid_start'):
                     ev['valid_start'] = d['valid_start']
+                if d.get('valid_end'):
+                    ev['valid_end'] = d['valid_end']
                 events_map.setdefault(d['variable'], []).append(ev)
             return events_map
     else:
