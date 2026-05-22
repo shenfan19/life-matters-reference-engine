@@ -212,6 +212,11 @@ optimizer:                          # 可选；优化器配置；详见「optimi
   mc:                               # 可选；Monte Carlo 模式
     enabled: false
     sim_runs: 30
+  schedules:                        # 可选；优化评估期间的固定背景输入（同 simulation.schedules 格式）
+    - variable: var_name            # 缺省时继承 simulation.schedules；声明后完全独立
+      time: "HH:MM"
+      value: 1.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
   inputs:                           # 决策变量列表（T1–T4 可任意组合）
     - variable: var_name            # T1：仅值优化
       time: "HH:MM"
@@ -717,6 +722,40 @@ formulas:
 ---
 
 ## optimizer — 决策变量与调度优化
+
+### Sim 与 Opt 的分离原则
+
+`simulation:` 和 `optimizer:` 是相互独立的场景描述，但可以通过 GUI 相互转化：
+
+| 字段/概念 | simulation | optimizer |
+|----------|-----------|-----------|
+| 时间范围 | `simulation.start_date`/`end_date` | `optimizer.start_date`/`end_date`（可选） |
+| 步长 | `metadata.step_size` | `optimizer.step_size`（可选） |
+| Monte Carlo | — | `optimizer.mc` |
+| 固定输入 | `simulation.schedules`（可视化用） | `optimizer.schedules`（评估背景） |
+| 决策变量 | — | `optimizer.inputs` |
+
+**Fallback**：`optimizer.*` 字段缺省时，引擎从对应 `simulation.*` / `metadata.*` 继承；GUI 明确标注来源（"来自 sim" vs "已覆盖"）。
+
+**GUI 转化**：
+- "← 从 Sim 导入"：将 Sim tab 当前 inputEvents 复制为 `optimizer.inputs` 决策变量，自动推算 bounds
+- "发送到 Sim"：将 Pareto 参考解的 regimen 预填为 Sim inputEvents
+
+### 固定背景输入（optimizer.schedules）
+
+`optimizer.schedules` 为优化评估提供固定背景输入（不参与搜索）。格式与 `simulation.schedules` 完全相同。
+
+```yaml
+optimizer:
+  schedules:
+    - variable: metformin_dose
+      time: "08:00"
+      value: 500
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "二甲双胍基础用药（背景）"
+```
+
+**优先级**：`optimizer.schedules` > `simulation.schedules`（对同一变量，通过 `manual_overrides` 实现覆盖）。`optimizer.schedules` 不存在时 → 回退到 `simulation.schedules`（向后兼容）。
 
 ### 评估时间窗（start_date / end_date / step_size）
 

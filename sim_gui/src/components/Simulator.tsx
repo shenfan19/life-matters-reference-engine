@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, DownloadOutlined, LeftOutlined, PauseOutlined, PlayCircleOutlined, RightOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan, ModelSession } from '../types';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, OptInput, PlanResult, SimPlan, ModelSession } from '../types';
 import { dump as yamlDump } from 'js-yaml';
 
 const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
@@ -32,10 +32,21 @@ function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEven
     let xi = 0;
     for (const inp of optimizerConfig.inputs as any[]) {
       if (!inp.optimize) continue;
-      const idx = result.findIndex(ev =>
-        ev.variable === inp.variable && ev.optimizeValue &&
+      let idx = result.findIndex(ev =>
+        ev.variable === inp.variable &&
         (inp.time_window ? true : ev.time === (inp.time ?? ev.time))
       );
+      // If no matching sim event exists, create one for this plan
+      if (idx === -1) {
+        result.push({
+          id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
+          variable: inp.variable, label: inp.label || inp.variable,
+          time: inp.time ?? '08:00', timeEnabled: !!inp.time,
+          value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
+          validRangeEnabled: false, validStart: '', validEnd: '',
+        });
+        idx = result.length - 1;
+      }
       // T1: value
       if (Array.isArray(inp.optimize.value)) {
         if (idx >= 0 && xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
@@ -84,7 +95,7 @@ function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEven
     const varName = optimizerConfig.regimen.variable || '';
     (optimizerConfig.regimen.events || []).forEach((ev: any, i: number) => {
       if (i >= x.length) return;
-      const idx = result.findIndex(r => r.variable === varName && r.time === ev.time && r.optimizeValue);
+      const idx = result.findIndex(r => r.variable === varName && r.time === ev.time);
       if (idx >= 0) result[idx] = { ...result[idx], value: x[i] };
     });
   }
@@ -96,6 +107,7 @@ import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
 import SimModelTree from './SimModelTree';
 import SimSetupTab from './SimSetupTab';
+import OptSetupTab from './OptSetupTab';
 import SimIntroTab from './SimIntroTab';
 import SimPlotTab from './SimPlotTab';
 import SimOptTab from './SimOptTab';
@@ -146,7 +158,14 @@ function initModelSessions(): Record<string, ModelSession> {
       stepUnit: sp.stepUnit ?? 'hour',
       objectives: [], constraints: [],
       optAlgo: 'NSGA-II', optPop: 50, optGen: 80,
+      optInputs: [], optBackgrounds: [],
     };
+  }
+  // Migrate existing sessions that lack the new fields
+  for (const key of Object.keys(sessions)) {
+    const s = sessions[key] as any;
+    if (!('optInputs' in s)) s.optInputs = [];
+    if (!('optBackgrounds' in s)) s.optBackgrounds = [];
   }
   return sessions;
 }
@@ -363,6 +382,10 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'formulas', 'refs']));
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
 
+  // ── opt inputs (decision vars) + backgrounds ─────────────────────────────────
+  const [optInputs, setOptInputs] = useState<OptInput[]>([]);
+  const [optBackgrounds, setOptBackgrounds] = useState<InputEvent[]>([]);
+
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
   const [objectives, setObjectives] = useState<Array<{ variable: string; direction: 'minimize' | 'maximize' }>>([]);
@@ -417,8 +440,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             validRangeEnabled: r.validRangeEnabled ?? false,
             validStart: r.validStart ?? '',
             validEnd: r.validEnd ?? '',
-            optimizeValue: !(opt?.valueLocked ?? true),
-            valueBounds: [opt?.valueMin ?? 0, opt?.valueMax ?? 1],
           });
         }
       }
@@ -523,6 +544,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptPop(session.optPop);
       setOptGen(session.optGen);
       setOptResult(session.optResult ?? null);
+      setOptInputs(session.optInputs ?? []);
+      setOptBackgrounds(session.optBackgrounds ?? []);
       setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length));
       sessionReadyRef.current = true;
       return;
@@ -536,10 +559,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0,3)]; if (i !== undefined) m[i] = true; });
       return m;
     };
-    const varBounds = (data: any): [number, number] => [
-      (data.bounds as any)?.[0] ?? 0,
-      (data.bounds as any)?.[1] ?? (((data.value ?? 0) * 2) || 1),
-    ];
     const rawSchedules = selectedModel.content?.simulation?.schedules;
     const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
     const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
@@ -565,7 +584,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             daysEnabled: hasDays,
             days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
             validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
-            optimizeValue: false, valueBounds: varBounds(data),
           });
         });
       } else if (schedDict[name]?.points?.length) {
@@ -583,7 +601,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             value: pt.value ?? 0, label: '',
             daysEnabled: false, days: [true,true,true,true,true,true,true],
             validRangeEnabled: false, validStart: '', validEnd: '',
-            optimizeValue: false, valueBounds: varBounds(data),
           });
         });
       } else {
@@ -592,7 +609,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           value: data.value ?? 0, label: '',
           daysEnabled: false, days: [true,true,true,true,true,true,true],
           validRangeEnabled: false, validStart: '', validEnd: '',
-          optimizeValue: false, valueBounds: varBounds(data),
         });
       }
     });
@@ -622,7 +638,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                 daysEnabled: hasDays,
                 days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
                 validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
-                optimizeValue: false, valueBounds: varBounds(vdata),
               });
             });
           } else {
@@ -631,7 +646,6 @@ const Simulator: React.FC<SimulatorProps> = ({
               time: '08:00', timeEnabled: false, value: vdata.value ?? 0, label: '',
               daysEnabled: false, days: [true,true,true,true,true,true,true],
               validRangeEnabled: false, validStart: '', validEnd: '',
-              optimizeValue: false, valueBounds: varBounds(vdata),
             });
           }
         });
@@ -702,30 +716,59 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
 
+      // Build optInputs from YAML optimizer.inputs (decision variables only)
       if (Array.isArray(optBlock.inputs)) {
         const withOpt = (optBlock.inputs as any[]).filter((e: any) => e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2);
         if (withOpt.length > 0) {
-          setInputEvents(prev => prev.map(ev => {
-            const inp = withOpt.find((e: any) => e.variable === ev.variable);
-            if (!inp) return ev;
-            return { ...ev, time: inp.time ?? ev.time, timeEnabled: inp.time ? true : ev.timeEnabled, label: inp.label ?? ev.label,
-              optimizeValue: true, valueBounds: [inp.optimize.value[0], inp.optimize.value[1]],
-              timeWindow: inp.time_window ?? ev.timeWindow, optStep: inp.opt_step ?? ev.optStep, optimizeTime: !!inp.optimize?.time,
-              daysOptions: inp.days_options ?? ev.daysOptions, optimizeDays: !!inp.optimize?.days,
-              dateStartWindow: inp.date_start_window ?? ev.dateStartWindow, optimizeDateStart: !!inp.optimize?.date_start,
-              dateEndWindow: inp.date_end_window ?? ev.dateEndWindow, optimizeDateEnd: !!inp.optimize?.date_end };
+          const newOptInputs: OptInput[] = withOpt.map((inp: any) => ({
+            id: `opt-${inp.variable}-${inp.time ?? 'any'}`,
+            variable: inp.variable,
+            label: inp.label || inp.variable,
+            valueBounds: [inp.optimize.value[0], inp.optimize.value[1]] as [number, number],
+            time: inp.time ?? '08:00',
+            timeEnabled: !!inp.time,
+            timeWindow: inp.time_window,
+            optStep: inp.opt_step ?? '1h',
+            optimizeTime: !!inp.optimize?.time,
+            daysEnabled: !!(inp.days || inp.days_options),
+            days: parseDaysMask(Array.isArray(inp.days) ? inp.days : undefined),
+            daysOptions: inp.days_options,
+            optimizeDays: !!inp.optimize?.days,
+            validRangeEnabled: !!(inp.valid_start || inp.valid_end || inp.date_start_window),
+            validStart: inp.valid_start ?? '',
+            validEnd: inp.valid_end ?? '',
+            dateStartWindow: inp.date_start_window,
+            optimizeDateStart: !!inp.optimize?.date_start,
+            dateEndWindow: inp.date_end_window,
+            optimizeDateEnd: !!inp.optimize?.date_end,
           }));
+          setOptInputs(newOptInputs);
         }
-      } else if (optBlock.regimen?.variable && Array.isArray(optBlock.regimen?.events)) {
-        const regVar: string = optBlock.regimen.variable;
-        const regEvs: any[] = optBlock.regimen.events;
-        setInputEvents(prev => prev.map(ev => {
-          if (ev.variable !== regVar) return ev;
-          const regEv = regEvs.find((e: any) => e.time === ev.time) ?? regEvs[0];
-          if (!regEv?.dose_bounds) return ev;
-          return { ...ev, time: regEv.time ?? ev.time, timeEnabled: regEv.time ? true : ev.timeEnabled,
-            label: regEv.label ?? ev.label, optimizeValue: true, valueBounds: [regEv.dose_bounds[0], regEv.dose_bounds[1]] };
-        }));
+        // Build optBackgrounds from fixed entries (no optimize block) in optimizer.inputs
+        const fixedEntries = (optBlock.inputs as any[]).filter((e: any) => e.variable && !('optimize' in e));
+        if (fixedEntries.length > 0) {
+          setOptBackgrounds(fixedEntries.map((e: any, i: number) => ({
+            id: `optbg-${i}-${e.variable}`,
+            variable: e.variable, label: e.label || e.variable,
+            time: e.time ?? '08:00', timeEnabled: !!e.time,
+            value: typeof e.value === 'number' ? e.value : 0,
+            daysEnabled: !!e.days, days: parseDaysMask(Array.isArray(e.days) ? e.days : undefined),
+            validRangeEnabled: !!(e.valid_start || e.valid_end),
+            validStart: e.valid_start ?? '', validEnd: e.valid_end ?? '',
+          })));
+        }
+      }
+      // Also load optimizer.schedules as optBackgrounds (preferred over fixed inputs in optimizer.inputs)
+      if (Array.isArray(optBlock.schedules) && optBlock.schedules.length > 0) {
+        setOptBackgrounds((optBlock.schedules as any[]).map((s: any, i: number) => ({
+          id: `optbg-s-${i}-${s.variable}`,
+          variable: s.variable, label: s.label || s.variable,
+          time: s.time ?? '08:00', timeEnabled: !!s.time,
+          value: typeof s.value === 'number' ? s.value : 0,
+          daysEnabled: !!s.days, days: parseDaysMask(Array.isArray(s.days) ? s.days : undefined),
+          validRangeEnabled: !!(s.valid_start || s.valid_end || s.date_range),
+          validStart: s.valid_start ?? '', validEnd: s.valid_end ?? '',
+        })));
       }
     }
 
@@ -829,13 +872,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       inputEvents, plans, activePlanId,
       simStartDate, simEndDate, stepValue, stepUnit,
       objectives, constraints, optAlgo, optPop, optGen,
-      optResult,
+      optResult, optInputs, optBackgrounds,
     };
     modelSessionsRef.current[selectedKey] = session;
     const all = readMS();
     all[selectedKey] = session;
     writeMS(all);
-  }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, objectives, constraints, optAlgo, optPop, optGen, optResult]);
+  }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, objectives, constraints, optAlgo, optPop, optGen, optResult, optInputs, optBackgrounds]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
@@ -1518,9 +1561,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     setCenterTab('optimization');
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
-    const optimizeEvents = inputEvents.filter(ev => ev.optimizeValue);
-    if (optimizeEvents.length === 0) {
-      message.warning('请先勾选至少一个优化变量（☑ 优化）');
+    if (optInputs.length === 0) {
+      message.warning(t('sim.opt.no_inputs_warning'));
       return;
     }
 
@@ -1532,37 +1574,49 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptTotalGen(totalGen); setOptJobId(null);
 
     const _DAY_STRS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const inputs = optimizeEvents.map(ev => {
-      const opt: Record<string, any> = { value: ev.valueBounds };
-      if (ev.optimizeTime) opt.time = true;
-      if (ev.optimizeDays) opt.days = true;
-      if (ev.optimizeDateStart) opt.date_start = true;
-      if (ev.optimizeDateEnd) opt.date_end = true;
+
+    // Build inputs array from optInputs (decision variables)
+    const inputs = optInputs.map(oi => {
+      const opt: Record<string, any> = { value: oi.valueBounds };
+      if (oi.optimizeTime) opt.time = true;
+      if (oi.optimizeDays) opt.days = true;
+      if (oi.optimizeDateStart) opt.date_start = true;
+      if (oi.optimizeDateEnd) opt.date_end = true;
       const inp: Record<string, any> = {
-        variable: ev.variable,
-        label: ev.label || `${ev.variable} ${ev.time}`,
+        variable: oi.variable,
+        label: oi.label || `${oi.variable} ${oi.time}`,
         optimize: opt,
       };
-      if (ev.timeWindow) {
-        inp.time_window = ev.timeWindow;
-        if (ev.optStep) inp.opt_step = ev.optStep;
-      } else {
-        inp.time = ev.time;
+      if (oi.optimizeTime && oi.timeWindow) {
+        inp.time_window = oi.timeWindow;
+        if (oi.optStep) inp.opt_step = oi.optStep;
+      } else if (oi.timeEnabled) {
+        inp.time = oi.time;
       }
-      if (ev.daysOptions?.length) inp.days_options = ev.daysOptions;
-      if (ev.dateStartWindow) inp.date_start_window = ev.dateStartWindow;
-      if (ev.dateEndWindow && ev.optimizeDateEnd) inp.date_end_window = ev.dateEndWindow;
-      if (ev.daysEnabled && !ev.optimizeDays)
-        inp.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
-      if (ev.validRangeEnabled && !ev.optimizeDateStart) {
-        inp.valid_start = ev.validStart;
-        inp.valid_end = ev.validEnd;
+      if (oi.optimizeDays && oi.daysOptions?.length) inp.days_options = oi.daysOptions;
+      if (!oi.optimizeDays && oi.daysEnabled)
+        inp.days = oi.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
+      if (oi.optimizeDateStart && oi.dateStartWindow) inp.date_start_window = oi.dateStartWindow;
+      if (oi.optimizeDateEnd && oi.dateEndWindow) inp.date_end_window = oi.dateEndWindow;
+      if (!oi.optimizeDateStart && oi.validRangeEnabled) {
+        inp.valid_start = oi.validStart;
+        inp.valid_end = oi.validEnd;
       }
       return inp;
     });
 
+    // Build schedules array from optBackgrounds (fixed background)
+    const schedules = optBackgrounds.map(bg => {
+      const s: Record<string, any> = { variable: bg.variable, value: bg.value };
+      if (bg.timeEnabled) s.time = bg.time;
+      if (bg.daysEnabled) s.days = bg.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
+      if (bg.validRangeEnabled) { s.valid_start = bg.validStart; s.valid_end = bg.validEnd; }
+      return s;
+    });
+
     const optimizerOverride: Record<string, any> = {
       inputs,
+      ...(schedules.length > 0 && { schedules }),
       objectives: objectives.map(o => ({
         variable: o.variable,
         metric: 'final',
@@ -1680,7 +1734,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       value: firstInputVar.value ?? 0, label: '',
       daysEnabled: false, days: [true,true,true,true,true,true,true],
       validRangeEnabled: false, validStart: '', validEnd: '',
-      optimizeValue: false, valueBounds: [0, ((firstInputVar.value ?? 1) * 2) || 1],
     }]);
   };
 
@@ -1692,6 +1745,60 @@ const Simulator: React.FC<SimulatorProps> = ({
   const removeInputEvent = (id: string) => {
     invalidateSim();
     setInputEvents(prev => prev.filter(ev => ev.id !== id));
+  };
+
+  // ── opt input CRUD ────────────────────────────────────────────────────────────
+  const addOptInput = () => {
+    const firstInputVar = inputVars[0];
+    if (!firstInputVar) return;
+    const id = `oi-${Date.now()}`;
+    const lo = firstInputVar.bounds?.[0] ?? 0;
+    const hi = firstInputVar.bounds?.[1] ?? (((firstInputVar.value ?? 1) * 2) || 1);
+    setOptInputs(prev => [...prev, {
+      id, variable: firstInputVar.name, label: '',
+      valueBounds: [lo, hi], time: '08:00', timeEnabled: false,
+      optimizeTime: false, daysEnabled: false, days: [true,true,true,true,true,true,true],
+      optimizeDays: false, validRangeEnabled: false, validStart: '', validEnd: '',
+      optimizeDateStart: false, optimizeDateEnd: false,
+    }]);
+  };
+  const updateOptInput = (id: string, patch: Partial<OptInput>) => setOptInputs(prev => prev.map(oi => oi.id === id ? { ...oi, ...patch } : oi));
+  const removeOptInput = (id: string) => setOptInputs(prev => prev.filter(oi => oi.id !== id));
+
+  // ── opt background CRUD ───────────────────────────────────────────────────────
+  const addOptBackground = () => {
+    const firstInputVar = inputVars[0];
+    if (!firstInputVar) return;
+    const id = `obg-${Date.now()}`;
+    setOptBackgrounds(prev => [...prev, {
+      id, variable: firstInputVar.name, time: '08:00', timeEnabled: false,
+      value: firstInputVar.value ?? 0, label: '',
+      daysEnabled: false, days: [true,true,true,true,true,true,true],
+      validRangeEnabled: false, validStart: '', validEnd: '',
+    }]);
+  };
+  const updateOptBackground = (id: string, patch: Partial<InputEvent>) => setOptBackgrounds(prev => prev.map(bg => bg.id === id ? { ...bg, ...patch } : bg));
+  const removeOptBackground = (id: string) => setOptBackgrounds(prev => prev.filter(bg => bg.id !== id));
+
+  // ── import from sim → opt inputs ─────────────────────────────────────────────
+  const importFromSim = () => {
+    if (inputEvents.length === 0) { message.warning(t('sim.opt.import_from_sim_empty')); return; }
+    const newOptInputs: OptInput[] = inputEvents.map(ev => {
+      const varDef = inputVars.find(v => v.name === ev.variable);
+      const lo = varDef?.bounds?.[0] ?? 0;
+      const hi = varDef?.bounds?.[1] ?? ((ev.value * 2) || 1);
+      return {
+        id: `oi-${ev.id}`, variable: ev.variable, label: ev.label,
+        valueBounds: [lo, hi] as [number, number],
+        time: ev.time, timeEnabled: ev.timeEnabled,
+        optimizeTime: false, daysEnabled: ev.daysEnabled, days: ev.days,
+        optimizeDays: false, validRangeEnabled: ev.validRangeEnabled,
+        validStart: ev.validStart, validEnd: ev.validEnd,
+        optimizeDateStart: false, optimizeDateEnd: false,
+      };
+    });
+    setOptInputs(newOptInputs);
+    message.success(t('sim.opt.import_from_sim_done').replace('{n}', String(newOptInputs.length)));
   };
 
   // ── derived data ──────────────────────────────────────────────────────────────
@@ -2026,17 +2133,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                   updateInputEvent={updateInputEvent}
                   removeInputEvent={removeInputEvent}
                   inputVars={inputVars}
-                  mode="sim"
-                  selectedModel={selectedModel}
                   openSections={openSections} setOpenSections={setOpenSections}
-                  sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
                   SECTION_H={SECTION_H}
-                  objectives={objectives} setObjectives={setObjectives}
-                  constraints={constraints} setConstraints={setConstraints}
-                  optAlgo={optAlgo} setOptAlgo={setOptAlgo}
-                  optPop={optPop} setOptPop={setOptPop}
-                  optGen={optGen} setOptGen={setOptGen}
-                  allVarNames={allVarNames}
                   simStartDate={simStartDate} simEndDate={simEndDate}
                   isDarkMode={isDarkMode} c={c} t={t}
                   plans={plans} activePlanId={activePlanId}
@@ -2067,26 +2165,26 @@ const Simulator: React.FC<SimulatorProps> = ({
             <WorkspacePage
               controls={OptControls}
               setup={
-                <SimSetupTab
-                  inputEvents={inputEvents}
-                  addInputEvent={addInputEvent}
-                  updateInputEvent={updateInputEvent}
-                  removeInputEvent={removeInputEvent}
+                <OptSetupTab
+                  optInputs={optInputs}
+                  addOptInput={addOptInput}
+                  updateOptInput={updateOptInput}
+                  removeOptInput={removeOptInput}
+                  optBackgrounds={optBackgrounds}
+                  addOptBackground={addOptBackground}
+                  updateOptBackground={updateOptBackground}
+                  removeOptBackground={removeOptBackground}
                   inputVars={inputVars}
-                  mode="opt"
-                  selectedModel={selectedModel}
+                  allVarNames={allVarNames}
                   openSections={openSections} setOpenSections={setOpenSections}
-                  sectionWeights={sectionWeights} setSectionWeights={setSectionWeights}
-                  SECTION_H={SECTION_H}
+                  simStartDate={simStartDate} simEndDate={simEndDate}
                   objectives={objectives} setObjectives={setObjectives}
                   constraints={constraints} setConstraints={setConstraints}
                   optAlgo={optAlgo} setOptAlgo={setOptAlgo}
                   optPop={optPop} setOptPop={setOptPop}
                   optGen={optGen} setOptGen={setOptGen}
-                  allVarNames={allVarNames}
-                  simStartDate={simStartDate} simEndDate={simEndDate}
+                  onImportFromSim={importFromSim}
                   isDarkMode={isDarkMode} c={c} t={t}
-                  onResetToYaml={selectedKey ? () => { delete modelSessionsRef.current[selectedKey]; loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
                 />
               }
               result={
