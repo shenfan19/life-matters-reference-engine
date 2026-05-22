@@ -42,6 +42,11 @@ imports:
 
 optimizer:
   method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"
+  step_size:
+    value: 1
+    unit: day
 
   objectives:
     - variable: blood_pressure

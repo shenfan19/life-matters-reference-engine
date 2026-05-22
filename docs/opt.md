@@ -26,6 +26,8 @@
 | R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
 | R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
 | R13 | 搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告 |
+| R14 | `optimizer` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
+| R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
 
 ### 1.2 依赖
 
@@ -250,13 +252,38 @@ optimizer:
 - `inputs:` 格式：`models/source/medical/test/l1_drug_single_obj.yaml`
 - `regimen:` 格式：`models/source/medical/disease/chronic/ckd_protein_muscle.yaml`
 
-### 3.3 仿真时长计算
+### 3.3 评估时间窗配置（ADR 0083）
+
+优化器的评估时间窗和步长可在 `optimizer` block 中独立声明，优先级高于 `simulation` / `metadata` 的默认值。GUI 工具栏的日期和步长通过 `optimizer_override` 传入，优先级最高。
+
+```yaml
+optimizer:
+  start_date: "YYYY-MM-DD"   # 可选；缺省 simulation.start_date
+  end_date:   "YYYY-MM-DD"   # 可选；缺省 simulation.end_date
+  step_size:                  # 可选；缺省 metadata.step_size
+    value: 1
+    unit: day
+```
+
+**读取优先级**（由高到低）：
+1. `optimizer_override.start_date / end_date / step_size`（GUI 工具栏实时值）
+2. `optimizer.start_date / end_date / step_size`（YAML 静态声明）
+3. `simulation.start_date / end_date` + `metadata.step_size`（默认继承）
+
+### 3.3.1 仿真时长计算
 
 ```python
-step_size = float(base_model.simulator.get('step_size', 86400.0))  # 秒
+# step_size: opt block 优先，否则 simulation block
+_opt_step_cfg = opt_block.get('step_size')
+if _opt_step_cfg and isinstance(_opt_step_cfg, dict):
+    _unit_to_sec = {'second': 1.0, 'minute': 60.0, 'hour': 3600.0, 'day': 86400.0}
+    step_size = float(_opt_step_cfg.get('value', 1)) * _unit_to_sec.get(
+        str(_opt_step_cfg.get('unit', 'second')).lower(), 1.0)
+else:
+    step_size = float(base_model.simulator.get('step_size', 86400.0))  # 秒
 
-sd = sim_data.get('start_date', '')
-ed = sim_data.get('end_date', '')
+sd = opt_block.get('start_date') or sim_data.get('start_date', '')
+ed = opt_block.get('end_date')   or sim_data.get('end_date', '')
 if sd and ed:
     sy, sm, sdd_ = [int(x) for x in sd.split('-')]
     ey, em, edd_ = [int(x) for x in ed.split('-')]
