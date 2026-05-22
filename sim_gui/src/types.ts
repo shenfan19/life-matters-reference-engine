@@ -167,20 +167,35 @@ export interface InputEvent {
   validRangeEnabled: boolean;
   validStart: string;
   validEnd: string;
-  optimizeValue: boolean;
+}
+
+// Decision variable entry for the optimizer (T1–T4).
+// Separate from InputEvent: has valueBounds instead of value, plus all Tier controls.
+export interface OptInput {
+  id: string;
+  variable: string;
+  label: string;
+  // T1: value bounds (always required)
   valueBounds: [number, number];
-  // T2: time window optimization
-  timeWindow?: string;      // "07:00~09:00"
-  optStep?: string;         // "1h" | "15min"; default "1h"
-  optimizeTime?: boolean;
-  // T3: day pattern selection
-  daysOptions?: string[][]; // [[Mon,Wed,Fri], [Sat,Sun], ...]
-  optimizeDays?: boolean;
-  // T4: start/end date optimization (each window independent)
-  dateStartWindow?: string; // "2026-05-01~2026-05-15"
-  optimizeDateStart?: boolean;
-  dateEndWindow?: string;   // "2026-05-20~2026-06-30"
-  optimizeDateEnd?: boolean;
+  // Fixed time or T2 time window
+  time: string;              // "HH:MM" default/fixed time
+  timeEnabled: boolean;
+  timeWindow?: string;       // T2: "HH:MM~HH:MM"
+  optStep?: string;          // T2: "1h" | "15min"
+  optimizeTime: boolean;     // T2 active
+  // Fixed days or T3 pattern
+  daysEnabled: boolean;
+  days: boolean[];           // 7-element mask Mon–Sun
+  daysOptions?: string[][];  // T3: candidate patterns
+  optimizeDays: boolean;     // T3 active
+  // Fixed valid range or T4 date window
+  validRangeEnabled: boolean;
+  validStart: string;
+  validEnd: string;
+  dateStartWindow?: string;  // T4: "YYYY-MM-DD~YYYY-MM-DD"
+  optimizeDateStart: boolean;
+  dateEndWindow?: string;    // T4b
+  optimizeDateEnd: boolean;
 }
 
 // Per-model user session: preserved across model switches, persisted to localStorage.
@@ -199,6 +214,8 @@ export interface ModelSession {
   optPop: number;
   optGen: number;
   optResult: any;
+  optInputs: OptInput[];        // decision variables for optimizer
+  optBackgrounds: InputEvent[]; // fixed background inputs for optimizer evaluation
 }
 
 export interface OptimizerProps {

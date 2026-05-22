@@ -146,7 +146,7 @@ def run_optimizer(simulator_engine, model_name: str,
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
         for key in ('regimen', 'inputs', 'objectives', 'constraints', 'algorithm', 'method',
-                    'start_date', 'end_date', 'step_size'):
+                    'start_date', 'end_date', 'step_size', 'schedules'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
 
@@ -231,7 +231,7 @@ def run_optimizer(simulator_engine, model_name: str,
         bounds_hi = np.array(hi_list, dtype=float)
         n_var = len(var_specs)
 
-        # Pre-build fixed inputs map
+        # Pre-build fixed inputs map: fixed_entries from optimizer.inputs + optimizer.schedules background
         fixed_events_map: Dict[str, List[Dict]] = {}
         for e in fixed_entries:
             v = e.get('variable', '')
@@ -239,6 +239,19 @@ def run_optimizer(simulator_engine, model_name: str,
                 fixed_events_map.setdefault(v, []).append(
                     {'time': e.get('time', '08:00'), 'value': float(e.get('value', 0))}
                 )
+        # optimizer.schedules: fixed background inputs (if present, takes precedence over simulation.schedules
+        # for those variables via manual_overrides; absent → simulation.schedules applies as fallback)
+        for sched in opt_block.get('schedules', []):
+            v = sched.get('variable', '')
+            if v:
+                ev: Dict[str, Any] = {'time': sched.get('time', '08:00'), 'value': float(sched.get('value', 0))}
+                if sched.get('days'):
+                    ev['days'] = sched['days']
+                if sched.get('valid_start'):
+                    ev['valid_start'] = sched['valid_start']
+                if sched.get('valid_end'):
+                    ev['valid_end'] = sched['valid_end']
+                fixed_events_map.setdefault(v, []).append(ev)
 
         def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
             from datetime import date as _date, timedelta
