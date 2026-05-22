@@ -4,7 +4,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, DownloadOutlined, LeftOutlined, PauseOutlined, PlayCircleOutlined, RightOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan } from '../types';
+import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan, ModelSession } from '../types';
+import { dump as yamlDump } from 'js-yaml';
 
 const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
 
@@ -125,6 +126,31 @@ const SIM_PERSIST_KEY = 'sim_persist';
 const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
 const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
+// Per-model session storage
+const MODEL_SESSION_KEY = 'lm_model_sessions';
+const readMS = (): Record<string, ModelSession> => { try { return JSON.parse(localStorage.getItem(MODEL_SESSION_KEY) || '{}'); } catch { return {}; } };
+const writeMS = (sessions: Record<string, ModelSession>): void => { try { localStorage.setItem(MODEL_SESSION_KEY, JSON.stringify(sessions)); } catch {} };
+
+// Initialize session map from localStorage; migrate legacy global inputEvents on first run.
+function initModelSessions(): Record<string, ModelSession> {
+  const sessions = readMS();
+  const sp = readSP();
+  if (sp?.selectedKey && sp.inputEvents?.length && !sessions[sp.selectedKey]) {
+    sessions[sp.selectedKey] = {
+      inputEvents: sp.inputEvents,
+      plans: [{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: sp.inputEvents }],
+      activePlanId: 'plan-1',
+      simStartDate: sp.simStartDate || '2026-01-01',
+      simEndDate: sp.simEndDate || '2026-12-31',
+      stepValue: sp.stepValue ?? 1,
+      stepUnit: sp.stepUnit ?? 'hour',
+      objectives: [], constraints: [],
+      optAlgo: 'NSGA-II', optPop: 50, optGen: 80,
+    };
+  }
+  return sessions;
+}
+
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
 
 const Simulator: React.FC<SimulatorProps> = ({
@@ -151,6 +177,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
     simRuns, sessionSeed,
   } = state;
+  const isSimulating = status === 'running';
 
   // ── SCS mode ─────────────────────────────────────────────────────────────────
   const [scsMode, setScsMode] = useState(false);
@@ -403,14 +430,15 @@ const Simulator: React.FC<SimulatorProps> = ({
   // Multi-plan state: plans are session-only (not persisted). inputEvents stays as the live
   // editing state for the active plan; plans array stores snapshots per plan.
   const [plans, setPlans] = useState<SimPlan[]>([{
-    id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: [],
+    id: 'plan-1', label: t('sim.plan.default_label'), color: PLAN_COLORS[0], inputEvents: [],
   }]);
   const [activePlanId, setActivePlanId] = useState('plan-1');
 
   const isRunningRef = useRef(false);
-  const pendingRestoreKey = useRef<string | null>(readSP()?.selectedKey || null);
-  const isInitialMount = useRef(true);
-  const savedKeyForRestore = readSP()?.selectedKey || null;
+  const modelSessionsRef = useRef<Record<string, ModelSession>>(initModelSessions());
+  // sessionReadyRef prevents the save-session effect from overwriting persisted session data
+  // with stale initial state before the model has finished loading and restoring its session.
+  const sessionReadyRef = useRef(false);
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
 
@@ -432,172 +460,199 @@ const Simulator: React.FC<SimulatorProps> = ({
   useEffect(() => {
     setRunOutputVars([]);
     setOutputWarnings([]);
-    let freshInputInit = false;
-    if (selectedModel?.content?.variables) {
-      const inputs: Record<string, number> = {};
-      const states: Record<string, number> = {};
-      const newInputEvents: InputEvent[] = [];
-      const rawSchedules = selectedModel.content?.simulation?.schedules;
+    if (!selectedModel?.content?.variables) return;
 
-      const DAY_STR_MAP: Record<string, number> = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 };
-      const parseDaysMask = (days?: string[]): boolean[] => {
-        if (!days?.length) return [true,true,true,true,true,true,true];
-        const m = [false,false,false,false,false,false,false];
-        days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0,3)]; if (i !== undefined) m[i] = true; });
-        return m;
+    // ── 1. Always: derive structural state (inputParams, stateVariables, optRanges) ──
+    const inputs: Record<string, number> = {};
+    const states: Record<string, number> = {};
+    Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
+      if (data.type === 'input') inputs[name] = data.value;
+      else if (data.type === 'state') states[name] = data.value;
+    });
+    set('inputParams', inputs);
+    set('stateVariables', states);
+    const ranges: typeof optRanges = {};
+    Object.entries(inputs).forEach(([name, val]) => {
+      ranges[name] = { min: 0, max: (val as number) * 2 || 1, locked: true };
+    });
+    setOptRanges(ranges);
+
+    // ── 2. Always: pre-load opt results from YAML for Pareto chart display ──
+    const optBlock: any = selectedModel?.content?.optimizer;
+    const rawResults = optBlock?.results;
+    let yamlOptResult: any = null;
+    if (rawResults?.pareto_front?.length > 0) {
+      const labels: string[] = [];
+      if (optBlock.inputs) {
+        for (const conf of Object.values(optBlock.inputs as Record<string, any>))
+          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time || '');
+      } else if (optBlock.regimen?.events) {
+        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time || '');
+      }
+      const parseDir2 = (d: string) => d === 'maximize' ? 'maximize' : 'minimize' as const;
+      const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
+      if (optBlock.objective) preloadObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir2(optBlock.objective.direction || '') });
+      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
+      yamlOptResult = {
+        pareto_front: rawResults.pareto_front,
+        best_x: rawResults.reference?.x ?? [],
+        best_f: rawResults.reference?.f ?? [],
+        objectives: preloadObjs,
+        n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
+        method: rawResults.method ?? 'nsga2',
+        regimen_event_labels: labels.length > 0 ? labels : undefined,
       };
+      setStoredOptResult(yamlOptResult);
+    } else {
+      setStoredOptResult(null);
+    }
 
-      const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
-      const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
+    // ── 3. Session exists → restore user state, skip YAML defaults ──
+    const session = modelSessionsRef.current[selectedModel.key];
+    if (session) {
+      setInputEvents(session.inputEvents);
+      setPlans(session.plans);
+      setActivePlanId(session.activePlanId);
+      set('simStartDate', session.simStartDate);
+      set('simEndDate', session.simEndDate);
+      set('stepValue', session.stepValue);
+      set('stepUnit', session.stepUnit);
+      setObjectives(session.objectives);
+      setConstraints(session.constraints);
+      setOptAlgo(session.optAlgo as any);
+      setOptPop(session.optPop);
+      setOptGen(session.optGen);
+      setOptResult(session.optResult ?? null);
+      setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length));
+      sessionReadyRef.current = true;
+      return;
+    }
 
-      const varBounds = (data: any): [number, number] => [
-        (data.bounds as any)?.[0] ?? 0,
-        (data.bounds as any)?.[1] ?? (((data.value ?? 0) * 2) || 1),
-      ];
+    // ── 4. No session: initialize from YAML (first-ever load of this model) ──
+    const DAY_STR_MAP: Record<string, number> = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 };
+    const parseDaysMask = (days?: string[]): boolean[] => {
+      if (!days?.length) return [true,true,true,true,true,true,true];
+      const m = [false,false,false,false,false,false,false];
+      days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0,3)]; if (i !== undefined) m[i] = true; });
+      return m;
+    };
+    const varBounds = (data: any): [number, number] => [
+      (data.bounds as any)?.[0] ?? 0,
+      (data.bounds as any)?.[1] ?? (((data.value ?? 0) * 2) || 1),
+    ];
+    const rawSchedules = selectedModel.content?.simulation?.schedules;
+    const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
+    const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
 
-      Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
-        if (data.type === 'input') {
-          inputs[name] = data.value;
-          const flatEntries = schedList.filter(s => s.variable === name);
+    const newInputEvents: InputEvent[] = [];
+    Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
+      if (data.type !== 'input') return;
+      const flatEntries = schedList.filter(s => s.variable === name);
+      if (flatEntries.length > 0) {
+        flatEntries.forEach((s, i) => {
+          const daysList: string[] = Array.isArray(s.days) ? s.days : [];
+          const hasDays = daysList.length > 0 && daysList.length < 7;
+          let validStart: string = s.valid_start ?? '';
+          let validEnd: string   = s.valid_end   ?? '';
+          if (!validStart && !validEnd && s.date_range) {
+            const parts = String(s.date_range).split('~');
+            if (parts.length === 2) { validStart = parts[0].trim(); validEnd = parts[1].trim(); }
+          }
+          newInputEvents.push({
+            id: `${name}-sched${i}`, variable: name,
+            time: s.time ?? '08:00', timeEnabled: !!s.time,
+            value: s.value ?? data.value ?? 0, label: s.label ?? '',
+            daysEnabled: hasDays,
+            days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
+            validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
+            optimizeValue: false, valueBounds: varBounds(data),
+          });
+        });
+      } else if (schedDict[name]?.points?.length) {
+        const seen = new Set<string>();
+        const secsToHHMM = (sec: number) => {
+          const s2 = sec % 86400;
+          return `${String(Math.floor(s2/3600)).padStart(2,'0')}:${String(Math.floor((s2%3600)/60)).padStart(2,'0')}`;
+        };
+        (schedDict[name].points as any[]).forEach((pt: any, idx: number) => {
+          const t2 = secsToHHMM(pt.time ?? 0);
+          if (seen.has(t2)) return;
+          seen.add(t2);
+          newInputEvents.push({
+            id: `${name}-ev${idx}`, variable: name, time: t2, timeEnabled: true,
+            value: pt.value ?? 0, label: '',
+            daysEnabled: false, days: [true,true,true,true,true,true,true],
+            validRangeEnabled: false, validStart: '', validEnd: '',
+            optimizeValue: false, valueBounds: varBounds(data),
+          });
+        });
+      } else {
+        newInputEvents.push({
+          id: `${name}-ev0`, variable: name, time: '08:00', timeEnabled: false,
+          value: data.value ?? 0, label: '',
+          daysEnabled: false, days: [true,true,true,true,true,true,true],
+          validRangeEnabled: false, validStart: '', validEnd: '',
+          optimizeValue: false, valueBounds: varBounds(data),
+        });
+      }
+    });
 
-          if (flatEntries.length > 0) {
-            flatEntries.forEach((s, i) => {
-              const daysList: string[] = Array.isArray(s.days) ? s.days : [];
-              const hasDays = daysList.length > 0 && daysList.length < 7;
-              let validStart: string = s.valid_start ?? '';
-              let validEnd: string   = s.valid_end   ?? '';
-              if (!validStart && !validEnd && s.date_range) {
+    const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
+    if (yamlPlans.length > 0) {
+      const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
+        const planSchedList: any[] = Array.isArray(plan.schedules) ? plan.schedules : [];
+        const planEvents: InputEvent[] = [];
+        Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
+          if (vdata.type !== 'input') return;
+          const entries = planSchedList.filter((s: any) => s.variable === name);
+          if (entries.length > 0) {
+            entries.forEach((s: any, j: number) => {
+              const dl: string[] = Array.isArray(s.days) ? s.days : [];
+              const hasDays = dl.length > 0 && dl.length < 7;
+              let vs = s.valid_start ?? '';
+              let ve = s.valid_end ?? '';
+              if (!vs && !ve && s.date_range) {
                 const parts = String(s.date_range).split('~');
-                if (parts.length === 2) { validStart = parts[0].trim(); validEnd = parts[1].trim(); }
+                if (parts.length === 2) { vs = parts[0].trim(); ve = parts[1].trim(); }
               }
-              newInputEvents.push({
-                id: `${name}-sched${i}`,
-                variable: name,
-                time: s.time ?? '08:00',
-                timeEnabled: !!s.time,
-                value: s.value ?? data.value ?? 0,
-                label: s.label ?? '',
+              planEvents.push({
+                id: `${plan.id ?? `plan${i}`}-${name}-${j}`, variable: name,
+                time: s.time ?? '08:00', timeEnabled: !!s.time,
+                value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
                 daysEnabled: hasDays,
-                days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
-                validRangeEnabled: !!(validStart || validEnd),
-                validStart,
-                validEnd,
-                optimizeValue: false,
-                valueBounds: varBounds(data),
-              });
-            });
-          } else if (schedDict[name]?.points?.length) {
-            const seen = new Set<string>();
-            const secsToHHMM = (sec: number) => {
-              const s2 = sec % 86400;
-              return `${String(Math.floor(s2/3600)).padStart(2,'0')}:${String(Math.floor((s2%3600)/60)).padStart(2,'0')}`;
-            };
-            (schedDict[name].points as any[]).forEach((pt: any, idx: number) => {
-              const t2 = secsToHHMM(pt.time ?? 0);
-              if (seen.has(t2)) return;
-              seen.add(t2);
-              newInputEvents.push({
-                id: `${name}-ev${idx}`,
-                variable: name, time: t2, timeEnabled: true,
-                value: pt.value ?? 0, label: '',
-                daysEnabled: false, days: [true,true,true,true,true,true,true],
-                validRangeEnabled: false, validStart: '', validEnd: '',
-                optimizeValue: false, valueBounds: varBounds(data),
+                days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
+                validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
+                optimizeValue: false, valueBounds: varBounds(vdata),
               });
             });
           } else {
-            newInputEvents.push({
-              id: `${name}-ev0`,
-              variable: name, time: '08:00', timeEnabled: false,
-              value: data.value ?? 0, label: '',
+            planEvents.push({
+              id: `${plan.id ?? `plan${i}`}-${name}-ev0`, variable: name,
+              time: '08:00', timeEnabled: false, value: vdata.value ?? 0, label: '',
               daysEnabled: false, days: [true,true,true,true,true,true,true],
               validRangeEnabled: false, validStart: '', validEnd: '',
-              optimizeValue: false, valueBounds: varBounds(data),
+              optimizeValue: false, valueBounds: varBounds(vdata),
             });
           }
-        } else if (data.type === 'state') states[name] = data.value;
+        });
+        return { id: plan.id ?? `plan-${i + 1}`, label: plan.label ?? `${t('sim.plan.label_prefix')} ${i + 1}`, color: PLAN_COLORS[i % PLAN_COLORS.length], inputEvents: planEvents };
       });
-      set('inputParams', inputs);
-      set('stateVariables', states);
-      const restoreFromSaved = isInitialMount.current &&
-        selectedModel.key === savedKeyForRestore &&
-        (readSP()?.inputEvents?.length ?? 0) > 0;
-      isInitialMount.current = false;
-
-      if (restoreFromSaved) {
-        // Keep saved inputEvents
-      } else {
-        const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
-        if (yamlPlans.length > 0) {
-          const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
-            const planSchedList: any[] = Array.isArray(plan.schedules) ? plan.schedules : [];
-            const planEvents: InputEvent[] = [];
-            Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
-              if (vdata.type !== 'input') return;
-              const entries = planSchedList.filter((s: any) => s.variable === name);
-              if (entries.length > 0) {
-                entries.forEach((s: any, j: number) => {
-                  const dl: string[] = Array.isArray(s.days) ? s.days : [];
-                  const hasDays = dl.length > 0 && dl.length < 7;
-                  let vs = s.valid_start ?? '';
-                  let ve = s.valid_end ?? '';
-                  if (!vs && !ve && s.date_range) {
-                    const parts = String(s.date_range).split('~');
-                    if (parts.length === 2) { vs = parts[0].trim(); ve = parts[1].trim(); }
-                  }
-                  planEvents.push({
-                    id: `${plan.id ?? `plan${i}`}-${name}-${j}`,
-                    variable: name,
-                    time: s.time ?? '08:00', timeEnabled: !!s.time,
-                    value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
-                    daysEnabled: hasDays,
-                    days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
-                    validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
-                    optimizeValue: false, valueBounds: varBounds(vdata),
-                  });
-                });
-              } else {
-                planEvents.push({
-                  id: `${plan.id ?? `plan${i}`}-${name}-ev0`,
-                  variable: name, time: '08:00', timeEnabled: false,
-                  value: vdata.value ?? 0, label: '',
-                  daysEnabled: false, days: [true,true,true,true,true,true,true],
-                  validRangeEnabled: false, validStart: '', validEnd: '',
-                  optimizeValue: false, valueBounds: varBounds(vdata),
-                });
-              }
-            });
-            return {
-              id: plan.id ?? `plan-${i + 1}`,
-              label: plan.label ?? `方案 ${i + 1}`,
-              color: PLAN_COLORS[i % PLAN_COLORS.length],
-              inputEvents: planEvents,
-            };
-          });
-          setPlans(loadedPlans);
-          setActivePlanId(loadedPlans[0].id);
-          setInputEvents(loadedPlans[0].inputEvents);
-        } else {
-          setInputEvents(newInputEvents);
-          setPlans([{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
-          setActivePlanId('plan-1');
-        }
-        freshInputInit = true;
-      }
-      const ranges: typeof optRanges = {};
-      Object.entries(inputs).forEach(([name, val]) => {
-        ranges[name] = { min: 0, max: (val as number) * 2 || 1, locked: true };
-      });
-      setOptRanges(ranges);
+      setPlans(loadedPlans);
+      setActivePlanId(loadedPlans[0].id);
+      setInputEvents(loadedPlans[0].inputEvents);
+    } else {
+      setInputEvents(newInputEvents);
+      setPlans([{ id: 'plan-1', label: t('sim.plan.default_label'), color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
+      setActivePlanId('plan-1');
     }
+
+    // Dates and step from YAML
     const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
     const DEFAULT_START = '2026-01-01';
     const DEFAULT_END   = '2026-12-31';
     const toStepUnit = (u: string): StepUnit => {
-      if (u === 'day') return 'day';
-      if (u === 'hour') return 'hour';
-      if (u === 'minute') return 'minute';
-      if (u === 'second') return 'second';
+      if (u === 'day') return 'day'; if (u === 'hour') return 'hour';
+      if (u === 'minute') return 'minute'; if (u === 'second') return 'second';
       return 'day';
     };
     if (sim) {
@@ -605,46 +660,27 @@ const Simulator: React.FC<SimulatorProps> = ({
         set('simStartDate', String(sim.start_date));
         set('simEndDate',   String(sim.end_date));
         const metaStep = selectedModel?.content?.metadata?.step_size;
-        if (metaStep?.unit) {
-          set('stepValue', metaStep.value ?? 1);
-          set('stepUnit',  toStepUnit(String(metaStep.unit)));
-        } else {
-          set('stepValue', sim.step ?? 1);
-          set('stepUnit',  toStepUnit(String(sim.step_unit || 'minute')));
-        }
+        if (metaStep?.unit) { set('stepValue', metaStep.value ?? 1); set('stepUnit', toStepUnit(String(metaStep.unit))); }
+        else { set('stepValue', sim.step ?? 1); set('stepUnit', toStepUnit(String(sim.step_unit || 'minute'))); }
       } else {
-        const UNIT_SEC: Record<string, number> = {
-          second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000,
-        };
-        const timeUnit  = String(sim.time_unit || 'hour').toLowerCase();
-        const rawStep   = sim.step_size ?? 1;
-        const totalSec  = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);
-        set('stepValue', rawStep);
-        set('stepUnit', toStepUnit(timeUnit));
-        set('simStartDate', DEFAULT_START);
-        set('simEndDate', totalSecondsToEndDate(DEFAULT_START, totalSec));
+        const UNIT_SEC: Record<string, number> = { second:1, minute:60, hour:3600, day:86400, week:604800, month:2592000, year:31536000 };
+        const timeUnit = String(sim.time_unit || 'hour').toLowerCase();
+        const rawStep  = sim.step_size ?? 1;
+        const totalSec = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);
+        set('stepValue', rawStep); set('stepUnit', toStepUnit(timeUnit));
+        set('simStartDate', DEFAULT_START); set('simEndDate', totalSecondsToEndDate(DEFAULT_START, totalSec));
       }
     } else {
-      set('stepValue', 1);
-      set('stepUnit', 'hour');
-      set('simStartDate', DEFAULT_START);
-      set('simEndDate', DEFAULT_END);
+      set('stepValue', 1); set('stepUnit', 'hour');
+      set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
     }
 
-    const optBlock: any = selectedModel?.content?.optimizer;
+    // Opt config from YAML
     if (optBlock && optBlock.enabled !== false) {
-      const parseDir = (d: string): 'minimize' | 'maximize' =>
-        d === 'maximize' ? 'maximize' : 'minimize';
-
+      const parseDir = (d: string): 'minimize' | 'maximize' => d === 'maximize' ? 'maximize' : 'minimize';
       const rawObjs: Array<{ variable: string; direction: 'minimize' | 'maximize' }> = [];
-      if (optBlock.objective) {
-        rawObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir(optBlock.objective.direction || 'minimize') });
-      }
-      if (Array.isArray(optBlock.objectives)) {
-        optBlock.objectives.forEach((o: any) => {
-          rawObjs.push({ variable: o.variable || '', direction: parseDir(o.direction || 'minimize') });
-        });
-      }
+      if (optBlock.objective) rawObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir(optBlock.objective.direction || 'minimize') });
+      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => rawObjs.push({ variable: o.variable || '', direction: parseDir(o.direction || 'minimize') }));
       if (rawObjs.length > 0) setObjectives(rawObjs);
 
       const parseCondition = (cond: string): { op: '≤' | '≥'; value: number } | null => {
@@ -654,59 +690,30 @@ const Simulator: React.FC<SimulatorProps> = ({
       };
       if (Array.isArray(optBlock.constraints)) {
         const parsedCons: Array<{ variable: string; op: '≤' | '≥'; value: number }> = [];
-        optBlock.constraints.forEach((con: any) => {
-          const parsed = parseCondition(String(con.condition || ''));
-          if (parsed && con.variable) parsedCons.push({ variable: con.variable, ...parsed });
-        });
+        optBlock.constraints.forEach((con: any) => { const p = parseCondition(String(con.condition || '')); if (p && con.variable) parsedCons.push({ variable: con.variable, ...p }); });
         if (parsedCons.length > 0) setConstraints(parsedCons);
       }
-
-      const methodMap: Record<string, string> = {
-        'nsga2': 'NSGA-II', 'nsga-2': 'NSGA-II', 'nsga_2': 'NSGA-II',
-        'moead': 'MOEA/D', 'moea/d': 'MOEA/D',
-        'l-bfgs-b': 'l-bfgs-b', 'lbfgsb': 'l-bfgs-b',
-        'nelder-mead': 'nelder-mead', 'nelder_mead': 'nelder-mead',
-      };
-      const rawMethod = String(optBlock.method || '').toLowerCase();
-      const mappedMethod = methodMap[rawMethod];
+      const methodMap: Record<string, string> = { 'nsga2':'NSGA-II','nsga-2':'NSGA-II','nsga_2':'NSGA-II','moead':'MOEA/D','moea/d':'MOEA/D','l-bfgs-b':'l-bfgs-b','lbfgsb':'l-bfgs-b','nelder-mead':'nelder-mead','nelder_mead':'nelder-mead' };
+      const mappedMethod = methodMap[String(optBlock.method || '').toLowerCase()];
       if (mappedMethod) setOptAlgo(mappedMethod as any);
-
       const algoBlock = optBlock.algorithm || {};
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
-
-      if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) {
-        set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
-      }
-
-      // Reset warm-start preference on new model load; default to warm if results exist
+      if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
 
       if (Array.isArray(optBlock.inputs)) {
-        const withOpt = (optBlock.inputs as any[]).filter((e: any) =>
-          e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2
-        );
+        const withOpt = (optBlock.inputs as any[]).filter((e: any) => e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2);
         if (withOpt.length > 0) {
           setInputEvents(prev => prev.map(ev => {
             const inp = withOpt.find((e: any) => e.variable === ev.variable);
             if (!inp) return ev;
-            return {
-              ...ev,
-              time: inp.time ?? ev.time,
-              timeEnabled: inp.time ? true : ev.timeEnabled,
-              label: inp.label ?? ev.label,
-              optimizeValue: true,
-              valueBounds: [inp.optimize.value[0], inp.optimize.value[1]],
-              timeWindow: inp.time_window ?? ev.timeWindow,
-              optStep: inp.opt_step ?? ev.optStep,
-              optimizeTime: !!inp.optimize?.time,
-              daysOptions: inp.days_options ?? ev.daysOptions,
-              optimizeDays: !!inp.optimize?.days,
-              dateStartWindow: inp.date_start_window ?? ev.dateStartWindow,
-              optimizeDateStart: !!inp.optimize?.date_start,
-              dateEndWindow: inp.date_end_window ?? ev.dateEndWindow,
-              optimizeDateEnd: !!inp.optimize?.date_end,
-            };
+            return { ...ev, time: inp.time ?? ev.time, timeEnabled: inp.time ? true : ev.timeEnabled, label: inp.label ?? ev.label,
+              optimizeValue: true, valueBounds: [inp.optimize.value[0], inp.optimize.value[1]],
+              timeWindow: inp.time_window ?? ev.timeWindow, optStep: inp.opt_step ?? ev.optStep, optimizeTime: !!inp.optimize?.time,
+              daysOptions: inp.days_options ?? ev.daysOptions, optimizeDays: !!inp.optimize?.days,
+              dateStartWindow: inp.date_start_window ?? ev.dateStartWindow, optimizeDateStart: !!inp.optimize?.date_start,
+              dateEndWindow: inp.date_end_window ?? ev.dateEndWindow, optimizeDateEnd: !!inp.optimize?.date_end };
           }));
         }
       } else if (optBlock.regimen?.variable && Array.isArray(optBlock.regimen?.events)) {
@@ -716,56 +723,22 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (ev.variable !== regVar) return ev;
           const regEv = regEvs.find((e: any) => e.time === ev.time) ?? regEvs[0];
           if (!regEv?.dose_bounds) return ev;
-          return {
-            ...ev,
-            time: regEv.time ?? ev.time,
-            timeEnabled: regEv.time ? true : ev.timeEnabled,
-            label: regEv.label ?? ev.label,
-            optimizeValue: true,
-            valueBounds: [regEv.dose_bounds[0], regEv.dose_bounds[1]],
-          };
+          return { ...ev, time: regEv.time ?? ev.time, timeEnabled: regEv.time ? true : ev.timeEnabled,
+            label: regEv.label ?? ev.label, optimizeValue: true, valueBounds: [regEv.dose_bounds[0], regEv.dose_bounds[1]] };
         }));
       }
     }
-    // Pre-load stored opt results so Pareto chart is visible immediately when model has results
-    const rawResults = optBlock?.results;
-    if (rawResults?.pareto_front?.length > 0) {
-      const labels: string[] = [];
-      if (optBlock.inputs) {
-        for (const conf of Object.values(optBlock.inputs as Record<string, any>))
-          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time || '');
-      } else if (optBlock.regimen?.events) {
-        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time || '');
-      }
-      // Build objectives from optBlock directly (rawObjs is scoped inside the optBlock if block)
-      const parseDir2 = (d: string) => d === 'maximize' ? 'maximize' : 'minimize' as const;
-      const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
-      if (optBlock.objective) preloadObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir2(optBlock.objective.direction || '') });
-      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
-      const preloaded = {
-        pareto_front: rawResults.pareto_front,
-        best_x: rawResults.reference?.x ?? [],
-        best_f: rawResults.reference?.f ?? [],
-        objectives: preloadObjs,
-        n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
-        method: rawResults.method ?? 'nsga2',
-        regimen_event_labels: labels.length > 0 ? labels : undefined,
-      };
-      setStoredOptResult(preloaded);
-      setOptResult(preloaded); // always show on load; checkbox toggle can clear it
-    } else {
-      setStoredOptResult(null);
-      setOptResult(null);
-    }
 
-    // F-5-2: offer to pre-fill inputEvents from optimizer.results.reference.x
-    if (freshInputInit && optBlock?.results?.reference?.x?.length > 0) {
+    setOptResult(yamlOptResult);
+    sessionReadyRef.current = true;
+
+    // Warm-start modal: only on first-ever load (no session existed)
+    if (optBlock?.results?.reference?.x?.length > 0) {
       const bestX: number[] = optBlock.results.reference.x;
       Modal.confirm({
-        title: '检测到优化结果',
+        title: t('sim.opt.ref_detected_title'),
         content: `模型包含推荐解（${bestX.length} 个决策变量），是否将其预填为当前输入方案？`,
-        okText: '加载推荐解',
-        cancelText: '使用默认调度',
+        okText: t('sim.opt.load_reference'), cancelText: t('sim.opt.use_default_schedule'),
         onOk: () => setInputEvents(prev => xToInputEvents(bestX, optBlock, prev)),
       });
     }
@@ -785,11 +758,19 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (storyTree.length === 0) loadFileTree();
   }, []);
 
+  const initialSelectedKey = useRef<string | null>(readSP()?.selectedKey ?? null);
   useEffect(() => {
-    const key = pendingRestoreKey.current;
-    if (!key || storyTree.length === 0) return;
-    pendingRestoreKey.current = null;
-    loadFileContent(key, { preserveTab: true });
+    if (storyTree.length === 0) return;
+    // Restore previously selected model
+    const key = initialSelectedKey.current;
+    if (key) { initialSelectedKey.current = null; loadFileContent(key, { preserveTab: true }); }
+    // Remove stale expandedKeys that no longer exist in the current tree
+    const collectFolderKeys = (nodes: DataNode[], acc: Set<React.Key>) => {
+      nodes.forEach(n => { if (!n.isLeaf) { acc.add(n.key); if (n.children) collectFolderKeys(n.children, acc); } });
+    };
+    const validKeys = new Set<React.Key>();
+    collectFolderKeys(storyTree, validKeys);
+    setExpandedKeys(prev => prev.filter(k => validKeys.has(k)));
   }, [storyTree]);
 
   // ── restore SimulationState from localStorage on mount ───────────────────────
@@ -806,12 +787,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       progress: saved.progress ?? 0,
       totalSteps: saved.totalSteps ?? prev.totalSteps,
       sessionSeed: saved.sessionSeed ?? 0,
-      ...(saved.simStartDate && saved.simStartDate !== '2000-01-01' && { simStartDate: saved.simStartDate }),
-      ...(saved.simEndDate && saved.simEndDate !== '2001-01-01' && { simEndDate: saved.simEndDate }),
-      ...(saved.stepValue != null && { stepValue: saved.stepValue }),
-      ...(saved.stepUnit && { stepUnit: saved.stepUnit }),
     }));
-    if (saved.isLocked) setIsLocked(true);
+    // Lock state is intentionally not restored: model must be re-validated each session.
     if (saved.sessionId) {
       fetch(`${API_BASE}/simulation/session/${encodeURIComponent(saved.sessionId)}`)
         .then(r => r.json())
@@ -836,18 +813,35 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
   }, []);
 
-  // ── reset validation on selection change ─────────────────────────────────────
+  // ── reset validation, lock, and session-ready flag on selection change ────────
   useEffect(() => {
-    if (isInitialMount.current) { isInitialMount.current = false; return; }
+    sessionReadyRef.current = false;
     setValidationResult(null);
     setIsLocked(false);
   }, [selectedKey]);
 
-  // ── persist config to localStorage ───────────────────────────────────────────
+  // ── persist per-model session (inputEvents, dates, opt config) ───────────────
+  // sessionReadyRef guards against overwriting the persisted session with stale
+  // initial state values before the model has loaded and restored its session.
+  useEffect(() => {
+    if (!selectedKey || !sessionReadyRef.current) return;
+    const session: ModelSession = {
+      inputEvents, plans, activePlanId,
+      simStartDate, simEndDate, stepValue, stepUnit,
+      objectives, constraints, optAlgo, optPop, optGen,
+      optResult,
+    };
+    modelSessionsRef.current[selectedKey] = session;
+    const all = readMS();
+    all[selectedKey] = session;
+    writeMS(all);
+  }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, objectives, constraints, optAlgo, optPop, optGen, optResult]);
+
+  // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
     const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, inputEvents, isLocked, openSections: [...openSections], sectionWeights, simStartDate, simEndDate, stepValue, stepUnit, expandedKeys });
-  }, [selectedKey, mode, inputEvents, isLocked, openSections, sectionWeights, simStartDate, simEndDate, stepValue, stepUnit, expandedKeys]);
+    writeSP({ ...current, selectedKey, mode, openSections: [...openSections], sectionWeights, expandedKeys });
+  }, [selectedKey, mode, openSections, sectionWeights, expandedKeys]);
 
   // ── persist simulation results on status settle ───────────────────────────────
   useEffect(() => {
@@ -909,6 +903,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const loadFileContent = async (filePath: string, opts: { preserveTab?: boolean } = {}): Promise<ModelFile | null> => {
+    if (selectedKey && selectedKey !== filePath) stopAllJobs();
     setTreeLoading(true);
     try {
       const cleanPath = filePath.replace(/^models\//, '');
@@ -959,7 +954,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
     setSelectedKey(key);
     setValidationResult(null);
-    loadFileContent(key);
+    loadFileContent(key, { preserveTab: true });
   };
 
   const toggleTreeNode = (key: React.Key) => {
@@ -1164,7 +1159,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const addPlan = () => {
     const id = `plan-${Date.now()}`;
     const newPlan: SimPlan = {
-      id, label: `方案 ${plans.length + 1}`,
+      id, label: `${t('sim.plan.label_prefix')} ${plans.length + 1}`,
       color: PLAN_COLORS[plans.length % PLAN_COLORS.length],
       inputEvents: [...inputEvents], // copy current
     };
@@ -1321,6 +1316,17 @@ const Simulator: React.FC<SimulatorProps> = ({
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
+    a.click();
+  };
+
+  const downloadRawModel = () => {
+    if (!selectedModel) return;
+    const content = selectedModel.rawContent ?? selectedModel.content;
+    const yaml = yamlDump(content, { lineWidth: 120, noRefs: true });
+    const name = (selectedModel.content?.metadata?.name || selectedModel.title || 'model').replace(/\s+/g, '_');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
+    a.download = `${name}.yaml`;
     a.click();
   };
 
@@ -1644,10 +1650,28 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   // ── input event CRUD ──────────────────────────────────────────────────────────
+  const stopAllJobs = () => {
+    isRunningRef.current = false;
+    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
+    if (optJobId) { fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }).catch(() => {}); }
+    setOptRunning(false);
+    setOptJobId(null);
+  };
+
+  const invalidateSim = () => {
+    if (status !== 'idle') {
+      stopAllJobs();
+      setState(prev => ({ ...prev, status: 'idle', progress: 0, currentStep: 0, simulationData: [], dataPerRun: [], sessionId: '' }));
+      setComparedPlans([]);
+    }
+    setWarmStartEnabled(false);
+  };
+
   const addInputEvent = () => {
     const firstInputVar = inputVars[0];
     if (!firstInputVar) return;
     const id = `ev-${Date.now()}`;
+    invalidateSim();
     setInputEvents(prev => [...prev, {
       id, variable: firstInputVar.name, time: '08:00', timeEnabled: false,
       value: firstInputVar.value ?? 0, label: '',
@@ -1657,11 +1681,15 @@ const Simulator: React.FC<SimulatorProps> = ({
     }]);
   };
 
-  const updateInputEvent = (id: string, patch: Partial<InputEvent>) =>
+  const updateInputEvent = (id: string, patch: Partial<InputEvent>) => {
+    invalidateSim();
     setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
+  };
 
-  const removeInputEvent = (id: string) =>
+  const removeInputEvent = (id: string) => {
+    invalidateSim();
     setInputEvents(prev => prev.filter(ev => ev.id !== id));
+  };
 
   // ── derived data ──────────────────────────────────────────────────────────────
   const inputVars = selectedModel?.content?.variables
@@ -1713,7 +1741,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             disabled={!isLocked || status === 'completed'}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `运行全部 ${plans.length} 方案` : t('sim.control.run')}
+            {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `${t('sim.plan.run_all_pre')} ${plans.length} ${t('sim.plan.run_all_suf')}` : t('sim.control.run')}
           </Button>
         </span>
       </Tooltip>
@@ -1755,17 +1783,18 @@ const Simulator: React.FC<SimulatorProps> = ({
           />
         </div>
       </Tooltip>
-      <Tooltip title="导出仿真结果为 CSV">
+      <Tooltip title={t('sim.control.download_model')}>
         <Button size="small" icon={<DownloadOutlined />}
-          onClick={exportSimCSV}
-          disabled={!simulationData.length}
+          onClick={downloadRawModel}
+          disabled={!selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >CSV</Button>
+        >YAML</Button>
       </Tooltip>
     </div>
   );
 
-  const existingResults = selectedModel?.content?.optimizer?.results;
+  const existingResults = selectedModel?.rawContent?.optimizer?.results
+    ?? selectedModel?.content?.optimizer?.results;
   const hasExistingResults = !!(existingResults?.pareto_front?.length);
   const OptControls = (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
@@ -1800,6 +1829,40 @@ const Simulator: React.FC<SimulatorProps> = ({
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
         {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : hasExistingResults ? `历史 ${existingResults.n_solutions ?? existingResults.pareto_front.length} 解 · ${existingResults.generated_at ?? ''}` : '设置目标、约束和范围后运行优化'}
       </span>
+      <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
+        <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
+          onChange={e => set('simStartDate', e.target.value)}
+          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
+        <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
+          onChange={e => set('simEndDate', e.target.value)}
+          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
+        <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
+        <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content' }}
+          options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
+      </div>
+      {selectedModel?.content?.optimizer?.mc?.enabled && (
+        <Tooltip title={`Monte Carlo: ${simRuns} ${t('sim.mc.runs_per_plan')}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
+            <InputNumber size="small" min={1} max={50} value={simRuns}
+              onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
+              style={{ width: 52 }} disabled={optRunning} />
+          </div>
+        </Tooltip>
+      )}
+      <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={() => optResult ? downloadModelYAML(false) : downloadRawModel()}
+          disabled={!selectedModel}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >YAML</Button>
+      </Tooltip>
     </div>
   );
 
@@ -1817,7 +1880,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           storyTree={storyTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
           storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
           expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
-          selectedKey={selectedKey} isLocked={isLocked}
+          selectedKey={selectedKey} isLocked={isLocked} isSimulating={isSimulating}
           treeLoading={treeLoading}
           validationResult={validationResult} setValidationResult={setValidationResult}
           validating={validating}
@@ -1829,14 +1892,12 @@ const Simulator: React.FC<SimulatorProps> = ({
           handleValidateAndLock={handleValidateAndLock}
           setIsLocked={setIsLocked}
           onUnlock={() => {
+            stopAllJobs();
             setIsLocked(false);
             setValidationResult(null);
-            isRunningRef.current = false;
-            set('status', 'idle');
-            set('progress', 0);
-            set('currentStep', 0);
-            setSimData([]);
-            setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+            setState(prev => ({ ...prev, status: 'idle', progress: 0, currentStep: 0, simulationData: [], dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+            setComparedPlans([]);
+            setWarmStartEnabled(false);
           }}
           builderMode={builderOpen}
           builderCheckedFiles={builderCheckedFiles}
@@ -1973,9 +2034,11 @@ const Simulator: React.FC<SimulatorProps> = ({
                   optPop={optPop} setOptPop={setOptPop}
                   optGen={optGen} setOptGen={setOptGen}
                   allVarNames={allVarNames}
+                  simStartDate={simStartDate} simEndDate={simEndDate}
                   isDarkMode={isDarkMode} c={c} t={t}
                   plans={plans} activePlanId={activePlanId}
                   onSelectPlan={selectPlan} onAddPlan={addPlan} onRemovePlan={removePlan}
+                  onResetToYaml={selectedKey ? () => { delete modelSessionsRef.current[selectedKey]; loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
                 />
               }
               result={
@@ -1990,6 +2053,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   simRuns={simRuns} sessionSeed={sessionSeed}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
                   comparedPlans={comparedPlans}
+                  onExportCSV={exportSimCSV}
                 />
               }
               progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} c={c} isDarkMode={isDarkMode} />}
@@ -2017,7 +2081,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                   optPop={optPop} setOptPop={setOptPop}
                   optGen={optGen} setOptGen={setOptGen}
                   allVarNames={allVarNames}
+                  simStartDate={simStartDate} simEndDate={simEndDate}
                   isDarkMode={isDarkMode} c={c} t={t}
+                  onResetToYaml={selectedKey ? () => { delete modelSessionsRef.current[selectedKey]; loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
                 />
               }
               result={

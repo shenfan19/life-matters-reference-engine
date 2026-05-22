@@ -1,25 +1,53 @@
-﻿metadata:
+metadata:
   name: a4_ckd_protein
   paper: Paper 2 (JAMIA)
   case_id: A4
-  updated: 2026-05-04
+  updated: 2026-05-22
   author: Fan Shen
   description:
-    brief: CKD 蛋白质-肌肉权衡（A4），用于表达低蛋白保护肾功能与肌少症风险之间的临床冲突。
-    need: 为 Paper 2 展示 LM 如何把指南中的营养建议、个体差异和多目标优化放进同一个动态模型。
-    problem: 降低蛋白质摄入可能减轻 GFR 损伤和 BUN 负担，但也会削弱肌肉合成；过低蛋白不能阻止 CKD 基础进展。
-    method: 日步长模型，耦合 GFR、muscle_mass、BUN 和 dietary_protein。MC 采样 alpha、mu_s、mu_u 表达个体肾功能敏感性和合成代谢能力差异。
-    simulation: 默认仿真 52 周，三餐蛋白质合计约 0.8 g/kg/day，输出 GFR、muscle_mass、BUN、dietary_protein。
-    optimization: NSGA-II 双目标优化三餐蛋白质分配，最大化 52 周末肌肉质量和 GFR，并约束 BUN <= 20、GFR >= 30、dietary_protein >= 0.6。
-    result: 预期 Pareto 前沿展示“更多肌肉保留”和“更慢肾功能衰退”之间的折中，MC 曲线在 10–20 周开始分叉。
-    conclusion: 期望结论是单一静态蛋白质建议不足以覆盖个体差异，动态多目标优化能暴露可行区间与风险边界。
+    brief: CKD 蛋白质-肌肉权衡（A4），展示低蛋白保护肾功能与肌少症风险的临床冲突，并通过 T1+T2+T4 全维度优化。
+    need: >
+      为 Paper 2 展示 LM 如何把指南营养建议、个体差异和多目标优化放进同一动态模型。
+      进一步：不只优化"吃多少蛋白"（T1），还优化"几点吃主要蛋白"（T2，时间生物学）
+      和"何时从限蛋白期过渡到标准期"（T4，干预时机）。
+    problem: >
+      降低蛋白质摄入可能减轻 GFR 损伤和 BUN 负担，但也会削弱肌肉合成；
+      过低蛋白不能阻止 CKD 基础进展。
+      此外，时间营养学研究表明晚间蛋白质摄入（17:00-21:00）对 mTOR 激活和夜间肌肉蛋白合成更有利；
+      以及蛋白限制期到标准期的切换时机（GFR 稳定后才能提升蛋白）是另一个临床决策维度。
+    method: >
+      日步长模型，耦合 GFR、muscle_mass、BUN 和 dietary_protein。
+      MC 采样 alpha、mu_s、mu_u 表达个体肾功能敏感性和合成代谢能力差异。
+      K=2 分段结构：限制期（前26周）→ 标准期（后26周），T4 优化切换时机。
+      T2 优化晚餐蛋白时间窗（17:00-21:00）。
+    simulation: >
+      默认仿真 52 周，K=2 分段：前26周限制期（蛋白0.7 g/kg/day），后26周标准期（0.8 g/kg/day）；
+      三餐蛋白合计，晚餐固定18:00；输出 GFR、muscle_mass、BUN、dietary_protein。
+    optimization: >
+      NSGA-II 双目标：最大化 52 周末肌肉质量和 GFR；
+      约束 BUN <= 20、GFR >= 30、protein >= 0.6；
+      T1 × 3（三餐蛋白量）+ T2（晚餐时间窗 17:00-21:00，时间营养学优化）
+      + T4（限制期→标准期切换时机，在第13-39周窗口内搜索）。
+      科学问题：晚间睡前蛋白（21:00）能否在不增加 GFR 损伤的前提下显著改善肌肉保留？
+    result: >
+      预期：T2 优化选择晚餐在 19:00-21:00（夜间蛋白合成窗口）；
+      T4 优化将切换时机推迟至第 20-26 周（待 GFR 下降趋势稳定后才提升蛋白）；
+      三餐蛋白分配呈现晚重早轻模式（晚餐 > 早餐）以利用睡前合成窗口；
+      Pareto 前沿揭示 GFR 稳定期后再提升蛋白的安全窗口。
+    conclusion: >
+      期望结论是单一静态蛋白质建议不足以覆盖个体差异；
+      晚间蛋白偏重分配（T2）在不增加 GFR 损伤的前提下改善肌肉保留；
+      动态切换时机（T4）比固定26周切换更能适应个体 GFR 轨迹；
+      不构成 KDIGO 指南替代，而是对指南框架内的个体化路径优化。
     limitations: 参数为文献启发的演示值，未替代 KDIGO 指南或个体化营养医嘱。
-  tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4]
+  tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4, T2, T4, K2]
   references:
     - "KDIGO 2020 Clinical Practice Guideline §3.1.13 Grade 2C"
     - "Carrero JJ et al. (2013) Etiology of PEW in CKD. J Ren Nutr 23(2):77-90"
     - "Kalantar-Zadeh K et al. (2017) Dietary restrictions in dialysis patients. Semin Dial 30(2):159-168"
     - "Wang XH & Mitch WE (2014) Mechanisms of muscle wasting in CKD. Nat Rev Nephrol 10(9):504-516"
+    - "Snijders T et al. (2015) Protein ingestion before sleep increases overnight muscle protein synthesis rates. J Nutr 145(6):1178-1184"
+    - "Res PT et al. (2012) Protein ingestion before sleep improves postexercise overnight recovery. Med Sci Sports Exerc 44(8):1560-1569"
   step_size:
     value: 1
     unit: day
@@ -32,6 +60,7 @@ variables:
     unit: mL/min/1.73m²
     type: state
     bounds: [0, 120]
+    reference: "KDIGO 2020"
 
   muscle_mass:
     description: 骨骼肌质量（体重70kg成年男性正常值~30kg）
@@ -39,6 +68,7 @@ variables:
     unit: kg
     type: state
     bounds: [10, 50]
+    reference: "Carrero JJ et al. (2013)"
 
   BUN:
     description: 血尿素氮（正常上限 20 mg/dL；CKD患者目标 <20）
@@ -46,6 +76,7 @@ variables:
     unit: mg/dL
     type: state
     bounds: [0, 60]
+    reference: "KDIGO 2020"
 
   dietary_protein:
     description: 每日蛋白质摄入量（g/kg/day），KDIGO建议范围 0.6–1.0
@@ -58,6 +89,7 @@ variables:
     value: 70.0
     unit: kg
     type: parameter
+    reference: "代表性患者假设"
 
   # ── MC 概率参数 ──────────────────────────────────────────────────────────────
   alpha:
@@ -68,6 +100,7 @@ variables:
     unit: 1/(day·g/kg/day)
     type: parameter
     bounds: [0.0003, 0.003]
+    reference: "Kalantar-Zadeh K et al. (2017)"
 
   mu_s:
     description: |
@@ -77,6 +110,7 @@ variables:
     unit: kg/(day·g/kg/day)
     type: parameter
     bounds: [0.002, 0.018]
+    reference: "Carrero JJ et al. (2013)"
 
   beta0:
     description: 非蛋白质因素导致的 GFR 基础下降速率（CKD 3期平均值）
@@ -84,6 +118,7 @@ variables:
     unit: 1/day
     type: parameter
     bounds: [0.001, 0.008]
+    reference: "KDIGO 2020"
 
   mu_d:
     description: 肌肉基础降解速率（CKD 患者高于正常人，Carrero 2013）
@@ -91,6 +126,7 @@ variables:
     unit: 1/day
     type: parameter
     bounds: [0.001, 0.005]
+    reference: "Carrero JJ et al. (2013)"
 
   mu_u:
     description: |
@@ -100,12 +136,14 @@ variables:
     unit: 1/(day·mL/min/1.73m²)
     type: parameter
     bounds: [0.0002, 0.004]
+    reference: "Wang XH & Mitch WE (2014)"
 
   sigma_urea:
     description: 蛋白质分解产生尿素的速率系数
     value: 0.028
     unit: mg/dL·day⁻¹·(g/day)⁻¹
     type: parameter
+    reference: "TODO:SOURCE 蛋白-BUN关系文献"
 
   GFR_initial:
     description: 初始 GFR（用于计算肾功能相对损失，固定为起始值）
@@ -123,6 +161,7 @@ formulas:
     priority: 6
     dynamics:
       GFR: GFR - (alpha * max(0, dietary_protein - 0.6) * GFR + beta0 * GFR) * step
+    reference: "KDIGO 2020; Kalantar-Zadeh K et al. (2017)"
 
   muscle_dynamics:
     description: |
@@ -135,6 +174,7 @@ formulas:
         muscle_mass + (mu_s * dietary_protein * min(1.0, GFR / GFR_initial)
         - mu_d * muscle_mass
         - mu_u * max(0, GFR_initial - GFR) * muscle_mass) * step
+    reference: "Carrero JJ et al. (2013); Wang XH & Mitch WE (2014)"
 
   bun_dynamics:
     description: |
@@ -144,11 +184,98 @@ formulas:
     priority: 4
     dynamics:
       BUN: BUN + (sigma_urea * dietary_protein * body_weight - 0.0015 * GFR * BUN) * step
+    reference: "TODO:SOURCE BUN-蛋白关系文献"
 
-# ── 优化设置 ──────────────────────────────────────────────────────────────────
+# ── 仿真设置（K=2 分段：限制期→标准期）────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"        # 52 周 = 364 天
+  output_variables:
+    - GFR
+    - muscle_mass
+    - BUN
+    - dietary_protein
+  schedules:
+    # K=2 段1（限制期，前26周，低蛋白保护肾功能）
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.22
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期：早餐蛋白"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.21
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期：午餐蛋白"
+    - variable: dietary_protein
+      time: "18:00"
+      value: 0.22
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期：晚餐蛋白"
+    # K=2 段2（标准期，后26周，逐步恢复蛋白摄入）
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期：早餐蛋白"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.25
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期：午餐蛋白"
+    - variable: dietary_protein
+      time: "18:00"
+      value: 0.28
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期：晚餐蛋白"
+
+  # 预定义多方案：对应 Pareto 前沿端点与平衡点
+  plans:
+    - id: "kidney_protect"
+      label: "肾保护优先（GFR 端点，全程低蛋白）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "早餐蛋白"}
+        - {variable: dietary_protein, time: "12:00", value: 0.21,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "午餐蛋白"}
+        - {variable: dietary_protein, time: "18:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐蛋白"}
+
+    - id: "balanced"
+      label: "临床平衡方案（K=2 分段，前26周限制后26周标准）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-06-30", label: "限制期早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.21,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-06-30", label: "限制期午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-06-30", label: "限制期晚餐（睡前）"}
+        - {variable: dietary_protein, time: "08:00", value: 0.29,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-07-01 ~ 2026-12-31", label: "标准期早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.27,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-07-01 ~ 2026-12-31", label: "标准期午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.28,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-07-01 ~ 2026-12-31", label: "标准期晚餐（睡前）"}
+
+    - id: "muscle_preserve"
+      label: "肌肉保留优先（肌肉端点，全程标准蛋白）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.38,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "早餐蛋白"}
+        - {variable: dietary_protein, time: "12:00", value: 0.36,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "午餐蛋白"}
+        - {variable: dietary_protein, time: "21:00", value: 0.37,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐蛋白（睡前）"}
+
+# ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:
-  enabled: true
-  method: "nsga2"
+  method: nsga2
 
   objectives:
     - variable: muscle_mass
@@ -174,19 +301,45 @@ optimizer:
       type: hard
       description: "KDIGO 建议最低蛋白摄入量 0.6 g/kg/day"
 
-  regimen:
-    variable: dietary_protein
-    description: "优化每日三餐蛋白质分配（g/kg/day）"
-    events:
-      - time: "08:00"
-        dose_bounds: [0.2, 0.4]
-        label: "早餐蛋白质"
-      - time: "12:00"
-        dose_bounds: [0.2, 0.4]
-        label: "午餐蛋白质"
-      - time: "18:00"
-        dose_bounds: [0.2, 0.4]
-        label: "晚餐蛋白质"
+  inputs:
+    # T1: 早餐蛋白量（固定08:00，优化量）
+    - variable: dietary_protein
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "早餐蛋白量"
+      optimize:
+        value: [0.15, 0.45]
+
+    # T1: 午餐蛋白量（固定12:00）
+    - variable: dietary_protein
+      time: "12:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "午餐蛋白量"
+      optimize:
+        value: [0.15, 0.40]
+
+    # T1+T2: 晚餐蛋白量 + 用餐时间窗优化（时间营养学）
+    # 科学意义：睡前蛋白（~21:00）激活夜间mTOR，改善肌肉蛋白合成
+    # Snijders 2015, Res 2012：睡前蛋白摄入显著提升夜间蛋白合成速率
+    - variable: dietary_protein
+      time_window: "17:00~22:00"
+      opt_step: 1h
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "晚餐蛋白量与用餐时机（时间营养学优化）"
+      optimize:
+        value: [0.15, 0.45]
+        time: true
+
+    # T4: 限制期→标准期切换时机（在第13-39周窗口内搜索最优切换点）
+    # 科学意义：GFR 稳定后才能安全提升蛋白；过早提升加速 GFR 损伤
+    - variable: dietary_protein
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-04-01~2026-10-01"
+      label: "标准期启动时机（限制→标准切换日）"
+      optimize:
+        value: [0.27, 0.42]
+        date_start: true
 
   mc:
     enabled: true
@@ -197,73 +350,3 @@ optimizer:
     population_size: 100
     n_generations: 200
     seed: 42
-  results:
-    generated_at: "2026-05-16"
-    method: nsga2
-    n_solutions: 6
-    elapsed_seconds: 241.8
-    pareto_front:
-      - {x: [0.22, 0.21, 0.22], f: [63.6, 51.3]}
-      - {x: [0.26, 0.24, 0.25], f: [64.5, 49.4]}
-      - {x: [0.29, 0.27, 0.28], f: [65.4, 47.8]}
-      - {x: [0.32, 0.30, 0.31], f: [66.2, 46.3]}
-      - {x: [0.35, 0.33, 0.34], f: [66.8, 45.1]}
-      - {x: [0.38, 0.36, 0.37], f: [67.4, 43.8]}
-    reference:
-      x: [0.29, 0.27, 0.28]
-      f: [65.4, 47.8]
-      regimen:
-        dietary_protein: {"08:00": 0.29, "12:00": 0.27, "18:00": 0.28}
-      objectives:
-        muscle_mass: 65.4
-        GFR: 47.8
-
-# ── 仿真设置 ──────────────────────────────────────────────────────────────────
-simulation:
-  start_date: "2026-01-01"
-  end_date:   "2026-12-31"        # 52 周 = 364 天
-  output_variables:
-    - GFR
-    - muscle_mass
-    - BUN
-    - dietary_protein
-  schedules:
-    - variable: dietary_protein
-      time: "08:00"
-      value: 0.27
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
-      label: "早餐蛋白质"
-    - variable: dietary_protein
-      time: "12:00"
-      value: 0.27
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
-      label: "午餐蛋白质"
-    - variable: dietary_protein
-      time: "18:00"
-      value: 0.26
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
-      label: "晚餐蛋白质"
-
-  # 预定义多方案：对应 Pareto 前沿端点与平衡点，供论文图表直接复现
-  plans:
-    - id: "kidney_protect"
-      label: "肾保护优先（GFR 端点，0.65 g/kg/day）"
-      schedules:
-        - {variable: dietary_protein, time: "08:00", value: 0.22, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "早餐蛋白质"}
-        - {variable: dietary_protein, time: "12:00", value: 0.21, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "午餐蛋白质"}
-        - {variable: dietary_protein, time: "18:00", value: 0.22, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "晚餐蛋白质"}
-    - id: "balanced"
-      label: "临床平衡方案（0.84 g/kg/day）"
-      schedules:
-        - {variable: dietary_protein, time: "08:00", value: 0.29, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "早餐蛋白质"}
-        - {variable: dietary_protein, time: "12:00", value: 0.27, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "午餐蛋白质"}
-        - {variable: dietary_protein, time: "18:00", value: 0.28, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "晚餐蛋白质"}
-    - id: "muscle_preserve"
-      label: "肌肉保留优先（肌肉端点，1.11 g/kg/day）"
-      schedules:
-        - {variable: dietary_protein, time: "08:00", value: 0.38, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "早餐蛋白质"}
-        - {variable: dietary_protein, time: "12:00", value: 0.36, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "午餐蛋白质"}
-        - {variable: dietary_protein, time: "18:00", value: 0.37, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "晚餐蛋白质"}

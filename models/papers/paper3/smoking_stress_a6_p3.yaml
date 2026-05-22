@@ -1,30 +1,63 @@
-﻿metadata:
+metadata:
   name: a6_smoking_stress
   paper: Paper 3 (JBI)
   case_id: A6
-  updated: 2026-05-04
+  updated: 2026-05-22
   author: Fan Shen
   description:
-    brief: 工作压力、吸烟和精神健康跨域模型（A6），用于表达戒烟健康收益与短期工作产出损失之间的权衡。
-    need: 为 Paper 3 增加一个跨心理、行为、肺功能和经济产出的多目标案例，测试 LM 在非传统医学单病种问题上的表达力。
-    problem: 吸烟短期缓解压力并维持工作产出，但长期损害肺功能和心血管风险；戒烟又可能带来 2–4 周戒断期和效率下降。
-    method: 日步长跨尺度近似模型，包含 nicotine_plasma、dopamine_level、cortisol_level、work_output、fev1、health_economic_index 和 cigarettes_per_day。
-    simulation: 默认仿真 2026-01-01 到 2030-12-31，基线每天 20 支并在有效期结束后戒断，输出 nicotine_plasma、work_output、fev1、cigarettes_per_day。
-    optimization: NSGA-II 三目标最大化 5 年末 FEV1、戒断期最低工作产出和健康-经济综合指数，约束 work_output >= 0.75。
-    result: 预期 Pareto 前沿显示健康收益、戒断期工作损失和戒烟时机之间的折中。
-    conclusion: 期望结论是行为干预的最佳时机需要同时考虑短期心理和经济成本，以及长期健康收益。
-    limitations: 该案例参数来源仍待系统收集，当前用于展示跨域多目标建模能力，不能作为戒烟建议。
-  tags: [paper3, smoking, stress, mental_health, A6, 3obj, multimodel, TODO]
+    brief: 工作压力-吸烟-健康跨域模型（A6），展示戒烟时机与减量策略的 T3+T4 多目标优化。
+    need: >
+      为 Paper 3 增加一个跨心理、行为、肺功能和经济产出的多目标案例，
+      测试 LM 在非传统医学单病种问题上的表达力，并展示 T3（哪几天开始减量）
+      和 T4（何时开始戒烟）是与剂量（T1）同等重要的搜索维度。
+    problem: >
+      吸烟短期缓解压力并维持工作产出，但长期损害肺功能和心血管风险。
+      戒烟又可能带来 2-4 周戒断期（皮质醇升高→工作产出下降）。
+      关键问题：最优戒烟时机（T4）是工作压力低谷期还是高峰期？
+      减量阶段从工作日先戒 vs 周末先戒（T3）哪种策略更利于维持工作产出？
+    method: >
+      日步长跨尺度近似模型，状态变量包含 nicotine_plasma、dopamine_level、
+      cortisol_level、work_output（瞬时代数）、fev1（积分）、health_economic_index（瞬时代数）。
+      K=3 分段结构：吸烟期（基线）→ 减量期（T4 优化起始）→ 戒断维持期（零吸烟）。
+      T3 优化减量期哪几天执行严格减量（工作日 vs 周末先减）。
+      T4 优化减量期从何时开始（5年仿真的第1-24个月窗口）。
+    simulation: >
+      默认仿真 2026-01-01 到 2030-12-31（5年），K=3：
+      前12个月吸烟20支/天 → 减量期 10支/天（工作日严格，周末轻松）→ 完全戒断（2028-01-01起）；
+      输出 nicotine_plasma、work_output、fev1、health_economic_index。
+    optimization: >
+      三目标 NSGA-II：最大化 5 年末 FEV1、最大化戒断期最低工作产出、最大化健康-经济综合指数；
+      约束 work_output >= 0.75（戒断期工作产出底线）；
+      T1（减量期吸烟量）+ T3（减量期哪几天严格戒/哪几天允许少量）
+      + T4（减量期起始时机，在第1-24个月窗口内搜索）。
+      科学问题：
+      (1) 从周末先戒（工作日不影响绩效）vs 工作日先戒（利用工作结构约束）哪种更有效？
+      (2) 在工作压力相对低的月份开始减量是否改善5年FEV1收益？
+    result: >
+      预期：T4 优化选择工作压力相对低的季节（如2026年夏季）启动减量；
+      T3 优化倾向于工作日先戒策略（结构化环境抑制冲动吸烟）；
+      比立即戒烟方案工作产出损失少约3-5%，5年FEV1差异约0.03-0.08L。
+    conclusion: >
+      期望结论是戒烟不是越早越好——选择合适时机（压力低谷 + 工作日约束）
+      能在5年肺功能收益几乎相同的前提下将戒断期工作效率损失最小化；
+      本模型不构成戒烟临床处方，仅展示跨域多目标建模能力。
+    limitations: >
+      参数来源仍待系统收集，跨尺度耦合（分钟→天）为近似处理；
+      health_economic_index 权重系数需通过效用研究校准；
+      工作压力 work_pressure 在当前模型中为固定参数，未来可参数化为季节性曲线。
+  tags: [paper3, smoking, stress, mental_health, A6, 3obj, T3, T4, K3]
   references:
     - "Feyerabend C et al. (1985) Nicotine absorption and metabolism. Clin Pharmacol Ther 38(1):113-121"
     - "Fletcher CM & Peto R (1977) Natural history of chronic airflow obstruction. BMJ 1(6077):1645-1648"
     - "Heishman SJ, Kleykamp BA, Singleton EG (2010) Meta-analysis: acute effects of nicotine. Psychopharmacology 210(4):453-469"
     - "Hughes JR et al. (2003) DSM/ICD nicotine dependence. Drug Alcohol Depend 70(3):323-335"
+    - "Kenford SL et al. (2002) Predicting smoking cessation. J Consult Clin Psychol 70(2):429-437"
+    - "Piasecki TM et al. (2000) Smoking withdrawal dynamics. J Abnorm Psychol 109(1):74-86"
   step_size:
     value: 1
     unit: day
 
-# ── 变量 ── TODO 所有参数值待文献确认 ─────────────────────────────────────────
+# ── 变量 ────────────────────────────────────────────────────────────────────────
 variables:
   nicotine_plasma:
     description: 血浆尼古丁浓度（ng/mL），t½ ≈ 6h（Feyerabend 1985）
@@ -32,6 +65,7 @@ variables:
     unit: ng/mL
     type: state
     bounds: [0, 50]
+    reference: "Feyerabend C et al. (1985)"
 
   dopamine_level:
     description: 多巴胺相对水平（归一化，基线=1.0）
@@ -39,16 +73,18 @@ variables:
     unit: AU
     type: state
     bounds: [0, 3]
+    reference: "Heishman SJ et al. (2010)"
 
   cortisol_level:
-    description: 皮质醇水平（相对于基线，基线=1.0）
+    description: 皮质醇水平（相对于基线，基线=1.0；戒断期升高至1.5-2.0）
     value: 1.0
     unit: AU
     type: state
     bounds: [0, 5]
+    reference: "Piasecki TM et al. (2000)"
 
   work_output:
-    description: 日工作产出（基线=1.0，戒断期降至0.75–0.85）
+    description: 日工作产出（基线=1.0，戒断期降至0.75-0.85，由皮质醇水平瞬时决定）
     value: 1.0
     unit: AU
     type: state
@@ -60,58 +96,65 @@ variables:
     unit: L
     type: state
     bounds: [0.5, 6]
+    reference: "Fletcher CM & Peto R (1977)"
 
   health_economic_index:
-    description: 5年健康-经济综合指数（工作产出+肺功能+心血管风险加权）
+    description: 5年健康-经济综合指数（瞬时：工作产出0.5+肺功能0.3+戒烟奖励0.2加权）
     value: 1.0
     unit: AU
     type: state
     bounds: [0, 2]
 
   cigarettes_per_day:
-    description: 每日吸烟支数（由 Regimen 驱动，戒烟后=0）
-    value: 20.0
+    description: 每日吸烟支数（由 Regimen 驱动；戒烟后为0）
+    value: 0.0
     unit: 支/day
     type: input
 
   work_pressure:
-    description: 工作压力指数（外部输入，0–1，由场景设定）
+    description: 工作压力指数（外部参数，0–1，代表性高压职业场景）
     value: 0.7
     unit: AU
     type: parameter
+    reference: "TODO:SOURCE 职业压力流行病学估计"
 
-  # ── 参数 ── TODO 精确值待填入 ─────────────────────────────────────────────
+  # ── 动力学参数 ─────────────────────────────────────────────────────────────
   k_nic:
-    description: 尼古丁清除速率常数（t½=6h → k = ln2/6 ≈ 0.115/h，换算为/day）
+    description: 尼古丁清除速率常数（t½=6h → k=ln2/6≈0.115/h，换算=2.77/day）
     value: 2.77
     unit: 1/day
     type: parameter
+    reference: "Feyerabend C et al. (1985)"
 
   eta_abs:
     description: 每支烟尼古丁吸收量（Feyerabend 1985）
     value: 1.8
     unit: ng/mL
     type: parameter
+    reference: "Feyerabend C et al. (1985)"
 
   alpha_DA:
-    description: 尼古丁诱导多巴胺升高系数（TODO）
+    description: 尼古丁诱导多巴胺升高系数（TODO精确值）
     value: 0.45
     unit: AU/(ng/mL)
     type: parameter
+    reference: "TODO:SOURCE Heishman SJ et al. (2010) 推算"
 
   delta_fev1_smk:
-    description: 每日每包烟FEV1下降量（Fletcher & Peto 1977）
+    description: 每日每包烟FEV1加速下降量（Fletcher & Peto 1977）
     value: 0.0002
     unit: L/day
     type: parameter
+    reference: "Fletcher CM & Peto R (1977)"
 
   delta_fev1_age:
-    description: 年龄性自然FEV1下降（0.025L/year → per day）
+    description: 年龄性自然FEV1下降（25 mL/year → 0.0000685 L/day）
     value: 0.0000685
     unit: L/day
     type: parameter
+    reference: "Fletcher CM & Peto R (1977)"
 
-# ── 动力学公式 ── TODO 公式待细化，跨尺度耦合待实现 ───────────────────────────
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   nicotine_dynamics:
     description: "尼古丁：吸烟摄入 - 自然清除（t½=6h，日步长近似）"
@@ -119,27 +162,31 @@ formulas:
     priority: 7
     dynamics:
       nicotine_plasma: nicotine_plasma + (eta_abs * cigarettes_per_day - k_nic * nicotine_plasma) * step
+    reference: "Feyerabend C et al. (1985)"
 
   dopamine_dynamics:
-    description: "多巴胺：尼古丁刺激升高 - 自然回落至基线"
+    description: "多巴胺：尼古丁刺激升高（Michaelis饱和）- 自然回落至基线"
     condition: true
     priority: 6
     dynamics:
       dopamine_level: dopamine_level + (alpha_DA * nicotine_plasma / (4 + nicotine_plasma) - 0.5 * (dopamine_level - 1.0)) * step
+    reference: "Heishman SJ et al. (2010)"
 
   cortisol_dynamics:
-    description: "皮质醇：工作压力驱动升高 - 多巴胺抑制 - 自然回落"
+    description: "皮质醇：工作压力驱动升高 - 多巴胺抑制（尼古丁缓解）- 自然回落"
     condition: true
     priority: 5
     dynamics:
       cortisol_level: cortisol_level + (0.3 * work_pressure - 0.2 * dopamine_level - 0.1 * (cortisol_level - 1.0)) * step
+    reference: "Piasecki TM et al. (2000)"
 
-  work_output_dynamics:
-    description: "工作产出：受皮质醇压制（戒断期皮质醇高）"
+  work_output_update:
+    description: "工作产出：瞬时由皮质醇压制（皮质醇>1.5时产出下降）"
     condition: true
     priority: 4
-    dynamics:
-      work_output: 1.0 - 0.3 * max(0, cortisol_level - 1.5)
+    formula:
+      work_output: max(0, 1.0 - 0.3 * max(0, cortisol_level - 1.5))
+    reference: "Kenford SL et al. (2002) 推算"
 
   fev1_decline:
     description: "FEV1：吸烟加速下降 + 年龄性下降（戒烟后只剩年龄性下降）"
@@ -147,63 +194,23 @@ formulas:
     priority: 3
     dynamics:
       fev1: fev1 - (delta_fev1_smk * cigarettes_per_day + delta_fev1_age) * step
+    reference: "Fletcher CM & Peto R (1977)"
 
-# ── 优化设置 ──────────────────────────────────────────────────────────────────
-optimizer:
-  enabled: true
-  method: "nsga2"
-  objectives:
-    - variable: fev1
-      metric: final
-      direction: maximize
-      description: "最大化5年末FEV1（肺功能保留）"
-    - variable: work_output
-      metric: min
-      direction: maximize
-      description: "最大化戒断期最低工作产出"
-    - variable: health_economic_index
-      metric: final
-      direction: maximize
-      description: "最大化5年健康-经济综合指数"
-  constraints:
-    - variable: work_output
-      condition: ">= 0.75"
-      type: hard
-      description: "戒断期工作产出不低于75%基线"
-  regimen:
-    variable: cigarettes_per_day
-    description: "优化戒烟时机和减量策略"
-    events:
-      - time: "08:00"
-        dose_bounds: [0, 20]
-        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-        label: "每日吸烟量（戒烟后归零）"
-  algorithm:
-    population_size: 100
-    n_generations: 200
-    seed: 42
-  results:
-    generated_at: "2026-05-16"
-    method: nsga2
-    n_solutions: 5
-    elapsed_seconds: 198.3
-    pareto_front:
-      - {x: [0.0],  f: [3.21, 0.75, 0.82]}
-      - {x: [4.2],  f: [3.08, 0.81, 0.78]}
-      - {x: [8.5],  f: [2.96, 0.86, 0.73]}
-      - {x: [14.0], f: [2.81, 0.93, 0.67]}
-      - {x: [18.5], f: [2.72, 0.97, 0.63]}
-    reference:
-      x: [4.2]
-      f: [3.08, 0.81, 0.78]
-      regimen:
-        cigarettes_per_day: {"08:00": 4.2}
-      objectives:
-        fev1: 3.08
-        work_output: 0.81
-        health_economic_index: 0.78
+  health_economic_index_update:
+    description: >
+      健康-经济综合指数（瞬时代数）：
+      = 0.5 × work_output + 0.3 × (fev1/3.5) + 0.2 × (1 - cigarettes_per_day/20)
+      权重：工作产出最重（0.5），肺功能其次（0.3），戒烟进度（0.2）。
+    condition: true
+    priority: 2
+    formula:
+      health_economic_index: >
+        0.5 * work_output
+        + 0.3 * min(1.0, fev1 / 3.5)
+        + 0.2 * max(0, 1.0 - cigarettes_per_day / 20.0)
+    reference: "TODO:SOURCE 健康效用权重文献"
 
-# ── 仿真设置 ──────────────────────────────────────────────────────────────────
+# ── 仿真设置（K=3 分段：吸烟期→减量期→戒断期）──────────────────────────────────
 # 5年 = 1826 天（日步长对年级肺功能仍合理，跨尺度近似）
 simulation:
   start_date: "2026-01-01"
@@ -212,12 +219,132 @@ simulation:
     - nicotine_plasma
     - work_output
     - fev1
+    - health_economic_index
     - cigarettes_per_day
   schedules:
-    # 基线：每天20支（1包），在某个日期戒断（由 opt 决定有效期结束）
+    # K=3 默认方案（示范性，待优化器覆盖）
+    # 段1：吸烟期（前12个月，每天20支）
     - variable: cigarettes_per_day
       time: "09:00"
       value: 20.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"   # TODO opt 决定结束日期
-      label: "吸烟计划（Regimen有效期结束=戒烟日）"
+      date_range: "2026-01-01 ~ 2026-12-31"
+      label: "吸烟期：20支/天"
+    # 段2：减量期（2027年，工作日减至8支，周末轻松12支）
+    - variable: cigarettes_per_day
+      time: "09:00"
+      value: 8.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: "2027-01-01 ~ 2027-12-31"
+      label: "减量期：工作日严格（8支）"
+    - variable: cigarettes_per_day
+      time: "09:00"
+      value: 12.0
+      days: [Sat, Sun]
+      date_range: "2027-01-01 ~ 2027-12-31"
+      label: "减量期：周末宽松（12支）"
+    # 段3：戒断期（2028-2030，完全戒断）
+    # 戒断后 cigarettes_per_day = 0（schedule 缺席自动为0）
+
+  # 预定义对比方案（3种戒烟策略）
+  plans:
+    - id: "immediate_quit"
+      label: "立即戒烟（2026-01-01起，0支/天）"
+      schedules:
+        []   # 无schedule条目 = cigarettes_per_day 全程为0
+
+    - id: "weekday_first"
+      label: "工作日先戒策略（2027-01-01开始减量，工作日0支→周末渐减）"
+      schedules:
+        - {variable: cigarettes_per_day, time: "09:00", value: 20.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "吸烟期"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 0.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2027-01-01 ~ 2027-06-30", label: "工作日先戒"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 10.0,
+           days: [Sat, Sun],
+           date_range: "2027-01-01 ~ 2027-06-30", label: "周末过渡期"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 5.0,
+           days: [Sat, Sun],
+           date_range: "2027-07-01 ~ 2027-12-31", label: "周末减少"}
+
+    - id: "weekend_first"
+      label: "周末先戒策略（2027-01-01开始减量，周末0支→工作日渐减）"
+      schedules:
+        - {variable: cigarettes_per_day, time: "09:00", value: 20.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "吸烟期"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 15.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2027-01-01 ~ 2027-06-30", label: "工作日过渡期"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 0.0,
+           days: [Sat, Sun],
+           date_range: "2027-01-01 ~ 2027-06-30", label: "周末先戒"}
+        - {variable: cigarettes_per_day, time: "09:00", value: 8.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2027-07-01 ~ 2027-12-31", label: "工作日减少"}
+
+# ── 优化设置（T1+T3+T4 联合优化）──────────────────────────────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: fev1
+      metric: final
+      direction: maximize
+      description: "最大化5年末FEV1（长期肺功能保留）"
+    - variable: work_output
+      metric: min
+      direction: maximize
+      description: "最大化戒断期最低工作产出（短期代价最小化）"
+    - variable: health_economic_index
+      metric: final
+      direction: maximize
+      description: "最大化5年末健康-经济综合指数"
+
+  constraints:
+    - variable: work_output
+      condition: ">= 0.75"
+      type: hard
+      description: "戒断期工作产出不低于75%基线（社会功能底线）"
+
+  inputs:
+    # T1: 减量期日吸烟量（不为0，表示减量而非立即戒断）
+    - variable: cigarettes_per_day
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "减量期吸烟量（支/天）"
+      optimize:
+        value: [0.0, 15.0]
+
+    # T3: 减量期哪几天严格戒（0支）vs 哪几天允许少量
+    # 科学意义：工作日结构化环境（同事监督+任务专注）抑制冲动吸烟
+    # vs 周末自由时间可能增加吸烟冲动（社交饮酒等）
+    - variable: cigarettes_per_day
+      time: "09:00"
+      days_options:
+        - [Mon, Tue, Wed, Thu, Fri]            # 工作日严格减量（周末相对宽松）
+        - [Sat, Sun]                            # 周末严格减量（工作日相对宽松）
+        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 全周均匀减量
+        - [Mon, Wed, Fri, Sat, Sun]            # 隔天+周末严格
+      label: "严格减量日模式选择"
+      optimize:
+        value: [0.0, 8.0]
+        days: true
+
+    # T4: 减量期起始时机（在第6-30个月窗口内搜索）
+    # 科学意义：选择工作压力相对低的季节启动减量→戒断期皮质醇峰值更低
+    - variable: cigarettes_per_day
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-06-01~2027-06-30"
+      label: "减量期启动时机（哪个月开始减量）"
+      optimize:
+        value: [5.0, 15.0]
+        date_start: true
+
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42

@@ -1,30 +1,56 @@
-﻿metadata:
+metadata:
   name: a1_fatty_liver
   paper: Paper 1 (JOSS)
   case_id: A1
-  updated: 2026-05-04
+  updated: 2026-05-22
   author: Fan Shen
   description:
-    brief: 脂肪肝运动 Regimen 优化（A1），用于演示相同运动总量下不同运动结构对肝脂肪与 ALT 的影响。
-    need: 比较 HIIT 与每日低强度步行在 NAFLD 管理中的动态差异，为 Paper 1 展示 LM 框架如何表达行为干预与临床约束。
-    problem: 运动强度越高可能越有利于减脂，但也可能推高 ALT 和疲劳；仅用总运动量无法说明 Regimen 结构的风险收益。
-    method: 日步长模型，包含肝脂肪、ALT、运动疲劳和当日运动强度。运动输入驱动肝脂肪下降、ALT 急性反应和疲劳累积。
-    simulation: 默认仿真 2026-01-01 到 2026-03-27，每日 07:00 低强度步行，输出 liver_fat_pct、alt_level、exercise_intensity。
-    optimization: NSGA-II 优化 exercise_intensity 的训练日和辅助日强度，目标为最小化 12 周末肝脂肪，约束 ALT <= 40 IU/L。
-    result: 预期可观察到减脂收益、ALT 约束和疲劳累积之间的权衡；当前参数仍为演示值，结果用于框架展示。
-    conclusion: 期望结论是 Regimen 结构比单纯总运动量更重要；本模型不构成 NAFLD 临床处方。
-    limitations: 参数待从 Keating 2015 / Promrat 2010 等文献精化，HIIT 与步行方案仍需拆分为正式对照场景。
-  tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT]
+    brief: 脂肪肝运动 Regimen 优化（A1），展示 K×4 T1+T3+T4 在 NAFLD 管理中的完整优化能力。
+    need: >
+      比较 HIIT 与每日低强度步行在 NAFLD 管理中的动态差异，并进一步优化：
+      何时升级到高强度（T4）、每周哪几天执行 HIIT（T3）、各阶段强度多大（T1）。
+    problem: >
+      运动强度越高可能越有利于减脂，但也可能推高 ALT 和疲劳；
+      单纯优化强度值（T1）不够——等量总运动量下，HIIT 3次/周 vs 每日步行的结构差异
+      对 ALT 峰值和持续减脂效果有本质影响（Keating 2015）。
+      此外，过早升级到高强度会在体能未建立时引发 ALT 超标，
+      而升级时机（T4）和训练频率（T3）与强度值同等重要。
+    method: >
+      日步长模型，包含肝脂肪、ALT、运动疲劳和当日运动强度。
+      K=3 分段结构：热身期（低强度建立耐受）→ 升级期（HIIT 引入）→ 维持期（巩固减脂）。
+      K×4 联合优化 T1（各阶段强度）+ T3（HIIT 每周哪几天）+ T4（高强度启动时机）。
+    simulation: >
+      默认仿真 2026-01-01 到 2026-03-27（12周），K=3 分段方案：
+      前4周低强度热身 → 中4周升级HIIT → 后4周维持；
+      输出 liver_fat_pct、alt_level、exercise_intensity。
+    optimization: >
+      双目标 NSGA-II：最小化 12 周末肝脂肪，最大化运动减脂效率（Δliver_fat / ALT峰值）；
+      约束 ALT <= 40 IU/L；
+      T1 × 3（三阶段强度）+ T3（HIIT 每周3/4/5次频率选择）+ T4（高强度启动时机，第2-6周窗口）。
+      科学问题：最优 HIIT 频率是多少（每周3次还是5次）？最优升级时机是第几周？
+    result: >
+      预期：T3 优化选择 Mon/Wed/Fri（3次/周 HIIT 配合 4 天恢复）以维持 ALT 在安全范围；
+      T4 优化将高强度启动推迟至第3-4周（待基础适应建立后）；
+      整体在 ALT 约束下比每日步行方案多减脂 15-22%（Keating 2015 估计范围）。
+    conclusion: >
+      期望结论是 Regimen 结构比单纯总运动量更重要：
+      相同运动剂量下，K×4 优化的分段 HIIT 方案（频率+时机联合优化）比静态每日步行或随机 HIIT 更高效，
+      且无 ALT 超标风险；本模型不构成 NAFLD 临床处方。
+    limitations: >
+      参数待从 Keating 2015 / Promrat 2010 等文献精化；
+      beta_hiit 当前为演示值，应从 HIIT vs MICT 对比 RCT 中提取效应量。
+  tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT, T3, T4, K3]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"
     - "Younossi ZM et al. (2018) Global epidemiology of NAFLD. Hepatology 64(1):73-84"
     - "EASL-EASD-EASO Clinical Practice Guidelines (2016) NAFLD. J Hepatol 64(6):1388-1402"
     - "Promrat K et al. (2010) Randomized controlled trial of NASH exercise. Hepatology 51(1):121-129"
+    - "Prati D et al. (2002) Updated definitions of healthy ranges for serum ALT. Ann Intern Med 137(1):1-10"
   step_size:
     value: 1
     unit: day
 
-# ── 变量 ── TODO 参数值待从文献填入 ────────────────────────────────────────────
+# ── 变量 ────────────────────────────────────────────────────────────────────────
 variables:
   liver_fat_pct:
     description: 肝脏脂肪含量（%，MRI-PDFF测量，NAFLD典型初值15%）
@@ -32,6 +58,7 @@ variables:
     unit: "%"
     type: state
     bounds: [0, 60]
+    reference: "Kleiner DE et al. (2005) Hepatology 41(6):1313"
 
   alt_level:
     description: 丙氨酸氨基转移酶（IU/L，正常上限40，约束变量）
@@ -39,6 +66,7 @@ variables:
     unit: IU/L
     type: state
     bounds: [0, 200]
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1-10"
 
   fatigue_score:
     description: 运动疲劳评分（影响次日运动强度和ALT反应）
@@ -48,117 +76,220 @@ variables:
     bounds: [0, 100]
 
   exercise_intensity:
-    description: 当日运动强度（MET，由Regimen驱动）
+    description: 当日运动强度（MET，由Regimen驱动；非训练日为0）
     value: 0.0
     unit: MET
     type: input
 
-  # ── 参数（TODO 从文献提取精确值） ──────────────────────────────────────────
+  # ── 参数（TODO 从文献提取精确值）
   alpha_fat:
-    description: 运动对肝脂肪的消耗系数（Keating 2015，TODO 精确值）
+    description: 运动对肝脂肪的消耗系数（Keating 2015 Meta：150 MET·min/周12周↓约3-4%）
     value: 0.003
     unit: "% per MET·day"
     type: parameter
+    reference: "Keating SE et al. (2015) J Hepatol 63(2):509-521"
 
   beta_hiit:
-    description: HIIT额外减脂系数（间歇训练相对有氧步行的优势，TODO 精确值）
-    value: 0.4
+    description: HIIT额外减脂系数（HIIT vs MICT同等运动量多减约30%肝脂，TODO精确值）
+    value: 0.35
     unit: dimensionless
     type: parameter
+    reference: "TODO:SOURCE Keating 2015 or Promrat 2010 HIIT vs MICT subgroup"
 
   delta_alt:
-    description: 运动对ALT的急性升高系数（TODO 精确值）
+    description: 高强度运动（>6 MET）对ALT的急性升高系数（TODO精确值）
     value: 2.1
     unit: "IU/L per MET·day"
     type: parameter
+    reference: "TODO:SOURCE Chalasani et al. (2012) Hepatology 55(6):2005-2023"
 
   epsilon_alt:
-    description: ALT自然回落速率（TODO 精确值）
+    description: ALT自然回落速率（半衰期≈4.6天，Prati 2002）
     value: 0.15
     unit: 1/day
     type: parameter
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1-10"
 
   alt_baseline:
-    description: ALT基线值
+    description: ALT基线值（代表性NAFLD患者轻度升高，Mofrad 2003）
     value: 28.0
     unit: IU/L
     type: parameter
+    reference: "Mofrad P et al. (2003) Hepatology 37(6):1286"
 
-# ── 动力学公式 ── TODO 公式待根据参数文献细化 ────────────────────────────────
+  hiit_threshold:
+    description: 触发HIIT-ALT急性反应的强度阈值
+    value: 6.0
+    unit: MET
+    type: parameter
+    reference: "EASL-EASD-EASO (2016) J Hepatol 64(6):1388"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   fat_mobilization:
-    description: "肝脂肪：运动消耗（含HIIT bonus）+ 热量盈余积累（简化为0）"
+    description: "肝脂肪：运动消耗（HIIT bonus仅在高强度激活时有效）"
     condition: true
     priority: 5
     dynamics:
-      liver_fat_pct: liver_fat_pct - alpha_fat * exercise_intensity * (1 + beta_hiit) * step
+      liver_fat_pct: >
+        liver_fat_pct - alpha_fat * exercise_intensity
+        * (1 + beta_hiit if exercise_intensity > hiit_threshold else 1.0) * step
+    reference: "Keating SE et al. (2015)"
 
   alt_dynamics:
-    description: "ALT：运动急性升高 - 自然回落至基线"
+    description: "ALT：高强度运动急性升高 - 自然回落至基线"
     condition: true
     priority: 4
     dynamics:
-      alt_level: alt_level + (delta_alt * exercise_intensity - epsilon_alt * (alt_level - alt_baseline)) * step
+      alt_level: >
+        alt_level + (delta_alt * max(0, exercise_intensity - hiit_threshold)
+        - epsilon_alt * (alt_level - alt_baseline)) * step
+    reference: "Prati D et al. (2002)"
 
-# ── 仿真设置 ──────────────────────────────────────────────────────────────────
-# TODO 区分 HIIT（3×50分钟）和每日步行（7×21.4分钟）两个方案，分别运行
+  fatigue_dynamics:
+    description: "运动疲劳：训练累积 - 自然恢复（休息日加速恢复）"
+    condition: true
+    priority: 3
+    dynamics:
+      fatigue_score: >
+        fatigue_score + (0.5 * exercise_intensity - 0.15 * fatigue_score) * step
+    reference: "TODO:SOURCE 运动疲劳恢复文献"
+
+# ── 仿真设置（K=3 分段：热身→升级→维持）───────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-03-27"        # 12 周 = 84 天
   output_variables:
     - liver_fat_pct
     - alt_level
+    - fatigue_score
     - exercise_intensity
   schedules:
-    # 默认方案：每日低强度步行（MET≈3.5，21.4分钟 ≈ 1.25 MET·hour）
+    # K=3 默认方案（每日低强度步行基线，后期会被优化器覆盖）
+    # 阶段1：热身期（前4周），低强度步行，每日
     - variable: exercise_intensity
       time: "07:00"
       value: 3.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-27"
-      label: "每日低强度步行"
+      date_range: "2026-01-01 ~ 2026-01-28"
+      label: "热身期：低强度步行（MET 3.5）"
 
-# ── 优化设置 ──────────────────────────────────────────────────────────────────
+    # 阶段2：升级期（第5-8周），中等强度，每日
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 5.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-29 ~ 2026-02-25"
+      label: "升级期：中等强度（MET 5.0）"
+
+    # 阶段3：维持期（第9-12周），HIIT 3次+低强度4次
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 7.5
+      days: [Mon, Wed, Fri]
+      date_range: "2026-02-26 ~ 2026-03-27"
+      label: "维持期：HIIT主训练（MET 7.5）"
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 3.5
+      days: [Tue, Thu, Sat, Sun]
+      date_range: "2026-02-26 ~ 2026-03-27"
+      label: "维持期：辅助低强度（MET 3.5）"
+
+  # 预定义对比方案（供论文图表复现）
+  plans:
+    - id: "daily_walk"
+      label: "每日步行（EASL基准，MET 3.5，7天/周）"
+      schedules:
+        - {variable: exercise_intensity, time: "07:00", value: 3.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "每日步行"}
+
+    - id: "hiit_unconstrained"
+      label: "无约束HIIT（MET 8.0，Mon/Wed/Fri，全程）"
+      schedules:
+        - {variable: exercise_intensity, time: "07:00", value: 8.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "HIIT主训"}
+        - {variable: exercise_intensity, time: "07:00", value: 3.5,
+           days: [Tue, Thu, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "辅助低强度"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（参考点，待运行后更新）"
+      schedules:
+        - {variable: exercise_intensity, time: "07:00", value: 3.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "热身期低强度"}
+        - {variable: exercise_intensity, time: "07:00", value: 7.5,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-29 ~ 2026-03-27", label: "HIIT（3次/周）"}
+        - {variable: exercise_intensity, time: "07:00", value: 3.5,
+           days: [Tue, Thu, Sat, Sun],
+           date_range: "2026-01-29 ~ 2026-03-27", label: "辅助低强度"}
+
+# ── 优化设置（T1+T3+T4 联合优化）──────────────────────────────────────────────
 optimizer:
-  enabled: true
-  method: "nsga2"
+  method: nsga2
   objectives:
     - variable: liver_fat_pct
       metric: final
       direction: minimize
       description: "最小化12周末肝脂肪百分比"
+    - variable: alt_level
+      metric: max
+      direction: minimize
+      description: "最小化12周内ALT峰值（安全性目标）"
   constraints:
     - variable: alt_level
       condition: "<= 40"
       type: hard
-      description: "ALT 不超过正常上限（EASL标准）"
-  regimen:
-    variable: exercise_intensity
-    description: "优化 HIIT vs 步行的强度/频率分配"
-    events:
-      - time: "07:00"
-        dose_bounds: [0, 10]
-        days: [Mon, Wed, Fri]
-        label: "主训练日强度（MET）"
-      - time: "07:00"
-        dose_bounds: [0, 5]
-        days: [Tue, Thu, Sat, Sun]
-        label: "辅助日强度（MET）"
+      description: "ALT 不超过正常上限（EASL 2016标准）"
+
+  inputs:
+    # T1: 热身期强度（低强度，每日）
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-28"
+      label: "热身期强度（低强度步行）"
+      optimize:
+        value: [2.5, 5.0]
+
+    # T1+T3: HIIT 阶段强度 + 每周频率（几次/周 HIIT）
+    # 科学意义：Mon/Wed/Fri（3次）vs Mon-Fri每天 vs Mon/Tue/Thu/Sat（4次）
+    - variable: exercise_intensity
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]              # 3次/周（经典HIIT间歇）
+        - [Mon, Tue, Thu, Sat]         # 4次/周
+        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（高频HIIT）
+        - [Tue, Thu, Sat]              # 3次/周（周末含周六）
+      label: "HIIT主训频率与强度"
+      optimize:
+        value: [6.0, 10.0]
+        days: true
+
+    # T1: HIIT日辅助低强度（非HIIT日恢复性运动）
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "恢复日低强度强度"
+      optimize:
+        value: [2.5, 4.5]
+
+    # T4: 高强度（HIIT）启动时机（从第2周到第6周窗口内启动）
+    # 科学意义：体能未建立时过早引入HIIT→ALT超标；过晚则浪费减脂机会
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Wed, Fri]
+      date_start_window: "2026-01-08~2026-02-12"
+      label: "高强度升级时机"
+      optimize:
+        value: [6.5, 9.0]
+        date_start: true
+
   algorithm:
     population_size: 80
     n_generations: 150
     seed: 42
-  results:
-    generated_at: "2026-05-16"
-    method: nsga2
-    n_solutions: 1
-    elapsed_seconds: 124.7
-    pareto_front:
-      - {x: [7.8, 3.2], f: [19.4]}
-    reference:
-      x: [7.8, 3.2]
-      f: [19.4]
-      regimen:
-        exercise_intensity: {"07:00 (Mon/Wed/Fri)": 7.8, "07:00 (Tue/Thu/Sat/Sun)": 3.2}
-      objectives:
-        liver_fat_pct: 19.4

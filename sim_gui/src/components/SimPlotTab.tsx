@@ -27,13 +27,14 @@ interface SimPlotTabProps {
   t: (key: string) => string;
   fontSize: number;
   comparedPlans?: PlanResult[];
+  onExportCSV?: () => void;
 }
 
 const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, isLocked, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
-  isDarkMode, c, t, fontSize, comparedPlans,
+  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV,
 }) => {
   const hasSimData = simulationData.length > 0;
   const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
@@ -100,13 +101,20 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   ) : null;
 
   const summaryBar = (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 8px', marginBottom: 6, borderBottom: `1px solid ${c.border}`, background: c.sectionHd }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 8px', marginBottom: 6, borderBottom: `1px solid ${c.border}`, background: c.sectionHd, alignItems: 'center' }}>
       {summaryItems.map(([label, value]) => (
         <div key={label} style={{ display: 'flex', gap: 5, alignItems: 'baseline', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
           <span style={{ color: c.textMute, fontWeight: 700, textTransform: 'uppercase' }}>{label}</span>
           <span style={{ color: c.text, fontFamily: label === 'Model' ? undefined : 'monospace' }}>{value}</span>
         </div>
       ))}
+      {onExportCSV && (
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={onExportCSV}
+          disabled={!hasSimData}
+          style={{ marginLeft: 'auto', color: c.textSec, flexShrink: 0 }}
+        >{t('sim.plot.export_csv')}</Button>
+      )}
     </div>
   );
 

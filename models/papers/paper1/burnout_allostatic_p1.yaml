@@ -1,0 +1,439 @@
+metadata:
+  name: p1_burnout_allostatic
+  paper: Paper 1 (S1)
+  case_id: C1
+  updated: 2026-05-22
+  author: Fan Shen
+  description:
+    brief: 工作应激-恢复行为-健康结局跨域模型（C1），工作压力为外生参数，优化个体可控的恢复行为组合。
+    need: >
+      为 Paper 1 §6 提供**职业心理学×神经内分泌学×医学**三域交叉案例。
+      工作负荷是外生约束（个体通常无法改变），个体**可控变量**是恢复行为：
+      何时睡、睡多久、何时运动、吃什么、每天休息多少分钟。
+      LMF 将这些可控恢复行为形式化为 K×4 优化变量，在固定工作压力下寻找健康最优解。
+    problem: >
+      高工作压力（外生参数）→ HPA 轴皮质醇慢性激活 → 认知耗竭 + 心血管风险积累。
+      关键问题不是"工作多少"（不可控），而是：
+      在给定工作压力和作息约束下，睡眠时机（T2）、运动频率（T3）、饮食质量（T1）
+      和休息节奏（T4 集中休假）的最优组合是什么？
+      这是一个个体赋权问题，而非劳动权益主张。
+    method: >
+      日步长多层次动力学：
+      工作压力（参数，外生）→ 认知负荷积累（state）→ HPA 皮质醇（state）→ CVD 风险（state）；
+      恢复行为（input，可控）：sleep_hours、exercise_min、nutrition_score、break_min
+      共同抑制认知负荷和皮质醇上升；work_output 由认知负荷和恢复状态瞬时决定。
+      K×4 优化 T1（恢复行为剂量）+ T2（就寝时机）+ T3（运动频率模式）+ T4（集中休假时机）。
+    simulation: >
+      默认仿真 12 周（84天），基线代表性患者：高压知识工作者，work_pressure=0.8，
+      当前恢复行为均为最低水平（睡6h，不运动，快餐，无休息）；
+      输出 cognitive_load、emotional_exhaustion、cortisol_chronic、cvd_risk、work_output。
+    optimization: >
+      双目标 NSGA-II：最大化12周平均工作产出（认知高效），最小化12周末CVD风险；
+      约束 work_output >= 0.70（最低可接受绩效水平），cortisol_chronic <= 1.8；
+      T1（睡眠时长、运动量、饮食质量、休息时长）+ T2（就寝时机，与M09睡眠模型一致）
+      + T3（运动每周几次）+ T4（集中休假起始时机，第4-8周窗口）。
+      科学问题：在无法改变工作压力的前提下，睡眠质量（T2时机）vs 运动频率（T3）vs 集中休假（T4）
+      哪个恢复维度对CVD风险降低贡献最大？Pareto 前沿揭示恢复行为的最优组合。
+    result: >
+      预期：T2 优化选择 22:30 就寝（与昼夜节律对齐）；
+      T3 优化选择 Mon/Wed/Fri 中等强度有氧（30min/次）；
+      T4 优化将集中休假放在第6-7周（皮质醇积累高峰前）；
+      CVD 风险相对"最低恢复基线"降低约 35-45%，同时工作产出维持在 0.92+ 水平。
+    conclusion: >
+      期望结论是恢复行为的结构（T2睡眠时机 + T3运动节奏 + T4休假时机）对健康保护的贡献
+      远超恢复"量"的简单增加；工作压力是客观约束，但恢复行为是个体可自主优化的决策层。
+      K×4 输出可直接导入手机日历的"就寝提醒+运动计划+休假安排"，是个人健康自管理工具，
+      不涉及劳动关系或组织政策。
+    limitations: >
+      work_pressure 在当前模型为固定参数；未来可扩展为随工作项目周期波动的时序变量。
+      皮质醇动力学为一室简化模型，未建模 HPA 负反馈完整非线性。
+      营养得分为聚合性标量，未区分宏量营养素组成。
+  tags: [paper1, burnout, allostatic_load, cortisol, recovery_behaviors, cross-domain, psychology, endocrine, C1]
+  references:
+    - "McEwen BS (1998) Stress, adaptation, and disease - allostasis and allostatic load. Ann NY Acad Sci 840:33-44"
+    - "Maslach C, Schaufeli WB, Leiter MP (2001) Job burnout. Annu Rev Psychol 52:397-422"
+    - "Juster RP, McEwen BS, Lupien SJ (2010) Allostatic load biomarkers. Neurosci Biobehav Rev 35(1):2-16"
+    - "Kivimäki M et al. (2012) Job strain as a risk factor for coronary heart disease. Lancet 380(9852):1491-1497"
+    - "Perski A et al. (1998) Cortisol and vital exhaustion. Stress Med 14(3):179-185"
+    - "Sapolsky RM (2004) Why Zebras Don't Get Ulcers. 3rd ed. Holt Paperbacks"
+    - "Sonnentag S & Fritz C (2007) Recovery experience questionnaire. J Occup Health Psychol 12(3):204-221"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ────────────────────────────────────────────────────────────────────────
+variables:
+  cognitive_load:
+    description: 认知负荷累积（工作任务压力 + 决策疲劳，基线恢复=0.0；高工作压力时积累）
+    value: 0.3
+    unit: AU
+    type: state
+    bounds: [0, 2]
+    reference: "Maslach C et al. (2001)"
+
+  emotional_exhaustion:
+    description: 情绪耗竭（职业倦怠核心维度，随认知负荷慢性积累）
+    value: 0.2
+    unit: AU
+    type: state
+    bounds: [0, 1]
+    reference: "Maslach C & Jackson SE (1981) J Occup Behav 2:99-113"
+
+  cortisol_chronic:
+    description: >
+      慢性皮质醇活化水平（相对基线：1.0=正常，>1.5=需关注，>1.8=临床干预阈值）；
+      工作压力升高、恢复行为不足时积累；良好恢复行为时消退。
+    value: 1.1
+    unit: AU
+    type: state
+    bounds: [0.5, 3]
+    reference: "McEwen BS (1998); Juster RP et al. (2010)"
+
+  cvd_risk:
+    description: 心血管风险累积指数（慢性皮质醇>1.2 时每天积累，Kivimäki 2012）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 2]
+    reference: "Kivimäki M et al. (2012)"
+
+  work_output:
+    description: 日工作产出（基线=1.0；由认知状态和恢复质量瞬时决定，不直接由工作强度驱动）
+    value: 0.85
+    unit: AU
+    type: state
+    bounds: [0, 1.3]
+
+  # ── 恢复行为（可控 inputs，优化器搜索目标）──────────────────────────────────────
+  sleep_hours:
+    description: 当晚睡眠时长（小时，个体可自主安排；就寝时机由 T2 优化）
+    value: 6.5
+    unit: hours
+    type: input
+
+  exercise_min:
+    description: 当日运动时长（分钟，个体可自主安排；频率由 T3 优化）
+    value: 0.0
+    unit: minutes
+    type: input
+
+  nutrition_score:
+    description: 当日饮食质量得分（0–10；0=快餐/外卖/高GI，10=全谷物/蔬菜/优质蛋白）
+    value: 4.0
+    unit: AU
+    type: input
+
+  break_min:
+    description: 当日主动休息时长（分钟；含午休、冥想、短暂离开电脑等）
+    value: 20.0
+    unit: minutes
+    type: input
+
+  # ── 外生参数（工作上下文，个体无法控制）──────────────────────────────────────────
+  work_pressure:
+    description: >
+      工作压力指数（0–1；代表职位要求、项目截止压力、组织氛围等外生因素）；
+      由个体当前工作情境决定，不参与优化。
+      典型值：0.3=轻松期，0.5=正常，0.7=高压期，0.9=截止前冲刺。
+    value: 0.75
+    unit: AU
+    type: parameter
+    reference: "Karasek R & Theorell T (1990) Healthy Work. Basic Books"
+
+  stress_sensitivity:
+    description: 个体对工作压力的应激敏感性（A型人格/神经质等个体差异，MC采样）
+    value: "normal(1.0, 0.25)"
+    unit: dimensionless
+    type: parameter
+    reference: "Perski A et al. (1998)"
+
+  # ── 动力学参数 ─────────────────────────────────────────────────────────────────
+  cognitive_recovery_rate:
+    description: 睡眠和休息驱动的认知负荷每日恢复速率
+    value: 0.25
+    unit: 1/day
+    type: parameter
+    reference: "Sonnentag S & Fritz C (2007)"
+
+  cortisol_sensitivity:
+    description: 情绪耗竭对皮质醇的激活系数
+    value: 0.25
+    unit: 1/day
+    type: parameter
+    reference: "Perski A et al. (1998)"
+
+  cortisol_recovery_base:
+    description: 皮质醇自然回落基础速率（充分恢复状态下）
+    value: 0.06
+    unit: 1/day
+    type: parameter
+    reference: "McEwen BS (1998)"
+
+  cvd_accumulation_rate:
+    description: 慢性皮质醇过活化对CVD风险的每日积累系数（Kivimäki 2012）
+    value: 0.007
+    unit: 1/day
+    type: parameter
+    reference: "Kivimäki M et al. (2012)"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
+formulas:
+  cognitive_load_dynamics:
+    description: >
+      认知负荷：工作压力（参数）每日积累，由睡眠充足度和主动休息共同消退。
+      工作压力为外生：个体无法控制；恢复行为（睡眠、休息）是可控干预维度。
+    condition: true
+    priority: 6
+    dynamics:
+      cognitive_load: >
+        cognitive_load
+        + stress_sensitivity * work_pressure * 0.18 * step
+        - cognitive_recovery_rate * (sleep_hours / 8.0) * cognitive_load * step
+        - 0.05 * (break_min / 60) * cognitive_load * step
+    reference: "Maslach C et al. (2001); Sonnentag & Fritz (2007)"
+
+  emotional_exhaustion_dynamics:
+    description: "情绪耗竭：认知负荷持续积累驱动；良好饮食和睡眠有轻微保护效应"
+    condition: true
+    priority: 5
+    dynamics:
+      emotional_exhaustion: >
+        emotional_exhaustion
+        + 0.04 * cognitive_load * step
+        - 0.015 * (sleep_hours / 8.0) * emotional_exhaustion * step
+        - 0.005 * (nutrition_score / 10.0) * step
+    reference: "Maslach C et al. (2001)"
+
+  cortisol_dynamics:
+    description: >
+      皮质醇：情绪耗竭激活HPA轴上调；睡眠充足+运动+良好营养促进回落。
+      运动有双重效应：急性升高（短期）但长期降低基础皮质醇（Sapolsky 2004）。
+    condition: true
+    priority: 4
+    dynamics:
+      cortisol_chronic: >
+        cortisol_chronic
+        + cortisol_sensitivity * emotional_exhaustion * step
+        - cortisol_recovery_base * (1
+          + 0.5 * (sleep_hours - 6) / 2
+          + 0.3 * (exercise_min / 30)
+          + 0.2 * (nutrition_score / 10)) * max(0, cortisol_chronic - 1.0) * step
+    reference: "McEwen BS (1998); Sapolsky RM (2004)"
+
+  work_output_update:
+    description: >
+      工作产出：认知负荷升高时降低，恢复行为（睡眠、营养）改善时升高；
+      不由工作压力本身决定——高压力但充分恢复可维持较高产出（Sonnentag 2007）。
+    condition: true
+    priority: 3
+    formula:
+      work_output: >
+        max(0.3, 1.0
+          - 0.35 * cognitive_load
+          - 0.25 * emotional_exhaustion
+          + 0.1 * (sleep_hours - 6) / 2
+          + 0.05 * (nutrition_score - 5) / 5)
+    reference: "Sonnentag S & Fritz C (2007)"
+
+  cvd_risk_accumulation:
+    description: "心血管风险：皮质醇超过1.2阈值时每日积累，运动有长期保护效应"
+    condition: true
+    priority: 2
+    dynamics:
+      cvd_risk: >
+        cvd_risk
+        + cvd_accumulation_rate * max(0, cortisol_chronic - 1.2) * step
+        - 0.001 * (exercise_min / 30) * step
+    reference: "Kivimäki M et al. (2012)"
+
+# ── 仿真设置（高压工作情境 × 最低恢复基线）──────────────────────────────────────
+# work_pressure = 0.75（外生参数，固定在 metadata.variables，不在 schedules 中）
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-27"        # 12 周 = 84 天
+  output_variables:
+    - cognitive_load
+    - emotional_exhaustion
+    - cortisol_chronic
+    - cvd_risk
+    - work_output
+    - sleep_hours
+    - exercise_min
+    - nutrition_score
+  schedules:
+    # 基线：最低恢复行为（睡眠不足、不运动、外卖、无休息）
+    - variable: sleep_hours
+      time: "00:30"
+      value: 6.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "基线：睡眠不足（6h @ 00:30）"
+    - variable: exercise_min
+      time: "00:00"
+      value: 0.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "基线：不运动"
+    - variable: nutrition_score
+      time: "00:00"
+      value: 3.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "基线：低质量饮食（外卖/快餐）"
+    - variable: break_min
+      time: "00:00"
+      value: 15.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "基线：几乎不休息（15min/天）"
+
+  plans:
+    - id: "minimal_recovery_baseline"
+      label: "最低恢复基线（work_pressure=0.75，睡少、不运动、外卖）"
+      schedules:
+        - {variable: sleep_hours, time: "00:30", value: 6.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "睡眠基线"}
+        - {variable: exercise_min, time: "00:00", value: 0.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "无运动"}
+        - {variable: nutrition_score, time: "00:00", value: 3.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "低质量饮食"}
+        - {variable: break_min, time: "00:00", value: 15.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "少量休息"}
+
+    - id: "structured_recovery"
+      label: "结构化恢复方案（22:30就寝+运动Mon/Wed/Fri+地中海饮食+午休30min）"
+      schedules:
+        - {variable: sleep_hours, time: "22:30", value: 7.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "早睡7.5h"}
+        - {variable: exercise_min, time: "07:00", value: 30.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "有氧运动（3次/周）"}
+        - {variable: nutrition_score, time: "00:00", value: 7.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "地中海饮食质量"}
+        - {variable: break_min, time: "12:30", value: 30.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "午休30min（工作日）"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（待运行后更新）"
+      schedules:
+        - {variable: sleep_hours, time: "22:30", value: 7.5,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "工作日早睡"}
+        - {variable: sleep_hours, time: "23:00", value: 8.5,
+           days: [Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "周末补觉"}
+        - {variable: exercise_min, time: "07:00", value: 30.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "有氧运动"}
+        - {variable: nutrition_score, time: "00:00", value: 7.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "高质量饮食"}
+        - {variable: break_min, time: "12:30", value: 30.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "工作日午休"}
+        # 集中休假（第6周，待T4优化）
+        - {variable: break_min, time: "00:00", value: 480.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-02-09 ~ 2026-02-15", label: "第6周集中休假"}
+
+# ── 优化设置（T1+T2+T3+T4 恢复行为优化，工作压力固定为参数）────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: work_output
+      metric: mean
+      direction: maximize
+      description: "最大化12周平均工作产出（持续认知高效）"
+    - variable: cvd_risk
+      metric: final
+      direction: minimize
+      description: "最小化12周末心血管风险积累"
+
+  constraints:
+    - variable: work_output
+      condition: ">= 0.70"
+      type: hard
+      description: "工作产出不低于70%基线（可接受绩效底线）"
+    - variable: cortisol_chronic
+      condition: "<= 1.8"
+      type: hard
+      description: "皮质醇不超过临床干预阈值（Juster 2010）"
+
+  inputs:
+    # ── 以下均为恢复行为（个体可控），工作压力 work_pressure 不在此列 ──
+
+    # T1+T2: 睡眠时长 + 就寝时机（与M09睡眠模型共用科学依据）
+    - variable: sleep_hours
+      time_window: "21:00~01:00"
+      opt_step: 1h
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日睡眠时长与就寝时机"
+      optimize:
+        value: [6.0, 9.0]
+        time: true
+
+    - variable: sleep_hours
+      time: "22:30"
+      days: [Sat, Sun]
+      label: "周末睡眠时长（含补觉）"
+      optimize:
+        value: [7.0, 10.0]
+
+    # T1+T3: 运动时长 + 运动频率模式
+    # 科学意义：运动降低基础皮质醇（Sapolsky 2004），但过于频繁可能增加恢复负担
+    - variable: exercise_min
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]              # 3次/周（经典有氧间歇）
+        - [Mon, Tue, Thu, Fri]         # 4次/周
+        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（每日）
+        - [Mon, Wed, Fri, Sat]         # 3次+周六
+      label: "运动时长与频率模式"
+      optimize:
+        value: [20.0, 50.0]
+        days: true
+
+    # T1: 饮食质量得分（0-10，影响皮质醇回落和情绪耗竭保护）
+    - variable: nutrition_score
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "日均饮食质量得分"
+      optimize:
+        value: [4.0, 9.0]
+
+    # T1: 日主动休息时长（午休/冥想/离线时间）
+    - variable: break_min
+      time: "12:30"
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日主动休息时长"
+      optimize:
+        value: [10.0, 60.0]
+
+    # T4: 集中休假起始时机（在第4-8周窗口内优化）
+    # 科学意义：皮质醇积累到拐点前介入集中休假，可有效重置HPA轴（McEwen 1998）
+    - variable: break_min
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-01-26~2026-02-25"
+      label: "集中休假起始时机（连续7天 break_min=480）"
+      optimize:
+        value: [400.0, 480.0]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    description: "MC 采样 stress_sensitivity，表达个体应激敏感性差异（A型人格等）"
+
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42

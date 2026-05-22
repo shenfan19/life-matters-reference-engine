@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Empty, Input, Spin, Tooltip, Tree } from 'antd';
+import { Button, Empty, Input, Modal, Spin, Tooltip, Tree } from 'antd';
 import {
   BookOutlined, ClusterOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, LockOutlined, ReloadOutlined, UnlockOutlined,
@@ -21,6 +21,7 @@ interface SimModelTreeProps {
   setExpandedKeys: React.Dispatch<React.SetStateAction<React.Key[]>>;
   selectedKey: string | null;
   isLocked: boolean;
+  isSimulating: boolean;
   treeLoading: boolean;
   validationResult: { valid: boolean; errors: string[] } | null;
   setValidationResult: (v: { valid: boolean; errors: string[] } | null) => void;
@@ -53,7 +54,7 @@ interface SimModelTreeProps {
 const SimModelTree: React.FC<SimModelTreeProps> = ({
   width, SECTION_H, storyTree, storyFilter, setStoryFilter,
   storyViewMode, setStoryViewMode, expandedKeys, setExpandedKeys,
-  selectedKey, isLocked, treeLoading, validationResult, setValidationResult,
+  selectedKey, isLocked, isSimulating, treeLoading, validationResult, setValidationResult,
   validating, total, isDarkMode, c, t,
   loadFileContent, handleSelect, handleTreeNodeClick, handleValidateAndLock,
   setIsLocked, onUnlock,
@@ -70,6 +71,21 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onClearSessionModel,
   scsMode = false,
 }) => {
+  const handleUnlock = () => {
+    if (isSimulating) {
+      Modal.confirm({
+        title: t('sim.tree.unlock_while_running_title'),
+        content: t('sim.tree.unlock_while_running_content'),
+        okText: t('sim.tree.unlock_confirm'),
+        okButtonProps: { danger: true },
+        cancelText: t('sim.control.cancel') || '取消',
+        onOk: onUnlock,
+      });
+    } else {
+      onUnlock();
+    }
+  };
+
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
     nodes.forEach(n => {
@@ -110,9 +126,16 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   // Normal mode title render — owns all icons so antd showIcon is OFF
   const normalTitleRender = (node: any) => {
     if (!node.isLeaf) {
-      // Folder: bold, muted color, folder icon
+      // Folder: clicking the title row also toggles expand (in addition to the expand icon)
       return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span
+          style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          onClick={() => setExpandedKeys(prev => {
+            const next = new Set(prev);
+            if (next.has(node.key)) next.delete(node.key); else next.add(node.key);
+            return [...next];
+          })}
+        >
           <FolderOutlined style={{ fontSize: 12, color: isDarkMode ? '#6b9e6b' : '#4a7c4a', flexShrink: 0 }} />
           <span style={{ fontWeight: 600, color: c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
             {node.titleStr || node.title}
@@ -127,7 +150,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         {isSelected && (
           <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip')}>
             <span
-              onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+              onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
               style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: isLocked ? '#52c41a' : '#fa8c16' }}
             >
@@ -250,7 +273,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 ) : isSel ? (
                   <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip2')}>
                     <span
-                      onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+                      onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
                       style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
                     >
@@ -299,7 +322,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 expandedKeys={expandedKeys}
                 onExpand={setExpandedKeys}
                 selectedKeys={[]}
-                onClick={handleTreeNodeClick}
                 treeData={storyTree}
                 titleRender={builderTitleRender}
                 indent={12}
@@ -308,7 +330,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
                 selectedKeys={selectedKey ? [selectedKey] : []}
                 onSelect={handleSelectGuarded}
-                onClick={handleTreeNodeClick}
                 treeData={storyTree}
                 titleRender={normalTitleRender}
                 indent={12}
@@ -331,7 +352,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                         {isSelected ? (
                           <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
                             <span
-                              onClick={e => { e.stopPropagation(); if (isLocked) onUnlock(); else handleValidateAndLock(); }}
+                              onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
                               style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
                             >

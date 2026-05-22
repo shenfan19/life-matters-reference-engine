@@ -1,0 +1,476 @@
+metadata:
+  name: a7_masld_insulin_resistance
+  paper: Paper 2 (S2)
+  case_id: A7
+  updated: 2026-05-22
+  author: Fan Shen
+  description:
+    brief: MASLD×胰岛素抵抗联合仿真（A7），Paper 2 主力案例，内分泌科×消化科临床交叉。
+    need: >
+      为 Paper 2 提供**内分泌科+消化科**的核心临床交叉案例：
+      代谢相关脂肪性肝病（MASLD，消化科）与胰岛素抵抗（IR，内分泌科）
+      是最常见的共病组合，双向互为因果——IR 通过促进肝脏从头脂肪合成加重 MASLD，
+      MASLD 的炎症通路反过来加重 IR（Bril & Cusi 2019）。
+      两科指南在饮食结构、运动类型和减重速率上存在内在矛盾，
+      但目前没有工具将两者放入同一可优化框架。
+    problem: >
+      内分泌指南：关注血糖、胰岛素敏感性和 HbA1c → 低 GI 饮食 + 有氧运动为核心。
+      消化科指南（EASL/AASLD）：关注肝脂和 ALT → 体重减少 5-10% + 有氧运动。
+      冲突点：
+      (1) 高蛋白低碳水饮食（内分泌有益 IR）→ 但某些患者可能加重肝细胞氧化应激；
+      (2) 有氧运动（两科均推荐）→ 但高强度可急性升高 ALT（消化科约束）；
+      (3) 快速减重（消化科短期改善肝脂）→ 触发酮体-胰岛素抵抗恶化循环。
+    method: >
+      日步长联合仿真模型，三个主要状态域：
+      消化域：liver_fat（肝脂）、ALT；
+      内分泌域：HOMA_IR（胰岛素抵抗指数）、blood_glucose；
+      体重/代谢域：body_weight、visceral_fat。
+      四个干预变量：caloric_deficit、dietary_glycemic_load（饮食升糖负荷）、
+      exercise_met_min（运动量）、protein_ratio（蛋白比例）。
+      双向耦合：HOMA_IR 加速肝脂积累，liver_fat 升高 IL-6 从而加重 HOMA_IR。
+      K×4 T1+T2+T3+T4 全维度优化。
+    simulation: >
+      默认仿真 26 周，代表性患者：45岁男性，BMI=29，肝脂 20%，HOMA-IR=3.5，
+      ALT=52 IU/L，blood_glucose=6.2 mmol/L；
+      输出 liver_fat、HOMA_IR、ALT、blood_glucose、body_weight。
+    optimization: >
+      三目标 NSGA-II：最小化肝脂（消化科目标）、最小化 HOMA-IR（内分泌科目标）、
+      最大化体重减少；
+      约束 ALT <= 40 IU/L（消化科安全）、blood_glucose <= 7.8 mmol/L（内分泌安全）、
+      减重速率 <= 0.5 kg/周（防酮体-IR 恶化）；
+      T1（剂量值）+ T2（运动时机：空腹晨练 vs 餐后运动，对血糖控制意义不同）
+      + T3（运动频率模式）+ T4（饮食结构切换时机）。
+      核心科学问题：空腹有氧运动（T2）是否在改善 IR 的同时更快降低肝脂？
+      最优饮食结构切换时机（T4）应在何时从低 GI 阶段切换到地中海饮食阶段？
+    result: >
+      预期：T2 优化选择空腹晨练（06:00-08:00），提升脂肪氧化比例；
+      T3 优化选择 Mon/Wed/Fri HIIT + 低强度有氧，兼顾 ALT 约束；
+      T4 优化在第8-10周（HOMA-IR 已初步改善后）切换到更多碳水的地中海饮食；
+      Pareto 前沿揭示 HOMA-IR 改善 vs 肝脂下降的最优权衡边界。
+    conclusion: >
+      期望结论是内分泌-消化双目标优化揭示了两科指南无法单独表达的关键结论：
+      "空腹运动时机（T2）是改善 IR 的独立优化维度，非剂量效应"；
+      "HOMA-IR 下降稳定后再过渡到较高 GI 饮食（T4）可同时保护肝功能和血糖"；
+      本模型为内分泌-消化共病个体化管理提供了首个跨科室可执行仿真框架。
+    limitations: >
+      双向耦合系数（IL-6 介导 HOMA-IR 加重系数）仍待精化；
+      饮食升糖负荷的量化模型为简化近似；
+      个体基因变异（PNPLA3、TM6SF2）由 MC 参数分布隐含。
+  tags: [paper2, MASLD, insulin_resistance, HOMA-IR, digestive, endocrine, cross-specialty, A7, T2, T3, T4]
+  references:
+    - "Bril F & Cusi K (2019) Metabolic syndrome and diabetes. Endocrinol Metab Clin North Am 48(1):161-177"
+    - "Eslam M et al. (2020) MASLD: New nomenclature. J Hepatol 73(2):202-209"
+    - "AASLD Practice Guidance (2023) Metabolic dysfunction-associated steatotic liver disease. Hepatology 77(5):1797-1835"
+    - "Matthews DR et al. (1985) HOMA model. Diabetologia 28(7):412-419"
+    - "Keating SE et al. (2015) Exercise and NAFLD meta-analysis. J Hepatol 63(2):509-521"
+    - "Gonzalez-Franquesa A et al. (2023) Fasted exercise and liver fat. Cell Metab 36(1):108-125"
+    - "Hallsworth K et al. (2011) Resistance exercise reduces liver fat. Gut 60(9):1278-1283"
+    - "Erickson ML et al. (2019) Effect of exercise timing on insulin sensitivity. Diabetologia 62(8):1387-1395"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ────────────────────────────────────────────────────────────────────────
+variables:
+  liver_fat:
+    description: 肝脏脂肪含量（%，MRI-PDFF，MASLD S2级基线约20%）
+    value: 20.0
+    unit: "%"
+    type: state
+    bounds: [0, 60]
+    reference: "Kleiner DE et al. (2005) Hepatology 41(6):1313"
+
+  ALT:
+    description: 丙氨酸氨基转移酶（IU/L，消化科约束变量，正常上限 40）
+    value: 52.0
+    unit: IU/L
+    type: state
+    bounds: [0, 200]
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1"
+
+  HOMA_IR:
+    description: 胰岛素抵抗指数（Matthews 1985：HOMA-IR = 空腹胰岛素×空腹血糖/22.5；正常<2.5，代谢综合征>3.5）
+    value: 3.5
+    unit: AU
+    type: state
+    bounds: [0.5, 15]
+    reference: "Matthews DR et al. (1985)"
+
+  blood_glucose:
+    description: 空腹血糖（mmol/L，内分泌科安全约束；6.1-7.0 = IFG，>7.0 = T2DM）
+    value: 6.2
+    unit: mmol/L
+    type: state
+    bounds: [3.5, 15]
+    reference: "ADA Standards of Care (2024)"
+
+  body_weight:
+    description: 体重（kg）
+    value: 82.0
+    unit: kg
+    type: state
+    bounds: [40, 200]
+
+  visceral_fat:
+    description: 内脏脂肪面积（cm²，腹型肥胖指标，与 HOMA-IR 双向关联）
+    value: 120.0
+    unit: cm²
+    type: state
+    bounds: [20, 400]
+    reference: "Alberti KGMM et al. (2006) Circulation 113(21):2735"
+
+  # ── 干预变量（inputs）
+  caloric_deficit:
+    description: 每日热量缺口（kcal/day；约束≤700防减重过快）
+    value: 350.0
+    unit: kcal/day
+    type: input
+
+  dietary_glycemic_load:
+    description: 每日饮食升糖负荷（GL；低GI饮食~60-80，地中海饮食~100-120，标准~140）
+    value: 120.0
+    unit: AU
+    type: input
+
+  exercise_met_min:
+    description: 每日有氧运动量（MET·min）
+    value: 0.0
+    unit: MET·min
+    type: input
+
+  protein_ratio:
+    description: 饮食蛋白质供能比（%；标准15%，高蛋白25%）
+    value: 18.0
+    unit: "%"
+    type: input
+
+  # ── 参数 ─────────────────────────────────────────────────────────────────────
+  alpha_exercise_fat:
+    description: 运动对肝脂的消耗系数（Keating 2015）
+    value: 0.0015
+    unit: "% per MET·min"
+    type: parameter
+    reference: "Keating SE et al. (2015)"
+
+  alpha_exercise_IR:
+    description: 运动改善胰岛素敏感性系数（Erickson 2019；空腹运动效率高约1.4×）
+    value: 0.0008
+    unit: "HOMA-IR per MET·min"
+    type: parameter
+    reference: "Erickson ML et al. (2019)"
+
+  beta_GI_IR:
+    description: 高升糖饮食加重 HOMA-IR 系数
+    value: 0.005
+    unit: "HOMA-IR per GL·day"
+    type: parameter
+    reference: "TODO:SOURCE GI-IR 定量关系"
+
+  gamma_IR_liverfat:
+    description: HOMA-IR 升高对肝脂积累的增强系数（双向耦合，Bril & Cusi 2019）
+    value: 0.01
+    unit: "% per HOMA-IR·day"
+    type: parameter
+    reference: "Bril F & Cusi K (2019)"
+
+  delta_alt:
+    description: 高强度运动（>6 MET均强度）对ALT的急性升高系数（消化科约束）
+    value: 0.15
+    unit: "IU/L per MET·min"
+    type: parameter
+    reference: "Chalasani N et al. (2012) Hepatology 55(6):2005"
+
+  epsilon_alt:
+    description: ALT自然回落速率（t½≈4-5天）
+    value: 0.15
+    unit: 1/day
+    type: parameter
+    reference: "Prati D et al. (2002)"
+
+  weight_loss_factor:
+    description: 热量缺口转换为体重下降的系数（7700 kcal/kg）
+    value: 0.000130
+    unit: kg/(kcal/day)
+    type: parameter
+    reference: "Hall KD et al. (2011) Lancet 378(9793):826"
+
+  fasting_exercise_bonus:
+    description: 空腹运动相比餐后运动对肝脂额外改善系数（Gonzalez-Franquesa 2023）
+    value: 0.3
+    unit: dimensionless
+    type: parameter
+    reference: "Gonzalez-Franquesa A et al. (2023)"
+
+  work_pressure_level:
+    description: >
+      工作压力水平（外生参数，0–1；代表个体日常慢性心理社会应激强度）。
+      通过 HPA 轴皮质醇激活，经糖皮质激素受体（GR）信号通路加重胰岛素抵抗（IR）。
+      不参与优化（个体通常无法直接控制工作压力）；作为 MC 参数表达个体处境差异。
+    value: "normal(0.5, 0.2)"
+    unit: AU
+    type: parameter
+    bounds: [0, 1]
+    reference: "Qi X & Rodrigues B (2021) Glucocorticoid-induced IR. Mol Cell Endocrinol 536:111413"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
+formulas:
+  liver_fat_dynamics:
+    description: >
+      肝脂：热量缺口减脂 + 运动消耗（空腹运动有额外加成）- HOMA-IR 驱动的de novo脂肪合成 + 高GL饮食加重。
+      空腹运动（06:00-08:00 schedule触发时，engine解析为 fasting_exercise_flag=1）简化处理：
+      若 exercise_met_min > 0 且在 06:00-09:00 触发，乘以 (1 + fasting_exercise_bonus)。
+    condition: true
+    priority: 7
+    dynamics:
+      liver_fat: >
+        liver_fat
+        - (alpha_exercise_fat * exercise_met_min * (1 + fasting_exercise_bonus)) * step
+        - max(0, 0.0005 * caloric_deficit) * step
+        + gamma_IR_liverfat * max(0, HOMA_IR - 2.5) * step
+        + max(0, (dietary_glycemic_load - 100) * 0.0002) * step
+    reference: "Bril F & Cusi (2019); Keating SE (2015)"
+
+  alt_dynamics:
+    description: "ALT：高强度运动（>6 MET均强度，即>180 MET·min/day）急性升高 - 自然回落"
+    condition: true
+    priority: 6
+    dynamics:
+      ALT: >
+        ALT + (delta_alt * max(0, exercise_met_min - 180)
+        - epsilon_alt * (ALT - 28)) * step
+    reference: "Chalasani N et al. (2012)"
+
+  homa_ir_dynamics:
+    description: >
+      HOMA-IR：运动改善（空腹运动效率更高）+ 高GI饮食恶化 + 内脏脂肪影响
+      + 慢性工作压力通过皮质醇-GR 通路轻度加重（Qi & Rodrigues 2021）。
+      work_pressure_level 为外生参数，代表不可控的心理社会应激背景；
+      其效应量约为运动改善效应的1/10-1/5，属于混杂因素校正项。
+    condition: true
+    priority: 5
+    dynamics:
+      HOMA_IR: >
+        HOMA_IR
+        - alpha_exercise_IR * exercise_met_min * step
+        + beta_GI_IR * max(0, dietary_glycemic_load - 100) * 0.01 * step
+        + 0.001 * max(0, visceral_fat - 100) * step
+        + 0.003 * work_pressure_level * HOMA_IR * step
+        - 0.02 * max(0, 2.5 - HOMA_IR) * step
+    reference: "Matthews DR (1985); Erickson ML (2019); Bril & Cusi (2019); Qi & Rodrigues (2021)"
+
+  blood_glucose_dynamics:
+    description: "空腹血糖：HOMA-IR 升高→血糖升高，运动→血糖改善"
+    condition: true
+    priority: 4
+    dynamics:
+      blood_glucose: >
+        blood_glucose
+        + 0.05 * max(0, HOMA_IR - 2.0) * step
+        - 0.0002 * exercise_met_min * step
+        - 0.01 * (blood_glucose - 5.5) * step
+    reference: "ADA Standards of Care (2024)"
+
+  body_weight_dynamics:
+    description: "体重：热量缺口减重"
+    condition: true
+    priority: 3
+    dynamics:
+      body_weight: body_weight - weight_loss_factor * caloric_deficit * step
+    reference: "Hall KD et al. (2011)"
+
+  visceral_fat_dynamics:
+    description: "内脏脂肪：体重减少→内脏脂肪优先消耗（相比皮下脂肪快约1.5倍）"
+    condition: true
+    priority: 2
+    dynamics:
+      visceral_fat: visceral_fat - weight_loss_factor * caloric_deficit * 1.5 * step
+    reference: "Ross R et al. (2020) Lancet Diabetes Endocrinol 8(11):934"
+
+# ── 仿真设置（K=2 分段，代表性患者26周干预）──────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"        # 26 周
+  output_variables:
+    - liver_fat
+    - ALT
+    - HOMA_IR
+    - blood_glucose
+    - body_weight
+    - visceral_fat
+    - exercise_met_min
+    - dietary_glycemic_load
+  schedules:
+    # K=2 默认方案：前12周强化期（低GI+有氧空腹运动）→ 后14周维持期
+    - variable: exercise_met_min
+      time: "07:00"
+      value: 210.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：空腹有氧 Mon/Wed/Fri（210 MET·min = 约30min慢跑）"
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      value: 75.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：低升糖饮食（GL=75）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 400.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：热量缺口 400 kcal/day"
+    - variable: exercise_met_min
+      time: "07:00"
+      value: 180.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：有氧 Mon/Wed/Fri（维持）"
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      value: 100.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：地中海饮食（GL=100）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 250.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：温和热量缺口 250 kcal/day"
+
+  plans:
+    - id: "endocrine_first"
+      label: "内分泌优先（低GI+高蛋白，优先改善HOMA-IR）"
+      schedules:
+        - {variable: exercise_met_min, time: "07:00", value: 180.0,
+           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-07-01", label: "空腹有氧"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 60.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "严格低GI"}
+        - {variable: caloric_deficit, time: "00:00", value: 300.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口"}
+
+    - id: "digestive_first"
+      label: "消化科优先（EASL指南：有氧+快速减重，优先降肝脂）"
+      schedules:
+        - {variable: exercise_met_min, time: "16:00", value: 250.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "餐后有氧（每天）"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 110.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "地中海饮食"}
+        - {variable: caloric_deficit, time: "00:00", value: 500.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口（较大）"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（空腹运动+T4切换，待运行更新）"
+      schedules:
+        - {variable: exercise_met_min, time: "07:00", value: 210.0,
+           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-03-27", label: "空腹HIIT强化期"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 70.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "强化期低GI"}
+        - {variable: exercise_met_min, time: "07:00", value: 180.0,
+           days: [Mon, Wed, Fri], date_range: "2026-03-28 ~ 2026-07-01", label: "维持期有氧"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 100.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-28 ~ 2026-07-01", label: "维持期地中海饮食"}
+        - {variable: caloric_deficit, time: "00:00", value: 350.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口"}
+
+# ── 优化设置（T1+T2+T3+T4 全维度优化）──────────────────────────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: liver_fat
+      metric: final
+      direction: minimize
+      description: "最小化26周末肝脂（消化科目标）"
+    - variable: HOMA_IR
+      metric: final
+      direction: minimize
+      description: "最小化26周末胰岛素抵抗指数（内分泌科目标）"
+    - variable: body_weight
+      metric: final
+      direction: minimize
+      description: "最大化体重减少（代谢目标）"
+
+  constraints:
+    - variable: ALT
+      condition: "<= 40"
+      type: hard
+      description: "ALT 不超过正常上限（消化科安全）"
+    - variable: blood_glucose
+      condition: "<= 7.8"
+      type: hard
+      description: "餐后血糖安全上限（内分泌科安全）"
+    - variable: body_weight
+      condition: ">= 72"
+      type: hard
+      description: "减重速率约束：26周内不超过 10kg（~0.38kg/周）"
+
+  inputs:
+    # T1: 热量缺口
+    - variable: caloric_deficit
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日热量缺口"
+      optimize:
+        value: [150.0, 700.0]
+
+    # T1+T2: 运动量 + 运动时机（空腹 vs 餐后，对 IR 和肝脂改善效率不同）
+    # 科学依据：Gonzalez-Franquesa 2023 空腹运动；Erickson 2019 运动时机与 IR
+    - variable: exercise_met_min
+      time_window: "06:00~20:00"
+      opt_step: 1h
+      days: [Mon, Wed, Fri]
+      label: "有氧运动量与时机（T2 空腹 vs 餐后）"
+      optimize:
+        value: [100.0, 300.0]
+        time: true
+
+    # T1+T3: 饮食升糖负荷 + 运动频率模式（低GI饮食配合 HIIT 哪几天）
+    - variable: exercise_met_min
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]              # 经典HIIT 3次/周
+        - [Mon, Tue, Thu, Fri]         # 4次/周
+        - [Mon, Wed, Fri, Sat]         # 3次+周六
+        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周中等强度
+      label: "有氧运动频率模式（T3）"
+      optimize:
+        value: [150.0, 280.0]
+        days: true
+
+    # T1: 饮食升糖负荷（低GI强化期 vs 地中海维持期）
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "饮食升糖负荷（低GI到地中海渐进）"
+      optimize:
+        value: [60.0, 130.0]
+
+    # T4: 从低GI强化期切换到地中海饮食维持期的时机
+    # 科学依据：HOMA-IR 初步改善（约第8-12周）后，较高 GI 的地中海饮食才相对安全
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-02-26~2026-05-01"
+      label: "饮食切换时机（低GI→地中海，T4）"
+      optimize:
+        value: [95.0, 120.0]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    description: "MC 采样个体代谢异质性参数（alpha_exercise_fat, gamma_IR_liverfat）"
+
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42
