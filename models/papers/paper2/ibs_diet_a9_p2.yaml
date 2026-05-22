@@ -1,0 +1,351 @@
+metadata:
+  name: a9_ibs_dietary_management
+  paper: Paper 2 (S2)
+  case_id: A9
+  updated: 2026-05-22
+  author: Fan Shen
+  description:
+    brief: 肠易激综合征（IBS）饮食管理优化（A9），Paper 2 消化科核心案例——低FODMAP方案分阶段实施与时机优化。
+    need: >
+      为 Paper 2 提供消化科（妻子专科）的标志性案例：IBS 是消化科最常见的功能性胃肠病，
+      全球患病率 10-15%，中国约 7-12%。低FODMAP饮食是目前证据等级最高的 IBS 饮食干预
+      （NICE 2017, Gibson 2020），但其三阶段实施方案（限制→重新引入→个体化维持）
+      的时机和节奏在临床中缺乏量化指导。
+      LMF 可将三阶段 K×4 优化与工作压力（应激加重 IBS）联合建模，
+      输出患者可执行的饮食日历，是消化科诊室的直接实用工具。
+    problem: >
+      IBS 患者的症状由两类驱动：
+      (1) 饮食因素：高FODMAP食物（果糖、乳糖、多元醇等）在肠道发酵产气，
+          直接引发腹痛/腹胀；
+      (2) 应激因素：工作压力→脑-肠轴激活→肠道运动紊乱→症状加重（不可控外生因素）。
+      两者共同作用，但患者只能控制饮食（FODMAP摄入），不能消除工作压力。
+      临床问题：低FODMAP三阶段方案中，每个阶段应持续多久（T4 切换时机）？
+      应如何根据工作压力水平调整 FODMAP 目标值（参数化应激背景）？
+    method: >
+      日步长 IBS 功能性症状模型：
+      状态：symptom_score（IBS-SSS 评分，0-500）、gut_permeability（肠道通透性代理）、
+      microbiome_stability（菌群稳定性，影响症状波动幅度）；
+      输入：fodmap_intake（每日FODMAP摄入量，g/day）、fiber_soluble（可溶性膳食纤维，g/day）；
+      外生参数：work_pressure（脑-肠轴应激背景，不参与优化）；
+      K×4 三阶段优化 T4（低FODMAP限制期起始时机 + 重新引入期起始时机）
+      + T1（各阶段 FODMAP 目标量）+ T3（重新引入测试频率）。
+    simulation: >
+      默认仿真 24 周，代表性患者：30岁女性，IBS-D（腹泻型），
+      IBS-SSS=280（中度），当前高FODMAP饮食（35g/day），工作压力0.6；
+      输出 symptom_score、gut_permeability、microbiome_stability、fodmap_intake。
+    optimization: >
+      双目标 NSGA-II：最小化24周末症状评分，最大化菌群稳定性（防长期饮食限制的菌群多样性损失）；
+      约束 symptom_score <= 150（中度以下），fiber_soluble >= 5g/day（维持肠道健康）；
+      T1（各阶段FODMAP目标量）+ T3（重新引入测试食物频率，每周1次 vs 每3天1次）
+      + T4（阶段切换时机）。
+      科学问题：低FODMAP限制期最优持续时间（4周 vs 8周）？高工作压力时是否应延长限制期？
+    result: >
+      预期：T4 优化将限制期延长至第6-8周（比标准4周更长，高压力下菌群恢复更慢）；
+      T3 优化选择每周1种食物重新引入（比每3天1次更保守，减少误判）；
+      高 work_pressure 组的最优 FODMAP 目标值更低（应激加重肠道敏感性）。
+    conclusion: >
+      期望结论是低FODMAP三阶段的最优时机（T4）依赖个体应激背景（work_pressure 参数）：
+      高压力职业者需要更长的限制期和更保守的重新引入节奏；
+      K×4 输出的分阶段饮食日历可直接供消化科医生用于个体化 IBS 营养处方。
+    limitations: >
+      IBS 症状评分（IBS-SSS）受安慰剂效应影响约 20-30%，模型未建模；
+      肠道菌群多样性指数为简化聚合量，未区分具体菌种；
+      FODMAP 阈值存在显著个体差异（FODMAP 耐受性测试需个体化校准）。
+  tags: [paper2, IBS, FODMAP, digestive, gut_microbiome, dietary_management, A9, T3, T4, work_pressure]
+  references:
+    - "Gibson PR & Shepherd SJ (2010) Evidence-based dietary management of functional GI symptoms. J Gastroenterol Hepatol 25(2):252-258"
+    - "Halmos EP et al. (2014) A diet low in FODMAPs reduces symptoms of IBS. Gastroenterology 146(1):67-75"
+    - "Staudacher HM et al. (2012) Low FODMAP diet: mechanisms and efficacy. Proc Nutr Soc 71(2):278-285"
+    - "Ford AC et al. (2018) Systematic review: efficacy of dietary interventions for IBS. Am J Gastroenterol 113(10):1515-1525"
+    - "Moayyedi P et al. (2020) Alteration of gut microbiota in IBS. J Clin Gastroenterol 54(2):97-105"
+    - "Koloski NA et al. (2012) The brain-gut pathway in IBS. Gut 61(6):905-912"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ────────────────────────────────────────────────────────────────────────
+variables:
+  symptom_score:
+    description: >
+      IBS 症状严重程度评分（IBS-SSS，0-500；<75=缓解，75-175=轻度，175-300=中度，>300=重度）。
+    value: 280.0
+    unit: AU
+    type: state
+    bounds: [0, 500]
+    reference: "Francis CY et al. (1997) Aliment Pharmacol Ther 11(2):395-402"
+
+  gut_permeability:
+    description: >
+      肠道通透性指数（相对基线=1.0；升高表示肠漏，高FODMAP+应激均可升高）；
+      与症状评分正相关，也反映黏膜炎症程度。
+    value: 1.3
+    unit: AU
+    type: state
+    bounds: [0.5, 3.0]
+    reference: "Camilleri M et al. (2012) Gastroenterology 142(7):1692"
+
+  microbiome_stability:
+    description: >
+      肠道菌群稳定性指数（相对基线=1.0；长期严格低FODMAP可能降低菌群多样性，
+      Staudacher 2012；目标维持在0.8以上）。
+    value: 0.9
+    unit: AU
+    type: state
+    bounds: [0.3, 1.5]
+    reference: "Staudacher HM et al. (2012)"
+
+  fodmap_intake:
+    description: 每日 FODMAP 摄入量（g/day；高FODMAP饮食约30-50g，低FODMAP目标<10g）
+    value: 35.0
+    unit: g/day
+    type: input
+
+  fiber_soluble:
+    description: 每日可溶性膳食纤维摄入量（g/day；低FODMAP限制期需主动补充）
+    value: 8.0
+    unit: g/day
+    type: input
+
+  # ── 外生参数（不参与优化）─────────────────────────────────────────────────────
+  work_pressure:
+    description: >
+      工作压力水平（外生参数，0–1）；通过脑-肠轴（HPA轴→肠道运动亢进）加重 IBS 症状。
+      高压力工作者需要更严格的饮食控制来获得等效症状缓解（Koloski 2012）。
+    value: "normal(0.6, 0.2)"
+    unit: AU
+    type: parameter
+    reference: "Koloski NA et al. (2012)"
+
+  # ── 动力学参数 ─────────────────────────────────────────────────────────────────
+  fodmap_symptom_coeff:
+    description: 每 g/day FODMAP 对症状评分的直接贡献系数（Halmos 2014 估算）
+    value: 4.5
+    unit: AU/(g/day)
+    type: parameter
+    reference: "Halmos EP et al. (2014)"
+
+  stress_symptom_coeff:
+    description: 工作压力对 IBS 症状评分的每日增量系数（脑-肠轴，Koloski 2012）
+    value: 25.0
+    unit: AU/day
+    type: parameter
+    reference: "Koloski NA et al. (2012)"
+
+  permeability_recovery_rate:
+    description: 低FODMAP饮食下肠道通透性每日恢复速率
+    value: 0.03
+    unit: 1/day
+    type: parameter
+    reference: "Camilleri M et al. (2012)"
+
+  microbiome_decline_rate:
+    description: 严格低FODMAP（<8g/day）对菌群多样性的每日轻度损耗系数
+    value: 0.003
+    unit: 1/day
+    type: parameter
+    reference: "Staudacher HM et al. (2012)"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
+formulas:
+  symptom_score_dynamics:
+    description: >
+      IBS 症状评分：FODMAP 摄入直接触发（消化科可控维度）
+      + 工作压力脑-肠轴加重（外生不可控维度）
+      - 低FODMAP饮食和可溶性纤维的保护效应。
+    condition: true
+    priority: 6
+    dynamics:
+      symptom_score: >
+        symptom_score
+        + (fodmap_symptom_coeff * fodmap_intake - 30.0) * 0.1 * step
+        + stress_symptom_coeff * work_pressure * step
+        - 0.4 * max(0, 10.0 - fodmap_intake) * step
+        - 0.3 * fiber_soluble * step
+        - 0.05 * max(0, symptom_score - 50) * step
+    reference: "Gibson PR (2010); Halmos EP (2014); Koloski NA (2012)"
+
+  gut_permeability_dynamics:
+    description: "肠道通透性：高FODMAP升高，低FODMAP+纤维降低（修复）"
+    condition: true
+    priority: 5
+    dynamics:
+      gut_permeability: >
+        gut_permeability
+        + 0.005 * max(0, fodmap_intake - 10) * step
+        - permeability_recovery_rate * max(0, gut_permeability - 1.0) * step
+        - 0.005 * fiber_soluble * step
+    reference: "Camilleri M et al. (2012)"
+
+  microbiome_stability_dynamics:
+    description: >
+      菌群稳定性：严格低FODMAP（<8g/day）轻度损耗菌群多样性（缺乏发酵底物）；
+      充足可溶性纤维（益生元作用）维持多样性；中等FODMAP（10-20g/day）最有利于长期菌群健康。
+    condition: true
+    priority: 4
+    dynamics:
+      microbiome_stability: >
+        microbiome_stability
+        - microbiome_decline_rate * max(0, 8.0 - fodmap_intake) * step
+        + 0.004 * min(fiber_soluble, 12) * step
+        - 0.003 * max(0, microbiome_stability - 1.0) * step
+    reference: "Staudacher HM et al. (2012); Moayyedi P (2020)"
+
+# ── 仿真设置（K=3 分段：限制期→重新引入期→个体化维持期）────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"        # 26 周
+  output_variables:
+    - symptom_score
+    - gut_permeability
+    - microbiome_stability
+    - fodmap_intake
+    - fiber_soluble
+  schedules:
+    # 低FODMAP三阶段默认方案（标准4周限制→8周重新引入→维持）
+    # 阶段1：严格限制期（前6周）
+    - variable: fodmap_intake
+      time: "00:00"
+      value: 7.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-02-11"
+      label: "低FODMAP限制期（7g/day）"
+    - variable: fiber_soluble
+      time: "00:00"
+      value: 10.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-02-11"
+      label: "限制期可溶性纤维补充"
+    # 阶段2：重新引入期（第7-18周）
+    - variable: fodmap_intake
+      time: "00:00"
+      value: 18.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-12 ~ 2026-05-06"
+      label: "重新引入期（18g/day，逐步测试耐受）"
+    # 阶段3：个体化维持期（第19周起）
+    - variable: fodmap_intake
+      time: "00:00"
+      value: 20.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-05-07 ~ 2026-06-30"
+      label: "个体化维持期（20g/day）"
+    - variable: fiber_soluble
+      time: "00:00"
+      value: 12.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-12 ~ 2026-06-30"
+      label: "后期纤维增量"
+
+  plans:
+    - id: "high_fodmap_no_intervention"
+      label: "无干预基线（高FODMAP 35g/day）"
+      schedules:
+        - {variable: fodmap_intake, time: "00:00", value: 35.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "高FODMAP饮食"}
+        - {variable: fiber_soluble, time: "00:00", value: 7.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "普通纤维"}
+
+    - id: "standard_lowfodmap_4wk"
+      label: "标准低FODMAP方案（4周限制+8周重引入，NICE指南）"
+      schedules:
+        - {variable: fodmap_intake, time: "00:00", value: 7.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "4周限制期"}
+        - {variable: fodmap_intake, time: "00:00", value: 20.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-29 ~ 2026-04-01", label: "8周重新引入"}
+        - {variable: fodmap_intake, time: "00:00", value: 22.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-04-02 ~ 2026-06-30", label: "维持期"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（延长限制期+保守重引入，待运行更新）"
+      schedules:
+        - {variable: fodmap_intake, time: "00:00", value: 6.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-02-18", label: "延长限制期（7周）"}
+        - {variable: fodmap_intake, time: "00:00", value: 15.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-02-19 ~ 2026-05-13", label: "工作日保守重引入"}
+        - {variable: fodmap_intake, time: "00:00", value: 20.0,
+           days: [Sat, Sun],
+           date_range: "2026-02-19 ~ 2026-05-13", label: "周末适度放松"}
+        - {variable: fiber_soluble, time: "00:00", value: 11.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "全程可溶性纤维"}
+
+# ── 优化设置（T1+T3+T4）──────────────────────────────────────────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: symptom_score
+      metric: final
+      direction: minimize
+      description: "最小化24周末IBS症状评分"
+    - variable: microbiome_stability
+      metric: final
+      direction: maximize
+      description: "最大化24周末菌群稳定性（防长期饮食限制损伤）"
+
+  constraints:
+    - variable: symptom_score
+      condition: "<= 175"
+      type: hard
+      description: "症状控制在轻度以下（IBS-SSS < 175）"
+    - variable: fiber_soluble
+      condition: ">= 5.0"
+      type: hard
+      description: "可溶性纤维摄入下限（肠道健康保障）"
+
+  inputs:
+    # T1: 限制期 FODMAP 目标量（最低耐受量）
+    - variable: fodmap_intake
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "限制期每日FODMAP目标量"
+      optimize:
+        value: [4.0, 12.0]
+
+    # T1: 可溶性纤维摄入（益生元保护）
+    - variable: fiber_soluble
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日可溶性纤维补充量"
+      optimize:
+        value: [5.0, 15.0]
+
+    # T3: 重新引入期的测试频率（每周1种食物 vs 每3天1种）
+    # 科学意义：过快重引入难以识别触发食物，过慢则延长饮食限制期不必要
+    - variable: fodmap_intake
+      time: "00:00"
+      days_options:
+        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]   # 全周均匀（15g/day 一致）
+        - [Mon, Tue, Wed, Thu, Fri]              # 工作日限制，周末稍松
+        - [Mon, Wed, Fri]                        # 间隔天全严格，其余天中等
+      label: "重新引入期的每周节奏（T3）"
+      optimize:
+        value: [10.0, 22.0]
+        days: true
+
+    # T4: 限制期持续时长（4周 vs 6周 vs 8周，优化切换时机）
+    - variable: fodmap_intake
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-01-22~2026-03-05"
+      label: "限制期→重新引入期切换时机（T4）"
+      optimize:
+        value: [14.0, 22.0]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    description: "MC 采样 work_pressure 和 fodmap_symptom_coeff，表达个体肠道敏感性差异"
+
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42

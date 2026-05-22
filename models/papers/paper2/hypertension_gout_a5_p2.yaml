@@ -1,31 +1,59 @@
-﻿metadata:
+metadata:
   name: a5_hypertension_gout
   paper: Paper 2 (JAMIA)
   case_id: A5
-  updated: 2026-05-04
+  updated: 2026-05-22
   author: Fan Shen
   description:
-    brief: 高血压合并痛风药物冲突（A5），用于表达 HCTZ 降压收益与尿酸升高风险之间的权衡。
-    need: 为 Paper 2 展示 LM 如何处理两个指南推荐在同一患者身上发生冲突的场景。
-    problem: ESC/ESH 高血压指南支持噻嗪类利尿剂降压，ACR 痛风指南则指出 HCTZ 会增加痛风风险；减重也可能在快速脂肪动员时升高尿酸。
-    method: 日步长模型，耦合 blood_pressure、uric_acid、body_weight、thiazide_dose、caloric_deficit 和 allopurinol_dose。
-    simulation: 默认仿真 26 周，HCTZ 25 mg 晨服并维持每日热量缺口，输出 blood_pressure、uric_acid、body_weight、thiazide_dose。
-    optimization: NSGA-II 双目标最小化 26 周末收缩压和尿酸，约束 BP <= 130、UA <= 360、caloric_deficit <= 700。
-    result: 预期 Pareto 前沿显示降压、控尿酸和减重速度之间的可行区间，帮助识别需要药物替代或联合降尿酸治疗的区域。
-    conclusion: 期望结论是单病种指南的局部最优可能造成跨病种风险，多目标建模能显式暴露冲突。
-    limitations: 尿酸酮体峰值和部分药效参数仍待文献精化，当前结果用于方法验证。
-  tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt]
+    brief: 高血压合并痛风药物冲突（A5），展示 HCTZ 降压收益与尿酸风险权衡，并通过 T1+T2+T4 优化药物时机。
+    need: >
+      为 Paper 2 展示 LM 如何处理两个指南推荐在同一患者身上发生冲突的场景。
+      进一步：不只优化"吃多少剂量"（T1），还优化"几点服药"（T2，时间药理学）
+      和"何时引入别嘌醇"（T4，治疗时机）。
+    problem: >
+      ESC/ESH 高血压指南支持噻嗪类利尿剂降压，ACR 痛风指南则指出 HCTZ 会增加痛风风险。
+      此外，血压具有昼夜节律（清晨 6-10 时为血压高峰），时间药理学研究表明晚间服用
+      HCTZ（20:00-22:00）比晨服能更好地抑制清晨血压峰值（Hermida et al. 2010 MAPEC）；
+      而 HCTZ 在夜间尿酸清除活跃时段（白天）的干扰相对减少。
+      别嘌醇的引入时机（T4）也是临床决策：过早使用增加副作用，过晚则痛风已发作。
+    method: >
+      日步长模型，耦合 blood_pressure、uric_acid、body_weight、thiazide_dose、caloric_deficit 和 allopurinol_dose。
+      K=2 分段：起始期（HCTZ剂量滴定）→ 稳定期（维持剂量），T4 优化别嘌醇引入时机。
+      T2 优化 HCTZ 给药时间窗（早晨 06:00 vs 晚间 22:00）。
+    simulation: >
+      默认仿真 26 周，K=2：前8周 HCTZ 12.5mg 滴定 → 后18周 HCTZ 25mg 维持；
+      别嘌醇默认不使用（由优化器决定是否及何时引入）；
+      输出 blood_pressure、uric_acid、body_weight、thiazide_dose。
+    optimization: >
+      NSGA-II 双目标：最小化 26 周末收缩压和尿酸；
+      约束 BP <= 130、UA <= 360、caloric_deficit <= 700；
+      T1（HCTZ剂量）+ T2（HCTZ给药时间窗 06:00-22:00）
+      + T4（别嘌醇引入时机，第4-16周窗口内搜索）。
+      科学问题：晚间服用 HCTZ 是否能在同等降压效果下减少尿酸上升幅度？
+      最优别嘌醇引入时机在 HCTZ 开始后第几周？
+    result: >
+      预期：T2 优化选择晚间服药（~20:00-22:00）以降低清晨血压峰值；
+      T4 优化将别嘌醇引入推迟至第 6-8 周（HCTZ引发尿酸升高稳定后）；
+      Pareto 前沿揭示"晚间 HCTZ + 延迟别嘌醇"是兼顾降压和控尿酸的最优策略。
+    conclusion: >
+      期望结论是药物时机（T2/T4）是与剂量（T1）同等重要的优化维度：
+      晚间服药在血压节律上具有优势，别嘌醇介入时机比剂量更影响尿酸控制效果；
+      单病种指南的局部最优可能造成跨病种风险，多目标建模能显式暴露并优化冲突。
+    limitations: 尿酸昼夜节律效应和部分药效参数仍待文献精化，当前结果用于方法验证。
+  tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt, T2, T4, chronotherapy]
   references:
     - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"
     - "FitzGerald JD et al. (2020) 2020 ACR Guideline for Management of Gout. Arthritis Care Res 72(6):744-760"
     - "Law MR et al. (2009) Blood pressure lowering drugs meta-analysis. BMJ 338:b1665"
     - "Choi HK et al. (2012) Diuretics and risk of gout in women. Ann Rheum Dis 71(5):723-727"
     - "Dessein PH et al. (2000) Weight loss and serum urate. Ann Rheum Dis 59(7):539-543"
+    - "Hermida RC et al. (2010) MAPEC study. Chronobiol Int 27(8):1629-1651"
+    - "Hermida RC et al. (2020) Bedtime hypertension treatment. Eur Heart J 41(48):4565-4576"
   step_size:
     value: 1
     unit: day
 
-# ── 变量 ── TODO 参数值待从文献精确提取 ────────────────────────────────────────
+# ── 变量 ────────────────────────────────────────────────────────────────────────
 variables:
   blood_pressure:
     description: 收缩压（mmHg），目标 <130（ESC 2018）
@@ -33,6 +61,7 @@ variables:
     unit: mmHg
     type: state
     bounds: [80, 220]
+    reference: "Williams B et al. (2018)"
 
   uric_acid:
     description: 血尿酸（μmol/L），痛风发作阈值 360，目标 <360（ACR 2020）
@@ -40,6 +69,7 @@ variables:
     unit: μmol/L
     type: state
     bounds: [100, 800]
+    reference: "FitzGerald JD et al. (2020)"
 
   body_weight:
     description: 体重（kg），减重目标影响尿酸瞬时峰值
@@ -49,94 +79,171 @@ variables:
     bounds: [40, 200]
 
   thiazide_dose:
-    description: HCTZ 单次剂量（mg），每日晨服，决策变量
+    description: HCTZ 单次剂量（mg），给药时机由 optimizer T2 优化
     value: 25.0
     unit: mg
     type: input
 
   caloric_deficit:
     description: 每日热量缺口（kcal/day），约束 ≤700 防止尿酸峰值
-    value: 500.0
+    value: 400.0
     unit: kcal/day
     type: input
 
   allopurinol_dose:
-    description: 别嘌醇单次剂量（mg），可选用药，决策变量
+    description: 别嘌醇单次剂量（mg），引入时机由 optimizer T4 优化
     value: 0.0
     unit: mg
     type: input
 
   # ── 参数 ─────────────────────────────────────────────────────────────────────
   lambda_T:
-    description: HCTZ 降压效力（Law 2009 meta-analysis）
+    description: HCTZ 降压效力（Law 2009 meta-analysis：25mg↓约8mmHg）
     value: 0.32
     unit: mmHg/mg/day
     type: parameter
+    reference: "Law MR et al. (2009)"
 
   lambda_W:
-    description: 体重每减1kg对应BP降幅（Neter 2003）
+    description: 体重每减1kg对应BP降幅（Neter 2003：每kg约↓1.1mmHg）
     value: 1.1
     unit: mmHg/kg
     type: parameter
+    reference: "TODO:SOURCE Neter JE et al. (2003)"
 
   gamma_T:
     description: HCTZ 对尿酸清除的抑制系数（Choi 2012）
     value: 0.0018
     unit: 1/mg
     type: parameter
+    reference: "Choi HK et al. (2012)"
 
   psi_ketone:
-    description: 快速减重引发尿酸峰值系数（Dessein 2000）
+    description: 快速减重（>0.5kg/周）引发尿酸急性升高系数（Dessein 2000）
     value: 30.0
     unit: "μmol/L per kg/wk"
     type: parameter
+    reference: "Dessein PH et al. (2000)"
 
   kappa_A:
-    description: 别嘌醇降尿酸系数
+    description: 别嘌醇降尿酸系数（100mg/day约↓60 μmol/L，TODO精确值）
     value: 0.6
     unit: "μmol/L per mg"
     type: parameter
+    reference: "TODO:SOURCE 别嘌醇剂量-效应文献"
 
   ua_baseline_prod:
-    description: 尿酸基础产生率
+    description: 尿酸基础产生率（从代表性患者基线倒推）
     value: 200.0
     unit: μmol/day
     type: parameter
+    reference: "代表性患者，基线 urate=420 μmol/L"
 
-# ── 动力学公式 ── TODO 完整公式待填入 ────────────────────────────────────────
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   bp_dynamics:
-    description: "血压：HCTZ降压 + 体重减轻降压 - 自然反弹"
+    description: "血压：HCTZ降压 + 体重减轻降压 - 自然反弹至稳态"
     condition: true
     priority: 6
     dynamics:
       blood_pressure: >
         blood_pressure - (lambda_T * thiazide_dose + lambda_W * (caloric_deficit / 7700)) * step
         - 0.04 * (blood_pressure - 155) * step
+    reference: "Law MR et al. (2009)"
 
   ua_dynamics:
     description: |
-      尿酸：基础产生 + HCTZ抑制清除 - 别嘌醇抑制产生 - 自然清除。
-      TODO 加入减重酮体峰值效应（暂缺）
+      尿酸：基础产生 + HCTZ抑制清除（URAT1竞争）- 别嘌醇抑制产生 - 自然清除。
+      快速减重（>0.5 kg/周）触发酮体-URAT1竞争，额外升高尿酸。
     condition: true
     priority: 5
     dynamics:
       uric_acid: >
         uric_acid + (ua_baseline_prod
         - 0.001 * uric_acid * (1 - gamma_T * thiazide_dose)
-        - kappa_A * allopurinol_dose) * step
+        - kappa_A * allopurinol_dose
+        + max(0, psi_ketone * caloric_deficit / 700 - 15.0)) * step
+    reference: "Choi HK et al. (2012); Dessein PH et al. (2000)"
 
   weight_dynamics:
-    description: "体重：热量缺口驱动减重（7700 kcal/kg）"
+    description: "体重：热量缺口驱动减重（7700 kcal/kg，Hall 2011）"
     condition: true
     priority: 4
     dynamics:
       body_weight: body_weight - (caloric_deficit / 7700) * step
+    reference: "Hall KD et al. (2011) Lancet 378(9793):826"
 
-# ── 优化设置 ──────────────────────────────────────────────────────────────────
+# ── 仿真设置（K=2 分段：滴定期→稳定期）────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"        # 26 周 = 182 天
+  output_variables:
+    - blood_pressure
+    - uric_acid
+    - body_weight
+    - thiazide_dose
+    - allopurinol_dose
+  schedules:
+    # K=2 段1（前8周滴定期，低剂量起步）
+    - variable: thiazide_dose
+      time: "08:00"
+      value: 12.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-02-25"
+      label: "滴定期：HCTZ 12.5mg 晨服"
+    # K=2 段2（后18周稳定期，标准剂量）
+    - variable: thiazide_dose
+      time: "08:00"
+      value: 25.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-26 ~ 2026-07-01"
+      label: "稳定期：HCTZ 25mg 晨服"
+    # 热量缺口（全程）
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 400.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "每日热量缺口（400 kcal/day）"
+
+  # 预定义多方案：晨服 vs 晚服对比 + 有/无别嘌醇
+  plans:
+    - id: "morning_hctz_no_allo"
+      label: "晨服 HCTZ 25mg，不加别嘌醇（ACR指南基准方案）"
+      schedules:
+        - {variable: thiazide_dose, time: "08:00", value: 25.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ 晨服"}
+        - {variable: caloric_deficit, time: "00:00", value: 400.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+
+    - id: "evening_hctz_with_allo"
+      label: "晚间 HCTZ 22:00 + 第8周加别嘌醇（时间药理学方案）"
+      schedules:
+        - {variable: thiazide_dose, time: "22:00", value: 25.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ 晚服（22:00）"}
+        - {variable: allopurinol_dose, time: "08:00", value: 100.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-02-26 ~ 2026-07-01", label: "别嘌醇（第8周起）"}
+        - {variable: caloric_deficit, time: "00:00", value: 400.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（参考点，待运行后更新）"
+      schedules:
+        - {variable: thiazide_dose, time: "22:00", value: 22.8,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ（待优化时间）"}
+        - {variable: caloric_deficit, time: "00:00", value: 400.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+
+# ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:
-  enabled: true
-  method: "nsga2"
+  method: nsga2
 
   objectives:
     - variable: blood_pressure
@@ -162,81 +269,45 @@ optimizer:
       type: hard
       description: "减重速率约束：≤700 kcal/day 防尿酸峰值"
 
-  regimen:
-    variable: thiazide_dose
-    description: "优化 HCTZ 剂量（+别嘌醇+热量缺口）"
-    events:
-      - time: "08:00"
-        dose_bounds: [6.25, 50]
-        label: "HCTZ 晨服剂量（mg）"
+  inputs:
+    # T1+T2: HCTZ 剂量 + 给药时间窗优化（时间药理学）
+    # 科学意义：血压昼夜节律使晚间服药（20:00-22:00）产生更好的24h覆盖效果
+    # Hermida 2010 MAPEC研究、Hermida 2020：晚间降压治疗优于晨间
+    - variable: thiazide_dose
+      time_window: "06:00~22:00"
+      opt_step: 1h
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "HCTZ 剂量与给药时机（时间药理学优化）"
+      optimize:
+        value: [6.25, 50.0]
+        time: true
+
+    # T1: 热量缺口（全程，影响体重和尿酸酮体）
+    - variable: caloric_deficit
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日热量缺口"
+      optimize:
+        value: [150.0, 700.0]
+
+    # T4: 别嘌醇引入时机（在第4-16周窗口内优化）
+    # 科学意义：HCTZ开始后尿酸通常在第3-6周升高并稳定，
+    # 过早引入别嘌醇（<4周）增加副作用风险，过晚（>16周）已延误治疗
+    - variable: allopurinol_dose
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-01-29~2026-04-30"
+      label: "别嘌醇引入时机与剂量"
+      optimize:
+        value: [50.0, 300.0]
+        date_start: true
 
   mc:
     enabled: true
     sim_runs: 20
-    description: "MC 采样个体尿酸清除能力（FEUA），识别哪类患者需要别嘌醇"
+    description: "MC 采样个体尿酸清除能力（FEUA变异），识别哪类患者需要别嘌醇"
 
   algorithm:
     population_size: 100
     n_generations: 200
     seed: 42
-  results:
-    generated_at: "2026-05-16"
-    method: nsga2
-    n_solutions: 6
-    elapsed_seconds: 189.5
-    pareto_front:
-      - {x: [10.5], f: [129.8, 312.4]}
-      - {x: [16.2], f: [126.1, 331.7]}
-      - {x: [22.8], f: [122.4, 348.2]}
-      - {x: [31.0], f: [118.6, 364.5]}
-      - {x: [40.5], f: [115.3, 379.8]}
-      - {x: [48.2], f: [113.1, 391.3]}
-    reference:
-      x: [22.8]
-      f: [122.4, 348.2]
-      regimen:
-        thiazide_dose: {"08:00": 22.8}
-      objectives:
-        blood_pressure: 122.4
-        uric_acid: 348.2
-
-# ── 仿真设置 ──────────────────────────────────────────────────────────────────
-simulation:
-  start_date: "2026-01-01"
-  end_date:   "2026-07-01"        # 26 周 = 182 天
-  output_variables:
-    - blood_pressure
-    - uric_acid
-    - body_weight
-    - thiazide_dose
-  schedules:
-    - variable: thiazide_dose
-      time: "08:00"
-      value: 25.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "HCTZ 25mg 晨服（标准剂量基线）"
-    - variable: caloric_deficit
-      time: "00:00"
-      value: 500.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "每日热量缺口"
-
-  # 预定义多方案：对应 Pareto 前沿端点与平衡点，供论文图表直接复现
-  plans:
-    - id: "low_ua_risk"
-      label: "痛风风险最低（UA 端点，HCTZ 10.5mg）"
-      schedules:
-        - {variable: thiazide_dose, time: "08:00", value: 10.5, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
-        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
-    - id: "balanced"
-      label: "临床平衡方案（HCTZ 22.8mg）"
-      schedules:
-        - {variable: thiazide_dose, time: "08:00", value: 22.8, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
-        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}
-    - id: "best_bp"
-      label: "血压控制最优（BP 端点，HCTZ 48.2mg）"
-      schedules:
-        - {variable: thiazide_dose, time: "08:00", value: 48.2, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "HCTZ 晨服"}
-        - {variable: caloric_deficit, time: "00:00", value: 500.0, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], label: "每日热量缺口"}

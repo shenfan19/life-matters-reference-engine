@@ -183,6 +183,24 @@ export interface InputEvent {
   optimizeDateEnd?: boolean;
 }
 
+// Per-model user session: preserved across model switches, persisted to localStorage.
+// Covers everything the user edits after first load; NOT the YAML model structure itself.
+export interface ModelSession {
+  inputEvents: InputEvent[];
+  plans: SimPlan[];
+  activePlanId: string;
+  simStartDate: string;
+  simEndDate: string;
+  stepValue: number;
+  stepUnit: StepUnit;
+  objectives: Array<{ variable: string; direction: 'minimize' | 'maximize' }>;
+  constraints: Array<{ variable: string; op: '≤' | '≥'; value: number }>;
+  optAlgo: 'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead';
+  optPop: number;
+  optGen: number;
+  optResult: any;
+}
+
 export interface OptimizerProps {
     selectedModel: ModelFile | null;
     state: OptimizerState;

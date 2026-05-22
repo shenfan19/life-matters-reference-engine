@@ -1,24 +1,44 @@
-﻿metadata:
+metadata:
   name: b3_banister
   paper: Paper 1 (JOSS)
   case_id: B3
-  updated: 2026-05-04
+  updated: 2026-05-22
   author: Fan Shen
   description:
     brief: Banister 双室适应-疲劳模型（B3），用于 Paper 1 的数值验证和经典训练模型复现。
-    need: 验证 LM 的日步长 Euler 积分能否稳定表达 fitness-fatigue 这类已知动力学模型。
-    problem: 训练负荷同时带来适应和疲劳，两者时间常数不同；减量期的表现峰值依赖二者相对衰减速度。
-    method: 三个状态变量 fitness、fatigue、performance 加一个训练负荷输入 training_load；fitness 慢衰减，fatigue 快衰减，performance = p0 + fitness - fatigue。
-    simulation: 默认配置 V2 协议：10 周渐进训练、2 周减量、4 周维持，输出 fitness、fatigue、performance、training_load。
-    optimization: 优化三阶段训练负荷分配——渐进期、减量期、维持期各阶段最优强度，在最大化末期表现的同时控制疲劳积累。
-    result: 预期第 16 周末 performance 落在 520–560 AU 附近，并在减量开始后 5–10 天出现超量恢复峰值。
-    conclusion: 期望结论是 LM 可复现 Banister/Morton 训练适应-疲劳曲线，可作为积分器和 schedule 机制的基准案例。
+    need: 验证 LM 的日步长 Euler 积分能否稳定表达 fitness-fatigue 这类已知动力学模型，并展示 K×4 T1+T3+T4 全维度优化。
+    problem: >
+      训练负荷同时带来适应和疲劳，两者时间常数不同；减量期的表现峰值依赖二者相对衰减速度。
+      单纯优化强度值（T1）不足：每周训练天数（T3）直接决定休息日疲劳恢复节奏；
+      减量期起始时机（T4）决定疲劳能否在目标日前完全消散并释放超量恢复——
+      这两个维度与强度值同等重要，但在固定方案中无法看到。
+    method: >
+      三个状态变量 fitness、fatigue、performance 加一个训练负荷输入 training_load；
+      fitness 慢衰减（τ=45天），fatigue 快衰减（τ=15天），performance = p0 + fitness - fatigue。
+      K×4 优化结合 T1（三阶段负荷值）+ T3（渐进期每周训练频率）+ T4（减量期起始时机）。
+    simulation: >
+      默认配置 V2 协议（Morton 1990 Figure 3）：10周渐进训练 + 2周减量 + 4周维持，
+      输出 fitness、fatigue、performance、training_load。
+    optimization: >
+      三维 K×4 优化：T1 × 3（三阶段负荷强度）+ T3（渐进期每周3/5/6/7天模式选择）
+      + T4（减量期起始时机，在第7-12周窗口内搜索）。
+      目标为最大化末期 performance 同时控制末期 fatigue；约束疲劳上限。
+      科学问题：最优减量时机是否早于文献推荐的第11周？
+      每周5天训练（有节奏的休息日）与每天训练相比，体能/疲劳轨迹如何不同？
+    result: >
+      预期：T3 优化倾向于选择 5 天/周方案（有规律休息日使疲劳更快消散），
+      T4 优化将减量起点提前至第9-10周（比标准第11周早1-2周），
+      整体末期 performance 提升约 8-12 AU 并伴随更低疲劳积累。
+    conclusion: >
+      期望结论是最优训练方案不只是负荷大小——训练频率和减量时机是同等重要的可优化维度；
+      K×4 T1+T3+T4 联合优化揭示了纯负荷优化（T1 only）无法发现的结构性规律。
     limitations: 参数采用文献标准值和演示协议，未针对具体运动员个体校准。
-  tags: [paper1, banister, B3, validation, fitness, fatigue]
+  tags: [paper1, banister, B3, validation, fitness, fatigue, T3, T4]
   references:
     - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177"
     - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61"
     - "Mujika I et al. (1996) Effects of training on performance in competitive swimming. Can J Appl Physiol 21(5):395-406"
+    - "Halson SL (2014) Monitoring training load to understand fatigue in athletes. Sports Med 44(Suppl 2):139-147"
   step_size:
     value: 1
     unit: day
@@ -31,6 +51,7 @@ variables:
     unit: AU
     type: state
     bounds: [0, 2000]
+    reference: "Morton RH et al. (1990)"
 
   fatigue:
     description: 疲劳分量（训练负荷累积，时间常数15天，Morton 1990）
@@ -38,6 +59,7 @@ variables:
     unit: AU
     type: state
     bounds: [0, 3000]
+    reference: "Morton RH et al. (1990)"
 
   performance:
     description: 综合表现 = 基础 + fitness - fatigue（Morton 1990 eq.3）
@@ -45,9 +67,10 @@ variables:
     unit: AU
     type: state
     bounds: [0, 1000]
+    reference: "Morton RH et al. (1990)"
 
   training_load:
-    description: 当日训练负荷（任意单位，由 schedule 驱动）
+    description: 当日训练负荷（任意单位，由 schedule 驱动；休息日为0）
     value: 0.0
     unit: AU
     type: input
@@ -58,6 +81,7 @@ variables:
     unit: dimensionless
     type: parameter
     bounds: [0.4, 2.0]
+    reference: "Morton RH et al. (1990)"
 
   h:
     description: 疲劳增益系数（Morton 1990 Table 1，标准值 2.0）
@@ -65,6 +89,7 @@ variables:
     unit: dimensionless
     type: parameter
     bounds: [0.8, 4.0]
+    reference: "Morton RH et al. (1990)"
 
   k1:
     description: 体能衰减速率 = 1/45 per day（Morton 1990）
@@ -72,6 +97,7 @@ variables:
     unit: 1/day
     type: parameter
     bounds: [0.01, 0.05]
+    reference: "Morton RH et al. (1990)"
 
   k2:
     description: 疲劳衰减速率 = 1/15 per day（Morton 1990）
@@ -79,12 +105,14 @@ variables:
     unit: 1/day
     type: parameter
     bounds: [0.03, 0.15]
+    reference: "Morton RH et al. (1990)"
 
   p0:
     description: 基础表现（无训练基准，Mujika 1996）
     value: 494.0
     unit: AU
     type: parameter
+    reference: "Mujika I et al. (1996)"
 
 # ── 动力学公式 ─────────────────────────────────────────────────────────────────
 formulas:
@@ -94,6 +122,7 @@ formulas:
     priority: 5
     dynamics:
       fitness: fitness + (g * training_load - k1 * fitness) * step
+    reference: "Morton RH et al. (1990)"
 
   fatigue_dynamics:
     description: "疲劳 Euler 更新：df/dt = h·w - k2·f"
@@ -101,13 +130,15 @@ formulas:
     priority: 5
     dynamics:
       fatigue: fatigue + (h * training_load - k2 * fatigue) * step
+    reference: "Morton RH et al. (1990)"
 
   performance_update:
     description: "瞬时表现 = p0 + fitness - fatigue（Morton 1990 eq.3，静态计算无step）"
     condition: true
     priority: 3
-    dynamics:
+    formula:
       performance: p0 + fitness - fatigue
+    reference: "Morton RH et al. (1990)"
 
 # ── 仿真设置（V2 协议：Morton 1990 Figure 3 复现）──────────────────────────────
 # 16 周 = 112 天：10周渐进(75 AU) + 2周减量(30 AU) + 4周维持(60 AU)
@@ -120,13 +151,13 @@ simulation:
     - performance
     - training_load
   schedules:
-    # 第 1–10 周（1月1日–3月11日）：渐进训练，平均 75 AU/day
+    # 第 1–10 周（1月1日–3月11日）：渐进训练，平均 75 AU/day，每天
     - variable: training_load
       time: "09:00"
       value: 75.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: "2026-01-01 ~ 2026-03-11"
-      label: "渐进训练期"
+      label: "渐进训练期（默认每天）"
 
     # 第 11–12 周（3月12日–3月25日）：减量期 30 AU/day（Morton taper）
     - variable: training_load
@@ -144,12 +175,50 @@ simulation:
       date_range: "2026-03-26 ~ 2026-04-22"
       label: "维持期"
 
+  # 预定义对比方案：每日训练 vs 5天/周 vs Morton原版
+  plans:
+    - id: "daily_training"
+      label: "每日训练（7天/周，原始文献方案）"
+      schedules:
+        - {variable: training_load, time: "09:00", value: 75.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-11", label: "渐进期"}
+        - {variable: training_load, time: "09:00", value: 30.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-12 ~ 2026-03-25", label: "减量期"}
+        - {variable: training_load, time: "09:00", value: 60.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-26 ~ 2026-04-22", label: "维持期"}
+    - id: "five_day_training"
+      label: "5天/周训练（有节奏休息日）"
+      schedules:
+        - {variable: training_load, time: "09:00", value: 85.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-03-11", label: "渐进期（周末休息）"}
+        - {variable: training_load, time: "09:00", value: 30.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-12 ~ 2026-03-25", label: "减量期"}
+        - {variable: training_load, time: "09:00", value: 60.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-26 ~ 2026-04-22", label: "维持期"}
+    - id: "early_taper"
+      label: "提前减量（第9周开始，48天渐进+2周减量+6周维持）"
+      schedules:
+        - {variable: training_load, time: "09:00", value: 80.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-02-26", label: "渐进期"}
+        - {variable: training_load, time: "09:00", value: 28.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-02-27 ~ 2026-03-12", label: "减量期（提前）"}
+        - {variable: training_load, time: "09:00", value: 58.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-13 ~ 2026-04-22", label: "维持期（更长）"}
+
 # ── 验证目标 ──────────────────────────────────────────────────────────────────
 # V2 通过标准：第 16 周末（4月22日）performance 在 520–560 AU 范围内
 # V3 通过标准：减量开始后（3月12日起）5–10天内出现 performance 峰值
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: performance
@@ -169,20 +238,53 @@ optimizer:
       condition: ">= 480"
       type: soft
       description: 表现不低于基础值 480 AU
-  regimen:
-    variable: training_load
-    description: 优化三阶段训练负荷（渐进期07:00 / 减量期09:00 / 维持期11:00）
-    events:
-      - time: "07:00"
-        dose_bounds: [40.0, 120.0]
-        label: 渐进训练期负荷（第1-10周）
-      - time: "09:00"
-        dose_bounds: [10.0, 50.0]
-        label: 减量期负荷（第11-12周）
-      - time: "11:00"
-        dose_bounds: [40.0, 100.0]
-        label: 维持期负荷（第13-16周）
+
+  inputs:
+    # T1: 渐进期负荷强度（每日，固定区间）
+    - variable: training_load
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-11"
+      label: "渐进期负荷"
+      optimize:
+        value: [40.0, 120.0]
+
+    # T1+T3: 渐进期训练频率（几天/周）——休息日 training_load=0，促进疲劳恢复
+    # 科学意义：5天/周 vs 7天/周 改变疲劳积累节奏（Halson 2014）
+    - variable: training_load
+      time: "09:00"
+      days_options:
+        - [Mon, Tue, Wed, Thu, Fri]            # 5天/周（工作日）
+        - [Mon, Tue, Wed, Thu, Fri, Sat]       # 6天/周
+        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 7天/周（每天）
+        - [Mon, Wed, Fri, Sat, Sun]            # 5天间歇（间隔休息）
+      date_range: "2026-01-01 ~ 2026-03-11"
+      label: "渐进期训练频率（天/周）"
+      optimize:
+        value: [50.0, 110.0]
+        days: true
+
+    # T1+T4: 减量期起始时机（在第7-12周之间搜索最优减量点）
+    # 科学意义：减量早1-2周 vs 文献标准第11周是否能提高峰值表现？
+    - variable: training_load
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-02-19~2026-03-25"
+      label: "减量期起始时机与负荷"
+      optimize:
+        value: [10.0, 45.0]
+        date_start: true
+
+    # T1: 维持期负荷（减量后的巩固期）
+    - variable: training_load
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-26 ~ 2026-04-22"
+      label: "维持期负荷"
+      optimize:
+        value: [40.0, 100.0]
+
   algorithm:
-    population_size: 50
-    n_generations: 80
+    population_size: 60
+    n_generations: 120
     seed: 42

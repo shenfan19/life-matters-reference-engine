@@ -1,0 +1,370 @@
+metadata:
+  name: a8_bergman_glucose_insulin
+  paper: Paper 2 (S2)
+  case_id: A8
+  updated: 2026-05-22
+  author: Fan Shen
+  description:
+    brief: Bergman 最小模型日尺度适配（A8），Paper 2 内分泌主轴——血糖-胰岛素敏感性动力学与用餐/运动时机优化。
+    need: >
+      为 Paper 2 提供内分泌科核心机制模型：Bergman 最小模型（1981）是血糖-胰岛素
+      动力学的经典基准，广泛用于胰岛素敏感性估算（IVGTT 实验）。
+      日尺度适配后，可表达生活方式干预（饮食结构、运动时机、间歇性禁食）对
+      空腹血糖、餐后血糖峰值和 HbA1c 的中长期影响，
+      适合与 A7（MASLD×IR）通过 imports 耦合，构成完整内分泌-消化联合场景。
+    problem: >
+      2型糖尿病前期（IFG/IGT，空腹血糖 6.1-7.0 mmol/L）患者：
+      内分泌指南推荐低 GI 饮食 + 有氧运动 + 间歇性禁食（IF），
+      但三类干预的最优时序组合（早餐前运动 vs 餐后运动、间歇性禁食窗口）
+      在个体层面存在差异，且与肝功能指标（ALT）有交互影响（连接 A7）。
+    method: >
+      日步长 Bergman 简化模型：三个核心状态——
+      fasting_glucose（空腹血糖，日均）、insulin_sensitivity（胰岛素敏感性 SI，慢变量）、
+      hba1c（HbA1c，三月移动平均）；
+      输入：carb_intake_per_meal（每餐碳水，T1）、exercise_met（运动量+时机 T1+T2）、
+      fasting_window_hours（禁食窗口时长，T1）；
+      work_pressure 为外生参数，经皮质醇-IR 通路影响胰岛素敏感性（连接 C1 逻辑）。
+    simulation: >
+      默认仿真 26 周，代表性患者：45岁男，空腹血糖 6.5 mmol/L（IFG），
+      HOMA-IR=3.2，HbA1c=6.1%，不运动，高 GI 饮食；
+      输出 fasting_glucose、insulin_sensitivity、hba1c、post_meal_peak。
+    optimization: >
+      双目标 NSGA-II：最小化 26 周末 HbA1c（内分泌科目标），最大化胰岛素敏感性改善；
+      约束 fasting_glucose <= 7.0 mmol/L（IFG 不进展为 T2DM），post_meal_peak <= 10.0；
+      T1（碳水量、运动量、禁食窗口）+ T2（运动时机，空腹晨练 vs 餐后）
+      + T3（运动频率）+ T4（间歇性禁食方案起始时机）。
+      科学问题：空腹运动（T2）是否使胰岛素敏感性改善速率快于餐后运动？
+      间歇性禁食窗口（16:8 vs 14:10）对 IFG 患者的最优选择？
+    result: >
+      预期：T2 优化选择空腹晨练（06:00-07:00）；T4 优化在第4周起实施16:8 IF；
+      26 周 HbA1c 从 6.1% 降至 5.7% 以下（正常范围），胰岛素敏感性提升约 35%。
+    conclusion: >
+      期望结论是运动时机（T2 空腹 vs 餐后）和禁食窗口设计（T4 起始时机）
+      是与运动量（T1）同等重要的内分泌优化维度；
+      本模型可与 A7（MASLD×IR）imports 耦合，实现"内分泌-消化"完整联合场景。
+    limitations: >
+      日步长 Bergman 简化丢失了分钟级血糖振荡（OGTT 曲线）；
+      第一相胰岛素分泌动力学未建模；
+      参数来自 IVGTT 实验均值，个体差异由 MC 表达。
+  tags: [paper2, Bergman, glucose, insulin_sensitivity, HbA1c, endocrine, T2DM_prevention, A8, T2, T4]
+  references:
+    - "Bergman RN et al. (1981) Quantitative estimation of insulin sensitivity. Am J Physiol 236(6):E667-E677"
+    - "Matthews DR et al. (1985) HOMA model. Diabetologia 28(7):412-419"
+    - "Gonzalez-Franquesa A et al. (2023) Exercise timing and liver fat. Cell Metab 36:108-125"
+    - "Erickson ML et al. (2019) Effect of exercise time of day on insulin sensitivity. Diabetologia 62:1387-1395"
+    - "Lowe DA et al. (2020) Effects of time-restricted eating on weight loss. JAMA Intern Med 180(11):1491"
+    - "ADA Standards of Medical Care in Diabetes (2024). Diabetes Care 47(Suppl 1)"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ────────────────────────────────────────────────────────────────────────
+variables:
+  fasting_glucose:
+    description: 空腹血糖（mmol/L；IFG 诊断阈值 6.1-7.0，T2DM >= 7.0）
+    value: 6.5
+    unit: mmol/L
+    type: state
+    bounds: [3.5, 15.0]
+    reference: "ADA Standards of Care (2024)"
+
+  insulin_sensitivity:
+    description: >
+      胰岛素敏感性指数（SI，相对单位；正常约1.0，IR患者约0.3-0.6）；
+      运动和饮食干预的长期改善慢变量（时间常数约14-30天）。
+    value: 0.45
+    unit: AU
+    type: state
+    bounds: [0.1, 2.0]
+    reference: "Bergman RN et al. (1981)"
+
+  hba1c:
+    description: >
+      糖化血红蛋白（%）；空腹血糖的3个月移动平均代理，
+      每日以血糖浓度的加权函数更新（简化近似）。
+    value: 6.1
+    unit: "%"
+    type: state
+    bounds: [4.0, 12.0]
+    reference: "ADA Standards of Care (2024)"
+
+  post_meal_peak:
+    description: 餐后2h血糖峰值代理（mmol/L；基于碳水摄入和胰岛素敏感性计算）
+    value: 9.2
+    unit: mmol/L
+    type: state
+    bounds: [4.0, 18.0]
+
+  # ── 干预输入（可控）──────────────────────────────────────────────────────────────
+  carb_intake_per_meal:
+    description: 每餐平均碳水化合物摄入量（g，等效 GI 加权）
+    value: 65.0
+    unit: g/meal
+    type: input
+
+  exercise_met_min:
+    description: 每次运动的 MET·min；配合 T2 时机和 T3 频率优化
+    value: 0.0
+    unit: MET·min
+    type: input
+
+  fasting_window_hours:
+    description: >
+      日间禁食窗口时长（小时；16=16:8 IF，14=14:10 IF，8=无禁食对照）；
+      禁食延长胰岛素空谷期，改善胰岛素敏感性（Lowe 2020）。
+    value: 10.0
+    unit: hours
+    type: input
+
+  # ── 外生参数 ─────────────────────────────────────────────────────────────────
+  work_pressure:
+    description: >
+      工作压力（外生参数，0–1）；经皮质醇-GR 通路轻度降低胰岛素敏感性。
+      不参与优化，表达职业应激对血糖控制的背景影响。
+    value: "normal(0.5, 0.2)"
+    unit: AU
+    type: parameter
+    reference: "Qi X & Rodrigues B (2021) Mol Cell Endocrinol 536:111413"
+
+  s_g:
+    description: 葡萄糖效能（glucose effectiveness，自身消除速率，Bergman 1981）
+    value: 0.025
+    unit: 1/day
+    type: parameter
+    bounds: [0.01, 0.06]
+    reference: "Bergman RN et al. (1981)"
+
+  insulin_sensitivity_recovery:
+    description: 良好干预下胰岛素敏感性每日改善速率（上限：运动+饮食联合干预）
+    value: 0.008
+    unit: 1/day
+    type: parameter
+    reference: "Erickson ML et al. (2019)"
+
+  fasting_glucose_target:
+    description: 基础空腹血糖目标（无干预时的稳态）
+    value: 5.5
+    unit: mmol/L
+    type: parameter
+    reference: "ADA Standards of Care (2024)"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
+formulas:
+  insulin_sensitivity_dynamics:
+    description: >
+      胰岛素敏感性：运动改善（空腹运动效率高约1.3倍，Erickson 2019）
+      + 禁食窗口改善 - 工作压力皮质醇轻度恶化。
+      时间常数约 20-30 天（慢变量）。
+    condition: true
+    priority: 6
+    dynamics:
+      insulin_sensitivity: >
+        insulin_sensitivity
+        + insulin_sensitivity_recovery * (exercise_met_min / 180) * step
+        + 0.002 * max(0, fasting_window_hours - 10) * step
+        - 0.001 * work_pressure * step
+        - 0.005 * (carb_intake_per_meal / 65 - 1) * insulin_sensitivity * step
+    reference: "Bergman RN (1981); Erickson ML (2019); Lowe DA (2020)"
+
+  fasting_glucose_dynamics:
+    description: >
+      空腹血糖：胰岛素敏感性改善 → 血糖下降；高碳水摄入 → 血糖上升；
+      向稳态（5.5 mmol/L）自然回落。
+    condition: true
+    priority: 5
+    dynamics:
+      fasting_glucose: >
+        fasting_glucose
+        - 0.8 * insulin_sensitivity * (fasting_glucose - fasting_glucose_target) * step
+        + 0.02 * max(0, carb_intake_per_meal - 50) * step
+        + 0.01 * work_pressure * step
+    reference: "Bergman RN et al. (1981); ADA (2024)"
+
+  post_meal_peak_update:
+    description: "餐后血糖峰值：碳水负荷 / 胰岛素敏感性（瞬时代数关系）"
+    condition: true
+    priority: 4
+    formula:
+      post_meal_peak: >
+        max(4.5, fasting_glucose + (carb_intake_per_meal / 30) / max(0.1, insulin_sensitivity))
+    reference: "Bergman RN et al. (1981)"
+
+  hba1c_dynamics:
+    description: >
+      HbA1c：空腹血糖的3个月指数加权移动平均（时间常数90天）；
+      反映血糖控制长期趋势。
+    condition: true
+    priority: 3
+    dynamics:
+      hba1c: >
+        hba1c + (fasting_glucose / 1.59 + 2.59 - hba1c) * 0.011 * step
+    reference: "Nathan DM et al. (2008) eAG/HbA1c conversion. Diabetes Care 31(8):1473"
+
+# ── 仿真设置（K=2 分段：强化期→维持期）──────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"        # 26 周
+  output_variables:
+    - fasting_glucose
+    - insulin_sensitivity
+    - hba1c
+    - post_meal_peak
+    - exercise_met_min
+    - fasting_window_hours
+  schedules:
+    # 基线：高碳水、不运动、无禁食
+    - variable: carb_intake_per_meal
+      time: "00:00"
+      value: 70.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "高碳水饮食（70g/餐）"
+    - variable: exercise_met_min
+      time: "00:00"
+      value: 0.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "不运动（基线）"
+    - variable: fasting_window_hours
+      time: "00:00"
+      value: 10.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-07-01"
+      label: "无意识禁食（10h，正常睡眠）"
+
+  plans:
+    - id: "ifg_no_intervention"
+      label: "无干预基线（IFG 自然进展）"
+      schedules:
+        - {variable: carb_intake_per_meal, time: "00:00", value: 70.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "高碳水"}
+        - {variable: fasting_window_hours, time: "00:00", value: 10.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "无禁食"}
+
+    - id: "ada_standard"
+      label: "ADA 标准干预（低碳水+餐后散步+无IF）"
+      schedules:
+        - {variable: carb_intake_per_meal, time: "00:00", value: 45.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "低碳水（45g/餐）"}
+        - {variable: exercise_met_min, time: "19:00", value: 150.0,
+           days: [Mon, Wed, Fri, Sat],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "餐后运动（3次+周六）"}
+        - {variable: fasting_window_hours, time: "00:00", value: 12.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "轻度12h禁食"}
+
+    - id: "fasting_exercise_optimized"
+      label: "空腹运动+16:8 IF 方案（时间营养学）"
+      schedules:
+        - {variable: carb_intake_per_meal, time: "00:00", value: 45.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "低碳水"}
+        - {variable: exercise_met_min, time: "07:00", value: 180.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "空腹晨练（07:00）"}
+        - {variable: fasting_window_hours, time: "00:00", value: 16.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "16:8 间歇性禁食"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（待运行更新）"
+      schedules:
+        - {variable: carb_intake_per_meal, time: "00:00", value: 42.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "低GI饮食"}
+        - {variable: exercise_met_min, time: "06:30", value: 200.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "空腹晨练（T2优化）"}
+        - {variable: fasting_window_hours, time: "00:00", value: 16.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-02-01 ~ 2026-07-01", label: "16:8 IF（T4起始第4周）"}
+        - {variable: fasting_window_hours, time: "00:00", value: 13.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-01-31", label: "过渡期14:10（T4前）"}
+
+# ── 优化设置（T1+T2+T3+T4 血糖管理优化）──────────────────────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: hba1c
+      metric: final
+      direction: minimize
+      description: "最小化26周末HbA1c（内分泌科核心目标）"
+    - variable: insulin_sensitivity
+      metric: final
+      direction: maximize
+      description: "最大化26周末胰岛素敏感性"
+
+  constraints:
+    - variable: fasting_glucose
+      condition: "<= 7.0"
+      type: hard
+      description: "不进展为T2DM诊断阈值"
+    - variable: post_meal_peak
+      condition: "<= 10.0"
+      type: hard
+      description: "餐后血糖安全上限（mmol/L）"
+
+  inputs:
+    # T1: 每餐碳水量（影响餐后峰值和慢性血糖负担）
+    - variable: carb_intake_per_meal
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每餐碳水摄入量"
+      optimize:
+        value: [30.0, 80.0]
+
+    # T1+T2: 运动量 + 运动时机（空腹晨练 vs 餐后运动对胰岛素敏感性改善效率不同）
+    - variable: exercise_met_min
+      time_window: "06:00~20:00"
+      opt_step: 1h
+      days: [Mon, Wed, Fri]
+      label: "运动量与时机（T2 空腹 vs 餐后）"
+      optimize:
+        value: [100.0, 250.0]
+        time: true
+
+    # T1+T3: 运动频率模式
+    - variable: exercise_met_min
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Mon, Tue, Thu, Fri]
+        - [Mon, Wed, Fri, Sat]
+        - [Mon, Tue, Wed, Thu, Fri]
+      label: "运动频率模式（T3）"
+      optimize:
+        value: [120.0, 220.0]
+        days: true
+
+    # T1: 禁食窗口时长（14h vs 16h）
+    - variable: fasting_window_hours
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "间歇性禁食窗口时长"
+      optimize:
+        value: [10.0, 18.0]
+
+    # T4: 间歇性禁食开始时机（从基础12h逐步过渡到目标禁食窗口的起始时机）
+    - variable: fasting_window_hours
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-01-15~2026-03-01"
+      label: "间歇性禁食方案起始时机（T4）"
+      optimize:
+        value: [14.0, 17.0]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    description: "MC 采样 work_pressure 和 insulin_sensitivity_recovery，表达个体代谢异质性"
+
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42

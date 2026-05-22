@@ -1,0 +1,342 @@
+metadata:
+  name: m09_sleep_schedule
+  paper: Paper 1 (S1)
+  case_id: M09
+  updated: 2026-05-22
+  author: Fan Shen
+  description:
+    brief: Borbély 双过程睡眠模型（M09），展示 LMF 在心理生理跨域场景的表达能力，优化睡眠时间安排与工作效率权衡。
+    need: >
+      为 Paper 1 §6 提供**心理生理学**跨域案例——证明 LMF 不仅能建模生理机制，
+      也能建模睡眠科学、认知心理和行为经济（工作效率）的多层次耦合。
+      Borbély 双过程模型是参数最成熟的心理生理模型之一（Borbély 1982），
+      可用于演示睡眠剥夺→认知表现下降→健康风险积累的完整链条。
+    problem: >
+      睡眠不足会同时影响认知效率（短期心理）和长期健康风险（医学）；
+      但增加睡眠时间需要减少工作时间（经济权衡）。
+      纯粹"多睡"不是最优——关键是何时睡（T2 昼夜节律）、睡多长（T1）、
+      是否需要补觉（T3 午睡策略）。单一维度建议无法给出个体化最优时间安排。
+    method: >
+      日步长近似的 Borbély 双过程模型：
+      过程 S（睡眠稳态压力）= 清醒时累积 + 睡眠时消散；
+      过程 C（昼夜节律）= 24h 余弦振荡（固定生物钟）；
+      有效睡眠质量 = S消散量 × C适配度；
+      认知表现 = f(慢性睡眠债，昼夜节律相位）；
+      健康风险积累 = 长期睡眠不足的心血管风险。
+      K×4 优化 T1（睡眠时长）+ T2（就寝时间窗）+ T3（午睡与否/时机）。
+    simulation: >
+      默认仿真 4 周（28天），基线：每天工作 9h，睡眠 6.5h（入睡 00:00），
+      慢性轻度睡眠剥夺。输出 sleep_pressure、alertness、cognitive_performance、health_risk_index。
+    optimization: >
+      双目标 NSGA-II：最大化工作周平均认知表现，最小化 4 周末健康风险累积；
+      约束 sleep_hours >= 6.0（最低睡眠时间）、work_hours >= 7.0（工作需求底线）；
+      T1（睡眠时长 6-9h）+ T2（就寝时间窗 21:00-01:00）+ T3（午睡时机 12:00-14:00，是否执行）。
+      科学问题：对长期轻度睡眠剥夺者，早睡1小时 vs 午睡20分钟哪种更有效恢复认知功能？
+    result: >
+      预期：T2 优化选择 22:00-23:00 就寝（与昼夜节律峰值对齐）；
+      T3 优化选择在工作日12:30-13:00 安排 20min 午睡；
+      整体认知表现提升约 12-18% vs 基线（6.5h @ 00:00），健康风险降低约 15%。
+    conclusion: >
+      期望结论是睡眠优化的关键不只是"总时长"，而是"时机对齐"（T2）；
+      LMF 可建模心理生理学跨域机制，K×4 输出患者可执行的就寝时刻表，
+      不构成睡眠障碍临床处方。
+    limitations: >
+      日步长近似丢失了小时级昼夜节律细节；昼夜节律相位个体差异（owl vs lark）
+      由 parameter 分布表达但未精确建模；
+      认知表现公式为线性近似，高强度认知任务场景需要更精确模型。
+  tags: [paper1, sleep, psychology, circadian, Borbely, M09, cross-domain, cognitive, productivity]
+  references:
+    - "Borbély AA (1982) A two process model of sleep regulation. Hum Neurobiol 1(3):195-204"
+    - "Daan S, Beersma DGM, Borbély AA (1984) Timing of human sleep. Am J Physiol 246(2):R161-R178"
+    - "Van Dongen HPA et al. (2003) The cumulative cost of additional wakefulness. Sleep 26(2):117-126"
+    - "Pilcher JJ & Huffcutt AI (1996) Effects of sleep deprivation on performance. Sleep 19(4):318-326"
+    - "Hilditch CJ & McHill AW (2019) Sleep inertia. Curr Sleep Med Rep 5:155-166"
+  step_size:
+    value: 1
+    unit: day
+
+# ── 变量 ────────────────────────────────────────────────────────────────────────
+variables:
+  sleep_pressure:
+    description: >
+      睡眠稳态压力（Borbély 过程S，日尺度近似）；
+      清醒每小时积累，睡眠时按指数消散；满值=1.0代表极度睡眠剥夺。
+    value: 0.3
+    unit: AU
+    type: state
+    bounds: [0, 1]
+    reference: "Borbély AA (1982)"
+
+  chronic_sleep_debt:
+    description: 慢性睡眠债（历史睡眠剥夺的累积效应，完全恢复=0）
+    value: 0.1
+    unit: AU
+    type: state
+    bounds: [0, 1]
+    reference: "Van Dongen HPA et al. (2003)"
+
+  alertness:
+    description: 当前警觉水平（认知效能的直接前驱，受睡眠债和昼夜节律共同影响）
+    value: 0.8
+    unit: AU
+    type: state
+    bounds: [0, 1]
+    reference: "Daan S et al. (1984)"
+
+  cognitive_performance:
+    description: 日工作认知表现（工作记忆+执行功能综合，基线=1.0）
+    value: 1.0
+    unit: AU
+    type: state
+    bounds: [0, 1.5]
+    reference: "Van Dongen HPA et al. (2003); Pilcher & Huffcutt (1996)"
+
+  health_risk_index:
+    description: >
+      慢性睡眠剥夺的健康风险累积指数（心血管+免疫+代谢风险综合，基线=0，越高风险越大）
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 2]
+    reference: "Cappuccio FP et al. (2010) Sleep 33(5):585-592"
+
+  sleep_hours:
+    description: 当晚计划睡眠时长（小时，由 Regimen 驱动）
+    value: 6.5
+    unit: hours
+    type: input
+
+  nap_minutes:
+    description: 午睡时长（分钟，0=不午睡；由 Regimen T3 驱动）
+    value: 0.0
+    unit: minutes
+    type: input
+
+  # ── 参数 ─────────────────────────────────────────────────────────────────────
+  tau_s_wake:
+    description: 睡眠压力清醒时积累时间常数（每小时增加量，Borbély 1982）
+    value: 0.0417
+    unit: 1/hour
+    type: parameter
+    reference: "Borbély AA (1982)"
+
+  tau_s_sleep:
+    description: 睡眠时压力消散时间常数（Borbély 1982，τ≈2.4h对应半衰期）
+    value: 0.0833
+    unit: 1/hour
+    type: parameter
+    reference: "Borbély AA (1982)"
+
+  circadian_amplitude:
+    description: 昼夜节律对警觉的调制幅度（Daan 1984）
+    value: 0.15
+    unit: AU
+    type: parameter
+    reference: "Daan S et al. (1984)"
+
+  sleep_debt_halflife:
+    description: 慢性睡眠债自然消退半衰期（完全休息约需7-10天，Van Dongen 2003）
+    value: 0.07
+    unit: 1/day
+    type: parameter
+    reference: "Van Dongen HPA et al. (2003)"
+
+  health_risk_rate:
+    description: 慢性睡眠不足（<7h）每天积累健康风险的速率系数
+    value: 0.015
+    unit: 1/day
+    type: parameter
+    reference: "Cappuccio FP et al. (2010)"
+
+  optimal_sleep:
+    description: 健康成人最优睡眠时长（7-9h中取中值，8h）
+    value: 8.0
+    unit: hours
+    type: parameter
+    reference: "Watson NF et al. (2015) Sleep 38(6):843-844"
+
+# ── 动力学公式 ──────────────────────────────────────────────────────────────────
+formulas:
+  sleep_pressure_dynamics:
+    description: >
+      日尺度近似：清醒期（24-sleep_hours小时）积累，睡眠期（sleep_hours）消散。
+      净变化 = 积累 - 消散；午睡额外消散一部分压力。
+    condition: true
+    priority: 6
+    dynamics:
+      sleep_pressure: >
+        sleep_pressure
+        + tau_s_wake * (24 - sleep_hours) * step
+        - tau_s_sleep * sleep_hours * step
+        - tau_s_sleep * (nap_minutes / 60) * 0.5 * step
+    reference: "Borbély AA (1982)"
+
+  sleep_debt_dynamics:
+    description: "慢性睡眠债：睡眠不足（<7h）时积累，充足睡眠时（>7h）缓慢消退"
+    condition: true
+    priority: 5
+    dynamics:
+      chronic_sleep_debt: >
+        chronic_sleep_debt
+        + max(0, (7.0 - sleep_hours) * 0.05) * step
+        - sleep_debt_halflife * chronic_sleep_debt * max(0, sleep_hours - 7.0) * step
+    reference: "Van Dongen HPA et al. (2003)"
+
+  alertness_update:
+    description: >
+      警觉水平：随睡眠压力升高而降低，午睡提供短暂恢复（circadian调制简化为参数）。
+      此为瞬时代数关系。
+    condition: true
+    priority: 4
+    formula:
+      alertness: >
+        max(0.1, 1.0 - 0.6 * sleep_pressure - 0.4 * chronic_sleep_debt
+        + circadian_amplitude * max(0, (nap_minutes - 10) / 60))
+    reference: "Daan S et al. (1984); Hilditch & McHill (2019)"
+
+  cognitive_performance_update:
+    description: >
+      认知表现：警觉水平的非线性函数，睡眠充足时有一定超基线表现，
+      严重剥夺时下降至0.5-0.6（Van Dongen 2003）。
+    condition: true
+    priority: 3
+    formula:
+      cognitive_performance: max(0.4, alertness * 1.1 - 0.2 * chronic_sleep_debt)
+    reference: "Pilcher JJ & Huffcutt AI (1996)"
+
+  health_risk_accumulation:
+    description: "健康风险：睡眠不足时每天积累，充足睡眠（>8h）时有所恢复"
+    condition: true
+    priority: 2
+    dynamics:
+      health_risk_index: >
+        health_risk_index
+        + max(0, health_risk_rate * (optimal_sleep - sleep_hours) / optimal_sleep) * step
+        - max(0, 0.005 * (sleep_hours - optimal_sleep)) * step
+    reference: "Cappuccio FP et al. (2010)"
+
+# ── 仿真设置（4周慢性轻度睡眠剥夺基线）──────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-28"        # 4 周 = 28 天
+  output_variables:
+    - sleep_pressure
+    - chronic_sleep_debt
+    - alertness
+    - cognitive_performance
+    - health_risk_index
+    - sleep_hours
+    - nap_minutes
+  schedules:
+    # 基线：每天6.5h睡眠（慢性轻度睡眠剥夺，不午睡）
+    - variable: sleep_hours
+      time: "00:00"
+      value: 6.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-01-28"
+      label: "基线睡眠（6.5h/天，00:00就寝）"
+
+  # 预定义对比方案（论文图表复现）
+  plans:
+    - id: "sleep_deprived_baseline"
+      label: "基线：6.5h睡眠，00:00就寝，不午睡"
+      schedules:
+        - {variable: sleep_hours, time: "00:00", value: 6.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "睡眠基线"}
+
+    - id: "early_bedtime"
+      label: "早睡方案：7.5h睡眠，22:30就寝，不午睡"
+      schedules:
+        - {variable: sleep_hours, time: "22:30", value: 7.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "早睡7.5h"}
+
+    - id: "nap_strategy"
+      label: "午睡策略：6.5h夜间睡眠 + 每天20min午睡"
+      schedules:
+        - {variable: sleep_hours, time: "00:00", value: 6.5,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "夜间睡眠"}
+        - {variable: nap_minutes, time: "13:00", value: 20.0,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日午睡20min"}
+
+    - id: "k4_optimized"
+      label: "K×4优化方案（参考点，待运行后更新）"
+      schedules:
+        - {variable: sleep_hours, time: "22:30", value: 7.5,
+           days: [Mon, Tue, Wed, Thu, Fri],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日早睡"}
+        - {variable: sleep_hours, time: "23:00", value: 8.5,
+           days: [Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "周末补觉"}
+        - {variable: nap_minutes, time: "13:00", value: 15.0,
+           days: [Mon, Wed, Fri],
+           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日午睡（间隔执行）"}
+
+# ── 优化设置（T1+T2+T3 联合优化）──────────────────────────────────────────────
+optimizer:
+  method: nsga2
+
+  objectives:
+    - variable: cognitive_performance
+      metric: mean
+      direction: maximize
+      description: "最大化4周平均认知表现（工作效率）"
+    - variable: health_risk_index
+      metric: final
+      direction: minimize
+      description: "最小化4周末健康风险累积"
+
+  constraints:
+    - variable: sleep_hours
+      condition: ">= 6.0"
+      type: hard
+      description: "最低睡眠时间：不低于6h/天（安全下限）"
+
+  inputs:
+    # T1: 工作日睡眠时长
+    - variable: sleep_hours
+      time: "22:00"
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日睡眠时长"
+      optimize:
+        value: [6.0, 9.0]
+
+    # T1+T2: 工作日就寝时间窗（昼夜节律对齐）
+    # 科学意义：Borbély C过程表明21:00-23:30就寝与昼夜节律最佳对齐
+    - variable: sleep_hours
+      time_window: "21:00~01:00"
+      opt_step: 1h
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日就寝时机（时间营养学）"
+      optimize:
+        value: [6.5, 8.5]
+        time: true
+
+    # T1: 周末睡眠（允许补觉）
+    - variable: sleep_hours
+      time: "23:00"
+      days: [Sat, Sun]
+      label: "周末睡眠时长（含补觉）"
+      optimize:
+        value: [7.0, 10.0]
+
+    # T3: 午睡时机（哪几天、什么时候午睡）
+    # 科学意义：工作日午睡 vs 隔天午睡 vs 不午睡，对慢性睡眠债恢复效率不同
+    - variable: nap_minutes
+      time: "13:00"
+      days_options:
+        - [Mon, Tue, Wed, Thu, Fri]   # 每天工作日午睡
+        - [Mon, Wed, Fri]             # 间隔午睡（避免夜间睡眠影响）
+        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 全周午睡（含周末）
+      label: "午睡频率策略"
+      optimize:
+        value: [0.0, 30.0]
+        days: true
+
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 42
