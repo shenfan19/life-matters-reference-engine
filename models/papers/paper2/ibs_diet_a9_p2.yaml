@@ -279,6 +279,11 @@ simulation:
 # ── 优化设置（T1+T3+T4）──────────────────────────────────────────────────────────
 optimizer:
   method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  step_size:
+    value: 1
+    unit: day
 
   objectives:
     - variable: symptom_score

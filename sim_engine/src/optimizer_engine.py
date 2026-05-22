@@ -145,7 +145,8 @@ def run_optimizer(simulator_engine, model_name: str,
 
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
-        for key in ('regimen', 'inputs', 'objectives', 'constraints', 'algorithm', 'method'):
+        for key in ('regimen', 'inputs', 'objectives', 'constraints', 'algorithm', 'method',
+                    'start_date', 'end_date', 'step_size'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
 
@@ -301,13 +302,20 @@ def run_optimizer(simulator_engine, model_name: str,
             ]}
 
     # ── simulation parameters ─────────────────────────────────────────────────
-    step_size: float = float(base_model.simulator.get('step_size', 86400.0))
+    # opt_block.start_date / end_date / step_size override simulation block values
     sim_data = base_model.simulator
-    sim_start_date: str = str(sim_data.get('start_date', ''))
+    _opt_step_cfg = opt_block.get('step_size')
+    if _opt_step_cfg and isinstance(_opt_step_cfg, dict):
+        _unit_to_sec = {'second': 1.0, 'minute': 60.0, 'hour': 3600.0, 'day': 86400.0}
+        step_size = float(_opt_step_cfg.get('value', 1)) * _unit_to_sec.get(
+            str(_opt_step_cfg.get('unit', 'second')).lower(), 1.0)
+    else:
+        step_size = float(base_model.simulator.get('step_size', 86400.0))
+    sim_start_date: str = str(opt_block.get('start_date') or sim_data.get('start_date', ''))
     try:
         from datetime import date as _date
         sd = sim_start_date
-        ed = str(sim_data.get('end_date', ''))
+        ed = str(opt_block.get('end_date') or sim_data.get('end_date', ''))
         if not sd or not ed:
             raise ValueError("no start/end date")
         sy, sm, sdd_ = [int(x) for x in sd.split('-')]

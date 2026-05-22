@@ -192,6 +192,11 @@ simulation:
 
 optimizer:                          # 可选；优化器配置；详见「optimizer — 决策变量与调度优化」章节
   method: nsga2                     # nsga2（默认，多目标）| l-bfgs-b | nelder-mead（单目标）
+  start_date: "YYYY-MM-DD"         # 可选；优化评估时间窗起始；缺省沿用 simulation.start_date
+  end_date:   "YYYY-MM-DD"         # 可选；优化评估时间窗结束；缺省沿用 simulation.end_date
+  step_size:                        # 可选；优化评估步长；缺省沿用 metadata.step_size
+    value: 1
+    unit: day                       # second | minute | hour | day
   objectives:
     - variable: outcome_var
       metric: final                 # final | max | min | mean
@@ -712,6 +717,39 @@ formulas:
 ---
 
 ## optimizer — 决策变量与调度优化
+
+### 评估时间窗（start_date / end_date / step_size）
+
+优化器在每次评估时内部运行一次仿真，其时间范围和步长可独立于 GUI 的可视化设置：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `start_date` | `"YYYY-MM-DD"` | 优化评估起始日；缺省沿用 `simulation.start_date` |
+| `end_date` | `"YYYY-MM-DD"` | 优化评估结束日；缺省沿用 `simulation.end_date` |
+| `step_size` | `{value, unit}` | 评估步长；缺省沿用 `metadata.step_size` |
+
+**设计原则：**
+- 三者均为可选；不声明则从 simulation / metadata 继承。
+- 显式声明可保证结果可复现：发布带 `optimizer.results` 的 YAML 时，读者可用相同时间窗重跑优化。
+- 评估步长建议与 `metadata.step_size` 一致；若模型动力学时间尺度允许，可适当粗化以加速搜索。
+- GUI 的时间控件值（工具栏上的日期和步长）在运行优化时作为 `optimizer_override` 传入引擎，优先级高于 YAML 静态值。
+
+**典型用法（缩短评估窗以加速搜索）：**
+
+```yaml
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2030-12-31"   # 5 年可视化
+
+optimizer:
+  start_date: "2026-01-01"
+  end_date:   "2027-12-31"   # 仅用 2 年评估，加速搜索
+  step_size:
+    value: 1
+    unit: day
+```
+
+---
 
 优化器将干预方案的参数化搜索分为四个粒度层（Tier），按科学价值与计算复杂度排序：
 

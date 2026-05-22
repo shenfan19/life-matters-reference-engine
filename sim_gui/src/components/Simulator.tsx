@@ -1577,6 +1577,9 @@ const Simulator: React.FC<SimulatorProps> = ({
         n_generations: optGen,
         seed: 42,
       },
+      start_date: simStartDate,
+      end_date: simEndDate,
+      step_size: { value: stepValue, unit: stepUnit },
     };
 
     // F-5-3: use explicit warm/cold start choice
