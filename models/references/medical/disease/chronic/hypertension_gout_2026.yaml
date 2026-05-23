@@ -202,7 +202,6 @@ simulation:
       label: "每日嘌呤摄入量（mg/day）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: systolic_bp
@@ -222,13 +221,12 @@ optimizer:
       condition: "<= 25"
       type: hard
       description: "HCTZ标准剂量上限25mg（ESC 2018）"
-  regimen:
-    variable: diuretic_dose
-    description: "优化HCTZ剂量（mg）"
-    events:
-      - time: "08:00"
-        dose_bounds: [0, 25]
-        label: "HCTZ晨服剂量（mg）"
+  inputs:
+    - variable: diuretic_dose
+      time: "08:00"
+      label: "HCTZ晨服剂量（mg）"
+      optimize:
+        value: [0, 25]
   algorithm:
     population_size: 80
     n_generations: 120
@@ -245,11 +243,12 @@ optimizer:
       - {x: [18.75], f: [148.1, 531.9]}
       - {x: [25.0],  f: [145.2, 548.6]}
       - {x: [12.5],  f: [151.2, 420.4]}
-    best:
+    reference:
       x: [12.5]
       f: [151.2, 420.4]
       regimen:
-        diuretic_dose: {"08:00": 12.5}
+        diuretic_dose:
+          "HCTZ晨服剂量": 12.5
       objectives:
         systolic_bp: 151.2
         uric_acid: 420.4

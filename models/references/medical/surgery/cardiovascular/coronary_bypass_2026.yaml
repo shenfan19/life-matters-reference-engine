@@ -308,12 +308,12 @@ optimizer:
       condition: ">= 0.5"
       type: soft
       description: "第14天伤口愈合指数≥0.5"
-  regimen:
-    variable: cardiac_rehabilitation_intensity
-    events:
-      - time: "09:00"
-        dose_bounds: [1.0, 4.0]
-        label: "第1周康复强度"
+  inputs:
+    - variable: cardiac_rehabilitation_intensity
+      time: "09:00"
+      label: "第1周康复强度"
+      optimize:
+        value: [1.0, 4.0]
         date_range: "2026-01-01 ~ 2026-01-07"
       - time: "09:00"
         dose_bounds: [3.0, 7.0]
@@ -340,7 +340,7 @@ optimizer:
       - {x: [3.5, 6.0, 9.0], f: [-44.1, 119.1]}
       - {x: [4.0, 6.5, 9.5], f: [-44.6, 118.3]}
       - {x: [4.0, 7.0, 10.0], f: [-44.9, 118.8]}
-    best:
+    reference:
       x: [2.5, 5.0, 8.0]
       f: [-42.7, 122.8]
       regimen:

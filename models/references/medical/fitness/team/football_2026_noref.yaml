@@ -217,7 +217,6 @@ simulation:
   - performance
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: distance_covered
@@ -237,13 +236,12 @@ optimizer:
       condition: >= 20
       type: soft
       description: 保留 20% 肌糖原储备
-  regimen:
-    variable: game_intensity
-    description: 优化足球比赛强度与冲刺分配策略
-    events:
-      - time: "15:00"
-        dose_bounds: [3.0, 9.0]
-        label: 比赛强度（RPE 3-9）
+  inputs:
+    - variable: game_intensity
+      time: "15:00"
+      label: 比赛强度（RPE 3-9）
+      optimize:
+        value: [3.0, 9.0]
   algorithm:
     population_size: 50
     n_generations: 80

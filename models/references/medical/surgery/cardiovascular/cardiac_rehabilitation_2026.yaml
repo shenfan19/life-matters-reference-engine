@@ -319,12 +319,12 @@ optimizer:
       condition: ">= 50"
       type: hard
       description: "静息心率全程≥50 bpm"
-  regimen:
-    variable: supervised_exercise_intensity
-    events:
-      - time: "09:00"
-        dose_bounds: [2.0, 5.0]
-        label: "第1-4周运动强度（MET）"
+  inputs:
+    - variable: supervised_exercise_intensity
+      time: "09:00"
+      label: "第1-4周运动强度（MET）"
+      optimize:
+        value: [2.0, 5.0]
         date_range: "2026-01-01 ~ 2026-01-28"
       - time: "09:00"
         dose_bounds: [4.0, 7.0]
@@ -352,7 +352,7 @@ optimizer:
       - {x: [4.5, 6.5, 8.5], f: [-8.5, 63.2]}
       - {x: [5.0, 7.0, 9.0], f: [-8.7, 62.9]}
       - {x: [5.0, 7.0, 9.5], f: [-8.8, 63.1]}
-    best:
+    reference:
       x: [3.5, 5.5, 7.5]
       f: [-8.1, 64.3]
       regimen:

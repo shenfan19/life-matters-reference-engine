@@ -169,7 +169,6 @@ simulation:
       label: "有氧训练划频（24 spm）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: split_time
@@ -189,13 +188,12 @@ optimizer:
       condition: "<= 200"
       type: hard
       description: "心率上限 200 bpm（安全上限）"
-  regimen:
-    variable: power_output
-    description: "优化划桨功率输出（W）"
-    events:
-      - time: "07:00"
-        dose_bounds: [200.0, 450.0]
-        label: "比赛/训练功率（W，200=有氧基础，450=精英比赛强度）"
+  inputs:
+    - variable: power_output
+      time: "07:00"
+      label: "比赛/训练功率（W，200=有氧基础，450=精英比赛强度）"
+      optimize:
+        value: [200.0, 450.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -212,7 +210,7 @@ optimizer:
       - {x: [340.0], f: [107.0, 7.6]}
       - {x: [380.0], f: [104.2, 10.4]}
       - {x: [420.0], f: [102.0, 13.8]}
-    best:
+    reference:
       x: [340.0]
       f: [107.0, 7.6]
       regimen:

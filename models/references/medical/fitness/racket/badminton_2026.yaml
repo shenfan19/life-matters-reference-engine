@@ -151,7 +151,6 @@ simulation:
       label: "扣杀频率（2.5次/min，精英中等水平）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: fatigue
@@ -171,13 +170,12 @@ optimizer:
       condition: "<= 8.0"
       type: soft
       description: "血乳酸控制在8 mmol/L以内"
-  regimen:
-    variable: rally_pace
-    description: "优化比赛回合节奏策略"
-    events:
-      - time: "09:00"
-        dose_bounds: [3.0, 9.0]
-        label: "回合节奏（RPE 3-9）"
+  inputs:
+    - variable: rally_pace
+      time: "09:00"
+      label: "回合节奏（RPE 3-9）"
+      optimize:
+        value: [3.0, 9.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -193,7 +191,7 @@ optimizer:
       - {x: [7.0], f: [0.52, -540.0]}
       - {x: [8.0], f: [0.68, -590.0]}
       - {x: [9.0], f: [0.85, -630.0]}
-    best:
+    reference:
       x: [7.0]
       f: [0.52, -540.0]
       regimen:

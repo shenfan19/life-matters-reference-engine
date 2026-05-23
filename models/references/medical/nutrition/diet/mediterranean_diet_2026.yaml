@@ -289,7 +289,6 @@ simulation:
       label: "红肉限制1份/周"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: ldl_mg_dl
@@ -309,13 +308,12 @@ optimizer:
       condition: "<= 130"
       type: soft
       description: "SBP目标≤130 mmHg"
-  regimen:
-    variable: olive_oil_ml_day
-    description: "优化橄榄油日摄入量"
-    events:
-      - time: "12:00"
-        dose_bounds: [10.0, 80.0]
-        label: "橄榄油（mL/day）"
+  inputs:
+    - variable: olive_oil_ml_day
+      time: "12:00"
+      label: "橄榄油（mL/day）"
+      optimize:
+        value: [10.0, 80.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -332,7 +330,7 @@ optimizer:
       - {x: [50.0], f: [140.3, 2.12]}
       - {x: [65.0], f: [139.1, 2.02]}
       - {x: [80.0], f: [137.9, 1.93]}
-    best:
+    reference:
       x: [50.0]
       f: [140.3, 2.12]
       regimen:

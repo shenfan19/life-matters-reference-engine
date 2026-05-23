@@ -182,7 +182,6 @@ simulation:
       label: "低流量氧疗3L/min（急性期5天）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: fever_celsius
@@ -202,16 +201,17 @@ optimizer:
       condition: "<= 2.0"
       type: hard
       description: "抗生素剂量上限（避免毒副作用）"
-  regimen:
-    variable: antibiotic_dose
-    description: "优化抗生素剂量（相对单位）"
-    events:
-      - time: "08:00"
-        dose_bounds: [0.5, 2.0]
-        label: "抗生素晨服剂量"
-      - time: "20:00"
-        dose_bounds: [0.5, 2.0]
-        label: "抗生素晚服剂量"
+  inputs:
+    - variable: antibiotic_dose
+      time: "08:00"
+      label: "抗生素晨服剂量"
+      optimize:
+        value: [0.5, 2.0]
+    - variable: antibiotic_dose
+      time: "20:00"
+      label: "抗生素晚服剂量"
+      optimize:
+        value: [0.5, 2.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -228,7 +228,7 @@ optimizer:
       - {x: [1.2, 1.2], f: [37.8, 96.7]}
       - {x: [1.5, 1.5], f: [37.6, 97.5]}
       - {x: [2.0, 2.0], f: [37.4, 98.2]}
-    best:
+    reference:
       x: [1.0, 1.0]
       f: [37.9, 95.8]
       regimen:

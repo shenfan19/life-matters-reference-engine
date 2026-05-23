@@ -238,7 +238,6 @@ simulation:
       label: "每日睡眠质量"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: cvd_risk
@@ -258,18 +257,19 @@ optimizer:
       condition: "<= 10"
       type: hard
       description: "防止过度训练（>10 MET-h/day有损伤风险）"
-  regimen:
-    variable: exercise_intensity
-    description: "优化每日运动量（MET-hours/day）"
-    events:
-      - time: "07:00"
-        dose_bounds: [0, 8]
-        days: [Mon, Wed, Fri]
-        label: "有氧训练日运动量（MET-h）"
-      - time: "07:00"
-        dose_bounds: [0, 3]
-        days: [Tue, Thu]
-        label: "轻活动日运动量（MET-h）"
+  inputs:
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Wed, Fri]
+      label: "有氧训练日运动量（MET-h）"
+      optimize:
+        value: [0, 8]
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Tue, Thu]
+      label: "轻活动日运动量（MET-h）"
+      optimize:
+        value: [0, 3]
   algorithm:
     population_size: 80
     n_generations: 120
@@ -286,11 +286,13 @@ optimizer:
       - {x: [6.5, 2.0], f: [0.103, -0.856, -83.4]}
       - {x: [7.5, 2.5], f: [0.100, -0.868, -85.1]}
       - {x: [8.0, 3.0], f: [0.098, -0.871, -84.7]}
-    best:
+    reference:
       x: [5.0, 1.5]
       f: [0.108, -0.834, -79.6]
       regimen:
-        exercise_intensity: {"07:00 (Mon/Wed/Fri)": 5.0, "07:00 (Tue/Thu)": 1.5}
+        exercise_intensity:
+          "有氧训练日运动量（MET-h）": 5.0
+          "轻活动日运动量（MET-h）": 1.5
       objectives:
         cvd_risk: 0.108
         immune_function: 0.834

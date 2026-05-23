@@ -146,7 +146,6 @@ simulation:
       label: "场地覆盖速度（3.5 km/h均值）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: performance
@@ -166,13 +165,12 @@ optimizer:
       condition: "<= 190"
       type: soft
       description: "心率控制在190 bpm以内"
-  regimen:
-    variable: game_intensity
-    description: "优化比赛强度分布策略"
-    events:
-      - time: "09:00"
-        dose_bounds: [4.0, 9.0]
-        label: "比赛强度（RPE 4-9）"
+  inputs:
+    - variable: game_intensity
+      time: "09:00"
+      label: "比赛强度（RPE 4-9）"
+      optimize:
+        value: [4.0, 9.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -188,7 +186,7 @@ optimizer:
       - {x: [7.0], f: [-86.0, 39.2]}
       - {x: [8.0], f: [-89.0, 39.7]}
       - {x: [9.0], f: [-90.0, 40.1]}
-    best:
+    reference:
       x: [7.0]
       f: [-86.0, 39.2]
       regimen:

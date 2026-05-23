@@ -184,7 +184,6 @@ simulation:
       label: "跑步强度（75% 阈值，控制糖原消耗）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: race_time_elapsed
@@ -204,19 +203,22 @@ optimizer:
       condition: "<= 195"
       type: hard
       description: "心率安全上限 195 bpm"
-  regimen:
-    variable: intensity_pct_threshold
-    description: "优化各运动段强度（% 无氧阈值）"
-    events:
-      - time: "07:00"
-        dose_bounds: [65.0, 90.0]
-        label: "游泳段强度（%阈值，65=保守，90=激进）"
-      - time: "07:20"
-        dose_bounds: [65.0, 90.0]
-        label: "自行车段强度（%阈值，65=保守，90=激进）"
-      - time: "08:30"
-        dose_bounds: [65.0, 90.0]
-        label: "跑步段强度（%阈值，65=保守，90=激进）"
+  inputs:
+    - variable: intensity_pct_threshold
+      time: "07:00"
+      label: "游泳段强度（%阈值，65=保守，90=激进）"
+      optimize:
+        value: [65.0, 90.0]
+    - variable: intensity_pct_threshold
+      time: "07:20"
+      label: "自行车段强度（%阈值，65=保守，90=激进）"
+      optimize:
+        value: [65.0, 90.0]
+    - variable: intensity_pct_threshold
+      time: "08:30"
+      label: "跑步段强度（%阈值，65=保守，90=激进）"
+      optimize:
+        value: [65.0, 90.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -233,7 +235,7 @@ optimizer:
       - {x: [75.0, 82.0, 78.0], f: [123.0, -85.0]}
       - {x: [78.0, 86.0, 80.0], f: [120.0, -42.0]}
       - {x: [82.0, 90.0, 85.0], f: [117.0, -12.0]}
-    best:
+    reference:
       x: [72.0, 78.0, 75.0]
       f: [127.0, -148.0]
       regimen:

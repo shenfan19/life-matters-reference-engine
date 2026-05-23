@@ -153,7 +153,6 @@ simulation:
       label: "班次时长（50秒，精英前锋典型值）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: shot_power
@@ -173,13 +172,12 @@ optimizer:
       condition: "<= 195"
       type: soft
       description: "心率控制在195 bpm以内"
-  regimen:
-    variable: skating_intensity
-    description: "优化班次滑行强度策略"
-    events:
-      - time: "19:00"
-        dose_bounds: [5.0, 10.0]
-        label: "滑行强度（RPE 5-10）"
+  inputs:
+    - variable: skating_intensity
+      time: "19:00"
+      label: "滑行强度（RPE 5-10）"
+      optimize:
+        value: [5.0, 10.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -195,7 +193,7 @@ optimizer:
       - {x: [8.0], f: [-90.0, 0.48]}
       - {x: [9.0], f: [-88.0, 0.60]}
       - {x: [10.0], f: [-82.0, 0.75]}
-    best:
+    reference:
       x: [8.0]
       f: [-90.0, 0.48]
       regimen:

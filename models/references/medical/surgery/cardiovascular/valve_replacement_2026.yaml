@@ -288,12 +288,12 @@ optimizer:
       condition: "<= 35"
       type: soft
       description: "6周末肺动脉压≤35 mmHg"
-  regimen:
-    variable: warfarin_dose
-    events:
-      - time: "18:00"
-        dose_bounds: [2.0, 10.0]
-        label: "华法林日剂量（mg）"
+  inputs:
+    - variable: warfarin_dose
+      time: "18:00"
+      label: "华法林日剂量（mg）"
+      optimize:
+        value: [2.0, 10.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -310,7 +310,7 @@ optimizer:
       - {x: [6.0], f: [-2.40, 0.2]}
       - {x: [7.0], f: [-2.42, 0.4]}
       - {x: [8.0], f: [-2.43, 0.9]}
-    best:
+    reference:
       x: [5.5]
       f: [-2.39, 0.25]
       regimen:

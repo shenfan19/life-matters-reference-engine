@@ -240,7 +240,6 @@ simulation:
       label: "危机后期谣言自然衰减"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: cumulative_panic_days
@@ -256,13 +255,12 @@ optimizer:
       condition: "<= 60"
       type: hard
       description: "恐慌指数不超60（防止社会秩序崩溃临界点）"
-  regimen:
-    variable: authority_message
-    description: "优化权威干预时机和强度"
-    events:
-      - time: "00:00"
-        dose_bounds: [0.0, 1.0]
-        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  inputs:
+    - variable: authority_message
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      optimize:
+        value: [0.0, 1.0]
         date_range: "2026-01-01 ~ 2026-01-10"
         label: "危机初期干预强度"
       - time: "00:00"
@@ -285,7 +283,7 @@ optimizer:
       - {x: [0.6, 0.2],   f: [4.37, 0.36]}
       - {x: [0.8, 0.3],   f: [3.12, 0.52]}
       - {x: [1.0, 0.5],   f: [2.24, 0.70]}
-    best:
+    reference:
       x: [0.6, 0.2]
       f: [4.37, 0.36]
       regimen:

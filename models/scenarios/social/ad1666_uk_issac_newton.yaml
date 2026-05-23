@@ -483,6 +483,11 @@ formulas:
       insight: "max(0, insight - (40 - health) * 0.0003)"
 
 # ── 优化配置（opt模式启用；sim模式忽略此块）──────────────────────────────────
+# TODO: optimizer 使用旧格式（method/algorithm/objectives[].weight/variables_to_optimize），
+# 需重写为当前规范（inputs: + optimize.value + T2/T3/T4）。
+# 同时，顶层 schedules: 使用旧 dict+points 格式（向后兼容，引擎仍可解析）；
+# 行为类输入（study_intensity/sleep_quality 等）需要持续非零语义，
+# 转换为新 pulse 格式前须先重写相关公式（formulas 均不含 * step 乘步长）。
 optimizer:
   method: multi_objective
   algorithm: nsga2

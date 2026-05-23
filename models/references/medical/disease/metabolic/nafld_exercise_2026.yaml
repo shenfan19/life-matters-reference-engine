@@ -1,0 +1,173 @@
+category: physiological
+
+metadata:
+  name: nafld_exercise
+  updated: 2026-05-23
+  author: Fan Shen
+  description:
+    brief: "NAFLD（非酒精性脂肪肝）运动干预基础机制：肝脂肪消耗、ALT 动力学与运动疲劳三态模型。"
+    need: "为更高层场景、published 案例提供可复用的 NAFLD-运动核心机制组件。"
+    problem: "HIIT（高强度间歇训练）比中等强度有氧更有效地减少肝脂，但急性升高 ALT；如何在 ALT 安全范围内最大化减脂效率？"
+    method: |
+      日步长三状态模型。
+      liver_fat_pct 由运动强度驱动消耗，HIIT（>hiit_threshold MET）有额外减脂系数 beta_hiit；
+      alt_level 在高强度运动后急性升高，以半衰期约4.6天自然回落至基线（Prati 2002）；
+      fatigue_score 随运动累积，按15%/day自然恢复（一阶衰减）。
+    simulation: "默认仿真 90 天，低强度步行（MET 3.5），每天一次。观察肝脂和 ALT 长期动态。"
+    optimization: "双目标：最小化最终肝脂，同时约束 ALT <= 40；决策变量为运动强度。"
+    limitations: |
+      beta_hiit 系数为估计值，需从 HIIT vs MICT 对比 RCT 中精化（Keating 2015 或 Promrat 2010 subgroup）；
+      未建模饮食、体重、胰岛素抵抗对肝脂的影响（更完整模型见 paper2/masld_insulin_a7_p2）；
+      参数基于人群均值，未含 MC 分布。
+  tags: [nafld, fatty_liver, exercise, HIIT, ALT, hepatology]
+  references:
+    - "Keating SE et al. (2015) Exercise and nonalcoholic fatty liver disease. J Hepatol 63(2):509-521."
+    - "Promrat K et al. (2010) Randomized controlled trial testing the effects of weight loss on NASH. Hepatology 51(1):121-129."
+    - "EASL-EASD-EASO Clinical Practice Guidelines (2016) Management of non-alcoholic fatty liver disease. J Hepatol 64(6):1388-1402."
+    - "Prati D et al. (2002) Updated definitions of healthy ranges for serum ALT in adults. Ann Intern Med 137(1):1-10."
+    - "Chalasani N et al. (2012) The diagnosis and management of NAFLD. Hepatology 55(6):2005-2023."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  liver_fat_pct:
+    description: "肝脏脂肪含量（MRI-PDFF，%）。NAFLD 诊断阈值 ≥5%，中重度 ≥10%。"
+    value: 15.0
+    unit: "%"
+    type: state
+    bounds: [0, 60]
+    reference: "Kleiner DE et al. (2005) Design and validation of a histological scoring system for NAFLD. Hepatology 41(6):1313-1321."
+
+  alt_level:
+    description: "丙氨酸氨基转移酶（IU/L）。高强度运动后急性升高，自然回落。正常上限 40 IU/L（男）。"
+    value: 32.0
+    unit: IU/L
+    type: state
+    bounds: [0, 300]
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1-10."
+
+  fatigue_score:
+    description: "运动疲劳评分（0-100 AU）。高疲劳时训练耐受性下降；休息日按一阶动力学恢复。"
+    value: 0.0
+    unit: AU
+    type: state
+    bounds: [0, 100]
+
+  exercise_intensity:
+    description: "当日运动强度（MET）。>hiit_threshold 触发 HIIT 额外减脂效应和 ALT 急性升高。"
+    value: 0.0
+    unit: MET
+    type: input
+    bounds: [0, 12]
+
+  alpha_fat:
+    description: "运动对肝脂的基础消耗系数。Keating 2015 Meta：150 MET·min/周×12周 ↓约3-4% 肝脂，换算约 0.003 %/(MET·day)。"
+    value: 0.003
+    unit: "% per MET·day"
+    type: parameter
+    reference: "Keating SE et al. (2015) J Hepatol 63(2):509-521."
+
+  beta_hiit:
+    description: "HIIT 额外减脂系数（相对于 MICT 同等运动量的倍增因子）。HIIT 约多减 30% 肝脂（估算值，需精化）。"
+    value: 0.35
+    unit: dimensionless
+    type: parameter
+    reference: "TODO:SOURCE Keating 2015 or Promrat 2010 HIIT vs MICT subgroup analysis."
+
+  delta_alt:
+    description: "高强度运动（>hiit_threshold MET）对 ALT 的急性升高系数。"
+    value: 2.1
+    unit: "IU/L per MET·day"
+    type: parameter
+    reference: "TODO:SOURCE Chalasani et al. (2012) Hepatology 55(6):2005-2023."
+
+  epsilon_alt:
+    description: "ALT 自然回落速率（一阶，1/day）。半衰期约 4.6 天（ln2/0.15 ≈ 4.6d）。"
+    value: 0.15
+    unit: 1/day
+    type: parameter
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1-10."
+
+  alt_baseline:
+    description: "ALT 生理基线（NAFLD 患者轻度升高约 28 IU/L）。"
+    value: 28.0
+    unit: IU/L
+    type: parameter
+    reference: "Mofrad P et al. (2003) Nonalcoholic fatty liver disease in nonobese patients. Hepatology 37(6):1286-1292."
+
+  hiit_threshold:
+    description: "触发 HIIT 额外效应和 ALT 急性反应的强度阈值（MET）。"
+    value: 6.0
+    unit: MET
+    type: parameter
+    reference: "EASL-EASD-EASO (2016) J Hepatol 64(6):1388-1402."
+
+formulas:
+  fat_mobilization:
+    description: "肝脂消耗：基础运动效应 + HIIT 超阈值额外减脂（beta_hiit 加成）。"
+    condition: exercise_intensity > 0
+    priority: 5
+    dynamics:
+      liver_fat_pct: >
+        max(0, liver_fat_pct - alpha_fat * exercise_intensity
+        * (1 + beta_hiit if exercise_intensity > hiit_threshold else 1.0) * step)
+    reference: "Keating SE et al. (2015) J Hepatol 63(2):509-521."
+
+  alt_dynamics:
+    description: "ALT 一阶动力学：高强度运动急性升高 - 向基线的自然回落（半衰期 4.6 天）。"
+    condition: true
+    priority: 4
+    dynamics:
+      alt_level: >
+        max(0, alt_level + (delta_alt * max(0, exercise_intensity - hiit_threshold)
+        - epsilon_alt * (alt_level - alt_baseline)) * step)
+    reference: "Prati D et al. (2002) Ann Intern Med 137(1):1-10."
+
+  fatigue_dynamics:
+    description: "运动疲劳一阶动力学：训练累积（0.5×MET/day）- 15%/day 自然恢复。"
+    condition: true
+    priority: 3
+    dynamics:
+      fatigue_score: >
+        max(0, min(100, fatigue_score + (0.5 * exercise_intensity - 0.15 * fatigue_score) * step))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-04-01"
+  output_variables: [liver_fat_pct, alt_level, fatigue_score, exercise_intensity]
+  schedules:
+    - variable: exercise_intensity
+      time: "07:00"
+      value: 3.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-04-01"
+      label: "低强度步行（MET 3.5，每天一次）"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: liver_fat_pct
+      metric: final
+      direction: minimize
+      description: "最小化90天末肝脂肪（%）"
+    - variable: alt_level
+      metric: max
+      direction: minimize
+      description: "最小化ALT峰值（避免肝损伤）"
+  constraints:
+    - variable: alt_level
+      condition: "<= 40"
+      type: hard
+      description: "ALT不超正常上限（EASL 2016）"
+  inputs:
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Wed, Fri]
+      label: "主训练日运动强度（MET）"
+      optimize:
+        value: [3.0, 9.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

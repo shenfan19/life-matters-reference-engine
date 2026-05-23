@@ -1,0 +1,26 @@
+category: dynamics
+
+metadata:
+  name: ad2077_nightcity_v
+  updated: 2026-05-23
+  author: Fan Shen
+  description:
+    brief: "赛博朋克2077：V在夜之城的生存与身份认同场景（虚构，2077年）。TODO：选定具体弧线（主线/义侠/街头小子起源？）后完善。"
+    need: "以高度反乌托邦虚构设定检验 LM 框架对人机融合（Cyberware）、心理健康（Cyberpsychosis）与生存资源的建模能力。"
+    problem: "核心张力：植入体强化提升战斗力但积累 Cyberpsychosis 风险；Relic 芯片持续消耗神经系统；NCPD、企业和帮派三重威胁。"
+    limitations: "TODO：Cyberware 参数（每件植入体对 Humanity 和战斗力的量化效应）、Relic 进展速率均需从游戏机制反推；完全虚构，无学术来源。"
+  tags: [cyberpunk, fiction, 2077, transhumanism, TODO]
+  references:
+    - "CD Projekt Red (2020) Cyberpunk 2077 [Video Game]. CD Projekt."
+    - "Pondsmith M (1988) Cyberpunk 2013 Sourcebook. R. Talsorian Games."
+  step_size:
+    value: 1
+    unit: day
+
+variables: {}
+formulas: {}
+
+simulation:
+  start_date: "2077-01-01"
+  end_date:   "2077-06-30"
+  output_variables: []

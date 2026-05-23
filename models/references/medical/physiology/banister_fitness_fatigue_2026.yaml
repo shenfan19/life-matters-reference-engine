@@ -151,7 +151,6 @@ simulation:
       label: "周六长训练"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: performance
@@ -167,18 +166,19 @@ optimizer:
       condition: "<= 100"
       type: hard
       description: "避免过度训练：疲劳分量不超100（Morton 1990推荐阈值）"
-  regimen:
-    variable: training_load
-    description: "优化每日训练负荷分布（TRIMP）"
-    events:
-      - time: "09:00"
-        dose_bounds: [0, 150]
-        days: [Mon, Tue, Wed, Thu, Fri]
-        label: "工作日训练负荷（TRIMP）"
-      - time: "09:00"
-        dose_bounds: [0, 150]
-        days: [Sat]
-        label: "周六训练负荷（TRIMP）"
+  inputs:
+    - variable: training_load
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日训练负荷（TRIMP）"
+      optimize:
+        value: [0, 150]
+    - variable: training_load
+      time: "09:00"
+      days: [Sat]
+      label: "周六训练负荷（TRIMP）"
+      optimize:
+        value: [0, 150]
   algorithm:
     population_size: 80
     n_generations: 150
@@ -196,11 +196,13 @@ optimizer:
       - {x: [90, 110], f: [-402.7, 94.1]}
       - {x: [105, 125],f: [-408.3, 98.6]}
       - {x: [120, 140],f: [-410.1, 99.8]}
-    best:
+    reference:
       x: [75, 95]
       f: [-389.2, 84.5]
       regimen:
-        training_load: {"09:00 (Mon-Fri)": 75, "09:00 (Sat)": 95}
+        training_load:
+          "工作日训练负荷（TRIMP）": 75
+          "周六训练负荷（TRIMP）": 95
       objectives:
         performance: 389.2
         fatigue_component: 84.5

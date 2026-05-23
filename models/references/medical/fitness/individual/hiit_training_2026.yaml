@@ -174,7 +174,6 @@ simulation:
       label: "恢复比 1:1（4 分钟工作 + 4 分钟主动恢复）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: vo2max
@@ -194,13 +193,12 @@ optimizer:
       condition: "<= 97"
       type: hard
       description: "强度上限 97% VO2max（超过此值心律失常和过度疲劳风险急增）"
-  regimen:
-    variable: interval_intensity
-    description: "优化 HIIT 训练强度（%VO2max）"
-    events:
-      - time: "07:00"
-        dose_bounds: [70.0, 97.0]
-        label: "间隔强度（%VO2max，70=阈值，95=接近 VO2max）"
+  inputs:
+    - variable: interval_intensity
+      time: "07:00"
+      label: "间隔强度（%VO2max，70=阈值，95=接近 VO2max）"
+      optimize:
+        value: [70.0, 97.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -216,7 +214,7 @@ optimizer:
       - {x: [90.0], f: [-53.2, 4.0]}
       - {x: [95.0], f: [-55.1, 4.0]}
       - {x: [97.0], f: [-55.8, 4.0]}
-    best:
+    reference:
       x: [90.0]
       f: [-53.2, 4.0]
       regimen:
