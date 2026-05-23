@@ -183,7 +183,6 @@ simulation:
       label: "多日徒步背包（15 kg）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: cumulative_distance
@@ -203,13 +202,12 @@ optimizer:
       condition: "<= 170"
       type: soft
       description: "心率目标上限 170 bpm（有氧-无氧阈值，维持可持续行军）"
-  regimen:
-    variable: hiking_speed
-    description: "优化徒步速度（km/h）"
-    events:
-      - time: "07:00"
-        dose_bounds: [2.5, 7.0]
-        label: "徒步速度（km/h，2.5=慢速恢复，7.0=快速行军）"
+  inputs:
+    - variable: hiking_speed
+      time: "07:00"
+      label: "徒步速度（km/h，2.5=慢速恢复，7.0=快速行军）"
+      optimize:
+        value: [2.5, 7.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -225,7 +223,7 @@ optimizer:
       - {x: [4.5], f: [-18.0, 72000.0]}
       - {x: [5.5], f: [-22.0, 98400.0]}
       - {x: [7.0], f: [-28.0, 153600.0]}
-    best:
+    reference:
       x: [4.5]
       f: [-18.0, 72000.0]
       regimen:

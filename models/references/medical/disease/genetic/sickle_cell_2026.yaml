@@ -194,7 +194,6 @@ simulation:
       label: "每日补液2500mL"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: hbf_percentage
@@ -214,13 +213,12 @@ optimizer:
       condition: "<= 4"
       type: soft
       description: "目标：疼痛评分<4（日常功能保留）"
-  regimen:
-    variable: hydroxyurea_dose_mg_per_kg
-    description: "优化羟基脲剂量（mg/kg/day）"
-    events:
-      - time: "08:00"
-        dose_bounds: [10.0, 25.0]
-        label: "羟基脲剂量（mg/kg/day）"
+  inputs:
+    - variable: hydroxyurea_dose_mg_per_kg
+      time: "08:00"
+      label: "羟基脲剂量（mg/kg/day）"
+      optimize:
+        value: [10.0, 25.0]
   algorithm:
     population_size: 50
     n_generations: 100
@@ -237,7 +235,7 @@ optimizer:
       - {x: [18.0], f: [18.1, 10.1]}
       - {x: [20.0], f: [19.8, 10.4]}
       - {x: [25.0], f: [22.3, 10.9]}
-    best:
+    reference:
       x: [20.0]
       f: [19.8, 10.4]
       regimen:

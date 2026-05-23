@@ -164,7 +164,6 @@ simulation:
       label: "阿托伐他汀40mg 晚服（中-高强度标准剂量）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: ldl_cholesterol
@@ -184,13 +183,12 @@ optimizer:
       condition: "<= 600"
       type: hard
       description: "安全阈值：CK不超3×ULN=600 IU/L（Rosenson 2004）"
-  regimen:
-    variable: statin_dose
-    description: "优化阿托伐他汀每日剂量（mg）"
-    events:
-      - time: "20:00"
-        dose_bounds: [10, 80]
-        label: "阿托伐他汀剂量（mg/day）"
+  inputs:
+    - variable: statin_dose
+      time: "20:00"
+      label: "阿托伐他汀剂量（mg/day）"
+      optimize:
+        value: [10, 80]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -206,7 +204,7 @@ optimizer:
       - {x: [40.0], f: [103.6, 126.9]}
       - {x: [80.0], f: [97.8, 180.4]}
       - {x: [80.0], f: [97.8, 180.4]}
-    best:
+    reference:
       x: [40.0]
       f: [103.6, 126.9]
       regimen:

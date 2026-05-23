@@ -166,7 +166,6 @@ simulation:
       label: "踏频（90 rpm，有氧效率最优区间）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: form_index
@@ -186,13 +185,12 @@ optimizer:
       condition: "<= 180"
       type: soft
       description: "心率控制在180 bpm以内（Zone 5上限）"
-  regimen:
-    variable: power_zone
-    description: "优化功率区间分配（训练强度周期化）"
-    events:
-      - time: "06:30"
-        dose_bounds: [1.0, 5.0]
-        label: "功率区间（Zone 1-5，有氧-VO2max范围）"
+  inputs:
+    - variable: power_zone
+      time: "06:30"
+      label: "功率区间（Zone 1-5，有氧-VO2max范围）"
+      optimize:
+        value: [1.0, 5.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -208,7 +206,7 @@ optimizer:
       - {x: [3.0], f: [-0.3, 50.6]}
       - {x: [4.0], f: [0.4, 51.2]}
       - {x: [5.0], f: [1.5, 52.3]}
-    best:
+    reference:
       x: [2.0]
       f: [-0.8, 50.3]
       regimen:

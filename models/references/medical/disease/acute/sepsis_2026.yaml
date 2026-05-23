@@ -228,7 +228,6 @@ simulation:
       label: "去甲肾上腺素标准剂量（MAP<65时）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: sofa_score
@@ -248,16 +247,17 @@ optimizer:
       condition: "<= 500"
       type: hard
       description: "液体速率上限500mL/h（防肺水肿）"
-  regimen:
-    variable: fluid_resuscitation_ml_hr
-    description: "优化液体复苏速率（mL/h）"
-    events:
-      - time: "00:00"
-        dose_bounds: [300, 500]
-        label: "初始液体复苏速率（mL/h）"
-      - time: "03:00"
-        dose_bounds: [50, 250]
-        label: "维持液体速率（mL/h）"
+  inputs:
+    - variable: fluid_resuscitation_ml_hr
+      time: "00:00"
+      label: "初始液体复苏速率（mL/h）"
+      optimize:
+        value: [300, 500]
+    - variable: fluid_resuscitation_ml_hr
+      time: "03:00"
+      label: "维持液体速率（mL/h）"
+      optimize:
+        value: [50, 250]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -274,7 +274,7 @@ optimizer:
       - {x: [450, 180], f: [4.3, 2.0]}
       - {x: [480, 200], f: [4.1, 1.9]}
       - {x: [500, 250], f: [3.9, 1.8]}
-    best:
+    reference:
       x: [450, 180]
       f: [4.3, 2.0]
       regimen:

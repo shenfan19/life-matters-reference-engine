@@ -133,7 +133,6 @@ simulation:
       label: "打者挥击强度（RPE=7）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: performance_accuracy
@@ -153,13 +152,12 @@ optimizer:
       condition: "<= 0.8"
       type: hard
       description: "肩部疲劳不超过0.8（损伤风险阈值）"
-  regimen:
-    variable: pitch_velocity
-    description: "优化投球速度策略（节奏控制）"
-    events:
-      - time: "13:00"
-        dose_bounds: [75.0, 100.0]
-        label: "投球速度（75-100 mph）"
+  inputs:
+    - variable: pitch_velocity
+      time: "13:00"
+      label: "投球速度（75-100 mph）"
+      optimize:
+        value: [75.0, 100.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -175,7 +173,7 @@ optimizer:
       - {x: [90.0], f: [-86.0, 0.45]}
       - {x: [95.0], f: [-88.0, 0.58]}
       - {x: [100.0], f: [-89.0, 0.72]}
-    best:
+    reference:
       x: [90.0]
       f: [-86.0, 0.45]
       regimen:

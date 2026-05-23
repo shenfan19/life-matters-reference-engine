@@ -245,7 +245,6 @@ simulation:
       label: "日常睡眠质量（6.5-7h/night）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: cumulative_output
@@ -261,14 +260,13 @@ optimizer:
       condition: "<= 0.5"
       type: hard
       description: "Burnout临界约束：风险指数不超0.5（Maslach 2001临床边界）"
-  regimen:
-    variable: workload
-    description: "优化工作量安排（工作日强度）"
-    events:
-      - time: "09:00"
-        dose_bounds: [0.4, 1.0]
-        days: [Mon, Tue, Wed, Thu, Fri]
-        label: "工作日工作量（0.4-1.0）"
+  inputs:
+    - variable: workload
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "工作日工作量（0.4-1.0）"
+      optimize:
+        value: [0.4, 1.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -285,7 +283,7 @@ optimizer:
       - {x: [0.8], f: [-110.2, 0.35]}
       - {x: [0.9], f: [-113.4, 0.52]}
       - {x: [1.0], f: [-114.1, 0.71]}
-    best:
+    reference:
       x: [0.7]
       f: [-103.8, 0.23]
       regimen:

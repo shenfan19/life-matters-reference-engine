@@ -255,7 +255,6 @@ simulation:
       label: "生活方式干预（标准）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: cvd_risk_10yr
@@ -275,13 +274,12 @@ optimizer:
       condition: "<= 70"
       type: soft
       description: "ACC/AHA高危目标：LDL≤70 mg/dL"
-  regimen:
-    variable: statin_dose_rel
-    description: "优化他汀药物强度"
-    events:
-      - time: "20:00"
-        dose_bounds: [0.0, 1.0]
-        label: "他汀强度（0=无药，1=高强度80mg）"
+  inputs:
+    - variable: statin_dose_rel
+      time: "20:00"
+      label: "他汀强度（0=无药，1=高强度80mg）"
+      optimize:
+        value: [0.0, 1.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -297,7 +295,7 @@ optimizer:
       - {x: [0.5],  f: [0.073, 0.5]}
       - {x: [0.7],  f: [0.065, 0.7]}
       - {x: [1.0],  f: [0.058, 1.0]}
-    best:
+    reference:
       x: [0.5]
       f: [0.073, 0.5]
       regimen:

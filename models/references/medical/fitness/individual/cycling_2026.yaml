@@ -180,7 +180,6 @@ simulation:
       label: "最佳踏频 90 rpm"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: power_output
@@ -200,13 +199,12 @@ optimizer:
       condition: "<= 8"
       type: hard
       description: "乳酸上限 8 mmol/L（超过此值为严重无氧区，难以维持）"
-  regimen:
-    variable: power_output
-    description: "优化功率输出（W）"
-    events:
-      - time: "07:00"
-        dose_bounds: [140.0, 310.0]
-        label: "训练功率（W，140=Z2有氧下限，310=Z6无氧上限）"
+  inputs:
+    - variable: power_output
+      time: "07:00"
+      label: "训练功率（W，140=Z2有氧下限，310=Z6无氧上限）"
+      optimize:
+        value: [140.0, 310.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -223,11 +221,12 @@ optimizer:
       - {x: [250.0], f: [-250.0, 4.1]}
       - {x: [280.0], f: [-280.0, 6.5]}
       - {x: [310.0], f: [-310.0, 9.8]}
-    best:
+    reference:
       x: [250.0]
       f: [-250.0, 4.1]
       regimen:
-        power_output: {"07:00": 250.0}
+        power_output:
+          "训练功率": 250.0
       objectives:
         power_output_mean: 250.0
         lactate_max: 4.1

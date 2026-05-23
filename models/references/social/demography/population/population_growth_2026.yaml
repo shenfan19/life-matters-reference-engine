@@ -244,7 +244,6 @@ simulation:
       label: "城镇化投资（基准水平）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: pop_elderly
@@ -260,13 +259,12 @@ optimizer:
       condition: ">= 1.0"
       type: hard
       description: "人口可行性约束：TFR不低于1.0"
-  regimen:
-    variable: fertility_policy
-    description: "优化生育政策强度（-1到+1）"
-    events:
-      - time: "00:00"
-        dose_bounds: [-0.5, 0.5]
-        label: "生育政策强度"
+  inputs:
+    - variable: fertility_policy
+      time: "00:00"
+      label: "生育政策强度"
+      optimize:
+        value: [-0.5, 0.5]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -282,7 +280,7 @@ optimizer:
       - {x: [0.0],  f: [122.1, -684.7]}
       - {x: [0.2],  f: [128.4, -702.1]}
       - {x: [0.4],  f: [135.7, -718.5]}
-    best:
+    reference:
       x: [0.0]
       f: [122.1, -684.7]
       regimen:

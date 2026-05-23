@@ -224,7 +224,6 @@ simulation:
       label: "低剂量阿司匹林（心血管预防）81mg 晨服"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: aspirin_dose
@@ -240,13 +239,12 @@ optimizer:
       condition: "<= 100"
       type: hard
       description: "毒性约束：血浆水杨酸<100 mg/L（避免耳鸣、酸中毒）"
-  regimen:
-    variable: aspirin_dose
-    description: "优化阿司匹林给药剂量"
-    events:
-      - time: "08:00"
-        dose_bounds: [75, 325]
-        label: "晨服阿司匹林剂量（mg）"
+  inputs:
+    - variable: aspirin_dose
+      time: "08:00"
+      label: "晨服阿司匹林剂量（mg）"
+      optimize:
+        value: [75, 325]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -262,7 +260,7 @@ optimizer:
       - {x: [150.0], f: [150.0, -17280.0]}
       - {x: [200.0], f: [200.0, -23040.0]}
       - {x: [325.0], f: [325.0, -37440.0]}
-    best:
+    reference:
       x: [100.0]
       f: [100.0, -11520.0]
       regimen:

@@ -176,21 +176,17 @@ optimizer:
     - variable: bun
       condition: "<= 80"  # BUN 全程不超 80 mg/dL（避免尿毒症）
 
-  regimen:
-    variable: protein_intake   # 每日蛋白摄入量（g/kg/day）
-    events:
-      - time: "08:00"
-        dose_bounds: [0.3, 2.0]   # KDIGO 建议范围 0.6-0.8，允许探索更宽范围
-        label: "Daily protein intake (g/kg/day)"
+  inputs:
+    - variable: protein_intake
+      time: "08:00"
+      label: "Daily protein intake (g/kg/day)"
+      optimize:
+        value: [0.3, 2.0]
 
   algorithm:
     population_size: 60
     n_generations: 120
     seed: 42
-
-  mc:
-    enabled: false
-    sim_runs: 1
 
   results:
     generated_at: "2026-05-17"
@@ -205,11 +201,12 @@ optimizer:
       - {x: [0.80], f: [-27.6, -41.2]}
       - {x: [0.90], f: [-27.9, -39.8]}
       - {x: [1.00], f: [-28.1, -38.1]}
-    best:
+    reference:
       x: [0.75]
       f: [-27.4, -41.9]
       regimen:
-        protein_intake: {"08:00": 0.75}
+        protein_intake:
+          "Daily protein intake": 0.75
       objectives:
         muscle_mass: 27.4
         gfr: 41.9

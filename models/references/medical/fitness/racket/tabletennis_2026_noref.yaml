@@ -203,7 +203,6 @@ simulation:
   - performance
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: performance
@@ -223,13 +222,12 @@ optimizer:
       condition: <= 350
       type: soft
       description: 反应时间控制在 350ms 以内
-  regimen:
-    variable: rally_pace
-    description: 优化乒乓球回合节奏策略
-    events:
-      - time: "09:00"
-        dose_bounds: [3.0, 9.0]
-        label: 回合节奏（RPE 3-9）
+  inputs:
+    - variable: rally_pace
+      time: "09:00"
+      label: 回合节奏（RPE 3-9）
+      optimize:
+        value: [3.0, 9.0]
   algorithm:
     population_size: 50
     n_generations: 80

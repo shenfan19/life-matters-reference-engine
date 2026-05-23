@@ -208,7 +208,6 @@ simulation:
       label: "言语治疗1h/day（失语症康复）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: upper_limb_fugl_meyer
@@ -228,13 +227,12 @@ optimizer:
       condition: "<= 10"
       type: hard
       description: "PT强度上限（每天不超过5小时）"
-  regimen:
-    variable: physiotherapy_intensity
-    description: "优化急性期和康复期物理治疗强度"
-    events:
-      - time: "09:00"
-        dose_bounds: [1.0, 8.0]
-        label: "物理治疗强度（0-10）"
+  inputs:
+    - variable: physiotherapy_intensity
+      time: "09:00"
+      label: "物理治疗强度（0-10）"
+      optimize:
+        value: [1.0, 8.0]
   algorithm:
     population_size: 60
     n_generations: 120
@@ -251,7 +249,7 @@ optimizer:
       - {x: [5.0], f: [43.1, 2.5]}
       - {x: [6.0], f: [45.0, 2.4]}
       - {x: [8.0], f: [46.8, 2.3]}
-    best:
+    reference:
       x: [5.0]
       f: [43.1, 2.5]
       regimen:

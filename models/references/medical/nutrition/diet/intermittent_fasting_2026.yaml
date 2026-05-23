@@ -269,7 +269,6 @@ simulation:
       label: "禁食态晨练（06:30，进食窗口08:00开始）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: insulin_sensitivity_index
@@ -289,13 +288,12 @@ optimizer:
       condition: ">= 6"
       type: hard
       description: "进食窗口不低于6小时（营养充足底线）"
-  regimen:
-    variable: eating_window_hours
-    description: "优化每日进食窗口时长"
-    events:
-      - time: "08:00"
-        dose_bounds: [6.0, 14.0]
-        label: "进食窗口（小时）"
+  inputs:
+    - variable: eating_window_hours
+      time: "08:00"
+      label: "进食窗口（小时）"
+      optimize:
+        value: [6.0, 14.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -311,7 +309,7 @@ optimizer:
       - {x: [8.0],  f: [0.713, 71.5]}
       - {x: [10.0], f: [0.677, 71.8]}
       - {x: [14.0], f: [0.605, 72.0]}
-    best:
+    reference:
       x: [8.0]
       f: [0.713, 71.5]
       regimen:

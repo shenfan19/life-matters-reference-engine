@@ -164,7 +164,6 @@ simulation:
       label: "训练强度：75%1RM（肌肥大优化区间）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: muscle_strength_1rm
@@ -180,13 +179,12 @@ optimizer:
       condition: "<= 70"
       type: hard
       description: "疲劳上限 70 分（超过此值影响训练质量和受伤风险）"
-  regimen:
-    variable: training_load_pct_1rm
-    description: "优化训练强度（%1RM）"
-    events:
-      - time: "08:00"
-        dose_bounds: [60.0, 92.0]
-        label: "训练强度（%1RM，60=低强度耐力，92=极高强度力量）"
+  inputs:
+    - variable: training_load_pct_1rm
+      time: "08:00"
+      label: "训练强度（%1RM，60=低强度耐力，92=极高强度力量）"
+      optimize:
+        value: [60.0, 92.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -203,7 +201,7 @@ optimizer:
       - {x: [80.0], f: [-115.9, 42.5]}
       - {x: [85.0], f: [-117.4, 51.8]}
       - {x: [92.0], f: [-116.2, 68.7]}
-    best:
+    reference:
       x: [80.0]
       f: [-115.9, 42.5]
       regimen:

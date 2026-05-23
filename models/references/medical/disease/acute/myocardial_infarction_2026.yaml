@@ -197,7 +197,6 @@ simulation:
       label: "第2-4周中等强度康复（快走4 MET）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: ejection_fraction_pct
@@ -217,13 +216,12 @@ optimizer:
       condition: ">= 35"
       type: soft
       description: "EF不低于基线（防止过度训练损伤）"
-  regimen:
-    variable: cardiac_rehab_met
-    description: "优化心脏康复训练强度（MET）"
-    events:
-      - time: "10:00"
-        dose_bounds: [1.0, 6.0]
-        label: "康复训练强度（MET）"
+  inputs:
+    - variable: cardiac_rehab_met
+      time: "10:00"
+      label: "康复训练强度（MET）"
+      optimize:
+        value: [1.0, 6.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -240,7 +238,7 @@ optimizer:
       - {x: [4.0], f: [42.8, 55.0]}
       - {x: [5.0], f: [44.1, 55.6]}
       - {x: [6.0], f: [45.2, 56.2]}
-    best:
+    reference:
       x: [4.0]
       f: [42.8, 55.0]
       regimen:

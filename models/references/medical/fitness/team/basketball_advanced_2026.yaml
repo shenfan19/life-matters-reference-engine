@@ -146,7 +146,6 @@ simulation:
       label: "快攻频率（2次/min，NBA中等节奏）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: shot_accuracy
@@ -166,13 +165,12 @@ optimizer:
       condition: ">= 60"
       type: soft
       description: "决策质量指数不低于60（场上执行力底线）"
-  regimen:
-    variable: fast_break_frequency
-    description: "优化快攻频率策略（进攻节奏管理）"
-    events:
-      - time: "19:30"
-        dose_bounds: [0.5, 5.0]
-        label: "快攻频率（0.5-5次/min）"
+  inputs:
+    - variable: fast_break_frequency
+      time: "19:30"
+      label: "快攻频率（0.5-5次/min）"
+      optimize:
+        value: [0.5, 5.0]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -188,11 +186,12 @@ optimizer:
       - {x: [2.5], f: [-44.5, 0.46]}
       - {x: [3.5], f: [-43.0, 0.55]}
       - {x: [5.0], f: [-40.5, 0.68]}
-    best:
+    reference:
       x: [2.0]
       f: [-45.2, 0.42]
       regimen:
-        fast_break_frequency: {"19:30": 2.0}
+        fast_break_frequency:
+          "快攻频率": 2.0
       objectives:
         shot_accuracy: 45.2
         jump_fatigue: 0.42

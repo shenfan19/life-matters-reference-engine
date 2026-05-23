@@ -148,7 +148,6 @@ simulation:
       label: "60 分钟练习课程"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: flexibility_index
@@ -168,13 +167,12 @@ optimizer:
       condition: ">= 5"
       type: hard
       description: "皮质醇下限：5 nmol/L（低于此值为肾上腺抑制，病理状态）"
-  regimen:
-    variable: yoga_intensity
-    description: "优化瑜伽练习强度（MET）"
-    events:
-      - time: "07:30"
-        dose_bounds: [1.5, 6.0]
-        label: "练习强度（MET，1.5=阴瑜伽，4.5=阿斯汤加）"
+  inputs:
+    - variable: yoga_intensity
+      time: "07:30"
+      label: "练习强度（MET，1.5=阴瑜伽，4.5=阿斯汤加）"
+      optimize:
+        value: [1.5, 6.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -190,7 +188,7 @@ optimizer:
       - {x: [3.0], f: [-75.0, -61.0, 10.1]}
       - {x: [4.0], f: [-79.0, -63.0, 11.8]}
       - {x: [5.5], f: [-74.0, -59.0, 14.5]}
-    best:
+    reference:
       x: [3.0]
       f: [-75.0, -61.0, 10.1]
       regimen:

@@ -287,7 +287,6 @@ simulation:
       label: "蛋白质105g/day（约1.1g/kg，防止肌肉流失）"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: body_weight_kg
@@ -307,13 +306,12 @@ optimizer:
       condition: ">= 65"
       type: hard
       description: "防止低血糖（≥65 mg/dL）"
-  regimen:
-    variable: carb_intake_g_day
-    description: "优化碳水化合物日摄入量"
-    events:
-      - time: "08:00"
-        dose_bounds: [10.0, 80.0]
-        label: "碳水摄入（g/day）"
+  inputs:
+    - variable: carb_intake_g_day
+      time: "08:00"
+      label: "碳水摄入（g/day）"
+      optimize:
+        value: [10.0, 80.0]
   algorithm:
     population_size: 60
     n_generations: 100
@@ -330,7 +328,7 @@ optimizer:
       - {x: [50.0], f: [86.2, 230.1]}
       - {x: [65.0], f: [87.4, 298.5]}
       - {x: [80.0], f: [88.9, 352.3]}
-    best:
+    reference:
       x: [20.0]
       f: [83.1, 92.4]
       regimen:

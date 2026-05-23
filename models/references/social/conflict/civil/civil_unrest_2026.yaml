@@ -242,7 +242,6 @@ simulation:
       label: "基准社交媒体放大效应"
 
 optimizer:
-  enabled: true
   method: nsga2
   objectives:
     - variable: protest_intensity
@@ -258,13 +257,12 @@ optimizer:
       condition: "<= 0.8"
       type: soft
       description: "避免社会极度委屈"
-  regimen:
-    variable: economic_inequality_gini
-    description: "优化经济不平等改善力度"
-    events:
-      - time: "00:00"
-        dose_bounds: [0.25, 0.60]
-        label: "基尼系数目标值"
+  inputs:
+    - variable: economic_inequality_gini
+      time: "00:00"
+      label: "基尼系数目标值"
+      optimize:
+        value: [0.25, 0.60]
   algorithm:
     population_size: 50
     n_generations: 80
@@ -281,11 +279,12 @@ optimizer:
       - {x: [0.40], f: [3.4, -65.2]}
       - {x: [0.50], f: [5.1, -58.7]}
       - {x: [0.60], f: [7.8, -48.3]}
-    best:
+    reference:
       x: [0.30]
       f: [1.8, -74.1]
       regimen:
-        economic_inequality_gini: {"00:00": 0.30}
+        economic_inequality_gini:
+          "基尼系数目标值": 0.30
       objectives:
         protest_intensity_peak: 1.8
         legitimacy_score_final: 74.1
