@@ -367,6 +367,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样 work_pressure 和 insulin_sensitivity_recovery，表达个体代谢异质性"
 
   algorithm:

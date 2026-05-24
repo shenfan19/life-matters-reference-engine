@@ -348,6 +348,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样 work_pressure 和 fodmap_symptom_coeff，表达个体肠道敏感性差异"
 
   algorithm:

@@ -47,6 +47,7 @@
   "sim.plan.run_all_pre": "Run all",
   "sim.plan.run_all_suf": "plans",
   "sim.mc.runs_per_plan": "runs/plan",
+  "sim.mc.seed_tooltip": "MC seed: empty = random each run, integer = fixed (reproducible)",
   "sim.control.step": "Step",
   "sim.control.export": "Export",
   "sim.control.validate_lock": "Validate & Lock",

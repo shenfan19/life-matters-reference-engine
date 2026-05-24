@@ -310,6 +310,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样个体尿酸清除能力（FEUA变异），识别哪类患者需要别嘌醇"
 
   algorithm:

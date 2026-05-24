@@ -110,7 +110,8 @@ export interface SimulationState {
     batchSize: number;
     updateInterval: number;
     simRuns: number;        // Monte Carlo 运行条数 (1~50)
-    sessionSeed: number;    // session seed for reproducibility display
+    mcSeed: number | null;  // 用户设定的 MC seed（null=每次随机，整数=固定可复现）
+    sessionSeed: number;    // 本次 session 实际使用的 seed（由 API 返回）
 }
 
 export interface OptimizerState {

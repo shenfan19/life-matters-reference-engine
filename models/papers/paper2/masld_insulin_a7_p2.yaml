@@ -473,6 +473,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样个体代谢异质性参数（alpha_exercise_fat, gamma_IR_liverfat）"
 
   algorithm:

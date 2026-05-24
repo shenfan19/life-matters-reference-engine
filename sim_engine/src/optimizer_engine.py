@@ -346,7 +346,8 @@ def run_optimizer(simulator_engine, model_name: str,
     mc_cfg = opt_block.get('mc', {})
     mc_enabled = mc_cfg.get('enabled', False)
     mc_runs = max(1, int(mc_cfg.get('sim_runs', 1))) if mc_enabled else 1
-    mc_seed = int(opt_block.get('algorithm', {}).get('seed', 42))
+    # mc.seed 优先；回退到 algorithm.seed；最终默认 42
+    mc_seed = int(mc_cfg.get('seed', opt_block.get('algorithm', {}).get('seed', 42)))
 
     # Collect MC distributions once
     param_distributions = SimulatorEngine._collect_param_distributions(base_model)
