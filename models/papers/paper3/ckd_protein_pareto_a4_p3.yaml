@@ -107,6 +107,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 30
+    seed: 42
     description: "MC 采样 alpha、mu_s、mu_u（比 Paper2 多10次），验证 T2 结论稳健性"
 
   algorithm:

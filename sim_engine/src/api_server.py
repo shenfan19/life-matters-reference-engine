@@ -232,6 +232,7 @@ class SimulationStartRequest(BaseModel):
     input_params: Optional[Dict[str, float]] = None
     regimens: Optional[List[RegimenData]] = None
     sim_runs: int = 1   # Monte Carlo 运行条数（1=单条，>1=MC多条）
+    seed: Optional[int] = None  # MC seed（None=每次随机，整数=固定可复现）
 
 
 class SimulationStepRequest(BaseModel):
@@ -1256,6 +1257,7 @@ async def start_simulation(request: SimulationStartRequest):
             input_params=request.input_params,
             regimens=regimens_raw,
             sim_runs=max(1, request.sim_runs),
+            seed=request.seed,
         )
         
         if result['success']:

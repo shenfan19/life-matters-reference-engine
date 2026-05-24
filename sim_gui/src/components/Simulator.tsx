@@ -194,7 +194,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
     inputParams, stateVariables, sessionId,
     simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
-    simRuns, sessionSeed,
+    simRuns, mcSeed, sessionSeed,
   } = state;
   const isSimulating = status === 'running';
 
@@ -714,6 +714,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
+      if (optBlock.mc?.seed != null) set('mcSeed', Number(optBlock.mc.seed));
+      else set('mcSeed', null);
       setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
 
       // Build optInputs from YAML optimizer.inputs (decision variables only)
@@ -1062,6 +1064,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           input_params: inputParams,
           regimens: regimenPayload,
           sim_runs: simRuns,
+          ...(mcSeed != null ? { seed: mcSeed } : {}),
         }),
       });
       const result = await resp.json();
@@ -1169,7 +1172,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           }));
         const startResult = await fetch(`${API_BASE}/simulation/start`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
+          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns, ...(mcSeed != null ? { seed: mcSeed } : {}) }),
         }).then(r => r.json());
         if (!startResult.success) throw new Error(startResult.error);
         const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
@@ -1882,17 +1885,26 @@ const Simulator: React.FC<SimulatorProps> = ({
         <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content' }}
           options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
       </div>
-      <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '-'}` : 'Monte Carlo 运行条数（1=单条）'}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '-'}` : 'Monte Carlo 运行条数（1=单条）'}>
           <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
+        </Tooltip>
+        <InputNumber
+          size="small" min={1} max={50} value={simRuns}
+          onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
+          style={{ width: 52 }}
+          disabled={status === 'running'}
+        />
+        <Tooltip title={t('sim.mc.seed_tooltip')}>
           <InputNumber
-            size="small" min={1} max={50} value={simRuns}
-            onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
-            style={{ width: 52 }}
+            size="small" value={mcSeed ?? undefined} placeholder="rand"
+            onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
+            style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
+            min={0} max={2147483647} controls={false}
             disabled={status === 'running'}
           />
-        </div>
-      </Tooltip>
+        </Tooltip>
+      </div>
       <Tooltip title={t('sim.control.download_model')}>
         <Button size="small" icon={<DownloadOutlined />}
           onClick={downloadRawModel}
@@ -1957,14 +1969,23 @@ const Simulator: React.FC<SimulatorProps> = ({
           options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
       </div>
       {selectedModel?.content?.optimizer?.mc?.enabled && (
-        <Tooltip title={`Monte Carlo: ${simRuns} ${t('sim.mc.runs_per_plan')}`}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Tooltip title={`Monte Carlo: ${simRuns} ${t('sim.mc.runs_per_plan')}`}>
             <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
-            <InputNumber size="small" min={1} max={50} value={simRuns}
-              onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
-              style={{ width: 52 }} disabled={optRunning} />
-          </div>
-        </Tooltip>
+          </Tooltip>
+          <InputNumber size="small" min={1} max={50} value={simRuns}
+            onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
+            style={{ width: 52 }} disabled={optRunning} />
+          <Tooltip title={t('sim.mc.seed_tooltip')}>
+            <InputNumber
+              size="small" value={mcSeed ?? undefined} placeholder="rand"
+              onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
+              style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
+              min={0} max={2147483647} controls={false}
+              disabled={optRunning}
+            />
+          </Tooltip>
+        </div>
       )}
       <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
         <Button size="small" icon={<DownloadOutlined />}

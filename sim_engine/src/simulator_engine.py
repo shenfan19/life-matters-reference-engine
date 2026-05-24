@@ -305,7 +305,7 @@ class SimulatorEngine:
     def start_session(self, model_name: str, time_hours: float, folder: Optional[str] = None,
                      step_size: Optional[float] = None, input_params: Optional[Dict[str, float]] = None,
                      regimens: Optional[List[Dict]] = None,
-                     sim_runs: int = 1) -> Dict[str, Any]:
+                     sim_runs: int = 1, seed: Optional[int] = None) -> Dict[str, Any]:
         """
         开始一个新的仿真会话（GUI 使用）。
         :param model_name: 模型名称。
@@ -343,9 +343,9 @@ class SimulatorEngine:
                     if var in base_model.variables:
                         base_model.manual_overrides[var] = 'gui'
 
-            # 生成会话 ID 和种子列表（T4）
+            # 生成会话 ID 和种子列表（seed 由调用者指定或随机生成）
             session_id = str(uuid.uuid4())
-            session_seed = int(np.random.randint(0, 2**31))
+            session_seed = int(seed) if seed is not None else int(np.random.randint(0, 2**31))
             master_rng = np.random.default_rng(session_seed)
             n_runs = max(1, int(sim_runs))
             seed_list = [int(master_rng.integers(0, 2**31)) for _ in range(n_runs)]

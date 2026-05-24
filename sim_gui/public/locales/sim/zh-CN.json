@@ -48,6 +48,7 @@
   "sim.plan.run_all_pre": "运行全部",
   "sim.plan.run_all_suf": "方案",
   "sim.mc.runs_per_plan": "条评估/方案",
+  "sim.mc.seed_tooltip": "MC seed：空=每次随机，填整数=固定可复现",
   "sim.control.step": "单步",
   "sim.control.export": "导出",
   "sim.control.validate_lock": "验证锁定",

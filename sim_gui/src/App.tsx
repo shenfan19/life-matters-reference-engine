@@ -60,7 +60,7 @@ const initialSimulationState: SimulationState = {
   status: 'idle', progress: 0, currentStep: 0, totalSteps: 1440,
   simulationData: [], dataPerRun: [], inputParams: {}, stateVariables: {}, sessionId: '',
   simStartDate: '2026-01-01', simEndDate: '2026-12-31', stepValue: 1, stepUnit: 'hour',
-  batchSize: 10, updateInterval: 50, simRuns: 1, sessionSeed: 0,
+  batchSize: 10, updateInterval: 50, simRuns: 1, mcSeed: null, sessionSeed: 0,
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────

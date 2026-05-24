@@ -436,6 +436,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样 stress_sensitivity，表达个体应激敏感性差异（A型人格等）"
 
   algorithm:

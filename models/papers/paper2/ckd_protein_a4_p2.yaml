@@ -349,6 +349,7 @@ optimizer:
   mc:
     enabled: true
     sim_runs: 20
+    seed: 42
     description: "MC 采样 alpha、mu_s、mu_u，展示个体间最优蛋白质方案的差异"
 
   algorithm:

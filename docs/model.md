@@ -212,6 +212,7 @@ optimizer:                          # 可选；优化器配置；详见「optimi
   mc:                               # 可选；Monte Carlo 模式
     enabled: false
     sim_runs: 30
+    seed: 42                        # 可选；固定整数=可复现，省略或 null=每次随机
   schedules:                        # 可选；优化评估期间的固定背景输入（同 simulation.schedules 格式）
     - variable: var_name            # 缺省时继承 simulation.schedules；声明后完全独立
       time: "HH:MM"
