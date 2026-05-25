@@ -1,5 +1,7 @@
 # 0082 · 2026-05-21 · Sim · 锁定/解锁/切换模型的会话状态设计
 
+**部分取代**：D3–D5 章节（锁图标行为、运行时解锁确认、锁定不持久化）已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 取代。D1–D2（两层分离架构、modelSession 持久化）仍有效。
+
 ## 背景
 
 原始问题：用户在 GUI 中编辑 inputEvents 后点击锁定，编辑内容被重置为 YAML 默认值。
