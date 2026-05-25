@@ -547,6 +547,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptInputs(session.optInputs ?? []);
       setOptBackgrounds(session.optBackgrounds ?? []);
       setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length));
+      // simRuns / mcSeed 存在 session 中（用户可自定义），若 session 没有则回退 YAML 默认值
+      set('simRuns', session.simRuns ?? (optBlock?.mc?.enabled && optBlock?.mc?.sim_runs ? Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))) : 1));
+      set('mcSeed', 'mcSeed' in session ? session.mcSeed : (optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null));
       sessionReadyRef.current = true;
       return;
     }
@@ -689,6 +692,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
     }
 
+    // mcSeed 来自模型 YAML，无论是否有 optimizer 块都需要重置
+    set('mcSeed', optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null);
+
     // Opt config from YAML
     if (optBlock && optBlock.enabled !== false) {
       const parseDir = (d: string): 'minimize' | 'maximize' => d === 'maximize' ? 'maximize' : 'minimize';
@@ -714,8 +720,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
-      if (optBlock.mc?.seed != null) set('mcSeed', Number(optBlock.mc.seed));
-      else set('mcSeed', null);
       setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
 
       // Build optInputs from YAML optimizer.inputs (decision variables only)
@@ -872,7 +876,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedKey || !sessionReadyRef.current) return;
     const session: ModelSession = {
       inputEvents, plans, activePlanId,
-      simStartDate, simEndDate, stepValue, stepUnit,
+      simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
       objectives, constraints, optAlgo, optPop, optGen,
       optResult, optInputs, optBackgrounds,
     };
@@ -880,7 +884,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const all = readMS();
     all[selectedKey] = session;
     writeMS(all);
-  }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, objectives, constraints, optAlgo, optPop, optGen, optResult, optInputs, optBackgrounds]);
+  }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult, optInputs, optBackgrounds]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
@@ -1896,14 +1900,15 @@ const Simulator: React.FC<SimulatorProps> = ({
           disabled={status === 'running'}
         />
         <Tooltip title={t('sim.mc.seed_tooltip')}>
-          <InputNumber
-            size="small" value={mcSeed ?? undefined} placeholder="rand"
-            onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
-            style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
-            min={0} max={2147483647} controls={false}
-            disabled={status === 'running'}
-          />
+          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.mc.seed_label')}</span>
         </Tooltip>
+        <InputNumber
+          size="small" value={mcSeed ?? undefined} placeholder={t('sim.mc.seed_placeholder')}
+          onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
+          style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
+          min={0} max={2147483647} controls={false}
+          disabled={status === 'running'}
+        />
       </div>
       <Tooltip title={t('sim.control.download_model')}>
         <Button size="small" icon={<DownloadOutlined />}
@@ -1920,7 +1925,12 @@ const Simulator: React.FC<SimulatorProps> = ({
   const hasExistingResults = !!(existingResults?.pareto_front?.length);
   const OptControls = (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Tooltip title={!isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定' : undefined}>
+      <Tooltip title={
+        !isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定'
+        : optResult ? '优化已完成，可继续查看结果或将 Pareto 解传输到仿真对比'
+        : hasExistingResults ? `已有历史结果：${existingResults.n_solutions ?? existingResults.pareto_front.length} 个解 · ${existingResults.generated_at ?? ''}，可勾选"继续计算"热启动`
+        : '设置目标、约束和决策变量范围后运行优化'
+      }>
         <span>
           <Button
             type="primary" size="small"
@@ -1939,7 +1949,6 @@ const Simulator: React.FC<SimulatorProps> = ({
             onChange={e => {
               const v = e.target.checked;
               setWarmStartEnabled(v);
-              // Toggle display: checked = show stored results, unchecked = clear display
               if (!optRunning) setOptResult(v ? storedOptResult : null);
             }}
             style={{ accentColor: c.primary }} />
@@ -1948,9 +1957,11 @@ const Simulator: React.FC<SimulatorProps> = ({
           </span>
         </label>
       )}
-      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-        {optRunning ? `Gen ${optCurGen}/${optTotalGen || '-'}` : optResult ? '优化已完成，可继续查看或传输解' : hasExistingResults ? `历史 ${existingResults.n_solutions ?? existingResults.pareto_front.length} 解 · ${existingResults.generated_at ?? ''}` : '设置目标、约束和范围后运行优化'}
-      </span>
+      {optRunning && (
+        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          Gen {optCurGen}/{optTotalGen || '-'}
+        </span>
+      )}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
@@ -1977,14 +1988,15 @@ const Simulator: React.FC<SimulatorProps> = ({
             onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
             style={{ width: 52 }} disabled={optRunning} />
           <Tooltip title={t('sim.mc.seed_tooltip')}>
-            <InputNumber
-              size="small" value={mcSeed ?? undefined} placeholder="rand"
-              onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
-              style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
-              min={0} max={2147483647} controls={false}
-              disabled={optRunning}
-            />
+            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.mc.seed_label')}</span>
           </Tooltip>
+          <InputNumber
+            size="small" value={mcSeed ?? undefined} placeholder={t('sim.mc.seed_placeholder')}
+            onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
+            style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
+            min={0} max={2147483647} controls={false}
+            disabled={optRunning}
+          />
         </div>
       )}
       <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
