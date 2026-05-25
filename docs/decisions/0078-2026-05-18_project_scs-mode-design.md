@@ -110,11 +110,13 @@ Builder 工具栏新增上传按钮（`UploadOutlined`），上传后通过 `POS
 - **普通模式**：点击 session model → 加载为当前 sim 模型（和 server model 一致）
 - **Builder 模式**：session model 显示复选框（和树中 server model 一致），勾选 → 在 FileEditor 中显示编辑卡片；选中时不显示锁图标
 
-### 前端：运行按钮锁定提示
+### 前端：运行按钮限制（SCS 模式）
 
-未锁定模型时，Sim 和 Opt 的运行按钮 disabled，悬停显示 Tooltip：
+SCS 模式下，当另一个模型正在运行时，当前模型的 Sim/Opt 运行按钮 disabled，悬停显示 Tooltip：
 
-> "请先在左侧选中模型并点击模型前方的锁图标完成锁定"
+> "请先前往「X」停止运行后再启动"
+
+锁图标已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 移除；运行拦截改为仅在用户尝试启动新运行时弹出确认框，不再阻止模型切换。
 
 ---
 

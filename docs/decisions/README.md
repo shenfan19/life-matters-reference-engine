@@ -72,3 +72,10 @@
 | [0076](0076-2026-05-17_sim_yaml-simulation-plans.md) | YAML simulation.plans 预置多方案 | ✅ 已实施 | 2026-05-17 |
 | [0077](0077-2026-05-17_sim_session-model-import.md) | Session 模型导入：原子上传（UUID + 内联解析 + 即时删除）→ localStorage | ✅ 已实施（2026-05-18 重写） | 2026-05-17 |
 | [0078](0078-2026-05-18_project_scs-mode-design.md) | SCS_MODE：云端部署写操作保护 + 前端行为适配 + 合并→session model | ✅ 已实施 | 2026-05-18 |
+| [0079](0079-2026-05-18_sim_workspace-layout-4-6-split.md) | Sim/Opt 工作区布局：4:6 百分比分列 | ✅ 已实施 | 2026-05-18 |
+| [0080](0080-2026-05-20_sim_optimizer-schedule-tiers-T2T3T4.md) | 优化器调度粒度分层设计（T2/T3/T4：时间窗 / 星期模式 / 起始日） | ✅ 已实施 | 2026-05-20 |
+| [0081](0081-2026-05-20_sim_lm-score-health-span-metric.md) | LM Score：Life Matters 健康时长核心指标（可恢复 / 不可逆双模式） | ✅ 已实施 | 2026-05-20 |
+| [0082](0082-2026-05-21_sim_lock-unlock-refresh-behavior.md) | 锁定/解锁/切换模型的会话状态设计（两层分离架构）D3–D5 由 0085 取代 | ✅ 已实施（部分取代） | 2026-05-21 |
+| [0083](0083-2026-05-22_sim_optimizer-evaluation-time-window.md) | Optimizer 评估时间窗独立配置（start_date / end_date / step_size） | ✅ 已实施 | 2026-05-22 |
+| [0084](0084-2026-05-23_sim_sim-opt-separation.md) | Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab 新组件 | ✅ 已实施 | 2026-05-23 |
+| [0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | 移除锁机制、自由切换模型、双箭头运行指示器、云端运行拦截 | ✅ 已实施 | 2026-05-25 |
