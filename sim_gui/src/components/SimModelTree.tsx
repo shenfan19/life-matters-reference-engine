@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Empty, Input, Modal, Spin, Tooltip, Tree } from 'antd';
+import { Button, Empty, Input, Spin, Tooltip, Tree } from 'antd';
 import {
-  BookOutlined, ClusterOutlined, FilterOutlined,
-  FolderOutlined, LoadingOutlined, LockOutlined, ReloadOutlined, UnlockOutlined,
+  CaretRightFilled, ClusterOutlined, FilterOutlined,
+  FolderOutlined, LoadingOutlined, ReloadOutlined,
   UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
@@ -20,12 +20,7 @@ interface SimModelTreeProps {
   expandedKeys: React.Key[];
   setExpandedKeys: React.Dispatch<React.SetStateAction<React.Key[]>>;
   selectedKey: string | null;
-  isLocked: boolean;
-  isSimulating: boolean;
   treeLoading: boolean;
-  validationResult: { valid: boolean; errors: string[] } | null;
-  setValidationResult: (v: { valid: boolean; errors: string[] } | null) => void;
-  validating: boolean;
   total: number;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
@@ -33,9 +28,10 @@ interface SimModelTreeProps {
   loadFileContent: (path: string, opts?: { preserveTab?: boolean }) => Promise<ModelFile | null>;
   handleSelect: (keys: React.Key[]) => void;
   handleTreeNodeClick: (e: React.MouseEvent, node: DataNode) => void;
-  handleValidateAndLock: () => void;
-  setIsLocked: (v: boolean) => void;
-  onUnlock: () => void;
+  // Running state
+  runningModelKey: string | null;
+  runningModelTitle?: string | null;
+  onNavigateToRunning?: () => void;
   // Builder mode
   builderMode?: boolean;
   builderCheckedFiles?: string[];
@@ -54,10 +50,10 @@ interface SimModelTreeProps {
 const SimModelTree: React.FC<SimModelTreeProps> = ({
   width, SECTION_H, storyTree, storyFilter, setStoryFilter,
   storyViewMode, setStoryViewMode, expandedKeys, setExpandedKeys,
-  selectedKey, isLocked, isSimulating, treeLoading, validationResult, setValidationResult,
-  validating, total, isDarkMode, c, t,
-  loadFileContent, handleSelect, handleTreeNodeClick, handleValidateAndLock,
-  setIsLocked, onUnlock,
+  selectedKey, treeLoading,
+  total, isDarkMode, c, t,
+  loadFileContent, handleSelect, handleTreeNodeClick,
+  runningModelKey, runningModelTitle, onNavigateToRunning,
   builderMode = false,
   builderCheckedFiles = [],
   onToggleBuilderFile,
@@ -71,21 +67,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onClearSessionModel,
   scsMode = false,
 }) => {
-  const handleUnlock = () => {
-    if (isSimulating) {
-      Modal.confirm({
-        title: t('sim.tree.unlock_while_running_title'),
-        content: t('sim.tree.unlock_while_running_content'),
-        okText: t('sim.tree.unlock_confirm'),
-        okButtonProps: { danger: true },
-        cancelText: t('sim.control.cancel') || '取消',
-        onOk: onUnlock,
-      });
-    } else {
-      onUnlock();
-    }
-  };
-
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
     nodes.forEach(n => {
@@ -123,10 +104,9 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     );
   };
 
-  // Normal mode title render — owns all icons so antd showIcon is OFF
+  // Normal mode title render
   const normalTitleRender = (node: any) => {
     if (!node.isLeaf) {
-      // Folder: clicking the title row also toggles expand (in addition to the expand icon)
       return (
         <span
           style={{ display: 'flex', alignItems: 'center', gap: 4 }}
@@ -144,33 +124,41 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
       );
     }
     const isSelected = node.key === selectedKey;
-    const dimmed = isLocked && !isSelected;
+    const isRunning = node.key === runningModelKey;
     return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: dimmed ? 0.4 : 1 }}>
-        {isSelected && (
-          <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip')}>
-            <span
-              onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
-              style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: isLocked ? '#52c41a' : '#fa8c16' }}
-            >
-              {validating ? <LoadingOutlined style={{ fontSize: 13 }} /> : isLocked ? <LockOutlined style={{ fontSize: 14 }} /> : <UnlockOutlined style={{ fontSize: 13 }} />}
-            </span>
-          </Tooltip>
-        )}
-        <span style={{ color: isSelected ? c.text : c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-          {node.titleStr || node.title}
+      <span style={{ display: 'flex', alignItems: 'center' }}>
+        <span style={{ position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+          {isRunning && (
+            <Tooltip title={t('sim.tree.running_tip')}>
+              <span
+                onClick={e => { e.stopPropagation(); onNavigateToRunning?.(); }}
+                style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)',
+                  paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 1,
+                  cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <CaretRightFilled className="lm-running-arrow"  style={{ fontSize: '1em', color: c.primary }} />
+                <CaretRightFilled className="lm-running-arrow2" style={{ fontSize: '1em', color: c.primary }} />
+              </span>
+            </Tooltip>
+          )}
+          <span style={{ color: isSelected ? c.text : c.textSec }}>
+            {node.titleStr || node.title}
+          </span>
         </span>
       </span>
     );
   };
 
-  const handleSelectGuarded = (keys: React.Key[]) => {
-    if (isLocked) { return; } // silently ignore when locked; lock icon itself handles unlock
-    handleSelect(keys);
-  };
-
   return (
+    <>
+    <style>{`
+      @keyframes lm-arrow-run {
+        0%, 100% { transform: translateX(0); opacity: 1; }
+        50% { transform: translateX(3px); opacity: 0.4; }
+      }
+      .lm-running-arrow  { animation: lm-arrow-run 0.8s ease-in-out infinite; }
+      .lm-running-arrow2 { animation: lm-arrow-run 0.8s ease-in-out 0.25s infinite; }
+    `}</style>
     <div style={{
       width, flexShrink: 0,
       background: c.panel,
@@ -191,7 +179,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         </span>
 
         {builderMode ? (
-          // Builder mode: New + Merge buttons
           <>
             <Tooltip title={t('sim.tree.new_file')}>
               <Button size="small" type="text" icon={<PlusOutlined />}
@@ -214,7 +201,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             </Tooltip>
           </>
         ) : (
-          // Normal mode: Import + Reload + Edit Library
           <>
             <Tooltip title={t('sim.tree.import_yaml')}>
               <Button size="small" type="text" icon={<UploadOutlined />}
@@ -226,7 +212,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               <Tooltip title={t('sim.tree.reload_yaml')}>
                 <Button
                   size="small" type="text" icon={<ReloadOutlined />}
-                  disabled={isLocked || treeLoading}
+                  disabled={treeLoading}
                   onClick={e => { e.stopPropagation(); loadFileContent(selectedKey, { preserveTab: true }); }}
                   style={{ color: c.textMute, padding: '0 3px' }}
                 />
@@ -243,6 +229,29 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+        {/* Running model status strip — ephemeral indicator, not a session model */}
+        {runningModelKey && runningModelTitle && (
+          <div
+            onClick={onNavigateToRunning}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 8px', marginBottom: 6, borderRadius: 4,
+              background: isDarkMode ? '#1a3a22' : '#e8f5e9',
+              border: `1px solid ${c.primary}33`,
+              cursor: onNavigateToRunning ? 'pointer' : 'default',
+            }}
+          >
+            <CaretRightFilled className="lm-running-arrow"  style={{ fontSize: 14, color: c.primary, flexShrink: 0 }} />
+            <CaretRightFilled className="lm-running-arrow2" style={{ fontSize: 14, color: c.primary, flexShrink: 0, marginLeft: -4 }} />
+            <span style={{
+              flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.primary,
+            }}>
+              {runningModelTitle}
+            </span>
+          </div>
+        )}
+
         {/* Session imports section */}
         {sessionModels.length > 0 && (
           <div style={{ marginBottom: 8 }}>
@@ -256,36 +265,38 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             </div>
             {sessionModels.map(m => {
               const isSel = selectedKey === m.key;
-              const dimSess = isLocked && !isSel;
+              const isRunning = m.key === runningModelKey;
               return (
               <div key={m.key}
-                onClick={() => { if (!isLocked) onSelectSessionModel?.(m); }}
+                onClick={() => onSelectSessionModel?.(m)}
                 style={{ display: 'flex', alignItems: 'center', padding: '3px 6px', borderRadius: 4,
-                  cursor: isLocked && !isSel ? 'default' : 'pointer',
-                  opacity: dimSess ? 0.4 : 1,
+                  cursor: 'pointer',
                   background: isSel ? (isDarkMode ? '#1a3a22' : '#f0faf0') : 'transparent' }}>
-                {builderMode ? (
+                {builderMode && (
                   <input type="checkbox" readOnly
                     checked={builderCheckedFiles.includes(m.key)}
                     onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(m.key); }}
                     style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0, marginRight: 4 }}
                   />
-                ) : isSel ? (
-                  <Tooltip title={isLocked ? t('sim.tree.lock_tip') : t('sim.tree.unlock_tip2')}>
-                    <span
-                      onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
-                      style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
-                    >
-                      {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 14 }} /> : <UnlockOutlined style={{ fontSize: 13 }} />}
-                    </span>
-                  </Tooltip>
-                ) : (
-                  <span style={{ width: 16, flexShrink: 0, display: 'inline-block', marginRight: 4 }} />
                 )}
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: isSel ? c.primary : c.text }}>
-                  {m.title}
+                <span style={{ flex: 1, position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', minWidth: 0 }}>
+                  {!builderMode && isRunning && (
+                    <Tooltip title={t('sim.tree.running_tip')}>
+                      <span
+                        onClick={e => { e.stopPropagation(); onNavigateToRunning?.(); }}
+                        style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)',
+                          paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 1,
+                          cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        <CaretRightFilled className="lm-running-arrow"  style={{ fontSize: '1em', color: c.primary }} />
+                        <CaretRightFilled className="lm-running-arrow2" style={{ fontSize: '1em', color: c.primary }} />
+                      </span>
+                    </Tooltip>
+                  )}
+                  <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    color: isSel ? c.primary : c.text }}>
+                    {m.title}
+                  </span>
                 </span>
                 <Tooltip title={t('sim.tree.remove_session')}>
                   <CloseOutlined
@@ -303,13 +314,13 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
           <Input size="small" placeholder={t('sim.scene.search')} value={storyFilter}
             onChange={e => setStoryFilter(e.target.value)}
             prefix={<FilterOutlined style={{ color: c.textMute }} />}
-            style={{ flex: 1 }} disabled={isLocked && !builderMode} />
+            style={{ flex: 1 }} />
           {!builderMode && (
             <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
               <Button size="small" type="text"
                 icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
                 onClick={() => setStoryViewMode(storyViewMode === 'tree' ? 'list' : 'tree')}
-                style={{ color: c.textMute, padding: '0 3px' }} disabled={isLocked} />
+                style={{ color: c.textMute, padding: '0 3px' }} />
             </Tooltip>
           )}
         </div>
@@ -317,7 +328,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         <div>
           <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
             {builderMode ? (
-              // Builder mode: always show tree with checkboxes
               <Tree
                 expandedKeys={expandedKeys}
                 onExpand={setExpandedKeys}
@@ -329,7 +339,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             ) : storyViewMode === 'tree' ? (
               <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
                 selectedKeys={selectedKey ? [selectedKey] : []}
-                onSelect={handleSelectGuarded}
+                onSelect={handleSelect}
                 treeData={storyTree}
                 titleRender={normalTitleRender}
                 indent={12}
@@ -340,29 +350,29 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                   ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
                   : storyList.map((m: any) => {
                       const isSelected = selectedKey === m.key;
-                      const dimmed = isLocked && !isSelected;
+                      const isRunning = m.key === runningModelKey;
                       return (
                       <div key={m.key}
-                        onClick={() => { if (!isLocked) handleSelect([m.key]); }}
+                        onClick={() => handleSelect([m.key])}
                         style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4,
-                          cursor: isLocked && !isSelected ? 'default' : 'pointer',
-                          opacity: dimmed ? 0.4 : 1,
+                          cursor: 'pointer',
                           background: isSelected ? c.rowHover : 'transparent', color: c.text }}>
-                        {/* Fixed-width lock slot — name never shifts */}
-                        {isSelected ? (
-                          <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '点击锁定，解锁后可仿真'}>
-                            <span
-                              onClick={e => { e.stopPropagation(); if (isLocked) handleUnlock(); else handleValidateAndLock(); }}
-                              style={{ width: 16, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: isLocked ? '#52c41a' : '#fa8c16', marginRight: 4 }}
-                            >
-                              {validating ? <LoadingOutlined style={{ fontSize: 11 }} /> : isLocked ? <LockOutlined style={{ fontSize: 11 }} /> : <UnlockOutlined style={{ fontSize: 11 }} />}
-                            </span>
-                          </Tooltip>
-                        ) : (
-                          <BookOutlined style={{ width: 16, marginRight: 4, color: c.textMute, flexShrink: 0 }} />
-                        )}
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.displayTitle}</span>
+                        <span style={{ flex: 1, position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', minWidth: 0 }}>
+                          {isRunning && (
+                            <Tooltip title={t('sim.tree.running_tip')}>
+                              <span
+                                onClick={e => { e.stopPropagation(); onNavigateToRunning?.(); }}
+                                style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)',
+                                  paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 1,
+                                  cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                <CaretRightFilled className="lm-running-arrow"  style={{ fontSize: '1em', color: c.primary }} />
+                                <CaretRightFilled className="lm-running-arrow2" style={{ fontSize: '1em', color: c.primary }} />
+                              </span>
+                            </Tooltip>
+                          )}
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.displayTitle}</span>
+                        </span>
                       </div>
                     );
                   })
@@ -373,6 +383,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 
