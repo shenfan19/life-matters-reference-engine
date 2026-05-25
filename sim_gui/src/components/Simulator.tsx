@@ -102,7 +102,6 @@ function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEven
   return result;
 }
 import FileEditor from './FileEditor';
-import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
 import SimModelTree from './SimModelTree';
@@ -174,7 +173,7 @@ type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
 
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
-  isLocked, setIsLocked, isDarkMode,
+  isDarkMode,
   storyTree, setStoryTree,
   expandedKeys, setExpandedKeys,
   storyViewMode, setStoryViewMode,
@@ -216,8 +215,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── loader state ─────────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
-  const [validating, setValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
+  const [runningModelKey, setRunningModelKey] = useState<string | null>(null);
 
   // ── center tab ───────────────────────────────────────────────────────────────
   const [centerTab, setCenterTab] = useState<CenterTab>('intro');
@@ -862,11 +860,9 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
   }, []);
 
-  // ── reset validation, lock, and session-ready flag on selection change ────────
+  // ── reset session-ready flag on selection change ─────────────────────────────
   useEffect(() => {
     sessionReadyRef.current = false;
-    setValidationResult(null);
-    setIsLocked(false);
   }, [selectedKey]);
 
   // ── persist per-model session (inputEvents, dates, opt config) ───────────────
@@ -952,7 +948,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const loadFileContent = async (filePath: string, opts: { preserveTab?: boolean } = {}): Promise<ModelFile | null> => {
-    if (selectedKey && selectedKey !== filePath) stopAllJobs();
     setTreeLoading(true);
     try {
       const cleanPath = filePath.replace(/^models\//, '');
@@ -1001,8 +996,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!keys.length) return;
     const key = keys[0] as string;
     if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
+    if (key === selectedKey) return;
     setSelectedKey(key);
-    setValidationResult(null);
     loadFileContent(key, { preserveTab: true });
   };
 
@@ -1019,34 +1014,17 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!node.isLeaf) toggleTreeNode(node.key);
   };
 
-  const handleValidateAndLock = async () => {
-    if (!selectedKey) return;
-    setValidating(true);
-    setValidationResult(null);
-    await loadFileContent(selectedKey, { preserveTab: true });
-    const result = await validateModelFile(selectedKey);
-    if (result.valid) {
-      setValidationResult(null);
-      setIsLocked(true);
-      message.success(t('sim.msg.validation_ok'));
-    } else {
-      setValidationResult(result);
-      setIsLocked(false);
-      const firstErrors = (result.errors || []).slice(0, 3).join('；');
-      message.error(`验证失败：${firstErrors}${result.errors.length > 3 ? `…（共 ${result.errors.length} 个错误）` : ''}`);
-    }
-    setValidating(false);
-  };
-
   // ── sim control ───────────────────────────────────────────────────────────────
   const startSimulation = async () => {
     if (!selectedModel) return;
+    if (blockIfRunning()) return;
     try {
       set('status', 'running'); set('progress', 0); set('currentStep', 0);
       setSimData([]);
       setComparedPlans([]);
       setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
       isRunningRef.current = true;
+      setRunningModelKey(selectedKey);
       const regimenPayload = inputEvents
         .filter(ev => inputVars.some(v => v.name === ev.variable))
         .map(ev => ({
@@ -1083,9 +1061,9 @@ const Simulator: React.FC<SimulatorProps> = ({
         runBatch(result.data.session_id);
       } else {
         message.error(result.error || t('sim.msg.start_failed'));
-        set('status', 'idle'); isRunningRef.current = false;
+        set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null);
       }
-    } catch (e: any) { message.error(e.message); set('status', 'idle'); isRunningRef.current = false; }
+    } catch (e: any) { message.error(e.message); set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null); }
   };
 
   const runBatch = async (sid: string) => {
@@ -1110,14 +1088,14 @@ const Simulator: React.FC<SimulatorProps> = ({
             });
           }
           if (res.data.completed) {
-            set('status', 'completed'); isRunningRef.current = false;
+            set('status', 'completed'); isRunningRef.current = false; setRunningModelKey(null);
             message.success(t('sim.msg.sim_complete'));
           } else setTimeout(loop, updateInterval);
         } else {
           message.error(res.error || t('sim.msg.start_failed'));
-          set('status', 'idle'); isRunningRef.current = false;
+          set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null);
         }
-      } catch { set('status', 'idle'); isRunningRef.current = false; }
+      } catch { set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null); }
     };
     loop();
   };
@@ -1255,6 +1233,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   //          all curves grow together in sync. Chunk size 500 keeps backend load low.
   const runAllPlans = async () => {
     if (!selectedModel) return;
+    if (blockIfRunning()) return;
     const currentPlans = plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p);
 
     setComparedPlans(currentPlans.map(plan => ({
@@ -1263,6 +1242,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setSimData([]);
     set('status', 'running'); set('progress', 0); set('currentStep', 0);
     isRunningRef.current = true;
+    setRunningModelKey(selectedKey);
 
     const modelName = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content?.metadata?.name || '';
     const timeHours = dateToHours(simStartDate, simEndDate);
@@ -1337,6 +1317,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
     set('status', 'completed');
     isRunningRef.current = false;
+    setRunningModelKey(null);
     const failed = sessions.filter(s => s.failed).length;
     if (failed === 0) message.success(`${currentPlans.length} 个方案仿真完成`);
     else message.warning(`完成，${failed} 个方案失败`);
@@ -1565,6 +1546,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const startOptimization = async () => {
     if (!selectedModel) return;
+    if (blockIfRunning()) return;
     setCenterTab('optimization');
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
 
@@ -1579,6 +1561,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
     setOptHistory([]); setOptElapsed(0); setOptMethod('');
     setOptTotalGen(totalGen); setOptJobId(null);
+    setRunningModelKey(selectedKey);
 
     const _DAY_STRS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -1665,7 +1648,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
       if (!resp.ok || !data.success || !data.job_id) {
         message.error(data.detail || data.error || '优化启动失败');
-        setOptRunning(false); return;
+        setOptRunning(false); setRunningModelKey(null); return;
       }
 
       const jobId: string = data.job_id;
@@ -1684,17 +1667,17 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           if (sd.status === 'completed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false);
+            setOptRunning(false); setRunningModelKey(null);
             setOptResult(sd.result);
             setCenterTab('optimization');
             message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false);
+            setOptRunning(false); setRunningModelKey(null);
             message.error(sd.error || '优化失败');
           } else if (sd.status === 'cancelled') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false);
+            setOptRunning(false); setRunningModelKey(null);
           }
         } catch { /* ignore transient poll errors */ }
       }, 1500);
@@ -1710,7 +1693,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (optJobId) {
       try { await fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }); } catch {}
     }
-    setOptRunning(false);
+    setOptRunning(false); setRunningModelKey(null);
   };
 
   // ── input event CRUD ──────────────────────────────────────────────────────────
@@ -1720,6 +1703,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (optJobId) { fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }).catch(() => {}); }
     setOptRunning(false);
     setOptJobId(null);
+    setRunningModelKey(null);
   };
 
   const invalidateSim = () => {
@@ -1846,25 +1830,62 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
   const total = countLeaves(storyTree);
 
+  const runningModelTitle = runningModelKey
+    ? (sessionModels.find(m => m.key === runningModelKey)?.title
+      || loadedModels[runningModelKey]?.title
+      || runningModelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || runningModelKey)
+    : null;
+
+  const navigateToRunning = () => {
+    if (!runningModelKey) return;
+    const sessModel = sessionModels.find(m => m.key === runningModelKey);
+    if (sessModel) {
+      setSelectedKey(sessModel.key);
+      setConfirmedModel(sessModel);
+      onModelSelect(sessModel);
+      setCenterTab('intro');
+    } else {
+      setSelectedKey(runningModelKey);
+      loadFileContent(runningModelKey, { preserveTab: true });
+    }
+  };
+
+  const blockIfRunning = (): boolean => {
+    if (!scsMode || !runningModelKey || runningModelKey === selectedKey) return false;
+    Modal.confirm({
+      title: t('sim.run.blocked_title'),
+      content: t('sim.run.blocked_content'),
+      okText: t('sim.run.goto_running'),
+      cancelText: t('sim.control.cancel') || '取消',
+      onOk: navigateToRunning,
+    });
+    return true;
+  };
+
+  const isOtherRunning = scsMode && !!runningModelKey && runningModelKey !== selectedKey;
+  const otherRunningTip = isOtherRunning ? `请先前往「${runningModelTitle || ''}」停止运行后再启动` : undefined;
 
   const SimControls = (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Tooltip title={!isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定' : undefined}>
+      <Tooltip title={otherRunningTip}>
         <span>
           <Button
             type="primary" size="small"
-            icon={status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
-            onClick={status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation}
-            disabled={!isLocked || status === 'completed'}
+            icon={!isOtherRunning && status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
+            onClick={isOtherRunning ? undefined : (status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation)}
+            disabled={!selectedModel || status === 'completed' || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {status === 'running' ? t('sim.control.pause') : status === 'paused' ? t('sim.control.continue') : plans.length > 1 ? `${t('sim.plan.run_all_pre')} ${plans.length} ${t('sim.plan.run_all_suf')}` : t('sim.control.run')}
+            {!isOtherRunning && status === 'running' ? t('sim.control.pause')
+              : !isOtherRunning && status === 'paused' ? t('sim.control.continue')
+              : !isOtherRunning && plans.length > 1 ? `${t('sim.plan.run_all_pre')} ${plans.length} ${t('sim.plan.run_all_suf')}`
+              : t('sim.control.run')}
           </Button>
         </span>
       </Tooltip>
       <Button size="small" icon={<StepForwardOutlined />}
         onClick={runSingleStep}
-        disabled={!isLocked || !sessionId || status === 'running' || status === 'completed'}
+        disabled={!sessionId || status === 'running' || status === 'completed'}
         style={{ whiteSpace: 'nowrap' }}
       >{t('sim.control.step')}</Button>
       <Button size="small" icon={<StopOutlined />}
@@ -1926,7 +1947,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const OptControls = (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
       <Tooltip title={
-        !isLocked ? '请先在左侧选中模型并点击模型前方的锁图标完成锁定'
+        isOtherRunning ? otherRunningTip
         : optResult ? '优化已完成，可继续查看结果或将 Pareto 解传输到仿真对比'
         : hasExistingResults ? `已有历史结果：${existingResults.n_solutions ?? existingResults.pareto_front.length} 个解 · ${existingResults.generated_at ?? ''}，可勾选"继续计算"热启动`
         : '设置目标、约束和决策变量范围后运行优化'
@@ -1934,12 +1955,12 @@ const Simulator: React.FC<SimulatorProps> = ({
         <span>
           <Button
             type="primary" size="small"
-            icon={optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
-            onClick={optRunning ? cancelOptimization : startOptimization}
-            disabled={!isLocked}
+            icon={!isOtherRunning && optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
+            onClick={isOtherRunning ? undefined : (optRunning ? cancelOptimization : startOptimization)}
+            disabled={!selectedModel || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {optRunning ? '停止优化' : t('sim.control.run')}
+            {!isOtherRunning && optRunning ? '停止优化' : t('sim.control.run')}
           </Button>
         </span>
       </Tooltip>
@@ -2023,25 +2044,16 @@ const Simulator: React.FC<SimulatorProps> = ({
           storyTree={storyTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
           storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
           expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
-          selectedKey={selectedKey} isLocked={isLocked} isSimulating={isSimulating}
+          selectedKey={selectedKey}
           treeLoading={treeLoading}
-          validationResult={validationResult} setValidationResult={setValidationResult}
-          validating={validating}
           total={total}
           isDarkMode={isDarkMode} c={c} t={t}
           loadFileContent={loadFileContent}
           handleSelect={handleSelect}
           handleTreeNodeClick={handleTreeNodeClick}
-          handleValidateAndLock={handleValidateAndLock}
-          setIsLocked={setIsLocked}
-          onUnlock={() => {
-            stopAllJobs();
-            setIsLocked(false);
-            setValidationResult(null);
-            setState(prev => ({ ...prev, status: 'idle', progress: 0, currentStep: 0, simulationData: [], dataPerRun: [], sessionSeed: 0, sessionId: '' }));
-            setComparedPlans([]);
-            setWarmStartEnabled(false);
-          }}
+          runningModelKey={runningModelKey}
+          runningModelTitle={runningModelTitle}
+          onNavigateToRunning={navigateToRunning}
           builderMode={builderOpen}
           builderCheckedFiles={builderCheckedFiles}
           onToggleBuilderFile={toggleBuilderFile}
@@ -2054,7 +2066,6 @@ const Simulator: React.FC<SimulatorProps> = ({
           sessionModels={sessionModels}
           onSelectSessionModel={model => {
             if (builderOpen) {
-              // Builder is open: show model as edit card
               const content = model.rawContent || model.content;
               setBuilderSessionMetas(p => ({ ...p, [model.key]: content }));
               setBuilderCheckedFiles(prev => prev.includes(model.key) ? prev : [...prev, model.key]);
@@ -2181,7 +2192,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   outputVars={outputVars} outputWarnings={outputWarnings}
                   inputVars={inputVars}
                   selectedModel={selectedModel}
-                  selectedKey={selectedKey} isLocked={isLocked} mode="sim" status={status}
+                  selectedKey={selectedKey} mode="sim" status={status}
                   simStartDate={simStartDate} simEndDate={simEndDate}
                   stepValue={stepValue} stepUnit={stepUnit}
                   simRuns={simRuns} sessionSeed={sessionSeed}

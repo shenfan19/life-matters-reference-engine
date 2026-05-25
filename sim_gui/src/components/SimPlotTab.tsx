@@ -13,7 +13,6 @@ interface SimPlotTabProps {
   inputVars: Array<{ name: string; [k: string]: any }>;
   selectedModel: ModelFile | null;
   selectedKey: string | null;
-  isLocked: boolean;
   mode: 'sim' | 'opt';
   status: 'idle' | 'running' | 'paused' | 'completed';
   simStartDate: string;
@@ -32,7 +31,7 @@ interface SimPlotTabProps {
 
 const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
-  inputVars, selectedModel, selectedKey, isLocked, mode, status,
+  inputVars, selectedModel, selectedKey, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
   isDarkMode, c, t, fontSize, comparedPlans, onExportCSV,
 }) => {
@@ -60,13 +59,11 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   const plotSlots = placeholderOutputVars.length > 0 ? placeholderOutputVars : ['output'];
   const emptyStateText = !selectedKey
     ? t('sim.scene.empty_hint')
-    : !isLocked
-      ? t('sim.scene.select_hint')
-      : mode === 'opt'
-        ? t('sim.plot.opt_mode_hint')
-        : status === 'idle'
-          ? t('sim.scene.click_to_start')
-          : t('sim.scene.calculating');
+    : mode === 'opt'
+      ? t('sim.plot.opt_mode_hint')
+      : status === 'idle'
+        ? t('sim.scene.click_to_start')
+        : t('sim.scene.calculating');
 
   const summaryItems = [
     ['Model', selectedModel?.title || '-'],

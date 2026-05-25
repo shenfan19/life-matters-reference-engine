@@ -272,8 +272,6 @@ function App() {
   const [storyViewMode, setStoryViewMode] = useState<'tree' | 'list'>('tree');
   const [storyFilter, setStoryFilter] = useState('');
   const [loadedModels, setLoadedModels] = useState<Record<string, ModelFile>>({});
-  const [isLocked, setIsLocked] = useState(false);
-
   const c = isDarkMode ? C.dark : C.light;
   const isSimulating = simState.status === 'running';
 
@@ -367,7 +365,7 @@ function App() {
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative', background: c.bg }}>
           <Simulator
             selectedModel={selectedModel} state={simState} setState={setSimState}
-            isLocked={isLocked} setIsLocked={setIsLocked} isDarkMode={isDarkMode}
+            isDarkMode={isDarkMode}
             storyTree={storyTree} setStoryTree={setStoryTree}
             expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
             storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}

@@ -42,8 +42,6 @@ export interface LoaderProps {
     loadedModels: Record<string, ModelFile>;
     setLoadedModels: (models: Record<string, ModelFile>) => void;
     isSimulating: boolean;
-    isLocked: boolean;
-    setIsLocked: (locked: boolean) => void;
     isDarkMode: boolean;
 }
 
@@ -135,8 +133,6 @@ export interface SimulatorProps {
     selectedModel: ModelFile | null;
     state: SimulationState;
     setState: React.Dispatch<React.SetStateAction<SimulationState>>;
-    isLocked: boolean;
-    setIsLocked: (locked: boolean) => void;
     isDarkMode: boolean;
     // loader props (lifted from App)
     storyTree: DataNode[];
