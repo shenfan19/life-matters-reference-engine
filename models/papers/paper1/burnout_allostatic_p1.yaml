@@ -176,6 +176,13 @@ variables:
     type: parameter
     reference: "Kivimäki M et al. (2012)"
 
+  lm_score:
+    description: 健康时长：work_output ≥ 0.70 且 cortisol_chronic ≤ 1.8 且 cvd_risk ≤ 1.0 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   cognitive_load_dynamics:
@@ -246,6 +253,14 @@ formulas:
         - 0.001 * (exercise_min / 30) * step
     reference: "Kivimäki M et al. (2012)"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：work_output ≥ 0.70 且 cortisol_chronic ≤ 1.8 且 cvd_risk ≤ 1.0"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (work_output >= 0.70 and cortisol_chronic <= 1.8 and cvd_risk <= 1.0) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（高压工作情境 × 最低恢复基线）──────────────────────────────────────
 # work_pressure = 0.75（外生参数，固定在 metadata.variables，不在 schedules 中）
 simulation:
@@ -260,6 +275,7 @@ simulation:
     - sleep_hours
     - exercise_min
     - nutrition_score
+    - lm_score
   schedules:
     # 基线：最低恢复行为（睡眠不足、不运动、外卖、无休息）
     - variable: sleep_hours
@@ -361,6 +377,10 @@ optimizer:
       metric: final
       direction: minimize
       description: "最小化12周末心血管风险积累"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化健康工作时长（work_output≥0.70 且 cortisol≤1.8 且 cvd_risk≤1.0 的累计天数）"
 
   constraints:
     - variable: work_output

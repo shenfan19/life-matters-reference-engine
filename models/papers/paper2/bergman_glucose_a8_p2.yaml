@@ -148,6 +148,13 @@ variables:
     type: parameter
     reference: "ADA Standards of Care (2024)"
 
+  lm_score:
+    description: 健康时长：fasting_glucose ≤ 7.0 mmol/L 且 hba1c ≤ 7.0% 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   insulin_sensitivity_dynamics:
@@ -200,6 +207,14 @@ formulas:
         hba1c + (fasting_glucose / 1.59 + 2.59 - hba1c) * 0.011 * step
     reference: "Nathan DM et al. (2008) eAG/HbA1c conversion. Diabetes Care 31(8):1473"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：fasting_glucose ≤ 7.0 mmol/L 且 hba1c ≤ 7.0%"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (fasting_glucose <= 7.0 and hba1c <= 7.0) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=2 分段：强化期→维持期）──────────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -211,6 +226,7 @@ simulation:
     - post_meal_peak
     - exercise_met_min
     - fasting_window_hours
+    - lm_score
   schedules:
     # 基线：高碳水、不运动、无禁食
     - variable: carb_intake_per_meal
@@ -303,6 +319,10 @@ optimizer:
       metric: final
       direction: maximize
       description: "最大化26周末胰岛素敏感性"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化血糖健康时长（fasting_glucose≤7.0 且 HbA1c≤7.0% 的累计天数）"
 
   constraints:
     - variable: fasting_glucose

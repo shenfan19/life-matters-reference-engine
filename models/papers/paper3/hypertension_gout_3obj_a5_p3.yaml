@@ -61,7 +61,6 @@ optimizer:
       metric: final
       direction: minimize
       description: "最小化26周末体重（减重目标）"
-
   constraints:
     - variable: blood_pressure
       condition: "<= 130"
@@ -116,6 +115,7 @@ simulation:
     - body_weight
     - thiazide_dose
     - allopurinol_dose
+    - lm_score
   schedules:
     - variable: thiazide_dose
       time: "08:00"

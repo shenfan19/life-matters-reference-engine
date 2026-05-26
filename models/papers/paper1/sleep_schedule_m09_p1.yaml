@@ -155,6 +155,13 @@ variables:
     type: parameter
     reference: "Watson NF et al. (2015) Sleep 38(6):843-844"
 
+  lm_score:
+    description: 健康时长：alertness ≥ 0.7 且 chronic_sleep_debt ≤ 0.3 且 health_risk_index ≤ 0.5 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   sleep_pressure_dynamics:
@@ -215,6 +222,14 @@ formulas:
         - max(0, 0.005 * (sleep_hours - optimal_sleep)) * step
     reference: "Cappuccio FP et al. (2010)"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：alertness ≥ 0.7 且 chronic_sleep_debt ≤ 0.3 且 health_risk_index ≤ 0.5"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (alertness >= 0.7 and chronic_sleep_debt <= 0.3 and health_risk_index <= 0.5) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（4周慢性轻度睡眠剥夺基线）──────────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -227,6 +242,7 @@ simulation:
     - health_risk_index
     - sleep_hours
     - nap_minutes
+    - lm_score
   schedules:
     # 基线：每天6.5h睡眠（慢性轻度睡眠剥夺，不午睡）
     - variable: sleep_hours
@@ -293,6 +309,10 @@ optimizer:
       metric: final
       direction: minimize
       description: "最小化4周末健康风险累积"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化睡眠健康时长（alertness≥0.7 且 sleep_debt≤0.3 且 health_risk≤0.5 的累计天数）"
 
   constraints:
     - variable: sleep_hours

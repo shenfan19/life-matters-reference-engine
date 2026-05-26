@@ -139,6 +139,13 @@ variables:
     type: parameter
     reference: "代表性患者，基线 urate=420 μmol/L"
 
+  lm_score:
+    description: 健康时长：blood_pressure ≤ 140 mmHg 且 uric_acid ≤ 360 μmol/L 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   bp_dynamics:
@@ -173,6 +180,14 @@ formulas:
       body_weight: body_weight - (caloric_deficit / 7700) * step
     reference: "Hall KD et al. (2011) Lancet 378(9793):826"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：blood_pressure ≤ 140 mmHg 且 uric_acid ≤ 360 μmol/L"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (blood_pressure <= 140 and uric_acid <= 360) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=2 分段：滴定期→稳定期）────────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -183,6 +198,7 @@ simulation:
     - body_weight
     - thiazide_dose
     - allopurinol_dose
+    - lm_score
   schedules:
     # K=2 段1（前8周滴定期，低剂量起步）
     - variable: thiazide_dose
@@ -259,6 +275,10 @@ optimizer:
       metric: final
       direction: minimize
       description: "最小化26周末血尿酸"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化心血管-代谢健康时长（BP≤140 且 UA≤360 的累计天数）"
 
   constraints:
     - variable: blood_pressure

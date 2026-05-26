@@ -212,6 +212,13 @@ variables:
     bounds: [0, 1]
     reference: "Qi X & Rodrigues B (2021) Glucocorticoid-induced IR. Mol Cell Endocrinol 536:111413"
 
+  lm_score:
+    description: 健康时长：liver_fat ≤ 10% 且 HOMA_IR ≤ 2.5 且 blood_glucose ≤ 7.8 mmol/L 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   liver_fat_dynamics:
@@ -286,6 +293,14 @@ formulas:
       visceral_fat: visceral_fat - weight_loss_factor * caloric_deficit * 1.5 * step
     reference: "Ross R et al. (2020) Lancet Diabetes Endocrinol 8(11):934"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：liver_fat ≤ 10% 且 HOMA_IR ≤ 2.5 且 blood_glucose ≤ 7.8 mmol/L"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (liver_fat <= 10 and HOMA_IR <= 2.5 and blood_glucose <= 7.8) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=2 分段，代表性患者26周干预）──────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -299,6 +314,7 @@ simulation:
     - visceral_fat
     - exercise_met_min
     - dietary_glycemic_load
+    - lm_score
   schedules:
     # K=2 默认方案：前12周强化期（低GI+有氧空腹运动）→ 后14周维持期
     - variable: exercise_met_min
@@ -403,6 +419,10 @@ optimizer:
       metric: final
       direction: minimize
       description: "最大化体重减少（代谢目标）"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化代谢健康时长（liver_fat≤10% 且 HOMA_IR≤2.5 且 blood_glucose≤7.8 的累计天数）"
 
   constraints:
     - variable: ALT
