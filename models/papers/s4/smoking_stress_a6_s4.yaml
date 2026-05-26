@@ -1,13 +1,13 @@
 metadata:
   name: a6_smoking_stress
-  paper: Paper 3 (JBI)
+  paper: S4
   case_id: A6
   updated: 2026-05-22
   author: Fan Shen
   description:
     brief: 工作压力-吸烟-健康跨域模型（A6），展示戒烟时机与减量策略的 T3+T4 多目标优化。
     need: >
-      为 Paper 3 增加一个跨心理、行为、肺功能和经济产出的多目标案例，
+      为 S4 增加一个跨心理、行为、肺功能和经济产出的多目标案例，
       测试 LM 在非传统医学单病种问题上的表达力，并展示 T3（哪几天开始减量）
       和 T4（何时开始戒烟）是与剂量（T1）同等重要的搜索维度。
     problem: >

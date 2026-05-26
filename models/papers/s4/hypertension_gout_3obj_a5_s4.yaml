@@ -1,13 +1,13 @@
 metadata:
   name: a5_hypertension_gout_3obj
-  paper: Paper 3 (JBI)
-  case_id: A5-P3
+  paper: S4
+  case_id: A5-S4
   updated: 2026-05-22
   author: Fan Shen
   description:
     brief: 高血压合并痛风三目标扩展版（A5-P3），加入体重目标并展示三维 Pareto 面与 T2 时间药理学。
     need: >
-      为 Paper 3 评估 K×4 在更高维临床冲突中的表现：同时处理降压、控尿酸和减重目标；
+      为 S4 评估 K×4 在更高维临床冲突中的表现：同时处理降压、控尿酸和减重目标；
       同时验证 T2（HCTZ 给药时机）和 T4（别嘌醇引入时机）在三目标场景下的结论稳健性。
     problem: >
       单一加权和可能落在一个折中点，遗漏三目标同时达标的非凸可行区域。
@@ -27,7 +27,7 @@ metadata:
     limitations: 三目标 Pareto 面可视化需要降维投影；体重动力学参数与减重速率约束需要精化。
   tags: [paper3, hypertension, gout, 3obj, pareto, A5, T2, T4, chronotherapy]
   references:
-    - "参见 paper2/hypertension_gout_a5_p2.yaml 完整引用"
+    - "参见 s2/hypertension_gout_a5_s2.yaml 完整引用"
     - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"
     - "Hermida RC et al. (2010) MAPEC study. Chronobiol Int 27(8):1629-1651"
   step_size:
@@ -35,9 +35,9 @@ metadata:
     unit: day
 
 imports:
-  - papers/paper2/hypertension_gout_a5_p2
+  - papers/s2/hypertension_gout_a5_s2
 
-# 继承 paper2/hypertension_gout_a5_p2 的全部变量、公式和约束
+# 继承 s2/hypertension_gout_a5_s2 的全部变量、公式和约束
 # 覆盖 optimizer：加入第三目标 body_weight + 更大种群
 
 optimizer:
