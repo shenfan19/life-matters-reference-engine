@@ -1,12 +1,12 @@
 metadata:
   name: a4_ckd_protein_pareto
-  paper: Paper 3 (JBI)
-  case_id: A4-P3
+  paper: S4
+  case_id: A4-S4
   updated: 2026-05-22
   author: Fan Shen
   description:
     brief: CKD 蛋白质-肌肉权衡深化版（A4-P3），扩展 Pareto 前沿搜索并加入 T2 晚餐时机优化。
-    need: 为 Paper 3 展示在 Paper 2 A4 基础上扩大种群（pop=150/gen=300）获得更完整 Pareto 前沿，并验证 T2 晚餐时机优化的稳健性。
+    need: 为 S4 展示在 S2 A4 基础上扩大种群（pop=150/gen=300）获得更完整 Pareto 前沿，并验证 T2 晚餐时机优化的稳健性。
     problem: >
       Paper 2 A4 使用 pop=100/gen=200，可能遗漏 Pareto 前沿尾端。
       扩大搜索同时验证：时间营养学（T2 晚餐时机）结论在更大搜索空间下是否稳健？
@@ -25,7 +25,7 @@ metadata:
     limitations: 计算成本显著高于 Paper 2 A4，适合最终发表前的精化搜索而非实时交互。
   tags: [paper3, ckd, protein, muscle, A4, pareto, T2, T4, K2]
   references:
-    - "参见 paper2/a4_ckd_protein.yaml 完整引用"
+    - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"
     - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"
     - "Snijders T et al. (2015) Pre-sleep protein. J Nutr 145(6):1178-1184"
   step_size:
@@ -33,9 +33,9 @@ metadata:
     unit: day
 
 imports:
-  - papers/paper2/ckd_protein_a4_p2
+  - papers/s2/ckd_protein_a4_s2
 
-# 继承 paper2/ckd_protein_a4_p2 的全部变量、公式、约束
+# 继承 s2/ckd_protein_a4_s2 的全部变量、公式、约束
 # 仅覆盖 optimizer 配置（更大种群 + 同一 T1+T2+T4 inputs）
 
 optimizer:
