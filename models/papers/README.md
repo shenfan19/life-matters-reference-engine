@@ -12,6 +12,7 @@
 papers/
   s1/   S1 — JOSS 软件工具论文（撰写中）
   s2/   S2 — JAMIA 临床框架验证（撰写中）
+  s3/   S3 — 英文系统科学范式论文（撰写中）
   s4/   S4 — JBI 优化方法论文（待撰写）
 ```
 
@@ -19,6 +20,7 @@ papers/
 |------|------|---------|------|
 | `s1/` | S1 — 软件工具论文 | JOSS / SoftwareX | 撰写中 |
 | `s2/` | S2 — 临床框架验证 | JAMIA / JBI | 撰写中 |
+| `s3/` | S3 — IHIO 系统科学范式 | Systems Research / EJOR | 撰写中 |
 | `s4/` | S4 — 优化方法论文 | JBI / AI in Medicine | 待撰写 |
 
 ## 文件清单
@@ -29,6 +31,8 @@ papers/
 | `s1/banister_b3_s1.yaml` | B3：Banister 16周V2协议 | S1 | ✅ 可运行 |
 | `s2/ckd_protein_a4_s2.yaml` | A4：CKD 蛋白质-肌肉权衡 | S2 | ✅ 可运行 |
 | `s2/hypertension_gout_a5_s2.yaml` | A5：高血压+痛风药物冲突 | S2 | TODO：公式待细化 |
+| `s3/masld_hua_a7_s3.yaml` | A7：MASLD-HUA 可行域分岔分析 | S3 | TODO |
+| `s3/ckd_protein_a4_s3.yaml` | A4：CKD 联合可行窗口验证 | S3 | TODO |
 | `s4/ckd_protein_pareto_a4_s4.yaml` | A4深化：完整Pareto对照 | S4 | TODO |
 | `s4/hypertension_gout_3obj_a5_s4.yaml` | A5深化：三目标扩展 | S4 | TODO |
 | `s4/smoking_stress_a6_s4.yaml` | A6：压力×吸烟×精神健康 | S4 | TODO：参数待确认 |
@@ -42,6 +46,7 @@ papers/
 | b3_banister | 层1（解析解）+ 层2（Morton 1990 Fig.3） |
 | a4_ckd_protein | 层2（GFR下降速率、KDIGO自然史） |
 | a5_hypertension_gout | 层2（HCTZ效应量，Law 2009） |
+| s3 系列 | 层3（可行域结构 + IHIO 论点验证） |
 | s4 系列 | 层3（Pareto合理性 + 对照实验） |
 
 ## 与 temp/ 的区别

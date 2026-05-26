@@ -1,0 +1,237 @@
+metadata:
+  name: a4_ckd_protein_ihio
+  paper: S3
+  case_id: A4-S3
+  updated: 2026-05-26
+  author: Fan Shen
+  description:
+    brief: CKD 蛋白质-肌肉联合可行域分析（A4-S3），S3 系统科学范式论文第二应用案例。
+    need: >
+      为 S3 提供第二个 IHIO 实例：CKD 蛋白质-肌肉权衡展示多尺度 Pareto 分析
+      如何揭示单科指南不可见的联合可行窗口（joint feasibility window）。
+      与 A7-S3 (MASLD-HUA) 形成互补：前者展示可行域收缩，后者展示新兴的联合可行区间。
+    problem: >
+      肾内科指南（KDIGO 2020）推荐透析前 CKD G3b-G4 蛋白摄入 0.6-0.8 g/kg/day；
+      肌少症指南（EWGSOP2）推荐 ≥1.0 g/kg/day 以维持肌肉。
+      两套指南的目标区间无重叠，暗示同时满足双目标是不可能的。
+      IHIO 关键问题：联立后是否存在 0.65-0.8 g/kg/day 的共同可行窗口？
+      这个窗口是否只有通过多尺度联合优化才能发现？
+    method: >
+      继承 S2 A4 全部变量、公式和约束（imports）。
+      NSGA-II 双目标：最大化 GFR（肾功能）、最大化 muscle_mass（肌肉量）；
+      T1（三餐蛋白量）+ T2（晚餐时间窗 17:00-22:00 时间营养学）+ T4（K=2 分段切换）；
+      种群 pop=100/gen=200（与 S2 A4 相同规模，用于直接结论对比而非规模扩展）。
+    simulation: >
+      继承 S2 A4 的 52 周日步长仿真（1年，观察肾-肌肉长期权衡稳定性）；
+      输出 GFR、muscle_mass、BUN、dietary_protein、lm_score；
+      参考方案对比：KDIGO 严格限蛋白（0.65 g/kg/day） vs EWGSOP2 补充蛋白（0.95 g/kg/day）
+      vs K×4 联合可行点（0.72 g/kg/day + 睡前蛋白 T2 时机）。
+    optimization: >
+      核心展示：Pareto 前沿中是否存在 GFR ≥ 30 且 muscle_mass ≥ 22 kg 的双达标区间？
+      该区间对应的蛋白摄入量（T1 决策变量值）分布在哪个范围？
+      T2 晚餐时机（睡前蛋白）是否扩大了联合可行窗口？
+    result: >
+      预期：Pareto 前沿中约 40-60% 的解集中在总蛋白 0.65-0.80 g/kg/day 区间，
+      验证联合可行窗口的存在；睡前蛋白（T2 → 21:00）的解在肌肉端点优于相同剂量的早餐时机；
+      BUN 约束（≤20 mmol/L）作为硬约束将蛋白上限收紧到 ~0.80 g/kg/day。
+    conclusion: >
+      期望结论是联合可行窗口（0.65-0.80 g/kg/day）是 CKD 多尺度约束优化的涌现属性，
+      无法从单一肾内科或肌少症指南推导——这正是 IHIO 框架的核心论点；
+      时间营养学维度（T2 睡前蛋白）进一步扩大了可行窗口的宽度（上界约提升 0.05 g/kg/day）。
+    limitations: >
+      蛋白-GFR 动力学系数（alpha 在 A4 模型中）仍属估算级别；
+      52 周线性动力学假设忽略了 CKD 病程中肾纤维化的非线性加速；
+      个体差异（残余肾功能）由 MC 参数分布隐含。
+  tags: [S3, CKD, protein, muscle, IHIO, feasibility_window, joint_constraint, A4, T2, T4, K2]
+  references:
+    - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"
+    - "KDIGO (2020) CKD Evaluation and Management Guidelines. Kidney Int Suppl 10(1):1-4"
+    - "Cruz-Jentoft AJ et al. (2019) EWGSOP2 Sarcopenia. Age Ageing 48(1):16-31"
+    - "Snijders T et al. (2015) Pre-sleep protein. J Nutr 145(6):1178-1184"
+    - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"
+  step_size:
+    value: 1
+    unit: day
+
+imports:
+  - papers/s2/ckd_protein_a4_s2
+
+# 继承 s2/ckd_protein_a4_s2 全部变量、公式和约束
+# 覆盖 optimizer：同规模 NSGA-II，核心目的是展示联合可行窗口的涌现性（IHIO 论点）
+
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  step_size:
+    value: 1
+    unit: day
+
+  objectives:
+    - variable: muscle_mass
+      metric: final
+      direction: maximize
+      description: "最大化52周末骨骼肌质量（肌少症目标）"
+    - variable: GFR
+      metric: final
+      direction: maximize
+      description: "最大化52周末 GFR（肾功能目标）"
+
+  constraints:
+    - variable: BUN
+      condition: "<= 20"
+      type: hard
+      description: "BUN 安全上限（肾内科约束，随蛋白摄入升高）"
+    - variable: GFR
+      condition: ">= 30"
+      type: hard
+      description: "GFR 最低安全阈值（CKD G3b 保护）"
+    - variable: dietary_protein
+      condition: ">= 0.6"
+      type: hard
+      description: "蛋白质摄入下限（防止蛋白质营养不良）"
+
+  inputs:
+    # T1: 早餐蛋白量
+    - variable: dietary_protein
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "早餐蛋白量（联合可行窗口 T1 维度）"
+      optimize:
+        value: [0.15, 0.40]
+
+    # T1: 午餐蛋白量
+    - variable: dietary_protein
+      time: "12:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "午餐蛋白量"
+      optimize:
+        value: [0.15, 0.38]
+
+    # T1+T2: 晚餐蛋白量 + 睡前时机（时间营养学扩宽可行窗口）
+    - variable: dietary_protein
+      time_window: "17:00~22:00"
+      opt_step: 1h
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "晚餐蛋白量与睡前时机（T2 IHIO 时间维度）"
+      optimize:
+        value: [0.15, 0.42]
+        time: true
+
+    # T4: K=2 切换时机（限制期→标准期）
+    - variable: dietary_protein
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-04-01~2026-10-01"
+      label: "K=2 切换时机（T4，限制期→标准期）"
+      optimize:
+        value: [0.27, 0.40]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    seed: 42
+    description: "MC 验证联合可行窗口在个体差异（残余肾功能、肌肉合成响应）下的稳健性"
+
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-12-31"
+  output_variables:
+    - GFR
+    - muscle_mass
+    - BUN
+    - dietary_protein
+    - lm_score
+  schedules:
+    # K=2 参考方案：前26周限制期（KDIGO 严格限蛋白）→ 后26周标准期（睡前蛋白补充）
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.22
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期早餐（KDIGO 严格限蛋白）"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.21
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期午餐"
+    - variable: dietary_protein
+      time: "21:00"
+      value: 0.22
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "限制期晚餐（睡前）"
+    - variable: dietary_protein
+      time: "08:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期早餐"
+    - variable: dietary_protein
+      time: "12:00"
+      value: 0.26
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期午餐"
+    - variable: dietary_protein
+      time: "21:00"
+      value: 0.27
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2026-12-31"
+      label: "标准期晚餐（睡前）"
+
+  plans:
+    - id: "kdigo_strict"
+      label: "KDIGO 严格限蛋白（0.65 g/kg/day，肾保护极端）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.21,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.22,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐（睡前）"}
+
+    - id: "ewgsop2_standard"
+      label: "EWGSOP2 补充蛋白（0.95 g/kg/day，肌肉保留极端）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.33,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.31,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.31,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐（睡前）"}
+
+    - id: "ihio_window"
+      label: "IHIO 联合可行点（0.72 g/kg/day + 睡前蛋白 T2，待运行更新）"
+      schedules:
+        - {variable: dietary_protein, time: "08:00", value: 0.24,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.23,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.24,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期晚餐（睡前）"}
+        - {variable: dietary_protein, time: "08:00", value: 0.26,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期早餐"}
+        - {variable: dietary_protein, time: "12:00", value: 0.24,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期午餐"}
+        - {variable: dietary_protein, time: "21:00", value: 0.26,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期晚餐（睡前，T2 最优时机）"}
