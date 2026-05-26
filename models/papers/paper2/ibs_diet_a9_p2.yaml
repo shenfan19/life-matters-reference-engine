@@ -145,6 +145,13 @@ variables:
     type: parameter
     reference: "Staudacher HM et al. (2012)"
 
+  lm_score:
+    description: 健康时长：symptom_score ≤ 175 且 microbiome_stability ≥ 1.0 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
   symptom_score_dynamics:
@@ -190,6 +197,14 @@ formulas:
         - 0.003 * max(0, microbiome_stability - 1.0) * step
     reference: "Staudacher HM et al. (2012); Moayyedi P (2020)"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：symptom_score ≤ 175 且 microbiome_stability ≥ 1.0"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (symptom_score <= 175 and microbiome_stability >= 1.0) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=3 分段：限制期→重新引入期→个体化维持期）────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -200,6 +215,7 @@ simulation:
     - microbiome_stability
     - fodmap_intake
     - fiber_soluble
+    - lm_score
   schedules:
     # 低FODMAP三阶段默认方案（标准4周限制→8周重新引入→维持）
     # 阶段1：严格限制期（前6周）
@@ -294,6 +310,10 @@ optimizer:
       metric: final
       direction: maximize
       description: "最大化24周末菌群稳定性（防长期饮食限制损伤）"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化消化道健康时长（symptom_score≤175 且 microbiome_stability≥1.0 的累计天数）"
 
   constraints:
     - variable: symptom_score

@@ -118,6 +118,13 @@ variables:
     type: parameter
     reference: "TODO:SOURCE 职业压力流行病学估计"
 
+  lm_score:
+    description: 健康时长：fev1 ≥ 2.5 L 且 cortisol_level ≤ 2.5 且 work_output ≥ 0.75 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
   # ── 动力学参数 ─────────────────────────────────────────────────────────────
   k_nic:
     description: 尼古丁清除速率常数（t½=6h → k=ln2/6≈0.115/h，换算=2.77/day）
@@ -210,6 +217,14 @@ formulas:
         + 0.2 * max(0, 1.0 - cigarettes_per_day / 20.0)
     reference: "TODO:SOURCE 健康效用权重文献"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：fev1 ≥ 2.5 L 且 cortisol_level ≤ 2.5 且 work_output ≥ 0.75"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (fev1 >= 2.5 and cortisol_level <= 2.5 and work_output >= 0.75) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=3 分段：吸烟期→减量期→戒断期）──────────────────────────────────
 # 5年 = 1826 天（日步长对年级肺功能仍合理，跨尺度近似）
 simulation:
@@ -221,6 +236,7 @@ simulation:
     - fev1
     - health_economic_index
     - cigarettes_per_day
+    - lm_score
   schedules:
     # K=3 默认方案（示范性，待优化器覆盖）
     # 段1：吸烟期（前12个月，每天20支）
@@ -307,6 +323,10 @@ optimizer:
       metric: final
       direction: maximize
       description: "最大化5年末健康-经济综合指数"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化吸烟-压力健康时长（fev1 ≥ 2.5 L 且 cortisol_level ≤ 2.5 且 work_output ≥ 0.75 的累计天数）"
 
   constraints:
     - variable: work_output

@@ -151,6 +151,13 @@ variables:
     unit: mL/min/1.73m²
     type: parameter
 
+  lm_score:
+    description: 健康时长：GFR ≥ 30 mL/min 且 muscle_mass ≥ 22 kg 且 BUN ≤ 20 mg/dL 同时满足的累计仿真天数
+    value: 0.0
+    unit: day
+    type: state
+    reference: "Life Matters Framework core metric"
+
 # ── 动力学公式 ─────────────────────────────────────────────────────────────────
 formulas:
   gfr_decline:
@@ -186,6 +193,14 @@ formulas:
       BUN: BUN + (sigma_urea * dietary_protein * body_weight - 0.0015 * GFR * BUN) * step
     reference: "TODO:SOURCE BUN-蛋白关系文献"
 
+  lm_score_update:
+    description: "累加健康时长（可恢复）：GFR ≥ 30 mL/min 且 muscle_mass ≥ 22 kg 且 BUN ≤ 20 mg/dL"
+    condition: true
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (GFR >= 30 and muscle_mass >= 22 and BUN <= 20) else lm_score"
+    reference: "Life Matters Framework core metric"
+
 # ── 仿真设置（K=2 分段：限制期→标准期）────────────────────────────────────────
 simulation:
   start_date: "2026-01-01"
@@ -195,6 +210,7 @@ simulation:
     - muscle_mass
     - BUN
     - dietary_protein
+    - lm_score
   schedules:
     # K=2 段1（限制期，前26周，低蛋白保护肾功能）
     - variable: dietary_protein
@@ -291,6 +307,10 @@ optimizer:
       metric: final
       direction: maximize
       description: "最大化52周末 GFR（减缓肾功能衰退）"
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: "最大化 CKD 健康时长（GFR ≥ 30、muscle_mass ≥ 22 kg、BUN ≤ 20 的累计天数）"
 
   constraints:
     - variable: BUN
