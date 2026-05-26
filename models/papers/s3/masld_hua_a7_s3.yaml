@@ -1,0 +1,244 @@
+metadata:
+  name: a7_masld_hua_ihio
+  paper: S3
+  case_id: A7-S3
+  updated: 2026-05-26
+  author: Fan Shen
+  description:
+    brief: MASLD×胰岛素抵抗 IHIO 可行域分析（A7-S3），S3 系统科学范式论文核心案例。
+    need: >
+      为 S3 提供 IHIO 问题类的具体实例化：MASLD-HUA 共病展示跨科室指南联立后
+      控制可行域收缩的核心机制，是 K×4 框架必要性的直接证据。
+    problem: >
+      单独采纳内分泌指南（减重速率 ≤0.5 kg/周）或消化科指南（快速减重降肝脂）
+      均无矛盾；但两套指南联立后，快速减重诱发的酮体-IR 恶化循环使可行域非凸，
+      甚至在某些参数区域为空集。
+      IHIO 关键问题：减重速率 <0.3 kg/周是否构成跨病种控制分岔点（bifurcation）？
+    method: >
+      继承 S2 A7 全部变量、公式和约束（imports）。
+      NSGA-II 双目标：最小化 liver_fat（消化科）、最小化 HOMA_IR（内分泌科）；
+      保持 T1+T2+T3+T4 全维度优化，种群 pop=100/gen=200；
+      对比约束 body_weight ≥ 72（≤10kg/26w 即 ≤0.38kg/w）与更严格约束
+      body_weight ≥ 75（≤0.27kg/w）下的 Pareto 前沿变化，验证分岔假说。
+    simulation: >
+      继承 S2 A7 的 26 周日步长仿真；
+      输出 liver_fat、HOMA_IR、body_weight、lm_score；
+      参考方案展示：快速减重方案（~0.45 kg/w）与温和方案（~0.25 kg/w）的对比轨迹。
+    optimization: >
+      核心验证：NSGA-II 在两种减重速率约束（≤0.38 kg/w vs ≤0.27 kg/w）下
+      分别运行，比较 Pareto 前沿形状变化；
+      若 ≤0.27 kg/w 约束导致前沿显著收缩，验证减重速率作为 IHIO 分岔控制参数。
+      T2 运动时机在两种约束下的最优时间选择是否稳健？
+    result: >
+      预期：温和减重约束（≤0.27 kg/w）下 Pareto 前沿收缩约 30%，
+      hypervolume 下降，但 HOMA-IR 端点改善幅度更大（消除酮体恶化循环）；
+      T2 运动时机结论（空腹晨练优）在两种约束下均稳健。
+    conclusion: >
+      期望结论是减重速率是 MASLD-HOMA-IR 共病的跨科室分岔控制参数；
+      K×4 框架将其形式化为 T1 量（控制速率值）而非指南阈值，
+      从而使可行域边界可计算、可比较——这是 IHIO 框架相对单科室指南的核心优势。
+    limitations: >
+      酮体-IR 恶化的动力学系数为估算值（待精化）；
+      分岔阈值 0.3 kg/w 来自 MASLD 文献，个体差异（PNPLA3 基因型）由 MC 参数隐含。
+  tags: [S3, MASLD, insulin_resistance, HOMA-IR, IHIO, bifurcation, feasibility, A7, T2, K4]
+  references:
+    - "参见 s2/masld_insulin_a7_s2.yaml 完整引用"
+    - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"
+    - "Gonzalez-Franquesa A et al. (2023) Fasted exercise and liver fat. Cell Metab 36(1):108-125"
+    - "Erickson ML et al. (2019) Effect of exercise timing on insulin sensitivity. Diabetologia 62(8):1387-1395"
+  step_size:
+    value: 1
+    unit: day
+
+imports:
+  - papers/s2/masld_insulin_a7_s2
+
+# 继承 s2/masld_insulin_a7_s2 全部变量、公式和约束
+# 覆盖 optimizer：双约束对比验证分岔假说（减重速率 ≤0.38 vs ≤0.27 kg/w）
+
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"
+  step_size:
+    value: 1
+    unit: day
+
+  objectives:
+    - variable: liver_fat
+      metric: final
+      direction: minimize
+      description: "最小化26周末肝脂（消化科目标）"
+    - variable: HOMA_IR
+      metric: final
+      direction: minimize
+      description: "最小化26周末胰岛素抵抗指数（内分泌科目标）"
+
+  constraints:
+    - variable: ALT
+      condition: "<= 40"
+      type: hard
+    - variable: blood_glucose
+      condition: "<= 7.8"
+      type: hard
+    - variable: body_weight
+      condition: ">= 72"
+      type: hard
+      description: "减重速率约束 ≤0.38 kg/w（IHIO 分岔分析的宽松侧）"
+
+  inputs:
+    # T1: 热量缺口（控制减重速率的直接决策变量）
+    - variable: caloric_deficit
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日热量缺口（分岔控制参数）"
+      optimize:
+        value: [150.0, 600.0]
+
+    # T1+T2: 运动量 + 运动时机（空腹 vs 餐后对 IR 改善的异质效应）
+    - variable: exercise_met_min
+      time_window: "06:00~20:00"
+      opt_step: 1h
+      days: [Mon, Wed, Fri]
+      label: "有氧运动量与时机（T2 IHIO 时间维度）"
+      optimize:
+        value: [100.0, 300.0]
+        time: true
+
+    # T1+T3: 饮食升糖负荷 + 频率模式
+    - variable: exercise_met_min
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Mon, Tue, Thu, Fri]
+        - [Mon, Wed, Fri, Sat]
+      label: "运动频率模式（T3）"
+      optimize:
+        value: [150.0, 260.0]
+        days: true
+
+    # T1: 饮食升糖负荷
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "饮食升糖负荷"
+      optimize:
+        value: [60.0, 130.0]
+
+    # T4: 低GI→地中海饮食切换时机
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-02-26~2026-05-01"
+      label: "饮食切换时机（T4）"
+      optimize:
+        value: [95.0, 120.0]
+        date_start: true
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    seed: 42
+    description: "MC 验证分岔结论稳健性（alpha_exercise_fat, gamma_IR_liverfat 个体差异）"
+
+  algorithm:
+    population_size: 100
+    n_generations: 200
+    seed: 42
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-07-01"
+  output_variables:
+    - liver_fat
+    - ALT
+    - HOMA_IR
+    - blood_glucose
+    - body_weight
+    - exercise_met_min
+    - dietary_glycemic_load
+    - lm_score
+  schedules:
+    # K=2 参考方案：前12周强化（低GI+空腹有氧）→ 后14周维持（地中海）
+    - variable: exercise_met_min
+      time: "07:00"
+      value: 210.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：空腹有氧（210 MET·min）"
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      value: 75.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：低升糖饮食（GL=75）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 400.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-03-27"
+      label: "强化期：热量缺口 400 kcal/day（≈0.38 kg/w，分岔边界）"
+    - variable: exercise_met_min
+      time: "07:00"
+      value: 180.0
+      days: [Mon, Wed, Fri]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：有氧"
+    - variable: dietary_glycemic_load
+      time: "00:00"
+      value: 100.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：地中海饮食（GL=100）"
+    - variable: caloric_deficit
+      time: "00:00"
+      value: 250.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-03-28 ~ 2026-07-01"
+      label: "维持期：温和热量缺口 250 kcal/day"
+
+  plans:
+    - id: "fast_loss"
+      label: "快速减重方案（~0.45 kg/w，分岔右侧）"
+      schedules:
+        - {variable: caloric_deficit, time: "00:00", value: 550.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "较大热量缺口"}
+        - {variable: exercise_met_min, time: "16:00", value: 250.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "餐后有氧（每天）"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 110.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "地中海饮食"}
+
+    - id: "gentle_loss"
+      label: "温和减重方案（~0.25 kg/w，分岔左侧，IHIO最优区间）"
+      schedules:
+        - {variable: caloric_deficit, time: "00:00", value: 270.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "温和热量缺口"}
+        - {variable: exercise_met_min, time: "07:00", value: 210.0,
+           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-03-27",
+           label: "强化期空腹有氧"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 70.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-03-27", label: "低GI强化期"}
+        - {variable: exercise_met_min, time: "07:00", value: 180.0,
+           days: [Mon, Wed, Fri], date_range: "2026-03-28 ~ 2026-07-01",
+           label: "维持期有氧"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 100.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-03-28 ~ 2026-07-01", label: "维持期地中海饮食"}
+
+    - id: "k4_balanced"
+      label: "K×4 平衡参考点（待运行更新）"
+      schedules:
+        - {variable: caloric_deficit, time: "00:00", value: 350.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口"}
+        - {variable: exercise_met_min, time: "07:00", value: 210.0,
+           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-07-01",
+           label: "空腹有氧"}
+        - {variable: dietary_glycemic_load, time: "00:00", value: 75.0,
+           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+           date_range: "2026-01-01 ~ 2026-07-01", label: "低GI饮食"}
