@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Empty, Tooltip } from 'antd';
-import type { ModelFile } from '../types';
-import { getC } from '../core/theme';
-import { getDescriptionSections } from '../core/modelUtils';
+import type { ModelFile } from '../../types';
+import { getC } from '../../core/theme';
+import { getDescriptionSections } from '../../core/modelUtils';
 
 interface SimIntroTabProps {
   selectedModel: ModelFile | null;

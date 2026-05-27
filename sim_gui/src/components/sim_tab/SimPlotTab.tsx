@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Collapse, Empty } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import type { ModelFile, SimulationDataPoint, PlanResult } from '../types';
-import { getC } from '../core/theme';
+import type { ModelFile, SimulationDataPoint, PlanResult } from '../../types';
+import { getC } from '../../core/theme';
 import SimChart, { VAR_COLORS } from './SimChart';
 
 interface SimPlotTabProps {

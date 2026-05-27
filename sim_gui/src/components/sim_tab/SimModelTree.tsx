@@ -6,8 +6,8 @@ import {
   UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
-import type { DataNode, ModelFile, SimulationState } from '../types';
-import { getC } from '../core/theme';
+import type { DataNode, ModelFile, SimulationState } from '../../types';
+import { getC } from '../../core/theme';
 
 interface SimModelTreeProps {
   width: number;

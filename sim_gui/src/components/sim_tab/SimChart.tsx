@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import type { SimulationDataPoint, PlanResult } from '../types';
-import { getC } from '../core/theme';
+import type { SimulationDataPoint, PlanResult } from '../../types';
+import { getC } from '../../core/theme';
 
 export const VAR_COLORS = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
 export const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { getC } from '../core/theme';
+import { getC } from '../../core/theme';
 
 const OptProgressChart: React.FC<{
   history: any[];

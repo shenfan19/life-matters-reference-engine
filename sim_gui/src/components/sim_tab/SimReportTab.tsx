@@ -1,9 +1,9 @@
 import React from 'react';
 import { Tooltip } from 'antd';
-import type { ModelFile, SimulationDataPoint, StepUnit } from '../types';
-import { getC } from '../core/theme';
+import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
+import { getC } from '../../core/theme';
 import { VAR_COLORS, varToDataUrl } from './SimChart';
-import { getDescriptionSections, descriptionText, descriptionSummary } from '../core/modelUtils';
+import { getDescriptionSections, descriptionText, descriptionSummary } from '../../core/modelUtils';
 
 const ALL_REPORT_SECTIONS = [
   { key: 'intro',     label: 'Description', desc: '模型背景与适用场景说明' },

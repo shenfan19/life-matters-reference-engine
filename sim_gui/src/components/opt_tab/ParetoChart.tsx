@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getC } from '../core/theme';
+import { getC } from '../../core/theme';
 
 const ParetoChart: React.FC<{
   result: any;

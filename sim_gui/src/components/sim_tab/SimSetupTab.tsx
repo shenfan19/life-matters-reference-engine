@@ -5,8 +5,8 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { InputEvent, SimPlan } from '../types';
-import { getC } from '../core/theme';
+import type { InputEvent, SimPlan } from '../../types';
+import { getC } from '../../core/theme';
 
 interface SimSetupTabProps {
   inputEvents: InputEvent[];
