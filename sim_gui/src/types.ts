@@ -164,35 +164,18 @@ export interface InputEvent {
   validRangeEnabled: boolean;
   validStart: string;
   validEnd: string;
-}
-
-// Decision variable entry for the optimizer (T1–T4).
-// Separate from InputEvent: has valueBounds instead of value, plus all Tier controls.
-export interface OptInput {
-  id: string;
-  variable: string;
-  label: string;
-  // T1: value bounds (always required)
-  valueBounds: [number, number];
-  // Fixed time or T2 time window
-  time: string;              // "HH:MM" default/fixed time
-  timeEnabled: boolean;
-  timeWindow?: string;       // T2: "HH:MM~HH:MM"
-  optStep?: string;          // T2: "1h" | "15min"
-  optimizeTime: boolean;     // T2 active
-  // Fixed days or T3 pattern
-  daysEnabled: boolean;
-  days: boolean[];           // 7-element mask Mon–Sun
-  daysOptions?: string[][];  // T3: candidate patterns
-  optimizeDays: boolean;     // T3 active
-  // Fixed valid range or T4 date window
-  validRangeEnabled: boolean;
-  validStart: string;
-  validEnd: string;
-  dateStartWindow?: string;  // T4: "YYYY-MM-DD~YYYY-MM-DD"
-  optimizeDateStart: boolean;
-  dateEndWindow?: string;    // T4b
-  optimizeDateEnd: boolean;
+  // Opt fields — optional; default false/inactive
+  optimizeValue?: boolean;
+  valueBounds?: [number, number];
+  optimizeTime?: boolean;
+  timeWindow?: string;
+  optStep?: string;
+  optimizeDays?: boolean;
+  daysOptions?: string[][];
+  optimizeDateStart?: boolean;
+  dateStartWindow?: string;
+  optimizeDateEnd?: boolean;
+  dateEndWindow?: string;
 }
 
 // Per-model user session: preserved across model switches, persisted to localStorage.
@@ -213,8 +196,6 @@ export interface ModelSession {
   optPop: number;
   optGen: number;
   optResult: any;
-  optInputs: OptInput[];        // decision variables for optimizer
-  optBackgrounds: InputEvent[]; // fixed background inputs for optimizer evaluation
 }
 
 export interface OptimizerProps {

@@ -291,5 +291,7 @@
   "sim.opt.import_from_sim_tip": "将 Sim tab 的输入事件复制为决策变量（自动填充范围）",
   "sim.opt.import_from_sim_empty": "Sim tab 无输入事件，请先在 Sim 中配置",
   "sim.opt.import_from_sim_done": "已导入 {n} 个决策变量，请调整范围后运行优化",
-  "sim.opt.no_inputs_warning": "尚无决策变量，请在「决策变量」区域添加或从 Sim 导入"
+  "sim.opt.no_inputs_warning": "尚无决策变量，请在「决策变量」区域添加或从 Sim 导入",
+  "sim.opt.tog.opt_on_tip": "此事件作为优化决策变量（点击取消）",
+  "sim.opt.tog.opt_off_tip": "点击将此事件设为优化决策变量"
 }
