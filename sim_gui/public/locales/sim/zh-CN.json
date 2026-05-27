@@ -293,5 +293,6 @@
   "sim.opt.import_from_sim_done": "已导入 {n} 个决策变量，请调整范围后运行优化",
   "sim.opt.no_inputs_warning": "尚无决策变量，请在「决策变量」区域添加或从 Sim 导入",
   "sim.opt.tog.opt_on_tip": "此事件作为优化决策变量（点击取消）",
-  "sim.opt.tog.opt_off_tip": "点击将此事件设为优化决策变量"
+  "sim.opt.tog.opt_off_tip": "点击将此事件设为优化决策变量",
+  "sim.opt.import_from_plan": "从方案导入"
 }
