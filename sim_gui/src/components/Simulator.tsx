@@ -6,173 +6,18 @@ import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'ant
 import { BuildOutlined, CloseOutlined, DownloadOutlined, LeftOutlined, PauseOutlined, PlayCircleOutlined, RightOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
 import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan, ModelSession } from '../types';
 import { dump as yamlDump } from 'js-yaml';
-
-const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
-
-// Expand "HH:MM~HH:MM" + opt_step to discrete time slot list.
-function expandTimeWindow(window: string, optStep = '1h'): string[] {
-  const [s, e] = window.split('~').map(p => p.trim());
-  const [sh, sm] = s.split(':').map(Number);
-  const [eh, em] = e.split(':').map(Number);
-  const step = optStep === '15min' ? 15 : 60;
-  const slots: string[] = [];
-  for (let t = sh * 60 + sm; t <= eh * 60 + em; t += step)
-    slots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
-  return slots;
-}
-
-// Converts a Pareto solution x-vector back to inputEvents.
-// Handles list-format inputs (T1–T4) and legacy regimen: format.
-// x vector layout per entry: [value?, time_slot_idx?, pattern_idx?, day_offset?]
-function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEvent[]): InputEvent[] {
-  const result = baseEvents.map(ev => ({ ...ev }));
-  const DAY_MAP: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-
-  if (Array.isArray(optimizerConfig?.inputs)) {
-    let xi = 0;
-    for (const inp of optimizerConfig.inputs as any[]) {
-      if (!inp.optimize) continue;
-      let idx = result.findIndex(ev =>
-        ev.variable === inp.variable &&
-        (inp.time_window ? true : ev.time === (inp.time ?? ev.time))
-      );
-      // If no matching sim event exists, create one for this plan
-      if (idx === -1) {
-        result.push({
-          id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
-          variable: inp.variable, label: inp.label || inp.variable,
-          time: inp.time ?? '08:00', timeEnabled: !!inp.time,
-          value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
-          validRangeEnabled: false, validStart: '', validEnd: '',
-        });
-        idx = result.length - 1;
-      }
-      // T1: value
-      if (Array.isArray(inp.optimize.value)) {
-        if (idx >= 0 && xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
-        xi++;
-      }
-      // T2: time slot
-      if (inp.optimize.time && inp.time_window) {
-        const slots = expandTimeWindow(inp.time_window, inp.opt_step ?? '1h');
-        const si = Math.max(0, Math.min(slots.length - 1, Math.round(x[xi] ?? 0)));
-        if (idx >= 0) result[idx] = { ...result[idx], time: slots[si] };
-        xi++;
-      }
-      // T3: day pattern
-      if (inp.optimize.days && Array.isArray(inp.days_options)) {
-        const pi = Math.max(0, Math.min(inp.days_options.length - 1, Math.round(x[xi] ?? 0)));
-        if (idx >= 0) {
-          const daysArr = Array(7).fill(false);
-          for (const d of (inp.days_options[pi] as string[])) if (DAY_MAP[d] !== undefined) daysArr[DAY_MAP[d]] = true;
-          result[idx] = { ...result[idx], days: daysArr, daysEnabled: true };
-        }
-        xi++;
-      }
-      // T4a: date start offset
-      if (inp.optimize.date_start && inp.date_start_window) {
-        const wStart = inp.date_start_window.split('~')[0].trim();
-        const offset = Math.max(0, Math.round(x[xi] ?? 0));
-        if (idx >= 0) {
-          const d = new Date(wStart); d.setDate(d.getDate() + offset);
-          result[idx] = { ...result[idx], validStart: d.toISOString().slice(0, 10), validRangeEnabled: true };
-        }
-        xi++;
-      }
-      // T4b: date end offset
-      if (inp.optimize.date_end && inp.date_end_window) {
-        const wStart = inp.date_end_window.split('~')[0].trim();
-        const offset = Math.max(0, Math.round(x[xi] ?? 0));
-        if (idx >= 0) {
-          const d = new Date(wStart); d.setDate(d.getDate() + offset);
-          result[idx] = { ...result[idx], validEnd: d.toISOString().slice(0, 10), validRangeEnabled: true };
-        }
-        xi++;
-      }
-    }
-  } else if (optimizerConfig?.regimen) {
-    // Legacy regimen: format
-    const varName = optimizerConfig.regimen.variable || '';
-    (optimizerConfig.regimen.events || []).forEach((ev: any, i: number) => {
-      if (i >= x.length) return;
-      const idx = result.findIndex(r => r.variable === varName && r.time === ev.time);
-      if (idx >= 0) result[idx] = { ...result[idx], value: x[i] };
-    });
-  }
-  return result;
-}
 import FileEditor from './FileEditor';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
-import SimModelTree from './SimModelTree';
-import SimSetupTab from './SimSetupTab';
-import OptSetupTab from './OptSetupTab';
-import SimIntroTab from './SimIntroTab';
-import SimPlotTab from './SimPlotTab';
-import SimOptTab from './SimOptTab';
-import SimReportTab from './SimReportTab';
-
-function useResize(initial: number, min = 150, max = 700, direction: 'right' | 'left' = 'right') {
-  const [width, setWidth] = useState(initial);
-  const wRef = useRef(width);
-  wRef.current = width;
-  function startDrag(e: React.MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = wRef.current;
-    const onMove = (ev: MouseEvent) => {
-      const delta = direction === 'right' ? ev.clientX - startX : startX - ev.clientX;
-      setWidth(Math.max(min, Math.min(max, startW + delta)));
-    };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
-  return { width, startDrag };
-}
-
-const API_BASE = '/api';
-
-const SIM_PERSIST_KEY = 'sim_persist';
-const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
-const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
-
-// Per-model session storage
-const MODEL_SESSION_KEY = 'lm_model_sessions';
-const readMS = (): Record<string, ModelSession> => { try { return JSON.parse(localStorage.getItem(MODEL_SESSION_KEY) || '{}'); } catch { return {}; } };
-const writeMS = (sessions: Record<string, ModelSession>): void => { try { localStorage.setItem(MODEL_SESSION_KEY, JSON.stringify(sessions)); } catch {} };
-
-// Initialize session map from localStorage; migrate legacy global inputEvents on first run.
-function initModelSessions(): Record<string, ModelSession> {
-  const sessions = readMS();
-  const sp = readSP();
-  if (sp?.selectedKey && sp.inputEvents?.length && !sessions[sp.selectedKey]) {
-    sessions[sp.selectedKey] = {
-      inputEvents: sp.inputEvents,
-      plans: [{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: sp.inputEvents }],
-      activePlanId: 'plan-1',
-      simStartDate: sp.simStartDate || '2026-01-01',
-      simEndDate: sp.simEndDate || '2026-12-31',
-      stepValue: sp.stepValue ?? 1,
-      stepUnit: sp.stepUnit ?? 'hour',
-      objectives: [], constraints: [],
-      optAlgo: 'NSGA-II', optPop: 50, optGen: 80,
-    };
-  }
-  // Migrate existing sessions: ensure inputEvents carry opt field defaults
-  for (const key of Object.keys(sessions)) {
-    const s = sessions[key] as any;
-    if (Array.isArray(s.inputEvents)) {
-      s.inputEvents = s.inputEvents.map((ev: any) => ({
-        optimizeValue: false, valueBounds: [0, 1],
-        optimizeTime: false, optimizeDays: false,
-        optimizeDateStart: false, optimizeDateEnd: false,
-        ...ev,
-      }));
-    }
-  }
-  return sessions;
-}
+import SimModelTree from './sim_tab/SimModelTree';
+import SimSetupTab from './sim_tab/SimSetupTab';
+import OptSetupTab from './opt_tab/OptSetupTab';
+import SimIntroTab from './sim_tab/SimIntroTab';
+import SimPlotTab from './sim_tab/SimPlotTab';
+import SimOptTab from './sim_tab/SimOptTab';
+import SimReportTab from './sim_tab/SimReportTab';
+import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, readMS, writeMS, initModelSessions } from './sim_tab/simUtils';
+import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
 
@@ -2277,36 +2122,5 @@ const Simulator: React.FC<SimulatorProps> = ({
     </div>
   );
 };
-
-function WorkspacePage({ controls, setup, result, progress }: {
-  controls: React.ReactNode; setup: React.ReactNode; result: React.ReactNode; progress: React.ReactNode;
-}) {
-  return (
-    <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {controls}
-      <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', overflow: 'hidden', gap: 8, padding: '6px 10px' }}>
-        <div style={{ flex: '0 0 40%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {setup}
-        </div>
-        <div style={{ flex: '0 0 60%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {result}
-        </div>
-      </div>
-      {progress}
-    </div>
-  );
-}
-
-function ProgressStrip({ label, percent, detail, active, c, isDarkMode }: { label: string; percent: number; detail: string; active: boolean; c: ReturnType<typeof getC>; isDarkMode: boolean }) {
-  return (
-    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${c.border}`, background: c.panel }}>
-      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, textTransform: 'uppercase', minWidth: 82 }}>{label}</span>
-      <div style={{ flex: 1, height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', background: active ? c.primary : c.textMute, transition: 'width 0.3s', borderRadius: 3 }} />
-      </div>
-      <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{detail}</span>
-    </div>
-  );
-}
 
 export default Simulator;

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dropdown, Empty, Tooltip } from 'antd';
 import { DownloadOutlined, ExportOutlined } from '@ant-design/icons';
-import { getC } from '../core/theme';
-import ParetoChart from './ParetoChart';
-import OptProgressChart from './OptProgressChart';
+import { getC } from '../../core/theme';
+import ParetoChart from '../opt_tab/ParetoChart';
+import OptProgressChart from '../opt_tab/OptProgressChart';
 
 interface SimOptTabProps {
   optResult: any;

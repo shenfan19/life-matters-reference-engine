@@ -112,22 +112,6 @@ export interface SimulationState {
     sessionSeed: number;    // 本次 session 实际使用的 seed（由 API 返回）
 }
 
-export interface OptimizerState {
-    status: 'idle' | 'running' | 'paused' | 'completed';
-    progress: number;
-    currentStep: number;
-    totalSteps: number;
-    optimizationData: any[];
-    inputParams: Record<string, number>;
-    stateVariables: Record<string, number>;
-    sessionId: string;
-    simStartDate: string;
-    simEndDate: string;
-    stepValue: number;
-    stepUnit: StepUnit;
-    batchSize: number;
-    updateInterval: number;
-}
 
 export interface SimulatorProps {
     selectedModel: ModelFile | null;
@@ -198,11 +182,3 @@ export interface ModelSession {
   optResult: any;
 }
 
-export interface OptimizerProps {
-    selectedModel: ModelFile | null;
-    state: OptimizerState;
-    setState: React.Dispatch<React.SetStateAction<OptimizerState>>;
-    isLocked: boolean;
-    isDarkMode: boolean;
-    fontSize?: number;
-}
