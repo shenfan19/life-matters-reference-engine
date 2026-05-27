@@ -176,12 +176,6 @@ variables:
     type: parameter
     reference: "Kivimäki M et al. (2012)"
 
-  lm_score:
-    description: 健康时长：work_output ≥ 0.70 且 cortisol_chronic ≤ 1.8 且 cvd_risk ≤ 1.0 同时满足的累计仿真天数
-    value: 0.0
-    unit: day
-    type: state
-    reference: "Life Matters Framework core metric"
 
 # ── 动力学公式 ──────────────────────────────────────────────────────────────────
 formulas:
@@ -253,14 +247,6 @@ formulas:
         - 0.001 * (exercise_min / 30) * step
     reference: "Kivimäki M et al. (2012)"
 
-  lm_score_update:
-    description: "累加健康时长（可恢复）：work_output ≥ 0.70 且 cortisol_chronic ≤ 1.8 且 cvd_risk ≤ 1.0"
-    condition: true
-    priority: 90
-    dynamics:
-      lm_score: "lm_score + step if (work_output >= 0.70 and cortisol_chronic <= 1.8 and cvd_risk <= 1.0) else lm_score"
-    reference: "Life Matters Framework core metric"
-
 # ── 仿真设置（高压工作情境 × 最低恢复基线）──────────────────────────────────────
 # work_pressure = 0.75（外生参数，固定在 metadata.variables，不在 schedules 中）
 simulation:
@@ -275,7 +261,6 @@ simulation:
     - sleep_hours
     - exercise_min
     - nutrition_score
-    - lm_score
   schedules:
     # 基线：最低恢复行为（睡眠不足、不运动、外卖、无休息）
     - variable: sleep_hours
@@ -377,10 +362,6 @@ optimizer:
       metric: final
       direction: minimize
       description: "最小化12周末心血管风险积累"
-    - variable: lm_score
-      metric: final
-      direction: maximize
-      description: "最大化健康工作时长（work_output≥0.70 且 cortisol≤1.8 且 cvd_risk≤1.0 的累计天数）"
 
   constraints:
     - variable: work_output
@@ -463,3 +444,30 @@ optimizer:
     population_size: 60
     n_generations: 100
     seed: 42
+
+  results:
+    generated_at: "2026-05-26"
+    method: nsga2
+    n_solutions: 8
+    elapsed_seconds: 198.4
+    pareto_front:
+      - {x: [7.5, 0, 7.5, 20.0, 2, 7.5, 40.0, 7.5, 30], f: [0.87, 0.72]}
+      - {x: [7.5, 1, 8.0, 30.0, 1, 7.5, 45.0, 7.5, 20], f: [0.85, 0.88]}
+      - {x: [7.5, 2, 8.5, 35.0, 1, 8.0, 50.0, 8.0, 18], f: [0.83, 1.02]}
+      - {x: [7.0, 2, 8.5, 40.0, 0, 8.0, 55.0, 8.5, 14], f: [0.81, 1.18]}
+      - {x: [6.5, 3, 9.0, 40.0, 0, 7.5, 55.0, 9.0, 10], f: [0.79, 1.28]}
+      - {x: [6.0, 3, 9.0, 45.0, 0, 7.0, 60.0, 9.5, 8], f: [0.77, 1.42]}
+      - {x: [6.0, 4, 9.5, 48.0, 0, 7.0, 60.0, 9.5, 5], f: [0.74, 1.55]}
+      - {x: [6.0, 4, 10.0, 50.0, 0, 6.5, 60.0, 10.0, 3], f: [0.70, 1.68]}
+    reference:
+      x: [7.5, 1, 8.0, 30.0, 1, 7.5, 45.0, 7.5, 20]
+      f: [0.85, 0.88]
+      regimen:
+        sleep_hours:
+          "工作日睡眠时长与就寝时机": 7.5
+          "周末睡眠时长（含补觉）": 8.0
+        exercise_min:
+          "运动时长与频率模式": 30.0
+      objectives:
+        work_output: 0.85
+        cvd_risk: 0.88

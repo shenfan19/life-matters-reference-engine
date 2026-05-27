@@ -291,5 +291,7 @@
   "sim.opt.import_from_sim_tip": "將 Sim tab 的輸入事件複製為決策變量",
   "sim.opt.import_from_sim_empty": "Sim tab 無輸入事件",
   "sim.opt.import_from_sim_done": "已導入 {n} 個決策變量",
-  "sim.opt.no_inputs_warning": "尚無決策變量"
+  "sim.opt.no_inputs_warning": "尚無決策變量",
+  "sim.opt.tog.opt_on_tip": "此事件作為優化決策變量（點擊取消）",
+  "sim.opt.tog.opt_off_tip": "點擊將此事件設為優化決策變量"
 }
