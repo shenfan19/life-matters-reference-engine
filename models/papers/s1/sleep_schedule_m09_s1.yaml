@@ -227,16 +227,6 @@ simulation:
     - health_risk_index
     - sleep_hours
     - nap_minutes
-  schedules:
-    # 基线：每天6.5h睡眠（慢性轻度睡眠剥夺，不午睡）
-    - variable: sleep_hours
-      time: "00:00"
-      value: 6.5
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-28"
-      label: "基线睡眠（6.5h/天，00:00就寝）"
-
-  # 预定义对比方案（论文图表复现）
   plans:
     - id: "sleep_deprived_baseline"
       label: "基线：6.5h睡眠，00:00就寝，不午睡"

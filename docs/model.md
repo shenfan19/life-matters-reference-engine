@@ -563,10 +563,16 @@ simulation:
 | `schedules` | list | ✅ | 与 `simulation.schedules` 格式完全相同 |
 
 **与 `simulation.schedules` 的关系**：
-- 两者可共存：`schedules` 作为向后兼容的"默认单方案"，`plans` 提供多方案选择
-- 仅有 `schedules` 时，GUI 将其视为一个未命名的默认方案（单方案模式）
-- 仅有 `plans` 时，GUI 加载所有预置方案
-- `plans` 中每个方案的 `schedules` 优先级与顶层 `simulation.schedules` 一致，高于 GUI Regimen
+
+| 情形 | GUI sim 标签行为 | optimizer 背景 fallback |
+|------|----------------|------------------------|
+| 仅有 `schedules` | 视为一个未命名的默认方案（单方案模式） | 使用 `schedules` |
+| 仅有 `plans` | 加载所有预置方案 | 无固定背景（除非定义 `optimizer.schedules`） |
+| 两者共存 | **`plans` 完全覆盖，`schedules` 对 GUI sim 标签无效** | 若无 `optimizer.schedules`，仍用 `schedules` 作 fallback |
+
+**建模者注意**：在有 `plans` 的模型中，`schedules` 对 GUI 仿真标签不起作用——GUI 只读取各 plan 自身的 `plan.schedules`。保留 `schedules` 唯一的意义是为 `optimizer.schedules` 提供隐式 fallback；若已显式定义 `optimizer.schedules`，则 `schedules` 可以安全删除。
+
+**papers/ 模型规范**：所有 `models/papers/` 下的论文模型**不允许同时定义 `schedules` 和 `plans`**——应仅保留 `plans`（删除 `schedules`）。论文模型具有 Pareto 前沿结果，加载时天然呈现多方案；`schedules` 在此场景下纯属冗余。详见 ADR 0087。
 
 **Plan 的 session 语义**：Plan 是 GUI 运行时对象，建模者在 YAML 中预置的是初始状态；用户在 GUI 中可继续添加、修改、删除方案，不会回写到 YAML 文件。
 
