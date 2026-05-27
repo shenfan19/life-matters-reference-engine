@@ -147,26 +147,6 @@ simulation:
     - thiazide_dose
     - allopurinol_dose
     - lm_score
-  schedules:
-    - variable: thiazide_dose
-      time: "08:00"
-      value: 12.5
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-02-25"
-      label: "滴定期：HCTZ 12.5mg 晨服"
-    - variable: thiazide_dose
-      time: "22:00"
-      value: 25.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-02-26 ~ 2026-07-01"
-      label: "稳定期：HCTZ 25mg 晚服（三目标平衡参考点）"
-    - variable: caloric_deficit
-      time: "00:00"
-      value: 400.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "每日热量缺口"
-
   plans:
     - id: "low_ua_weight"
       label: "尿酸+体重友好（HCTZ低剂量晚服，待运行更新）"

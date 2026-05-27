@@ -152,44 +152,6 @@ simulation:
   start_date: "2026-01-01"
   end_date:   "2026-12-31"
   output_variables: [GFR, muscle_mass, BUN, dietary_protein, lm_score]
-  schedules:
-    - variable: dietary_protein
-      time: "08:00"
-      value: 0.22
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
-      label: "限制期早餐"
-    - variable: dietary_protein
-      time: "12:00"
-      value: 0.21
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
-      label: "限制期午餐"
-    - variable: dietary_protein
-      time: "21:00"
-      value: 0.22
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
-      label: "限制期晚餐（睡前）"
-    - variable: dietary_protein
-      time: "08:00"
-      value: 0.29
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-07-01 ~ 2026-12-31"
-      label: "标准期早餐"
-    - variable: dietary_protein
-      time: "12:00"
-      value: 0.27
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-07-01 ~ 2026-12-31"
-      label: "标准期午餐"
-    - variable: dietary_protein
-      time: "21:00"
-      value: 0.28
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-07-01 ~ 2026-12-31"
-      label: "标准期晚餐（睡前）"
-
   plans:
     - id: "kidney_protect"
       label: "肾保护极端（GFR 端点，待运行更新）"

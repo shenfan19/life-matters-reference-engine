@@ -227,27 +227,6 @@ simulation:
     - exercise_met_min
     - fasting_window_hours
     - lm_score
-  schedules:
-    # 基线：高碳水、不运动、无禁食
-    - variable: carb_intake_per_meal
-      time: "00:00"
-      value: 70.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "高碳水饮食（70g/餐）"
-    - variable: exercise_met_min
-      time: "00:00"
-      value: 0.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "不运动（基线）"
-    - variable: fasting_window_hours
-      time: "00:00"
-      value: 10.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
-      label: "无意识禁食（10h，正常睡眠）"
-
   plans:
     - id: "ifg_no_intervention"
       label: "无干预基线（IFG 自然进展）"
