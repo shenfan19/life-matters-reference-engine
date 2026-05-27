@@ -293,5 +293,6 @@
   "sim.opt.import_from_sim_done": "Imported {n} decision variables — adjust bounds then run",
   "sim.opt.no_inputs_warning": "No decision variables — add them or import from Sim tab",
   "sim.opt.tog.opt_on_tip": "This event is a decision variable (click to unset)",
-  "sim.opt.tog.opt_off_tip": "Click to set this event as an optimization decision variable"
+  "sim.opt.tog.opt_off_tip": "Click to set this event as an optimization decision variable",
+  "sim.opt.import_from_plan": "Import from plan"
 }

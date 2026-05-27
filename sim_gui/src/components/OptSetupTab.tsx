@@ -1,15 +1,19 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Button, InputNumber, Input, Select, Slider, Tooltip } from 'antd';
-import { HolderOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Dropdown, InputNumber, Input, Select, Slider, Tooltip } from 'antd';
+import { HolderOutlined, ImportOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { InputEvent } from '../types';
+import type { InputEvent, SimPlan } from '../types';
 import { getC } from '../core/theme';
 
 interface OptSetupTabProps {
   inputEvents: InputEvent[];
+  addInputEvent: () => void;
+  removeInputEvent: (id: string) => void;
+  plans: SimPlan[];
+  onImportFromPlan: (events: InputEvent[]) => void;
   updateInputEvent: (id: string, patch: Partial<InputEvent>) => void;
   updateInputEventOpt: (id: string, patch: Partial<InputEvent>) => void;
   inputVars: Array<{ name: string; [k: string]: any }>;
@@ -34,7 +38,7 @@ interface OptSetupTabProps {
 }
 
 const OptSetupTab: React.FC<OptSetupTabProps> = ({
-  inputEvents, updateInputEvent, updateInputEventOpt,
+  inputEvents, addInputEvent, removeInputEvent, plans, onImportFromPlan, updateInputEvent, updateInputEventOpt,
   inputVars, allVarNames, openSections, setOpenSections,
   simStartDate, simEndDate,
   objectives, setObjectives, constraints, setConstraints,
@@ -73,31 +77,20 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
         </div>
       )}
       {inputEvents.map(ev => {
-        const isOpt = !!ev.optimizeValue;
         const varDef = inputVars.find(v => v.name === ev.variable);
         const bounds = ev.valueBounds ?? [0, (ev.value * 2) || 1] as [number, number];
 
         return (
           <div key={ev.id} style={{
             marginBottom: 5, borderRadius: 5, padding: '4px 6px', background: c.panel,
-            border: `1px solid ${isOpt ? c.primary : c.border}`,
+            border: `1px solid ${c.border}`,
           }}>
-            {/* Header: variable + OPT toggle + time/day/range toggles */}
+            {/* Header: variable + visibility toggles + delete */}
             <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 'inherit', color: c.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.variable}
               </span>
-              <Tog label="OPT" active={isOpt} title={isOpt ? t('sim.opt.tog.opt_on_tip') : t('sim.opt.tog.opt_off_tip')}
-                onToggle={() => {
-                  const varDef2 = inputVars.find(v => v.name === ev.variable);
-                  const lo = varDef2?.bounds?.[0] ?? 0;
-                  const hi = varDef2?.bounds?.[1] ?? ((ev.value * 2) || 1);
-                  updateInputEventOpt(ev.id, {
-                    optimizeValue: !isOpt,
-                    valueBounds: ev.valueBounds ?? [lo, hi] as [number, number],
-                  });
-                }} />
               <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled}
                 title={t('sim.setup.tog.time_tip')}
                 onToggle={() => updateInputEventOpt(ev.id, { timeEnabled: !ev.timeEnabled, ...(!ev.timeEnabled && { optimizeTime: false }) })} />
@@ -109,16 +102,26 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                 onToggle={() => updateInputEventOpt(ev.id, {
                   validRangeEnabled: !ev.validRangeEnabled,
                   ...(!ev.validRangeEnabled && { validStart: simStartDate, validEnd: simEndDate }),
-                  ...(!ev.validRangeEnabled === false && { optimizeDateStart: false, optimizeDateEnd: false }),
+                  ...(ev.validRangeEnabled && { optimizeDateStart: false }),
                 })} />
+              <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
+                style={{ padding: '0 2px' }} onClick={() => removeInputEvent(ev.id)} />
             </div>
 
-            {/* T1: value (fixed) or bounds (optimize) */}
+            {/* T1: value row with opt toggle at start */}
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 4 }}>
-              <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0, width: 28 }}>
-                {isOpt ? 'rng' : 'val'}
-              </span>
-              {isOpt ? (
+              <Tog label="opt" active={!!ev.optimizeValue}
+                title={ev.optimizeValue ? t('sim.opt.tog.opt_on_tip') : t('sim.opt.tog.opt_off_tip')}
+                onToggle={() => {
+                  const varDef2 = inputVars.find(v => v.name === ev.variable);
+                  const lo = varDef2?.bounds?.[0] ?? 0;
+                  const hi = varDef2?.bounds?.[1] ?? ((ev.value * 2) || 1);
+                  updateInputEventOpt(ev.id, {
+                    optimizeValue: !ev.optimizeValue,
+                    valueBounds: ev.valueBounds ?? [lo, hi] as [number, number],
+                  });
+                }} />
+              {ev.optimizeValue ? (
                 <>
                   <InputNumber size="small" value={bounds[0]} placeholder="lo" style={{ flex: 1, minWidth: 0 }}
                     onChange={v => updateInputEventOpt(ev.id, { valueBounds: [v ?? 0, bounds[1]] })} />
@@ -136,22 +139,12 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
             {/* T2: time row */}
             {ev.timeEnabled && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                {isOpt ? (
-                  <Tooltip title={ev.optimizeTime ? t('sim.setup.opt.time_win_tip') : t('sim.setup.opt.time_win')}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0, width: 28 }}>
-                      <input type="checkbox" checked={!!ev.optimizeTime}
-                        onChange={e => updateInputEventOpt(ev.id, {
-                          optimizeTime: e.target.checked,
-                          timeWindow: e.target.checked ? (ev.timeWindow || `${ev.time}~${ev.time}`) : ev.timeWindow,
-                        })}
-                        style={{ accentColor: c.primary, width: 11, height: 11 }} />
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeTime ? c.primary : c.textMute }}>opt</span>
-                    </label>
-                  </Tooltip>
-                ) : (
-                  <span style={{ width: 28, flexShrink: 0 }} />
-                )}
-                {isOpt && ev.optimizeTime ? (
+                <Tog label="opt" active={!!ev.optimizeTime}
+                  onToggle={() => updateInputEventOpt(ev.id, {
+                    optimizeTime: !ev.optimizeTime,
+                    timeWindow: !ev.optimizeTime ? (ev.timeWindow || `${ev.time}~${ev.time}`) : ev.timeWindow,
+                  })} />
+                {ev.optimizeTime ? (
                   <>
                     <Input size="small" value={(ev.timeWindow ?? '').split('~')[0]?.trim()} placeholder="HH:MM"
                       style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
@@ -177,18 +170,8 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
             {/* T3: days row */}
             {ev.daysEnabled && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                {isOpt ? (
-                  <Tooltip title={(ev.daysOptions?.length ?? 0) > 0 ? ev.daysOptions!.map(p => p.join(' ')).join(' | ') : t('sim.setup.tog.day_opt_tip')}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0, width: 28 }}>
-                      <input type="checkbox" checked={!!ev.optimizeDays}
-                        onChange={e => updateInputEventOpt(ev.id, { optimizeDays: e.target.checked })}
-                        style={{ accentColor: c.primary, width: 11, height: 11 }} />
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeDays ? c.primary : c.textMute }}>opt</span>
-                    </label>
-                  </Tooltip>
-                ) : (
-                  <span style={{ width: 28, flexShrink: 0 }} />
-                )}
+                <Tog label="opt" active={!!ev.optimizeDays}
+                  onToggle={() => updateInputEventOpt(ev.id, { optimizeDays: !ev.optimizeDays })} />
                 <div style={{ display: 'flex', gap: 2 }}>
                   {DAY_LABELS.map((d, i) => (
                     <button key={i} onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
@@ -202,55 +185,64 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
 
             {/* T4: valid range / date window row */}
             {ev.validRangeEnabled && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
-                {isOpt ? (
-                  <Tooltip title={ev.optimizeDateStart ? t('sim.setup.opt.date_win_tip') : t('sim.setup.opt.date_win')}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', flexShrink: 0, width: 28 }}>
-                      <input type="checkbox" checked={!!ev.optimizeDateStart}
-                        onChange={e => {
-                          const ds = ev.validStart || simStartDate;
-                          const de = ev.validEnd || simEndDate;
-                          updateInputEventOpt(ev.id, {
-                            optimizeDateStart: e.target.checked,
-                            dateStartWindow: e.target.checked ? (ev.dateStartWindow || `${ds}~${ds}`) : ev.dateStartWindow,
-                            dateEndWindow: e.target.checked ? (ev.dateEndWindow || `${de}~${de}`) : ev.dateEndWindow,
-                            optimizeDateEnd: e.target.checked ? (ev.optimizeDateEnd) : false,
-                          });
-                        }}
-                        style={{ accentColor: c.primary, width: 11, height: 11 }} />
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: ev.optimizeDateStart ? c.primary : c.textMute }}>opt</span>
-                    </label>
-                  </Tooltip>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', marginTop: 3 }}>
+                <Tog label="opt" active={!!ev.optimizeDateStart}
+                  onToggle={() => {
+                    const newOpt = !ev.optimizeDateStart;
+                    const vs = ev.validStart || simStartDate;
+                    const ve = ev.validEnd || simEndDate;
+                    updateInputEventOpt(ev.id, {
+                      optimizeDateStart: newOpt,
+                      ...(newOpt && {
+                        dateStartWindow: ev.dateStartWindow || `${simStartDate}~${vs}`,
+                        dateEndWindow: ev.dateEndWindow || `${ve}~${simEndDate}`,
+                      }),
+                    });
+                  }} />
+                {ev.optimizeDateStart ? (
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>sta</span>
+                      <Input size="small" value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()} placeholder="YYYY-MM-DD"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => { const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${e.target.value}~${end}` }); }} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Input size="small" value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()} placeholder="YYYY-MM-DD"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => { const s = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${s}~${e.target.value}` }); }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>end</span>
+                      <Input size="small" value={(ev.dateEndWindow ?? '').split('~')[0]?.trim()} placeholder="YYYY-MM-DD"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => { const end2 = (ev.dateEndWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateEndWindow: `${e.target.value}~${end2}` }); }} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Input size="small" value={(ev.dateEndWindow ?? '~').split('~')[1]?.trim()} placeholder="YYYY-MM-DD"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                        onChange={e => { const s2 = (ev.dateEndWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateEndWindow: `${s2}~${e.target.value}` }); }} />
+                    </div>
+                  </div>
                 ) : (
-                  <span style={{ width: 28, flexShrink: 0 }} />
-                )}
-                {isOpt && ev.optimizeDateStart ? (
-                  <>
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', flexShrink: 0 }}>{t('sim.setup.opt.date_start_label')}</span>
-                    <Input size="small" value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                      onChange={e => { const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${e.target.value}~${end}` }); }} />
-                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                    <Input size="small" value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                      onChange={e => { const s = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${s}~${e.target.value}` }); }} />
-                  </>
-                ) : (
-                  <>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flex: 1 }}>
                     <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
                       onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
                     <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>–</span>
                     <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
-                      style={{ width: 88, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
                       onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
-                  </>
+                  </div>
                 )}
               </div>
             )}
           </div>
         );
       })}
+      <Button size="small" icon={<PlusOutlined />} block onClick={addInputEvent}
+        style={{ borderColor: c.border, color: c.textSec, marginTop: 4 }}
+        disabled={inputVars.length === 0}>
+        {t('sim.setup.add_event')}
+      </Button>
     </div>
   );
 
@@ -354,9 +346,25 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
     </div>
   );
 
-  const decisionCount = inputEvents.filter(ev => ev.optimizeValue).length;
+  const decisionCount = inputEvents.filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateStart).length;
+  const importDropdown = (
+    <Dropdown
+      menu={{
+        items: plans.map(p => ({
+          key: p.id,
+          label: <span><span style={{ color: p.color, marginRight: 6 }}>■</span>{p.label}</span>,
+          onClick: () => onImportFromPlan(p.inputEvents),
+        })),
+      }}
+      disabled={plans.length === 0}
+    >
+      <Button size="small" icon={<ImportOutlined />} style={{ color: plans.length > 0 ? c.textSec : c.textMute, borderColor: c.border, height: 22, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
+        {t('sim.opt.import_from_plan')}
+      </Button>
+    </Dropdown>
+  );
   const tabs = [
-    { key: 'opt-inputs', label: `${t('sim.tabs.inputs')}${inputEvents.length > 0 ? ` (${inputEvents.length}, OPT: ${decisionCount})` : ''}`, content: inputsContent },
+    { key: 'opt-inputs', label: `${t('sim.tabs.inputs')}${inputEvents.length > 0 ? ` (${inputEvents.length}, OPT: ${decisionCount})` : ''}`, content: inputsContent, headerExtra: importDropdown },
     { key: 'opt-cfg',    label: t('sim.tabs.optimizer'), content: configContent },
   ];
 
@@ -382,7 +390,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
             <SortableCard key={tab.key} id={tab.key} label={tab.label}
               isOpen={openSections.has(tab.key)}
               onToggle={() => setOpenSections(prev => { const n = new Set(prev); if (n.has(tab.key)) n.delete(tab.key); else n.add(tab.key); return n; })}
-              c={c} isDarkMode={isDarkMode}>
+              c={c} isDarkMode={isDarkMode} headerExtra={(tab as any).headerExtra}>
               {tab.content}
             </SortableCard>
           ))}
@@ -392,9 +400,10 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
   );
 };
 
-function SortableCard({ id, label, isOpen, onToggle, c, isDarkMode, children }: {
+function SortableCard({ id, label, isOpen, onToggle, c, isDarkMode, children, headerExtra }: {
   id: string; label: string; isOpen: boolean; onToggle: () => void;
   c: ReturnType<typeof getC>; isDarkMode: boolean; children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
@@ -405,6 +414,7 @@ function SortableCard({ id, label, isOpen, onToggle, c, isDarkMode, children }: 
         </span>
         <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
         <span style={{ flex: 1, fontWeight: 600, color: c.text }}>{label}</span>
+        {headerExtra && <span onClick={e => e.stopPropagation()}>{headerExtra}</span>}
       </div>
       {isOpen && <div style={{ padding: '8px 12px' }}>{children}</div>}
     </div>

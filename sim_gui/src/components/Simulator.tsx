@@ -2143,6 +2143,10 @@ const Simulator: React.FC<SimulatorProps> = ({
               setup={
                 <OptSetupTab
                   inputEvents={inputEvents}
+                  addInputEvent={addInputEvent}
+                  removeInputEvent={removeInputEvent}
+                  plans={plans}
+                  onImportFromPlan={(events) => setInputEvents(events)}
                   updateInputEvent={updateInputEvent}
                   updateInputEventOpt={updateInputEventOpt}
                   inputVars={inputVars}
