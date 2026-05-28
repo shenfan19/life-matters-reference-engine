@@ -156,37 +156,37 @@ simulation:
       schedules:
         - {variable: training_load, time: "09:00", value: 75.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-11", label: "渐进期"}
+           date_range: ["2026-01-01", "2026-03-11"], label: "渐进期"}
         - {variable: training_load, time: "09:00", value: 30.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-12 ~ 2026-03-25", label: "减量期"}
+           date_range: ["2026-03-12", "2026-03-25"], label: "减量期"}
         - {variable: training_load, time: "09:00", value: 60.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-26 ~ 2026-04-22", label: "维持期"}
+           date_range: ["2026-03-26", "2026-04-22"], label: "维持期"}
     - id: "five_day_training"
       label: "5天/周训练（有节奏休息日）"
       schedules:
         - {variable: training_load, time: "09:00", value: 85.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-03-11", label: "渐进期（周末休息）"}
+           date_range: ["2026-01-01", "2026-03-11"], label: "渐进期（周末休息）"}
         - {variable: training_load, time: "09:00", value: 30.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-12 ~ 2026-03-25", label: "减量期"}
+           date_range: ["2026-03-12", "2026-03-25"], label: "减量期"}
         - {variable: training_load, time: "09:00", value: 60.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-26 ~ 2026-04-22", label: "维持期"}
+           date_range: ["2026-03-26", "2026-04-22"], label: "维持期"}
     - id: "early_taper"
       label: "提前减量（第9周开始，48天渐进+2周减量+6周维持）"
       schedules:
         - {variable: training_load, time: "09:00", value: 80.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-02-26", label: "渐进期"}
+           date_range: ["2026-01-01", "2026-02-26"], label: "渐进期"}
         - {variable: training_load, time: "09:00", value: 28.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-02-27 ~ 2026-03-12", label: "减量期（提前）"}
+           date_range: ["2026-02-27", "2026-03-12"], label: "减量期（提前）"}
         - {variable: training_load, time: "09:00", value: 58.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-13 ~ 2026-04-22", label: "维持期（更长）"}
+           date_range: ["2026-03-13", "2026-04-22"], label: "维持期（更长）"}
 
 # ── 验证目标 ──────────────────────────────────────────────────────────────────
 # V2 通过标准：第 16 周末（4月22日）performance 在 520–560 AU 范围内
@@ -219,12 +219,12 @@ optimizer:
       type: soft
       description: 表现不低于基础值 480 AU
 
-  inputs:
+  schedules:
     # T1: 渐进期负荷强度（每日，固定区间）
     - variable: training_load
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-11"
+      date_range: ["2026-01-01", "2026-03-11"]
       label: "渐进期负荷"
       optimize:
         value: [40.0, 120.0]
@@ -232,34 +232,32 @@ optimizer:
     # T1+T3: 渐进期训练频率（几天/周）——休息日 training_load=0，促进疲劳恢复
     # 科学意义：5天/周 vs 7天/周 改变疲劳积累节奏（Halson 2014）
     - variable: training_load
-      time: "09:00"
-      days_options:
-        - [Mon, Tue, Wed, Thu, Fri]            # 5天/周（工作日）
+      time: "09:00"            # 5天/周（工作日）
         - [Mon, Tue, Wed, Thu, Fri, Sat]       # 6天/周
         - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 7天/周（每天）
         - [Mon, Wed, Fri, Sat, Sun]            # 5天间歇（间隔休息）
-      date_range: "2026-01-01 ~ 2026-03-11"
+      date_range: ["2026-01-01", "2026-03-11"]
       label: "渐进期训练频率（天/周）"
       optimize:
         value: [50.0, 110.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [5, 7]
 
     # T1+T4: 减量期起始时机（在第7-12周之间搜索最优减量点）
     # 科学意义：减量早1-2周 vs 文献标准第11周是否能提高峰值表现？
     - variable: training_load
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-02-19~2026-03-25"
       label: "减量期起始时机与负荷"
       optimize:
         value: [10.0, 45.0]
-        date_start: true
+        date_range: [["2026-02-19", "2026-03-25"], ["2026-04-22", "2026-04-22"]]
 
     # T1: 维持期负荷（减量后的巩固期）
     - variable: training_load
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-03-26 ~ 2026-04-22"
+      date_range: ["2026-03-26", "2026-04-22"]
       label: "维持期负荷"
       optimize:
         value: [40.0, 100.0]

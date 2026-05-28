@@ -1,0 +1,123 @@
+metadata:
+  name: test_mc_distributions
+  description:
+    brief: "[TEST] Monte Carlo: normal(), uniform(), lognormal() parameter distributions; MC enabled in optimizer."
+    method: |
+      Three parameters each with a different distribution form.
+      In deterministic mode the engine uses the distribution mean.
+      In MC mode (sim_runs=5) each run re-samples all three parameters.
+
+        clearance_rate  ~ normal(0.30, 0.05)   → mean 0.30, sd 0.05
+        bioavailability ~ uniform(0.60, 0.90)  → mean 0.75, range 0.60–0.90
+        volume_dist     ~ lognormal(3.9, 0.2)  → median e^3.9 ≈ 49 L, log-sd 0.2
+
+      NSGA-II with mc.enabled=true, sim_runs=5: each candidate solution is
+      evaluated 5 times and results are averaged, testing the MC evaluation loop.
+    optimization: |
+      Single input: dose [50,400] mg.
+      Two objectives: maximize mean_plasma (therapeutic coverage) + minimize peak_plasma.
+      MC: enabled, sim_runs=5, seed=7 (fixed for reproducibility).
+  tags: [test, mc, distributions, normal, uniform, lognormal, nsga2]
+  references: ["TEST: Monte Carlo parameter distributions — normal/uniform/lognormal"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  plasma_conc:
+    type: state
+    value: 0.0
+    unit: mg/L
+    description: Plasma drug concentration; builds up with daily dosing.
+
+  peak_plasma:
+    type: state
+    value: 0.0
+    unit: mg/L
+    description: Running maximum plasma concentration (for minimization objective).
+
+  daily_dose:
+    type: input
+    value: 0.0
+    unit: mg
+    description: Daily oral dose (pulse; bioavailability fraction applied in formula).
+
+  # --- MC parameters with distribution values ---
+
+  clearance_rate:
+    type: parameter
+    value: "normal(0.30, 0.05)"
+    unit: per_day
+    description: |
+      Drug daily clearance fraction sampled from N(0.30, 0.05) per MC run.
+      Deterministic mode uses mean = 0.30. Represents inter-individual PK variability.
+
+  bioavailability:
+    type: parameter
+    value: "uniform(0.60, 0.90)"
+    unit: fraction
+    description: |
+      Oral bioavailability sampled from Uniform(0.60, 0.90) per MC run.
+      Deterministic mode uses mean = 0.75. Models formulation batch variability.
+
+  volume_dist:
+    type: parameter
+    value: "lognormal(3.9, 0.2)"
+    unit: L
+    description: |
+      Volume of distribution sampled from LogNormal(μ=3.9, σ=0.2) per MC run.
+      Deterministic mode uses mean = exp(3.9 + 0.2²/2) ≈ 50.6 L.
+      Log-normal ensures positivity; σ=0.2 gives ≈20% CV.
+
+formulas:
+  drug_absorption:
+    description: Daily dose absorption (pulse, no step; bioavailability and volume are sampled per run).
+    dynamics:
+      plasma_conc: "plasma_conc + daily_dose * bioavailability / volume_dist"
+    priority: 10
+
+  drug_elimination:
+    description: First-order daily clearance (rate × step; clearance_rate sampled per run).
+    dynamics:
+      plasma_conc: "max(0.0, plasma_conc - plasma_conc * clearance_rate * step)"
+    priority: 5
+
+  peak_tracker:
+    description: Track the maximum plasma concentration achieved.
+    formula:
+      peak_plasma: "max(peak_plasma, plasma_conc)"
+    priority: 3
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-02-28"
+  schedules:
+    - variable: daily_dose
+      time: "08:00"
+      value: 200.0
+      label: "Daily dose 200 mg"
+  output_variables: [plasma_conc, peak_plasma, daily_dose]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: plasma_conc
+      metric: mean
+      direction: maximize
+    - variable: peak_plasma
+      metric: max
+      direction: minimize
+  inputs:
+    - variable: daily_dose
+      time: "08:00"
+      label: "Daily dose (mg)"
+      optimize:
+        value: [50.0, 400.0]
+  algorithm:
+    population_size: 20
+    n_generations: 25
+    seed: 42
+  mc:
+    enabled: true
+    sim_runs: 5
+    seed: 7

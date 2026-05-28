@@ -1,0 +1,132 @@
+metadata:
+  name: test_plans
+  description:
+    brief: "[TEST] simulation.plans with 3 named plans; no simulation.schedules."
+    method: |
+      Weight management model with three pre-defined intervention plans for
+      multi-plan parallel simulation (F-MPLAN). Each plan has a different
+      caloric deficit strategy and exercise schedule.
+
+      Plans:
+        conservative — 300 kcal/day deficit, no exercise
+        balanced     — 500 kcal/day deficit, 30 min exercise Mon/Wed/Fri
+        aggressive   — 800 kcal/day deficit, 45 min exercise Mon–Fri
+
+      Tests that: (1) plans load correctly without a schedules block,
+      (2) each plan independently defines its own schedule entries,
+      (3) output_variables and output_types both specified (union rule).
+    limitations: Simplified linear weight model; no metabolic adaptation.
+  tags: [test, plans, multi-plan, f-mplan, no-schedules]
+  references: ["TEST: simulation.plans without schedules block"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  body_weight:
+    type: state
+    value: 90.0
+    unit: kg
+    description: Body weight; decreases with caloric deficit and exercise.
+
+  caloric_deficit:
+    type: input
+    value: 0.0
+    unit: kcal/day
+    description: Daily caloric restriction rate (continuous rate; formula multiplies by step).
+
+  exercise_minutes:
+    type: input
+    value: 0.0
+    unit: minutes
+    description: Daily exercise session (pulse; each minute burns ~5 kcal equivalent).
+
+  weight_loss_factor:
+    type: parameter
+    value: 0.000129
+    unit: kg per kcal
+    description: Weight lost per kcal deficit (7700 kcal ≈ 1 kg).
+
+  exercise_burn:
+    type: parameter
+    value: 0.000645
+    unit: kg per minute
+    description: Weight equivalent burned per minute of moderate exercise (5 kcal/min ÷ 7750).
+
+formulas:
+  weight_dynamics:
+    description: Daily weight change from caloric deficit (rate × step) + exercise burn (pulse).
+    dynamics:
+      body_weight: "max(50.0, body_weight - caloric_deficit * weight_loss_factor * step - exercise_minutes * exercise_burn)"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  output_variables: [body_weight]
+  output_types: [input]
+
+  plans:
+    - id: "conservative"
+      label: "Conservative (300 kcal deficit, no exercise)"
+      schedules:
+        - variable: caloric_deficit
+          time: "00:00"
+          value: 300.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "300 kcal/day deficit"
+
+    - id: "balanced"
+      label: "Balanced (500 kcal deficit + 3×/week exercise)"
+      schedules:
+        - variable: caloric_deficit
+          time: "00:00"
+          value: 500.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "500 kcal/day deficit"
+        - variable: exercise_minutes
+          time: "07:00"
+          value: 30.0
+          days: [Mon, Wed, Fri]
+          label: "30 min aerobic MWF"
+
+    - id: "aggressive"
+      label: "Aggressive (800 kcal deficit + 5×/week exercise)"
+      schedules:
+        - variable: caloric_deficit
+          time: "00:00"
+          value: 800.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "800 kcal/day deficit"
+        - variable: exercise_minutes
+          time: "07:00"
+          value: 45.0
+          days: [Mon, Tue, Wed, Thu, Fri]
+          label: "45 min aerobic Mon–Fri"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: body_weight
+      metric: final
+      direction: minimize
+  inputs:
+    - variable: caloric_deficit
+      time: "00:00"
+      label: "Daily caloric deficit (kcal/day)"
+      optimize:
+        value: [200.0, 1000.0]
+    - variable: exercise_minutes
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Mon, Tue, Wed, Thu, Fri]
+        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "Exercise session + weekly pattern"
+      optimize:
+        value: [0.0, 60.0]
+        days: true
+  algorithm:
+    population_size: 25
+    n_generations: 40
+    seed: 42

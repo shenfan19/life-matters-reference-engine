@@ -289,7 +289,7 @@ optimizer:
       type: hard
       description: "可溶性纤维摄入下限（肠道健康保障）"
 
-  inputs:
+  schedules:
     # T1: 限制期 FODMAP 目标量（最低耐受量）
     - variable: fodmap_intake
       time: "00:00"
@@ -309,25 +309,23 @@ optimizer:
     # T3: 重新引入期的测试频率（每周1种食物 vs 每3天1种）
     # 科学意义：过快重引入难以识别触发食物，过慢则延长饮食限制期不必要
     - variable: fodmap_intake
-      time: "00:00"
-      days_options:
-        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]   # 全周均匀（15g/day 一致）
+      time: "00:00"   # 全周均匀（15g/day 一致）
         - [Mon, Tue, Wed, Thu, Fri]              # 工作日限制，周末稍松
         - [Mon, Wed, Fri]                        # 间隔天全严格，其余天中等
       label: "重新引入期的每周节奏（T3）"
       optimize:
         value: [10.0, 22.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [3, 7]
 
     # T4: 限制期持续时长（4周 vs 6周 vs 8周，优化切换时机）
     - variable: fodmap_intake
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-01-22~2026-03-05"
       label: "限制期→重新引入期切换时机（T4）"
       optimize:
         value: [14.0, 22.0]
-        date_start: true
+        date_range: [["2026-01-22", "2026-03-05"], ["2026-06-30", "2026-06-30"]]
 
   mc:
     enabled: true

@@ -313,7 +313,7 @@ optimizer:
       type: hard
       description: "餐后血糖安全上限（mmol/L）"
 
-  inputs:
+  schedules:
     # T1: 每餐碳水量（影响餐后峰值和慢性血糖负担）
     - variable: carb_intake_per_meal
       time: "00:00"
@@ -324,26 +324,20 @@ optimizer:
 
     # T1+T2: 运动量 + 运动时机（空腹晨练 vs 餐后运动对胰岛素敏感性改善效率不同）
     - variable: exercise_met_min
-      time_window: "06:00~20:00"
-      opt_step: 1h
       days: [Mon, Wed, Fri]
       label: "运动量与时机（T2 空腹 vs 餐后）"
       optimize:
         value: [100.0, 250.0]
-        time: true
+        time: ["06:00", "20:00"]
 
     # T1+T3: 运动频率模式
     - variable: exercise_met_min
       time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]
-        - [Mon, Tue, Thu, Fri]
-        - [Mon, Wed, Fri, Sat]
-        - [Mon, Tue, Wed, Thu, Fri]
       label: "运动频率模式（T3）"
       optimize:
         value: [120.0, 220.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
 
     # T1: 禁食窗口时长（14h vs 16h）
     - variable: fasting_window_hours
@@ -357,11 +351,10 @@ optimizer:
     - variable: fasting_window_hours
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-01-15~2026-03-01"
       label: "间歇性禁食方案起始时机（T4）"
       optimize:
         value: [14.0, 17.0]
-        date_start: true
+        date_range: [["2026-01-15", "2026-03-01"], ["2026-07-01", "2026-07-01"]]
 
   mc:
     enabled: true

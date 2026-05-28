@@ -1,0 +1,66 @@
+metadata:
+  name: test_import_layer
+  description:
+    brief: "[TEST] Intermediate import layer — imports base, adds aerobic fitness variables."
+    method: |
+      Imports test_import_base (cardiovascular component), then extends it with
+      aerobic fitness variables and dynamics that depend on the base's heart_rate.
+      Overrides hr_set_point from 65 → 58 bpm (trained athlete baseline).
+
+      This model is itself imported by test_import_top, creating a 2-level import chain.
+      Diamond test: test_import_top imports BOTH test_import_base and test_import_layer;
+      test_import_base should be loaded only once (deduplicated).
+    limitations: Aerobic fitness model is simplified.
+  tags: [test, import, layer, aerobic-fitness, override]
+  references: ["TEST: layer model in import chain — extends base component"]
+  step_size:
+    value: 1
+    unit: day
+
+imports:
+  - test/test_import_base
+
+variables:
+  # Override base parameter: trained athlete has lower resting HR
+  hr_set_point:
+    type: parameter
+    value: 58.0
+    unit: bpm
+    description: Overrides base hr_set_point (65→58 bpm) for a trained athlete profile.
+
+  # New variables added by this layer
+  vo2max:
+    type: state
+    value: 40.0
+    unit: mL/kg/min
+    description: Maximal aerobic capacity; improves with exercise load, decays at rest.
+
+  aerobic_fitness_index:
+    type: state
+    value: 0.60
+    unit: "fraction"
+    description: Normalized fitness index (0=untrained, 1=elite); derived from vo2max.
+
+  vo2_recovery_rate:
+    type: parameter
+    value: 0.003
+    unit: 1/day
+    description: Daily VO2max detraining rate when no exercise stimulus is present.
+
+formulas:
+  vo2max_baseline_decay:
+    description: VO2max decays slightly at rest (detraining effect, rate × step).
+    dynamics:
+      vo2max: "max(20.0, vo2max - vo2max * vo2_recovery_rate * step)"
+    priority: 4
+
+  fitness_index_calc:
+    description: Normalize VO2max to fitness index; elite ≈ 70 mL/kg/min → 1.0.
+    formula:
+      aerobic_fitness_index: "min(1.0, vo2max / 70.0)"
+    priority: 2
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-30"
+  output_variables: [heart_rate, cardiac_output, vo2max, aerobic_fitness_index]

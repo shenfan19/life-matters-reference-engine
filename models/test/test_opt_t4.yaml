@@ -1,0 +1,93 @@
+metadata:
+  name: test_opt_t4
+  description:
+    brief: "[TEST] Optimizer T4: value + date-start window optimization."
+    method: |
+      Intervention timing model: when to start a caloric restriction program
+      within a 60-day spring window matters due to seasonal compliance variation.
+      T4 input: caloric_restriction [300,800] kcal/day, start date anywhere in
+      2026-04-01 ~ 2026-05-31.
+      x-vector: [cr_value, day_offset] → 2 dims.
+      Single objective: minimize body_weight (final).
+    optimization: |
+      date_start_window "2026-04-01~2026-05-31": 61 possible start days.
+      Earlier start = more total deficit. Optimizer balances start date vs dose.
+  tags: [test, optimizer, t4, date-start, intervention-timing, mixed-integer]
+  references: ["TEST: T4 date-start window optimization"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  body_weight:
+    type: state
+    value: 90.0
+    unit: kg
+    description: Body weight; decreases as caloric deficit accumulates.
+
+  cumulative_deficit:
+    type: state
+    value: 0.0
+    unit: kcal
+    description: Total caloric deficit accumulated since intervention start.
+
+  caloric_restriction:
+    type: input
+    value: 0.0
+    unit: kcal/day
+    description: Daily caloric deficit (rate input; formula multiplies by step).
+
+  weight_loss_factor:
+    type: parameter
+    value: 0.000129
+    unit: kg per kcal
+    description: Weight lost per kcal deficit; 1 kg ≈ 7700 kcal → 1/7700 ≈ 0.000130.
+
+formulas:
+  weight_loss:
+    description: Body weight decreases proportionally to daily caloric deficit (rate × step).
+    dynamics:
+      body_weight: "max(50.0, body_weight - caloric_restriction * weight_loss_factor * step)"
+    priority: 5
+
+  deficit_accumulation:
+    description: Track cumulative caloric deficit (rate × step).
+    dynamics:
+      cumulative_deficit: "cumulative_deficit + caloric_restriction * step"
+    priority: 3
+
+simulation:
+  start_date: "2026-03-01"
+  end_date:   "2026-08-31"
+  schedules:
+    - variable: caloric_restriction
+      time: "00:00"
+      value: 500.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-04-15 ~ 2026-08-31"
+      label: "Default 500 kcal/day deficit starting Apr 15"
+  output_variables: [body_weight, cumulative_deficit, caloric_restriction]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: body_weight
+      metric: final
+      direction: minimize
+  inputs:
+    # T4: value + date_start from April to May
+    - variable: caloric_restriction
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-04-01~2026-05-31"
+      label: "Caloric restriction dose + start date"
+      optimize:
+        value: [300.0, 800.0]
+        date_start: true
+  algorithm:
+    population_size: 25
+    n_generations: 40
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1

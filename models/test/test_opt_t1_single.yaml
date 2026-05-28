@@ -1,0 +1,96 @@
+metadata:
+  name: test_opt_t1_single
+  description:
+    brief: "[TEST] Optimizer T1 (value only), single objective, L-BFGS-B method."
+    method: |
+      Minimal nutrition model with one decision variable (daily protein intake).
+      T1 optimization: only value is optimized (no time/days/date_start).
+      Single objective: maximize muscle_mass at end of 90-day simulation.
+      L-BFGS-B method (gradient-based, continuous variables only).
+    optimization: |
+      One input: protein_intake in [0.5, 2.0] g/kg/day.
+      One objective: maximize muscle_mass (final).
+      One hard constraint: nitrogen_waste <= 50 mg/dL.
+  tags: [test, optimizer, t1, single-objective, l-bfgs-b]
+  references: ["TEST: T1 optimizer, single objective, L-BFGS-B"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  muscle_mass:
+    type: state
+    value: 30.0
+    unit: kg
+    description: Skeletal muscle mass; rises when protein intake exceeds anabolic threshold.
+
+  nitrogen_waste:
+    type: state
+    value: 15.0
+    unit: mg/dL
+    description: Blood nitrogen waste proxy; rises with protein excess and falls with normal intake.
+
+  protein_intake:
+    type: input
+    value: 0.8
+    unit: g/kg/day
+    description: Daily protein intake rate (speed rate, not per-event; formula multiplies by step).
+
+  synthesis_rate:
+    type: parameter
+    value: 0.04
+    unit: kg/day per g/kg/day excess
+    description: Net muscle synthesis per unit excess protein above 0.8 g/kg/day threshold.
+
+  catabolism_rate:
+    type: parameter
+    value: 0.002
+    unit: kg/day
+    description: Basal daily muscle catabolism rate.
+
+formulas:
+  muscle_dynamics:
+    description: Net muscle mass change; synthesis above threshold minus basal catabolism.
+    dynamics:
+      muscle_mass: "max(0.0, muscle_mass + ((protein_intake - 0.8) * synthesis_rate - catabolism_rate) * step)"
+    priority: 5
+
+  nitrogen_dynamics:
+    description: Nitrogen waste rises proportionally to protein excess above 0.8 g/kg/day.
+    dynamics:
+      nitrogen_waste: "max(5.0, 15.0 + max(0.0, protein_intake - 0.8) * 30.0)"
+    priority: 3
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-31"
+  schedules:
+    - variable: protein_intake
+      time: "08:00"
+      value: 0.8
+      label: "Daily protein intake (g/kg/day)"
+  output_variables: [muscle_mass, nitrogen_waste, protein_intake]
+
+optimizer:
+  method: l-bfgs-b
+  objectives:
+    - variable: muscle_mass
+      metric: final
+      direction: maximize
+  constraints:
+    - variable: nitrogen_waste
+      condition: "<= 50"
+      type: hard
+  inputs:
+    - variable: protein_intake
+      time: "08:00"
+      label: "Daily protein (g/kg/day)"
+      optimize:
+        value: [0.5, 2.0]
+  algorithm:
+    population_size: 1
+    n_generations: 100
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1

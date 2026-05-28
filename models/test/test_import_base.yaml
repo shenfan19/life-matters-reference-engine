@@ -1,0 +1,74 @@
+metadata:
+  name: test_import_base
+  description:
+    brief: "[TEST] Pure component model — no inputs; designed to be imported by other test models."
+    method: |
+      Minimal physiological component: cardiovascular state variables and dynamics.
+      No input variables and no optimizer (pure _mw-style component).
+      Imported by test_import_layer and test_import_top to test the import system.
+
+      Provides: heart_rate, cardiac_output, systemic_resistance.
+      Diamond-dependency test: both test_import_layer and test_import_top import
+      this file; the Loader should include it only once.
+    limitations: Purely structural; parameters are not clinically calibrated.
+  tags: [test, import, base, component, no-input]
+  references: ["TEST: base component for import chain test"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  heart_rate:
+    type: state
+    value: 70.0
+    unit: bpm
+    description: Resting heart rate; decays toward basal set-point over time.
+
+  cardiac_output:
+    type: state
+    value: 5.0
+    unit: L/min
+    description: Cardiac output; proportional to heart_rate × stroke_volume.
+
+  systemic_resistance:
+    type: state
+    value: 1200.0
+    unit: dyn·s/cm⁵
+    description: Total systemic vascular resistance; drives blood pressure.
+
+  # Parameters defined in this base component
+  hr_set_point:
+    type: parameter
+    value: 65.0
+    unit: bpm
+    description: Resting heart rate set-point; HR relaxes toward this value daily.
+
+  hr_recovery_rate:
+    type: parameter
+    value: 0.05
+    unit: 1/day
+    description: Rate at which HR returns to set-point per day.
+
+  stroke_volume:
+    type: parameter
+    value: 0.070
+    unit: L/beat
+    description: Stroke volume (fixed parameter); cardiac_output = HR × SV × 60.
+
+formulas:
+  heart_rate_recovery:
+    description: HR relaxes exponentially toward set-point (rate × step).
+    dynamics:
+      heart_rate: "heart_rate - (heart_rate - hr_set_point) * hr_recovery_rate * step"
+    priority: 5
+
+  cardiac_output_update:
+    description: Cardiac output computed from HR and stroke volume (formula, no step needed).
+    formula:
+      cardiac_output: "heart_rate * stroke_volume * 60.0 / 1000.0"
+    priority: 3
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-30"
+  output_types: [state]

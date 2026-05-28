@@ -399,7 +399,7 @@ optimizer:
       type: hard
       description: "减重速率约束：26周内不超过 10kg（~0.38kg/周）"
 
-  inputs:
+  schedules:
     # T1: 热量缺口
     - variable: caloric_deficit
       time: "00:00"
@@ -411,26 +411,23 @@ optimizer:
     # T1+T2: 运动量 + 运动时机（空腹 vs 餐后，对 IR 和肝脂改善效率不同）
     # 科学依据：Gonzalez-Franquesa 2023 空腹运动；Erickson 2019 运动时机与 IR
     - variable: exercise_met_min
-      time_window: "06:00~20:00"
-      opt_step: 1h
       days: [Mon, Wed, Fri]
       label: "有氧运动量与时机（T2 空腹 vs 餐后）"
       optimize:
         value: [100.0, 300.0]
-        time: true
+        time: ["06:00", "20:00"]
 
     # T1+T3: 饮食升糖负荷 + 运动频率模式（低GI饮食配合 HIIT 哪几天）
     - variable: exercise_met_min
-      time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]              # 经典HIIT 3次/周
+      time: "07:00"              # 经典HIIT 3次/周
         - [Mon, Tue, Thu, Fri]         # 4次/周
         - [Mon, Wed, Fri, Sat]         # 3次+周六
         - [Mon, Tue, Wed, Thu, Fri]    # 5次/周中等强度
       label: "有氧运动频率模式（T3）"
       optimize:
         value: [150.0, 280.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
 
     # T1: 饮食升糖负荷（低GI强化期 vs 地中海维持期）
     - variable: dietary_glycemic_load
@@ -445,11 +442,10 @@ optimizer:
     - variable: dietary_glycemic_load
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-02-26~2026-05-01"
       label: "饮食切换时机（低GI→地中海，T4）"
       optimize:
         value: [95.0, 120.0]
-        date_start: true
+        date_range: [["2026-02-26", "2026-05-01"], ["2026-07-01", "2026-07-01"]]
 
   mc:
     enabled: true

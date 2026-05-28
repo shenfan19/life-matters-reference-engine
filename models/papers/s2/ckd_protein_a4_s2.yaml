@@ -285,7 +285,7 @@ optimizer:
       type: hard
       description: "KDIGO 建议最低蛋白摄入量 0.6 g/kg/day"
 
-  inputs:
+  schedules:
     # T1: 早餐蛋白量（固定08:00，优化量）
     - variable: dietary_protein
       time: "08:00"
@@ -306,24 +306,21 @@ optimizer:
     # 科学意义：睡前蛋白（~21:00）激活夜间mTOR，改善肌肉蛋白合成
     # Snijders 2015, Res 2012：睡前蛋白摄入显著提升夜间蛋白合成速率
     - variable: dietary_protein
-      time_window: "17:00~22:00"
-      opt_step: 1h
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       label: "晚餐蛋白量与用餐时机（时间营养学优化）"
       optimize:
         value: [0.15, 0.45]
-        time: true
+        time: ["17:00", "22:00"]
 
     # T4: 限制期→标准期切换时机（在第13-39周窗口内搜索最优切换点）
     # 科学意义：GFR 稳定后才能安全提升蛋白；过早提升加速 GFR 损伤
     - variable: dietary_protein
       time: "08:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-04-01~2026-10-01"
       label: "标准期启动时机（限制→标准切换日）"
       optimize:
         value: [0.27, 0.42]
-        date_start: true
+        date_range: [["2026-04-01", "2026-10-01"], ["2026-12-31", "2026-12-31"]]
 
   mc:
     enabled: true

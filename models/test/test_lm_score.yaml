@@ -1,0 +1,167 @@
+metadata:
+  name: test_lm_score
+  description:
+    brief: "[TEST] lm_score: both cumulative (recoverable) and latch (irreversible) modes."
+    method: |
+      Hypertension management model demonstrating both lm_score semantics.
+
+      lm_score (cumulative): accumulates healthy days when SBP is controlled (<=160 mmHg).
+        Pauses during hypertensive episodes; resumes when BP normalizes.
+
+      lm_score_irreversible + lm_alive (latch): once SBP exceeds the stroke threshold
+        (>220 mmHg), lm_alive permanently flips to 0 and no further days accumulate.
+
+      Uses lm_score (cumulative) as the optimizer objective (maximize).
+      BP is controlled via an antihypertensive dose input.
+
+      Thresholds deliberately chosen to be reachable in simulation:
+        - SBP starts at 150 mmHg (Stage 2 hypertension)
+        - Treatment lowers SBP; stopping treatment lets it drift back up
+        - Stroke threshold at 220 mmHg (rare, only if completely untreated)
+    limitations: Simplified first-order BP dynamics; not validated clinically.
+  tags: [test, lm_score, latch, cumulative, hypertension, irreversible]
+  references: ["TEST: lm_score cumulative and latch modes"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  # --- Blood pressure dynamics ---
+  sbp:
+    type: state
+    value: 150.0
+    unit: mmHg
+    description: Systolic blood pressure; elevated baseline (Stage 2 hypertension).
+
+  antihypertensive:
+    type: input
+    value: 0.0
+    unit: mg
+    description: Daily antihypertensive dose (pulse; lowers SBP per mg in formula).
+
+  bp_effect_per_mg:
+    type: parameter
+    value: 0.12
+    unit: mmHg per mg
+    description: SBP reduction per mg of antihypertensive (immediate pulse effect).
+
+  bp_natural_rise:
+    type: parameter
+    value: 0.05
+    unit: mmHg/day
+    description: Daily untreated SBP rise due to disease progression.
+
+  # --- Cumulative (recoverable) lm_score ---
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: |
+      Cumulative healthy days (SBP <= 160 mmHg).
+      Recoverable: pauses during hypertensive episodes, resumes on recovery.
+
+  # --- Latch (irreversible) lm_score ---
+  lm_score_irreversible:
+    type: state
+    value: 0.0
+    unit: day
+    description: |
+      Cumulative healthy days (SBP <= 160 mmHg), irreversible latch mode.
+      Permanently stops accumulating after first stroke event (SBP > 220 mmHg).
+
+  lm_alive:
+    type: state
+    value: 1.0
+    unit: "flag"
+    description: |
+      Survival flag for latch mode; 1 = alive, 0 = stroke event (irreversible).
+      Once set to 0, lm_score_irreversible stops accumulating forever.
+
+formulas:
+  # --- BP dynamics ---
+  bp_treatment:
+    description: Antihypertensive dose reduces SBP (pulse, no step).
+    dynamics:
+      sbp: "max(60.0, sbp - antihypertensive * bp_effect_per_mg)"
+    priority: 10
+
+  bp_progression:
+    description: Untreated disease progression raises SBP daily (rate × step).
+    dynamics:
+      sbp: "min(250.0, sbp + bp_natural_rise * step)"
+    priority: 5
+
+  # --- Cumulative lm_score (recoverable) ---
+  lm_score_update:
+    description: |
+      Accumulate healthy days when SBP <= 160 mmHg.
+      Condition not met → no accumulation; resumes automatically when BP controlled.
+    dynamics:
+      lm_score: "lm_score + step if sbp <= 160.0 else lm_score"
+    priority: 2
+
+  # --- Latch lm_score (irreversible) ---
+  stroke_latch:
+    description: |
+      Stroke event: SBP > 220 mmHg permanently sets lm_alive = 0.
+      Once 0, it stays 0 even if BP normalizes (irreversible latch).
+    condition: "sbp > 220.0"
+    formula:
+      lm_alive: "0.0"
+    priority: 8
+
+  lm_score_irreversible_update:
+    description: |
+      Accumulate healthy days only while lm_alive = 1.
+      After stroke (lm_alive=0), accumulation permanently stops.
+    dynamics:
+      lm_score_irreversible: "lm_score_irreversible + lm_alive * step"
+    priority: 2
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2027-12-31"
+  schedules:
+    - variable: antihypertensive
+      time: "08:00"
+      value: 50.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-01-01 ~ 2026-06-30"
+      label: "Antihypertensive 50 mg (first half)"
+    - variable: antihypertensive
+      time: "08:00"
+      value: 80.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-07-01 ~ 2027-12-31"
+      label: "Antihypertensive 80 mg (dose escalation)"
+  output_variables: [sbp, lm_score, lm_score_irreversible, lm_alive, antihypertensive]
+
+optimizer:
+  method: nsga2
+  objectives:
+    # Maximize cumulative lm_score (healthy days with controlled SBP)
+    - variable: lm_score
+      metric: final
+      direction: maximize
+    - variable: sbp
+      metric: mean
+      direction: minimize
+  constraints:
+    - variable: sbp
+      condition: "<= 220"
+      type: hard
+  inputs:
+    - variable: antihypertensive
+      time: "08:00"
+      label: "Antihypertensive dose first half (mg)"
+      optimize:
+        value: [0.0, 120.0]
+    - variable: antihypertensive
+      time: "08:00"
+      label: "Antihypertensive dose second half (mg)"
+      optimize:
+        value: [0.0, 120.0]
+  algorithm:
+    population_size: 30
+    n_generations: 50
+    seed: 42

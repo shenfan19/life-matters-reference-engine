@@ -1,0 +1,73 @@
+metadata:
+  name: test_step_minute
+  description:
+    brief: "[TEST] step_size=minute; intra-day meal scheduling; output_types filter."
+    method: |
+      Simplified glucose model, 1-minute steps, 3-day simulation (4 320 steps/day).
+      Three meals per day at 07:30 / 12:30 / 19:00. Tests that schedules fire at
+      sub-hour precision and that output_types: [state, input] filters correctly.
+      Basal clearance is a first-order rate (× step), meal rise is a pulse (no step).
+    limitations: Not physiologically calibrated; for feature-coverage only.
+  tags: [test, step_size, minute, glucose, meal, output_types]
+  references: ["TEST: minute-level step size with three-meal intra-day schedule"]
+  step_size:
+    value: 1
+    unit: minute
+
+variables:
+  blood_glucose:
+    type: state
+    value: 85.0
+    unit: mg/dL
+    description: Blood glucose; fasting baseline 85 mg/dL, clipped to 70 mg/dL floor.
+
+  meal_carbs:
+    type: input
+    value: 0.0
+    unit: g
+    description: Per-meal carbohydrate bolus (pulse; no step multiplication).
+
+  glucose_sensitivity:
+    type: parameter
+    value: 0.35
+    unit: "mg/dL per g"
+    description: Blood glucose rise per gram of carbohydrate (rough estimate).
+
+  basal_clearance_rate:
+    type: parameter
+    value: 0.002
+    unit: 1/minute
+    description: Fractional basal clearance rate returning glucose toward fasting level.
+
+formulas:
+  meal_rise:
+    description: Instantaneous glucose rise from carb bolus (pulse, no step).
+    dynamics:
+      blood_glucose: "blood_glucose + meal_carbs * glucose_sensitivity"
+    priority: 10
+
+  basal_return:
+    description: |
+      Exponential return toward fasting level (70 mg/dL floor).
+      Rate × step where step is in minutes — correct for continuous dynamics.
+    dynamics:
+      blood_glucose: "max(70.0, blood_glucose - (blood_glucose - 70.0) * basal_clearance_rate * step)"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-03"
+  schedules:
+    - variable: meal_carbs
+      time: "07:30"
+      value: 60.0
+      label: "Breakfast 60 g carbs"
+    - variable: meal_carbs
+      time: "12:30"
+      value: 80.0
+      label: "Lunch 80 g carbs"
+    - variable: meal_carbs
+      time: "19:00"
+      value: 70.0
+      label: "Dinner 70 g carbs"
+  output_types: [state, input]

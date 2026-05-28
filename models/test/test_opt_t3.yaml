@@ -1,0 +1,131 @@
+metadata:
+  name: test_opt_t3
+  description:
+    brief: "[TEST] Optimizer T3: value + days-pattern selection from candidate sets."
+    method: |
+      Exercise training model where both dose (load) and weekly schedule pattern are optimized.
+      Two T3 inputs: aerobic_load (3 weekday candidates) + strength_load (2 weekend candidates).
+      x-vector: [aerobic_value, aerobic_pattern_idx, strength_value, strength_pattern_idx] → 4 dims.
+      NSGA-II: maximize fitness score + minimize fatigue score.
+    optimization: |
+      aerobic_load days_options: [MWF], [TThSa], [MoWeFr+Sa].
+      strength_load days_options: [SaSu], [Tu+Th].
+  tags: [test, optimizer, t3, days-pattern, weekly-schedule, mixed-integer]
+  references: ["TEST: T3 days-pattern selection with multiple candidate sets"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  fitness_score:
+    type: state
+    value: 50.0
+    unit: "score"
+    description: Cumulative fitness; increases on training days by load × efficiency.
+
+  fatigue_score:
+    type: state
+    value: 0.0
+    unit: "score"
+    description: Accumulated fatigue; increases with training load, recovers on rest days.
+
+  aerobic_load:
+    type: input
+    value: 0.0
+    unit: minutes
+    description: Aerobic session duration per training day (pulse; no step multiplication).
+
+  strength_load:
+    type: input
+    value: 0.0
+    unit: sets
+    description: Strength session volume per training day (pulse; no step multiplication).
+
+  aerobic_efficiency:
+    type: parameter
+    value: 0.08
+    unit: score per minute
+    description: Fitness gain per minute of aerobic exercise.
+
+  strength_efficiency:
+    type: parameter
+    value: 0.5
+    unit: score per set
+    description: Fitness gain per set of strength training.
+
+  fatigue_recovery:
+    type: parameter
+    value: 0.10
+    unit: 1/day
+    description: Daily fatigue recovery fraction (on rest days fatigue decays).
+
+formulas:
+  training_gain:
+    description: Fitness rises with each aerobic and strength session (pulse, no step).
+    dynamics:
+      fitness_score: "fitness_score + aerobic_load * aerobic_efficiency + strength_load * strength_efficiency"
+    priority: 10
+
+  fatigue_dynamics:
+    description: |
+      Fatigue rises with load on training days, recovers on rest days.
+      Training day: aerobic_load>0 or strength_load>0.
+      Recovery uses step (continuous rate).
+    dynamics:
+      fatigue_score: "fatigue_score + (aerobic_load * 0.03 + strength_load * 0.1) - fatigue_score * fatigue_recovery * step"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-31"
+  schedules:
+    - variable: aerobic_load
+      time: "07:00"
+      value: 40.0
+      days: [Mon, Wed, Fri]
+      label: "Aerobic 40 min MWF"
+    - variable: strength_load
+      time: "17:00"
+      value: 6.0
+      days: [Sat, Sun]
+      label: "Strength 6 sets weekend"
+  output_variables: [fitness_score, fatigue_score, aerobic_load, strength_load]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: fitness_score
+      metric: final
+      direction: maximize
+    - variable: fatigue_score
+      metric: mean
+      direction: minimize
+  inputs:
+    # T3: aerobic — value + days pattern from 3 candidate weekly schedules
+    - variable: aerobic_load
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Tue, Thu, Sat]
+        - [Mon, Tue, Wed, Thu, Fri]
+      label: "Aerobic session (minutes + weekly pattern)"
+      optimize:
+        value: [20.0, 90.0]
+        days: true
+    # T3: strength — value + days pattern from 2 candidate weekend schedules
+    - variable: strength_load
+      time: "17:00"
+      days_options:
+        - [Sat, Sun]
+        - [Tue, Thu]
+      label: "Strength session (sets + weekly pattern)"
+      optimize:
+        value: [3.0, 12.0]
+        days: true
+  algorithm:
+    population_size: 30
+    n_generations: 40
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1
