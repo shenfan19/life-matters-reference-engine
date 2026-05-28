@@ -7,16 +7,37 @@ router = APIRouter()
 
 
 class RegimenEventData(BaseModel):
-    variable: str
-    time: str
+    """Single timed event within a regimen (pulse model).
+
+    GUI path: time + value only; days/valid_start/end come from the parent RegimenData.
+    Optimizer path: days (string list) and valid_start/end live on the event itself
+    so each T3/T4 event can have independent days and date-range constraints.
+    """
+    time: str                              # "HH:MM"
     value: float
+    # T3 (optimizer path): event-level day filter, e.g. ["Mon", "Wed"]
     days: Optional[List[str]] = None
-    date_range: Optional[str] = None
-    label: Optional[str] = None
+    # T4 (optimizer path): event-level date-range filter
+    valid_start: Optional[str] = None     # "YYYY-MM-DD"
+    valid_end: Optional[str] = None       # "YYYY-MM-DD"
 
 
 class RegimenData(BaseModel):
+    """One variable's full schedule as sent from the GUI or optimizer.
+
+    GUI path (days_enabled / valid_range_enabled):
+      - days: 7-element boolean mask [Mon…Sun]
+      - valid_start / valid_end: date strings applied to all events
+    Optimizer path: day + date constraints are embedded per-event (see RegimenEventData).
+    Both paths share the same events list.
+    """
     variable: str
+    # GUI-path regimen-level filters
+    days_enabled: Optional[bool] = False
+    days: Optional[List[bool]] = None     # 7-element boolean mask
+    valid_range_enabled: Optional[bool] = False
+    valid_start: Optional[str] = None     # "YYYY-MM-DD"
+    valid_end: Optional[str] = None       # "YYYY-MM-DD"
     events: List[RegimenEventData]
 
 
