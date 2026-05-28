@@ -286,7 +286,7 @@ optimizer:
       condition: ">= 80"
       type: soft
       description: "12周末肌力恢复目标≥80%"
-  inputs:
+  schedules:
     - variable: pt_intensity
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri]

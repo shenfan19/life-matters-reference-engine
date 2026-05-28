@@ -183,7 +183,7 @@ optimizer:
       condition: "<= 600"
       type: hard
       description: "安全阈值：CK不超3×ULN=600 IU/L（Rosenson 2004）"
-  inputs:
+  schedules:
     - variable: statin_dose
       time: "20:00"
       label: "阿托伐他汀剂量（mg/day）"

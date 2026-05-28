@@ -216,7 +216,7 @@ optimizer:
       condition: ">= 35"
       type: soft
       description: "EF不低于基线（防止过度训练损伤）"
-  inputs:
+  schedules:
     - variable: cardiac_rehab_met
       time: "10:00"
       label: "康复训练强度（MET）"

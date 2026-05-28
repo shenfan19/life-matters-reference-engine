@@ -259,7 +259,7 @@ optimizer:
       condition: ">= 1.0"
       type: hard
       description: "人口可行性约束：TFR不低于1.0"
-  inputs:
+  schedules:
     - variable: fertility_policy
       time: "00:00"
       label: "生育政策强度"

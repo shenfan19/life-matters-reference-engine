@@ -288,7 +288,7 @@ optimizer:
       condition: "<= 35"
       type: soft
       description: "6周末肺动脉压≤35 mmHg"
-  inputs:
+  schedules:
     - variable: warfarin_dose
       time: "18:00"
       label: "华法林日剂量（mg）"

@@ -227,7 +227,7 @@ optimizer:
       condition: "<= 10"
       type: hard
       description: "PT强度上限（每天不超过5小时）"
-  inputs:
+  schedules:
     - variable: physiotherapy_intensity
       time: "09:00"
       label: "物理治疗强度（0-10）"

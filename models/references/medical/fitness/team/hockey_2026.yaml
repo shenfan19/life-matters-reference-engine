@@ -172,7 +172,7 @@ optimizer:
       condition: "<= 195"
       type: soft
       description: "心率控制在195 bpm以内"
-  inputs:
+  schedules:
     - variable: skating_intensity
       time: "19:00"
       label: "滑行强度（RPE 5-10）"

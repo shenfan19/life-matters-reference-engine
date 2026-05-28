@@ -152,7 +152,7 @@ optimizer:
       condition: "<= 0.8"
       type: hard
       description: "肩部疲劳不超过0.8（损伤风险阈值）"
-  inputs:
+  schedules:
     - variable: pitch_velocity
       time: "13:00"
       label: "投球速度（75-100 mph）"

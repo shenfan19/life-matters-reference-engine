@@ -81,7 +81,7 @@ optimizer:
       condition: ">= 10"
       type: hard
       description: 血液储备不得低于 10%（死亡线）
-  inputs:
+  schedules:
     - variable: hunt_intensity
       time: "22:00"
       label: 夜间狩猎强度（0=不猎，3=全力）

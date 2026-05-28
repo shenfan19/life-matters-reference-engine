@@ -274,7 +274,7 @@ optimizer:
       condition: "<= 70"
       type: soft
       description: "ACC/AHA高危目标：LDL≤70 mg/dL"
-  inputs:
+  schedules:
     - variable: statin_dose_rel
       time: "20:00"
       label: "他汀强度（0=无药，1=高强度80mg）"

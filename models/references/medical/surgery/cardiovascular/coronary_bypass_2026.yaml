@@ -308,7 +308,7 @@ optimizer:
       condition: ">= 0.5"
       type: soft
       description: "第14天伤口愈合指数≥0.5"
-  inputs:
+  schedules:
     - variable: cardiac_rehabilitation_intensity
       time: "09:00"
       label: "第1周康复强度"

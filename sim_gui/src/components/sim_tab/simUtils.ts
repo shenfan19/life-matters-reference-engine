@@ -148,8 +148,7 @@ export function initModelSessions(): Record<string, ModelSession> {
     if (Array.isArray(s.inputEvents)) {
       s.inputEvents = s.inputEvents.map((ev: any) => ({
         optimizeValue: false, valueBounds: [0, 1],
-        optimizeTime: false, optimizeDays: false,
-        optimizeDateStart: false, optimizeDateEnd: false,
+        optimizeTime: false, optimizeDays: false, optimizeDateRange: false,
         ...ev,
       }));
     }

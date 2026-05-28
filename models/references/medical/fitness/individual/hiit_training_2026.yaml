@@ -193,7 +193,7 @@ optimizer:
       condition: "<= 97"
       type: hard
       description: "强度上限 97% VO2max（超过此值心律失常和过度疲劳风险急增）"
-  inputs:
+  schedules:
     - variable: interval_intensity
       time: "07:00"
       label: "间隔强度（%VO2max，70=阈值，95=接近 VO2max）"

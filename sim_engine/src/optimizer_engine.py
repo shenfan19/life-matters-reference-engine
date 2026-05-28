@@ -127,9 +127,7 @@ def run_optimizer(simulator_engine, model_name: str,
     pareto_front is a list of {x: [...], f: [...]} dicts (raw, not sign-flipped).
 
     optimizer_override: if provided, merges into the YAML optimizer: block (GUI overrides YAML).
-    Supports two input-variable formats:
-      - inputs: [{variable, time, optimize: {value: [lo, hi]}, ...}]  (new, multi-var)
-      - regimen: {variable, events: [{time, dose_bounds, ...}]}        (legacy, single-var)
+    Decision variables are defined in optimizer.schedules (entries with optimize: sub-block).
     """
     from .simulator_engine import SimulatorEngine
 
@@ -145,7 +143,7 @@ def run_optimizer(simulator_engine, model_name: str,
 
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
-        for key in ('regimen', 'inputs', 'objectives', 'constraints', 'algorithm', 'method',
+        for key in ('objectives', 'constraints', 'algorithm', 'method',
                     'start_date', 'end_date', 'step_size', 'schedules'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
@@ -162,188 +160,138 @@ def run_optimizer(simulator_engine, model_name: str,
     # ── parse constraints ─────────────────────────────────────────────────────
     constraints: List[Dict] = list(opt_block.get('constraints', []))
 
-    # ── parse decision variables ───────────────────────────────────────────────
-    # Priority: schedules: (new) → inputs: (legacy) → regimen: (oldest)
-    inputs_def = opt_block.get('schedules', opt_block.get('inputs', []))
-    if inputs_def:
-        opt_entries = [e for e in inputs_def if 'optimize' in e]
-        fixed_entries = [e for e in inputs_def if 'optimize' not in e]
-        if not opt_entries:
-            return {"success": False, "error": "No entries with optimize: sub-block defined"}
+    # ── parse decision variables from optimizer.schedules ─────────────────────
+    schedules_def = opt_block.get('schedules', [])
+    if not schedules_def:
+        return {"success": False, "error": "No optimizer.schedules defined"}
 
-        var_specs: List[Dict] = []
-        lo_list: List[float] = []
-        hi_list: List[float] = []
+    opt_entries = [e for e in schedules_def if 'optimize' in e]
+    fixed_entries = [e for e in schedules_def if 'optimize' not in e]
+    if not opt_entries:
+        return {"success": False, "error": "No entries with optimize: sub-block in optimizer.schedules"}
 
-        for e in opt_entries:
-            opt = e.get('optimize', {})
-            var = e.get('variable', '')
-            time_val = e.get('time', '08:00')
-            label = e.get('label', f"{var} {time_val}")
+    var_specs: List[Dict] = []
+    lo_list: List[float] = []
+    hi_list: List[float] = []
 
-            # T1: value bounds — optional (entry may optimize only T2/T3/T4)
-            val_bounds = opt.get('value')
-            if val_bounds is not None:
-                var_specs.append({'kind': 'value', 'variable': var, 'time': time_val,
-                                  'label': label, 'entry': e})
-                lo_list.append(float(val_bounds[0])); hi_list.append(float(val_bounds[1]))
+    for e in opt_entries:
+        opt = e.get('optimize', {})
+        var = e.get('variable', '')
+        time_val = e.get('time', '08:00')
+        label = e.get('label', f"{var} {time_val}")
 
-            # T2: optimize.time = ["HH:MM","HH:MM"] (new) or time:true+time_window (legacy)
-            t2 = opt.get('time')
-            if isinstance(t2, list) and len(t2) == 2:
-                step = opt.get('time_step', e.get('opt_step', '1h'))
-                slots = _expand_time_window(f"{t2[0]}~{t2[1]}", step)
-                var_specs.append({'kind': 'time', 'variable': var, 'slots': slots, 'entry': e})
-                lo_list.append(0.0); hi_list.append(float(len(slots) - 1))
-            elif t2 and e.get('time_window'):
-                slots = _expand_time_window(e['time_window'], e.get('opt_step', '1h'))
-                var_specs.append({'kind': 'time', 'variable': var, 'slots': slots, 'entry': e})
-                lo_list.append(0.0); hi_list.append(float(len(slots) - 1))
+        # T1: optimize.value = [lo, hi]
+        val_bounds = opt.get('value')
+        if val_bounds is not None:
+            var_specs.append({'kind': 'value', 'variable': var, 'time': time_val,
+                              'label': label, 'entry': e})
+            lo_list.append(float(val_bounds[0])); hi_list.append(float(val_bounds[1]))
 
-            # T3: optimize.days_pool+days_n (new) or days:true+days_options (legacy)
-            days_pool = opt.get('days_pool')
-            if days_pool:
-                from itertools import combinations as _combos
-                n_range = opt.get('days_n', [1, len(days_pool)])
-                min_n, max_n = int(n_range[0]), int(n_range[1])
-                all_patterns = [list(c) for n in range(min_n, max_n + 1)
-                                for c in _combos(days_pool, n)]
-                if all_patterns:
-                    var_specs.append({'kind': 'days', 'variable': var,
-                                      'patterns': all_patterns, 'entry': e})
-                    lo_list.append(0.0); hi_list.append(float(len(all_patterns) - 1))
-            elif opt.get('days') and e.get('days_options'):
-                patterns = e['days_options']
-                var_specs.append({'kind': 'days', 'variable': var, 'patterns': patterns, 'entry': e})
-                lo_list.append(0.0); hi_list.append(float(len(patterns) - 1))
+        # T2: optimize.time = ["HH:MM", "HH:MM"]
+        t2 = opt.get('time')
+        if isinstance(t2, list) and len(t2) == 2:
+            slots = _expand_time_window(f"{t2[0]}~{t2[1]}", opt.get('time_step', '1h'))
+            var_specs.append({'kind': 'time', 'variable': var, 'slots': slots, 'entry': e})
+            lo_list.append(0.0); hi_list.append(float(len(slots) - 1))
 
-            # T4: optimize.date_range=[[lo,hi],[lo,hi]] (new) or date_start/date_end (legacy)
-            date_range_opt = opt.get('date_range')
-            if isinstance(date_range_opt, list) and len(date_range_opt) == 2:
-                from datetime import date as _date
-                sw, ew = date_range_opt[0], date_range_opt[1]
-                n_s = (_date.fromisoformat(str(sw[1])) - _date.fromisoformat(str(sw[0]))).days
-                var_specs.append({'kind': 'date_start', 'variable': var,
-                                  'window_start': str(sw[0]), 'n_days': n_s, 'entry': e})
-                lo_list.append(0.0); hi_list.append(float(n_s))
-                n_e = (_date.fromisoformat(str(ew[1])) - _date.fromisoformat(str(ew[0]))).days
-                if n_e > 0:
-                    var_specs.append({'kind': 'date_end', 'variable': var,
-                                      'window_start': str(ew[0]), 'n_days': n_e, 'entry': e})
-                    lo_list.append(0.0); hi_list.append(float(n_e))
-            else:
-                if opt.get('date_start') and e.get('date_start_window'):
-                    from datetime import date as _date
-                    p = e['date_start_window'].split('~')
-                    ws, we = p[0].strip(), p[1].strip()
-                    n_days = (_date.fromisoformat(we) - _date.fromisoformat(ws)).days
-                    var_specs.append({'kind': 'date_start', 'variable': var,
-                                      'window_start': ws, 'n_days': n_days, 'entry': e})
-                    lo_list.append(0.0); hi_list.append(float(n_days))
-                if opt.get('date_end') and e.get('date_end_window'):
-                    from datetime import date as _date
-                    p = e['date_end_window'].split('~')
-                    ws, we = p[0].strip(), p[1].strip()
-                    n_days = (_date.fromisoformat(we) - _date.fromisoformat(ws)).days
-                    var_specs.append({'kind': 'date_end', 'variable': var,
-                                      'window_start': ws, 'n_days': n_days, 'entry': e})
-                    lo_list.append(0.0); hi_list.append(float(n_days))
+        # T3: optimize.days_pool + optimize.days_n
+        days_pool = opt.get('days_pool')
+        if days_pool:
+            from itertools import combinations as _combos
+            n_range = opt.get('days_n', [1, len(days_pool)])
+            min_n, max_n = int(n_range[0]), int(n_range[1])
+            all_patterns = [list(c) for n in range(min_n, max_n + 1)
+                            for c in _combos(days_pool, n)]
+            if all_patterns:
+                var_specs.append({'kind': 'days', 'variable': var,
+                                  'patterns': all_patterns, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(len(all_patterns) - 1))
 
-        if not var_specs:
-            return {"success": False, "error": "No decision dimensions found in optimize: blocks"}
+        # T4: optimize.date_range = [[start_lo, start_hi], [end_lo, end_hi]]
+        date_range_opt = opt.get('date_range')
+        if isinstance(date_range_opt, list) and len(date_range_opt) == 2:
+            from datetime import date as _date
+            sw, ew = date_range_opt[0], date_range_opt[1]
+            n_s = (_date.fromisoformat(str(sw[1])) - _date.fromisoformat(str(sw[0]))).days
+            var_specs.append({'kind': 'date_start', 'variable': var,
+                              'window_start': str(sw[0]), 'n_days': n_s, 'entry': e})
+            lo_list.append(0.0); hi_list.append(float(n_s))
+            n_e = (_date.fromisoformat(str(ew[1])) - _date.fromisoformat(str(ew[0]))).days
+            if n_e > 0:
+                var_specs.append({'kind': 'date_end', 'variable': var,
+                                  'window_start': str(ew[0]), 'n_days': n_e, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(n_e))
 
-        reg_variable = opt_entries[0].get('variable', '')
-        reg_events = [{'label': s['label'], 'variable': s['variable']}
-                      for s in var_specs if s['kind'] == 'value']
+    if not var_specs:
+        return {"success": False, "error": "No decision dimensions found in optimize: blocks"}
 
-        bounds_lo = np.array(lo_list, dtype=float)
-        bounds_hi = np.array(hi_list, dtype=float)
-        n_var = len(var_specs)
+    reg_variable = opt_entries[0].get('variable', '')
+    reg_events = [{'label': s['label'], 'variable': s['variable']}
+                  for s in var_specs if s['kind'] == 'value']
 
-        # Fixed events from fixed_entries (no optimize: block)
-        fixed_events_map: Dict[str, List[Dict]] = {}
-        for e in fixed_entries:
-            v = e.get('variable', '')
-            if not v:
-                continue
-            ev_f: Dict[str, Any] = {'time': e.get('time', '08:00'), 'value': float(e.get('value', 0))}
-            if e.get('days'):
-                ev_f['days'] = e['days']
-            dr = e.get('date_range')
-            if isinstance(dr, list) and len(dr) == 2:
-                ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
-            elif isinstance(dr, str) and '~' in dr:
-                p = dr.split('~'); ev_f['valid_start'] = p[0].strip(); ev_f['valid_end'] = p[1].strip()
-            elif e.get('valid_start'):
-                ev_f['valid_start'] = e['valid_start']
-                if e.get('valid_end'): ev_f['valid_end'] = e['valid_end']
-            fixed_events_map.setdefault(v, []).append(ev_f)
+    bounds_lo = np.array(lo_list, dtype=float)
+    bounds_hi = np.array(hi_list, dtype=float)
+    n_var = len(var_specs)
 
-        def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
-            from datetime import date as _date, timedelta
-            events_map: Dict[str, List[Dict]] = {k: list(v) for k, v in fixed_events_map.items()}
-            decoded: Dict[int, Dict] = {}
-            for i, spec in enumerate(var_specs):
-                eid = id(spec['entry'])
-                if eid not in decoded:
-                    e0 = spec['entry']
-                    d0: Dict[str, Any] = {
-                        'variable': spec['variable'],
-                        'time': e0.get('time', '08:00'),
-                        'days': e0.get('days'),
-                        'value': float(e0.get('value', 0)),
-                        'valid_start': None,
-                        'valid_end': None,
-                    }
-                    dr = e0.get('date_range')
-                    if isinstance(dr, list) and len(dr) == 2:
-                        d0['valid_start'] = str(dr[0]); d0['valid_end'] = str(dr[1])
-                    elif isinstance(dr, str) and '~' in dr:
-                        p = dr.split('~'); d0['valid_start'] = p[0].strip(); d0['valid_end'] = p[1].strip()
-                    decoded[eid] = d0
-                d = decoded[eid]
-                if spec['kind'] == 'value':
-                    d['value'] = float(x[i])
-                elif spec['kind'] == 'time':
-                    si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
-                    d['time'] = spec['slots'][si]
-                elif spec['kind'] == 'days':
-                    pi = max(0, min(len(spec['patterns']) - 1, int(round(float(x[i])))))
-                    d['days'] = spec['patterns'][pi]
-                elif spec['kind'] == 'date_start':
-                    offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
-                    d['valid_start'] = str(_date.fromisoformat(spec['window_start']) + timedelta(days=offset))
-                elif spec['kind'] == 'date_end':
-                    offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
-                    d['valid_end'] = str(_date.fromisoformat(spec['window_start']) + timedelta(days=offset))
-            for d in decoded.values():
-                ev2: Dict = {'time': d['time'], 'value': float(d.get('value', 0))}
-                if d.get('days') is not None:
-                    ev2['days'] = d['days']
-                if d.get('valid_start'):
-                    ev2['valid_start'] = d['valid_start']
-                if d.get('valid_end'):
-                    ev2['valid_end'] = d['valid_end']
-                events_map.setdefault(d['variable'], []).append(ev2)
-            return events_map
-    else:
-        # Legacy regimen: format (single variable)
-        regimen_def = opt_block.get('regimen', {})
-        reg_variable = regimen_def.get('variable', '')
-        reg_events = regimen_def.get('events', [])
+    # Fixed events from fixed_entries (no optimize: block)
+    fixed_events_map: Dict[str, List[Dict]] = {}
+    for e in fixed_entries:
+        v = e.get('variable', '')
+        if not v:
+            continue
+        ev_f: Dict[str, Any] = {'time': e.get('time', '08:00'), 'value': float(e.get('value', 0))}
+        if e.get('days'):
+            ev_f['days'] = e['days']
+        dr = e.get('date_range')
+        if isinstance(dr, list) and len(dr) == 2:
+            ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
+        fixed_events_map.setdefault(v, []).append(ev_f)
 
-        if not reg_variable or not reg_events:
-            return {"success": False, "error": "No decision variables defined (use inputs: or regimen:)"}
-
-        bounds_lo = np.array([e.get('dose_bounds', [0.0, 1.0])[0] for e in reg_events], dtype=float)
-        bounds_hi = np.array([e.get('dose_bounds', [0.0, 1.0])[1] for e in reg_events], dtype=float)
-        n_var = len(reg_events)
-
-        def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
-            return {reg_variable: [
-                {'time': reg_events[i].get('time', '08:00'), 'value': float(x[i])}
-                for i in range(n_var)
-            ]}
+    def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+        from datetime import date as _date, timedelta
+        events_map: Dict[str, List[Dict]] = {k: list(v) for k, v in fixed_events_map.items()}
+        decoded: Dict[int, Dict] = {}
+        for i, spec in enumerate(var_specs):
+            eid = id(spec['entry'])
+            if eid not in decoded:
+                e0 = spec['entry']
+                d0: Dict[str, Any] = {
+                    'variable': spec['variable'],
+                    'time': e0.get('time', '08:00'),
+                    'days': e0.get('days'),
+                    'value': float(e0.get('value', 0)),
+                    'valid_start': None,
+                    'valid_end': None,
+                }
+                dr = e0.get('date_range')
+                if isinstance(dr, list) and len(dr) == 2:
+                    d0['valid_start'] = str(dr[0]); d0['valid_end'] = str(dr[1])
+                decoded[eid] = d0
+            d = decoded[eid]
+            if spec['kind'] == 'value':
+                d['value'] = float(x[i])
+            elif spec['kind'] == 'time':
+                si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
+                d['time'] = spec['slots'][si]
+            elif spec['kind'] == 'days':
+                pi = max(0, min(len(spec['patterns']) - 1, int(round(float(x[i])))))
+                d['days'] = spec['patterns'][pi]
+            elif spec['kind'] == 'date_start':
+                offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
+                d['valid_start'] = str(_date.fromisoformat(spec['window_start']) + timedelta(days=offset))
+            elif spec['kind'] == 'date_end':
+                offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
+                d['valid_end'] = str(_date.fromisoformat(spec['window_start']) + timedelta(days=offset))
+        for d in decoded.values():
+            ev2: Dict = {'time': d['time'], 'value': float(d.get('value', 0))}
+            if d.get('days') is not None:
+                ev2['days'] = d['days']
+            if d.get('valid_start'):
+                ev2['valid_start'] = d['valid_start']
+            if d.get('valid_end'):
+                ev2['valid_end'] = d['valid_end']
+            events_map.setdefault(d['variable'], []).append(ev2)
+        return events_map
 
     # ── simulation parameters ─────────────────────────────────────────────────
     # opt_block.start_date / end_date / step_size override simulation block values

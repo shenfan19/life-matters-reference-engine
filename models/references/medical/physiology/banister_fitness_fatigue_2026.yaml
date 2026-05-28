@@ -166,7 +166,7 @@ optimizer:
       condition: "<= 100"
       type: hard
       description: "避免过度训练：疲劳分量不超100（Morton 1990推荐阈值）"
-  inputs:
+  schedules:
     - variable: training_load
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri]

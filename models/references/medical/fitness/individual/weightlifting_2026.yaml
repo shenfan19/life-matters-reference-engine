@@ -179,7 +179,7 @@ optimizer:
       condition: "<= 70"
       type: hard
       description: "疲劳上限 70 分（超过此值影响训练质量和受伤风险）"
-  inputs:
+  schedules:
     - variable: training_load_pct_1rm
       time: "08:00"
       label: "训练强度（%1RM，60=低强度耐力，92=极高强度力量）"

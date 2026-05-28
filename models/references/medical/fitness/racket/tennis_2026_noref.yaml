@@ -212,7 +212,7 @@ optimizer:
       condition: <= 10.0
       type: soft
       description: 血乳酸控制在 10 mmol/L 以内
-  inputs:
+  schedules:
     - variable: rally_intensity
       time: "10:00"
       label: 回合强度（RPE 3-9）

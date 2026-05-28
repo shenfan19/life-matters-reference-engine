@@ -91,17 +91,14 @@ optimizer:
     - variable: heart_rate
       condition: "<= 100"
       type: hard
-  inputs:
+  schedules:
     - variable: training_load
       time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]
-        - [Mon, Tue, Wed, Thu, Fri]
-        - [Mon, Tue, Thu, Fri, Sat]
       label: "Training session (min + weekly pattern)"
       optimize:
         value: [20.0, 90.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [1, 7]
   algorithm:
     population_size: 25
     n_generations: 40

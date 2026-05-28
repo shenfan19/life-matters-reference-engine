@@ -110,7 +110,7 @@ optimizer:
     - variable: body_weight
       metric: final
       direction: minimize
-  inputs:
+  schedules:
     - variable: caloric_deficit
       time: "00:00"
       label: "Daily caloric deficit (kcal/day)"
@@ -118,14 +118,11 @@ optimizer:
         value: [200.0, 1000.0]
     - variable: exercise_minutes
       time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]
-        - [Mon, Tue, Wed, Thu, Fri]
-        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       label: "Exercise session + weekly pattern"
       optimize:
         value: [0.0, 60.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [1, 7]
   algorithm:
     population_size: 25
     n_generations: 40

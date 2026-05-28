@@ -164,7 +164,7 @@ optimizer:
       condition: ">= 280"
       type: soft
       description: "拦网高度不低于280cm（技战术下限）"
-  inputs:
+  schedules:
     - variable: spike_intensity
       time: "09:00"
       label: "扣球强度（RPE 4-10）"

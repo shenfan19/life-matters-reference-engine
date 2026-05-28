@@ -150,7 +150,7 @@ optimizer:
     - variable: sbp
       condition: "<= 220"
       type: hard
-  inputs:
+  schedules:
     - variable: antihypertensive
       time: "08:00"
       label: "Antihypertensive dose first half (mg)"

@@ -257,7 +257,7 @@ optimizer:
       condition: "<= 10"
       type: hard
       description: "防止过度训练（>10 MET-h/day有损伤风险）"
-  inputs:
+  schedules:
     - variable: exercise_intensity
       time: "07:00"
       days: [Mon, Wed, Fri]

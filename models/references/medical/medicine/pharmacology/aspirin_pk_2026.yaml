@@ -239,7 +239,7 @@ optimizer:
       condition: "<= 100"
       type: hard
       description: "毒性约束：血浆水杨酸<100 mg/L（避免耳鸣、酸中毒）"
-  inputs:
+  schedules:
     - variable: aspirin_dose
       time: "08:00"
       label: "晨服阿司匹林剂量（mg）"

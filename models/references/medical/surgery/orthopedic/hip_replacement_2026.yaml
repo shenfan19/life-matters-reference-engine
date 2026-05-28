@@ -308,7 +308,7 @@ optimizer:
       condition: ">= 60"
       type: soft
       description: "第28天外展肌力量≥60% LSI（Trendelenburg预防）"
-  inputs:
+  schedules:
     - variable: pt_intensity
       time: "10:00"
       label: "第1-2周PT强度"

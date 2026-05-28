@@ -154,7 +154,7 @@ optimizer:
     - variable: liver_load
       condition: "<= 500"
 
-  inputs:
+  schedules:
     - variable: slot_6am
       time: "06:00"
       value: 5.0

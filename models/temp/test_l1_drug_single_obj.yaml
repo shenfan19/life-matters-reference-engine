@@ -102,7 +102,7 @@ optimizer:
     - variable: liver_load
       condition: "<= 250"
 
-  inputs:
+  schedules:
     - variable: dose_mg
       time: "08:00"
       value: 10.0

@@ -160,7 +160,7 @@ optimizer:
       condition: "<= 40"
       type: hard
       description: "ALT不超正常上限（EASL 2016）"
-  inputs:
+  schedules:
     - variable: exercise_intensity
       time: "07:00"
       days: [Mon, Wed, Fri]

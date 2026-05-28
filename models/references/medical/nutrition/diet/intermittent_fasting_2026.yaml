@@ -288,7 +288,7 @@ optimizer:
       condition: ">= 6"
       type: hard
       description: "进食窗口不低于6小时（营养充足底线）"
-  inputs:
+  schedules:
     - variable: eating_window_hours
       time: "08:00"
       label: "进食窗口（小时）"

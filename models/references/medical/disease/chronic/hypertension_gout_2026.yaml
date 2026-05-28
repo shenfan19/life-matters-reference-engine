@@ -221,7 +221,7 @@ optimizer:
       condition: "<= 25"
       type: hard
       description: "HCTZ标准剂量上限25mg（ESC 2018）"
-  inputs:
+  schedules:
     - variable: diuretic_dose
       time: "08:00"
       label: "HCTZ晨服剂量（mg）"

@@ -202,7 +202,7 @@ optimizer:
       condition: "<= 170"
       type: soft
       description: "心率目标上限 170 bpm（有氧-无氧阈值，维持可持续行军）"
-  inputs:
+  schedules:
     - variable: hiking_speed
       time: "07:00"
       label: "徒步速度（km/h，2.5=慢速恢复，7.0=快速行军）"

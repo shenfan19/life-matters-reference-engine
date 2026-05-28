@@ -306,7 +306,7 @@ optimizer:
       condition: ">= 65"
       type: hard
       description: "防止低血糖（≥65 mg/dL）"
-  inputs:
+  schedules:
     - variable: carb_intake_g_day
       time: "08:00"
       label: "碳水摄入（g/day）"
