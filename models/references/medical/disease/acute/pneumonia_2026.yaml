@@ -201,7 +201,7 @@ optimizer:
       condition: "<= 2.0"
       type: hard
       description: "抗生素剂量上限（避免毒副作用）"
-  inputs:
+  schedules:
     - variable: antibiotic_dose
       time: "08:00"
       label: "抗生素晨服剂量"

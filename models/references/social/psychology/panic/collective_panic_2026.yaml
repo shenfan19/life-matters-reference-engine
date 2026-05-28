@@ -255,7 +255,7 @@ optimizer:
       condition: "<= 60"
       type: hard
       description: "恐慌指数不超60（防止社会秩序崩溃临界点）"
-  inputs:
+  schedules:
     - variable: authority_message
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]

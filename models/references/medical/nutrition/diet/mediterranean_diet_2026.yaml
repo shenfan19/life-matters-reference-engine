@@ -308,7 +308,7 @@ optimizer:
       condition: "<= 130"
       type: soft
       description: "SBP目标≤130 mmHg"
-  inputs:
+  schedules:
     - variable: olive_oil_ml_day
       time: "12:00"
       label: "橄榄油（mL/day）"

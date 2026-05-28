@@ -199,7 +199,7 @@ optimizer:
       condition: "<= 8"
       type: hard
       description: "乳酸上限 8 mmol/L（超过此值为严重无氧区，难以维持）"
-  inputs:
+  schedules:
     - variable: power_output
       time: "07:00"
       label: "训练功率（W，140=Z2有氧下限，310=Z6无氧上限）"

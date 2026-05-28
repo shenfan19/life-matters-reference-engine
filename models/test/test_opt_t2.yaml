@@ -97,23 +97,20 @@ optimizer:
     - variable: glucose_peak
       metric: max
       direction: minimize
-  inputs:
+  schedules:
     # T2: breakfast — value + time window, 1h step → slots: 06:00, 07:00, 08:00, 09:00
     - variable: breakfast_carbs
-      time_window: "06:00~09:00"
-      opt_step: 1h
       label: "Breakfast carbs + timing"
       optimize:
         value: [20.0, 100.0]
-        time: true
+        time: ["06:00", "09:00"]
     # T2: lunch — value + time window, 15min step → denser slot grid
     - variable: lunch_carbs
-      time_window: "11:30~13:00"
-      opt_step: 15min
       label: "Lunch carbs + timing (15min resolution)"
       optimize:
         value: [20.0, 100.0]
-        time: true
+        time: ["11:30", "13:00"]
+        time_step: "15min"
   algorithm:
     population_size: 20
     n_generations: 30

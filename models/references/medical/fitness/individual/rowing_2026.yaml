@@ -188,7 +188,7 @@ optimizer:
       condition: "<= 200"
       type: hard
       description: "心率上限 200 bpm（安全上限）"
-  inputs:
+  schedules:
     - variable: power_output
       time: "07:00"
       label: "比赛/训练功率（W，200=有氧基础，450=精英比赛强度）"

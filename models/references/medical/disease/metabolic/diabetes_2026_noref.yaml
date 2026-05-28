@@ -116,7 +116,7 @@ optimizer:
       condition: ">= 70"
       type: hard
       description: "低血糖安全约束：血糖≥70 mg/dL"
-  inputs:
+  schedules:
     - variable: carb_intake
       time: "08:00"
       label: "早餐碳水（g）"

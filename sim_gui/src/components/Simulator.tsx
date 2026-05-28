@@ -566,31 +566,41 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
       setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
 
-      // Apply optimizer.inputs decision vars to inputEvents (set optimizeValue + bounds on matching events)
-      if (Array.isArray(optBlock.inputs)) {
-        const withOpt = (optBlock.inputs as any[]).filter((e: any) => e.variable && Array.isArray(e.optimize?.value) && e.optimize.value.length >= 2);
+      // Apply optimizer.schedules decision entries to inputEvents
+      if (Array.isArray(optBlock.schedules)) {
+        const withOpt = (optBlock.schedules as any[]).filter((e: any) => e.variable && e.optimize);
         if (withOpt.length > 0) {
           setInputEvents(prev => {
             const updated = prev.map(ev => ({ ...ev }));
             for (const inp of withOpt) {
+              const opt = inp.optimize ?? {};
               const idx = updated.findIndex(ev =>
                 ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
               );
               if (idx >= 0) {
-                updated[idx] = {
-                  ...updated[idx],
-                  optimizeValue: true,
-                  valueBounds: [inp.optimize.value[0], inp.optimize.value[1]] as [number, number],
-                  optimizeTime: !!inp.optimize?.time,
-                  timeWindow: inp.time_window,
-                  optStep: inp.opt_step ?? '1h',
-                  optimizeDays: !!inp.optimize?.days,
-                  daysOptions: inp.days_options,
-                  optimizeDateStart: !!inp.optimize?.date_start,
-                  dateStartWindow: inp.date_start_window,
-                  optimizeDateEnd: !!inp.optimize?.date_end,
-                  dateEndWindow: inp.date_end_window,
-                };
+                const patch: Partial<typeof updated[0]> = { optimizeValue: true };
+                if (Array.isArray(opt.value) && opt.value.length >= 2)
+                  patch.valueBounds = [opt.value[0], opt.value[1]];
+                // T2
+                if (Array.isArray(opt.time) && opt.time.length === 2) {
+                  patch.optimizeTime = true;
+                  patch.timeWindowStart = opt.time[0];
+                  patch.timeWindowEnd = opt.time[1];
+                  if (opt.time_step) patch.timeStep = opt.time_step;
+                }
+                // T3
+                if (opt.days_pool) {
+                  patch.optimizeDays = true;
+                  patch.daysPool = opt.days_pool;
+                  if (opt.days_n) { patch.daysNMin = opt.days_n[0]; patch.daysNMax = opt.days_n[1]; }
+                }
+                // T4
+                if (Array.isArray(opt.date_range) && opt.date_range.length === 2) {
+                  patch.optimizeDateRange = true;
+                  patch.dateStartLo = opt.date_range[0][0]; patch.dateStartHi = opt.date_range[0][1];
+                  patch.dateEndLo = opt.date_range[1][0];   patch.dateEndHi = opt.date_range[1][1];
+                }
+                updated[idx] = { ...updated[idx], ...patch };
               }
             }
             return updated;

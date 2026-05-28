@@ -203,7 +203,7 @@ optimizer:
       condition: "<= 195"
       type: hard
       description: "心率安全上限 195 bpm"
-  inputs:
+  schedules:
     - variable: intensity_pct_threshold
       time: "07:00"
       label: "游泳段强度（%阈值，65=保守，90=激进）"

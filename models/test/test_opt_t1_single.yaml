@@ -81,7 +81,7 @@ optimizer:
     - variable: nitrogen_waste
       condition: "<= 50"
       type: hard
-  inputs:
+  schedules:
     - variable: protein_intake
       time: "08:00"
       label: "Daily protein (g/kg/day)"

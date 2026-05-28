@@ -176,7 +176,7 @@ optimizer:
     - variable: bun
       condition: "<= 80"  # BUN 全程不超 80 mg/dL（避免尿毒症）
 
-  inputs:
+  schedules:
     - variable: protein_intake
       time: "08:00"
       label: "Daily protein intake (g/kg/day)"

@@ -257,7 +257,7 @@ optimizer:
       condition: "<= 0.8"
       type: soft
       description: "避免社会极度委屈"
-  inputs:
+  schedules:
     - variable: economic_inequality_gini
       time: "00:00"
       label: "基尼系数目标值"

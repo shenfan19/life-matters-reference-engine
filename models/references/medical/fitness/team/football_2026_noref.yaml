@@ -236,7 +236,7 @@ optimizer:
       condition: >= 20
       type: soft
       description: 保留 20% 肌糖原储备
-  inputs:
+  schedules:
     - variable: game_intensity
       time: "15:00"
       label: 比赛强度（RPE 3-9）

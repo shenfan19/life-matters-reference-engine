@@ -164,7 +164,7 @@ optimizer:
       condition: "<= 190"
       type: soft
       description: "心率控制在190 bpm以内"
-  inputs:
+  schedules:
     - variable: sprint_ratio
       time: "15:00"
       label: "冲刺时间占比（5-35%）"

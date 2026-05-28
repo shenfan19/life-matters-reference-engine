@@ -382,7 +382,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
     </div>
   );
 
-  const decisionCount = inputEvents.filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateStart).length;
+  const decisionCount = inputEvents.filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateRange).length;
   const importDropdown = (
     <Dropdown
       menu={{

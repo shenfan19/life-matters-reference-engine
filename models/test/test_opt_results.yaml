@@ -152,7 +152,7 @@ optimizer:
       condition: ">= -500"
       type: soft
 
-  inputs:
+  schedules:
     - variable: protein_intake
       time: "08:00"
       label: "Daily protein (g/kg/day)"

@@ -185,7 +185,7 @@ optimizer:
       condition: "<= 180"
       type: soft
       description: "心率控制在180 bpm以内（Zone 5上限）"
-  inputs:
+  schedules:
     - variable: power_zone
       time: "06:30"
       label: "功率区间（Zone 1-5，有氧-VO2max范围）"

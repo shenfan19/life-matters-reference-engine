@@ -247,7 +247,7 @@ optimizer:
       condition: "<= 500"
       type: hard
       description: "液体速率上限500mL/h（防肺水肿）"
-  inputs:
+  schedules:
     - variable: fluid_resuscitation_ml_hr
       time: "00:00"
       label: "初始液体复苏速率（mL/h）"

@@ -213,7 +213,7 @@ optimizer:
       condition: "<= 4"
       type: soft
       description: "目标：疼痛评分<4（日常功能保留）"
-  inputs:
+  schedules:
     - variable: hydroxyurea_dose_mg_per_kg
       time: "08:00"
       label: "羟基脲剂量（mg/kg/day）"

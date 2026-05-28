@@ -260,7 +260,7 @@ optimizer:
       condition: "<= 0.5"
       type: hard
       description: "Burnout临界约束：风险指数不超0.5（Maslach 2001临床边界）"
-  inputs:
+  schedules:
     - variable: workload
       time: "09:00"
       days: [Mon, Tue, Wed, Thu, Fri]

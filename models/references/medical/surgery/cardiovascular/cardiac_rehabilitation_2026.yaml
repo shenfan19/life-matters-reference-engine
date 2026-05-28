@@ -319,7 +319,7 @@ optimizer:
       condition: ">= 50"
       type: hard
       description: "静息心率全程≥50 bpm"
-  inputs:
+  schedules:
     - variable: supervised_exercise_intensity
       time: "09:00"
       label: "第1-4周运动强度（MET）"

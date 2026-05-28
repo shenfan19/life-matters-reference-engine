@@ -165,7 +165,7 @@ optimizer:
       condition: "<= 190"
       type: soft
       description: "心率控制在190 bpm以内"
-  inputs:
+  schedules:
     - variable: game_intensity
       time: "09:00"
       label: "比赛强度（RPE 4-9）"

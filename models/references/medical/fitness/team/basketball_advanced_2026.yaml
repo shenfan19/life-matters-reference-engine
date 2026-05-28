@@ -165,7 +165,7 @@ optimizer:
       condition: ">= 60"
       type: soft
       description: "决策质量指数不低于60（场上执行力底线）"
-  inputs:
+  schedules:
     - variable: fast_break_frequency
       time: "19:30"
       label: "快攻频率（0.5-5次/min）"

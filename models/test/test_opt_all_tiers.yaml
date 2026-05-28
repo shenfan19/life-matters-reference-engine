@@ -196,7 +196,7 @@ optimizer:
       value: 10.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       label: "Background drug (fixed in optimizer)"
-  inputs:
+  schedules:
     # T1 only: insulin value
     - variable: insulin_dose
       time: "07:30"
@@ -205,32 +205,26 @@ optimizer:
         value: [2.0, 20.0]
     # T1 + T2: meal carbs value + time window
     - variable: meal_carbs
-      time_window: "07:00~09:00"
-      opt_step: 1h
       label: "Breakfast carbs + timing"
       optimize:
         value: [20.0, 80.0]
-        time: true
+        time: ["07:00", "09:00"]
     # T1 + T3: exercise value + days pattern
     - variable: exercise_minutes
       time: "17:00"
-      days_options:
-        - [Mon, Wed, Fri]
-        - [Tue, Thu, Sat]
-        - [Mon, Tue, Wed, Thu, Fri]
       label: "Exercise session + weekly pattern"
       optimize:
         value: [20.0, 60.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
     # T1 + T4: metformin value + start date
     - variable: metformin_dose
       time: "08:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-02-01~2026-03-31"
       label: "Metformin dose + start date"
       optimize:
         value: [250.0, 1000.0]
-        date_start: true
+        date_range: [["2026-02-01", "2026-03-31"], ["2026-12-31", "2026-12-31"]]
   algorithm:
     population_size: 30
     n_generations: 50

@@ -111,7 +111,7 @@ optimizer:
     - variable: total_daily_dose
       condition: "<= 45"
       type: hard
-  inputs:
+  schedules:
     - variable: morning_dose
       time: "08:00"
       label: "Morning dose (mg)"

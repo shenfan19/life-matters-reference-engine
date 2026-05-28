@@ -222,7 +222,7 @@ optimizer:
       condition: <= 350
       type: soft
       description: 反应时间控制在 350ms 以内
-  inputs:
+  schedules:
     - variable: rally_pace
       time: "09:00"
       label: 回合节奏（RPE 3-9）

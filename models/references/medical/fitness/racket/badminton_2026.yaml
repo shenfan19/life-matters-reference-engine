@@ -170,7 +170,7 @@ optimizer:
       condition: "<= 8.0"
       type: soft
       description: "血乳酸控制在8 mmol/L以内"
-  inputs:
+  schedules:
     - variable: rally_pace
       time: "09:00"
       label: "回合节奏（RPE 3-9）"

@@ -74,16 +74,15 @@ optimizer:
     - variable: body_weight
       metric: final
       direction: minimize
-  inputs:
+  schedules:
     # T4: value + date_start from April to May
     - variable: caloric_restriction
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-04-01~2026-05-31"
       label: "Caloric restriction dose + start date"
       optimize:
         value: [300.0, 800.0]
-        date_start: true
+        date_range: [["2026-04-01", "2026-05-31"], ["2026-12-31", "2026-12-31"]]
   algorithm:
     population_size: 25
     n_generations: 40

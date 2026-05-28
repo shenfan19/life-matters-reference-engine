@@ -167,7 +167,7 @@ optimizer:
       condition: ">= 5"
       type: hard
       description: "皮质醇下限：5 nmol/L（低于此值为肾上腺抑制，病理状态）"
-  inputs:
+  schedules:
     - variable: yoga_intensity
       time: "07:30"
       label: "练习强度（MET，1.5=阴瑜伽，4.5=阿斯汤加）"
