@@ -419,10 +419,7 @@ optimizer:
 
     # T1+T3: 饮食升糖负荷 + 运动频率模式（低GI饮食配合 HIIT 哪几天）
     - variable: exercise_met_min
-      time: "07:00"              # 经典HIIT 3次/周
-        - [Mon, Tue, Thu, Fri]         # 4次/周
-        - [Mon, Wed, Fri, Sat]         # 3次+周六
-        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周中等强度
+      time: "07:00"
       label: "有氧运动频率模式（T3）"
       optimize:
         value: [150.0, 280.0]
