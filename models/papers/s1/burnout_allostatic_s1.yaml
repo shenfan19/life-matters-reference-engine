@@ -367,10 +367,7 @@ optimizer:
     # T1+T3: 运动时长 + 运动频率模式
     # 科学意义：运动降低基础皮质醇（Sapolsky 2004），但过于频繁可能增加恢复负担
     - variable: exercise_min
-      time: "07:00"              # 3次/周（经典有氧间歇）
-        - [Mon, Tue, Thu, Fri]         # 4次/周
-        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（每日）
-        - [Mon, Wed, Fri, Sat]         # 3次+周六
+      time: "07:00"
       label: "运动时长与频率模式"
       optimize:
         value: [20.0, 50.0]

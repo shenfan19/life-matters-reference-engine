@@ -319,9 +319,7 @@ optimizer:
     # T3: 午睡时机（哪几天、什么时候午睡）
     # 科学意义：工作日午睡 vs 隔天午睡 vs 不午睡，对慢性睡眠债恢复效率不同
     - variable: nap_minutes
-      time: "13:00"   # 每天工作日午睡
-        - [Mon, Wed, Fri]             # 间隔午睡（避免夜间睡眠影响）
-        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 全周午睡（含周末）
+      time: "13:00"
       label: "午睡频率策略"
       optimize:
         value: [0.0, 30.0]

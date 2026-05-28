@@ -252,10 +252,7 @@ optimizer:
     # T1+T3: HIIT 阶段强度 + 每周频率（几次/周 HIIT）
     # 科学意义：Mon/Wed/Fri（3次）vs Mon-Fri每天 vs Mon/Tue/Thu/Sat（4次）
     - variable: exercise_intensity
-      time: "07:00"              # 3次/周（经典HIIT间歇）
-        - [Mon, Tue, Thu, Sat]         # 4次/周
-        - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（高频HIIT）
-        - [Tue, Thu, Sat]              # 3次/周（周末含周六）
+      time: "07:00"
       label: "HIIT主训频率与强度"
       optimize:
         value: [6.0, 10.0]

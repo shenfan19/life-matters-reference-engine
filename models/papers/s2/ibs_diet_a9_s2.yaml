@@ -309,9 +309,7 @@ optimizer:
     # T3: 重新引入期的测试频率（每周1种食物 vs 每3天1种）
     # 科学意义：过快重引入难以识别触发食物，过慢则延长饮食限制期不必要
     - variable: fodmap_intake
-      time: "00:00"   # 全周均匀（15g/day 一致）
-        - [Mon, Tue, Wed, Thu, Fri]              # 工作日限制，周末稍松
-        - [Mon, Wed, Fri]                        # 间隔天全严格，其余天中等
+      time: "00:00"
       label: "重新引入期的每周节奏（T3）"
       optimize:
         value: [10.0, 22.0]

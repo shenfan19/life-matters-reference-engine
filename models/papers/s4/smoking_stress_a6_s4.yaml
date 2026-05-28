@@ -321,10 +321,7 @@ optimizer:
     # 科学意义：工作日结构化环境（同事监督+任务专注）抑制冲动吸烟
     # vs 周末自由时间可能增加吸烟冲动（社交饮酒等）
     - variable: cigarettes_per_day
-      time: "09:00"            # 工作日严格减量（周末相对宽松）
-        - [Sat, Sun]                            # 周末严格减量（工作日相对宽松）
-        - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 全周均匀减量
-        - [Mon, Wed, Fri, Sat, Sun]            # 隔天+周末严格
+      time: "09:00"
       label: "严格减量日模式选择"
       optimize:
         value: [0.0, 8.0]
