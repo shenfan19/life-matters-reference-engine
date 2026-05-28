@@ -1,0 +1,198 @@
+metadata:
+  name: test_opt_results
+  description:
+    brief: "[TEST] Optimizer eval-window + results block with pre-filled Pareto front."
+    method: |
+      Nutrient timing model demonstrating:
+        1. optimizer.start_date/end_date different from simulation (shorter eval window).
+        2. optimizer.step_size coarser than metadata.step_size (1h vs 1 day).
+        3. Pre-populated optimizer.results block — tests warm-start display in GUI.
+        4. Hard + soft constraint combination.
+
+      Simulation: 2 years (2026-01-01 to 2027-12-31) for visualization.
+      Optimizer eval window: 6 months only (2026-01-01 to 2026-06-30), step=1 day.
+      This speeds up the optimizer while keeping the GUI view at full resolution.
+
+      Pre-filled results: 5 Pareto solutions for warm-start testing.
+      The GUI should show "5 historical solutions from 2026-05-20" at load time.
+    optimization: |
+      2 inputs: protein_intake [0.5,2.0] g/kg/day + carb_load [100,350] g/day.
+      2 objectives: maximize muscle_mass (final) + minimize fat_mass (final).
+      Hard constraint: cholesterol <= 6.0 mmol/L.
+      Soft constraint: energy_balance >= -500 kcal/day.
+  tags: [test, opt_results, eval-window, warm-start, pareto, hard-soft-constraint]
+  references: ["TEST: optimizer evaluation window + pre-filled results block"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  muscle_mass:
+    type: state
+    value: 30.0
+    unit: kg
+    description: Skeletal muscle mass; rises with protein above anabolic threshold.
+
+  fat_mass:
+    type: state
+    value: 20.0
+    unit: kg
+    description: Body fat mass; rises with excess caloric intake.
+
+  cholesterol:
+    type: state
+    value: 4.5
+    unit: mmol/L
+    description: Total cholesterol; rises slightly with high protein + high fat intake.
+
+  energy_balance:
+    type: state
+    value: 0.0
+    unit: kcal/day
+    description: Net daily energy balance (positive = surplus, negative = deficit).
+
+  protein_intake:
+    type: input
+    value: 0.8
+    unit: g/kg/day
+    description: Daily protein intake rate (continuous rate; formula multiplies by step).
+
+  carb_load:
+    type: input
+    value: 200.0
+    unit: g/day
+    description: Daily carbohydrate intake rate (continuous rate; formula multiplies by step).
+
+  protein_anabolic_threshold:
+    type: parameter
+    value: 0.8
+    unit: g/kg/day
+    description: Minimum protein intake for net muscle synthesis.
+
+  muscle_gain_rate:
+    type: parameter
+    value: 0.03
+    unit: kg per g/kg/day excess
+    description: Muscle gain per unit excess protein above threshold per day.
+
+  muscle_loss_rate:
+    type: parameter
+    value: 0.002
+    unit: kg/day
+    description: Baseline daily muscle catabolism.
+
+  fat_gain_per_carb:
+    type: parameter
+    value: 0.000025
+    unit: kg per g/day
+    description: Fat mass increase per g/day excess carbohydrate.
+
+formulas:
+  muscle_dynamics:
+    description: Net muscle mass change from protein excess and basal catabolism (rate × step).
+    dynamics:
+      muscle_mass: "max(5.0, muscle_mass + ((protein_intake - protein_anabolic_threshold) * muscle_gain_rate - muscle_loss_rate) * step)"
+    priority: 5
+
+  fat_dynamics:
+    description: Fat mass increases with carbohydrate surplus (simplified; rate × step).
+    dynamics:
+      fat_mass: "max(3.0, fat_mass + carb_load * fat_gain_per_carb * step)"
+    priority: 5
+
+  cholesterol_dynamics:
+    description: Cholesterol rises with high protein and fat intake (simplified rate × step).
+    dynamics:
+      cholesterol: "max(2.0, min(8.0, 4.5 + (protein_intake - 0.8) * 0.3 + fat_mass * 0.005))"
+    priority: 3
+
+  energy_balance_calc:
+    description: Approximate daily energy balance (formula, static indicator).
+    formula:
+      energy_balance: "carb_load * 4.0 + protein_intake * 70.0 * 4.0 - 2000.0"
+    priority: 1
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2027-12-31"
+  schedules:
+    - variable: protein_intake
+      time: "08:00"
+      value: 0.8
+      label: "Protein 0.8 g/kg/day"
+    - variable: carb_load
+      time: "08:00"
+      value: 200.0
+      label: "Carbs 200 g/day"
+  output_variables: [muscle_mass, fat_mass, cholesterol, energy_balance, protein_intake, carb_load]
+
+optimizer:
+  method: nsga2
+
+  # Evaluation window shorter than simulation (6 months vs 2 years → faster search)
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  step_size:
+    value: 1
+    unit: day
+
+  objectives:
+    - variable: muscle_mass
+      metric: final
+      direction: maximize
+    - variable: fat_mass
+      metric: final
+      direction: minimize
+
+  constraints:
+    - variable: cholesterol
+      condition: "<= 6.0"
+      type: hard
+    - variable: energy_balance
+      condition: ">= -500"
+      type: soft
+
+  inputs:
+    - variable: protein_intake
+      time: "08:00"
+      label: "Daily protein (g/kg/day)"
+      optimize:
+        value: [0.5, 2.0]
+    - variable: carb_load
+      time: "08:00"
+      label: "Daily carbohydrates (g/day)"
+      optimize:
+        value: [100.0, 350.0]
+
+  algorithm:
+    population_size: 30
+    n_generations: 60
+    seed: 42
+
+  mc:
+    enabled: false
+    sim_runs: 1
+
+  # Pre-filled results block — tests GUI warm-start display and Pareto visualization
+  results:
+    generated_at: "2026-05-20"
+    method: nsga2
+    n_solutions: 5
+    elapsed_seconds: 43.7
+    pareto_front:
+      - {x: [0.70, 320.0], f: [-29.8, 21.5]}
+      - {x: [0.90, 280.0], f: [-30.4, 20.8]}
+      - {x: [1.10, 240.0], f: [-31.1, 20.2]}
+      - {x: [1.40, 190.0], f: [-31.6, 19.5]}
+      - {x: [1.80, 130.0], f: [-32.0, 18.4]}
+    reference:
+      x: [1.10, 240.0]
+      f: [-31.1, 20.2]
+      regimen:
+        protein_intake:
+          "Daily protein": 1.10
+        carb_load:
+          "Daily carbohydrates": 240.0
+      objectives:
+        muscle_mass: 31.1
+        fat_mass: 20.2

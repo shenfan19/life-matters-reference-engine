@@ -1,0 +1,108 @@
+metadata:
+  name: test_import_top
+  description:
+    brief: "[TEST] Diamond import: imports both test_import_base and test_import_layer; base loaded once."
+    method: |
+      Top-level composite model that exercises the diamond-dependency resolution.
+
+      Import graph:
+        test_import_top
+          ├── test/test_import_base   (direct)
+          └── test/test_import_layer  (which also imports test/test_import_base)
+                └── test/test_import_base   ← SAME FILE, loaded only once
+
+      The Loader deduplicates: test_import_base is merged exactly once.
+      Layer's override (hr_set_point=58) takes precedence over base (65).
+      This model further overrides stroke_volume (0.070→0.075 for elite athlete).
+
+      Adds: aerobic training input + exercise-driven VO2max adaptation.
+      Optimizer: maximize vo2max with a heart_rate ceiling constraint.
+    limitations: Simplified adaptation kinetics; not validated against training science.
+  tags: [test, import, diamond, composite, override-chain]
+  references: ["TEST: diamond import deduplication and override chain"]
+  step_size:
+    value: 1
+    unit: day
+
+imports:
+  - test/test_import_base
+  - test/test_import_layer
+
+variables:
+  # Override from layer (58) and base (65): top-level can further override or accept layer's
+  # Here we accept layer's 58 bpm (no re-declaration needed; this tests that layer wins over base)
+
+  # Override parameter from base component
+  stroke_volume:
+    type: parameter
+    value: 0.075
+    unit: L/beat
+    description: Overrides base stroke_volume (0.070→0.075 L/beat) for elite athlete profile.
+
+  # New variable: training stimulus
+  training_load:
+    type: input
+    value: 0.0
+    unit: minutes
+    description: Daily aerobic training duration (pulse; VO2max adaptation in formula).
+
+  vo2max_adaptation_rate:
+    type: parameter
+    value: 0.08
+    unit: mL/kg/min per minute of training
+    description: VO2max gain per minute of training session (adapted from Bassett & Howley 2000).
+
+formulas:
+  # This model adds VO2max gain from training (pulse; no step multiplication)
+  vo2max_training:
+    description: VO2max improves from each training session (pulse input, no step).
+    dynamics:
+      vo2max: "min(80.0, vo2max + training_load * vo2max_adaptation_rate)"
+    priority: 10
+
+  # Training also temporarily elevates heart_rate above set-point (pulse)
+  hr_training_elevation:
+    description: Training session transiently raises HR (pulse, no step).
+    dynamics:
+      heart_rate: "min(200.0, heart_rate + training_load * 0.5)"
+    priority: 10
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  schedules:
+    - variable: training_load
+      time: "07:00"
+      value: 45.0
+      days: [Mon, Tue, Wed, Thu, Fri]
+      label: "Training 45 min Mon–Fri"
+  output_variables: [heart_rate, cardiac_output, vo2max, aerobic_fitness_index, training_load]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: vo2max
+      metric: final
+      direction: maximize
+    - variable: heart_rate
+      metric: mean
+      direction: minimize
+  constraints:
+    - variable: heart_rate
+      condition: "<= 100"
+      type: hard
+  inputs:
+    - variable: training_load
+      time: "07:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Mon, Tue, Wed, Thu, Fri]
+        - [Mon, Tue, Thu, Fri, Sat]
+      label: "Training session (min + weekly pattern)"
+      optimize:
+        value: [20.0, 90.0]
+        days: true
+  algorithm:
+    population_size: 25
+    n_generations: 40
+    seed: 42

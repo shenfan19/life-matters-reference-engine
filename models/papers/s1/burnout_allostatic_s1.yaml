@@ -346,18 +346,16 @@ optimizer:
       type: hard
       description: "皮质醇不超过临床干预阈值（Juster 2010）"
 
-  inputs:
+  schedules:
     # ── 以下均为恢复行为（个体可控），工作压力 work_pressure 不在此列 ──
 
     # T1+T2: 睡眠时长 + 就寝时机（与M09睡眠模型共用科学依据）
     - variable: sleep_hours
-      time_window: "21:00~01:00"
-      opt_step: 1h
       days: [Mon, Tue, Wed, Thu, Fri]
       label: "工作日睡眠时长与就寝时机"
       optimize:
         value: [6.0, 9.0]
-        time: true
+        time: ["21:00", "01:00"]
 
     - variable: sleep_hours
       time: "22:30"
@@ -369,16 +367,15 @@ optimizer:
     # T1+T3: 运动时长 + 运动频率模式
     # 科学意义：运动降低基础皮质醇（Sapolsky 2004），但过于频繁可能增加恢复负担
     - variable: exercise_min
-      time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]              # 3次/周（经典有氧间歇）
+      time: "07:00"              # 3次/周（经典有氧间歇）
         - [Mon, Tue, Thu, Fri]         # 4次/周
         - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（每日）
         - [Mon, Wed, Fri, Sat]         # 3次+周六
       label: "运动时长与频率模式"
       optimize:
         value: [20.0, 50.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
 
     # T1: 饮食质量得分（0-10，影响皮质醇回落和情绪耗竭保护）
     - variable: nutrition_score
@@ -401,11 +398,10 @@ optimizer:
     - variable: break_min
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-01-26~2026-02-25"
       label: "集中休假起始时机（连续7天 break_min=480）"
       optimize:
         value: [400.0, 480.0]
-        date_start: true
+        date_range: [["2026-01-26", "2026-02-25"], ["2026-03-27", "2026-03-27"]]
 
   mc:
     enabled: true

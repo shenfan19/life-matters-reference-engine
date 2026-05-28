@@ -1,0 +1,136 @@
+metadata:
+  name: test_opt_t1_pareto
+  description:
+    brief: "[TEST] T1 multi-variable Pareto optimizer: 3 inputs, 2 objectives, hard constraint."
+    method: |
+      Drug dosing model with three time-of-day doses (morning / noon / evening).
+      Each has different bioavailability; both maximize efficacy and minimize toxicity.
+      NSGA-II, 2 objectives. Hard constraint: total_daily_dose <= 45 mg.
+      x-vector length = 3 (one continuous value per input, T1 only).
+    optimization: |
+      Inputs: morning_dose [0,20], noon_dose [0,20], evening_dose [0,20] (T1).
+      Obj 1: maximize plasma_conc (mean).
+      Obj 2: minimize liver_load (final).
+      Constraint: total_daily_dose <= 45 mg (hard).
+  tags: [test, optimizer, t1, pareto, nsga2, multi-objective, constraint]
+  references: ["TEST: T1 multi-variable Pareto with hard constraint"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  plasma_conc:
+    type: state
+    value: 0.0
+    unit: mg/L
+    description: Plasma drug concentration; three-dose daily accumulation with clearance.
+
+  liver_load:
+    type: state
+    value: 0.0
+    unit: mg/L·day
+    description: Cumulative liver metabolic load; 14% of daily plasma_conc per day.
+
+  total_daily_dose:
+    type: state
+    value: 0.0
+    unit: mg
+    description: Sum of all three daily doses (display / constraint variable).
+
+  morning_dose:
+    type: input
+    value: 8.0
+    unit: mg
+    description: Morning dose (pulse); bioavailability 72% (fasted state).
+
+  noon_dose:
+    type: input
+    value: 5.0
+    unit: mg
+    description: Noon dose (pulse); bioavailability 58% (post-prandial).
+
+  evening_dose:
+    type: input
+    value: 5.0
+    unit: mg
+    description: Evening dose (pulse); bioavailability 48% (post-prandial, lower metabolism).
+
+  clearance_rate:
+    type: parameter
+    value: 0.30
+    unit: per_day
+    description: Daily drug clearance fraction; half-life ≈ 2.3 days.
+
+formulas:
+  total_dose_calc:
+    description: Sum of all daily doses (static indicator, no step).
+    formula:
+      total_daily_dose: "morning_dose * 0.72 + noon_dose * 0.58 + evening_dose * 0.48"
+    priority: 10
+
+  plasma_dynamics:
+    description: Daily plasma concentration update — absorbed doses minus clearance.
+    dynamics:
+      plasma_conc: "max(0.0, plasma_conc + (morning_dose * 0.72 + noon_dose * 0.58 + evening_dose * 0.48 - plasma_conc * clearance_rate) * step)"
+    priority: 5
+
+  liver_accumulation:
+    description: Cumulative liver load (14% of current plasma per day).
+    dynamics:
+      liver_load: "liver_load + plasma_conc * 0.14 * step"
+    priority: 3
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-31"
+  schedules:
+    - variable: morning_dose
+      time: "08:00"
+      value: 8.0
+      label: "Morning dose (mg)"
+    - variable: noon_dose
+      time: "12:00"
+      value: 5.0
+      label: "Noon dose (mg)"
+    - variable: evening_dose
+      time: "20:00"
+      value: 5.0
+      label: "Evening dose (mg)"
+  output_variables: [plasma_conc, liver_load, total_daily_dose, morning_dose, noon_dose, evening_dose]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: plasma_conc
+      metric: mean
+      direction: maximize
+    - variable: liver_load
+      metric: final
+      direction: minimize
+  constraints:
+    - variable: total_daily_dose
+      condition: "<= 45"
+      type: hard
+  inputs:
+    - variable: morning_dose
+      time: "08:00"
+      label: "Morning dose (mg)"
+      optimize:
+        value: [0.0, 20.0]
+    - variable: noon_dose
+      time: "12:00"
+      label: "Noon dose (mg)"
+      optimize:
+        value: [0.0, 20.0]
+    - variable: evening_dose
+      time: "20:00"
+      label: "Evening dose (mg)"
+      optimize:
+        value: [0.0, 20.0]
+  algorithm:
+    population_size: 30
+    n_generations: 40
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1

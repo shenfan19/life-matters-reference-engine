@@ -72,16 +72,14 @@ optimizer:
       condition: "<= 700"
       type: hard
 
-  inputs:
+  schedules:
     # T1+T2: HCTZ 剂量 + 给药时间窗（时间药理学）
     - variable: thiazide_dose
-      time_window: "06:00~22:00"
-      opt_step: 1h
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       label: "HCTZ 剂量与给药时机（时间药理学）"
       optimize:
         value: [6.25, 50.0]
-        time: true
+        time: ["06:00", "22:00"]
 
     # T1: 热量缺口（直接影响体重目标）
     - variable: caloric_deficit
@@ -95,11 +93,10 @@ optimizer:
     - variable: allopurinol_dose
       time: "08:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-01-29~2026-04-30"
       label: "别嘌醇引入时机与剂量"
       optimize:
         value: [50.0, 300.0]
-        date_start: true
+        date_range: [["2026-01-29", "2026-04-30"], ["2026-07-01", "2026-07-01"]]
 
   algorithm:
     population_size: 150

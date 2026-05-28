@@ -1390,50 +1390,51 @@ const Simulator: React.FC<SimulatorProps> = ({
     setOptTotalGen(totalGen); setOptJobId(null);
     setRunningModelKey(selectedKey);
 
-    // Build inputs array from decision vars (optimizeValue = true)
-    const inputs = decisionVars.map(ev => {
-      const bounds = ev.valueBounds ?? [0, (ev.value * 2) || 1];
-      const opt: Record<string, any> = { value: bounds };
-      if (ev.optimizeTime) opt.time = true;
-      if (ev.optimizeDays) opt.days = true;
-      if (ev.optimizeDateStart) opt.date_start = true;
-      if (ev.optimizeDateEnd) opt.date_end = true;
-      const inp: Record<string, any> = {
-        variable: ev.variable,
-        label: ev.label || `${ev.variable} ${ev.time}`,
-        optimize: opt,
-      };
-      if (ev.optimizeTime && ev.timeWindow) {
-        inp.time_window = ev.timeWindow;
-        if (ev.optStep) inp.opt_step = ev.optStep;
-      } else if (ev.timeEnabled) {
-        inp.time = ev.time;
-      }
-      if (ev.optimizeDays && ev.daysOptions?.length) inp.days_options = ev.daysOptions;
-      if (!ev.optimizeDays && ev.daysEnabled)
-        inp.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
-      if (ev.optimizeDateStart && ev.dateStartWindow) inp.date_start_window = ev.dateStartWindow;
-      if (ev.optimizeDateEnd && ev.dateEndWindow) inp.date_end_window = ev.dateEndWindow;
-      if (!ev.optimizeDateStart && ev.validRangeEnabled) {
-        inp.valid_start = ev.validStart;
-        inp.valid_end = ev.validEnd;
-      }
-      return inp;
-    });
-
-    // Build schedules from fixed background (optimizeValue = false)
-    const bgVars = inputEvents.filter(ev => !ev.optimizeValue && activeInputVarNames.has(ev.variable));
-    const schedules = bgVars.map(ev => {
-      const s: Record<string, any> = { variable: ev.variable, value: ev.value };
-      if (ev.timeEnabled) s.time = ev.time;
-      if (ev.daysEnabled) s.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
-      if (ev.validRangeEnabled) { s.valid_start = ev.validStart; s.valid_end = ev.validEnd; }
-      return s;
-    });
+    // Build optimizer.schedules: all events (decision vars with optimize:, fixed without)
+    const optSchedules = inputEvents
+      .filter(ev => activeInputVarNames.has(ev.variable))
+      .map(ev => {
+        const entry: Record<string, any> = {
+          variable: ev.variable,
+          label: ev.label || `${ev.variable} ${ev.time}`,
+        };
+        if (ev.optimizeValue) {
+          const optBlock: Record<string, any> = {};
+          if (ev.valueBounds) optBlock.value = ev.valueBounds;
+          // T2
+          if (ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
+            optBlock.time = [ev.timeWindowStart, ev.timeWindowEnd];
+            if (ev.timeStep && ev.timeStep !== '1h') optBlock.time_step = ev.timeStep;
+          } else if (ev.timeEnabled) {
+            entry.time = ev.time;
+          }
+          // T3
+          if (ev.optimizeDays && ev.daysPool?.length) {
+            optBlock.days_pool = ev.daysPool;
+            optBlock.days_n = [ev.daysNMin ?? 1, ev.daysNMax ?? ev.daysPool.length];
+          } else if (ev.daysEnabled) {
+            entry.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
+          }
+          // T4
+          if (ev.validRangeEnabled) {
+            if (ev.optimizeDateRange && ev.dateStartLo && ev.dateStartHi && ev.dateEndLo && ev.dateEndHi) {
+              optBlock.date_range = [[ev.dateStartLo, ev.dateStartHi], [ev.dateEndLo, ev.dateEndHi]];
+            } else {
+              entry.date_range = [ev.validStart, ev.validEnd];
+            }
+          }
+          entry.optimize = optBlock;
+        } else {
+          entry.value = ev.value;
+          if (ev.timeEnabled) entry.time = ev.time;
+          if (ev.daysEnabled) entry.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
+          if (ev.validRangeEnabled) entry.date_range = [ev.validStart, ev.validEnd];
+        }
+        return entry;
+      });
 
     const optimizerOverride: Record<string, any> = {
-      inputs,
-      ...(schedules.length > 0 && { schedules }),
+      schedules: optSchedules,
       objectives: objectives.map(o => ({
         variable: o.variable,
         metric: 'final',

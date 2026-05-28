@@ -1,0 +1,123 @@
+metadata:
+  name: test_opt_t2
+  description:
+    brief: "[TEST] Optimizer T2: value + time-window; 1h and 15min opt_step variants."
+    method: |
+      Glucose model where meal timing matters (chronobiology).
+      Two T2 inputs: breakfast (opt_step=1h, window 06:00~09:00) and
+      lunch (opt_step=15min, window 11:30~13:00).
+      x-vector: [breakfast_value, breakfast_time_slot, lunch_value, lunch_time_slot] → 4 dims.
+      NSGA-II: maximize mean blood_glucose (therapeutic range) + minimize glucose_peak.
+    optimization: |
+      T2 inputs: carb_amount [20,100] g, time searchable within windows.
+      Breakfast window 06:00~09:00 at 1h → 4 slots: 06:00, 07:00, 08:00, 09:00.
+      Lunch window 11:30~13:00 at 15min → 7 slots.
+  tags: [test, optimizer, t2, time-window, opt_step, chronobiology]
+  references: ["TEST: T2 time-window optimization with 1h and 15min opt_step"]
+  step_size:
+    value: 1
+    unit: hour
+
+variables:
+  blood_glucose:
+    type: state
+    value: 85.0
+    unit: mg/dL
+    description: Blood glucose; rises on meal carbs, decays at basal rate.
+
+  glucose_peak:
+    type: state
+    value: 0.0
+    unit: mg/dL
+    description: Running maximum of blood_glucose (for minimization objective).
+
+  breakfast_carbs:
+    type: input
+    value: 0.0
+    unit: g
+    description: Breakfast carbohydrate bolus (pulse; no step multiplication).
+
+  lunch_carbs:
+    type: input
+    value: 0.0
+    unit: g
+    description: Lunch carbohydrate bolus (pulse; no step multiplication).
+
+  glucose_rise_factor:
+    type: parameter
+    value: 0.30
+    unit: mg/dL per g
+    description: Blood glucose rise per gram of carbohydrate.
+
+  clearance_per_hour:
+    type: parameter
+    value: 0.04
+    unit: 1/hour
+    description: Fractional hourly glucose clearance rate toward fasting level (85 mg/dL).
+
+formulas:
+  meal_glucose_rise:
+    description: Immediate glucose rise from meal carbs (pulse input, no step).
+    dynamics:
+      blood_glucose: "blood_glucose + (breakfast_carbs + lunch_carbs) * glucose_rise_factor"
+    priority: 10
+
+  glucose_decay:
+    description: Exponential return toward fasting 85 mg/dL (step in hours).
+    dynamics:
+      blood_glucose: "max(70.0, blood_glucose - (blood_glucose - 85.0) * clearance_per_hour * step)"
+    priority: 5
+
+  peak_tracker:
+    description: Track running maximum glucose level (no step needed, static indicator).
+    formula:
+      glucose_peak: "max(glucose_peak, blood_glucose)"
+    priority: 3
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-07"
+  schedules:
+    - variable: breakfast_carbs
+      time: "08:00"
+      value: 60.0
+      label: "Breakfast 60 g carbs at 08:00"
+    - variable: lunch_carbs
+      time: "12:00"
+      value: 70.0
+      label: "Lunch 70 g carbs at 12:00"
+  output_variables: [blood_glucose, glucose_peak, breakfast_carbs, lunch_carbs]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: blood_glucose
+      metric: mean
+      direction: maximize
+    - variable: glucose_peak
+      metric: max
+      direction: minimize
+  inputs:
+    # T2: breakfast — value + time window, 1h step → slots: 06:00, 07:00, 08:00, 09:00
+    - variable: breakfast_carbs
+      time_window: "06:00~09:00"
+      opt_step: 1h
+      label: "Breakfast carbs + timing"
+      optimize:
+        value: [20.0, 100.0]
+        time: true
+    # T2: lunch — value + time window, 15min step → denser slot grid
+    - variable: lunch_carbs
+      time_window: "11:30~13:00"
+      opt_step: 15min
+      label: "Lunch carbs + timing (15min resolution)"
+      optimize:
+        value: [20.0, 100.0]
+        time: true
+  algorithm:
+    population_size: 20
+    n_generations: 30
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1

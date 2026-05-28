@@ -149,17 +149,25 @@ export interface InputEvent {
   validStart: string;
   validEnd: string;
   // Opt fields — optional; default false/inactive
+  // T1: optimize value
   optimizeValue?: boolean;
   valueBounds?: [number, number];
+  // T2: optimize time (window = [start, end] HH:MM strings)
   optimizeTime?: boolean;
-  timeWindow?: string;
-  optStep?: string;
+  timeWindowStart?: string;
+  timeWindowEnd?: string;
+  timeStep?: string;
+  // T3: optimize days (backend freely combines from pool)
   optimizeDays?: boolean;
-  daysOptions?: string[][];
-  optimizeDateStart?: boolean;
-  dateStartWindow?: string;
-  optimizeDateEnd?: boolean;
-  dateEndWindow?: string;
+  daysPool?: string[];
+  daysNMin?: number;
+  daysNMax?: number;
+  // T4: optimize date range ([[startLo,startHi],[endLo,endHi]])
+  optimizeDateRange?: boolean;
+  dateStartLo?: string;
+  dateStartHi?: string;
+  dateEndLo?: string;
+  dateEndHi?: string;
 }
 
 // Per-model user session: preserved across model switches, persisted to localStorage.

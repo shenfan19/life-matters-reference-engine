@@ -91,7 +91,7 @@ optimizer:
       type: hard
       description: "蛋白质摄入下限（防止蛋白质营养不良）"
 
-  inputs:
+  schedules:
     # T1: 早餐蛋白量
     - variable: dietary_protein
       time: "08:00"
@@ -110,23 +110,20 @@ optimizer:
 
     # T1+T2: 晚餐蛋白量 + 睡前时机（时间营养学扩宽可行窗口）
     - variable: dietary_protein
-      time_window: "17:00~22:00"
-      opt_step: 1h
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       label: "晚餐蛋白量与睡前时机（T2 IHIO 时间维度）"
       optimize:
         value: [0.15, 0.42]
-        time: true
+        time: ["17:00", "22:00"]
 
     # T4: K=2 切换时机（限制期→标准期）
     - variable: dietary_protein
       time: "08:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "2026-04-01~2026-10-01"
       label: "K=2 切换时机（T4，限制期→标准期）"
       optimize:
         value: [0.27, 0.40]
-        date_start: true
+        date_range: [["2026-04-01", "2026-10-01"], ["2026-12-31", "2026-12-31"]]
 
   mc:
     enabled: true

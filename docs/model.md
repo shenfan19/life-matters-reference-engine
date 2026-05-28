@@ -213,44 +213,41 @@ optimizer:                          # 可选；优化器配置；详见「optimi
     enabled: false
     sim_runs: 30
     seed: 42                        # 可选；固定整数=可复现，省略或 null=每次随机
-  schedules:                        # 可选；优化评估期间的固定背景输入（同 simulation.schedules 格式）
-    - variable: var_name            # 缺省时继承 simulation.schedules；声明后完全独立
-      time: "HH:MM"
-      value: 1.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-  inputs:                           # 决策变量列表（T1–T4 可任意组合）
-    - variable: var_name            # T1：仅值优化
-      time: "HH:MM"
-      label: "说明"
-      optimize:
-        value: [lo, hi]
-    - variable: var_name            # T2：值 + 时间窗优化
-      time_window: "HH:MM~HH:MM"
-      opt_step: 1h                  # 时间槽粒度；缺省 1h；精细场景可设 15min
-      label: "说明"
-      optimize:
-        value: [lo, hi]
-        time: true
-    - variable: var_name            # T3：值 + 星期模式选择
-      time: "HH:MM"
-      days_options:                 # 优化器从候选模式中选一个
-        - [Mon, Wed, Fri]
-        - [Sat, Sun]
-      label: "说明"
-      optimize:
-        value: [lo, hi]
-        days: true
-    - variable: var_name            # T4：值 + 干预起始日优化
-      time: "HH:MM"
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_start_window: "YYYY-MM-DD~YYYY-MM-DD"  # 起始日在窗口内优化
-      label: "说明"
-      optimize:
-        value: [lo, hi]
-        date_start: true
-    - variable: fixed_var           # 固定输入（无 optimize 块）——每次评估以固定值注入
+  schedules:                        # 决策变量 + 固定背景输入（统一列表，取代旧 inputs:）
+    - variable: var_name            # 固定背景量（无 optimize 块）——每次评估以固定值注入
       time: "HH:MM"
       value: 1.5
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: ["YYYY-MM-DD", "YYYY-MM-DD"]   # 可选；固定有效期 [start, end]
+    - variable: var_name            # T1：值搜索
+      time: "HH:MM"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "说明"
+      optimize:
+        value: [lo, hi]             # [lo, hi] 搜索区间
+    - variable: var_name            # T1+T2：值 + 时刻搜索
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 固定星期（T3 未激活时）
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        time: ["HH:MM", "HH:MM"]   # 时刻搜索窗 [start, end]
+        time_step: "1h"             # 可选；时间槽粒度；缺省 1h；可设 15min
+    - variable: var_name            # T1+T3：值 + 星期组合搜索（后台自由组合）
+      time: "HH:MM"
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        days_pool: [Mon, Wed, Fri, Sat, Sun]  # 候选日集合
+        days_n: [min, max]          # 从 pool 中选 min~max 天（后台枚举所有合法组合）
+    - variable: var_name            # T1+T4：值 + 日期范围搜索
+      time: "HH:MM"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "说明"
+      optimize:
+        value: [lo, hi]
+        date_range:                 # [[起始日搜索窗lo,hi], [结束日搜索窗lo,hi]]，两组均必填
+          - ["YYYY-MM-DD", "YYYY-MM-DD"]   # 起始日搜索窗
+          - ["YYYY-MM-DD", "YYYY-MM-DD"]   # 结束日搜索窗（固定时写同一日期两次）
 ```
 
 ### `metadata.description`
@@ -739,23 +736,22 @@ formulas:
 | 时间范围 | `simulation.start_date`/`end_date` | `optimizer.start_date`/`end_date`（可选） |
 | 步长 | `metadata.step_size` | `optimizer.step_size`（可选） |
 | Monte Carlo | — | `optimizer.mc` |
-| 固定输入 | `simulation.schedules`（可视化用） | `optimizer.schedules`（评估背景） |
-| 决策变量 | — | `optimizer.inputs` |
+| 固定输入 + 决策变量 | `simulation.schedules`（可视化用） | `optimizer.schedules`（统一列表） |
 
 **Fallback**：`optimizer.*` 字段缺省时，引擎从对应 `simulation.*` / `metadata.*` 继承；GUI 明确标注来源（"来自 sim" vs "已覆盖"）。
 
 **GUI 转化**：
-- "← 从 Sim 导入"：将 Sim tab 当前 inputEvents 复制为 `optimizer.inputs` 决策变量，自动推算 bounds
+- "← 从 Sim 导入"：将 Sim tab 当前 inputEvents 复制为 `optimizer.schedules` 决策变量，自动推算 bounds
 - "发送到 Sim"：将 Pareto 参考解的 regimen 预填为 Sim inputEvents
 
-### 固定背景输入（optimizer.schedules）
+### optimizer.schedules — 决策变量与固定背景量统一列表
 
-`optimizer.schedules` 为优化评估提供固定背景输入（不参与搜索）。格式与 `simulation.schedules` 完全相同。
+`optimizer.schedules` 是决策变量和固定背景量的统一列表（取代旧版分离的 `optimizer.inputs` + `optimizer.schedules`）。有 `optimize:` 块的条目是决策变量；无 `optimize:` 块的是固定背景量。
 
 ```yaml
 optimizer:
   schedules:
-    - variable: metformin_dose
+    - variable: metformin_dose      # 固定背景量（无 optimize 块）
       time: "08:00"
       value: 500
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
@@ -811,84 +807,80 @@ optimizer:
 ### T2：时间窗优化
 
 ```yaml
-inputs:
+schedules:
   - variable: meal_carbs
-    time_window: "07:00~09:00"   # 进食时刻在窗口内优化
-    opt_step: 1h                 # 时间槽粒度；缺省 1h；精细胰岛素/消化场景可设 15min
+    days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]   # 固定星期（T3 未激活）
     label: "早餐碳水"
     optimize:
       value: [30, 80]
-      time: true
+      time: ["07:00", "09:00"]   # 时刻搜索窗 [start, end]
+      time_step: "1h"            # 可选；缺省 1h；精细场景可设 15min
 ```
 
-- `time_window` 格式：`"HH:MM~HH:MM"`（24 小时制，起止含边界）。
-- `opt_step` 合法值：`1h`（缺省）、`15min`。引擎加载时将窗口展开为离散时间槽列表，例如 `"07:00~09:00"` + `1h` → `["07:00", "08:00", "09:00"]`（3 个槽）。
-- 同一 `inputs` 列表中的多个条目，时间窗设计上应不重叠，以避免同一步内脉冲意外累加。
+- `optimize.time` 格式：`["HH:MM", "HH:MM"]`（24 小时制，起止含边界）。
+- `time_step` 合法值：`"1h"`（缺省）、`"15min"`。引擎展开为离散时间槽，例如 `["07:00","09:00"]` + `1h` → `["07:00","08:00","09:00"]`（3 个槽）。
+- T2 激活时，顶层 `time:` 字段不写（无固定时刻）。
 - 科学意义：时间生物学（Chrono-nutrition / Chronopharmacology）中，干预时机本身是关键决策变量，本框架将其显式纳入优化搜索空间。
 
-### T3：星期模式选择
+### T3：星期组合搜索
 
 ```yaml
-inputs:
+schedules:
   - variable: exercise_load
     time: "17:00"
-    days_options:                # 优化器从候选模式中选一个
-      - [Mon, Wed, Fri]
-      - [Tue, Thu, Sat]
-      - [Sat, Sun]
     label: "运动"
     optimize:
       value: [30, 90]
-      days: true
+      days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]  # 候选日集合
+      days_n: [3, 5]                             # 从 pool 中选 3~5 天
 ```
 
-- `days_options` 是候选模式列表，每个模式是三字母缩写列表（Mon–Sun），格式与 `simulation.schedules.days` 相同。
-- 优化器将模式索引（0 到 N-1）编码为一个整数决策变量；建议候选数 N ≤ 6 以控制搜索空间。
-- 不同条目可以独立定义各自的候选集（如游泳只选周末，骑车只选工作日）。
-- 不启用 T3 时，`days` 字段作为固定参数传入（行为与 `simulation.schedules.days` 一致）。
+- `days_pool`：候选日集合（Mon–Sun 三字母缩写）。
+- `days_n: [min, max]`：后台从 pool 中枚举所有满足 min ≤ n ≤ max 的合法组合，编码为整数决策变量。
+- T3 激活时，顶层 `days:` 字段不写（无固定星期）。
 
-### T4：干预起始日优化
+### T4：干预日期范围优化
 
 ```yaml
-inputs:
+schedules:
   - variable: caloric_restriction
     time: "08:00"
     days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-    date_start_window: "2026-05-01~2026-05-30"  # 起始日在窗口内优化
     label: "热量限制"
     optimize:
       value: [400, 800]
-      date_start: true
+      date_range:                                # 强制两组，均必填
+        - ["2026-05-01", "2026-05-30"]           # 起始日搜索窗 [lo, hi]
+        - ["2026-12-31", "2026-12-31"]           # 结束日搜索窗（固定时写同一日期两次）
 ```
 
-- `date_start_window` 格式：`"YYYY-MM-DD~YYYY-MM-DD"`。
-- 引擎将窗口天数（整数偏移 0 到 D-1）作为一个整数决策变量，解码为具体日期。
-- `date_start` 优化改变该条目的有效区间起始日，结束日默认沿用 `simulation.end_date`。
+- `optimize.date_range` 必须恰好两组：第一组为起始日搜索窗，第二组为结束日搜索窗。
+- 若结束日固定，写 `["YYYY-MM-DD", "YYYY-MM-DD"]`（两值相同）。
+- T4 激活时，顶层 `date_range:` 字段不写（固定日期范围）。
 - 典型场景：治疗介入时机、季节性干预窗口、灾后救援资源投放时机。
 
 ### x 向量编码规则
 
-x 向量按 `inputs` 列表顺序展开，每个条目按 `[value, time?, days?, date_start?]` 顺序贡献维度：
+x 向量按 `schedules` 列表顺序展开，每个条目按 `[value?, time?, days?, date_start?, date_end?]` 顺序贡献维度：
 
 | 条目启用的 Tier | x 贡献维度 | 变量类型 |
 |--------------|-----------|---------|
 | T1 only | 1（value） | 连续实数 |
+| T2 only | 1（time_slot_idx） | 整数 |
 | T1 + T2 | 2（value, time_slot_idx） | 实数 + 整数 |
-| T1 + T3 | 2（value, pattern_idx） | 实数 + 整数 |
-| T1 + T4 | 2（value, day_offset） | 实数 + 整数 |
-| T1 + T2 + T3 | 3 | 实数 + 整数×2 |
-| T1 + T2 + T3 + T4 | 4 | 实数 + 整数×3 |
-| 固定输入（无 optimize） | 0 | — |
+| T1 + T3 | 2（value, combo_idx） | 实数 + 整数 |
+| T1 + T4 | 2~3（value, date_start_offset[, date_end_offset]） | 实数 + 整数×1~2 |
+| 固定背景量（无 optimize） | 0 | — |
 
-混合整数向量由 NSGA-II（pymoo `MixedVariableProblem`）原生支持。单目标算法（L-BFGS-B / Nelder-Mead）不支持整数变量，启用 T2/T3/T4 时自动切换为 NSGA-II 并给出警告。
+混合整数向量由 NSGA-II 连续松弛处理；单目标算法（L-BFGS-B / Nelder-Mead）不支持整数变量，启用 T2/T3/T4 时自动切换为 NSGA-II 并给出警告。
 
 **示例**：`meal_carbs`（T1+T2）和 `exercise_load`（T1+T3）各贡献 2 维，x 长度为 4：
 
 ```
-x = [carbs_value, time_slot_idx, exercise_value, pattern_idx]
-    [   55.3,           1,            62.0,            2      ]
+x = [carbs_value, time_slot_idx, exercise_value, combo_idx]
+    [   55.3,           1,            62.0,            2   ]
 # time_slot_idx=1 → slots[1] = "08:00"
-# pattern_idx=2   → days_options[2] = [Sat, Sun]
+# combo_idx=2     → combinations(pool, n)[2] = [Mon, Wed, Fri]
 ```
 
 `reference.regimen` 存储解码后的人类可读结果。当条目启用了 T2/T3/T4 时，regimen 值从标量改为字典：
@@ -937,7 +929,7 @@ optimizer:
       - {x: [0.30, 0.29, 0.30], f: [65.8, 47.1]}
       - {x: [0.35, 0.33, 0.34], f: [66.9, 44.8]}
     reference:                     # 建模者从 Pareto 前沿中标注的参考点（非唯一最优）
-      x: [0.30, 0.29, 0.30]       # 决策变量值（与 optimizer.inputs 事件顺序对应）
+      x: [0.30, 0.29, 0.30]       # 决策变量值（与 optimizer.schedules 决策条目顺序对应）
       f: [65.8, 47.1]             # 目标函数值（与 objectives 顺序对应）
       regimen:                    # 人类可读的方案（变量名 → 时间标签 → 值）
         dietary_protein:

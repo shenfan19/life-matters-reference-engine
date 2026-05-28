@@ -290,7 +290,7 @@ optimizer:
       type: hard
       description: "最低睡眠时间：不低于6h/天（安全下限）"
 
-  inputs:
+  schedules:
     # T1: 工作日睡眠时长
     - variable: sleep_hours
       time: "22:00"
@@ -302,13 +302,11 @@ optimizer:
     # T1+T2: 工作日就寝时间窗（昼夜节律对齐）
     # 科学意义：Borbély C过程表明21:00-23:30就寝与昼夜节律最佳对齐
     - variable: sleep_hours
-      time_window: "21:00~01:00"
-      opt_step: 1h
       days: [Mon, Tue, Wed, Thu, Fri]
       label: "工作日就寝时机（时间营养学）"
       optimize:
         value: [6.5, 8.5]
-        time: true
+        time: ["21:00", "01:00"]
 
     # T1: 周末睡眠（允许补觉）
     - variable: sleep_hours
@@ -321,15 +319,14 @@ optimizer:
     # T3: 午睡时机（哪几天、什么时候午睡）
     # 科学意义：工作日午睡 vs 隔天午睡 vs 不午睡，对慢性睡眠债恢复效率不同
     - variable: nap_minutes
-      time: "13:00"
-      days_options:
-        - [Mon, Tue, Wed, Thu, Fri]   # 每天工作日午睡
+      time: "13:00"   # 每天工作日午睡
         - [Mon, Wed, Fri]             # 间隔午睡（避免夜间睡眠影响）
         - [Mon, Tue, Wed, Thu, Fri, Sat, Sun]  # 全周午睡（含周末）
       label: "午睡频率策略"
       optimize:
         value: [0.0, 30.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [3, 7]
 
   algorithm:
     population_size: 60

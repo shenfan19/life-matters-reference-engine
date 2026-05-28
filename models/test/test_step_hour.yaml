@@ -1,0 +1,93 @@
+metadata:
+  name: test_step_hour
+  description:
+    brief: "[TEST] step_size=hour; once-daily oral dose PK; single-objective Nelder-Mead optimizer."
+    method: |
+      One-compartment PK model, 1-hour steps, 30-day simulation (720 steps).
+      Oral dose given once daily at 08:00. ke = ln(2)/t½ where t½ ≈ 20 h.
+      Optimizer (Nelder-Mead, single objective): maximize mean plasma concentration
+      subject to a hard ceiling constraint.
+    limitations: Not physiologically calibrated; values chosen for numeric clarity.
+  tags: [test, step_size, hour, pharmacokinetics, nelder-mead, single-objective]
+  references: ["TEST: hour-level step size with Nelder-Mead single-objective optimizer"]
+  step_size:
+    value: 1
+    unit: hour
+
+variables:
+  plasma_conc:
+    type: state
+    value: 0.0
+    unit: mg/L
+    description: Plasma drug concentration; rises on each daily dose, decays hourly.
+
+  oral_dose:
+    type: input
+    value: 0.0
+    unit: mg
+    description: Oral daily dose (pulse; bioavailability fraction applied in formula).
+
+  bioavailability:
+    type: parameter
+    value: 0.75
+    unit: fraction
+    description: Fraction of oral dose reaching systemic circulation.
+
+  volume:
+    type: parameter
+    value: 50.0
+    unit: L
+    description: Apparent volume of distribution.
+
+  ke:
+    type: parameter
+    value: 0.0347
+    unit: 1/hour
+    description: Elimination rate constant; ke = ln(2) / t½, t½ ≈ 20 h.
+
+formulas:
+  absorption:
+    description: Instantaneous absorption of oral dose (pulse, no step).
+    dynamics:
+      plasma_conc: "plasma_conc + oral_dose * bioavailability / volume"
+    priority: 10
+
+  elimination:
+    description: First-order elimination per hour (step in hours, rate in 1/h).
+    dynamics:
+      plasma_conc: "max(0.0, plasma_conc - plasma_conc * ke * step)"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-30"
+  schedules:
+    - variable: oral_dose
+      time: "08:00"
+      value: 200.0
+      label: "Daily morning dose 200 mg"
+  output_variables: [plasma_conc, oral_dose]
+
+optimizer:
+  method: nelder-mead
+  objectives:
+    - variable: plasma_conc
+      metric: mean
+      direction: maximize
+  constraints:
+    - variable: plasma_conc
+      condition: "<= 8.0"
+      type: hard
+  inputs:
+    - variable: oral_dose
+      time: "08:00"
+      label: "Daily dose (mg)"
+      optimize:
+        value: [50.0, 500.0]
+  algorithm:
+    population_size: 20
+    n_generations: 50
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1

@@ -186,30 +186,30 @@ simulation:
       schedules:
         - {variable: exercise_intensity, time: "07:00", value: 3.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "每日步行"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "每日步行"}
 
     - id: "hiit_unconstrained"
       label: "无约束HIIT（MET 8.0，Mon/Wed/Fri，全程）"
       schedules:
         - {variable: exercise_intensity, time: "07:00", value: 8.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "HIIT主训"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "HIIT主训"}
         - {variable: exercise_intensity, time: "07:00", value: 3.5,
            days: [Tue, Thu, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "辅助低强度"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "辅助低强度"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（参考点，待运行后更新）"
       schedules:
         - {variable: exercise_intensity, time: "07:00", value: 3.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "热身期低强度"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "热身期低强度"}
         - {variable: exercise_intensity, time: "07:00", value: 7.5,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-29 ~ 2026-03-27", label: "HIIT（3次/周）"}
+           date_range: ["2026-01-29", "2026-03-27"], label: "HIIT（3次/周）"}
         - {variable: exercise_intensity, time: "07:00", value: 3.5,
            days: [Tue, Thu, Sat, Sun],
-           date_range: "2026-01-29 ~ 2026-03-27", label: "辅助低强度"}
+           date_range: ["2026-01-29", "2026-03-27"], label: "辅助低强度"}
 
 # ── 优化设置（T1+T3+T4 联合优化）──────────────────────────────────────────────
 optimizer:
@@ -239,12 +239,12 @@ optimizer:
       type: hard
       description: "ALT 不超过正常上限（EASL 2016标准）"
 
-  inputs:
+  schedules:
     # T1: 热身期强度（低强度，每日）
     - variable: exercise_intensity
       time: "07:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-28"
+      date_range: ["2026-01-01", "2026-01-28"]
       label: "热身期强度（低强度步行）"
       optimize:
         value: [2.5, 5.0]
@@ -252,16 +252,15 @@ optimizer:
     # T1+T3: HIIT 阶段强度 + 每周频率（几次/周 HIIT）
     # 科学意义：Mon/Wed/Fri（3次）vs Mon-Fri每天 vs Mon/Tue/Thu/Sat（4次）
     - variable: exercise_intensity
-      time: "07:00"
-      days_options:
-        - [Mon, Wed, Fri]              # 3次/周（经典HIIT间歇）
+      time: "07:00"              # 3次/周（经典HIIT间歇）
         - [Mon, Tue, Thu, Sat]         # 4次/周
         - [Mon, Tue, Wed, Thu, Fri]    # 5次/周（高频HIIT）
         - [Tue, Thu, Sat]              # 3次/周（周末含周六）
       label: "HIIT主训频率与强度"
       optimize:
         value: [6.0, 10.0]
-        days: true
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
 
     # T1: HIIT日辅助低强度（非HIIT日恢复性运动）
     - variable: exercise_intensity
@@ -276,11 +275,10 @@ optimizer:
     - variable: exercise_intensity
       time: "07:00"
       days: [Mon, Wed, Fri]
-      date_start_window: "2026-01-08~2026-02-12"
       label: "高强度升级时机"
       optimize:
         value: [6.5, 9.0]
-        date_start: true
+        date_range: [["2026-01-08", "2026-02-12"], ["2026-03-27", "2026-03-27"]]
 
   algorithm:
     population_size: 80

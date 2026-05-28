@@ -87,10 +87,9 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
           }}>
             {/* Header: variable + visibility toggles + delete */}
             <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 'inherit', color: c.text,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {ev.variable}
-              </span>
+              <Select size="small" value={ev.variable} style={{ flex: 1, minWidth: 0 }}
+                options={inputVars.map(v => ({ label: v.name, value: v.name }))}
+                onChange={v => updateInputEvent(ev.id, { variable: v })} />
               <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled}
                 title={t('sim.setup.tog.time_tip')}
                 onToggle={() => updateInputEventOpt(ev.id, { timeEnabled: !ev.timeEnabled, ...(!ev.timeEnabled && { optimizeTime: false }) })} />
@@ -102,7 +101,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                 onToggle={() => updateInputEventOpt(ev.id, {
                   validRangeEnabled: !ev.validRangeEnabled,
                   ...(!ev.validRangeEnabled && { validStart: simStartDate, validEnd: simEndDate }),
-                  ...(ev.validRangeEnabled && { optimizeDateStart: false }),
+                  ...(ev.validRangeEnabled && { optimizeDateRange: false }),
                 })} />
               <Button size="small" danger type="text" icon={<MinusCircleOutlined />}
                 style={{ padding: '0 2px' }} onClick={() => removeInputEvent(ev.id)} />
@@ -142,18 +141,18 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                 <Tog label="opt" active={!!ev.optimizeTime}
                   onToggle={() => updateInputEventOpt(ev.id, {
                     optimizeTime: !ev.optimizeTime,
-                    timeWindow: !ev.optimizeTime ? (ev.timeWindow || `${ev.time}~${ev.time}`) : ev.timeWindow,
+                    ...(!ev.optimizeTime && { timeWindowStart: ev.timeWindowStart || ev.time, timeWindowEnd: ev.timeWindowEnd || ev.time }),
                   })} />
                 {ev.optimizeTime ? (
                   <>
-                    <Input size="small" value={(ev.timeWindow ?? '').split('~')[0]?.trim()} placeholder="HH:MM"
+                    <Input size="small" value={ev.timeWindowStart ?? ''} placeholder="HH:MM"
                       style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                      onChange={e => { const end = (ev.timeWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { timeWindow: `${e.target.value}~${end}` }); }} />
+                      onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
                     <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                    <Input size="small" value={(ev.timeWindow ?? '~').split('~')[1]?.trim()} placeholder="HH:MM"
+                    <Input size="small" value={ev.timeWindowEnd ?? ''} placeholder="HH:MM"
                       style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                      onChange={e => { const s = (ev.timeWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { timeWindow: `${s}~${e.target.value}` }); }} />
-                    <select value={ev.optStep ?? '1h'} onChange={e => updateInputEventOpt(ev.id, { optStep: e.target.value })}
+                      onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
+                    <select value={ev.timeStep ?? '1h'} onChange={e => updateInputEventOpt(ev.id, { timeStep: e.target.value })}
                       style={{ width: 60, fontSize: 'inherit', padding: '1px 3px', borderRadius: 4 }}>
                       <option value="1h">1h</option>
                       <option value="15min">15min</option>
@@ -169,57 +168,94 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
 
             {/* T3: days row */}
             {ev.daysEnabled && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', marginTop: 3 }}>
                 <Tog label="opt" active={!!ev.optimizeDays}
-                  onToggle={() => updateInputEventOpt(ev.id, { optimizeDays: !ev.optimizeDays })} />
-                <div style={{ display: 'flex', gap: 2 }}>
-                  {DAY_LABELS.map((d, i) => (
-                    <button key={i} onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
-                      style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
-                        background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute,
-                        border: `1px solid ${c.border}` }}>{d}</button>
-                  ))}
-                </div>
+                  onToggle={() => updateInputEventOpt(ev.id, {
+                    optimizeDays: !ev.optimizeDays,
+                    ...(!ev.optimizeDays && {
+                      daysPool: ev.daysPool ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                      daysNMin: ev.daysNMin ?? 1,
+                      daysNMax: ev.daysNMax ?? 7,
+                    }),
+                  })} />
+                {ev.optimizeDays ? (
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 2 }}>
+                      {DAY_LABELS.map((d, i) => {
+                        const dayStr = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i];
+                        const inPool = (ev.daysPool ?? []).includes(dayStr);
+                        return (
+                          <button key={i} onClick={() => {
+                            const pool = ev.daysPool ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+                            const next = inPool ? pool.filter(x => x !== dayStr) : [...pool, dayStr];
+                            updateInputEventOpt(ev.id, { daysPool: next });
+                          }} style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
+                            background: inPool ? c.primary : c.panel, color: inPool ? '#fff' : c.textMute,
+                            border: `1px solid ${c.border}` }}>{d}</button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0 }}>n</span>
+                      <InputNumber size="small" min={1} max={7} value={ev.daysNMin ?? 1} style={{ width: 44 }}
+                        onChange={v => updateInputEventOpt(ev.id, { daysNMin: v ?? 1 })} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <InputNumber size="small" min={1} max={7} value={ev.daysNMax ?? 7} style={{ width: 44 }}
+                        onChange={v => updateInputEventOpt(ev.id, { daysNMax: v ?? 7 })} />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {DAY_LABELS.map((d, i) => (
+                      <button key={i} onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
+                        style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
+                          background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute,
+                          border: `1px solid ${c.border}` }}>{d}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* T4: valid range / date window row */}
+            {/* T4: valid range / date range optimization row */}
             {ev.validRangeEnabled && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', marginTop: 3 }}>
-                <Tog label="opt" active={!!ev.optimizeDateStart}
+                <Tog label="opt" active={!!ev.optimizeDateRange}
                   onToggle={() => {
-                    const newOpt = !ev.optimizeDateStart;
+                    const newOpt = !ev.optimizeDateRange;
                     const vs = ev.validStart || simStartDate;
                     const ve = ev.validEnd || simEndDate;
                     updateInputEventOpt(ev.id, {
-                      optimizeDateStart: newOpt,
+                      optimizeDateRange: newOpt,
                       ...(newOpt && {
-                        dateStartWindow: ev.dateStartWindow || `${simStartDate}~${vs}`,
-                        dateEndWindow: ev.dateEndWindow || `${ve}~${simEndDate}`,
+                        dateStartLo: ev.dateStartLo || simStartDate,
+                        dateStartHi: ev.dateStartHi || vs,
+                        dateEndLo:   ev.dateEndLo   || ve,
+                        dateEndHi:   ev.dateEndHi   || simEndDate,
                       }),
                     });
                   }} />
-                {ev.optimizeDateStart ? (
+                {ev.optimizeDateRange ? (
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2 }}>
                       <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>sta</span>
-                      <Input size="small" value={(ev.dateStartWindow ?? '').split('~')[0]?.trim()} placeholder="YYYY-MM-DD"
+                      <Input size="small" value={ev.dateStartLo ?? ''} placeholder="YYYY-MM-DD"
                         style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => { const end = (ev.dateStartWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${e.target.value}~${end}` }); }} />
+                        onChange={e => updateInputEventOpt(ev.id, { dateStartLo: e.target.value })} />
                       <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small" value={(ev.dateStartWindow ?? '~').split('~')[1]?.trim()} placeholder="YYYY-MM-DD"
+                      <Input size="small" value={ev.dateStartHi ?? ''} placeholder="YYYY-MM-DD"
                         style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => { const s = (ev.dateStartWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateStartWindow: `${s}~${e.target.value}` }); }} />
+                        onChange={e => updateInputEventOpt(ev.id, { dateStartHi: e.target.value })} />
                     </div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>end</span>
-                      <Input size="small" value={(ev.dateEndWindow ?? '').split('~')[0]?.trim()} placeholder="YYYY-MM-DD"
+                      <Input size="small" value={ev.dateEndLo ?? ''} placeholder="YYYY-MM-DD"
                         style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => { const end2 = (ev.dateEndWindow ?? '~').split('~')[1]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateEndWindow: `${e.target.value}~${end2}` }); }} />
+                        onChange={e => updateInputEventOpt(ev.id, { dateEndLo: e.target.value })} />
                       <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small" value={(ev.dateEndWindow ?? '~').split('~')[1]?.trim()} placeholder="YYYY-MM-DD"
+                      <Input size="small" value={ev.dateEndHi ?? ''} placeholder="YYYY-MM-DD"
                         style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => { const s2 = (ev.dateEndWindow ?? '~').split('~')[0]?.trim() ?? ''; updateInputEventOpt(ev.id, { dateEndWindow: `${s2}~${e.target.value}` }); }} />
+                        onChange={e => updateInputEventOpt(ev.id, { dateEndHi: e.target.value })} />
                     </div>
                   </div>
                 ) : (

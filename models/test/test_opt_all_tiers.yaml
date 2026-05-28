@@ -1,0 +1,240 @@
+metadata:
+  name: test_opt_all_tiers
+  description:
+    brief: "[TEST] All four optimizer tiers combined: T1 + T2 + T3 + T4 in one model."
+    method: |
+      Diabetes management model combining all four optimizer tiers across four inputs.
+      Demonstrates full x-vector construction with mixed continuous + integer dimensions.
+
+      Inputs and tiers:
+        insulin_dose       — T1 only (value)          → x[0]        (1 dim)
+        meal_carbs         — T1 + T2 (value + time)   → x[1], x[2]  (2 dims)
+        exercise_minutes   — T1 + T3 (value + days)   → x[3], x[4]  (2 dims)
+        metformin_dose     — T1 + T4 (value + date)   → x[5], x[6]  (2 dims)
+        background_drug    — fixed input (no optimize) → 0 dims
+
+      x-vector total: 7 dimensions.
+      NSGA-II, 2 objectives: maximize lm_score + minimize glucose_peak.
+    optimization: |
+      T1: insulin_dose [2,20] units.
+      T2: meal_carbs [20,80] g, window 07:00~09:00 (1h step = 3 slots).
+      T3: exercise_minutes [20,60] min, 3 pattern candidates.
+      T4: metformin_dose [250,1000] mg, start window 2026-02-01~2026-03-31.
+      Fixed: background_drug 10 mg/day (no optimize block).
+  tags: [test, optimizer, t1, t2, t3, t4, all-tiers, mixed-integer, nsga2]
+  references: ["TEST: all four optimizer tiers combined in one model"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  blood_glucose:
+    type: state
+    value: 180.0
+    unit: mg/dL
+    description: Fasting blood glucose; elevated diabetic baseline.
+
+  glucose_peak:
+    type: state
+    value: 180.0
+    unit: mg/dL
+    description: Running maximum blood glucose (for minimization objective).
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: Cumulative healthy days (glucose 70–180 mg/dL).
+
+  insulin_dose:
+    type: input
+    value: 0.0
+    unit: units
+    description: Daily insulin dose (pulse; lowers glucose immediately, no step).
+
+  meal_carbs:
+    type: input
+    value: 0.0
+    unit: g
+    description: Breakfast carbohydrate bolus (pulse; no step multiplication).
+
+  exercise_minutes:
+    type: input
+    value: 0.0
+    unit: minutes
+    description: Daily exercise session duration (pulse; no step multiplication).
+
+  metformin_dose:
+    type: input
+    value: 0.0
+    unit: mg
+    description: |
+      Metformin daily dose (rate; reduces basal glucose proportionally).
+      Acts continuously; formula multiplies by step.
+
+  background_drug:
+    type: input
+    value: 0.0
+    unit: mg
+    description: Fixed background medication (not optimized, 10 mg/day background).
+
+  insulin_sensitivity:
+    type: parameter
+    value: 2.5
+    unit: mg/dL per unit
+    description: Blood glucose drop per unit of insulin.
+
+  carb_raise:
+    type: parameter
+    value: 0.3
+    unit: mg/dL per g
+    description: Blood glucose rise per gram of dietary carbohydrate.
+
+  exercise_effect:
+    type: parameter
+    value: 0.4
+    unit: mg/dL per minute
+    description: Blood glucose drop per minute of moderate exercise.
+
+  metformin_effect:
+    type: parameter
+    value: 0.00015
+    unit: 1/(mg·day)
+    description: Fractional glucose reduction per mg of metformin per day.
+
+  basal_rise:
+    type: parameter
+    value: 2.0
+    unit: mg/dL per day
+    description: Daily basal hepatic glucose output without insulin.
+
+formulas:
+  glucose_dynamics:
+    description: |
+      Net daily glucose change:
+        + carb bolus (pulse)
+        - insulin effect (pulse)
+        - exercise glucose utilization (pulse)
+        - metformin basal suppression (rate × step)
+        - background drug minor effect (rate × step)
+        + basal hepatic output (rate × step)
+    dynamics:
+      blood_glucose: >
+        max(40.0, min(400.0,
+          blood_glucose
+          + meal_carbs * carb_raise
+          - insulin_dose * insulin_sensitivity
+          - exercise_minutes * exercise_effect
+          - blood_glucose * metformin_dose * metformin_effect * step
+          - background_drug * 0.0001 * step
+          + basal_rise * step
+        ))
+    priority: 5
+
+  peak_update:
+    description: Track running maximum blood glucose.
+    formula:
+      glucose_peak: "max(glucose_peak, blood_glucose)"
+    priority: 3
+
+  lm_score_update:
+    description: Accumulate healthy days when glucose is in 70–180 mg/dL range.
+    dynamics:
+      lm_score: "lm_score + step if (blood_glucose >= 70.0 and blood_glucose <= 180.0) else lm_score"
+    priority: 2
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  schedules:
+    - variable: insulin_dose
+      time: "07:30"
+      value: 8.0
+      label: "Morning insulin 8 units"
+    - variable: meal_carbs
+      time: "08:00"
+      value: 50.0
+      label: "Breakfast carbs 50 g"
+    - variable: exercise_minutes
+      time: "17:00"
+      value: 30.0
+      days: [Mon, Wed, Fri]
+      label: "Exercise 30 min MWF"
+    - variable: metformin_dose
+      time: "08:00"
+      value: 500.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: "2026-02-15 ~ 2026-06-30"
+      label: "Metformin 500 mg/day"
+    - variable: background_drug
+      time: "08:00"
+      value: 10.0
+      label: "Background drug 10 mg/day"
+  output_variables: [blood_glucose, glucose_peak, lm_score, insulin_dose, meal_carbs, exercise_minutes, metformin_dose]
+
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-06-30"
+  step_size:
+    value: 1
+    unit: day
+  objectives:
+    - variable: lm_score
+      metric: final
+      direction: maximize
+    - variable: glucose_peak
+      metric: max
+      direction: minimize
+  constraints:
+    - variable: blood_glucose
+      condition: ">= 40"
+      type: hard
+  schedules:
+    - variable: background_drug
+      time: "08:00"
+      value: 10.0
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "Background drug (fixed in optimizer)"
+  inputs:
+    # T1 only: insulin value
+    - variable: insulin_dose
+      time: "07:30"
+      label: "Insulin dose (units)"
+      optimize:
+        value: [2.0, 20.0]
+    # T1 + T2: meal carbs value + time window
+    - variable: meal_carbs
+      time_window: "07:00~09:00"
+      opt_step: 1h
+      label: "Breakfast carbs + timing"
+      optimize:
+        value: [20.0, 80.0]
+        time: true
+    # T1 + T3: exercise value + days pattern
+    - variable: exercise_minutes
+      time: "17:00"
+      days_options:
+        - [Mon, Wed, Fri]
+        - [Tue, Thu, Sat]
+        - [Mon, Tue, Wed, Thu, Fri]
+      label: "Exercise session + weekly pattern"
+      optimize:
+        value: [20.0, 60.0]
+        days: true
+    # T1 + T4: metformin value + start date
+    - variable: metformin_dose
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_start_window: "2026-02-01~2026-03-31"
+      label: "Metformin dose + start date"
+      optimize:
+        value: [250.0, 1000.0]
+        date_start: true
+  algorithm:
+    population_size: 30
+    n_generations: 50
+    seed: 42
+  mc:
+    enabled: false
+    sim_runs: 1
