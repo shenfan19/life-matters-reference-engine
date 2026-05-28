@@ -470,19 +470,21 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
 
         _cb = _ProgressCb() if progress_callback else None
 
-        # Build initial population: warm-start from previous results if available
+        # Build initial population: warm-start from previous results if available.
+        # Filter solutions whose dimension matches current n_var to avoid shape errors.
         sampling = None
         if warm_x:
-            rng = np.random.default_rng(seed)
-            warm = np.array(warm_x, dtype=float)
-            warm = np.clip(warm, xl, xu)
-            n_warm = len(warm)
-            if n_warm >= pop_size:
-                sampling = warm[:pop_size]
-            else:
-                n_fill = pop_size - n_warm
-                fill = xl + rng.random((n_fill, len(xl))) * (xu - xl)
-                sampling = np.vstack([warm, fill])
+            valid_warm = [x for x in warm_x if len(x) == n_var]
+            if valid_warm:
+                rng = np.random.default_rng(seed)
+                warm = np.clip(np.array(valid_warm, dtype=float), xl, xu)
+                n_warm = len(warm)
+                if n_warm >= pop_size:
+                    sampling = warm[:pop_size]
+                else:
+                    n_fill = pop_size - n_warm
+                    fill = xl + rng.random((n_fill, n_var)) * (xu - xl)
+                    sampling = np.vstack([warm, fill])
 
         problem = LMProblem()
         algo = NSGA2(pop_size=pop_size) if sampling is None else NSGA2(pop_size=pop_size, sampling=sampling)

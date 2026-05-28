@@ -15,14 +15,93 @@ function expandTimeWindow(window: string, optStep = '1h'): string[] {
   return slots;
 }
 
+// Combinations helper for T3 days_pool
+function getCombinations<T>(arr: T[], n: number): T[][] {
+  if (n === 0) return [[]];
+  if (n > arr.length) return [];
+  const result: T[][] = [];
+  const combine = (start: number, combo: T[]) => {
+    if (combo.length === n) { result.push([...combo]); return; }
+    for (let i = start; i < arr.length; i++) { combo.push(arr[i]); combine(i + 1, combo); combo.pop(); }
+  };
+  combine(0, []);
+  return result;
+}
+
 // Converts a Pareto solution x-vector back to inputEvents.
-// Handles list-format inputs (T1–T4) and legacy regimen: format.
+// Handles new schedules-format (T1–T4) and legacy inputs/regimen formats.
 // x vector layout per entry: [value?, time_slot_idx?, pattern_idx?, day_offset?]
 export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEvent[]): InputEvent[] {
   const result = baseEvents.map(ev => ({ ...ev }));
   const DAY_MAP: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
-  if (Array.isArray(optimizerConfig?.inputs)) {
+  // New schedules format: optimizer.schedules entries with optimize: sub-block
+  const scheduleOptEntries = Array.isArray(optimizerConfig?.schedules)
+    ? (optimizerConfig.schedules as any[]).filter((e: any) => e.optimize)
+    : [];
+
+  if (scheduleOptEntries.length > 0) {
+    let xi = 0;
+    for (const inp of scheduleOptEntries) {
+      const opt = inp.optimize ?? {};
+      let idx = result.findIndex(ev =>
+        ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
+      );
+      if (idx === -1) {
+        result.push({
+          id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
+          variable: inp.variable, label: inp.label || inp.variable,
+          time: inp.time ?? '08:00', timeEnabled: !!inp.time,
+          value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
+          validRangeEnabled: false, validStart: '', validEnd: '',
+        });
+        idx = result.length - 1;
+      }
+      // T1: value bounds
+      if (Array.isArray(opt.value)) {
+        if (xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
+        xi++;
+      }
+      // T2: time slot
+      if (Array.isArray(opt.time) && opt.time.length === 2) {
+        const slots = expandTimeWindow(`${opt.time[0]}~${opt.time[1]}`, opt.time_step ?? '1h');
+        const si = Math.max(0, Math.min(slots.length - 1, Math.round(x[xi] ?? 0)));
+        result[idx] = { ...result[idx], time: slots[si] };
+        xi++;
+      }
+      // T3: days combo
+      if (opt.days_pool) {
+        const n_range: [number, number] = opt.days_n ?? [1, opt.days_pool.length];
+        const allPatterns: string[][] = [];
+        for (let n = n_range[0]; n <= n_range[1]; n++) allPatterns.push(...getCombinations(opt.days_pool, n));
+        const pi = Math.max(0, Math.min(allPatterns.length - 1, Math.round(x[xi] ?? 0)));
+        if (allPatterns.length > 0) {
+          const daysArr = Array(7).fill(false);
+          for (const d of allPatterns[pi]) if (DAY_MAP[d] !== undefined) daysArr[DAY_MAP[d]] = true;
+          result[idx] = { ...result[idx], days: daysArr, daysEnabled: true };
+        }
+        xi++;
+      }
+      // T4: date_range [[start_lo, start_hi], [end_lo, end_hi]]
+      if (Array.isArray(opt.date_range) && opt.date_range.length === 2) {
+        const sw = opt.date_range[0];
+        const n_s = Math.round((new Date(sw[1]).getTime() - new Date(sw[0]).getTime()) / 86400000);
+        const offset_s = Math.max(0, Math.min(n_s, Math.round(x[xi] ?? 0)));
+        const ds = new Date(sw[0]); ds.setDate(ds.getDate() + offset_s);
+        result[idx] = { ...result[idx], validStart: ds.toISOString().slice(0, 10), validRangeEnabled: true };
+        xi++;
+        const ew = opt.date_range[1];
+        const n_e = Math.round((new Date(ew[1]).getTime() - new Date(ew[0]).getTime()) / 86400000);
+        if (n_e > 0) {
+          const offset_e = Math.max(0, Math.min(n_e, Math.round(x[xi] ?? 0)));
+          const de = new Date(ew[0]); de.setDate(de.getDate() + offset_e);
+          result[idx] = { ...result[idx], validEnd: de.toISOString().slice(0, 10) };
+          xi++;
+        }
+      }
+    }
+  } else if (Array.isArray(optimizerConfig?.inputs)) {
+    // Legacy inputs format
     let xi = 0;
     for (const inp of optimizerConfig.inputs as any[]) {
       if (!inp.optimize) continue;

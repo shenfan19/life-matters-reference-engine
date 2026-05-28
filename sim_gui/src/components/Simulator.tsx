@@ -2,10 +2,9 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, InputNumber, message, Modal, Select, Tooltip } from 'antd';
-import { BuildOutlined, CloseOutlined, DownloadOutlined, LeftOutlined, PauseOutlined, PlayCircleOutlined, RightOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationDataPoint, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, PlanResult, SimPlan, ModelSession } from '../types';
-import { dump as yamlDump } from 'js-yaml';
+import { Button, Input, message, Modal, Select, Tooltip } from 'antd';
+import { BuildOutlined, CloseOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import type { SimulatorProps, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, SimPlan, ModelSession } from '../types';
 import FileEditor from './FileEditor';
 import { useI18n } from '../core/i18n';
 import { getC } from '../core/theme';
@@ -18,6 +17,10 @@ import SimOptTab from './sim_tab/SimOptTab';
 import SimReportTab from './sim_tab/SimReportTab';
 import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, readMS, writeMS, initModelSessions } from './sim_tab/simUtils';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
+import { SimControlBar } from './sim_tab/SimControlBar';
+import { OptControlBar } from './opt_tab/OptControlBar';
+import { useOptimizer } from './opt_tab/useOptimizer';
+import { useSimulation } from './sim_tab/useSimulation';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
 
@@ -230,8 +233,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'formulas', 'refs']));
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
 
-  // ── opt inputs (decision vars) + backgrounds ─────────────────────────────────
-
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
   const [objectives, setObjectives] = useState<Array<{ variable: string; direction: 'minimize' | 'maximize' }>>([]);
@@ -239,19 +240,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead'>('NSGA-II');
   const [optPop, setOptPop] = useState(50);
   const [optGen, setOptGen] = useState(80);
-  const [comparedPlans, setComparedPlans] = useState<PlanResult[]>([]);
-  const [warmStartEnabled, setWarmStartEnabled] = useState(true);
-  const [storedOptResult, setStoredOptResult] = useState<any>(null); // pre-loaded from YAML
-  const [optResult, setOptResult] = useState<any>(null);
-  const [optRunning, setOptRunning] = useState(false);
-  const [optCurGen, setOptCurGen] = useState(0);
-  const [optTotalGen, setOptTotalGen] = useState(0);
-  const [optLogs, setOptLogs] = useState<Array<{t: number; msg: string}>>([]);
-  const [optHistory, setOptHistory] = useState<any[]>([]);
-  const [optElapsed, setOptElapsed] = useState(0);
-  const [optJobId, setOptJobId] = useState<string | null>(null);
-  const optPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [optMethod, setOptMethod] = useState('');
   const switchCenterTab = (tab: string) => {
     if (builderOpen) return; // locked while builder is open
     if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
@@ -301,7 +289,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   }]);
   const [activePlanId, setActivePlanId] = useState('plan-1');
 
-  const isRunningRef = useRef(false);
   const modelSessionsRef = useRef<Record<string, ModelSession>>(initModelSessions());
   // sessionReadyRef prevents the save-session effect from overwriting persisted session data
   // with stale initial state before the model has finished loading and restoring its session.
@@ -320,8 +307,64 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));
-  const setSimData = (val: SimulationDataPoint[] | ((p: SimulationDataPoint[]) => SimulationDataPoint[])) =>
-    setState(prev => ({ ...prev, simulationData: typeof val === 'function' ? val(prev.simulationData) : val }));
+
+  // ── derived model state (must be above hook calls that consume inputVars) ────
+  const inputVars = selectedModel?.content?.variables
+    ? Object.entries(selectedModel.content.variables)
+        .filter(([, d]: [string, any]) => d.type === 'input')
+        .map(([name, d]: [string, any]) => ({ name, ...d }))
+    : [];
+  const stateVars = selectedModel?.content?.variables
+    ? Object.entries(selectedModel.content.variables)
+        .filter(([, d]: [string, any]) => d.type === 'state')
+        .map(([name, d]: [string, any]) => ({ name, ...d }))
+    : [];
+
+  // ── optimizer hook (owns all opt execution state) ────────────────────────────
+  const {
+    optRunning, optResult, setOptResult,
+    storedOptResult, setStoredOptResult,
+    warmStartEnabled, setWarmStartEnabled,
+    optCurGen, optTotalGen,
+    optLogs, optHistory, optElapsed, optMethod,
+    startOptimization, cancelOptimization, stopOptJobs,
+    downloadModelYAML, saveResultsToFile,
+  } = useOptimizer({
+    selectedModel, selectedKey,
+    inputEvents, inputVars,
+    objectives, constraints,
+    optAlgo, optPop, optGen,
+    simStartDate, simEndDate, stepValue, stepUnit,
+    simRuns, mcSeed,
+    modelSessionsRef,
+    setRunningModelKey,
+    setCenterTab,
+    t,
+  });
+
+  // ── simulation hook (owns isRunningRef, comparedPlans, all sim handlers) ─────
+  const {
+    comparedPlans, setComparedPlans,
+    isRunningRef,
+    invalidateSim,
+    startSimulation, runBatch,
+    runSingleStep, pauseSimulation, resumeSimulation, resetSimulation,
+    handleRunCompared, runAllPlans,
+    exportSimCSV, downloadRawModel,
+  } = useSimulation({
+    state, setState,
+    selectedModel, selectedKey,
+    inputEvents, inputVars, plans, activePlanId,
+    simStartDate, simEndDate, stepValue, stepUnit,
+    simRuns, mcSeed,
+    setRunOutputVars, setOutputWarnings, setRunningModelKey,
+    setInputEvents, setMode, switchCenterTab,
+    stopOptJobs,
+    t,
+  });
+
+  // Combined stop (sim + opt)
+  const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
 
   // ── init on model load ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -390,10 +433,46 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptPop(session.optPop);
       setOptGen(session.optGen);
       setOptResult(session.optResult ?? yamlOptResult ?? null);
-      setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length));
+      setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
       // simRuns / mcSeed 存在 session 中（用户可自定义），若 session 没有则回退 YAML 默认值
       set('simRuns', session.simRuns ?? (optBlock?.mc?.enabled && optBlock?.mc?.sim_runs ? Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))) : 1));
       set('mcSeed', 'mcSeed' in session ? session.mcSeed : (optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null));
+      // Re-apply YAML optimizer.schedules opt fields to any session events that never had them set
+      // (handles stale sessions created before the schedules bridge, or plan-switched events)
+      if (Array.isArray(optBlock?.schedules)) {
+        const withOpt = (optBlock.schedules as any[]).filter((e: any) => e.variable && e.optimize);
+        if (withOpt.length > 0) {
+          setInputEvents(prev => {
+            const updated = prev.map(ev => ({ ...ev }));
+            for (const inp of withOpt) {
+              const opt = inp.optimize ?? {};
+              const idx = updated.findIndex(ev =>
+                ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
+              );
+              if (idx >= 0 && updated[idx].optimizeValue === undefined) {
+                const patch: Partial<typeof updated[0]> = { optimizeValue: true };
+                if (Array.isArray(opt.value) && opt.value.length >= 2)
+                  patch.valueBounds = [opt.value[0], opt.value[1]];
+                if (Array.isArray(opt.time) && opt.time.length === 2) {
+                  patch.optimizeTime = true; patch.timeWindowStart = opt.time[0]; patch.timeWindowEnd = opt.time[1];
+                  if (opt.time_step) patch.timeStep = opt.time_step;
+                }
+                if (opt.days_pool) {
+                  patch.optimizeDays = true; patch.daysPool = opt.days_pool;
+                  if (opt.days_n) { patch.daysNMin = opt.days_n[0]; patch.daysNMax = opt.days_n[1]; }
+                }
+                if (Array.isArray(opt.date_range) && opt.date_range.length === 2) {
+                  patch.optimizeDateRange = true;
+                  patch.dateStartLo = opt.date_range[0][0]; patch.dateStartHi = opt.date_range[0][1];
+                  patch.dateEndLo = opt.date_range[1][0];   patch.dateEndHi = opt.date_range[1][1];
+                }
+                updated[idx] = { ...updated[idx], ...patch };
+              }
+            }
+            return updated;
+          });
+        }
+      }
       sessionReadyRef.current = true;
       return;
     }
@@ -736,10 +815,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (status === 'running' || status === 'completed') setCenterTab('simulation');
   }, [status]);
 
-  // ── cleanup opt poll on unmount ───────────────────────────────────────────────
-  useEffect(() => {
-    return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
-  }, []);
+  // opt poll cleanup on unmount → handled by useOptimizer hook
 
   // ── loader helpers ────────────────────────────────────────────────────────────
   const loadFileTree = async () => {
@@ -847,166 +923,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!node.isLeaf) toggleTreeNode(node.key);
   };
 
-  // ── sim control ───────────────────────────────────────────────────────────────
-  const startSimulation = async () => {
-    if (!selectedModel) return;
-    if (blockIfRunning()) return;
-    try {
-      set('status', 'running'); set('progress', 0); set('currentStep', 0);
-      setSimData([]);
-      setComparedPlans([]);
-      setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
-      isRunningRef.current = true;
-      setRunningModelKey(selectedKey);
-      const regimenPayload = inputEvents
-        .filter(ev => inputVars.some(v => v.name === ev.variable))
-        .map(ev => ({
-          variable: ev.variable,
-          events: [{ id: ev.id, time: ev.time, value: ev.value }],
-          days_enabled: ev.daysEnabled,
-          days: ev.days,
-          valid_range_enabled: ev.validRangeEnabled,
-          valid_start: ev.validStart,
-          valid_end: ev.validEnd,
-        }));
-      const resp = await fetch(`${API_BASE}/simulation/start`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model_name: selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content!.metadata.name,
-          folder: selectedModel.folder,
-          time_hours: dateToHours(simStartDate, simEndDate),
-          step_size: stepValue * STEP_UNITS[stepUnit],
-          input_params: inputParams,
-          regimens: regimenPayload,
-          sim_runs: simRuns,
-          ...(mcSeed != null ? { seed: mcSeed } : {}),
-        }),
-      });
-      const result = await resp.json();
-      if (result.success && result.data) {
-        set('sessionId', result.data.session_id);
-        set('totalSteps', result.data.total_steps);
-        if (Array.isArray(result.data.output_variables)) setRunOutputVars(result.data.output_variables);
-        const warnings = Array.isArray(result.data.warnings) ? result.data.warnings : [];
-        setOutputWarnings(warnings);
-        if (warnings.length > 0) message.warning(warnings.join('；'));
-        if (result.data.session_seed) set('sessionSeed', result.data.session_seed);
-        runBatch(result.data.session_id);
-      } else {
-        message.error(result.error || t('sim.msg.start_failed'));
-        set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null);
-      }
-    } catch (e: any) { message.error(e.message); set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null); }
-  };
-
-  const runBatch = async (sid: string) => {
-    const loop = async () => {
-      if (!isRunningRef.current) return;
-      try {
-        const r = await fetch(`${API_BASE}/simulation/batch`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sid, steps: batchSize, input_changes: inputParams }),
-        });
-        const res = await r.json();
-        if (res.success && res.data) {
-          set('currentStep', res.data.current_step);
-          set('progress', res.data.progress);
-          setSimData(prev => [...prev, ...res.data.outputs]);
-          if (res.data.outputs_per_run && res.data.sim_runs > 1) {
-            setState(prev => {
-              const incoming: SimulationDataPoint[][] = res.data.outputs_per_run;
-              const existing = prev.dataPerRun.length > 0 ? prev.dataPerRun : Array.from({ length: incoming.length }, () => []);
-              const merged = existing.map((runArr, i) => [...runArr, ...(incoming[i] || [])]);
-              return { ...prev, dataPerRun: merged };
-            });
-          }
-          if (res.data.completed) {
-            set('status', 'completed'); isRunningRef.current = false; setRunningModelKey(null);
-            message.success(t('sim.msg.sim_complete'));
-          } else setTimeout(loop, updateInterval);
-        } else {
-          message.error(res.error || t('sim.msg.start_failed'));
-          set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null);
-        }
-      } catch { set('status', 'idle'); isRunningRef.current = false; setRunningModelKey(null); }
-    };
-    loop();
-  };
-
-  const runSingleStep = async () => {
-    if (!sessionId) return;
-    try {
-      const r = await fetch(`${API_BASE}/simulation/batch`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, steps: 1, input_changes: inputParams }),
-      });
-      const res = await r.json();
-      if (res.success && res.data) {
-        set('currentStep', res.data.current_step);
-        set('progress', res.data.progress);
-        setSimData(prev => [...prev, ...res.data.outputs]);
-        set('status', res.data.completed ? 'completed' : 'paused');
-        if (res.data.completed) message.success(t('sim.msg.sim_complete'));
-      }
-    } catch (e: any) { message.error(e.message); }
-  };
-
-  // ── multi-plan comparison ─────────────────────────────────────────────────────
-  const handleRunCompared = async (selectedRows: Array<{ x: number[]; f: number[]; rank: number }>) => {
-    if (!selectedModel || selectedRows.length === 0) return;
-    const optimizer = selectedModel.content?.optimizer;
-    if (!optimizer) { message.warning('无优化配置'); return; }
-
-    const plans: PlanResult[] = selectedRows.map((row, i) => ({
-      id: `pareto-${row.rank}`,
-      label: `Pareto #${row.rank}`,
-      color: PLAN_COLORS[i % PLAN_COLORS.length],
-      data: [], runsData: [], running: true,
-    }));
-    setComparedPlans(plans);
-    switchCenterTab('simulation');
-
-    const modelName = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content?.metadata?.name || '';
-    const timeHours = dateToHours(simStartDate, simEndDate);
-    const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
-    const localInputVars = selectedModel.content?.variables
-      ? Object.entries(selectedModel.content.variables).filter(([, d]: [string, any]) => d.type === 'input').map(([name]) => name)
-      : [];
-
-    await Promise.all(selectedRows.map(async (row, i) => {
-      try {
-        const planEvents = xToInputEvents(row.x, optimizer, inputEvents);
-        const regimens = planEvents
-          .filter(ev => localInputVars.includes(ev.variable))
-          .map(ev => ({
-            variable: ev.variable,
-            events: [{ id: ev.id, time: ev.time, value: ev.value }],
-            days_enabled: ev.daysEnabled, days: ev.days,
-            valid_range_enabled: ev.validRangeEnabled,
-            valid_start: ev.validStart, valid_end: ev.validEnd,
-          }));
-        const startResult = await fetch(`${API_BASE}/simulation/start`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns, ...(mcSeed != null ? { seed: mcSeed } : {}) }),
-        }).then(r => r.json());
-        if (!startResult.success) throw new Error(startResult.error);
-        const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: startResult.data.session_id, steps: startResult.data.total_steps, input_changes: inputParams }),
-        }).then(r => r.json());
-        if (!batchResult.success) throw new Error(batchResult.error);
-        setComparedPlans(prev => prev.map((p, idx) => idx !== i ? p : {
-          ...p,
-          data: batchResult.data.outputs || [],
-          runsData: (batchResult.data.outputs_per_run?.length > 1) ? batchResult.data.outputs_per_run : [],
-          running: false,
-        }));
-      } catch (e: any) {
-        console.error(`Plan ${i} failed:`, e);
-        setComparedPlans(prev => prev.map((p, idx) => idx !== i ? p : { ...p, running: false }));
-      }
-    }));
-  };
+  // sim execution (startSimulation, runBatch, runSingleStep, pause/resume/reset,
+  // runAllPlans, handleRunCompared, exportSimCSV, downloadRawModel) → useSimulation hook
 
   // ── plan management ───────────────────────────────────────────────────────────
   const selectPlan = (id: string) => {
@@ -1060,103 +978,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     switchCenterTab('simulation');
   };
 
-  // Run all plans in parallel with synchronized batch rounds.
-  // Phase 1: start all N sessions simultaneously.
-  // Phase 2: each round sends a batch for every incomplete plan in parallel →
-  //          all curves grow together in sync. Chunk size 500 keeps backend load low.
-  const runAllPlans = async () => {
-    if (!selectedModel) return;
-    if (blockIfRunning()) return;
-    const currentPlans = plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p);
-
-    setComparedPlans(currentPlans.map(plan => ({
-      id: plan.id, label: plan.label, color: plan.color, data: [], runsData: [], running: true,
-    })));
-    setSimData([]);
-    set('status', 'running'); set('progress', 0); set('currentStep', 0);
-    isRunningRef.current = true;
-    setRunningModelKey(selectedKey);
-
-    const modelName = selectedModel.key.split('/').pop()?.replace(/\.ya?ml$/i, '') || selectedModel.content?.metadata?.name || '';
-    const timeHours = dateToHours(simStartDate, simEndDate);
-    const stepSizeSec = stepValue * STEP_UNITS[stepUnit];
-    const localInputVarNames = new Set(inputVars.map((v: any) => v.name));
-    const CHUNK = 500; // steps per batch — balances speed vs backend load
-
-    type Session = { sid: string; total: number; done: boolean; failed: boolean; planIdx: number };
-
-    // Phase 1: start all sessions in parallel
-    const startResults = await Promise.allSettled(currentPlans.map(async (plan, i) => {
-      const regimens = plan.inputEvents
-        .filter(ev => localInputVarNames.has(ev.variable))
-        .map(ev => ({ variable: ev.variable, events: [{ id: ev.id, time: ev.time, value: ev.value }], days_enabled: ev.daysEnabled, days: ev.days, valid_range_enabled: ev.validRangeEnabled, valid_start: ev.validStart, valid_end: ev.validEnd }));
-      const r = await fetch(`${API_BASE}/simulation/start`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
-      }).then(res => res.json());
-      if (!r.success) throw new Error(r.error || '启动失败');
-      return { sid: r.data.session_id, total: r.data.total_steps, planIdx: i, outputVars: r.data.output_variables };
-    }));
-
-    const sessions: Session[] = startResults.map((res, i) => {
-      if (res.status === 'rejected') {
-        message.error(`方案 "${currentPlans[i].label}" 启动失败`);
-        setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : { ...r, running: false }));
-        return { sid: '', total: 0, done: true, failed: true, planIdx: i };
-      }
-      return { ...res.value, done: false, failed: false };
-    });
-    const firstOV = (startResults as PromiseFulfilledResult<any>[])
-      .find(r => r.status === 'fulfilled' && Array.isArray(r.value?.outputVars))?.value?.outputVars;
-    if (firstOV) setRunOutputVars(firstOV);
-
-    // Per-plan accumulated data (mutated in-place for performance)
-    const planData: any[][] = currentPlans.map(() => []);
-    const planRunsData: any[][][] = currentPlans.map(() => []);
-
-    // Phase 2: synchronized batch loop — all plans advance together each round
-    while (sessions.some(s => !s.done) && isRunningRef.current) {
-      const active = sessions.filter(s => !s.done);
-      const batchResults = await Promise.allSettled(active.map(s =>
-        fetch(`${API_BASE}/simulation/batch`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: s.sid, steps: CHUNK, input_changes: inputParams }),
-        }).then(res => res.json()).then(r => ({ s, r }))
-      ));
-
-      for (const res of batchResults) {
-        if (res.status === 'rejected') continue;
-        const { s, r } = res.value;
-        if (!r.success) { s.done = true; s.failed = true; continue; }
-        const idx = s.planIdx;
-        planData[idx].push(...(r.data.outputs || []));
-        if (r.data.outputs_per_run?.length > 1) {
-          const inc: any[][] = r.data.outputs_per_run;
-          if (planRunsData[idx].length === 0) planRunsData[idx] = inc.map(() => []);
-          inc.forEach((run: any[], ri: number) => planRunsData[idx][ri].push(...run));
-        }
-        if (r.data.completed) s.done = true;
-      }
-
-      // Update all curves simultaneously
-      const totalSteps = sessions.reduce((sum, s) => sum + s.total, 0) || 1;
-      const doneSteps = planData.reduce((sum, pd) => sum + pd.length, 0);
-      set('progress', Math.round((doneSteps / totalSteps) * 100));
-      setComparedPlans(prev => prev.map((r, i) => {
-        const s = sessions.find(s => s.planIdx === i);
-        return { ...r, data: [...planData[i]], runsData: planRunsData[i].map(rd => [...rd]), running: s ? !s.done : false };
-      }));
-    }
-
-    set('status', 'completed');
-    isRunningRef.current = false;
-    setRunningModelKey(null);
-    const failed = sessions.filter(s => s.failed).length;
-    if (failed === 0) message.success(`${currentPlans.length} 个方案仿真完成`);
-    else message.warning(`完成，${failed} 个方案失败`);
-  };
-
   // ── apply opt best solution to sim ───────────────────────────────────────────
+  // (stays here: needs setInputEvents + setComparedPlans from useSimulation)
   const applyBestToSim = () => {
     const optimizer = selectedModel?.content?.optimizer;
     const bestX = optimizer?.results?.reference?.x;
@@ -1170,133 +993,17 @@ const Simulator: React.FC<SimulatorProps> = ({
     switchCenterTab('simulation');
   };
 
-  // ── export CSV ────────────────────────────────────────────────────────────────
-  const exportSimCSV = () => {
-    if (!simulationData.length) return;
-    const keys = Object.keys(simulationData[0]);
-    const rows = simulationData.map(row => keys.map(k => (row as any)[k]).join(','));
-    const csv = [keys.join(','), ...rows].join('\n');
-    const modelName = selectedModel?.content?.metadata?.name || 'sim';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
-    a.click();
-  };
+  // exportSimCSV / downloadRawModel / pauseSimulation / resumeSimulation /
+  // resetSimulation → useSimulation hook (see above)
+  // downloadModelYAML / saveResultsToFile → useOptimizer hook (see above)
+  // startOptimization / cancelOptimization → useOptimizer hook (see above)
 
-  const downloadRawModel = () => {
-    if (!selectedModel) return;
-    const content = selectedModel.rawContent ?? selectedModel.content;
-    const yaml = yamlDump(content, { lineWidth: 120, noRefs: true });
-    const name = (selectedModel.content?.metadata?.name || selectedModel.title || 'model').replace(/\s+/g, '_');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
-    a.download = `${name}.yaml`;
-    a.click();
-  };
-
-  const pauseSimulation = () => { isRunningRef.current = false; set('status', 'paused'); };
-  const resumeSimulation = () => { if (!sessionId) return; isRunningRef.current = true; set('status', 'running'); runBatch(sessionId); };
-  const resetSimulation = () => {
-    isRunningRef.current = false;
-    set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
-    setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
-  };
-
-  // ── download model YAML with opt results embedded (server does NOT write to disk) ──
-  const downloadModelYAML = async (flattenImports = false) => {
-    if (!selectedModel?.key || !optResult) return;
-    const modelKey = selectedModel.key.replace(/^models\//, '');
-
-    // Build optimizer.results block from current optResult state
-    const regVar: string = optResult.regimen_variable || '';
-    const labels: string[] = optResult.regimen_event_labels || [];
-    const bestRegimen: Record<string, Record<string, number>> = {};
-    if (regVar && labels.length && optResult.best_x) {
-      bestRegimen[regVar] = {};
-      labels.forEach((lbl: string, i: number) => {
-        if (optResult.best_x[i] != null) bestRegimen[regVar][lbl] = Number(optResult.best_x[i].toFixed(4));
-      });
-    }
-    const bestObjectives: Record<string, number> = {};
-    (optResult.objectives || []).forEach((o: any, i: number) => {
-      if (optResult.best_f?.[i] != null) bestObjectives[o.variable] = Number(optResult.best_f[i].toFixed(4));
-    });
-    const results = {
-      generated_at: new Date().toISOString().slice(0, 10),
-      method: optResult.method || 'nsga2',
-      n_solutions: optResult.n_solutions || 0,
-      elapsed_seconds: Math.round(optElapsed * 10) / 10,
-      pareto_front: optResult.pareto_front || [],
-      reference: {
-        x: optResult.best_x,
-        f: optResult.best_f,
-        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
-        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
-      },
-    };
-
-    try {
-      const r = await fetch(`${API_BASE}/optimizer/export-model`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_key: modelKey, results, flatten_imports: flattenImports }),
-      });
-      const d = await r.json();
-      if (!d.success || !d.text) return;
-      const name = selectedModel.content?.metadata?.name || modelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'model';
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([d.text], { type: 'text/yaml' }));
-      a.download = `${name}.yaml`;
-      a.click();
-    } catch {}
-  };
-
-  // Save optimizer results back to the model file on disk (uses export-model YAML + file-raw write)
-  const saveResultsToFile = async () => {
-    if (!selectedModel?.key || !optResult) { message.warning('无结果可保存'); return; }
-    const modelKey = selectedModel.key.replace(/^models\//, '');
-    const regVar: string = optResult.regimen_variable || '';
-    const labels: string[] = optResult.regimen_event_labels || [];
-    const bestRegimen: Record<string, Record<string, number>> = {};
-    if (regVar && labels.length && optResult.best_x) {
-      bestRegimen[regVar] = {};
-      labels.forEach((lbl: string, i: number) => {
-        if (optResult.best_x[i] != null) bestRegimen[regVar][lbl] = Number(optResult.best_x[i].toFixed(4));
-      });
-    }
-    const bestObjectives: Record<string, number> = {};
-    (optResult.objectives || []).forEach((o: any, i: number) => {
-      if (optResult.best_f?.[i] != null) bestObjectives[o.variable] = Number(optResult.best_f[i].toFixed(4));
-    });
-    const results = {
-      generated_at: new Date().toISOString().slice(0, 10),
-      method: optResult.method || 'nsga2',
-      n_solutions: optResult.n_solutions || 0,
-      elapsed_seconds: Math.round(optElapsed * 10) / 10,
-      pareto_front: optResult.pareto_front || [],
-      reference: {
-        x: optResult.best_x, f: optResult.best_f,
-        ...(Object.keys(bestRegimen).length > 0 && { regimen: bestRegimen }),
-        ...(Object.keys(bestObjectives).length > 0 && { objectives: bestObjectives }),
-      },
-    };
-    try {
-      const exportResp = await fetch(`${API_BASE}/optimizer/export-model`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_key: modelKey, results }),
-      }).then(r => r.json());
-      if (!exportResp.success || !exportResp.text) { message.error('生成 YAML 失败'); return; }
-      const saveResp = await fetch(`${API_BASE}/file-raw/${modelKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: exportResp.text }),
-      }).then(r => r.json());
-      if (saveResp.success) {
-        message.success('结果已保存到模型文件');
-        setStoredOptResult(optResult); // update stored so 继续计算 reflects new save
-      } else {
-        message.error('保存失败：' + (saveResp.detail || ''));
-      }
-    } catch (e: any) { message.error(e.message); }
+  const reloadFromYAML = () => {
+    if (!selectedKey) return;
+    delete modelSessionsRef.current[selectedKey];
+    const all = readMS(); delete all[selectedKey]; writeMS(all);
+    sessionReadyRef.current = false;
+    loadFileContent(selectedKey, { preserveTab: true });
   };
 
   // ── import local YAML file ────────────────────────────────────────────────────
@@ -1377,182 +1084,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     } catch (err: any) { message.error(err.message || '读取文件失败'); }
   };
 
-  const startOptimization = async () => {
-    if (!selectedModel) return;
-    if (blockIfRunning()) return;
-    setCenterTab('optimization');
-    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
-
-    const _DAY_STRS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const activeInputVarNames = new Set(inputVars.map(v => v.name));
-    const decisionVars = inputEvents.filter(ev => ev.optimizeValue && activeInputVarNames.has(ev.variable));
-
-    if (decisionVars.length === 0) {
-      message.warning(t('sim.opt.no_inputs_warning'));
-      return;
-    }
-
-    const modelKey = selectedModel.key || selectedModel.content?.metadata?.name || '';
-    const totalGen = (selectedModel.content?.optimizer?.algorithm?.n_generations) || optGen;
-
-    setOptRunning(true); setOptResult(null); setOptLogs([]); setOptCurGen(0);
-    setOptHistory([]); setOptElapsed(0); setOptMethod('');
-    setOptTotalGen(totalGen); setOptJobId(null);
-    setRunningModelKey(selectedKey);
-
-    // Build optimizer.schedules: all events (decision vars with optimize:, fixed without)
-    const optSchedules = inputEvents
-      .filter(ev => activeInputVarNames.has(ev.variable))
-      .map(ev => {
-        const entry: Record<string, any> = {
-          variable: ev.variable,
-          label: ev.label || `${ev.variable} ${ev.time}`,
-        };
-        if (ev.optimizeValue) {
-          const optBlock: Record<string, any> = {};
-          if (ev.valueBounds) optBlock.value = ev.valueBounds;
-          // T2
-          if (ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
-            optBlock.time = [ev.timeWindowStart, ev.timeWindowEnd];
-            if (ev.timeStep && ev.timeStep !== '1h') optBlock.time_step = ev.timeStep;
-          } else if (ev.timeEnabled) {
-            entry.time = ev.time;
-          }
-          // T3
-          if (ev.optimizeDays && ev.daysPool?.length) {
-            optBlock.days_pool = ev.daysPool;
-            optBlock.days_n = [ev.daysNMin ?? 1, ev.daysNMax ?? ev.daysPool.length];
-          } else if (ev.daysEnabled) {
-            entry.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
-          }
-          // T4
-          if (ev.validRangeEnabled) {
-            if (ev.optimizeDateRange && ev.dateStartLo && ev.dateStartHi && ev.dateEndLo && ev.dateEndHi) {
-              optBlock.date_range = [[ev.dateStartLo, ev.dateStartHi], [ev.dateEndLo, ev.dateEndHi]];
-            } else {
-              entry.date_range = [ev.validStart, ev.validEnd];
-            }
-          }
-          entry.optimize = optBlock;
-        } else {
-          entry.value = ev.value;
-          if (ev.timeEnabled) entry.time = ev.time;
-          if (ev.daysEnabled) entry.days = ev.days.map((v, i) => v ? _DAY_STRS[i] : null).filter(Boolean);
-          if (ev.validRangeEnabled) entry.date_range = [ev.validStart, ev.validEnd];
-        }
-        return entry;
-      });
-
-    const optimizerOverride: Record<string, any> = {
-      schedules: optSchedules,
-      objectives: objectives.map(o => ({
-        variable: o.variable,
-        metric: 'final',
-        direction: o.direction,
-      })),
-      constraints: constraints.map(con => ({
-        variable: con.variable,
-        condition: `${con.op === '≤' ? '<=' : '>='} ${con.value}`,
-      })),
-      algorithm: {
-        population_size: optPop,
-        n_generations: optGen,
-        seed: 42,
-      },
-      start_date: simStartDate,
-      end_date: simEndDate,
-      step_size: { value: stepValue, unit: stepUnit },
-    };
-
-    // F-5-3: use explicit warm/cold start choice
-    if (warmStartEnabled) {
-      const existingFront = selectedModel.content?.optimizer?.results?.pareto_front;
-      if (Array.isArray(existingFront) && existingFront.length > 0) {
-        optimizerOverride.warm_start = existingFront;
-      }
-    }
-
-    try {
-      const resp = await fetch(`${API_BASE}/optimizer/run_yaml`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model_name: modelKey,
-          folder: null,
-          optimizer_override: optimizerOverride,
-        }),
-      });
-      const data = await resp.json();
-
-      if (!resp.ok || !data.success || !data.job_id) {
-        message.error(data.detail || data.error || '优化启动失败');
-        setOptRunning(false); setRunningModelKey(null); return;
-      }
-
-      const jobId: string = data.job_id;
-      setOptJobId(jobId);
-
-      optPollRef.current = setInterval(async () => {
-        try {
-          const sr = await fetch(`${API_BASE}/optimizer/status/${jobId}`);
-          if (!sr.ok) return;
-          const sd = await sr.json();
-          setOptLogs(sd.logs || []);
-          setOptHistory(sd.history || []);
-          setOptCurGen(sd.iteration || 0);
-          setOptElapsed(sd.elapsed || 0);
-          if (sd.method) setOptMethod(sd.method);
-
-          if (sd.status === 'completed') {
-            clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false); setRunningModelKey(null);
-            setOptResult(sd.result);
-            setCenterTab('optimization');
-            message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
-          } else if (sd.status === 'failed') {
-            clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false); setRunningModelKey(null);
-            message.error(sd.error || '优化失败');
-          } else if (sd.status === 'cancelled') {
-            clearInterval(optPollRef.current!); optPollRef.current = null;
-            setOptRunning(false); setRunningModelKey(null);
-          }
-        } catch { /* ignore transient poll errors */ }
-      }, 1500);
-
-    } catch (e: any) {
-      setOptRunning(false);
-      message.error(e.message);
-    }
-  };
-
-  const cancelOptimization = async () => {
-    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
-    if (optJobId) {
-      try { await fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }); } catch {}
-    }
-    setOptRunning(false); setRunningModelKey(null);
-  };
-
   // ── input event CRUD ──────────────────────────────────────────────────────────
-  const stopAllJobs = () => {
-    isRunningRef.current = false;
-    if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
-    if (optJobId) { fetch(`${API_BASE}/optimizer/job/${optJobId}`, { method: 'DELETE' }).catch(() => {}); }
-    setOptRunning(false);
-    setOptJobId(null);
-    setRunningModelKey(null);
-  };
-
-  const invalidateSim = () => {
-    if (status !== 'idle') {
-      stopAllJobs();
-      setState(prev => ({ ...prev, status: 'idle', progress: 0, currentStep: 0, simulationData: [], dataPerRun: [], sessionId: '' }));
-      setComparedPlans([]);
-    }
-    setWarmStartEnabled(false);
-  };
-
   const addInputEvent = () => {
     const firstInputVar = inputVars[0];
     if (!firstInputVar) return;
@@ -1581,16 +1113,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
 
   // ── derived data ──────────────────────────────────────────────────────────────
-  const inputVars = selectedModel?.content?.variables
-    ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) => d.type === 'input')
-        .map(([name, d]: [string, any]) => ({ name, ...d }))
-    : [];
-  const stateVars = selectedModel?.content?.variables
-    ? Object.entries(selectedModel.content.variables)
-        .filter(([, d]: [string, any]) => d.type === 'state')
-        .map(([name, d]: [string, any]) => ({ name, ...d }))
-    : [];
+  // inputVars / stateVars declared above (before hook calls)
   const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
   const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
   const resolveOutputVars = (): string[] => {
@@ -1654,168 +1177,50 @@ const Simulator: React.FC<SimulatorProps> = ({
   const otherRunningTip = isOtherRunning ? `请先前往「${runningModelTitle || ''}」停止运行后再启动` : undefined;
 
   const SimControls = (
-    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Tooltip title={otherRunningTip}>
-        <span>
-          <Button
-            type="primary" size="small"
-            icon={!isOtherRunning && status === 'running' ? <PauseOutlined /> : <PlayCircleOutlined />}
-            onClick={isOtherRunning ? undefined : (status === 'running' ? pauseSimulation : status === 'paused' ? resumeSimulation : plans.length > 1 ? runAllPlans : startSimulation)}
-            disabled={!selectedModel || status === 'completed' || isOtherRunning}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {!isOtherRunning && status === 'running' ? t('sim.control.pause')
-              : !isOtherRunning && status === 'paused' ? t('sim.control.continue')
-              : !isOtherRunning && plans.length > 1 ? `${t('sim.plan.run_all_pre')} ${plans.length} ${t('sim.plan.run_all_suf')}`
-              : t('sim.control.run')}
-          </Button>
-        </span>
-      </Tooltip>
-      <Button size="small" icon={<StepForwardOutlined />}
-        onClick={runSingleStep}
-        disabled={!sessionId || status === 'running' || status === 'completed'}
-        style={{ whiteSpace: 'nowrap' }}
-      >{t('sim.control.step')}</Button>
-      <Button size="small" icon={<StopOutlined />}
-        onClick={resetSimulation}
-        disabled={status === 'idle'}
-        style={{ whiteSpace: 'nowrap' }}
-      >{t('sim.control.reset')}</Button>
-      <div style={{ width: 1, height: 16, background: c.border }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
-        <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
-          onChange={e => set('simStartDate', e.target.value)}
-          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
-        <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
-          onChange={e => set('simEndDate', e.target.value)}
-          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
-        <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
-        <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content' }}
-          options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '-'}` : 'Monte Carlo 运行条数（1=单条）'}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
-        </Tooltip>
-        <InputNumber
-          size="small" min={1} max={50} value={simRuns}
-          onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
-          style={{ width: 52 }}
-          disabled={status === 'running'}
-        />
-        <Tooltip title={t('sim.mc.seed_tooltip')}>
-          <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.mc.seed_label')}</span>
-        </Tooltip>
-        <InputNumber
-          size="small" value={mcSeed ?? undefined} placeholder={t('sim.mc.seed_placeholder')}
-          onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
-          style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
-          min={0} max={2147483647} controls={false}
-          disabled={status === 'running'}
-        />
-      </div>
-      <Tooltip title={t('sim.control.download_model')}>
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={downloadRawModel}
-          disabled={!selectedModel}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >YAML</Button>
-      </Tooltip>
-    </div>
+    <SimControlBar
+      status={status} sessionId={sessionId} sessionSeed={sessionSeed}
+      plans={plans} simStartDate={simStartDate} simEndDate={simEndDate}
+      stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
+      onStart={startSimulation} onPause={pauseSimulation} onResume={resumeSimulation}
+      onStep={runSingleStep} onReset={resetSimulation} onRunAllPlans={runAllPlans}
+      onDownload={downloadRawModel}
+      onSimStartDateChange={v => set('simStartDate', v)}
+      onSimEndDateChange={v => set('simEndDate', v)}
+      onStepValueChange={v => set('stepValue', v)}
+      onStepUnitChange={v => set('stepUnit', v)}
+      onSimRunsChange={v => set('simRuns', v)}
+      onMcSeedChange={v => set('mcSeed', v)}
+      t={t} c={c as any}
+    />
   );
 
   const existingResults = selectedModel?.rawContent?.optimizer?.results
     ?? selectedModel?.content?.optimizer?.results;
-  const hasExistingResults = !!(existingResults?.pareto_front?.length);
+  const hasExistingResults = !!(existingResults?.pareto_front?.length) || !!(optResult?.pareto_front?.length);
+  const currentFront = optResult?.pareto_front ?? existingResults?.pareto_front;
   const OptControls = (
-    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
-      <Tooltip title={
-        isOtherRunning ? otherRunningTip
-        : optResult ? '优化已完成，可继续查看结果或将 Pareto 解传输到仿真对比'
-        : hasExistingResults ? `已有历史结果：${existingResults.n_solutions ?? existingResults.pareto_front.length} 个解 · ${existingResults.generated_at ?? ''}，可勾选"继续计算"热启动`
-        : '设置目标、约束和决策变量范围后运行优化'
-      }>
-        <span>
-          <Button
-            type="primary" size="small"
-            icon={!isOtherRunning && optRunning ? <StopOutlined /> : <PlayCircleOutlined />}
-            onClick={isOtherRunning ? undefined : (optRunning ? cancelOptimization : startOptimization)}
-            disabled={!selectedModel || isOtherRunning}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {!isOtherRunning && optRunning ? '停止优化' : t('sim.control.run')}
-          </Button>
-        </span>
-      </Tooltip>
-      {hasExistingResults && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-          <input type="checkbox" checked={warmStartEnabled}
-            onChange={e => {
-              const v = e.target.checked;
-              setWarmStartEnabled(v);
-              if (!optRunning) setOptResult(v ? storedOptResult : null);
-            }}
-            style={{ accentColor: c.primary }} />
-          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartEnabled ? c.primary : c.textSec }}>
-            继续计算
-          </span>
-        </label>
-      )}
-      {optRunning && (
-        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-          Gen {optCurGen}/{optTotalGen || '-'}
-        </span>
-      )}
-      <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.duration.label')}</span>
-        <Input size="small" value={simStartDate} placeholder="YYYY-MM-DD"
-          onChange={e => set('simStartDate', e.target.value)}
-          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-        <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>~</span>
-        <Input size="small" value={simEndDate} placeholder="YYYY-MM-DD"
-          onChange={e => set('simEndDate', e.target.value)}
-          style={{ width: '12ch', minWidth: '12ch', fontFamily: 'monospace' }} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ color: c.textSec, whiteSpace: 'nowrap' }}>{t('sim.step.label')}</span>
-        <InputNumber size="small" value={stepValue} onChange={v => set('stepValue', v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
-        <Select size="small" value={stepUnit} onChange={v => set('stepUnit', v)} style={{ minWidth: '9ch', width: 'max-content' }}
-          options={[{ label: t('sim.step.second'), value: 'second' }, { label: t('sim.step.minute'), value: 'minute' }, { label: t('sim.step.hour'), value: 'hour' }, { label: t('sim.step.day'), value: 'day' }]} />
-      </div>
-      {selectedModel?.content?.optimizer?.mc?.enabled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Tooltip title={`Monte Carlo: ${simRuns} ${t('sim.mc.runs_per_plan')}`}>
-            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
-          </Tooltip>
-          <InputNumber size="small" min={1} max={50} value={simRuns}
-            onChange={v => set('simRuns', Math.max(1, Math.min(50, v || 1)))}
-            style={{ width: 52 }} disabled={optRunning} />
-          <Tooltip title={t('sim.mc.seed_tooltip')}>
-            <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.mc.seed_label')}</span>
-          </Tooltip>
-          <InputNumber
-            size="small" value={mcSeed ?? undefined} placeholder={t('sim.mc.seed_placeholder')}
-            onChange={v => set('mcSeed', v != null ? Math.max(0, Math.floor(v)) : null)}
-            style={{ width: '7ch', minWidth: '7ch', fontFamily: 'monospace' }}
-            min={0} max={2147483647} controls={false}
-            disabled={optRunning}
-          />
-        </div>
-      )}
-      <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={() => optResult ? downloadModelYAML(false) : downloadRawModel()}
-          disabled={!selectedModel}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >YAML</Button>
-      </Tooltip>
-    </div>
+    <OptControlBar
+      optRunning={optRunning} optCurGen={optCurGen} optTotalGen={optTotalGen}
+      warmStartEnabled={warmStartEnabled} hasExistingResults={hasExistingResults}
+      currentFrontCount={currentFront?.length ?? 0}
+      optResult={optResult} storedOptResult={storedOptResult}
+      simStartDate={simStartDate} simEndDate={simEndDate}
+      stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
+      onStart={startOptimization} onCancel={cancelOptimization}
+      onWarmStartChange={setWarmStartEnabled}
+      onSimStartDateChange={v => set('simStartDate', v)}
+      onSimEndDateChange={v => set('simEndDate', v)}
+      onStepValueChange={v => set('stepValue', v)}
+      onStepUnitChange={v => set('stepUnit', v)}
+      onSimRunsChange={v => set('simRuns', v)}
+      onMcSeedChange={v => set('mcSeed', v)}
+      onDownload={() => optResult ? downloadModelYAML(false) : downloadRawModel()}
+      onReload={reloadFromYAML}
+      setOptResult={setOptResult}
+      t={t} c={c as any}
+    />
   );
 
 
