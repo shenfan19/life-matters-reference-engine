@@ -10,6 +10,7 @@ interface OptControlBarProps {
   optCurGen: number;
   optTotalGen: number;
   warmStartEnabled: boolean;
+  warmStartDirty: boolean;
   hasExistingResults: boolean;
   currentFrontCount: number;
   optResult: any;
@@ -41,7 +42,7 @@ interface OptControlBarProps {
 
 export function OptControlBar({
   optRunning, optCurGen, optTotalGen,
-  warmStartEnabled, hasExistingResults, currentFrontCount,
+  warmStartEnabled, warmStartDirty, hasExistingResults, currentFrontCount,
   optResult, storedOptResult,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
   selectedModel, isOtherRunning, otherRunningTip,
@@ -52,8 +53,13 @@ export function OptControlBar({
   setOptResult,
   t, c,
 }: OptControlBarProps) {
+  const warmStartTooltip = warmStartDirty && warmStartEnabled
+    ? '⚠ 目标、约束或决策变量已修改，热启动将沿用上次前沿，可能匹配度下降'
+    : (warmStartEnabled && hasExistingResults)
+      ? `热启动：将基于 ${currentFrontCount} 个现有解继续搜索`
+      : `已有 ${currentFrontCount} 个解，勾选"继续计算"可热启动，否则冷启动`;
   const runTooltip = isOtherRunning ? otherRunningTip
-    : (warmStartEnabled && hasExistingResults) ? `热启动：将基于 ${currentFrontCount} 个现有解继续搜索`
+    : (warmStartEnabled && hasExistingResults) ? warmStartTooltip
     : hasExistingResults ? `已有 ${currentFrontCount} 个解，勾选"继续计算"可热启动，否则点击运行将冷启动`
     : '设置目标、约束和决策变量范围后运行优化';
 
@@ -75,18 +81,20 @@ export function OptControlBar({
 
       {/* Warm-start checkbox */}
       {hasExistingResults && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-          <input type="checkbox" checked={warmStartEnabled}
-            onChange={e => {
-              const v = e.target.checked;
-              onWarmStartChange(v);
-              if (!optRunning) setOptResult(v ? storedOptResult : null);
-            }}
-            style={{ accentColor: c.primary }} />
-          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartEnabled ? c.primary : c.textSec }}>
-            继续计算
-          </span>
-        </label>
+        <Tooltip title={warmStartTooltip}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
+            <input type="checkbox" checked={warmStartEnabled}
+              onChange={e => {
+                const v = e.target.checked;
+                onWarmStartChange(v);
+                if (!optRunning) setOptResult(v ? storedOptResult : null);
+              }}
+              style={{ accentColor: warmStartDirty && warmStartEnabled ? '#faad14' : c.primary }} />
+            <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartDirty && warmStartEnabled ? '#faad14' : warmStartEnabled ? c.primary : c.textSec }}>
+              {warmStartDirty && warmStartEnabled ? '⚠ 继续计算' : '继续计算'}
+            </span>
+          </label>
+        </Tooltip>
       )}
 
       {/* Generation counter */}

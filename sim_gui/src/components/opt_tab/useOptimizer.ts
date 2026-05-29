@@ -14,7 +14,28 @@ import { useState, useRef, useEffect } from 'react';
 import { message } from 'antd';
 import type { InputEvent, ModelFile } from '../../types';
 import { hasAnyOpt, buildOptSchedules } from '../sim_tab/optUtils';
-import { API_BASE, readMS, writeMS } from '../sim_tab/simUtils';
+import { API_BASE } from '../sim_tab/simUtils';
+import { readMS, writeMS } from '../sim_tab/useSession';
+
+function buildProblemSignature(
+  objectives: Array<{ variable: string; direction: string }>,
+  constraints: Array<{ variable: string; op: string; value: number }>,
+  inputEvents: InputEvent[],
+): string {
+  const objs = objectives.map(o => `${o.variable}:${o.direction}`).join('|');
+  const cons = constraints.map(c => `${c.variable}${c.op}${c.value}`).join('|');
+  const evOpt = inputEvents
+    .filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateRange)
+    .map(ev => [
+      ev.variable,
+      ev.optimizeValue ? `v[${ev.valueBounds}]` : '',
+      ev.optimizeTime ? `t[${ev.timeWindowStart}-${ev.timeWindowEnd},${ev.timeStep}]` : '',
+      ev.optimizeDays ? `d[${(ev.daysPool || []).join(',')},${ev.daysNMin}-${ev.daysNMax}]` : '',
+      ev.optimizeDateRange ? `dr[${ev.dateStartLo}-${ev.dateStartHi},${ev.dateEndLo}-${ev.dateEndHi}]` : '',
+    ].filter(Boolean).join(':'))
+    .join('||');
+  return `${objs}||${cons}||${evOpt}`;
+}
 
 interface UseOptimizerParams {
   selectedModel: ModelFile | null;
@@ -53,6 +74,7 @@ export function useOptimizer({
   const [optResult,       setOptResult]       = useState<any>(null);
   const [storedOptResult, setStoredOptResult] = useState<any>(null);
   const [warmStartEnabled, setWarmStartEnabled] = useState(true);
+  const [lastRunSignature, setLastRunSignature] = useState<string | null>(null);
   const [optCurGen,       setOptCurGen]       = useState(0);
   const [optTotalGen,     setOptTotalGen]     = useState(0);
   const [optLogs,         setOptLogs]         = useState<Array<{ t: number; msg: string }>>([]);
@@ -69,12 +91,17 @@ export function useOptimizer({
     return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
   }, []);
 
+  // Reset signature when model changes
+  useEffect(() => { setLastRunSignature(null); }, [selectedKey]);
+
   // ── start ────────────────────────────────────────────────────────────────────
 
   const startOptimization = async () => {
     if (!selectedModel) return;
     setCenterTab('optimization');
     if (optPollRef.current) { clearInterval(optPollRef.current); optPollRef.current = null; }
+
+    setLastRunSignature(buildProblemSignature(objectives, constraints, inputEvents));
 
     const activeInputVarNames = new Set(inputVars.map(v => v.name));
     const decisionVars = inputEvents.filter(ev => hasAnyOpt(ev, activeInputVarNames));
@@ -264,11 +291,15 @@ export function useOptimizer({
     } catch (e: any) { message.error(e.message); }
   };
 
+  const warmStartDirty = lastRunSignature !== null
+    && buildProblemSignature(objectives, constraints, inputEvents) !== lastRunSignature;
+
   return {
     // state
     optRunning, optResult,       setOptResult,
     storedOptResult,             setStoredOptResult,
     warmStartEnabled,            setWarmStartEnabled,
+    warmStartDirty,
     optCurGen, optTotalGen,
     optLogs, optHistory,
     optElapsed, optMethod,
