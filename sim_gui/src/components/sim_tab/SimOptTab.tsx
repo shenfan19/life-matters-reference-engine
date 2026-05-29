@@ -35,6 +35,12 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'process', 'solutions', 'log']));
   const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set());
 
+  // When another model is running, hide live progress/log; keep completed results.
+  const activeRunning = isActiveModel && optRunning;
+  const activeHistory = isActiveModel ? optHistory : [];
+  const activeLogs    = isActiveModel ? optLogs    : [];
+  const activeCurGen  = isActiveModel ? optCurGen  : 0;
+
   useEffect(() => {
     const el = logContainerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -66,12 +72,6 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     const ss = String(sec).padStart(2, '0');
     return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
   };
-
-  // When another model is running, hide live progress/log; keep completed results.
-  const activeRunning = isActiveModel && optRunning;
-  const activeHistory = isActiveModel ? optHistory : [];
-  const activeLogs    = isActiveModel ? optLogs    : [];
-  const activeCurGen  = isActiveModel ? optCurGen  : 0;
 
   const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
   const latestHist = activeHistory.length > 0 ? activeHistory[activeHistory.length - 1] : null;
