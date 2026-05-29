@@ -1213,6 +1213,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       onMcSeedChange={v => set('mcSeed', v)}
       onDownload={() => optResult ? downloadModelYAML(false) : downloadRawModel()}
       onReload={reloadFromYAML}
+      onSaveResults={scsMode
+        ? () => { message.success('结果已保存到 Session'); }
+        : saveResultsToFile}
+      onClearSession={() => { if (selectedKey) { clearSession(selectedKey); sessionReadyRef.current = false; loadFileContent(selectedKey, { preserveTab: true }); } }}
+      scsMode={scsMode}
       setOptResult={setOptResult}
       t={t} c={c as any}
     />

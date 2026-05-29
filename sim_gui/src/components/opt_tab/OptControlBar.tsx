@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
 interface OptControlBarProps {
@@ -35,6 +35,9 @@ interface OptControlBarProps {
   onMcSeedChange: (v: number | null) => void;
   onDownload: () => void;
   onReload: () => void;
+  onSaveResults: () => void;
+  onClearSession: () => void;
+  scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string) => string;
   c: Record<string, string>;
@@ -49,7 +52,8 @@ export function OptControlBar({
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onDownload, onReload,
+  onDownload, onReload, onSaveResults, onClearSession,
+  scsMode,
   setOptResult,
   t, c,
 }: OptControlBarProps) {
@@ -151,20 +155,41 @@ export function OptControlBar({
         />
       </div>
 
+      {/* Session controls */}
+      <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
+
+      <Tooltip title={optResult ? '保存结果到 Session' : '运行优化后可保存结果'}>
+        <Button size="small" icon={<SaveOutlined />}
+          onClick={onSaveResults}
+          disabled={!optResult || optRunning}
+          style={{ whiteSpace: 'nowrap', color: optResult ? c.primary : c.textMute }}
+        >保存结果</Button>
+      </Tooltip>
+
+      <Tooltip title={scsMode ? '从 YAML 重新加载（清除 session）' : '从 YAML 重新加载（清除 session，恢复模型默认值）'}>
+        <Button size="small" icon={<ReloadOutlined />}
+          onClick={onReload}
+          disabled={!selectedModel || optRunning}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        />
+      </Tooltip>
+
+      <Tooltip title="删除当前 Session（清除所有编辑，不影响 YAML 文件）">
+        <Button size="small" icon={<DeleteOutlined />}
+          onClick={onClearSession}
+          disabled={!selectedModel || optRunning}
+          danger
+        />
+      </Tooltip>
+
+      <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
+
       <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
         <Button size="small" icon={<DownloadOutlined />}
           onClick={onDownload}
           disabled={!selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >YAML</Button>
-      </Tooltip>
-
-      <Tooltip title="从 YAML 重新加载（清除 session，恢复模型默认值）">
-        <Button size="small" icon={<ReloadOutlined />}
-          onClick={onReload}
-          disabled={!selectedModel || optRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        />
       </Tooltip>
     </div>
   );
