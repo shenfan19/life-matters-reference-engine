@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { InputEvent, ModelSession } from '../../types';
+import type { InputEvent } from '../../types';
 
 export const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
 
@@ -200,37 +200,3 @@ const SIM_PERSIST_KEY = 'sim_persist';
 export const readSP = (): any => { try { return JSON.parse(localStorage.getItem(SIM_PERSIST_KEY) || 'null'); } catch { return null; } };
 export const writeSP = (data: object): void => { try { localStorage.setItem(SIM_PERSIST_KEY, JSON.stringify(data)); } catch {} };
 
-const MODEL_SESSION_KEY = 'lm_model_sessions';
-export const readMS = (): Record<string, ModelSession> => { try { return JSON.parse(localStorage.getItem(MODEL_SESSION_KEY) || '{}'); } catch { return {}; } };
-export const writeMS = (sessions: Record<string, ModelSession>): void => { try { localStorage.setItem(MODEL_SESSION_KEY, JSON.stringify(sessions)); } catch {} };
-
-// Initialize session map from localStorage; migrate legacy global inputEvents on first run.
-export function initModelSessions(): Record<string, ModelSession> {
-  const sessions = readMS();
-  const sp = readSP();
-  if (sp?.selectedKey && sp.inputEvents?.length && !sessions[sp.selectedKey]) {
-    sessions[sp.selectedKey] = {
-      inputEvents: sp.inputEvents,
-      plans: [{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: sp.inputEvents }],
-      activePlanId: 'plan-1',
-      simStartDate: sp.simStartDate || '2026-01-01',
-      simEndDate: sp.simEndDate || '2026-12-31',
-      stepValue: sp.stepValue ?? 1,
-      stepUnit: sp.stepUnit ?? 'hour',
-      objectives: [], constraints: [],
-      optAlgo: 'NSGA-II', optPop: 50, optGen: 80,
-    };
-  }
-  // Migrate existing sessions: ensure inputEvents carry opt field defaults
-  for (const key of Object.keys(sessions)) {
-    const s = sessions[key] as any;
-    if (Array.isArray(s.inputEvents)) {
-      s.inputEvents = s.inputEvents.map((ev: any) => ({
-        optimizeValue: false, valueBounds: [0, 1],
-        optimizeTime: false, optimizeDays: false, optimizeDateRange: false,
-        ...ev,
-      }));
-    }
-  }
-  return sessions;
-}

@@ -15,7 +15,8 @@ import SimIntroTab from './sim_tab/SimIntroTab';
 import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
 import SimReportTab from './sim_tab/SimReportTab';
-import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, readMS, writeMS, initModelSessions } from './sim_tab/simUtils';
+import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP } from './sim_tab/simUtils';
+import { useSession } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
 import { OptControlBar } from './opt_tab/OptControlBar';
@@ -289,10 +290,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   }]);
   const [activePlanId, setActivePlanId] = useState('plan-1');
 
-  const modelSessionsRef = useRef<Record<string, ModelSession>>(initModelSessions());
-  // sessionReadyRef prevents the save-session effect from overwriting persisted session data
-  // with stale initial state before the model has finished loading and restoring its session.
-  const sessionReadyRef = useRef(false);
+  const { modelSessionsRef, sessionReadyRef, persistSession, clearSession } = useSession();
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
 
@@ -325,6 +323,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     optRunning, optResult, setOptResult,
     storedOptResult, setStoredOptResult,
     warmStartEnabled, setWarmStartEnabled,
+    warmStartDirty,
     optCurGen, optTotalGen,
     optLogs, optHistory, optElapsed, optMethod,
     startOptimization, cancelOptimization, stopOptJobs,
@@ -788,10 +787,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       objectives, constraints, optAlgo, optPop, optGen,
       optResult,
     };
-    modelSessionsRef.current[selectedKey] = session;
-    const all = readMS();
-    all[selectedKey] = session;
-    writeMS(all);
+    persistSession(selectedKey, session);
   }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
@@ -1000,8 +996,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const reloadFromYAML = () => {
     if (!selectedKey) return;
-    delete modelSessionsRef.current[selectedKey];
-    const all = readMS(); delete all[selectedKey]; writeMS(all);
+    clearSession(selectedKey);
     sessionReadyRef.current = false;
     loadFileContent(selectedKey, { preserveTab: true });
   };
@@ -1202,7 +1197,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const OptControls = (
     <OptControlBar
       optRunning={optRunning} optCurGen={optCurGen} optTotalGen={optTotalGen}
-      warmStartEnabled={warmStartEnabled} hasExistingResults={hasExistingResults}
+      warmStartEnabled={warmStartEnabled} warmStartDirty={warmStartDirty} hasExistingResults={hasExistingResults}
       currentFrontCount={currentFront?.length ?? 0}
       optResult={optResult} storedOptResult={storedOptResult}
       simStartDate={simStartDate} simEndDate={simEndDate}
@@ -1376,7 +1371,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   isDarkMode={isDarkMode} c={c} t={t}
                   plans={plans} activePlanId={activePlanId}
                   onSelectPlan={selectPlan} onAddPlan={addPlan} onRemovePlan={removePlan}
-                  onResetToYaml={selectedKey ? () => { delete modelSessionsRef.current[selectedKey]; loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
+                  onResetToYaml={selectedKey ? () => { clearSession(selectedKey); loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
                 />
               }
               result={
@@ -1432,6 +1427,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   onDownloadModel={downloadModelYAML}
                   hasExistingResults={hasExistingResults}
                   onSendToSim={addPlansFromOpt}
+                  isActiveModel={!runningModelKey || runningModelKey === selectedKey}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} isDarkMode={isDarkMode} />}

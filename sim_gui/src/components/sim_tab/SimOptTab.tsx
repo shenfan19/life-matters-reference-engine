@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Empty, Tooltip } from 'antd';
-import { DownloadOutlined, ExportOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Empty, message, Tooltip } from 'antd';
+import { CopyOutlined, DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { getC } from '../../core/theme';
 import ParetoChart from '../opt_tab/ParetoChart';
 import OptProgressChart from '../opt_tab/OptProgressChart';
@@ -23,12 +23,13 @@ interface SimOptTabProps {
   onDownloadModel: (flattenImports: boolean) => void;
   hasExistingResults: boolean;
   onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
+  isActiveModel?: boolean;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, hasExistingResults, onSendToSim,
+  onDownloadModel, hasExistingResults, onSendToSim, isActiveModel = true,
 }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'process', 'solutions', 'log']));
@@ -37,14 +38,14 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   useEffect(() => {
     const el = logContainerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [optLogs.length]);
+  }, [activeLogs.length]);
 
   // Client-side stopwatch
   const [displaySecs, setDisplaySecs] = useState(0);
   const startTsRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!optRunning) {
+    if (!activeRunning) {
       if (optElapsed > 0) setDisplaySecs(Math.round(optElapsed));
       return;
     }
@@ -55,7 +56,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       setDisplaySecs(Math.floor((Date.now() - startTs) / 1000));
     }, 100);
     return () => clearInterval(timer);
-  }, [optRunning]);
+  }, [activeRunning]);
 
   const formatHMS = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -66,8 +67,14 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
   };
 
+  // When another model is running, hide live progress/log; keep completed results.
+  const activeRunning = isActiveModel && optRunning;
+  const activeHistory = isActiveModel ? optHistory : [];
+  const activeLogs    = isActiveModel ? optLogs    : [];
+  const activeCurGen  = isActiveModel ? optCurGen  : 0;
+
   const hasPareto = (optResult?.pareto_front?.length ?? 0) > 0;
-  const latestHist = optHistory.length > 0 ? optHistory[optHistory.length - 1] : null;
+  const latestHist = activeHistory.length > 0 ? activeHistory[activeHistory.length - 1] : null;
   const liveResult = latestHist?.pareto_front?.length ? { ...optResult, pareto_front: latestHist.pareto_front, objectives } : optResult;
   useEffect(() => {
     if (hasPareto) setOpenSections(prev => new Set([...prev, 'solutions']));
@@ -109,7 +116,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   }));
 
   const objectiveDefs = (optResult?.objectives || objectives || []) as Array<{ direction?: string }>;
-  const historyFronts = optHistory.filter(h => Array.isArray(h.pareto_front) && h.pareto_front.length > 0);
+  const historyFronts = activeHistory.filter(h => Array.isArray(h.pareto_front) && h.pareto_front.length > 0);
   const allObjectiveVectors = historyFronts.flatMap(h => h.pareto_front.map((p: any) => p.f || []));
   const dim = Math.max(0, objectiveDefs.length || allObjectiveVectors[0]?.length || 0);
   const signedBounds = Array.from({ length: dim }, (_, j) => {
@@ -137,7 +144,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     }
     return total;
   };
-  const hvHistory = optHistory.map(h => {
+  const hvHistory = activeHistory.map(h => {
     if (!Array.isArray(h.pareto_front) || dim === 0) return { ...h, hypervolume: 0 };
     const normalized = h.pareto_front.map((p: any) => (p.f || []).slice(0, dim).map((raw: number, j: number) => {
       const signed = objectiveDefs[j]?.direction === 'minimize' ? -Number(raw) : Number(raw);
@@ -155,14 +162,44 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
     </div>
   );
 
+  const logText = activeLogs.map(l => {
+    const d = new Date(l.t * 1000);
+    const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+    return `${ts} ${l.msg}`;
+  }).join('\n');
+
+  const copyLog = () => {
+    navigator.clipboard.writeText(logText)
+      .then(() => message.success('已复制到剪贴板'))
+      .catch(() => message.error('复制失败'));
+  };
+
+  const exportLog = () => {
+    const blob = new Blob([logText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `opt_log_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    a.click();
+  };
+
   const logPanel = (
-    <div ref={logContainerRef} style={{ maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
-      {optLogs.length === 0 && <span style={{ color: c.textMute }}>{t('sim.opt.no_logs')}</span>}
-      {optLogs.map((l, i) => {
-        const d = new Date(l.t * 1000);
-        const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
-        return <div key={i} style={{ lineHeight: 1.5 }}><span style={{ color: c.textMute }}>{ts}</span> {l.msg}</div>;
-      })}
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 4 }}>
+        <Tooltip title="复制全部 Log">
+          <Button size="small" icon={<CopyOutlined />} onClick={copyLog} disabled={activeLogs.length === 0} />
+        </Tooltip>
+        <Tooltip title="导出为 .txt">
+          <Button size="small" icon={<DownloadOutlined />} onClick={exportLog} disabled={activeLogs.length === 0} />
+        </Tooltip>
+      </div>
+      <div ref={logContainerRef} style={{ maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text }}>
+        {activeLogs.length === 0 && <span style={{ color: c.textMute }}>{t('sim.opt.no_logs')}</span>}
+        {activeLogs.map((l, i) => {
+          const d = new Date(l.t * 1000);
+          const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+          return <div key={i} style={{ lineHeight: 1.5 }}><span style={{ color: c.textMute }}>{ts}</span> {l.msg}</div>;
+        })}
+      </div>
     </div>
   );
 
@@ -192,14 +229,14 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         <div style={{ height: 240, overflow: 'hidden' }}>
           {liveResult?.pareto_front?.length
             ? <ParetoChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-            : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optRunning ? t('sim.opt.waiting_first') : t('sim.opt.show_after_run')} />}
+            : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={activeRunning ? t('sim.opt.waiting_first') : t('sim.opt.show_after_run')} />}
         </div>
       </Section>
 
       {/* Process — live metric cards + progress charts (merged from Live) */}
-      <Section id="process" title="Process" badge={optCurGen > 0 ? `Gen ${optCurGen}/${optTotalGen || '-'}` : `${optHistory.length} 点`}>
+      <Section id="process" title="Process" badge={activeCurGen > 0 ? `Gen ${activeCurGen}/${optTotalGen || '-'}` : `${activeHistory.length} 点`}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-          {metric('Gen', optCurGen > 0 ? `${optCurGen}/${optTotalGen || '-'}` : '-')}
+          {metric('Gen', activeCurGen > 0 ? `${activeCurGen}/${optTotalGen || '-'}` : '-')}
           {metric('Eval', latestHist?.n_eval ?? '-')}
           {metric('Front', latestHist?.pareto_count ?? optResult?.n_solutions ?? '-')}
           {metric('Feasible', latestHist?.feasible_ratio != null ? `${(latestHist.feasible_ratio * 100).toFixed(0)}%` : '-', latestHist?.feasible_ratio === 0 ? '#ff7875' : c.primary)}
@@ -221,10 +258,10 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
           <OptProgressChart history={hvHistory} metric="hypervolume" label="Hypervolume" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-          <OptProgressChart history={optHistory} metric="pareto_count" label="Pareto count" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-          <OptProgressChart history={optHistory} metric="feasible_ratio" label="Feasible ratio" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-          <OptProgressChart history={optHistory} metric="n_eval" label="Evaluations" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
-          <OptProgressChart history={optHistory} metric="mean_cv" label="Mean CV" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <OptProgressChart history={activeHistory} metric="pareto_count" label="Pareto count" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <OptProgressChart history={activeHistory} metric="feasible_ratio" label="Feasible ratio" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <OptProgressChart history={activeHistory} metric="n_eval" label="Evaluations" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <OptProgressChart history={activeHistory} metric="mean_cv" label="Mean CV" isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
         </div>
       </Section>
 
@@ -320,7 +357,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optResult?.best_x ? t('sim.opt.no_pareto_table') : t('sim.opt.show_after_complete')} />}
       </Section>
 
-      <Section id="log" title="Log" badge={`${optLogs.length} 条`}>
+      <Section id="log" title="Log" badge={`${activeLogs.length} 条`}>
         {logPanel}
       </Section>
     </div>

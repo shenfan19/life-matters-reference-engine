@@ -60,11 +60,11 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
              sim_start_date: str = '') -> Dict[str, List[float]]:
     """Run a full simulation and return per-variable history lists.
 
-    Uses SimulatorEngine._apply_regimens (pulse reset + accumulate) — same
+    Uses apply_regimens() from regimen_runner (pulse reset + accumulate) — same
     kernel as the GUI sim path, eliminating the duplicate implementation.
     """
     from .model_structure.base import TIME_UNIT_SECONDS
-    from .simulator_engine import SimulatorEngine
+    from .regimen_runner import apply_regimens
 
     unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
     native_step = step_size_sec / unit_sec
@@ -76,7 +76,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     for var_name in regimen_events_by_var:
         model.manual_overrides[var_name] = True
 
-    # Convert dict format → list format expected by the shared _apply_regimens
+    # Convert dict format → list format expected by apply_regimens
     regimens_list = [
         {'variable': var_name, 'events': evts}
         for var_name, evts in regimen_events_by_var.items()
@@ -85,8 +85,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     history: Dict[str, List[float]] = {n: [] for n in model.variables}
     for i in range(total_steps):
         prev_t = i * step_size_sec
-        SimulatorEngine._apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec,
-                                        sim_start_date)
+        apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec, sim_start_date)
         model.step(native_step)
         for n, v in model.variables.items():
             history[n].append(v.value)
@@ -329,7 +328,8 @@ def run_optimizer(simulator_engine, model_name: str,
     mc_seed = int(mc_cfg.get('seed', opt_block.get('algorithm', {}).get('seed', 42)))
 
     # Collect MC distributions once
-    param_distributions = SimulatorEngine._collect_param_distributions(base_model)
+    from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model
+    param_distributions = collect_param_distributions(base_model)
     base_model.param_distributions = param_distributions
 
     # ── algo settings ─────────────────────────────────────────────────────────
@@ -346,7 +346,7 @@ def run_optimizer(simulator_engine, model_name: str,
     rng_master = np.random.default_rng(mc_seed)
 
     def _clone(m):
-        return simulator_engine._clone_model(m)
+        return clone_model(m)
 
     def evaluate(x: np.ndarray) -> Tuple[List[float], List[float]]:
         """Return (F_mean, G_mean) averaged over mc_runs."""
@@ -358,7 +358,7 @@ def run_optimizer(simulator_engine, model_name: str,
             m = _clone(base_model)
             if param_distributions:
                 run_rng = np.random.default_rng(int(rng_master.integers(0, 2**31)))
-                SimulatorEngine._apply_parameter_sampling(m, param_distributions, rng=run_rng)
+                apply_parameter_sampling(m, param_distributions, rng=run_rng)
             hist = _run_sim(m, events_map, step_size, total_steps, sim_start_date)
             F_accum += np.array(_eval_F(hist, objectives))
             if n_con:
