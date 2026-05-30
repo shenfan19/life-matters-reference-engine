@@ -54,7 +54,11 @@ Session 模型使用 `session/{filename}` 作为 key（不是原来的 `temp/{sa
 
 ### 前端刷新按钮
 
-当 `selectedKey.startsWith('session/')` 时，树顶栏的"重新读取"按钮不显示——session 模型无服务器文件可读取。
+> **已更新**：见 [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md)。以下原始规则已废弃。
+
+~~当 `selectedKey.startsWith('session/')` 时，树顶栏的"重新读取"按钮不显示。~~ 
+
+**当前行为**：刷新按钮对所有模型（包括 session 模型）均可见。点击后调用 `reloadFromYAML()`，session 模型通过重新设置 `confirmedModel` 触发 YAML 重解析，效果等同于普通文件模型的"清除 session + 重新加载"。
 
 ### localStorage 持久化
 

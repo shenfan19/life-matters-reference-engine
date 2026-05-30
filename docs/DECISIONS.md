@@ -68,9 +68,10 @@
 | [0074](decisions/0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | **单层标签组导航：移除顶层 Tools/Sim 双层；动态 Builder Tab + 统一目录树双模式** | ⭐ | ✅ |
 | [0077](decisions/0077-2026-05-17_sim_session-model-import.md) | **Session 模型导入：原子上传（UUID 临时文件 + 内联解析 + 即时删除）→ localStorage；session/ key 前缀** | ⭐ | ✅（2026-05-18 重写，原两步法已废弃）|
 | [0078](decisions/0078-2026-05-18_project_scs-mode-design.md) | **SCS_MODE：云端部署写操作保护、前端行为适配、合并→session model** | ⭐ | ✅ |
-| [0082](decisions/0082-2026-05-21_sim_lock-unlock-refresh-behavior.md) | **两层状态分离：modelContent / modelSession；localStorage 持久化会话** | ⭐ | ✅（D3–D5 由 0085 取代）|
+| [0082](decisions/0082-2026-05-21_sim_lock-unlock-refresh-behavior.md) | **两层状态分离：modelContent / modelSession；localStorage 持久化会话** | ⭐ | ✅（D3–D5 由 0085 取代；D3 reloadFromYAML 由 0089 更新）|
 | [0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) | **Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab；optimizer.schedules** | ⭐ | ✅ |
 | [0085](decisions/0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | **移除锁机制；自由切换模型；双箭头运行指示器；SCS 模式仅拦截新启动** | ⭐ | ✅ |
+| [0089](decisions/0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | **Session 精化：`useSession` 分离、`userEdited` 追踪（`(edited)` 标记）、warm-start dirty 检测（⚠ 橙色警告）、非活跃模型 Opt Tab 隔离、rawContent fallback** | ⭐ | ✅ |
 
 ---
 

@@ -1,6 +1,6 @@
 # 0082 · 2026-05-21 · Sim · 锁定/解锁/切换模型的会话状态设计
 
-**部分取代**：D3–D5 章节（锁图标行为、运行时解锁确认、锁定不持久化）已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 取代。D1–D2（两层分离架构、modelSession 持久化）仍有效。
+**部分取代**：D3–D5 章节（锁图标行为、运行时解锁确认、锁定不持久化）已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 取代。D1–D2（两层分离架构、modelSession 持久化）仍有效。D3（刷新到 YAML 默认值）已由 [ADR 0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) D9 更新。
 
 ## 背景
 
@@ -50,9 +50,14 @@ flag 不需要了，架构自然解决。
 
 ## D3：刷新到 YAML 默认值
 
-"Reset to YAML" 按钮（Inputs 卡片标题栏的 `⟳` 图标）：
-先 `delete modelSessionsRef.current[key]`，再调用 `loadFileContent`。
-`useEffect` 找不到 session，走 YAML 初始化路径。
+> **已更新**：见 [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md)。以下为原始描述，仍适用于普通文件模型；session 模型有独立路径。
+
+工具栏的"重新加载"按钮（`⟳`）调用 `reloadFromYAML()`：
+先 `clearSession(key)`（等价于原来的 `delete modelSessionsRef.current[key]`），再根据模型类型分叉：
+- **普通文件模型**：调用 `loadFileContent(key, { preserveTab: true })`
+- **session/ 模型**：重新 `setConfirmedModel(sessModel)` 触发 YAML 重解析
+
+两种路径均使 `useEffect` 找不到 session，走 YAML 初始化路径。`sessionEditedRef` 同时清零，模型树 `(edited)` 标记消失。
 
 ## D4：运行时解锁弹确认框
 
