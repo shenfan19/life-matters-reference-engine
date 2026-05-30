@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DeleteOutlined, DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
 interface OptControlBarProps {
@@ -36,7 +36,6 @@ interface OptControlBarProps {
   onDownload: () => void;
   onReload: () => void;
   onSaveResults: () => void;
-  onClearSession: () => void;
   scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string) => string;
@@ -52,7 +51,7 @@ export function OptControlBar({
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onDownload, onReload, onSaveResults, onClearSession,
+  onDownload, onReload, onSaveResults,
   scsMode,
   setOptResult,
   t, c,
@@ -83,23 +82,22 @@ export function OptControlBar({
         </span>
       </Tooltip>
 
-      {/* Warm-start checkbox */}
-      {hasExistingResults && (
-        <Tooltip title={warmStartTooltip}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-            <input type="checkbox" checked={warmStartEnabled}
-              onChange={e => {
-                const v = e.target.checked;
-                onWarmStartChange(v);
-                if (!optRunning) setOptResult(v ? storedOptResult : null);
-              }}
-              style={{ accentColor: warmStartDirty && warmStartEnabled ? '#faad14' : c.primary }} />
-            <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: warmStartDirty && warmStartEnabled ? '#faad14' : warmStartEnabled ? c.primary : c.textSec }}>
-              {warmStartDirty && warmStartEnabled ? '⚠ 继续计算' : '继续计算'}
-            </span>
-          </label>
-        </Tooltip>
-      )}
+      {/* Warm-start checkbox — always visible; disabled when no results exist */}
+      <Tooltip title={hasExistingResults ? warmStartTooltip : '无已有结果，无法热启动'}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: hasExistingResults ? 'pointer' : 'not-allowed', userSelect: 'none', flexShrink: 0, opacity: hasExistingResults ? 1 : 0.4 }}>
+          <input type="checkbox" checked={warmStartEnabled}
+            disabled={!hasExistingResults}
+            onChange={e => {
+              const v = e.target.checked;
+              onWarmStartChange(v);
+              if (!optRunning) setOptResult(v ? storedOptResult : null);
+            }}
+            style={{ accentColor: warmStartDirty && warmStartEnabled ? '#faad14' : c.primary }} />
+          <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: !hasExistingResults ? c.textMute : (warmStartDirty && warmStartEnabled ? '#faad14' : warmStartEnabled ? c.primary : c.textSec) }}>
+            {warmStartDirty && warmStartEnabled ? '⚠ 继续计算' : '继续计算'}
+          </span>
+        </label>
+      </Tooltip>
 
       {/* Generation counter */}
       {optRunning && (
@@ -171,14 +169,6 @@ export function OptControlBar({
           onClick={onReload}
           disabled={!selectedModel || optRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        />
-      </Tooltip>
-
-      <Tooltip title="删除当前 Session（清除所有编辑，不影响 YAML 文件）">
-        <Button size="small" icon={<DeleteOutlined />}
-          onClick={onClearSession}
-          disabled={!selectedModel || optRunning}
-          danger
         />
       </Tooltip>
 

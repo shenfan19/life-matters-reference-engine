@@ -45,6 +45,8 @@ interface SimModelTreeProps {
   onSelectSessionModel?: (model: ModelFile) => void;
   onClearSessionModel?: (key: string) => void;
   scsMode?: boolean;
+  sessionKeys?: Set<string>;
+  onReloadModel?: () => void;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -66,6 +68,8 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onSelectSessionModel,
   onClearSessionModel,
   scsMode = false,
+  sessionKeys = new Set<string>(),
+  onReloadModel,
 }) => {
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
@@ -125,6 +129,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     }
     const isSelected = node.key === selectedKey;
     const isRunning = node.key === runningModelKey;
+    const hasSession = sessionKeys.has(node.key);
     return (
       <span style={{ display: 'flex', alignItems: 'center' }}>
         <span style={{ position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
@@ -141,8 +146,13 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               </span>
             </Tooltip>
           )}
-          <span style={{ color: isSelected ? c.text : c.textSec }}>
-            {node.titleStr || node.title}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ color: isSelected ? c.text : c.textSec }}>
+              {node.titleStr || node.title}
+            </span>
+            {hasSession && (
+              <span style={{ color: c.primary, fontSize: '0.75em', fontStyle: 'italic', lineHeight: 1, flexShrink: 0 }}>(edited)</span>
+            )}
           </span>
         </span>
       </span>
@@ -208,12 +218,12 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 style={{ color: c.textMute, padding: '0 3px' }}
               />
             </Tooltip>
-            {selectedKey && !selectedKey.startsWith('session/') && (
+            {selectedKey && (
               <Tooltip title={t('sim.tree.reload_yaml')}>
                 <Button
                   size="small" type="text" icon={<ReloadOutlined />}
                   disabled={treeLoading}
-                  onClick={e => { e.stopPropagation(); loadFileContent(selectedKey, { preserveTab: true }); }}
+                  onClick={e => { e.stopPropagation(); onReloadModel?.(); }}
                   style={{ color: c.textMute, padding: '0 3px' }}
                 />
               </Tooltip>
@@ -229,29 +239,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-        {/* Running model status strip — ephemeral indicator, not a session model */}
-        {runningModelKey && runningModelTitle && (
-          <div
-            onClick={onNavigateToRunning}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '4px 8px', marginBottom: 6, borderRadius: 4,
-              background: isDarkMode ? '#1a3a22' : '#e8f5e9',
-              border: `1px solid ${c.primary}33`,
-              cursor: onNavigateToRunning ? 'pointer' : 'default',
-            }}
-          >
-            <CaretRightFilled className="lm-running-arrow"  style={{ fontSize: 14, color: c.primary, flexShrink: 0 }} />
-            <CaretRightFilled className="lm-running-arrow2" style={{ fontSize: 14, color: c.primary, flexShrink: 0, marginLeft: -4 }} />
-            <span style={{
-              flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.primary,
-            }}>
-              {runningModelTitle}
-            </span>
-          </div>
-        )}
-
         {/* Session imports section */}
         {sessionModels.length > 0 && (
           <div style={{ marginBottom: 8 }}>
@@ -298,12 +285,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                     {m.title}
                   </span>
                 </span>
-                <Tooltip title={t('sim.tree.remove_session')}>
-                  <CloseOutlined
-                    onClick={e => { e.stopPropagation(); onClearSessionModel?.(m.key); }}
-                    style={{ color: c.textMute, fontSize: 10, flexShrink: 0 }}
-                  />
-                </Tooltip>
               </div>
               );
             })}
