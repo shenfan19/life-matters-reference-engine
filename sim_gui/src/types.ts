@@ -188,5 +188,6 @@ export interface ModelSession {
   optPop: number;
   optGen: number;
   optResult: any;
+  userEdited?: boolean;
 }
 

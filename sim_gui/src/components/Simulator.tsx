@@ -16,7 +16,7 @@ import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
 import SimReportTab from './sim_tab/SimReportTab';
 import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP } from './sim_tab/simUtils';
-import { useSession } from './sim_tab/useSession';
+import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
 import { OptControlBar } from './opt_tab/OptControlBar';
@@ -291,6 +291,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [activePlanId, setActivePlanId] = useState('plan-1');
 
   const { modelSessionsRef, sessionReadyRef, persistSession, clearSession } = useSession();
+  const sessionEditedRef = useRef(false);
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
 
@@ -388,7 +389,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
     // ── 2. Always: pre-load opt results from YAML for Pareto chart display ──
     const optBlock: any = selectedModel?.content?.optimizer;
-    const rawResults = optBlock?.results;
+    const rawResults = optBlock?.results ?? selectedModel?.rawContent?.optimizer?.results;
     let yamlOptResult: any = null;
     if (rawResults?.pareto_front?.length > 0) {
       const labels: string[] = [];
@@ -432,7 +433,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptPop(session.optPop);
       setOptGen(session.optGen);
       setOptResult(session.optResult ?? yamlOptResult ?? null);
-      setWarmStartEnabled(!!(optBlock?.results?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
+      setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
       // simRuns / mcSeed 存在 session 中（用户可自定义），若 session 没有则回退 YAML 默认值
       set('simRuns', session.simRuns ?? (optBlock?.mc?.enabled && optBlock?.mc?.sim_runs ? Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))) : 1));
       set('mcSeed', 'mcSeed' in session ? session.mcSeed : (optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null));
@@ -472,6 +473,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           });
         }
       }
+      sessionEditedRef.current = !!(session as any).userEdited;
       sessionReadyRef.current = true;
       return;
     }
@@ -642,7 +644,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
       if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
-      setWarmStartEnabled(!!(optBlock.results?.pareto_front?.length));
+      setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
 
       // Apply optimizer.schedules decision entries to inputEvents
       if (Array.isArray(optBlock.schedules)) {
@@ -687,17 +689,18 @@ const Simulator: React.FC<SimulatorProps> = ({
       }
     }
 
+    setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
     setOptResult(yamlOptResult);
     sessionReadyRef.current = true;
 
     // Warm-start modal: only on first-ever load (no session existed)
-    if (optBlock?.results?.reference?.x?.length > 0) {
-      const bestX: number[] = optBlock.results.reference.x;
+    if (rawResults?.reference?.x?.length > 0) {
+      const bestX: number[] = rawResults.reference.x;
       Modal.confirm({
         title: t('sim.opt.ref_detected_title'),
         content: `模型包含推荐解（${bestX.length} 个决策变量），是否将其预填为当前输入方案？`,
         okText: t('sim.opt.load_reference'), cancelText: t('sim.opt.use_default_schedule'),
-        onOk: () => setInputEvents(prev => xToInputEvents(bestX, optBlock, prev)),
+        onOk: () => setInputEvents(prev => xToInputEvents(bestX, optBlock ?? selectedModel?.rawContent?.optimizer, prev)),
       });
     }
   }, [selectedModel]);
@@ -774,6 +777,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── reset session-ready flag on selection change ─────────────────────────────
   useEffect(() => {
     sessionReadyRef.current = false;
+    sessionEditedRef.current = false;
   }, [selectedKey]);
 
   // ── persist per-model session (inputEvents, dates, opt config) ───────────────
@@ -786,6 +790,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
       objectives, constraints, optAlgo, optPop, optGen,
       optResult,
+      userEdited: sessionEditedRef.current,
     };
     persistSession(selectedKey, session);
   }, [selectedKey, inputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult]);
@@ -998,7 +1003,13 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedKey) return;
     clearSession(selectedKey);
     sessionReadyRef.current = false;
-    loadFileContent(selectedKey, { preserveTab: true });
+    sessionEditedRef.current = false;
+    if (selectedKey.startsWith('session/')) {
+      const sessModel = sessionModels.find(m => m.key === selectedKey);
+      if (sessModel) { setConfirmedModel({ ...sessModel }); onModelSelect({ ...sessModel }); }
+    } else {
+      loadFileContent(selectedKey, { preserveTab: true });
+    }
   };
 
   // ── import local YAML file ────────────────────────────────────────────────────
@@ -1084,6 +1095,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const firstInputVar = inputVars[0];
     if (!firstInputVar) return;
     const id = `ev-${Date.now()}`;
+    sessionEditedRef.current = true;
     invalidateSim();
     setInputEvents(prev => [...prev, {
       id, variable: firstInputVar.name, time: '08:00', timeEnabled: false,
@@ -1094,11 +1106,13 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const updateInputEvent = (id: string, patch: Partial<InputEvent>) => {
+    sessionEditedRef.current = true;
     invalidateSim();
     setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
   };
 
   const removeInputEvent = (id: string) => {
+    sessionEditedRef.current = true;
     invalidateSim();
     setInputEvents(prev => prev.filter(ev => ev.id !== id));
   };
@@ -1142,6 +1156,12 @@ const Simulator: React.FC<SimulatorProps> = ({
       || runningModelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || runningModelKey)
     : null;
 
+  const sessionKeys = new Set(
+    Object.entries(readMS())
+      .filter(([, s]) => !!(s as any)?.userEdited)
+      .map(([k]) => k)
+  );
+
   const navigateToRunning = () => {
     if (!runningModelKey) return;
     const sessModel = sessionModels.find(m => m.key === runningModelKey);
@@ -1177,7 +1197,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       plans={plans} simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
-      onStart={startSimulation} onPause={pauseSimulation} onResume={resumeSimulation}
+      onStart={() => { sessionEditedRef.current = true; startSimulation(); }} onPause={pauseSimulation} onResume={resumeSimulation}
       onStep={runSingleStep} onReset={resetSimulation} onRunAllPlans={runAllPlans}
       onDownload={downloadRawModel}
       onSimStartDateChange={v => set('simStartDate', v)}
@@ -1203,7 +1223,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
-      onStart={startOptimization} onCancel={cancelOptimization}
+      onStart={() => { sessionEditedRef.current = true; startOptimization(); }} onCancel={cancelOptimization}
       onWarmStartChange={setWarmStartEnabled}
       onSimStartDateChange={v => set('simStartDate', v)}
       onSimEndDateChange={v => set('simEndDate', v)}
@@ -1216,7 +1236,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       onSaveResults={scsMode
         ? () => { message.success('结果已保存到 Session'); }
         : saveResultsToFile}
-      onClearSession={() => { if (selectedKey) { clearSession(selectedKey); sessionReadyRef.current = false; loadFileContent(selectedKey, { preserveTab: true }); } }}
       scsMode={scsMode}
       setOptResult={setOptResult}
       t={t} c={c as any}
@@ -1256,6 +1275,8 @@ const Simulator: React.FC<SimulatorProps> = ({
           onImportFile={() => importFileRef.current?.click()}
           onBuilderUpload={() => builderUploadRef.current?.click()}
           scsMode={scsMode}
+          sessionKeys={sessionKeys}
+          onReloadModel={reloadFromYAML}
           sessionModels={sessionModels}
           onSelectSessionModel={model => {
             if (builderOpen) {
@@ -1376,7 +1397,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                   isDarkMode={isDarkMode} c={c} t={t}
                   plans={plans} activePlanId={activePlanId}
                   onSelectPlan={selectPlan} onAddPlan={addPlan} onRemovePlan={removePlan}
-                  onResetToYaml={selectedKey ? () => { clearSession(selectedKey); loadFileContent(selectedKey, { preserveTab: true }); } : undefined}
                 />
               }
               result={
