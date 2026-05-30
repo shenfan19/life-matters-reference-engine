@@ -15,7 +15,7 @@
 | --- | ------------------------------------------------ |
 | R1  | 优化目标、决策变量、约束完全由 YAML `optimizer:` 块驱动，不硬编码任何目标函数 |
 | R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead）     |
-| R3  | 支持两种输入格式：`inputs:`（新，推荐）和 `regimen:`（旧，向后兼容）     |
+| R3  | 决策变量与固定背景输入统一在 `optimizer.schedules` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
 | R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程                |
 | R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
 | R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
@@ -64,7 +64,7 @@ from pymoo.termination import get_termination
 | 端点 | `POST /api/optimizer/run_yaml` |
 | 核心模块 | `sim_engine/src/yaml_optimizer.py` |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
-| 优化对象 | YAML `optimizer.inputs` 中定义的决策变量（T1–T4），或 `optimizer.regimen`（向后兼容） |
+| 优化对象 | YAML `optimizer.schedules` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
 | 目标函数来源 | YAML `optimizer.objectives` |
 | 进度回调 | pymoo `Callback` 每代调用一次 |
 | 进度展示 | 前端 1.5s 轮询 `/api/optimizer/status/{job_id}` |
@@ -78,11 +78,15 @@ Body: {
   model_name: str,
   folder: null,
   optimizer_override: null | {
-    inputs?: [...] | regimen?: {...},
+    schedules?: [...],
     objectives?: [...],
     constraints?: [...],
     algorithm?: {...},
     method?: str,
+    start_date?: str,
+    end_date?: str,
+    step_size?: {...},
+    warm_start?: [{x: [...], f: [...]}],
   }
 }
 返回: {success: true, job_id: "uuid"}
@@ -129,6 +133,8 @@ DELETE /api/optimizer/job/{job_id}
   "time_hours": 8736.0
 }
 ```
+
+> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimizer.results.reference`（含 `x`、`f`、`regimen`、`objectives`），由 GUI "保存结果到模型"写回。
 
 ### 2.4 前端状态机
 
