@@ -414,7 +414,7 @@ simulation:
 | `time` | `"HH:MM"` | ✅ | 触发时刻（24 小时制） |
 | `value` | number | ✅ | 触发时写入的值 |
 | `days` | `[Mon…Sun]` | — | 三字母缩写列表；缺席 = 每天都触发 |
-| `date_range` | `"YYYY-MM-DD ~ YYYY-MM-DD"` | — | 条目仅在此日历区间内生效；缺席 = 从 `start_date` 到 `end_date` 全程 |
+| `date_range` | `"YYYY-MM-DD ~ YYYY-MM-DD"` 或 `["YYYY-MM-DD", "YYYY-MM-DD"]` | — | 条目仅在此日历区间内生效；缺席 = 从 `start_date` 到 `end_date` 全程 |
 | `label` | string | — | GUI 展示用说明文字 |
 
 ### 多条目 vs 多周期

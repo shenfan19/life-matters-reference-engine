@@ -161,18 +161,18 @@ LM 本质上是**动态可计算的 meta-analysis 替代品**，对应 NIH 推�
 
 **背景**：Pareto 前沿是 N 组输入组合；export-model 的 YAML 含有 `optimizer.results`，但重新加载时 Sim 不读取 opt 结果、Opt 无法显式选热/冷启动。同时"以此解运行仿真"按钮只处理单变量，多变量 opt 映射错误。
 
-**架构**：Opt 结果（`pareto_front[i].x`）通过软件层重组为 N 组合规 inputEvents（Plan），Plan 是 Sim 的会话级对象；`optimizer.inputs` 的结构本身隐含了 `x[i]` 与 `{variable, time}` 的映射关系，不需要额外字段。`best.regimen` 仅作人类可读的可视化备选。
+**架构**：Opt 结果（`pareto_front[i].x`）通过软件层重组为 N 组合规 inputEvents（Plan），Plan 是 Sim 的会话级对象；`optimizer.schedules` 中有 `optimize:` 块的条目隐含了 `x[i]` 与 `{variable, time}` 的映射关系，不需要额外字段。`reference.regimen` 仅作人类可读的可视化备选。
 
 **需求**：
 
 | ID | 描述 |
 |----|------|
-| F-5-1 | **前端 `xToInputEvents` 函数**：输入 `x[]` + 当前 YAML 的 `optimizer.inputs`（或 `regimen`）结构 + 基础 inputEvents；按 `optimizer.inputs` 的变量名顺序 × events 列表顺序展开，逐一匹配 inputEvent（按 `variable + time`），返回更新后的 inputEvents；这是 Opt→Sim 所有路径的共同基础 |
-| F-5-2 | **Sim 加载 opt 结果**：加载含 `optimizer.results.best.x` 的模型时，GUI 询问是否将推荐解（`best.x`）预填为当前 inputEvents（调用 `xToInputEvents`）；用户可选"加载推荐解"或"使用模型默认调度" |
+| F-5-1 | **前端 `xToInputEvents` 函数**：输入 `x[]` + 当前 YAML 的 `optimizer.schedules`（含 `optimize:` 块的条目）+ 基础 inputEvents；按列表顺序 × 启用的 Tier 展开，逐一匹配 inputEvent（按 `variable + time`），返回更新后的 inputEvents；这是 Opt→Sim 所有路径的共同基础 |
+| F-5-2 | **Sim 加载 opt 结果**：加载含 `optimizer.results.reference.x` 的模型时，GUI 询问是否将参考解（`reference.x`）预填为当前 inputEvents（调用 `xToInputEvents`）；用户可选"加载推荐解"或"使用模型默认调度" |
 | F-5-3 | **Opt 热/冷启动（已实施，见 ADR 0089 D3）**："继续计算"复选框始终可见（无结果时 disabled）；勾选 = 热启动，取消 = 冷启动。若运行后修改了目标/约束/决策变量，复选框变为橙色"⚠ 继续计算"提示问题定义已变更，但不强制切换为冷启动。 |
-| F-5-4 | **清理残留单变量代码**：`SimOptTab.tsx` 中"以此解运行仿真"按钮改为调用 `xToInputEvents(best_x, optimizerInputs, inputEvents)`，支持任意数量的优化变量 |
+| F-5-4 | **清理残留单变量代码**：`SimOptTab.tsx` 中"以此解运行仿真"按钮改为调用 `xToInputEvents(pareto_point.x, optimizerSchedules, inputEvents)`，支持任意数量的优化变量 |
 
-**YAML schema**：无变化，不新增字段；`optimizer.inputs` 结构已隐含映射关系。
+**YAML schema**：`optimizer.schedules` 统一列表结构隐含 x 向量与 `{variable, time}` 的映射关系，不需要额外字段。
 
 ---
 
@@ -185,7 +185,7 @@ LM 本质上是**动态可计算的 meta-analysis 替代品**，对应 NIH 推�
 | ID | 描述 |
 |----|------|
 | F-2-1 | Pareto 前沿表格每行有"Apply to Sim"按钮；点击后调用 `xToInputEvents(row.x, optimizerInputs, inputEvents)` 更新当前 Sim Plan，切换到 Sim Tab |
-| F-2-2 | 匹配失败的 x 项（optimizer.inputs 与模型当前状态不一致）给出 warning，其余正常应用 |
+| F-2-2 | 匹配失败的 x 项（`optimizer.schedules` 条目与模型当前 inputEvents 不一致）给出 warning，其余正常应用 |
 
 ---
 
