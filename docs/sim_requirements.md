@@ -169,7 +169,7 @@ LM 本质上是**动态可计算的 meta-analysis 替代品**，对应 NIH 推�
 |----|------|
 | F-5-1 | **前端 `xToInputEvents` 函数**：输入 `x[]` + 当前 YAML 的 `optimizer.inputs`（或 `regimen`）结构 + 基础 inputEvents；按 `optimizer.inputs` 的变量名顺序 × events 列表顺序展开，逐一匹配 inputEvent（按 `variable + time`），返回更新后的 inputEvents；这是 Opt→Sim 所有路径的共同基础 |
 | F-5-2 | **Sim 加载 opt 结果**：加载含 `optimizer.results.best.x` 的模型时，GUI 询问是否将推荐解（`best.x`）预填为当前 inputEvents（调用 `xToInputEvents`）；用户可选"加载推荐解"或"使用模型默认调度" |
-| F-5-3 | **Opt 显式热/冷启动**：模型含 `optimizer.results.pareto_front` 时，Opt 面板显示"历史解 N 个（YYYY-MM-DD）"；运行前提供"热启动（继续搜索）"和"冷启动（重新搜索）"两个按钮，废除当前的自动决定逻辑 |
+| F-5-3 | **Opt 热/冷启动（已实施，见 ADR 0089 D3）**："继续计算"复选框始终可见（无结果时 disabled）；勾选 = 热启动，取消 = 冷启动。若运行后修改了目标/约束/决策变量，复选框变为橙色"⚠ 继续计算"提示问题定义已变更，但不强制切换为冷启动。 |
 | F-5-4 | **清理残留单变量代码**：`SimOptTab.tsx` 中"以此解运行仿真"按钮改为调用 `xToInputEvents(best_x, optimizerInputs, inputEvents)`，支持任意数量的优化变量 |
 
 **YAML schema**：无变化，不新增字段；`optimizer.inputs` 结构已隐含映射关系。
