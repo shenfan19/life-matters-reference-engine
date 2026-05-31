@@ -293,7 +293,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { modelSessionsRef, sessionReadyRef, persistSession, clearSession } = useSession();
   const sessionEditedRef = useRef(false);
 
-  const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
+  const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
 
   const dateToHours = (start: string, end: string) =>
     Math.max(0, (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 3_600_000);
@@ -591,7 +591,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const DEFAULT_END   = '2026-12-31';
     const toStepUnit = (u: string): StepUnit => {
       if (u === 'day') return 'day'; if (u === 'hour') return 'hour';
-      if (u === 'minute') return 'minute'; if (u === 'second') return 'second';
+      if (u === 'minute') return 'minute';
       return 'day';
     };
     if (sim) {
@@ -602,7 +602,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         if (metaStep?.unit) { set('stepValue', metaStep.value ?? 1); set('stepUnit', toStepUnit(String(metaStep.unit))); }
         else { set('stepValue', sim.step ?? 1); set('stepUnit', toStepUnit(String(sim.step_unit || 'minute'))); }
       } else {
-        const UNIT_SEC: Record<string, number> = { second:1, minute:60, hour:3600, day:86400, week:604800, month:2592000, year:31536000 };
+        const UNIT_SEC: Record<string, number> = { minute:60, hour:3600, day:86400, week:604800, month:2592000, year:31536000 };
         const timeUnit = String(sim.time_unit || 'hour').toLowerCase();
         const rawStep  = sim.step_size ?? 1;
         const totalSec = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);

@@ -66,7 +66,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     from .model_structure.base import TIME_UNIT_SECONDS
     from .regimen_runner import apply_regimens
 
-    unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
+    unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'minute'), 60.0)
     native_step = step_size_sec / unit_sec
 
     model.reset_simulation()
@@ -297,9 +297,9 @@ def run_optimizer(simulator_engine, model_name: str,
     sim_data = base_model.simulator
     _opt_step_cfg = opt_block.get('step_size')
     if _opt_step_cfg and isinstance(_opt_step_cfg, dict):
-        _unit_to_sec = {'second': 1.0, 'minute': 60.0, 'hour': 3600.0, 'day': 86400.0}
+        _unit_to_sec = {'minute': 60.0, 'hour': 3600.0, 'day': 86400.0}
         step_size = float(_opt_step_cfg.get('value', 1)) * _unit_to_sec.get(
-            str(_opt_step_cfg.get('unit', 'second')).lower(), 1.0)
+            str(_opt_step_cfg.get('unit', 'minute')).lower(), 60.0)
     else:
         step_size = float(base_model.simulator.get('step_size', 86400.0))
     sim_start_date: str = str(opt_block.get('start_date') or sim_data.get('start_date', ''))

@@ -43,8 +43,8 @@ class ModelStructure(Loader, Validator, Simulation):
         self.accumulators: Dict[str, Accumulator] = {}
         # 初始化手动覆盖
         self.manual_overrides: Dict[str, Any] = {}
-        # 时间单位（来自 YAML simulator.time_unit，默认秒）
-        self.time_unit: str = 'second'
+        # 时间单位（来自 YAML simulator.time_unit，默认分钟）
+        self.time_unit: str = 'minute'
         # 跟踪已访问模型，防止循环依赖
         self.visited: Set[str] = set()
         self.models_directory = models_directory
@@ -54,8 +54,7 @@ class ModelStructure(Loader, Validator, Simulation):
     def _initialize_asteval(self):
         # 重建 Interpreter，让 asteval 自己注册所有内置函数，不破坏其内部状态
         self.asteval = Interpreter()
-        # 追加时间单位常量（秒为基单位）
-        self.asteval.symtable['SECOND'] = 1.0
+        # 追加时间单位常量（以秒为绝对值，供内部计算参考）
         self.asteval.symtable['MINUTE'] = 60.0
         self.asteval.symtable['HOUR'] = 3600.0
         self.asteval.symtable['DAY'] = 86400.0

@@ -29,7 +29,7 @@ _FORMULA_GLOBALS: Dict[str, Any] = {
 # 每步由引擎注入的时间/步长符号（不是模型变量，但公式可以引用）
 _STEP_SYMS = frozenset({
     'step', 'step_size', 'dt', 't', 'time',
-    'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
+    'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
 })
 
 
@@ -208,7 +208,7 @@ class Simulation:
                 logger.warning(f"Pre-step hook failed: {e}")
 
         # 将 step_size（time_unit 单位）转换为秒，供内部时钟和 accumulator 使用
-        unit_sec = TIME_UNIT_SECONDS.get(getattr(self, 'time_unit', 'second'), 1.0)
+        unit_sec = TIME_UNIT_SECONDS.get(getattr(self, 'time_unit', 'minute'), 60.0)
         step_size_sec = step_size * unit_sec
 
         # 应用计划表（传入秒步长供 pulse 模式使用）
@@ -235,7 +235,7 @@ class Simulation:
         step_sym_vals = {
             'step': step_size, 'step_size': step_size, 'dt': step_size,
             't': self.time / unit_sec, 'time': self.time / unit_sec,
-            'SECOND': 1.0, 'MINUTE': 60.0, 'HOUR': 3600.0, 'DAY': 86400.0,
+            'MINUTE': 60.0, 'HOUR': 3600.0, 'DAY': 86400.0,
             'WEEK': 604800.0, 'MONTH': 2592000.0, 'YEAR': 31536000.0,
         }
 

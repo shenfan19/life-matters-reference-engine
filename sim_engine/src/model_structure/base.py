@@ -71,7 +71,6 @@ WINDOW_SECONDS: Dict[str, float] = {
 
 # time_unit 声明值 → 秒数映射（用于 YAML simulator.time_unit 字段）
 TIME_UNIT_SECONDS: Dict[str, float] = {
-    'second': 1.0,
     'minute': 60.0,
     'hour':   3600.0,
     'day':    86400.0,

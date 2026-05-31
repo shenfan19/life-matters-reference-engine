@@ -67,7 +67,7 @@ export interface ModelFile {
 }
 
 export type DurationUnit = 'year' | 'month' | 'day' | 'hour';
-export type StepUnit = 'day' | 'hour' | 'minute' | 'second';
+export type StepUnit = 'day' | 'hour' | 'minute';
 
 export interface SimulationDataPoint {
     step: number;
