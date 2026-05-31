@@ -39,6 +39,11 @@ metadata:
     limitations: >
       参数待从 Keating 2015 / Promrat 2010 等文献精化；
       beta_hiit 当前为演示值，应从 HIIT vs MICT 对比 RCT 中提取效应量。
+    value_for_paper: >
+      展示 K×4 T1+T3+T4 在 NAFLD 管理中的完整优化链，K=3 分段（热身→升级→维持）临床解释直觉清晰。
+      主要风险：beta_hiit（HIIT额外减脂系数）和 delta_alt（高强度-ALT反应系数）均标注 TODO:SOURCE，
+      投稿前须从 Keating 2015 HIIT vs MICT 亚组提取效应量；否则量化结论可信度不足，必被 reviewer 追问。
+      当前适合框架演示，论文主线地位需先完成参数精化。
   tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT, T3, T4, K3]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"

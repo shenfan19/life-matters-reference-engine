@@ -40,6 +40,11 @@ metadata:
     limitations: >
       酮体-IR 恶化的动力学系数为估算值（待精化）；
       分岔阈值 0.3 kg/w 来自 MASLD 文献，个体差异（PNPLA3 基因型）由 MC 参数隐含。
+    value_for_paper: >
+      S3 理论深度最强案例：减重速率作为跨科室控制分岔点的数学论证是 IHIO 框架独特贡献的核心证据。
+      高价值高风险：若能提供减重速率 0.1→0.5 kg/w 超参数扫描（Pareto hypervolume 随约束连续变化的曲线），
+      分岔点论证将无懈可击；若仅对比两个离散约束点，reviewer 可能质疑是否真正是分岔而非平滑过渡。
+      建议将超参数扫描图作为 S3 核心图表，T2 运动时机在两种约束下均稳健这一结论是额外加分项。
   tags: [S3, MASLD, insulin_resistance, HOMA-IR, IHIO, bifurcation, feasibility, A7, T2, K4]
   references:
     - "参见 s2/masld_insulin_a7_s2.yaml 完整引用"

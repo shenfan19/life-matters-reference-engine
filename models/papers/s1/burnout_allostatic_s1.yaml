@@ -48,6 +48,12 @@ metadata:
       work_pressure 在当前模型为固定参数；未来可扩展为随工作项目周期波动的时序变量。
       皮质醇动力学为一室简化模型，未建模 HPA 负反馈完整非线性。
       营养得分为聚合性标量，未区分宏量营养素组成。
+    value_for_paper: >
+      跨域深度最强的 S1 案例（职业心理学×神经内分泌×心血管，3域联合，T1+T2+T3+T4 全维度）；
+      "可控恢复行为 vs 不可控工作压力"的 framing 在 JAMIA 等临床信息学期刊有独特吸引力，
+      是 LMML 区别于单病种工具的旗帜性论点。
+      主要风险：皮质醇回落速率（cortisol_recovery_base=0.06）和 CVD 积累系数（0.007/day）均为估算值，
+      无直接文献对应的动力学系数；结论须以"方向性一致"为主，不宜过度精确化定量绝对值。
   tags: [paper1, burnout, allostatic_load, cortisol, recovery_behaviors, cross-domain, psychology, endocrine, C1]
   references:
     - "McEwen BS (1998) Stress, adaptation, and disease - allostasis and allostatic load. Ann NY Acad Sci 840:33-44"

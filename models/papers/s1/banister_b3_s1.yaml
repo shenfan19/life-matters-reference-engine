@@ -33,6 +33,10 @@ metadata:
       期望结论是最优训练方案不只是负荷大小——训练频率和减量时机是同等重要的可优化维度；
       K×4 T1+T3+T4 联合优化揭示了纯负荷优化（T1 only）无法发现的结构性规律。
     limitations: 参数采用文献标准值和演示协议，未针对具体运动员个体校准。
+    value_for_paper: >
+      数值验证核心案例：Banister 模型有 Morton 1990 原始数据可对照，reviewer 验证门槛低，
+      K×4 T1+T3+T4 联合优化（相比纯 T1 剂量优化）对峰值表现贡献的独立量化是论文方法论的直接论据。
+      局限：模型本身无跨域或临床意义，定位为框架验证展示，不宜独立作为论文主线案例。
   tags: [paper1, banister, B3, validation, fitness, fatigue, T3, T4]
   references:
     - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177"

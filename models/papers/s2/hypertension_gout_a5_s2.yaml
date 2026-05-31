@@ -40,6 +40,12 @@ metadata:
       晚间服药在血压节律上具有优势，别嘌醇介入时机比剂量更影响尿酸控制效果；
       单病种指南的局部最优可能造成跨病种风险，多目标建模能显式暴露并优化冲突。
     limitations: 尿酸昼夜节律效应和部分药效参数仍待文献精化，当前结果用于方法验证。
+    value_for_paper: >
+      论文最强候选案例之一：HCTZ-痛风冲突是有大量临床记录的真实困境，
+      MAPEC 研究（Hermida 2010/2020）为时间药理学维度提供高质量 RCT 证据基础，
+      Pareto 前沿结论（晚间 HCTZ + 延迟别嘌醇）直接可操作、参数可信度高于其他算例。
+      建议作为 Paper 2 引导性核心案例，配合单张血压/尿酸 Pareto 前沿图供临床医生直觉理解；
+      尿酸昼夜节律系数精化后结论更可靠。
   tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt, T2, T4, chronotherapy]
   references:
     - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"
