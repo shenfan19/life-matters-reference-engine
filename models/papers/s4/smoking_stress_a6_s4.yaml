@@ -248,32 +248,32 @@ simulation:
       schedules:
         - {variable: cigarettes_per_day, time: "09:00", value: 20.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "吸烟期"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "吸烟期"}
         - {variable: cigarettes_per_day, time: "09:00", value: 0.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2027-01-01 ~ 2027-06-30", label: "工作日先戒"}
+           date_range: ["2027-01-01", "2027-06-30"], label: "工作日先戒"}
         - {variable: cigarettes_per_day, time: "09:00", value: 10.0,
            days: [Sat, Sun],
-           date_range: "2027-01-01 ~ 2027-06-30", label: "周末过渡期"}
+           date_range: ["2027-01-01", "2027-06-30"], label: "周末过渡期"}
         - {variable: cigarettes_per_day, time: "09:00", value: 5.0,
            days: [Sat, Sun],
-           date_range: "2027-07-01 ~ 2027-12-31", label: "周末减少"}
+           date_range: ["2027-07-01", "2027-12-31"], label: "周末减少"}
 
     - id: "weekend_first"
       label: "周末先戒策略（2027-01-01开始减量，周末0支→工作日渐减）"
       schedules:
         - {variable: cigarettes_per_day, time: "09:00", value: 20.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "吸烟期"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "吸烟期"}
         - {variable: cigarettes_per_day, time: "09:00", value: 15.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2027-01-01 ~ 2027-06-30", label: "工作日过渡期"}
+           date_range: ["2027-01-01", "2027-06-30"], label: "工作日过渡期"}
         - {variable: cigarettes_per_day, time: "09:00", value: 0.0,
            days: [Sat, Sun],
-           date_range: "2027-01-01 ~ 2027-06-30", label: "周末先戒"}
+           date_range: ["2027-01-01", "2027-06-30"], label: "周末先戒"}
         - {variable: cigarettes_per_day, time: "09:00", value: 8.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2027-07-01 ~ 2027-12-31", label: "工作日减少"}
+           date_range: ["2027-07-01", "2027-12-31"], label: "工作日减少"}
 
 # ── 优化设置（T1+T3+T4 联合优化）──────────────────────────────────────────────
 optimizer:
@@ -337,6 +337,12 @@ optimizer:
       optimize:
         value: [5.0, 15.0]
         date_range: [["2026-06-01", "2027-06-30"], ["2030-12-31", "2030-12-31"]]
+
+  mc:
+    enabled: false
+    sim_runs: 20
+    seed: 42
+    description: "MC 采样 alpha_DA（尼古丁-多巴胺系数，个体成瘾性差异 ±30%）和 delta_fev1_smk（吸烟FEV1损伤速率，吸烟史差异），验证T3/T4结论稳健性"
 
   algorithm:
     population_size: 100

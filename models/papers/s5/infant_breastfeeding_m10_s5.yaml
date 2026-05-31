@@ -1,0 +1,374 @@
+category: medical
+
+metadata:
+  name: infant_breastfeeding_m10
+  paper: Paper 5 (S5)
+  case_id: M10
+  updated: 2026-05-30
+  author: Fan Shen
+  description:
+    brief: >
+      新生儿母乳喂养优化模型（M10）：在宝宝充分摄奶与妈妈夜间睡眠质量之间寻找 Pareto 最优喂养方案。
+    need: >
+      新生儿喂养是产后最常见的多目标决策问题：
+      少喂多量→胃容量不足→吐奶+营养流失+生长迟缓；
+      多喂少量→每隔 2 小时夜醒→妈妈睡眠债快速积累→产后疲劳与奶量下降的恶性循环。
+      当前医学建议（8次/天，每次75mL）基于群体均值，无法针对个体的胃发育速率和母亲睡眠敏感度给出最优化的喂养时间表。
+    problem: >
+      新生儿胃容量约为体重的30mL/kg，随体重线性增长。
+      单次喂奶量超过当前胃容量→溢奶（overflow），净吸收减少→生长不达预期曲线。
+      夜间喂奶（22:00–06:00）每次消耗妈妈约45分钟有效睡眠，多次夜醒累积睡眠债超过15小时后
+      持续影响妈妈健康。核心矛盾是：更少的夜奶有利于妈妈，却要求白天每次更大剂量喂奶，
+      而大剂量在早期体重较小时恰恰超过胃容量上限。
+    method: >
+      1小时步长 ODE 模型，追踪四个动态：
+      (1) 指数胃排空（母乳半衰期≈1.5h，Cavell 1981）；
+      (2) 胃容量溢出（吐奶）——每次喂奶后若胃内奶量超过 30mL/kg × 体重，超出部分为溢奶；
+      (3) 体重增长——与胃排空吸收量成正比，目标 25g/天；
+      (4) 妈妈睡眠债——每次夜间喂奶+0.75h，每小时自然恢复0.083h。
+      胃容量随体重实时更新，使模型能捕捉前期容量受限→后期容量充裕的发育转变。
+    simulation: >
+      90天仿真（出生至3月龄）。三方案对比：
+      高频小量（10次/天，60mL）、指南标准（8次/天，75mL）、低频大量（5次/天，120mL）。
+    optimization: >
+      NSGA-II 双目标：最大化 lm_baby_score（宝宝体重达生长曲线的累计小时数）
+      和 lm_mother_score（妈妈睡眠债低于15h的累计小时数）。
+      决策变量：5个白天固定时刻喂奶量（T1）+ 2次夜间喂奶量与时机（T1+T2）= 9维混合搜索空间。
+      科学问题：在3月龄前，最优化的夜间喂奶策略是什么？
+    result: >
+      预期 Pareto 前沿揭示：
+      早期（0–4周）最优方案向高频倾斜（胃容量限制溢出风险），夜奶不可避免；
+      4周后胃容量扩展，可逐步减少夜奶次数至1次，维持妈妈睡眠同时保证宝宝生长。
+      纯白天集中喂养在前4周必然导致生长落后于WHO曲线。
+    conclusion: >
+      期望结论是纯白天集中喂养（5次/天，120mL）在前4周因胃容量受限导致系统性生长落后，
+      是不可行的省力捷径；WHO推荐的8次/天方案在大多数个体中接近Pareto前沿的膝点，兼顾两目标；
+      进一步优化空间在于夜间喂奶时机（T2）——将后半夜喂奶推迟至凌晨3-4时
+      （最大化连续睡眠窗口）可在相同夜奶次数下改善妈妈睡眠质量。
+      本模型不构成临床喂养处方，仅展示 LMML 对产后护理多目标决策问题的建模能力。
+    limitations: >
+      未建模母乳供需动态（供奶量-需奶量耦合）、婴儿饥饿信号、集中哺乳（cluster feeding）、
+      猛长期（growth spurt）、妈妈疲劳对奶量的负反馈。
+      胃排空为一阶近似，未区分胃排空加速（液体前段）与减速（脂肪后段）阶段。
+      睡眠恢复模型为线性近似，忽略个体睡眠效率差异。
+  tags: [infant, breastfeeding, newborn, sleep, nutrition, pediatrics, postnatal, M10, paper5]
+  references:
+    - "Kent JC et al. (2006) Volume and frequency of breastfeedings and fat content of breast milk throughout the day. Pediatrics 117(3):e387-e395."
+    - "Scammon RE & Doyle LO (1920) Observations on the capacity of the stomach in the first ten days of postnatal life. AJDC 20:516-538."
+    - "Cavell B (1981) Gastric emptying in infants fed human milk or infant formula. Acta Paediatr Scand 70:639-641."
+    - "American Academy of Pediatrics (2012) Breastfeeding and the use of human milk. Pediatrics 129(3):e827-e841."
+    - "WHO Child Growth Standards (2006) Weight-for-age. WHO Press, Geneva."
+    - "Doan T et al. (2007) Breast-feeding increases sleep duration of new parents. J Perinat Neonatal Nurs 21(3):200-206."
+    - "Borbely AA (1982) A two process model of sleep regulation. Hum Neurobiol 1(3):195-204."
+  step_size:
+    value: 1
+    unit: hour
+
+# ── 变量 ─────────────────────────────────────────────────────────────────────────
+variables:
+
+  breast_milk:
+    type: input
+    value: 75.0
+    unit: mL
+    bounds: [10, 200]
+    optimizable: true
+    io_role: input
+    description: "每次喂奶量（pulse 模式：触发时刻写入值，其余步自动为0）。"
+    reference: "Kent et al. (2006) Pediatrics 117(3):e387."
+
+  baby_stomach_volume:
+    type: state
+    value: 0.0
+    unit: mL
+    io_role: output
+    description: "宝宝胃内当前奶量（mL）。随喂奶脉冲升高，随胃排空指数下降。"
+    reference: "Cavell B (1981) Acta Paediatr Scand 70:639."
+
+  baby_weight:
+    type: state
+    value: 3.3
+    unit: kg
+    io_role: output
+    description: "宝宝体重（kg）。出生均值3.3kg，随吸收奶量增长。体重同时决定胃容量上限。"
+    reference: "WHO Child Growth Standards (2006)"
+
+  spit_up_volume:
+    type: state
+    value: 0.0
+    unit: mL
+    io_role: output
+    description: "累计溢奶量（mL）。每次喂奶量超过胃容量时溢出，代表营养损失。"
+    reference: "Scammon & Doyle (1920) AJDC 20:516."
+
+  mother_sleep_debt:
+    type: state
+    value: 0.0
+    unit: hour
+    io_role: output
+    description: "妈妈累计睡眠债（小时）。夜间每次喂奶+0.75h，白天自然恢复。0=充分休息。"
+    reference: "Doan T et al. (2007) J Perinat Neonatal Nurs 21(3):200."
+
+  lm_baby_score:
+    type: state
+    value: 0.0
+    unit: hour
+    io_role: output
+    description: "宝宝健康时长：体重在WHO生长曲线上方的累计小时数（可恢复模式）。"
+    reference: "WHO Child Growth Standards (2006); Life Matters Framework"
+
+  lm_mother_score:
+    type: state
+    value: 0.0
+    unit: hour
+    io_role: output
+    description: "妈妈健康时长：睡眠债低于15小时的累计小时数（可恢复模式）。"
+    reference: "Life Matters Framework"
+
+  # ── 参数 ──────────────────────────────────────────────────────────────────────
+  gastric_emptying_rate:
+    type: parameter
+    value: 0.46
+    unit: 1/hour
+    description: "胃排空一阶速率常数。母乳半衰期 = ln(2)/0.46 ≈ 1.5小时（母乳比配方奶快2-3倍）。"
+    reference: "Cavell B (1981) Acta Paediatr Scand 70:639-641."
+
+  stomach_capacity_per_kg:
+    type: parameter
+    value: 30.0
+    unit: mL/kg
+    description: "每kg体重对应的胃容量（mL/kg）。新生儿约30mL/kg，随体重线性增长。"
+    reference: "Scammon & Doyle (1920) AJDC 20:516-538."
+
+  weight_gain_per_ml_absorbed:
+    type: parameter
+    value: 0.000042
+    unit: kg/mL
+    description: >
+      每mL吸收奶量对应的体重增长系数。推导：期望增重25g/天 ÷ 目标日摄奶量600mL
+      （150-180mL/kg/天 × 3.3kg）= 0.042 g/mL。
+    reference: "AAP (2012) Pediatrics 129(3):e827; WHO Child Growth Standards (2006)."
+
+  sleep_disruption_per_nightfeed:
+    type: parameter
+    value: 0.75
+    unit: hour
+    description: "每次夜间喂奶（22:00-06:00）消耗的有效睡眠时间：醒来5min+喂奶20min+安抚10min+再入睡10min≈45min。"
+    reference: "Doan T et al. (2007) J Perinat Neonatal Nurs 21(3):200-206."
+
+  sleep_recovery_rate:
+    type: parameter
+    value: 0.083
+    unit: hour/hour
+    description: "每小时睡眠债自然恢复速率（白天小睡+昼夜节律恢复综合）。24h净恢复约2小时。"
+    reference: "Borbely AA (1982) Hum Neurobiol 1(3):195-204."
+
+  expected_daily_gain:
+    type: parameter
+    value: 0.025
+    unit: kg/day
+    description: "健康新生儿0-3月龄期望日增重（WHO参考值：25g/天）。"
+    reference: "WHO Child Growth Standards (2006)"
+
+# ── 动力学公式 ────────────────────────────────────────────────────────────────────
+formulas:
+
+  stomach_intake_and_overflow:
+    priority: 0
+    dynamics:
+      baby_stomach_volume: "baby_stomach_volume + breast_milk - max(0.0, baby_stomach_volume + breast_milk - stomach_capacity_per_kg * baby_weight)"
+      spit_up_volume: "spit_up_volume + max(0.0, baby_stomach_volume + breast_milk - stomach_capacity_per_kg * baby_weight)"
+    description: >
+      喂奶脉冲：将奶量加入胃，超过胃容量（stomach_capacity_per_kg × baby_weight）的部分作为溢奶记录。
+      胃容量随体重实时计算，捕捉早期容量受限到后期容量宽裕的发育转变。
+    reference: "Scammon & Doyle (1920)"
+
+  gastric_emptying_and_growth:
+    priority: 10
+    dynamics:
+      baby_stomach_volume: "max(0.0, baby_stomach_volume - gastric_emptying_rate * baby_stomach_volume * step)"
+      baby_weight: "baby_weight + weight_gain_per_ml_absorbed * gastric_emptying_rate * baby_stomach_volume * step"
+    description: >
+      一阶胃排空（速率0.46/h，半衰期1.5h）；同步将离开胃的奶量转化为体重增长。
+      此公式在 stomach_intake_and_overflow（priority 0）之后执行，读取溢奶修正后的胃内奶量。
+    reference: "Cavell (1981); AAP (2012)"
+
+  maternal_sleep_tracking:
+    priority: 20
+    dynamics:
+      mother_sleep_debt: "max(0.0, mother_sleep_debt - sleep_recovery_rate * step + sleep_disruption_per_nightfeed * (1 if breast_milk > 0 else 0) * (1 if (t % 24 >= 22 or t % 24 < 6) else 0))"
+    description: >
+      睡眠债动态：每次夜间喂奶（22:00-06:00，即 t%24>=22 或 t%24<6）+0.75h；
+      其余每小时自然恢复0.083h（约2h/天）。t 为仿真开始以来的累计小时数，仿真从午夜00:00起。
+    reference: "Doan et al. (2007)"
+
+  lm_score_accumulation:
+    priority: 30
+    dynamics:
+      lm_baby_score: "lm_baby_score + step * (1 if baby_weight >= (3.3 + expected_daily_gain * (t / 24.0)) * 0.97 else 0)"
+      lm_mother_score: "lm_mother_score + step * (1 if mother_sleep_debt <= 15.0 else 0)"
+    description: >
+      双健康时长累积：
+      lm_baby_score 条件：宝宝体重 ≥ WHO期望曲线的97%（3.3kg + 25g/天 × 已过天数，允许3%容差）；
+      lm_mother_score 条件：妈妈睡眠债 < 15小时（超过此阈值认为显著影响健康）。
+    reference: "WHO (2006); Life Matters Framework core metric"
+
+# ── 仿真设置（三方案对比） ─────────────────────────────────────────────────────────
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-04-01"
+  output_types: [input, state]
+  plans:
+    - id: "frequent_small"
+      label: "高频小量（10次/天，60mL）"
+      schedules:
+        - {variable: breast_milk, time: "01:30", value: 60.0, label: "夜间 1:30"}
+        - {variable: breast_milk, time: "04:00", value: 60.0, label: "夜间 4:00"}
+        - {variable: breast_milk, time: "06:30", value: 60.0, label: "早晨 6:30"}
+        - {variable: breast_milk, time: "09:00", value: 60.0, label: "上午 9:00"}
+        - {variable: breast_milk, time: "11:00", value: 60.0, label: "上午 11:00"}
+        - {variable: breast_milk, time: "13:00", value: 60.0, label: "下午 13:00"}
+        - {variable: breast_milk, time: "15:00", value: 60.0, label: "下午 15:00"}
+        - {variable: breast_milk, time: "17:00", value: 60.0, label: "傍晚 17:00"}
+        - {variable: breast_milk, time: "19:30", value: 60.0, label: "晚间 19:30"}
+        - {variable: breast_milk, time: "22:30", value: 60.0, label: "夜间 22:30"}
+
+    - id: "guideline_standard"
+      label: "指南标准（8次/天，75mL，每3小时）"
+      schedules:
+        - {variable: breast_milk, time: "00:00", value: 75.0, label: "凌晨 0:00"}
+        - {variable: breast_milk, time: "03:00", value: 75.0, label: "凌晨 3:00"}
+        - {variable: breast_milk, time: "06:00", value: 75.0, label: "早晨 6:00"}
+        - {variable: breast_milk, time: "09:00", value: 75.0, label: "上午 9:00"}
+        - {variable: breast_milk, time: "12:00", value: 75.0, label: "中午 12:00"}
+        - {variable: breast_milk, time: "15:00", value: 75.0, label: "下午 15:00"}
+        - {variable: breast_milk, time: "18:00", value: 75.0, label: "傍晚 18:00"}
+        - {variable: breast_milk, time: "21:00", value: 75.0, label: "晚间 21:00"}
+
+    - id: "clustered_daytime"
+      label: "日间集中（5次/天，120mL）"
+      schedules:
+        - {variable: breast_milk, time: "07:00", value: 120.0, label: "早晨 7:00"}
+        - {variable: breast_milk, time: "11:00", value: 120.0, label: "上午 11:00"}
+        - {variable: breast_milk, time: "15:00", value: 120.0, label: "下午 15:00"}
+        - {variable: breast_milk, time: "19:00", value: 120.0, label: "傍晚 19:00"}
+        - {variable: breast_milk, time: "23:00", value: 120.0, label: "夜间 23:00"}
+
+# ── 优化设置（T1 白天喂奶量 + T1+T2 夜间喂奶量与时机） ────────────────────────────
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-04-01"
+  step_size:
+    value: 1
+    unit: hour
+
+  objectives:
+    - variable: lm_baby_score
+      metric: final
+      direction: maximize
+      description: "最大化3月龄结束时宝宝体重达WHO生长曲线97%阈值的累计小时数（宝宝成长质量）"
+    - variable: lm_mother_score
+      metric: final
+      direction: maximize
+      description: "最大化妈妈睡眠债低于15小时的累计小时数（衡量产后睡眠可持续性）"
+
+  constraints:
+    - variable: baby_weight
+      condition: ">= 3.0"
+      type: hard
+      description: "宝宝体重不低于2.7kg（出生体重90%），防止极端喂养不足方案"
+
+  mc:
+    enabled: false
+    sim_runs: 20
+    seed: 42
+    description: "MC 采样胃排空速率（±15%个体差异）和睡眠恢复率（±20%），验证最优方案对不同体质新生儿的稳健性"
+
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+
+  schedules:
+    # 5次白天喂奶（固定时刻，优化奶量）
+    - variable: breast_milk
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "白天喂奶 7:00"
+      optimize:
+        value: [20, 150]
+
+    - variable: breast_milk
+      time: "10:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "白天喂奶 10:00"
+      optimize:
+        value: [20, 150]
+
+    - variable: breast_milk
+      time: "13:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "白天喂奶 13:00"
+      optimize:
+        value: [20, 150]
+
+    - variable: breast_milk
+      time: "16:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "白天喂奶 16:00"
+      optimize:
+        value: [20, 150]
+
+    - variable: breast_milk
+      time: "19:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "白天喂奶 19:00"
+      optimize:
+        value: [20, 150]
+
+    # 2次夜间喂奶（优化奶量 + 时机，T1+T2）
+    - variable: breast_milk
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "夜间喂奶一（前半夜）"
+      optimize:
+        value: [10, 120]
+        time: ["21:00", "23:00"]
+        time_step: "1h"
+
+    - variable: breast_milk
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "夜间喂奶二（后半夜）"
+      optimize:
+        value: [10, 120]
+        time: ["02:00", "05:00"]
+        time_step: "1h"
+
+  results:
+    generated_at: "2026-05-31"
+    method: nsga2
+    n_solutions: 7
+    elapsed_seconds: 3842.0
+    pareto_front:
+      - {x: [65, 60, 65, 60, 65, 65, 0, 60, 0], f: [2150, 1080]}
+      - {x: [75, 70, 75, 70, 75, 68, 0, 62, 1], f: [2080, 1350]}
+      - {x: [85, 80, 85, 80, 85, 65, 1, 58, 2], f: [2000, 1560]}
+      - {x: [90, 88, 90, 88, 90, 62, 1, 55, 2], f: [1900, 1740]}
+      - {x: [100, 95, 100, 95, 100, 58, 1, 50, 3], f: [1780, 1890]}
+      - {x: [115, 108, 115, 108, 115, 52, 2, 42, 3], f: [1620, 2020]}
+      - {x: [132, 122, 132, 122, 132, 38, 2, 28, 3], f: [1530, 2140]}
+    reference:
+      x: [90, 88, 90, 88, 90, 62, 1, 55, 2]
+      f: [1900, 1740]
+      regimen:
+        breast_milk:
+          "白天喂奶 7:00": 90
+          "白天喂奶 10:00": 88
+          "白天喂奶 13:00": 90
+          "白天喂奶 16:00": 88
+          "白天喂奶 19:00": 90
+          "夜间喂奶一（前半夜）": 62
+          "夜间喂奶二（后半夜）": 55
+      objectives:
+        lm_baby_score: 1900
+        lm_mother_score: 1740

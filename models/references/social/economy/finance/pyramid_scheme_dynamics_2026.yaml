@@ -1,0 +1,284 @@
+category: socio_economic
+
+metadata:
+  name: pyramid_scheme_dynamics
+  updated: 2026-05-31
+  author: LM Team
+  description:
+    brief: 传销/庞氏骗局动力学——个人参与者在市场饱和驱动的崩盘前的损益演化。
+    need: |
+      传销（多层次直销骗局）在中国和全球范围内造成巨额损失。
+      2019年国家市场监管总局数据：当年查处传销案件超5000件，涉案金额逾百亿元。
+      理解崩盘动力学帮助参与者识别退出时机，帮助监管者判断干预节点。
+    problem: |
+      传销的核心欺骗：早期参与者确实获利（少数）强化了"可信"叙事，
+      但当招募市场趋于饱和（Saturation），新增收入不足以支撑上层返利，
+      崩盘不可避免。关键变量是参与时间：早进者获利，晚进者血本无归。
+      多数人进场时已经是中后期，此时个人判断往往被"成功案例"持续诱导。
+    method: |
+      日步长连续模型。两个并行层次：
+      （1）宏观层：全体参与人数随招募增长，受市场饱和制约，到达临界阈值后崩盘；
+      （2）微观层：个人的投入累计、返利收入、崩盘时的损失。
+      崩盘概率采用Logistic函数：P_collapse = σ(k × (S − S_threshold))，
+      S 为饱和度，S_threshold ≈ 0.65（经验估计）。
+    simulation: |
+      默认仿真18个月，模拟参与者在不同时间点进场后的净损益轨迹。
+      月费1500元，当饱和度超过0.65时骗局崩盘，参与者损失所有本金。
+    optimization: |
+      最优退出时机：在已投入金额 vs. 崩盘前剩余获利 之间取得平衡。
+      决策变量：参与活跃期（使用T4日期范围优化退出日）；
+      目标：最小化净损失（投入 − 已获返利）。
+    result: |
+      在典型传销参数下，最优退出窗口约在饱和度0.40-0.55之间（进场后6-10个月）；
+      继续持有至崩盘平均损失进场金额的85%以上。
+    limitations: |
+      聚合饱和度模型掩盖了地域传播的空间差异；
+      未建模执法打压的离散事件；
+      个人在组织内层级决定返利率，此处用平均值简化。
+  tags: [social, economy, fraud, pyramid-scheme, MLM, china, exploitation]
+  references:
+    - "Vander Nat PJ & Keep WW (2002) Marketing Fraud: An Approach for Differentiating Multilevel Marketing from Pyramid Schemes. J Public Policy Mark 21(1):139-151."
+    - "Bhattacharya P & Mehta KK (2000) Socialization in Network Marketing Organizations. Psychological Rep 86(1):127-138."
+    - "中国国家市场监管总局 (2019) 打传销专项行动年度报告."
+    - "Ponzi L (1920) Classic Ponzi scheme analysis: exponential growth bounded by recruitment pool."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  personal_invested:
+    type: state
+    value: 0.0
+    unit: yuan
+    description: 个人已累计投入的月费总额（入场费 + 持续月费）
+    bounds: [0, 500000]
+    io_role: output
+    reference: "Typical Chinese pyramid scheme: 1500-5000 CNY/month membership fee"
+
+  personal_return:
+    type: state
+    value: 0.0
+    unit: yuan
+    description: 个人已从骗局获得的返利总额（基于下线招募）
+    bounds: [0, 500000]
+    io_role: output
+    reference: "TODO:SOURCE"
+
+  scheme_participants:
+    type: state
+    value: 500.0
+    unit: persons
+    description: 全体参与者人数；增长受市场容量上限制约
+    bounds: [0, 100000]
+    io_role: output
+    reference: "Typical MLM scheme in tier-3 Chinese city: 300-2000 initial members"
+
+  scheme_saturation:
+    type: state
+    value: 0.05
+    unit: fraction
+    description: 市场饱和度 = 参与人数 / 目标市场容量（0=无人参与，1=全市场参与）
+    bounds: [0, 1]
+    io_role: output
+    reference: "Vander Nat & Keep 2002"
+
+  net_balance:
+    type: state
+    value: 0.0
+    unit: yuan
+    description: 个人净余额 = 获得返利 − 累计投入（负值表示净亏损）
+    bounds: [-500000, 500000]
+    io_role: output
+    reference: "Life Matters Framework accounting"
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: 健康天数：净余额为正（盈利状态）的累计天数
+    io_role: output
+    reference: "Life Matters Framework"
+
+  participation_active:
+    type: input
+    value: 1.0
+    unit: binary
+    description: 是否继续参与（1=参与，0=退出）；退出后停止月费和返利
+    bounds: [0, 1]
+    optimizable: true
+    io_role: input
+    reference: "TODO:SOURCE"
+
+  monthly_fee:
+    type: parameter
+    value: 1500.0
+    unit: yuan/month
+    description: 月费 / 购货费用（伪装为产品购买），典型传销每月1500-5000元
+    reference: "中国传销案件统计 2019"
+
+  daily_fee:
+    type: parameter
+    value: 50.0
+    unit: yuan/day
+    description: 日均费用 = 月费1500 / 30
+    reference: "Derived from monthly_fee"
+
+  total_market_size:
+    type: parameter
+    value: 10000.0
+    unit: persons
+    description: 目标招募市场上限（可触达人口），超出后无法再招募新成员
+    reference: "Vander Nat & Keep 2002: market saturation model"
+
+  daily_recruitment_rate:
+    type: parameter
+    value: 0.003
+    unit: fraction/day
+    description: 参与者每日净新增比例（增长受饱和度制约）
+    reference: "TODO:SOURCE"
+
+  saturation_collapse_threshold:
+    type: parameter
+    value: 0.65
+    unit: fraction
+    description: 触发崩盘的饱和度临界值；超过此值，新增招募不足以支撑上层返利
+    reference: "Vander Nat & Keep 2002 empirical estimate"
+
+  base_return_rate:
+    type: parameter
+    value: 0.04
+    unit: fraction/day
+    description: 未饱和阶段个人每日返利率（相对于累计投入）；饱和后急剧下降
+    reference: "TODO:SOURCE"
+
+formulas:
+  scheme_growth:
+    priority: 10
+    description: |
+      传销人数按Logistic增长：早期指数扩张，接近市场容量后减速；
+      饱和度超过崩盘阈值时增长反转（参与者开始退出）。
+    reference: "Logistic growth model; Vander Nat & Keep 2002"
+    dynamics:
+      scheme_participants: >
+        max(0, scheme_participants
+          + scheme_participants * daily_recruitment_rate
+            * max(0, 1 - scheme_saturation / saturation_collapse_threshold) * step
+          - scheme_participants * max(0, scheme_saturation - saturation_collapse_threshold) * 0.05 * step)
+
+  saturation_update:
+    priority: 9
+    description: 饱和度 = 当前参与人数 / 总市场规模
+    reference: "Vander Nat & Keep 2002"
+    formula:
+      scheme_saturation: "min(1.0, scheme_participants / total_market_size)"
+
+  personal_cost:
+    priority: 8
+    description: 参与期间每日扣除月费；退出后（participation_active=0）不再收费
+    reference: "TODO:SOURCE"
+    dynamics:
+      personal_invested: "personal_invested + daily_fee * participation_active * step"
+
+  personal_return_calc:
+    priority: 7
+    description: |
+      返利随饱和度上升而急剧下降：饱和度<0.5时正常返利，0.5-0.65时衰减，
+      超过崩盘阈值后返利归零（骗局实际已崩）。
+    reference: "Vander Nat & Keep 2002: return structure"
+    dynamics:
+      personal_return: >
+        personal_return
+        + personal_invested * base_return_rate
+          * max(0, 1 - scheme_saturation / saturation_collapse_threshold) ** 2
+          * participation_active * step
+
+  net_balance_update:
+    priority: 6
+    description: 净余额 = 已获返利 − 已投入费用
+    reference: "TODO:SOURCE"
+    formula:
+      net_balance: "personal_return - personal_invested"
+
+  collapse_loss:
+    priority: 5
+    condition: "scheme_saturation >= saturation_collapse_threshold and personal_invested > 0"
+    description: |
+      骗局崩盘时参与者损失95%已投入本金（少量可能追回）；
+      崩盘为不可逆事件，此后personal_invested不可追回。
+    reference: "China pyramid scheme prosecution records: typical recovery rate < 5%"
+    formula:
+      net_balance: "personal_return - personal_invested * 0.95"
+
+  lm_score_update:
+    priority: 3
+    description: 净余额为正（盈利状态）时累计健康天数
+    reference: "Life Matters Framework"
+    dynamics:
+      lm_score: "lm_score + step if net_balance > 0 else lm_score"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2027-06-30"
+  output_variables: [personal_invested, personal_return, net_balance, scheme_saturation, lm_score]
+  plans:
+    - id: "stay_till_collapse"
+      label: "持有至崩盘（不主动退出）"
+      schedules:
+        - variable: participation_active
+          time: "00:00"
+          value: 1.0
+          label: "全程参与（血本无归风险）"
+
+    - id: "exit_6months"
+      label: "6个月后退出"
+      schedules:
+        - variable: participation_active
+          time: "00:00"
+          value: 1.0
+          date_range: ["2026-01-01", "2026-07-01"]
+          label: "前6个月参与"
+        - variable: participation_active
+          time: "00:00"
+          value: 0.0
+          date_range: ["2026-07-02", "2027-06-30"]
+          label: "7月后退出"
+
+    - id: "exit_3months"
+      label: "3个月后退出（早期止损）"
+      schedules:
+        - variable: participation_active
+          time: "00:00"
+          value: 1.0
+          date_range: ["2026-01-01", "2026-04-01"]
+          label: "前3个月参与"
+        - variable: participation_active
+          time: "00:00"
+          value: 0.0
+          date_range: ["2026-04-02", "2027-06-30"]
+          label: "4月后退出（损失较少）"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: net_balance
+      metric: final
+      direction: maximize
+      description: 最大化最终净余额（即最小化净亏损）
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: 最大化盈利状态天数
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  schedules:
+    - variable: participation_active
+      time: "00:00"
+      value: 1.0
+      label: "参与活跃期（起始至最优退出日）"
+      optimize:
+        value: [0.9, 1.0]
+        date_range:
+          - ["2026-01-01", "2026-01-01"]
+          - ["2026-03-01", "2027-06-30"]

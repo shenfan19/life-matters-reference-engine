@@ -320,43 +320,43 @@ simulation:
       label: "内分泌优先（低GI+高蛋白，优先改善HOMA-IR）"
       schedules:
         - {variable: exercise_met_min, time: "07:00", value: 180.0,
-           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-07-01", label: "空腹有氧"}
+           days: [Mon, Wed, Fri], date_range: ["2026-01-01", "2026-07-01"], label: "空腹有氧"}
         - {variable: dietary_glycemic_load, time: "00:00", value: 60.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "严格低GI"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "严格低GI"}
         - {variable: caloric_deficit, time: "00:00", value: 300.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "热量缺口"}
 
     - id: "digestive_first"
       label: "消化科优先（EASL指南：有氧+快速减重，优先降肝脂）"
       schedules:
         - {variable: exercise_met_min, time: "16:00", value: 250.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "餐后有氧（每天）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "餐后有氧（每天）"}
         - {variable: dietary_glycemic_load, time: "00:00", value: 110.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "地中海饮食"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "地中海饮食"}
         - {variable: caloric_deficit, time: "00:00", value: 500.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口（较大）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "热量缺口（较大）"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（空腹运动+T4切换，待运行更新）"
       schedules:
         - {variable: exercise_met_min, time: "07:00", value: 210.0,
-           days: [Mon, Wed, Fri], date_range: "2026-01-01 ~ 2026-03-27", label: "空腹HIIT强化期"}
+           days: [Mon, Wed, Fri], date_range: ["2026-01-01", "2026-03-27"], label: "空腹HIIT强化期"}
         - {variable: dietary_glycemic_load, time: "00:00", value: 70.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "强化期低GI"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "强化期低GI"}
         - {variable: exercise_met_min, time: "07:00", value: 180.0,
-           days: [Mon, Wed, Fri], date_range: "2026-03-28 ~ 2026-07-01", label: "维持期有氧"}
+           days: [Mon, Wed, Fri], date_range: ["2026-03-28", "2026-07-01"], label: "维持期有氧"}
         - {variable: dietary_glycemic_load, time: "00:00", value: 100.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-03-28 ~ 2026-07-01", label: "维持期地中海饮食"}
+           date_range: ["2026-03-28", "2026-07-01"], label: "维持期地中海饮食"}
         - {variable: caloric_deficit, time: "00:00", value: 350.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "热量缺口"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "热量缺口"}
 
 # ── 优化设置（T1+T2+T3+T4 全维度优化）──────────────────────────────────────────
 optimizer:

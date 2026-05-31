@@ -205,33 +205,33 @@ simulation:
       schedules:
         - {variable: thiazide_dose, time: "08:00", value: 25.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ 晨服"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "HCTZ 晨服"}
         - {variable: caloric_deficit, time: "00:00", value: 400.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "每日热量缺口"}
 
     - id: "evening_hctz_with_allo"
       label: "晚间 HCTZ 22:00 + 第8周加别嘌醇（时间药理学方案）"
       schedules:
         - {variable: thiazide_dose, time: "22:00", value: 25.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ 晚服（22:00）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "HCTZ 晚服（22:00）"}
         - {variable: allopurinol_dose, time: "08:00", value: 100.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-02-26 ~ 2026-07-01", label: "别嘌醇（第8周起）"}
+           date_range: ["2026-02-26", "2026-07-01"], label: "别嘌醇（第8周起）"}
         - {variable: caloric_deficit, time: "00:00", value: 400.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "每日热量缺口"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（参考点，待运行后更新）"
       schedules:
         - {variable: thiazide_dose, time: "22:00", value: 22.8,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "HCTZ（待优化时间）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "HCTZ（待优化时间）"}
         - {variable: caloric_deficit, time: "00:00", value: 400.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "每日热量缺口"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "每日热量缺口"}
 
 # ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:

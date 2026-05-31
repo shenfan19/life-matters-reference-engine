@@ -181,19 +181,19 @@ simulation:
       time: "08:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-28"
+      date_range: ["2026-01-01", "2026-01-28"]
       label: "美托洛尔晨服（标准剂量）"
     - variable: cardiac_rehab_met
       time: "10:00"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-01-07"
+      date_range: ["2026-01-01", "2026-01-07"]
       label: "第1周低强度康复（步行2 MET）"
     - variable: cardiac_rehab_met
       time: "10:00"
       value: 4.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-08 ~ 2026-01-28"
+      date_range: ["2026-01-08", "2026-01-28"]
       label: "第2-4周中等强度康复（快走4 MET）"
 
 optimizer:

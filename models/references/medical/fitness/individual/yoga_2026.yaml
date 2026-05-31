@@ -138,13 +138,13 @@ simulation:
       time: "07:30"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "哈他瑜伽（3 MET，中等强度）"
     - variable: session_duration
       time: "07:30"
       value: 60.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "60 分钟练习课程"
 
 optimizer:

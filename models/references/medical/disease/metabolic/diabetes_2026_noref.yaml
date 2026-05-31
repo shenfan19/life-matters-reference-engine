@@ -79,25 +79,25 @@ simulation:
       time: "08:00"
       value: 50.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "早餐碳水（g）"
     - variable: carb_intake
       time: "12:00"
       value: 70.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "午餐碳水（g）"
     - variable: carb_intake
       time: "18:00"
       value: 60.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "晚餐碳水（g）"
     - variable: exercise_intensity
       time: "07:00"
       value: 3.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "有氧运动（MET）"
 
 optimizer:

@@ -167,19 +167,19 @@ simulation:
       time: "07:00"
       value: 4.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "标准行军速度（4.5 km/h）"
     - variable: slope_grade
       time: "07:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "缓上坡（5% 坡度）"
     - variable: pack_weight
       time: "07:00"
       value: 15.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "多日徒步背包（15 kg）"
 
 optimizer:

@@ -267,55 +267,55 @@ simulation:
       schedules:
         - {variable: sleep_hours, time: "00:30", value: 6.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "睡眠基线"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "睡眠基线"}
         - {variable: exercise_min, time: "00:00", value: 0.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "无运动"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "无运动"}
         - {variable: nutrition_score, time: "00:00", value: 3.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "低质量饮食"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "低质量饮食"}
         - {variable: break_min, time: "00:00", value: 15.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "少量休息"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "少量休息"}
 
     - id: "structured_recovery"
       label: "结构化恢复方案（22:30就寝+运动Mon/Wed/Fri+地中海饮食+午休30min）"
       schedules:
         - {variable: sleep_hours, time: "22:30", value: 7.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "早睡7.5h"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "早睡7.5h"}
         - {variable: exercise_min, time: "07:00", value: 30.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "有氧运动（3次/周）"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "有氧运动（3次/周）"}
         - {variable: nutrition_score, time: "00:00", value: 7.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "地中海饮食质量"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "地中海饮食质量"}
         - {variable: break_min, time: "12:30", value: 30.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "午休30min（工作日）"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "午休30min（工作日）"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（待运行后更新）"
       schedules:
         - {variable: sleep_hours, time: "22:30", value: 7.5,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "工作日早睡"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "工作日早睡"}
         - {variable: sleep_hours, time: "23:00", value: 8.5,
            days: [Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "周末补觉"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "周末补觉"}
         - {variable: exercise_min, time: "07:00", value: 30.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "有氧运动"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "有氧运动"}
         - {variable: nutrition_score, time: "00:00", value: 7.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "高质量饮食"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "高质量饮食"}
         - {variable: break_min, time: "12:30", value: 30.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-03-27", label: "工作日午休"}
+           date_range: ["2026-01-01", "2026-03-27"], label: "工作日午休"}
         # 集中休假（第6周，待T4优化）
         - {variable: break_min, time: "00:00", value: 480.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-02-09 ~ 2026-02-15", label: "第6周集中休假"}
+           date_range: ["2026-02-09", "2026-02-15"], label: "第6周集中休假"}
 
 # ── 优化设置（T1+T2+T3+T4 恢复行为优化，工作压力固定为参数）────────────────────
 optimizer:

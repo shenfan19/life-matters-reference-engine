@@ -135,13 +135,13 @@ simulation:
       time: "09:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "扣球强度（RPE=7，中高强度对抗）"
     - variable: dive_frequency
       time: "09:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "防守鱼跃频率（1次/min）"
 
 optimizer:

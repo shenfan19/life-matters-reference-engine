@@ -164,7 +164,7 @@ simulation:
       time: "08:00"
       value: 500.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-02-15 ~ 2026-06-30"
+      date_range: ["2026-02-15", "2026-06-30"]
       label: "Metformin 500 mg/day"
     - variable: background_drug
       time: "08:00"

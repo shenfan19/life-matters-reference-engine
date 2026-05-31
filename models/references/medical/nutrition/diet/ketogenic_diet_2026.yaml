@@ -271,19 +271,19 @@ simulation:
       time: "08:00"
       value: 20.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-31"
+      date_range: ["2026-01-01", "2026-03-31"]
       label: "严格生酮碳水20g/day"
     - variable: fat_intake_g_day
       time: "08:00"
       value: 155.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-31"
+      date_range: ["2026-01-01", "2026-03-31"]
       label: "高脂摄入155g/day（占总热量约70%）"
     - variable: protein_intake_g_day
       time: "08:00"
       value: 105.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-03-31"
+      date_range: ["2026-01-01", "2026-03-31"]
       label: "蛋白质105g/day（约1.1g/kg，防止肌肉流失）"
 
 optimizer:

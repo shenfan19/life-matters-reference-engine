@@ -170,13 +170,13 @@ simulation:
       time: "07:00"
       value: 200.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "有氧训练区间（200W，约 80% FTP）"
     - variable: cadence
       time: "07:00"
       value: 90.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "最佳踏频 90 rpm"
 
 optimizer:

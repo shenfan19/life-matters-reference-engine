@@ -220,7 +220,7 @@ simulation:
       time: "08:00"
       value: 81.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-03"
+      date_range: ["2026-01-01", "2026-01-03"]
       label: "低剂量阿司匹林（心血管预防）81mg 晨服"
 
 optimizer:

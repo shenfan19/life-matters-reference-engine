@@ -136,13 +136,13 @@ simulation:
       time: "09:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "壁球比赛强度（RPE=7）"
     - variable: court_coverage_speed
       time: "09:00"
       value: 3.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "场地覆盖速度（3.5 km/h均值）"
 
 optimizer:

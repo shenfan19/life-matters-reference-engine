@@ -500,9 +500,8 @@ const Simulator: React.FC<SimulatorProps> = ({
           const hasDays = daysList.length > 0 && daysList.length < 7;
           let validStart: string = s.valid_start ?? '';
           let validEnd: string   = s.valid_end   ?? '';
-          if (!validStart && !validEnd && s.date_range) {
-            const parts = String(s.date_range).split('~');
-            if (parts.length === 2) { validStart = parts[0].trim(); validEnd = parts[1].trim(); }
+          if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
+            validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
           }
           newInputEvents.push({
             id: `${name}-sched${i}`, variable: name,
@@ -554,9 +553,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               const hasDays = dl.length > 0 && dl.length < 7;
               let vs = s.valid_start ?? '';
               let ve = s.valid_end ?? '';
-              if (!vs && !ve && s.date_range) {
-                const parts = String(s.date_range).split('~');
-                if (parts.length === 2) { vs = parts[0].trim(); ve = parts[1].trim(); }
+              if (!vs && !ve && Array.isArray(s.date_range) && s.date_range.length === 2) {
+                vs = String(s.date_range[0]); ve = String(s.date_range[1]);
               }
               planEvents.push({
                 id: `${plan.id ?? `plan${i}`}-${name}-${j}`, variable: name,

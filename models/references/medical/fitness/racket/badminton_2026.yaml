@@ -141,13 +141,13 @@ simulation:
       time: "09:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "单打比赛回合节奏（RPE=7，中高强度）"
     - variable: smash_frequency
       time: "09:00"
       value: 2.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "扣杀频率（2.5次/min，精英中等水平）"
 
 optimizer:

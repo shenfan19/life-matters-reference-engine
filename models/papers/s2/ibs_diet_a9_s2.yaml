@@ -222,39 +222,39 @@ simulation:
       schedules:
         - {variable: fodmap_intake, time: "00:00", value: 35.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "高FODMAP饮食"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "高FODMAP饮食"}
         - {variable: fiber_soluble, time: "00:00", value: 7.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "普通纤维"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "普通纤维"}
 
     - id: "standard_lowfodmap_4wk"
       label: "标准低FODMAP方案（4周限制+8周重引入，NICE指南）"
       schedules:
         - {variable: fodmap_intake, time: "00:00", value: 7.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "4周限制期"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "4周限制期"}
         - {variable: fodmap_intake, time: "00:00", value: 20.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-29 ~ 2026-04-01", label: "8周重新引入"}
+           date_range: ["2026-01-29", "2026-04-01"], label: "8周重新引入"}
         - {variable: fodmap_intake, time: "00:00", value: 22.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-04-02 ~ 2026-06-30", label: "维持期"}
+           date_range: ["2026-04-02", "2026-06-30"], label: "维持期"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（延长限制期+保守重引入，待运行更新）"
       schedules:
         - {variable: fodmap_intake, time: "00:00", value: 6.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-02-18", label: "延长限制期（7周）"}
+           date_range: ["2026-01-01", "2026-02-18"], label: "延长限制期（7周）"}
         - {variable: fodmap_intake, time: "00:00", value: 15.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-02-19 ~ 2026-05-13", label: "工作日保守重引入"}
+           date_range: ["2026-02-19", "2026-05-13"], label: "工作日保守重引入"}
         - {variable: fodmap_intake, time: "00:00", value: 20.0,
            days: [Sat, Sun],
-           date_range: "2026-02-19 ~ 2026-05-13", label: "周末适度放松"}
+           date_range: ["2026-02-19", "2026-05-13"], label: "周末适度放松"}
         - {variable: fiber_soluble, time: "00:00", value: 11.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "全程可溶性纤维"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "全程可溶性纤维"}
 
 # ── 优化设置（T1+T3+T4）──────────────────────────────────────────────────────────
 optimizer:

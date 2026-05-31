@@ -177,7 +177,7 @@ simulation:
       time: "HH:MM"               # 24 小时制，触发时刻
       value: 1.5                  # 触发时写入变量的值（pulse 模式：其他步自动为 0）
       days: [Mon, Wed, Fri]       # 可选；三字母缩写 Mon–Sun；缺席 = 每天
-      date_range: "YYYY-MM-DD ~ YYYY-MM-DD"  # 可选；条目仅在此区间生效；缺席 = 全程
+      date_range: ["YYYY-MM-DD", "YYYY-MM-DD"]  # 可选；条目仅在此区间生效；缺席 = 全程
       label: "说明"               # 可选；GUI 展示用
   plans:                          # 可选；预定义的多方案比较（GUI 直接加载为 Plan 列表）
     - id: "plan_id"               # 方案唯一标识（小写加下划线）
@@ -187,7 +187,7 @@ simulation:
           time: "HH:MM"
           value: 1.5
           days: [Mon, Wed, Fri]
-          date_range: "YYYY-MM-DD ~ YYYY-MM-DD"
+          date_range: ["YYYY-MM-DD", "YYYY-MM-DD"]
           label: "说明"
 
 optimizer:                          # 可选；优化器配置；详见「optimizer — 决策变量与调度优化」章节
@@ -394,7 +394,7 @@ simulation:
       time: "07:00"
       value: 50.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]   # 可省略，缺席 = 每天
-      date_range: "2026-01-01 ~ 2026-01-04"        # 可省略，缺席 = 全程
+      date_range: ["2026-01-01", "2026-01-04"]        # 可省略，缺席 = 全程
       label: "早餐碳水"
     - variable: carb_intake
       time: "12:00"
@@ -414,7 +414,7 @@ simulation:
 | `time` | `"HH:MM"` | ✅ | 触发时刻（24 小时制） |
 | `value` | number | ✅ | 触发时写入的值 |
 | `days` | `[Mon…Sun]` | — | 三字母缩写列表；缺席 = 每天都触发 |
-| `date_range` | `"YYYY-MM-DD ~ YYYY-MM-DD"` 或 `["YYYY-MM-DD", "YYYY-MM-DD"]` | — | 条目仅在此日历区间内生效；缺席 = 从 `start_date` 到 `end_date` 全程 |
+| `date_range` | `["YYYY-MM-DD", "YYYY-MM-DD"]` | — | 条目仅在此日历区间内生效；缺席 = 从 `start_date` 到 `end_date` 全程 |
 | `label` | string | — | GUI 展示用说明文字 |
 
 ### 多条目 vs 多周期
@@ -435,21 +435,21 @@ schedules:
     time: "09:00"
     value: 50.0
     days: [Mon, Tue, Wed, Thu, Fri]
-    date_range: "2026-01-01 ~ 2026-01-28"   # 基础期 4 周
+    date_range: ["2026-01-01", "2026-01-28"]   # 基础期 4 周
   - variable: training_load
     time: "09:00"
     value: 100.0
     days: [Mon, Tue, Wed, Thu, Fri]
-    date_range: "2026-01-29 ~ 2026-02-25"   # 强化期 4 周
+    date_range: ["2026-01-29", "2026-02-25"]   # 强化期 4 周
 
 # ❌ 错误：逐周罗列（冗余，条目数 = 周数 × 2）
 schedules:
   - variable: training_load
     value: 50.0
-    date_range: "2026-01-01 ~ 2026-01-07"   # 第1周
+    date_range: ["2026-01-01", "2026-01-07"]   # 第1周
   - variable: training_load
     value: 50.0
-    date_range: "2026-01-08 ~ 2026-01-14"   # 第2周（与第1周相同，无意义）
+    date_range: ["2026-01-08", "2026-01-14"]   # 第2周（与第1周相同，无意义）
 ```
 
 ### 优先级规则

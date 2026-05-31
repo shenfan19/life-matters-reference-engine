@@ -178,19 +178,19 @@ simulation:
       time: "08:00"
       value: 15.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-02-28"
+      date_range: ["2026-01-01", "2026-02-28"]
       label: "羟基脲起始剂量15mg/kg/day"
     - variable: hydroxyurea_dose_mg_per_kg
       time: "08:00"
       value: 20.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-03-01 ~ 2026-06-30"
+      date_range: ["2026-03-01", "2026-06-30"]
       label: "羟基脲滴定至20mg/kg/day（第8周后）"
     - variable: fluid_intake_ml_per_day
       time: "08:00"
       value: 2500.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
+      date_range: ["2026-01-01", "2026-06-30"]
       label: "每日补液2500mL"
 
 optimizer:

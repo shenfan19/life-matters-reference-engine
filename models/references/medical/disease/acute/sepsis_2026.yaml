@@ -206,25 +206,25 @@ simulation:
       time: "00:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "入院1小时内首剂抗生素（SSC集束化）"
     - variable: fluid_resuscitation_ml_hr
       time: "00:00"
       value: 700.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "初始液体复苏700mL/h（3h内完成30mL/kg）"
     - variable: fluid_resuscitation_ml_hr
       time: "03:00"
       value: 150.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-04"
+      date_range: ["2026-01-01", "2026-01-04"]
       label: "维持液体150mL/h"
     - variable: vasopressor_dose
       time: "00:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-02"
+      date_range: ["2026-01-01", "2026-01-02"]
       label: "去甲肾上腺素标准剂量（MAP<65时）"
 
 optimizer:

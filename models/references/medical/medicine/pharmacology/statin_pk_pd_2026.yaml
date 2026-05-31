@@ -160,7 +160,7 @@ simulation:
       time: "20:00"
       value: 40.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: ["2026-01-01", "2026-12-31"]
       label: "阿托伐他汀40mg 晚服（中-高强度标准剂量）"
 
 optimizer:
