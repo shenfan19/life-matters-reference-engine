@@ -100,3 +100,41 @@ simulation:
   - damage_index
   - population_safety
   - rescue_progress
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: population_safety
+      metric: final
+      direction: maximize
+    - variable: rescue_progress
+      metric: final
+      direction: maximize
+  constraints:
+    - variable: damage_index
+      condition: "<= 0.8"
+      type: soft
+      description: "灾害损毁指数控制在0.8以内"
+  schedules:
+    - variable: supplies_delivery
+      time: "06:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "物资投送（0=无，1=满负荷）"
+      optimize:
+        value: [0, 1]
+    - variable: evacuation_order
+      time: "06:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "撤离指令强度（0=不撤离，1=强制撤离）"
+      optimize:
+        value: [0, 1]
+    - variable: infrastructure_repair
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "基础设施修复力度（0=无，1=全力修复）"
+      optimize:
+        value: [0, 1]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

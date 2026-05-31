@@ -68,3 +68,41 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-12-31"
   output_variables: [geopolitical_tension, conflict_intensity, social_stability]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: social_stability
+      metric: final
+      direction: maximize
+    - variable: conflict_intensity
+      metric: final
+      direction: minimize
+  constraints:
+    - variable: resource_scarcity
+      condition: "<= 80"
+      type: soft
+      description: "资源稀缺度不超过80（防止社会崩溃）"
+  schedules:
+    - variable: diplomatic_talks
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "外交谈判强度（0=无，1=全力推进）"
+      optimize:
+        value: [0, 1]
+    - variable: defense_spending
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "国防开支（0=削减，1=大幅增加）"
+      optimize:
+        value: [0, 1]
+    - variable: propaganda_campaign
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "宣传活动强度（0=无，1=高强度）"
+      optimize:
+        value: [0, 1]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

@@ -56,3 +56,41 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-25"
   output_variables: [viral_load, body_temperature, vitality]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: vitality
+      metric: final
+      direction: maximize
+    - variable: viral_load
+      metric: final
+      direction: minimize
+  constraints:
+    - variable: body_temperature
+      condition: "<= 38.5"
+      type: hard
+      description: "体温不超过38.5°C（避免高热危机）"
+  schedules:
+    - variable: rest_hours
+      time: "22:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日休息（0=不休息，1=充分休息）"
+      optimize:
+        value: [0, 1]
+    - variable: medicine_intake
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日用药（0=不用药，1=足量）"
+      optimize:
+        value: [0, 1]
+    - variable: water_intake
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日饮水（0=不足，1=充足）"
+      optimize:
+        value: [0, 1]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

@@ -50,3 +50,24 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   output_variables: [savings, fatigue, work_intensity]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: savings
+      metric: final
+      direction: maximize
+    - variable: fatigue
+      metric: final
+      direction: minimize
+  schedules:
+    - variable: work_intensity
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "劳动强度（0=不工作，1=高强度）"
+      optimize:
+        value: [0, 1]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

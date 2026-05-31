@@ -1,133 +1,196 @@
-id: dz1940_fr_dr_rieux
-name: "里厄医生：鼠疫中的坚守"
-description:
-  brief: |
-    1940年代，阿尔及利亚的奥兰城突然爆发鼠疫。城市被封锁。
-    里厄医生留了下来——他的妻子在封城前刚去了另一个城市疗养。
-    他不知道她是否还活着。他继续工作。
-    这是一个关于：在荒诞世界中选择反抗的代价的模拟。
-  problem: 在该情境中，需要平衡 救治强度、隔离执行严格度、自我保护与休息 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 52 个 week，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [epidemic, duty, existentialism, isolation, sacrifice, literature]
-source: La Peste (Albert Camus, 1947)
-
-simulation:
-  step: 1        # 单位：周
-  total: 52      # 约一年（1940年4月至次年2月鼠疫结束）
-  step_unit: week
-
-inputs:
-  - id: care_intensity
-    label: "救治强度"
-    description: "医生积极投入病人救治的程度"
-    min: 0
-    max: 3
-    default: 2.0
-    unit: intensity
-
-  - id: quarantine_strictness
-    label: "隔离执行严格度"
-    description: "对病患及接触者实施严格隔离的力度"
-    min: 0
-    max: 1
-    default: 0.6
-    unit: intensity
-
-  - id: self_care
-    label: "自我保护与休息"
-    description: "医生自身的防护与休息"
-    min: 0
-    max: 1
-    default: 0.3
-    unit: intensity
-
+category: social
+metadata:
+  name: dz1940_fr_dr_rieux
+  author: Fan Shen
+  description:
+    brief: 里厄医生：鼠疫中的坚守。1940年代，阿尔及利亚的奥兰城突然爆发鼠疫。城市被封锁。 里厄医生留了下来——他的妻子在封城前刚去了另一个城市疗养。 他不知道她是否还活着。他继续工作。 这是一个关于：在荒诞世界中选择反抗的代价的模拟。
+    problem: 在该情境中，需要平衡 救治强度、隔离执行严格度、自我保护与休息 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 52 个 week，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - epidemic
+  - duty
+  - existentialism
+  - isolation
+  - sacrifice
+  - literature
+  references:
+  - La Peste (Albert Camus, 1947)
+  step_size:
+    value: 1
+    unit: week
 variables:
-  - id: patients_treated
-    label: "累计救治人数"
-    description: "在有限资源下成功治疗或减少痛苦的患者数量"
-    min: 0
-    max: 500
-    initial: 0
-    io_role: output
+  care_intensity:
+    type: input
+    value: 2.0
+    unit: intensity
+    bounds:
+    - 0
+    - 3
+    description: 救治强度：医生积极投入病人救治的程度
+    reference: TODO:SOURCE
+  quarantine_strictness:
+    type: input
+    value: 0.6
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 隔离执行严格度：对病患及接触者实施严格隔离的力度
+    reference: TODO:SOURCE
+  self_care:
+    type: input
+    value: 0.3
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 自我保护与休息：医生自身的防护与休息
+    reference: TODO:SOURCE
+  patients_treated:
+    type: state
+    value: 0
     unit: people
-
-  - id: plague_spread
-    label: "疫情蔓延程度"
-    description: "疾病在城市中的扩散速度（隔离越严格，蔓延越慢）"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 500
+    description: 累计救治人数：在有限资源下成功治疗或减少痛苦的患者数量
+    reference: TODO:SOURCE
     io_role: output
+  plague_spread:
+    type: state
+    value: 20
     unit: score
-
-  - id: doctor_health
-    label: "里厄的健康"
-    description: "长期过度劳累和暴露的身体状态"
-    min: 0
-    max: 100
-    initial: 90
+    bounds:
+    - 0
+    - 100
+    description: 疫情蔓延程度：疾病在城市中的扩散速度（隔离越严格，蔓延越慢）
+    reference: TODO:SOURCE
     io_role: output
+  doctor_health:
+    type: state
+    value: 90
     unit: hp
-
-  - id: compassion_fatigue
-    label: "同情心疲劳"
-    description: "持续见证大规模死亡导致的情感麻木和耗竭"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 里厄的健康：长期过度劳累和暴露的身体状态
+    reference: TODO:SOURCE
     io_role: output
+  compassion_fatigue:
+    type: state
+    value: 5
     unit: score
-
-  - id: personal_grief
-    label: "个人悲痛积累"
-    description: "妻子病重、盟友去世、无尽的失去带来的心理负担"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 同情心疲劳：持续见证大规模死亡导致的情感麻木和耗竭
+    reference: TODO:SOURCE
     io_role: output
+  personal_grief:
+    type: state
+    value: 10
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 个人悲痛积累：妻子病重、盟友去世、无尽的失去带来的心理负担
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: treatment_rate
-    description: "救治效率受疫情扩散和医生状态影响"
-    expr: |
-      efficiency = max(0.3, 1 - compassion_fatigue / 100) * max(0.4, doctor_health / 100)
-      patients_treated = patients_treated + care_intensity * 6.0 * efficiency
-
-  - id: plague_dynamics
-    description: "鼠疫扩散受隔离强度影响"
-    expr: |
-      natural_spread = 3.0
-      quarantine_effect = quarantine_strictness * 4.0
-      plague_spread = min(100, max(0, plague_spread + natural_spread - quarantine_effect))
-
-  - id: health_decay
-    description: "医生健康随工作强度和疫情暴露而下降"
-    expr: |
-      exposure_risk = (plague_spread / 100) * care_intensity * 0.8
-      overwork_cost = care_intensity * 0.5
-      recovery = self_care * 2.5
-      doctor_health = max(0, doctor_health - exposure_risk - overwork_cost + recovery)
-
-  - id: fatigue_accumulation
-    description: "同情心疲劳随死亡规模累积，休息可减缓"
-    expr: |
-      fatigue_gain = (plague_spread / 100) * 2.5 + care_intensity * 0.4
-      fatigue_relief = self_care * 1.5
-      compassion_fatigue = min(100, max(0, compassion_fatigue + fatigue_gain - fatigue_relief))
-
-  - id: grief_accumulation
-    description: "个人悲痛随疫情时间缓慢累积（妻子→朋友→无数死亡）"
-    expr: |
-      grief_rate = 0.8 + (plague_spread / 100) * 1.2
-      personal_grief = min(100, personal_grief + grief_rate)
-
+  treatment_rate:
+    formula:
+      patients_treated: patients_treated + care_intensity * 6.0 * (max(0.3, 1 - compassion_fatigue / 100) * max(0.4, doctor_health
+        / 100))
+    description: 救治效率受疫情扩散和医生状态影响
+    reference: TODO:SOURCE
+  plague_dynamics:
+    formula:
+      plague_spread: min(100, max(0, plague_spread + (3.0) - (quarantine_strictness * 4.0)))
+    description: 鼠疫扩散受隔离强度影响
+    reference: TODO:SOURCE
+  health_decay:
+    formula:
+      doctor_health: max(0, doctor_health - ((plague_spread / 100) * care_intensity * 0.8) - (care_intensity * 0.5) + (self_care
+        * 2.5))
+    description: 医生健康随工作强度和疫情暴露而下降
+    reference: TODO:SOURCE
+  fatigue_accumulation:
+    formula:
+      compassion_fatigue: min(100, max(0, compassion_fatigue + ((plague_spread / 100) * 2.5 + care_intensity * 0.4) - (self_care
+        * 1.5)))
+    description: 同情心疲劳随死亡规模累积，休息可减缓
+    reference: TODO:SOURCE
+  grief_accumulation:
+    formula:
+      personal_grief: min(100, personal_grief + (0.8 + (plague_spread / 100) * 1.2))
+    description: 个人悲痛随疫情时间缓慢累积（妻子→朋友→无数死亡）
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1940-04-01'
+  end_date: '1941-03-30'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: patients_treated
-  direction: maximize
-  secondary: doctor_health
-  note: "历史结局：鼠疫自然结束，patients_treated↑，但personal_grief↑（妻子在封城期死亡），doctor_health下降但未死"
+  method: nsga2
+  objectives:
+  - variable: patients_treated
+    metric: final
+    direction: maximize
+  - variable: doctor_health
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: care_intensity
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 救治强度
+    optimize:
+      value:
+      - 0
+      - 3
+  - variable: quarantine_strictness
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 隔离执行严格度
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: self_care
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 自我保护与休息
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

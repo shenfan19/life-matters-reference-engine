@@ -91,3 +91,24 @@ simulation:
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: ["2026-01-01", "2026-04-01"]
       label: "每日中度饮酒（约20-30g乙醇）"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: liver_health_score
+      metric: final
+      direction: maximize
+    - variable: liver_damage_effect
+      metric: final
+      direction: minimize
+  schedules:
+    - variable: alcohol_dose
+      time: "19:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "每日饮酒剂量（0=戒酒，3=重度饮酒）"
+      optimize:
+        value: [0.0, 3.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

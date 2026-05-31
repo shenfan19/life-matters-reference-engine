@@ -65,3 +65,24 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   output_variables: [food_carbohydrate, food_protein, food_fat, water_intake]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: food_carbohydrate
+      metric: final
+      direction: maximize
+    - variable: food_fat
+      metric: final
+      direction: minimize
+  schedules:
+    - variable: berry_intake
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "浆果摄入量（g）"
+      optimize:
+        value: [0, 1000]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

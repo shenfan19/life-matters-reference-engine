@@ -119,3 +119,39 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   output_variables: [heart_rate, calories_burned, fatigue, lactate, agility, shot_accuracy, performance]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: performance
+      metric: final
+      direction: maximize
+    - variable: shot_accuracy
+      metric: mean
+      direction: maximize
+  constraints:
+    - variable: fatigue
+      condition: "<= 9.0"
+      type: soft
+      description: "疲劳感不超过9"
+    - variable: lactate
+      condition: "<= 12.0"
+      type: hard
+      description: "血乳酸不超过12 mmol/L"
+  schedules:
+    - variable: game_intensity
+      time: "19:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "比赛强度（RPE 0-10）"
+      optimize:
+        value: [0.0, 10.0]
+    - variable: sprint_frequency
+      time: "19:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "冲刺频率（次/分）"
+      optimize:
+        value: [0.0, 8.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

@@ -1,115 +1,178 @@
-id: fr1840_fr_emma_bovary
-name: "包法利夫人：浪漫主义的代价"
-description:
-  brief: |
-    艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。
-    她相信自己应该过另一种生活——激情、华服、真爱。
-    她一次次行动，一次次失望，一次次借债。
-    最终的账单不只是金钱上的。
-  problem: 在该情境中，需要平衡 浪漫主义追求强度、融入乡村生活、自我认知 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 60 个 month，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [depression, romantic-delusion, debt, society, literature]
-source: Madame Bovary (Gustave Flaubert, 1857)
-
-simulation:
-  step: 1
-  total: 60   # 约5年（婚后到自杀）
-  step_unit: month
-
-inputs:
-  - id: romantic_pursuit
-    label: "浪漫主义追求强度"
-    description: "追求婚外情、华服、奢靡生活的强度"
-    min: 0
-    max: 3
-    default: 1.5
-    unit: intensity
-
-  - id: social_conformity
-    label: "融入乡村生活"
-    description: "接受平庸现实、履行妻子母亲职责"
-    min: 0
-    max: 1
-    default: 0.3
-    unit: ratio
-
-  - id: self_reflection
-    label: "自我认知"
-    description: "理解自身期望与现实差距的努力"
-    min: 0
-    max: 1
-    default: 0.1
-    unit: intensity
-
+category: social
+metadata:
+  name: fr1840_fr_emma_bovary
+  author: Fan Shen
+  description:
+    brief: 包法利夫人：浪漫主义的代价。艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。 她相信自己应该过另一种生活——激情、华服、真爱。 她一次次行动，一次次失望，一次次借债。 最终的账单不只是金钱上的。
+    problem: 在该情境中，需要平衡 浪漫主义追求强度、融入乡村生活、自我认知 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 60 个 month，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - depression
+  - romantic-delusion
+  - debt
+  - society
+  - literature
+  references:
+  - Madame Bovary (Gustave Flaubert, 1857)
+  step_size:
+    value: 1
+    unit: month
 variables:
-  - id: psychological_health
-    label: "心理健康"
-    description: "抑郁程度的反指标（高=健康，低=崩溃）"
-    min: 0
-    max: 100
-    initial: 60
-    io_role: output
+  romantic_pursuit:
+    type: input
+    value: 1.5
+    unit: intensity
+    bounds:
+    - 0
+    - 3
+    description: 浪漫主义追求强度：追求婚外情、华服、奢靡生活的强度
+    reference: TODO:SOURCE
+  social_conformity:
+    type: input
+    value: 0.3
+    unit: ratio
+    bounds:
+    - 0
+    - 1
+    description: 融入乡村生活：接受平庸现实、履行妻子母亲职责
+    reference: TODO:SOURCE
+  self_reflection:
+    type: input
+    value: 0.1
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 自我认知：理解自身期望与现实差距的努力
+    reference: TODO:SOURCE
+  psychological_health:
+    type: state
+    value: 60
     unit: score
-
-  - id: debt_level
-    label: "债务积累"
-    description: "为追求浪漫主义生活欠下的债务"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 心理健康：抑郁程度的反指标（高=健康，低=崩溃）
+    reference: TODO:SOURCE
     io_role: output
+  debt_level:
+    type: state
+    value: 5
     unit: score
-
-  - id: disillusionment
-    label: "幻灭感"
-    description: "每次期待落空的累积失望"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 债务积累：为追求浪漫主义生活欠下的债务
+    reference: TODO:SOURCE
     io_role: output
+  disillusionment:
+    type: state
+    value: 10
     unit: score
-
-  - id: social_reputation
-    label: "社会声誉"
-    description: "在小镇的社会地位和他人评价"
-    min: 0
-    max: 100
-    initial: 65
+    bounds:
+    - 0
+    - 100
+    description: 幻灭感：每次期待落空的累积失望
+    reference: TODO:SOURCE
     io_role: output
+  social_reputation:
+    type: state
+    value: 65
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 社会声誉：在小镇的社会地位和他人评价
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: debt_growth
-    description: "浪漫追求累积债务"
-    expr: |
-      debt_level = min(100, debt_level + romantic_pursuit * 2.5)
-
-  - id: disillusionment_growth
-    description: "每次追求都有幻灭的反弹"
-    expr: |
-      disillusionment = min(100, disillusionment + romantic_pursuit * 1.5 - self_reflection * 2.0)
-
-  - id: mental_decay
-    description: "幻灭+债务+压抑共同侵蚀心理健康"
-    expr: |
-      illusion_cost = (disillusionment / 100) * 2.5
-      debt_anxiety = (debt_level / 100) * 1.5
-      conformity_relief = social_conformity * 1.0
-      reflection_gain = self_reflection * 1.5
-      psychological_health = max(0, min(100, psychological_health - illusion_cost - debt_anxiety + conformity_relief + reflection_gain))
-
-  - id: reputation_change
-    description: "婚外情暴露降低声誉"
-    expr: |
-      exposure_risk = romantic_pursuit * 0.8
-      social_reputation = max(0, min(100, social_reputation - exposure_risk + social_conformity * 0.5))
-
+  debt_growth:
+    formula:
+      debt_level: min(100, debt_level + romantic_pursuit * 2.5)
+    description: 浪漫追求累积债务
+    reference: TODO:SOURCE
+  disillusionment_growth:
+    formula:
+      disillusionment: min(100, disillusionment + romantic_pursuit * 1.5 - self_reflection * 2.0)
+    description: 每次追求都有幻灭的反弹
+    reference: TODO:SOURCE
+  mental_decay:
+    formula:
+      psychological_health: max(0, min(100, psychological_health - ((disillusionment / 100) * 2.5) - ((debt_level / 100) *
+        1.5) + (social_conformity * 1.0) + (self_reflection * 1.5)))
+    description: 幻灭+债务+压抑共同侵蚀心理健康
+    reference: TODO:SOURCE
+  reputation_change:
+    formula:
+      social_reputation: max(0, min(100, social_reputation - (romantic_pursuit * 0.8) + social_conformity * 0.5))
+    description: 婚外情暴露降低声誉
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1840-01-01'
+  end_date: '1844-12-31'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: psychological_health
-  direction: maximize
-  secondary: social_reputation
-  note: "历史结局：debt_level=100→债主上门→砒霜自杀；psychological_health先高峰后断崖"
+  method: nsga2
+  objectives:
+  - variable: psychological_health
+    metric: final
+    direction: maximize
+  - variable: social_reputation
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: romantic_pursuit
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 浪漫主义追求强度
+    optimize:
+      value:
+      - 0
+      - 3
+  - variable: social_conformity
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 融入乡村生活
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: self_reflection
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 自我认知
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

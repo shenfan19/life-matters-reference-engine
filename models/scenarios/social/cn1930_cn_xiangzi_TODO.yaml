@@ -1,147 +1,195 @@
-id: cn1930_cn_xiangzi
-name: "祥子：骆驼的梦想"
-description:
-  brief: |
-    祥子，一个从农村来到北京的年轻人，他的梦想只有一件事：买一辆属于自己的洋车。
-    他做到了。车被军阀没收了。他再次攒钱。被骗走了。
-    第三次，他放弃了。
-    这是一个关于：在系统性剥削中，个人的努力能走多远的模拟。
-  problem: 在该情境中，需要平衡 拉车强度、接单风险度、社交维护 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 60 个 month，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [labor, class, exploitation, urbanization, health, literature]
-source: 骆驼祥子 (老舍, 1936)
-
-simulation:
-  step: 1        # 单位：月
-  total: 60      # 约5年（祥子来京到彻底堕落）
-  step_unit: month
-
-inputs:
-  - id: work_intensity
-    label: "拉车强度"
-    description: "每日工作的强度——越努力省钱越快，但身体损耗越大"
-    min: 0
-    max: 3
-    default: 2.0
-    unit: intensity
-
-  - id: risk_tolerance
-    label: "接单风险度"
-    description: "是否接受危险路线（军阀区/深夜单）来赚更多钱"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: ratio
-
-  - id: social_connection
-    label: "社交维护"
-    description: "维持与车行工友、虎妞等人际网络的投入"
-    min: 0
-    max: 1
-    default: 0.3
-    unit: ratio
-
+category: social
+metadata:
+  name: cn1930_cn_xiangzi
+  author: Fan Shen
+  description:
+    brief: 祥子：骆驼的梦想。祥子，一个从农村来到北京的年轻人，他的梦想只有一件事：买一辆属于自己的洋车。 他做到了。车被军阀没收了。他再次攒钱。被骗走了。 第三次，他放弃了。 这是一个关于：在系统性剥削中，个人的努力能走多远的模拟。
+    problem: 在该情境中，需要平衡 拉车强度、接单风险度、社交维护 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 60 个 month，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - labor
+  - class
+  - exploitation
+  - urbanization
+  - health
+  - literature
+  references:
+  - 骆驼祥子 (老舍, 1936)
+  step_size:
+    value: 1
+    unit: month
 variables:
-  - id: savings
-    label: "积蓄（相对值）"
-    description: "向买车目标的进度（100=成功购车）"
-    min: 0
-    max: 100
-    initial: 0
-    io_role: output
+  work_intensity:
+    type: input
+    value: 2.0
+    unit: intensity
+    bounds:
+    - 0
+    - 3
+    description: 拉车强度：每日工作的强度——越努力省钱越快，但身体损耗越大
+    reference: TODO:SOURCE
+  risk_tolerance:
+    type: input
+    value: 0.5
+    unit: ratio
+    bounds:
+    - 0
+    - 1
+    description: 接单风险度：是否接受危险路线（军阀区/深夜单）来赚更多钱
+    reference: TODO:SOURCE
+  social_connection:
+    type: input
+    value: 0.3
+    unit: ratio
+    bounds:
+    - 0
+    - 1
+    description: 社交维护：维持与车行工友、虎妞等人际网络的投入
+    reference: TODO:SOURCE
+  savings:
+    type: state
+    value: 0
     unit: score
-
-  - id: physical_strength
-    label: "体力"
-    description: "身体状态：过度劳动+营养不足的累积损耗"
-    min: 0
-    max: 100
-    initial: 95
+    bounds:
+    - 0
+    - 100
+    description: 积蓄（相对值）：向买车目标的进度（100=成功购车）
+    reference: TODO:SOURCE
     io_role: output
+  physical_strength:
+    type: state
+    value: 95
     unit: hp
-
-  - id: morale
-    label: "精神意志"
-    description: "对梦想的信念和继续挣扎的意志"
-    min: 0
-    max: 100
-    initial: 90
+    bounds:
+    - 0
+    - 100
+    description: 体力：身体状态：过度劳动+营养不足的累积损耗
+    reference: TODO:SOURCE
     io_role: output
+  morale:
+    type: state
+    value: 90
     unit: score
-
-  - id: exploitation_damage
-    label: "被剥削程度"
-    description: "制度性剥削（军阀·骗子·虎妞·恶雇主）的累积伤害"
-    min: 0
-    max: 100
-    initial: 0
+    bounds:
+    - 0
+    - 100
+    description: 精神意志：对梦想的信念和继续挣扎的意志
+    reference: TODO:SOURCE
     io_role: output
+  exploitation_damage:
+    type: state
+    value: 0
     unit: score
-
-  - id: heat_injury_risk
-    label: "高温损伤风险"
-    description: "北京夏日在烈日下拉车的中暑/热射病累积风险"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 被剥削程度：制度性剥削（军阀·骗子·虎妞·恶雇主）的累积伤害
+    reference: TODO:SOURCE
     io_role: output
+  heat_injury_risk:
+    type: state
+    value: 5
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 高温损伤风险：北京夏日在烈日下拉车的中暑/热射病累积风险
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: savings_accumulation
-    description: "存钱速率：工作强度+风险接单，但会被随机剥削清零"
-    expr: |
-      earn_rate = work_intensity * 2.5 + risk_tolerance * 3.0
-      savings = min(100, savings + earn_rate * max(0.3, physical_strength / 100))
-
-  - id: body_wear
-    description: "拉车强度+高温风险+营养不足→体力衰减"
-    expr: |
-      overwork = work_intensity * 1.8
-      heat_damage = (heat_injury_risk / 100) * 2.0
-      physical_strength = max(0, physical_strength - overwork - heat_damage + social_connection * 0.8)
-
-  - id: heat_risk_build
-    description: "夏日连续高强度劳动累积高温风险（每年夏天峰值）"
-    expr: |
-      heat_injury_risk = min(100, heat_injury_risk + work_intensity * 1.5 - social_connection * 1.0)
-
-  - id: morale_dynamics
-    description: "意志随体力下降和剥削积累而消耗"
-    expr: |
-      morale_drain = (exploitation_damage / 100) * 2.5 + (1 - physical_strength / 100) * 1.5
-      morale_recovery = social_connection * 1.5
-      morale = max(0, min(100, morale - morale_drain + morale_recovery))
-
-  - id: exploitation_growth
-    description: "被剥削程度随风险接单和社会接触的复杂增长"
-    expr: |
-      base_exploitation = 0.8   # 底层劳工的系统性剥削是持续的
-      risk_extra = risk_tolerance * 1.5
-      exploitation_damage = min(100, exploitation_damage + base_exploitation + risk_extra)
-
-schedules:
-  - at: 12
-    event: "rickshaw_confiscated_first"
-    effect: "savings = max(0, savings - 80)"
-    label: "第一辆车被军阀士兵没收"
-
-  - at: 30
-    event: "savings_stolen"
-    effect: "savings = max(0, savings - 60)"
-    label: "积蓄被侦探骗走"
-
-  - at: 45
-    event: "tigress_death"
-    effect: "morale = max(0, morale - 25); exploitation_damage = min(100, exploitation_damage + 20)"
-    label: "虎妞难产而死"
-
+  savings_accumulation:
+    formula:
+      savings: min(100, savings + (work_intensity * 2.5 + risk_tolerance * 3.0) * max(0.3, physical_strength / 100))
+    description: 存钱速率：工作强度+风险接单，但会被随机剥削清零
+    reference: TODO:SOURCE
+  body_wear:
+    formula:
+      physical_strength: max(0, physical_strength - (work_intensity * 1.8) - ((heat_injury_risk / 100) * 2.0) + social_connection
+        * 0.8)
+    description: 拉车强度+高温风险+营养不足→体力衰减
+    reference: TODO:SOURCE
+  heat_risk_build:
+    formula:
+      heat_injury_risk: min(100, heat_injury_risk + work_intensity * 1.5 - social_connection * 1.0)
+    description: 夏日连续高强度劳动累积高温风险（每年夏天峰值）
+    reference: TODO:SOURCE
+  morale_dynamics:
+    formula:
+      morale: max(0, min(100, morale - ((exploitation_damage / 100) * 2.5 + (1 - physical_strength / 100) * 1.5) + (social_connection
+        * 1.5)))
+    description: 意志随体力下降和剥削积累而消耗
+    reference: TODO:SOURCE
+  exploitation_growth:
+    formula:
+      exploitation_damage: min(100, exploitation_damage + (0.8) + (risk_tolerance * 1.5))
+    description: 被剥削程度随风险接单和社会接触的复杂增长
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1930-01-01'
+  end_date: '1934-12-31'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: savings
-  direction: maximize
-  secondary: morale
-  note: "历史结局：savings多次被清零（schedules触发），morale归零，祥子最终变成出卖朋友的社会底层败者"
+  method: nsga2
+  objectives:
+  - variable: savings
+    metric: final
+    direction: maximize
+  - variable: morale
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: work_intensity
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 拉车强度
+    optimize:
+      value:
+      - 0
+      - 3
+  - variable: risk_tolerance
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 接单风险度
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: social_connection
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 社交维护
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

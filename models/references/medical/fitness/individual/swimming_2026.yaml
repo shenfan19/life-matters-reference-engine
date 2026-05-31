@@ -129,3 +129,35 @@ simulation:
   start_date: "2026-01-01"
   end_date: "2026-01-02"
   output_variables: [heart_rate, distance, stroke_efficiency, calories_burned, fatigue, technique_score, performance]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: performance
+      metric: final
+      direction: maximize
+    - variable: technique_score
+      metric: mean
+      direction: maximize
+  constraints:
+    - variable: fatigue
+      condition: "<= 9.0"
+      type: soft
+      description: "疲劳感不超过9（避免过度训练）"
+  schedules:
+    - variable: training_intensity
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "训练强度（RPE 0-10）"
+      optimize:
+        value: [0.0, 10.0]
+    - variable: stroke_rate
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "划水频率（次/分）"
+      optimize:
+        value: [15.0, 60.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
