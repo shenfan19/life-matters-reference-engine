@@ -309,11 +309,11 @@ class Loader:
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 
-        # 解析 time_unit（默认 second，保持向后兼容）
-        time_unit_raw = str(simulator_data.get('time_unit', 'second')).lower()
+        # 解析 time_unit（默认 minute）
+        time_unit_raw = str(simulator_data.get('time_unit', 'minute')).lower()
         if time_unit_raw not in TIME_UNIT_SECONDS:
-            logger.warning(f"未知 time_unit '{time_unit_raw}'，回退为 'second'")
-            time_unit_raw = 'second'
+            logger.warning(f"未知 time_unit '{time_unit_raw}'，回退为 'minute'")
+            time_unit_raw = 'minute'
         self.time_unit = time_unit_raw
 
         # 应用计划表 (Schedules) — 从 simulation.schedules 读取

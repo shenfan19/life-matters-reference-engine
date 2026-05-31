@@ -197,7 +197,7 @@ class SessionManagerMixin:
                 actual_steps = min(steps, session['total_steps'] - session['current_step'])
 
                 # step_size is in seconds; step() expects the model's native time unit
-                _unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'second'), 1.0)
+                _unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'minute'), 60.0)
                 _native_step = step_size / _unit_sec
 
                 for _ in range(actual_steps):
@@ -255,7 +255,7 @@ class SessionManagerMixin:
                             run_model.set_variable_value(var_name, value)
 
                 actual_steps = min(steps, session['total_steps'] - run['current_step'])
-                _unit_sec = TIME_UNIT_SECONDS.get(getattr(run_model, 'time_unit', 'second'), 1.0)
+                _unit_sec = TIME_UNIT_SECONDS.get(getattr(run_model, 'time_unit', 'minute'), 60.0)
                 _native_step = step_size / _unit_sec
 
                 for _ in range(actual_steps):

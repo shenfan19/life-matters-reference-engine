@@ -79,7 +79,7 @@ metadata:
   references: ["Author et al. (Year) Title. Journal."]
   step_size:           # 必填：模型时钟分辨率
     value: 1           # canonical 步长，建议保持 1
-    unit: minute       # second | minute | hour | day；决定公式中 step 的含义
+    unit: minute       # minute | hour | day；决定公式中 step 的含义
 
 imports:
   - papers/paper2/ckd_protein_a4_p2     # 从 models/ 根出发，不写 .yaml，不写 models/ 前缀
@@ -196,7 +196,7 @@ optimizer:                          # 可选；优化器配置；详见「optimi
   end_date:   "YYYY-MM-DD"         # 可选；优化评估时间窗结束；缺省沿用 simulation.end_date
   step_size:                        # 可选；优化评估步长；缺省沿用 metadata.step_size
     value: 1
-    unit: day                       # second | minute | hour | day
+    unit: day                       # minute | hour | day
   objectives:
     - variable: outcome_var
       metric: final                 # final | max | min | mean
@@ -336,8 +336,6 @@ GUI 读取模型时会显示 resolved model：变量、方程、输出变量、`
 | `step` | 当前步长（`step_size.value × 粗化倍率`，单位 = `step_size.unit`） | **规范符号** |
 | `step_size` / `dt` | 同 `step` | 向后兼容别名 |
 | `t` / `time` | 当前仿真时间（单位 = `step_size.unit`） | |
-
-预定义单位常量（`step_size.unit: second` 时有效）：`SECOND=1`、`MINUTE=60`、`HOUR=3600`、`DAY=86400`。
 
 ---
 

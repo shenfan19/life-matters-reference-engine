@@ -12,7 +12,7 @@ import type { InputEvent, ModelFile, PlanResult, SimPlan, SimulationDataPoint, S
 import { API_BASE, PLAN_COLORS, xToInputEvents } from './simUtils';
 import { dump as yamlDump } from 'js-yaml';
 
-const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60, second: 1 };
+const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
 
 const dateToHours = (start: string, end: string) =>
   Math.max(0, (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 3_600_000);

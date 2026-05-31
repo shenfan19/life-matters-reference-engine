@@ -14,24 +14,24 @@ class Validator:
         unique_missing_vars = set()  # 用set自动去重
 
         # 检查时间单位使用
-        time_units = {'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'}
+        time_units = {'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'}
         for form_name, formula in self.formulas.items():
             if isinstance(formula.condition, str):
                 vars_in_condition = self.extract_vars_from_expr(formula.condition)
                 if 'dt' in vars_in_condition and not (vars_in_condition & time_units):
-                    logger.warning(f"Formula {form_name}: 'dt' used in condition without time unit (e.g., HOUR). Assuming dt in seconds.")
+                    logger.warning(f"Formula {form_name}: 'dt' used in condition without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
             for var_name, expr in formula.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
                 vars_in_expr = self.extract_vars_from_expr(expr)
                 if 'dt' in vars_in_expr and not (vars_in_expr & time_units):
-                    logger.warning(f"Formula {form_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in seconds.")
+                    logger.warning(f"Formula {form_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
 
         # 验证 simulator
         if self.simulator:
             if 'dt' in self.simulator and (not isinstance(self.simulator['dt'], (int, float)) or self.simulator['dt'] <= 0):
                 all_errors.append("simulator.dt 必须为正数。")
-            if 'dt_unit' in self.simulator and self.simulator['dt_unit'] not in ['second', 'minute', 'hour', 'day', 'week', 'month', 'year']:
+            if 'dt_unit' in self.simulator and self.simulator['dt_unit'] not in ['minute', 'hour', 'day', 'week', 'month', 'year']:
                 all_errors.append("simulator.dt_unit 无效。")
 
         # 验证 optimizer（修改部分：去除类型限制，仅检查存在）
@@ -254,7 +254,7 @@ class Validator:
                 exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs',
                         'max', 'min', 'sum', 'pow', 'round', 'floor', 'ceil',
                         'True', 'False', 'None', 'and', 'or', 'not', 'if', 'else',
-                        'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
+                        'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
                         'step', 'step_size', 'dt', 't', 'time', 'pi', 'e'}
                 
                 return vars_found - exclude

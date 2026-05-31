@@ -126,7 +126,6 @@ export function OptControlBar({
         <InputNumber size="small" value={stepValue} onChange={v => onStepValueChange(v || 1)} style={{ width: '7ch', minWidth: '7ch' }} min={1} />
         <Select size="small" value={stepUnit} onChange={onStepUnitChange} style={{ minWidth: '9ch', width: 'max-content' }}
           options={[
-            { label: t('sim.step.second'), value: 'second' },
             { label: t('sim.step.minute'), value: 'minute' },
             { label: t('sim.step.hour'),   value: 'hour'   },
             { label: t('sim.step.day'),    value: 'day'    },
