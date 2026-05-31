@@ -45,6 +45,12 @@ metadata:
       参数来源仍待系统收集，跨尺度耦合（分钟→天）为近似处理；
       health_economic_index 权重系数需通过效用研究校准；
       工作压力 work_pressure 在当前模型中为固定参数，未来可参数化为季节性曲线。
+    value_for_paper: >
+      跨域边界扩展案例（心理×行为×肺功能×经济），证明 LMML 不局限于单一医学专科；
+      "选择压力低谷期启动戒烟（T4）、工作日约束结构优于周末先戒（T3）"是定性方向明确的政策性结论。
+      主要风险：health_economic_index 权重无文献依据，5年仿真误差积累大，结论的绝对值不可信；
+      建议论文中将结论限定在"相对于立即戒烟的方向性改善"，避免给出精确 FEV1 绝对差值。
+      适合作为 S4 跨域广度展示，而非本论文最强定量贡献案例。
   tags: [paper3, smoking, stress, mental_health, A6, 3obj, T3, T4, K3]
   references:
     - "Feyerabend C et al. (1985) Nicotine absorption and metabolism. Clin Pharmacol Ther 38(1):113-121"

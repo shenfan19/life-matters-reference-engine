@@ -51,6 +51,13 @@ metadata:
       猛长期（growth spurt）、妈妈疲劳对奶量的负反馈。
       胃排空为一阶近似，未区分胃排空加速（液体前段）与减速（脂肪后段）阶段。
       睡眠恢复模型为线性近似，忽略个体睡眠效率差异。
+    value_for_paper: >
+      传播力和共鸣最强的案例：母婴多目标权衡问题简洁清晰，向非专业读者完全可解释；
+      胃排空动力学（Cavell 1981 参数）和动态胃容量（随体重实时更新）科学性强，
+      WHO 8次/天方案预期落在 Pareto 膝点附近构成自然校验基准，reviewer 难以质疑基本结论。
+      夜间喂奶时机（T2 凌晨 3-4 时最大化连续睡眠窗口）是独特创新点。
+      建议作为 Paper 5 旗舰案例深化，并逐步补全母乳供需动态以增强模型完整性；
+      当前版本已足够支撑"框架能力展示"类论文的案例章节。
   tags: [infant, breastfeeding, newborn, sleep, nutrition, pediatrics, postnatal, M10, paper5]
   references:
     - "Kent JC et al. (2006) Volume and frequency of breastfeedings and fat content of breast milk throughout the day. Pediatrics 117(3):e387-e395."

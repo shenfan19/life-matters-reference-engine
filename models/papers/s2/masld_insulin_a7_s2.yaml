@@ -56,6 +56,12 @@ metadata:
       双向耦合系数（IL-6 介导 HOMA-IR 加重系数）仍待精化；
       饮食升糖负荷的量化模型为简化近似；
       个体基因变异（PNPLA3、TM6SF2）由 MC 参数分布隐含。
+    value_for_paper: >
+      论文旗舰案例：内分泌×消化双向共病是临床最常见的复杂共病，Cell Metab 和 Diabetologia 级别证据支撑
+      空腹运动时机（T2）改善 IR 的核心结论；跨科室指南冲突（快速减重→酮体-IR 恶化循环）建模动机无争议。
+      三目标优化（肝脂/HOMA-IR/体重）复杂度合理，Pareto 可视化丰富。
+      主要风险：IL-6 介导双向耦合系数（liver_fat→HOMA_IR 反馈）为估算值，
+      reviewer 会追问机制路径的定量来源；建议补充 Bril & Cusi 2019 数据或明确标注系数经验范围。
   tags: [paper2, MASLD, insulin_resistance, HOMA-IR, digestive, endocrine, cross-specialty, A7, T2, T3, T4]
   references:
     - "Bril F & Cusi K (2019) Metabolic syndrome and diabetes. Endocrinol Metab Clin North Am 48(1):161-177"
