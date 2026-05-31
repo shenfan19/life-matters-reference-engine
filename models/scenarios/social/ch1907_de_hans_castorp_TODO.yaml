@@ -1,112 +1,178 @@
-id: ch1907_de_hans_castorp
-name: "汉斯·卡斯托普：魔山上的时间"
-description:
-  brief: |
-    汉斯·卡斯托普，一个德国工程师，去瑞士高山疗养院探望表兄，
-    原计划停留三周。他留了七年。
-    疗养院有奇特的时间——疾病让时间变慢，让思想变得更清醒或更混乱。
-    窗外，欧洲正在滑向1914年。
-  problem: 在该情境中，需要平衡 遵从疗养规程、思想探索、与外部世界的联系 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 84 个 month，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [tuberculosis, sanatorium, time-distortion, war, europe, literature]
-source: The Magic Mountain (Thomas Mann, 1924)
-
-simulation:
-  step: 1
-  total: 84   # 7年（1907-1914）
-  step_unit: month
-
-inputs:
-  - id: treatment_adherence
-    label: "遵从疗养规程"
-    description: "休息·日光浴·温度记录——疗养院的标准治疗"
-    min: 0
-    max: 1
-    default: 0.6
-    unit: intensity
-
-  - id: intellectual_engagement
-    label: "思想探索"
-    description: "与塞滕布里尼·纳夫塔等人的哲学辩论（刺激但消耗体力）"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: intensity
-
-  - id: world_engagement
-    label: "与外部世界的联系"
-    description: "关注山下的新闻、写信、尝试下山"
-    min: 0
-    max: 1
-    default: 0.2
-    unit: intensity
-
+category: social
+metadata:
+  name: ch1907_de_hans_castorp
+  author: Fan Shen
+  description:
+    brief: 汉斯·卡斯托普：魔山上的时间。汉斯·卡斯托普，一个德国工程师，去瑞士高山疗养院探望表兄， 原计划停留三周。他留了七年。 疗养院有奇特的时间——疾病让时间变慢，让思想变得更清醒或更混乱。 窗外，欧洲正在滑向1914年。
+    problem: 在该情境中，需要平衡 遵从疗养规程、思想探索、与外部世界的联系 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、4 个状态变量和 4 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 84 个 month，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - tuberculosis
+  - sanatorium
+  - time-distortion
+  - war
+  - europe
+  - literature
+  references:
+  - The Magic Mountain (Thomas Mann, 1924)
+  step_size:
+    value: 1
+    unit: month
 variables:
-  - id: health
-    label: "肺结核状态"
-    description: "肺结核的恢复或进展（高=好转）"
-    min: 0
-    max: 100
-    initial: 45
-    io_role: output
+  treatment_adherence:
+    type: input
+    value: 0.6
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 遵从疗养规程：休息·日光浴·温度记录——疗养院的标准治疗
+    reference: TODO:SOURCE
+  intellectual_engagement:
+    type: input
+    value: 0.5
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 思想探索：与塞滕布里尼·纳夫塔等人的哲学辩论（刺激但消耗体力）
+    reference: TODO:SOURCE
+  world_engagement:
+    type: input
+    value: 0.2
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 与外部世界的联系：关注山下的新闻、写信、尝试下山
+    reference: TODO:SOURCE
+  health:
+    type: state
+    value: 45
     unit: hp
-
-  - id: time_sense
-    label: "时间感知"
-    description: "对时间流逝的感知扭曲（高=时间静止，低=清醒回归）"
-    min: 0
-    max: 100
-    initial: 30
+    bounds:
+    - 0
+    - 100
+    description: 肺结核状态：肺结核的恢复或进展（高=好转）
+    reference: TODO:SOURCE
     io_role: output
+  time_sense:
+    type: state
+    value: 30
     unit: score
-
-  - id: intellectual_depth
-    label: "思想深度"
-    description: "在孤立中积累的哲学理解"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 100
+    description: 时间感知：对时间流逝的感知扭曲（高=时间静止，低=清醒回归）
+    reference: TODO:SOURCE
     io_role: output
+  intellectual_depth:
+    type: state
+    value: 20
     unit: score
-
-  - id: world_disconnect
-    label: "与世界的疏离"
-    description: "与真实社会的脱节程度"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 100
+    description: 思想深度：在孤立中积累的哲学理解
+    reference: TODO:SOURCE
     io_role: output
+  world_disconnect:
+    type: state
+    value: 20
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 与世界的疏离：与真实社会的脱节程度
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: health_change
-    description: "结核病在疗养中缓慢改善，但智识消耗会抵消"
-    expr: |
-      treatment_gain = treatment_adherence * 1.5
-      intellectual_cost = intellectual_engagement * 0.5
-      health = min(100, max(0, health + treatment_gain - intellectual_cost - 0.3))
-
-  - id: time_distortion
-    description: "疗养院的时间感扭曲随停留时间积累"
-    expr: |
-      time_sense = min(100, time_sense + (1 - world_engagement) * 1.5)
-
-  - id: intellectual_growth
-    description: "智识深度随辩论探索增长"
-    expr: |
-      intellectual_depth = min(100, intellectual_depth + intellectual_engagement * 2.5)
-
-  - id: disconnect_growth
-    description: "与世界的疏离随时间感扭曲加深"
-    expr: |
-      world_disconnect = min(100, world_disconnect + (time_sense / 100) * 1.5 - world_engagement * 2.0)
-
+  health_change:
+    formula:
+      health: min(100, max(0, health + (treatment_adherence * 1.5) - (intellectual_engagement * 0.5) - 0.3))
+    description: 结核病在疗养中缓慢改善，但智识消耗会抵消
+    reference: TODO:SOURCE
+  time_distortion:
+    formula:
+      time_sense: min(100, time_sense + (1 - world_engagement) * 1.5)
+    description: 疗养院的时间感扭曲随停留时间积累
+    reference: TODO:SOURCE
+  intellectual_growth:
+    formula:
+      intellectual_depth: min(100, intellectual_depth + intellectual_engagement * 2.5)
+    description: 智识深度随辩论探索增长
+    reference: TODO:SOURCE
+  disconnect_growth:
+    formula:
+      world_disconnect: min(100, world_disconnect + (time_sense / 100) * 1.5 - world_engagement * 2.0)
+    description: 与世界的疏离随时间感扭曲加深
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1907-07-01'
+  end_date: '1914-06-30'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: health
-  direction: maximize
-  secondary: intellectual_depth
-  note: "历史结局：1914年炮声打破疗养院宁静，汉斯下山参战，在泥泞战壕中消失——最终结局不明"
+  method: nsga2
+  objectives:
+  - variable: health
+    metric: final
+    direction: maximize
+  - variable: intellectual_depth
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: treatment_adherence
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 遵从疗养规程
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: intellectual_engagement
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 思想探索
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: world_engagement
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 与外部世界的联系
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

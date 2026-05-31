@@ -144,3 +144,39 @@ simulation:
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: ["2026-01-01", "2026-01-01"]
       label: "配速6分/公里（中等有氧区）"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: performance
+      metric: final
+      direction: maximize
+    - variable: fatigue
+      metric: final
+      direction: minimize
+  constraints:
+    - variable: lactate
+      condition: "<= 10.0"
+      type: hard
+      description: "血乳酸不超过10 mmol/L（安全上限）"
+    - variable: fatigue
+      condition: "<= 9.0"
+      type: soft
+      description: "疲劳感不超过9（避免过度训练）"
+  schedules:
+    - variable: training_intensity
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "训练强度（RPE 0-10）"
+      optimize:
+        value: [0.0, 10.0]
+    - variable: pace
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "配速（min/km）"
+      optimize:
+        value: [3.0, 15.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

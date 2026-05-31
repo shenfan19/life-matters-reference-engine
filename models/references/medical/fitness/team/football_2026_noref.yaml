@@ -233,7 +233,7 @@ optimizer:
       type: hard
       description: 血乳酸不超过 12 mmol/L
     - variable: muscle_glycogen
-      condition: >= 20
+      condition: ">= 20"
       type: soft
       description: 保留 20% 肌糖原储备
   schedules:

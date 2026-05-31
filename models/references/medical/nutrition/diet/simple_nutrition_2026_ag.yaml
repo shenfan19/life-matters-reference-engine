@@ -135,3 +135,42 @@ simulation:
       value: 350.0
       label: 晚餐饮水
   output_variables: [gastric_carbohydrate, gastric_protein, gastric_fat, body_water]
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: gastric_protein
+      metric: final
+      direction: maximize
+    - variable: gastric_fat
+      metric: final
+      direction: minimize
+  schedules:
+    - variable: food_carbohydrate
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "碳水化合物摄入（g）"
+      optimize:
+        value: [0.0, 200.0]
+    - variable: food_protein
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "蛋白质摄入（g）"
+      optimize:
+        value: [0.0, 100.0]
+    - variable: food_fat
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "脂肪摄入（g）"
+      optimize:
+        value: [0.0, 80.0]
+    - variable: water_intake
+      time: "08:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "水分摄入（ml）"
+      optimize:
+        value: [0.0, 1000.0]
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

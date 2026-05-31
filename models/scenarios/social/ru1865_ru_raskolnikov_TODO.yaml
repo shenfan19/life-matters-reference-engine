@@ -1,136 +1,195 @@
-id: ru1865_ru_raskolnikov
-name: "拉斯柯尔尼科夫：道德的发烧"
-description:
-  brief: |
-    圣彼得堡，1865年夏。一个贫困的法律学生相信自己是"超人"——
-    能够越过普通人的道德限制，为更大善意杀死一个"有害的"放贷人。
-    他杀了。他没想到，道德不是一个可以推翻的哲学命题，而是烧在身体里的病。
-    这个模拟从谋杀之后开始：发烧、妄想、追踪、忏悔的边界。
-  problem: 在该情境中，需要平衡 掩盖罪行努力、精神救赎寻求、社会退缩程度 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 90 个 day，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [poverty, crime, mental-health, fever, redemption, literature]
-source: Crime and Punishment (Dostoyevsky, 1866)
-
-simulation:
-  step: 1        # 单位：天
-  total: 90      # 约3个月（谋杀到自首）
-  step_unit: day
-
-inputs:
-  - id: concealment_effort
-    label: "掩盖罪行努力"
-    description: "主动消除痕迹、控制表现、避免暴露"
-    min: 0
-    max: 1
-    default: 0.6
-    unit: intensity
-
-  - id: spiritual_seeking
-    label: "精神救赎寻求"
-    description: "与索尼娅等人的真实交流，寻求道德出路"
-    min: 0
-    max: 1
-    default: 0.2
-    unit: intensity
-
-  - id: social_withdrawal
-    label: "社会退缩程度"
-    description: "拒绝人际接触、独居程度（越高越安全，也越快崩溃）"
-    min: 0
-    max: 1
-    default: 0.7
-    unit: intensity
-
+category: social
+metadata:
+  name: ru1865_ru_raskolnikov
+  author: Fan Shen
+  description:
+    brief: 拉斯柯尔尼科夫：道德的发烧。圣彼得堡，1865年夏。一个贫困的法律学生相信自己是"超人"—— 能够越过普通人的道德限制，为更大善意杀死一个"有害的"放贷人。 他杀了。他没想到，道德不是一个可以推翻的哲学命题，而是烧在身体里的病。
+      这个模拟从谋杀之后开始：发烧、妄想、追踪、忏悔的边界。
+    problem: 在该情境中，需要平衡 掩盖罪行努力、精神救赎寻求、社会退缩程度 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 90 个 day，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - poverty
+  - crime
+  - mental-health
+  - fever
+  - redemption
+  - literature
+  references:
+  - Crime and Punishment (Dostoyevsky, 1866)
+  step_size:
+    value: 1
+    unit: day
 variables:
-  - id: mental_health
-    label: "精神状态"
-    description: "罪恶感·发烧·妄想·心理分裂的综合状态（高=稳定）"
-    min: 0
-    max: 100
-    initial: 45
-    io_role: output
+  concealment_effort:
+    type: input
+    value: 0.6
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 掩盖罪行努力：主动消除痕迹、控制表现、避免暴露
+    reference: TODO:SOURCE
+  spiritual_seeking:
+    type: input
+    value: 0.2
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 精神救赎寻求：与索尼娅等人的真实交流，寻求道德出路
+    reference: TODO:SOURCE
+  social_withdrawal:
+    type: input
+    value: 0.7
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 社会退缩程度：拒绝人际接触、独居程度（越高越安全，也越快崩溃）
+    reference: TODO:SOURCE
+  mental_health:
+    type: state
+    value: 45
     unit: score
-
-  - id: fever_level
-    label: "发烧强度"
-    description: "心理创伤导致的生理发热（陀思妥耶夫斯基式症状）"
-    min: 0
-    max: 100
-    initial: 30
+    bounds:
+    - 0
+    - 100
+    description: 精神状态：罪恶感·发烧·妄想·心理分裂的综合状态（高=稳定）
+    reference: TODO:SOURCE
     io_role: output
+  fever_level:
+    type: state
+    value: 30
     unit: score
-
-  - id: detection_risk
-    label: "被侦探发现的风险"
-    description: "波费利等侦探逐渐收紧包围圈的程度"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 发烧强度：心理创伤导致的生理发热（陀思妥耶夫斯基式症状）
+    reference: TODO:SOURCE
     io_role: output
+  detection_risk:
+    type: state
+    value: 10
     unit: score
-
-  - id: redemption_potential
-    label: "救赎可能性"
-    description: "走向自首和灵魂重建的内在能量"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 被侦探发现的风险：波费利等侦探逐渐收紧包围圈的程度
+    reference: TODO:SOURCE
     io_role: output
+  redemption_potential:
+    type: state
+    value: 5
     unit: score
-
-  - id: guilt_pressure
-    label: "罪恶感压力"
-    description: "无法逃避的道德重量"
-    min: 0
-    max: 100
-    initial: 60
+    bounds:
+    - 0
+    - 100
+    description: 救赎可能性：走向自首和灵魂重建的内在能量
+    reference: TODO:SOURCE
     io_role: output
+  guilt_pressure:
+    type: state
+    value: 60
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 罪恶感压力：无法逃避的道德重量
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: fever_dynamics
-    description: "发烧随罪恶压力增高，精神寻求可缓解"
-    expr: |
-      fever_drive = (guilt_pressure / 100) * 2.0
-      spiritual_relief = spiritual_seeking * 1.5
-      fever_level = min(100, max(0, fever_level + fever_drive - spiritual_relief))
-
-  - id: mental_health_change
-    description: "精神状态受发烧·掩盖努力·孤立的消耗"
-    expr: |
-      fever_cost = (fever_level / 100) * 2.5
-      concealment_cost = concealment_effort * 1.2
-      isolation_cost = social_withdrawal * 0.8
-      spiritual_gain = spiritual_seeking * 2.0
-      mental_health = max(0, min(100, mental_health - fever_cost - concealment_cost - isolation_cost + spiritual_gain))
-
-  - id: detection_progression
-    description: "侦探的追踪随时间推进，掩盖努力可短暂延缓"
-    expr: |
-      natural_progress = 1.5
-      concealment_delay = concealment_effort * 0.8
-      guilt_leakage = (guilt_pressure / 100) * 1.0  # 罪恶感越强，越容易暴露
-      detection_risk = min(100, detection_risk + natural_progress - concealment_delay + guilt_leakage)
-
-  - id: guilt_dynamics
-    description: "罪恶感随时间增长，只有精神寻求可真正减少"
-    expr: |
-      guilt_growth = 1.0 + social_withdrawal * 0.5
-      guilt_relief = spiritual_seeking * 2.5
-      guilt_pressure = min(100, max(0, guilt_pressure + guilt_growth - guilt_relief))
-
-  - id: redemption_growth
-    description: "救赎可能性随精神寻求增长，需要接受痛苦（非掩盖）"
-    expr: |
-      redemption_gain = spiritual_seeking * 3.0 * (1 - concealment_effort * 0.5)
-      redemption_potential = min(100, redemption_potential + redemption_gain)
-
+  fever_dynamics:
+    formula:
+      fever_level: min(100, max(0, fever_level + ((guilt_pressure / 100) * 2.0) - (spiritual_seeking * 1.5)))
+    description: 发烧随罪恶压力增高，精神寻求可缓解
+    reference: TODO:SOURCE
+  mental_health_change:
+    formula:
+      mental_health: max(0, min(100, mental_health - ((fever_level / 100) * 2.5) - (concealment_effort * 1.2) - (social_withdrawal
+        * 0.8) + (spiritual_seeking * 2.0)))
+    description: 精神状态受发烧·掩盖努力·孤立的消耗
+    reference: TODO:SOURCE
+  detection_progression:
+    formula:
+      detection_risk: min(100, detection_risk + (1.5) - (concealment_effort * 0.8) + ((guilt_pressure / 100) * 1.0))
+    description: 侦探的追踪随时间推进，掩盖努力可短暂延缓
+    reference: TODO:SOURCE
+  guilt_dynamics:
+    formula:
+      guilt_pressure: min(100, max(0, guilt_pressure + (1.0 + social_withdrawal * 0.5) - (spiritual_seeking * 2.5)))
+    description: 罪恶感随时间增长，只有精神寻求可真正减少
+    reference: TODO:SOURCE
+  redemption_growth:
+    formula:
+      redemption_potential: min(100, redemption_potential + (spiritual_seeking * 3.0 * (1 - concealment_effort * 0.5)))
+    description: 救赎可能性随精神寻求增长，需要接受痛苦（非掩盖）
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1865-06-01'
+  end_date: '1865-08-29'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: redemption_potential
-  direction: maximize
-  secondary: mental_health
-  note: "历史结局：拉斯柯尔尼科夫向索尼娅坦白→在广场自首→西伯利亚流放中开始真正的心理重建"
+  method: nsga2
+  objectives:
+  - variable: redemption_potential
+    metric: final
+    direction: maximize
+  - variable: mental_health
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: concealment_effort
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 掩盖罪行努力
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: spiritual_seeking
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 精神救赎寻求
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: social_withdrawal
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 社会退缩程度
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

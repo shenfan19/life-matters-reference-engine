@@ -322,18 +322,25 @@ optimizer:
   schedules:
     - variable: supervised_exercise_intensity
       time: "09:00"
+      days: [Mon, Wed, Fri]
+      date_range: ["2026-01-01", "2026-01-28"]
       label: "第1-4周运动强度（MET）"
       optimize:
         value: [2.0, 5.0]
-        date_range: ["2026-01-01", "2026-01-28"]
-      - time: "09:00"
-        dose_bounds: [4.0, 7.0]
-        label: "第5-8周运动强度（MET）"
-        date_range: ["2026-01-29", "2026-02-25"]
-      - time: "09:00"
-        dose_bounds: [5.0, 9.0]
-        label: "第9-12周运动强度（MET）"
-        date_range: ["2026-02-26", "2026-03-31"]
+    - variable: supervised_exercise_intensity
+      time: "09:00"
+      days: [Mon, Tue, Thu, Fri]
+      date_range: ["2026-01-29", "2026-02-25"]
+      label: "第5-8周运动强度（MET）"
+      optimize:
+        value: [4.0, 7.0]
+    - variable: supervised_exercise_intensity
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri]
+      date_range: ["2026-02-26", "2026-03-31"]
+      label: "第9-12周运动强度（MET）"
+      optimize:
+        value: [5.0, 9.0]
   algorithm:
     population_size: 80
     n_generations: 150

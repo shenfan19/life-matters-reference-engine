@@ -1,132 +1,194 @@
-id: ru1880_ru_ivan_ilyich
-name: "伊万·伊里奇：临终的真实"
-description:
-  brief: |
-    伊万·伊里奇是一位法官，一个在"正确"的社会阶层生活的正确的人。
-    然后他摔了一跤，开始感到疼痛，慢慢意识到自己快要死了。
-    他的家人继续表演正常。他的医生继续表演专业。
-    只有农民仆人格拉西姆，真实地陪伴着他。
-    这是一个关于：你愿意用多少真实换取多少体面的模拟。
-  problem: 在该情境中，需要平衡 维持社会体面、真实表达、忍痛程度 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 20 个 week，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [death, dignity, authenticity, social-pretense, disease, literature]
-source: The Death of Ivan Ilyich (Tolstoy, 1886)
-
-simulation:
-  step: 1       # 单位：周
-  total: 20     # 约5个月（从确认病重到死亡）
-  step_unit: week
-
-inputs:
-  - id: facade_maintenance
-    label: "维持社会体面"
-    description: "继续表现正常、掩盖病情、回避死亡话题"
-    min: 0
-    max: 1
-    default: 0.8
-    unit: intensity
-
-  - id: authentic_expression
-    label: "真实表达"
-    description: "向家人、医生或仆人表达真实恐惧与需求"
-    min: 0
-    max: 1
-    default: 0.2
-    unit: intensity
-
-  - id: pain_endurance
-    label: "忍痛程度"
-    description: "不要求镇痛药物（鸦片），强撑（当时医生能做的极少）"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: intensity
-
+category: social
+metadata:
+  name: ru1880_ru_ivan_ilyich
+  author: Fan Shen
+  description:
+    brief: 伊万·伊里奇：临终的真实。伊万·伊里奇是一位法官，一个在"正确"的社会阶层生活的正确的人。 然后他摔了一跤，开始感到疼痛，慢慢意识到自己快要死了。 他的家人继续表演正常。他的医生继续表演专业。 只有农民仆人格拉西姆，真实地陪伴着他。
+      这是一个关于：你愿意用多少真实换取多少体面的模拟。
+    problem: 在该情境中，需要平衡 维持社会体面、真实表达、忍痛程度 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 20 个 week，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - death
+  - dignity
+  - authenticity
+  - social-pretense
+  - disease
+  - literature
+  references:
+  - The Death of Ivan Ilyich (Tolstoy, 1886)
+  step_size:
+    value: 1
+    unit: week
 variables:
-  - id: pain_level
-    label: "疼痛等级"
-    description: "内脏慢性疼痛的累积强度（19世纪无有效止痛）"
-    min: 0
-    max: 100
-    initial: 20
-    io_role: output
+  facade_maintenance:
+    type: input
+    value: 0.8
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 维持社会体面：继续表现正常、掩盖病情、回避死亡话题
+    reference: TODO:SOURCE
+  authentic_expression:
+    type: input
+    value: 0.2
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 真实表达：向家人、医生或仆人表达真实恐惧与需求
+    reference: TODO:SOURCE
+  pain_endurance:
+    type: input
+    value: 0.5
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 忍痛程度：不要求镇痛药物（鸦片），强撑（当时医生能做的极少）
+    reference: TODO:SOURCE
+  pain_level:
+    type: state
+    value: 20
     unit: score
-
-  - id: inner_peace
-    label: "内心平静"
-    description: "接受死亡、与生命和解的程度"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 疼痛等级：内脏慢性疼痛的累积强度（19世纪无有效止痛）
+    reference: TODO:SOURCE
     io_role: output
+  inner_peace:
+    type: state
+    value: 5
     unit: score
-
-  - id: social_isolation
-    label: "情感孤立"
-    description: "家人回避、医生敷衍、无真实连接的孤独感"
-    min: 0
-    max: 100
-    initial: 60
+    bounds:
+    - 0
+    - 100
+    description: 内心平静：接受死亡、与生命和解的程度
+    reference: TODO:SOURCE
     io_role: output
+  social_isolation:
+    type: state
+    value: 60
     unit: score
-
-  - id: dignity_preserved
-    label: "尊严完整度"
-    description: "在生命末期保有作为人的尊严（非社会地位，而是真实的自我）"
-    min: 0
-    max: 100
-    initial: 30
+    bounds:
+    - 0
+    - 100
+    description: 情感孤立：家人回避、医生敷衍、无真实连接的孤独感
+    reference: TODO:SOURCE
     io_role: output
+  dignity_preserved:
+    type: state
+    value: 30
     unit: score
-
-  - id: physical_decline
-    label: "身体衰竭进程"
-    description: "不可逆的生理衰竭积累"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 100
+    description: 尊严完整度：在生命末期保有作为人的尊严（非社会地位，而是真实的自我）
+    reference: TODO:SOURCE
     io_role: output
+  physical_decline:
+    type: state
+    value: 20
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 身体衰竭进程：不可逆的生理衰竭积累
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: pain_progression
-    description: "疼痛随时间不可逆增长，忍痛会让痛苦内化"
-    expr: |
-      base_pain_growth = 2.5
-      endurance_cost = pain_endurance * 1.5
-      pain_level = min(100, pain_level + base_pain_growth + endurance_cost)
-
-  - id: isolation_dynamics
-    description: "维持体面→家人更疏离（因为疏离也在表演）；真实表达→孤立可能减少"
-    expr: |
-      facade_cost = facade_maintenance * 2.0   # 表演越努力，家人越冷漠
-      authentic_gain = authentic_expression * 3.0
-      social_isolation = min(100, max(0, social_isolation + facade_cost - authentic_gain))
-
-  - id: peace_growth
-    description: "真实表达和接受疼痛（非逃避）缓慢带来内心平静"
-    expr: |
-      peace_gain = authentic_expression * 2.5 + (1 - facade_maintenance) * 1.5
-      inner_peace = min(100, inner_peace + peace_gain)
-
-  - id: dignity_change
-    description: "内心平静↑带来尊严↑；体面表演↑反而侵蚀真实尊严"
-    expr: |
-      dignity_gain = (inner_peace / 100) * 2.0
-      facade_cost = facade_maintenance * 1.0
-      dignity_preserved = min(100, max(0, dignity_preserved + dignity_gain - facade_cost))
-
-  - id: body_decline
-    description: "身体衰竭按固定速率进行，无法阻止，只受微弱影响"
-    expr: |
-      physical_decline = min(100, physical_decline + 4.0 - (1 - pain_endurance) * 0.5)
-
+  pain_progression:
+    formula:
+      pain_level: min(100, pain_level + (2.5) + (pain_endurance * 1.5))
+    description: 疼痛随时间不可逆增长，忍痛会让痛苦内化
+    reference: TODO:SOURCE
+  isolation_dynamics:
+    formula:
+      social_isolation: min(100, max(0, social_isolation + (facade_maintenance * 2.0) - (authentic_expression * 3.0)))
+    description: 维持体面→家人更疏离（因为疏离也在表演）；真实表达→孤立可能减少
+    reference: TODO:SOURCE
+  peace_growth:
+    formula:
+      inner_peace: min(100, inner_peace + (authentic_expression * 2.5 + (1 - facade_maintenance) * 1.5))
+    description: 真实表达和接受疼痛（非逃避）缓慢带来内心平静
+    reference: TODO:SOURCE
+  dignity_change:
+    formula:
+      dignity_preserved: min(100, max(0, dignity_preserved + ((inner_peace / 100) * 2.0) - (facade_maintenance * 1.0)))
+    description: 内心平静↑带来尊严↑；体面表演↑反而侵蚀真实尊严
+    reference: TODO:SOURCE
+  body_decline:
+    formula:
+      physical_decline: min(100, physical_decline + 4.0 - (1 - pain_endurance) * 0.5)
+    description: 身体衰竭按固定速率进行，无法阻止，只受微弱影响
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1880-01-01'
+  end_date: '1880-05-19'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: inner_peace
-  direction: maximize
-  secondary: dignity_preserved
-  note: "历史结局：伊万在临终最后一刻通过接受死亡找到平静（inner_peace爆发）；social_isolation高但dignity在最后一刻恢复"
+  method: nsga2
+  objectives:
+  - variable: inner_peace
+    metric: final
+    direction: maximize
+  - variable: dignity_preserved
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: facade_maintenance
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 维持社会体面
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: authentic_expression
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 真实表达
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: pain_endurance
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 忍痛程度
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

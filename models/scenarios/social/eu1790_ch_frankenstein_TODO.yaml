@@ -1,130 +1,193 @@
-id: eu1790_ch_frankenstein
-name: "弗兰肯斯坦：造物者的代价"
-description:
-  brief: |
-    维克多·弗兰肯斯坦在日内瓦大学实验室中，用两年时间组装并激活了一个生命体。
-    他成功了。然后他逃走了。
-    这是模拟他在逃避、被追寻、目睹至亲死亡过程中的身体崩溃与伦理代价——
-    创造者拒绝承担责任，造物于是替他做出了选择。
-  problem: 在该情境中，需要平衡 压制造物知情范围、直面造物的意愿、继续研究强度 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 30 个 month，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [science, ethics, isolation, obsession, literature]
-source: Frankenstein (Mary Shelley, 1818)
-
-simulation:
-  step: 1         # 单位：月
-  total: 30       # 30个月（创造怪物后到维克多死亡的时间跨度）
-  step_unit: month
-
-inputs:
-  - id: concealment_effort
-    label: "压制造物知情范围"
-    description: "是否主动压制关于造物存在的消息，保密程度"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: intensity
-
-  - id: confrontation_willingness
-    label: "直面造物的意愿"
-    description: "是否尝试与造物沟通或对峙（而非逃跑）"
-    min: 0
-    max: 1
-    default: 0.2
-    unit: intensity
-
-  - id: research_continuation
-    label: "继续研究强度"
-    description: "是否继续推进科学研究（以控制/销毁造物）"
-    min: 0
-    max: 2
-    default: 1.0
-    unit: intensity
-
+category: social
+metadata:
+  name: eu1790_ch_frankenstein
+  author: Fan Shen
+  description:
+    brief: 弗兰肯斯坦：造物者的代价。维克多·弗兰肯斯坦在日内瓦大学实验室中，用两年时间组装并激活了一个生命体。 他成功了。然后他逃走了。 这是模拟他在逃避、被追寻、目睹至亲死亡过程中的身体崩溃与伦理代价—— 创造者拒绝承担责任，造物于是替他做出了选择。
+    problem: 在该情境中，需要平衡 压制造物知情范围、直面造物的意愿、继续研究强度 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 30 个 month，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - science
+  - ethics
+  - isolation
+  - obsession
+  - literature
+  references:
+  - Frankenstein (Mary Shelley, 1818)
+  step_size:
+    value: 1
+    unit: month
 variables:
-  - id: health
-    label: "维克多生命力"
-    description: "身体健康状态：过度劳累、北极追逐、精神崩溃的综合损耗"
-    min: 0
-    max: 100
-    initial: 85
-    io_role: output
+  concealment_effort:
+    type: input
+    value: 0.5
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 压制造物知情范围：是否主动压制关于造物存在的消息，保密程度
+    reference: TODO:SOURCE
+  confrontation_willingness:
+    type: input
+    value: 0.2
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 直面造物的意愿：是否尝试与造物沟通或对峙（而非逃跑）
+    reference: TODO:SOURCE
+  research_continuation:
+    type: input
+    value: 1.0
+    unit: intensity
+    bounds:
+    - 0
+    - 2
+    description: 继续研究强度：是否继续推进科学研究（以控制/销毁造物）
+    reference: TODO:SOURCE
+  health:
+    type: state
+    value: 85
     unit: hp
-
-  - id: ethical_burden
-    label: "伦理负担"
-    description: "未承担责任的道德重量：逃避→累积，直面→缓解"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 100
+    description: 维克多生命力：身体健康状态：过度劳累、北极追逐、精神崩溃的综合损耗
+    reference: TODO:SOURCE
     io_role: output
+  ethical_burden:
+    type: state
+    value: 20
     unit: score
-
-  - id: relationships_intact
-    label: "亲情存续"
-    description: "威廉、贾斯汀、克拉维尔、伊丽莎白等至亲的存续状态"
-    min: 0
-    max: 100
-    initial: 90
+    bounds:
+    - 0
+    - 100
+    description: 伦理负担：未承担责任的道德重量：逃避→累积，直面→缓解
+    reference: TODO:SOURCE
     io_role: output
+  relationships_intact:
+    type: state
+    value: 90
     unit: score
-
-  - id: creature_threat
-    label: "造物威胁等级"
-    description: "造物的复仇行动强度：被忽视则升高，被面对则可能谈判"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 亲情存续：威廉、贾斯汀、克拉维尔、伊丽莎白等至亲的存续状态
+    reference: TODO:SOURCE
     io_role: output
+  creature_threat:
+    type: state
+    value: 10
     unit: score
-
-  - id: scientific_control
-    label: "对造物的科学掌控"
-    description: "能否通过研究理解/控制/销毁造物"
-    min: 0
-    max: 100
-    initial: 5
+    bounds:
+    - 0
+    - 100
+    description: 造物威胁等级：造物的复仇行动强度：被忽视则升高，被面对则可能谈判
+    reference: TODO:SOURCE
     io_role: output
+  scientific_control:
+    type: state
+    value: 5
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 对造物的科学掌控：能否通过研究理解/控制/销毁造物
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: creature_growth
-    description: "造物威胁随逃避而增长，直面可减缓"
-    expr: |
-      threat_increase = 3.0 * (1 - confrontation_willingness) - 1.5 * confrontation_willingness
-      creature_threat = min(100, creature_threat + threat_increase)
-
-  - id: relationship_decay
-    description: "威胁越高，亲情损耗越快"
-    expr: |
-      damage = (creature_threat / 100) * 4.0
-      relationships_intact = max(0, relationships_intact - damage)
-
-  - id: ethical_accumulation
-    description: "逃避让伦理负担快速增长；直面可缓慢卸载"
-    expr: |
-      burden_change = 2.5 * (1 - confrontation_willingness) - 1.0 * confrontation_willingness
-      ethical_burden = min(100, max(0, ethical_burden + burden_change))
-
-  - id: health_decay
-    description: "研究+伦理负担+威胁三重消耗健康"
-    expr: |
-      overwork_cost = research_continuation * 1.2
-      burden_cost = (ethical_burden / 100) * 1.5
-      threat_cost = (creature_threat / 100) * 0.8
-      health = max(0, health - overwork_cost - burden_cost - threat_cost)
-
-  - id: scientific_progress
-    description: "研究推进科学控制，但不能直接降低威胁（需配合直面）"
-    expr: |
-      scientific_control = min(100, scientific_control + research_continuation * 2.0)
-
+  creature_growth:
+    formula:
+      creature_threat: min(100, creature_threat + (3.0 * (1 - confrontation_willingness) - 1.5 * confrontation_willingness))
+    description: 造物威胁随逃避而增长，直面可减缓
+    reference: TODO:SOURCE
+  relationship_decay:
+    formula:
+      relationships_intact: max(0, relationships_intact - ((creature_threat / 100) * 4.0))
+    description: 威胁越高，亲情损耗越快
+    reference: TODO:SOURCE
+  ethical_accumulation:
+    formula:
+      ethical_burden: min(100, max(0, ethical_burden + (2.5 * (1 - confrontation_willingness) - 1.0 * confrontation_willingness)))
+    description: 逃避让伦理负担快速增长；直面可缓慢卸载
+    reference: TODO:SOURCE
+  health_decay:
+    formula:
+      health: max(0, health - (research_continuation * 1.2) - ((ethical_burden / 100) * 1.5) - ((creature_threat / 100) *
+        0.8))
+    description: 研究+伦理负担+威胁三重消耗健康
+    reference: TODO:SOURCE
+  scientific_progress:
+    formula:
+      scientific_control: min(100, scientific_control + research_continuation * 2.0)
+    description: 研究推进科学控制，但不能直接降低威胁（需配合直面）
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1790-01-01'
+  end_date: '1792-06-30'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: relationships_intact
-  direction: maximize
-  secondary: health
-  note: "保住至亲（relationships_intact最大化）同时维持健康；历史结局：relationships=0, health=0"
+  method: nsga2
+  objectives:
+  - variable: relationships_intact
+    metric: final
+    direction: maximize
+  - variable: health
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: concealment_effort
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 压制造物知情范围
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: confrontation_willingness
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 直面造物的意愿
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: research_continuation
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 继续研究强度
+    optimize:
+      value:
+      - 0
+      - 2
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

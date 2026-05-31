@@ -1,153 +1,194 @@
-id: fr1815_fr_fantine
-name: "芳汀：母亲的代价"
-description:
-  brief: |
-    芳汀，一个被情人抛弃的年轻工人，把女儿珂赛特托付给客栈老板，独自去城里工厂做工。
-    她寄钱，工厂因为她是未婚母亲而解雇她，她找其他活路，
-    钱越来越不够，她卖掉头发，卖掉牙齿，最后卖掉身体。
-    她只是想让女儿活下去。
-  problem: 在该情境中，需要平衡 劳动强度、自我牺牲程度、寻求援助 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 36 个 month，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [poverty, single-mother, tuberculosis, exploitation, sacrifice, literature]
-source: 悲惨世界 (Victor Hugo, 1862)
-
-simulation:
-  step: 1        # 单位：月
-  total: 36      # 约3年（从独自进城到去世）
-  step_unit: month
-
-inputs:
-  - id: work_intensity
-    label: "劳动强度"
-    description: "做工努力程度：高则多挣钱，但加速肺病"
-    min: 0
-    max: 3
-    default: 2.0
-    unit: intensity
-
-  - id: sacrifice_level
-    label: "自我牺牲程度"
-    description: "为寄钱给珂赛特牺牲自身生存资源（头发/牙齿/身体）"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: ratio
-
-  - id: seek_help
-    label: "寻求援助"
-    description: "向教会/官员/善人求助（风险高，尊严代价大）"
-    min: 0
-    max: 1
-    default: 0.2
-    unit: intensity
-
+category: social
+metadata:
+  name: fr1815_fr_fantine
+  author: Fan Shen
+  description:
+    brief: 芳汀：母亲的代价。芳汀，一个被情人抛弃的年轻工人，把女儿珂赛特托付给客栈老板，独自去城里工厂做工。 她寄钱，工厂因为她是未婚母亲而解雇她，她找其他活路， 钱越来越不够，她卖掉头发，卖掉牙齿，最后卖掉身体。 她只是想让女儿活下去。
+    problem: 在该情境中，需要平衡 劳动强度、自我牺牲程度、寻求援助 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 36 个 month，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - poverty
+  - single-mother
+  - tuberculosis
+  - exploitation
+  - sacrifice
+  - literature
+  references:
+  - 悲惨世界 (Victor Hugo, 1862)
+  step_size:
+    value: 1
+    unit: month
 variables:
-  - id: cosette_wellbeing
-    label: "珂赛特生存状态"
-    description: "女儿在客栈的生活质量（取决于汇款）"
-    min: 0
-    max: 100
-    initial: 40
-    io_role: output
+  work_intensity:
+    type: input
+    value: 2.0
+    unit: intensity
+    bounds:
+    - 0
+    - 3
+    description: 劳动强度：做工努力程度：高则多挣钱，但加速肺病
+    reference: TODO:SOURCE
+  sacrifice_level:
+    type: input
+    value: 0.5
+    unit: ratio
+    bounds:
+    - 0
+    - 1
+    description: 自我牺牲程度：为寄钱给珂赛特牺牲自身生存资源（头发/牙齿/身体）
+    reference: TODO:SOURCE
+  seek_help:
+    type: input
+    value: 0.2
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 寻求援助：向教会/官员/善人求助（风险高，尊严代价大）
+    reference: TODO:SOURCE
+  cosette_wellbeing:
+    type: state
+    value: 40
     unit: score
-
-  - id: health
-    label: "芳汀的健康"
-    description: "肺结核+营养不足+过度劳动的累积损耗"
-    min: 0
-    max: 100
-    initial: 75
+    bounds:
+    - 0
+    - 100
+    description: 珂赛特生存状态：女儿在客栈的生活质量（取决于汇款）
+    reference: TODO:SOURCE
     io_role: output
+  health:
+    type: state
+    value: 75
     unit: hp
-
-  - id: income
-    label: "月收入（相对）"
-    description: "当前的劳动收入水平"
-    min: 0
-    max: 100
-    initial: 50
+    bounds:
+    - 0
+    - 100
+    description: 芳汀的健康：肺结核+营养不足+过度劳动的累积损耗
+    reference: TODO:SOURCE
     io_role: output
+  income:
+    type: state
+    value: 50
     unit: score
-
-  - id: desperation
-    label: "绝望程度"
-    description: "社会排斥·健康恶化·资源枯竭的综合绝望"
-    min: 0
-    max: 100
-    initial: 20
+    bounds:
+    - 0
+    - 100
+    description: 月收入（相对）：当前的劳动收入水平
+    reference: TODO:SOURCE
     io_role: output
+  desperation:
+    type: state
+    value: 20
     unit: score
-
-  - id: tb_progression
-    label: "肺结核进展"
-    description: "结核病的不可逆进展"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 绝望程度：社会排斥·健康恶化·资源枯竭的综合绝望
+    reference: TODO:SOURCE
     io_role: output
+  tb_progression:
+    type: state
+    value: 10
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 肺结核进展：结核病的不可逆进展
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: health_decay
-    description: "肺结核+劳动强度+营养不足消耗健康"
-    expr: |
-      tb_cost = (tb_progression / 100) * 2.5
-      overwork = work_intensity * 0.8
-      sacrifice_cost = sacrifice_level * 1.5  # 卖牙/卖发/劳身
-      health = max(0, health - tb_cost - overwork - sacrifice_cost + seek_help * 0.5)
-
-  - id: tb_growth
-    description: "结核病随营养不足和劳累而加速"
-    expr: |
-      nutrition_factor = 1.0 + sacrifice_level * 1.2  # 为寄钱饿自己
-      overwork_factor = work_intensity * 0.4
-      tb_progression = min(100, tb_progression + nutrition_factor + overwork_factor)
-
-  - id: income_dynamics
-    description: "收入随工作强度，但社会排斥（desperation）逐渐降低就业机会"
-    expr: |
-      earn = work_intensity * 15.0
-      exclusion = (desperation / 100) * 20.0  # 身份败露后被解雇
-      help_gain = seek_help * 5.0
-      income = max(0, earn - exclusion + help_gain)
-
-  - id: cosette_status
-    description: "寄钱→珂赛特状态，但客栈主人会截留"
-    expr: |
-      remittance = income * sacrifice_level * 0.5
-      innkeeper_corruption = 0.4   # 德纳迪埃截留40%
-      net_to_cosette = remittance * (1 - innkeeper_corruption)
-      cosette_wellbeing = max(0, min(100, cosette_wellbeing + net_to_cosette * 0.1 - 2.0))
-
-  - id: desperation_growth
-    description: "绝望随健康下降·收入下降·无援助积累"
-    expr: |
-      desperation_drive = (1 - health / 100) * 2.0 + (1 - income / 100) * 1.5
-      help_relief = seek_help * 1.5
-      desperation = min(100, max(0, desperation + desperation_drive - help_relief))
-
-schedules:
-  - at: 6
-    event: "factory_dismissal"
-    effect: "income = max(0, income * 0.3); desperation = min(100, desperation + 20)"
-    label: "工厂发现她是未婚母亲，解雇"
-
-  - at: 12
-    event: "sell_hair"
-    effect: "income = min(100, income + 15); health = max(0, health - 5)"
-    label: "卖掉头发（一次性收入，自我损耗）"
-
-  - at: 20
-    event: "sell_teeth"
-    effect: "income = min(100, income + 10); health = max(0, health - 10); tb_progression = min(100, tb_progression + 5)"
-    label: "卖掉两颗门牙（感染风险，肺病加重）"
-
+  health_decay:
+    formula:
+      health: max(0, health - ((tb_progression / 100) * 2.5) - (work_intensity * 0.8) - (sacrifice_level * 1.5) + seek_help
+        * 0.5)
+    description: 肺结核+劳动强度+营养不足消耗健康
+    reference: TODO:SOURCE
+  tb_growth:
+    formula:
+      tb_progression: min(100, tb_progression + (1.0 + sacrifice_level * 1.2) + (work_intensity * 0.4))
+    description: 结核病随营养不足和劳累而加速
+    reference: TODO:SOURCE
+  income_dynamics:
+    formula:
+      income: max(0, (work_intensity * 15.0) - ((desperation / 100) * 20.0) + (seek_help * 5.0))
+    description: 收入随工作强度，但社会排斥（desperation）逐渐降低就业机会
+    reference: TODO:SOURCE
+  cosette_status:
+    formula:
+      cosette_wellbeing: max(0, min(100, cosette_wellbeing + ((income * sacrifice_level * 0.5) * (1 - (0.4))) * 0.1 - 2.0))
+    description: 寄钱→珂赛特状态，但客栈主人会截留
+    reference: TODO:SOURCE
+  desperation_growth:
+    formula:
+      desperation: min(100, max(0, desperation + ((1 - health / 100) * 2.0 + (1 - income / 100) * 1.5) - (seek_help * 1.5)))
+    description: 绝望随健康下降·收入下降·无援助积累
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1815-01-01'
+  end_date: '1817-12-31'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: cosette_wellbeing
-  direction: maximize
-  secondary: health
-  note: "历史结局：芳汀health→0，cosette_wellbeing低（珂赛特被虐待），冉·阿让最终解救"
+  method: nsga2
+  objectives:
+  - variable: cosette_wellbeing
+    metric: final
+    direction: maximize
+  - variable: health
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: work_intensity
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 劳动强度
+    optimize:
+      value:
+      - 0
+      - 3
+  - variable: sacrifice_level
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 自我牺牲程度
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: seek_help
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 寻求援助
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42

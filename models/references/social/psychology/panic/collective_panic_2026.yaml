@@ -259,15 +259,17 @@ optimizer:
     - variable: authority_message
       time: "00:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: ["2026-01-01", "2026-01-10"]
+      label: "危机初期干预强度"
       optimize:
         value: [0.0, 1.0]
-        date_range: ["2026-01-01", "2026-01-10"]
-        label: "危机初期干预强度"
-      - time: "00:00"
-        dose_bounds: [0.0, 0.5]
-        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-        date_range: ["2026-01-11", "2026-01-31"]
-        label: "危机后期维持性干预"
+    - variable: authority_message
+      time: "00:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      date_range: ["2026-01-11", "2026-01-31"]
+      label: "危机后期维持性干预"
+      optimize:
+        value: [0.0, 0.5]
   algorithm:
     population_size: 60
     n_generations: 100

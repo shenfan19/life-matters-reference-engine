@@ -1,136 +1,195 @@
-id: eu1800_dk_little_match_girl
-name: "卖火柴的小女孩：新年前夜"
-description:
-  brief: |
-    新年前夜，一个小女孩赤脚站在雪地里卖火柴，没有人买。
-    她不敢回家，因为没有卖出一根，父亲会打她。
-    寒冷越来越深。她开始划燃火柴——不是为了卖，而是为了片刻的温暖。
-    每根火柴，都是一个美丽的幻觉。
-    这是一个关于：在系统性冷漠中，一个儿童能做出哪些选择，以及代价是什么的模拟。
-  problem: 在该情境中，需要平衡 叫卖努力程度、燃烧火柴取暖、寻找避风处 对生存、目标进展或长期代价的影响。
-  method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
-  simulation: 默认仿真长度为 10 个 hour，用于比较不同输入策略下的轨迹。
-  optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
-  result: 预期用于比较不同策略在主要目标和约束之间的取舍。
-  limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
-tags: [poverty, child, cold, social-neglect, hallucination, literature]
-source: 卖火柴的小女孩 (Hans Christian Andersen, 1845)
-
-simulation:
-  step: 1        # 单位：小时
-  total: 10      # 10小时（从黄昏到天明）
-  step_unit: hour
-
-inputs:
-  - id: match_selling_effort
-    label: "叫卖努力程度"
-    description: "主动向路人请求购买火柴（增加成功率，但消耗体力）"
-    min: 0
-    max: 1
-    default: 0.5
-    unit: intensity
-
-  - id: match_burning
-    label: "燃烧火柴取暖"
-    description: "划燃火柴取得片刻温暖（消耗存货，带来幻觉和温暖感）"
-    min: 0
-    max: 3
-    default: 0.5
-    unit: matches_per_hour
-
-  - id: shelter_seeking
-    label: "寻找避风处"
-    description: "在街角墙壁等处躲风，减少寒冷损耗"
-    min: 0
-    max: 1
-    default: 0.3
-    unit: intensity
-
+category: social
+metadata:
+  name: eu1800_dk_little_match_girl
+  author: Fan Shen
+  description:
+    brief: 卖火柴的小女孩：新年前夜。新年前夜，一个小女孩赤脚站在雪地里卖火柴，没有人买。 她不敢回家，因为没有卖出一根，父亲会打她。 寒冷越来越深。她开始划燃火柴——不是为了卖，而是为了片刻的温暖。 每根火柴，都是一个美丽的幻觉。
+      这是一个关于：在系统性冷漠中，一个儿童能做出哪些选择，以及代价是什么的模拟。
+    problem: 在该情境中，需要平衡 叫卖努力程度、燃烧火柴取暖、寻找避风处 对生存、目标进展或长期代价的影响。
+    method: 包含 3 个可调输入、5 个状态变量和 5 个方程，将叙事冲突转化为可运行的动态系统。
+    simulation: 默认仿真长度为 10 个 hour，用于比较不同输入策略下的轨迹。
+    optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
+    result: 预期用于比较不同策略在主要目标和约束之间的取舍。
+    limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  tags:
+  - poverty
+  - child
+  - cold
+  - social-neglect
+  - hallucination
+  - literature
+  references:
+  - 卖火柴的小女孩 (Hans Christian Andersen, 1845)
+  step_size:
+    value: 1
+    unit: hour
 variables:
-  - id: body_temperature
-    label: "体温"
-    description: "核心体温：低温症的生理指标（36.5=正常，<32=危险，<28=致命）"
-    min: 20
-    max: 37
-    initial: 35.5
-    io_role: output
+  match_selling_effort:
+    type: input
+    value: 0.5
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 叫卖努力程度：主动向路人请求购买火柴（增加成功率，但消耗体力）
+    reference: TODO:SOURCE
+  match_burning:
+    type: input
+    value: 0.5
+    unit: matches_per_hour
+    bounds:
+    - 0
+    - 3
+    description: 燃烧火柴取暖：划燃火柴取得片刻温暖（消耗存货，带来幻觉和温暖感）
+    reference: TODO:SOURCE
+  shelter_seeking:
+    type: input
+    value: 0.3
+    unit: intensity
+    bounds:
+    - 0
+    - 1
+    description: 寻找避风处：在街角墙壁等处躲风，减少寒冷损耗
+    reference: TODO:SOURCE
+  body_temperature:
+    type: state
+    value: 35.5
     unit: celsius
-
-  - id: matches_remaining
-    label: "剩余火柴"
-    description: "尚未燃烧或卖出的火柴数量"
-    min: 0
-    max: 100
-    initial: 80
+    bounds:
+    - 20
+    - 37
+    description: 体温：核心体温：低温症的生理指标（36.5=正常，<32=危险，<28=致命）
+    reference: TODO:SOURCE
     io_role: output
+  matches_remaining:
+    type: state
+    value: 80
     unit: count
-
-  - id: warmth_feeling
-    label: "温暖感（幻觉）"
-    description: "火柴光带来的主观温暖感——与体温解耦的心理状态"
-    min: 0
-    max: 100
-    initial: 10
+    bounds:
+    - 0
+    - 100
+    description: 剩余火柴：尚未燃烧或卖出的火柴数量
+    reference: TODO:SOURCE
     io_role: output
+  warmth_feeling:
+    type: state
+    value: 10
     unit: score
-
-  - id: hope
-    label: "希望感"
-    description: "对救助或奇迹的期待（随体温下降可能增幻觉）"
-    min: 0
-    max: 100
-    initial: 40
+    bounds:
+    - 0
+    - 100
+    description: 温暖感（幻觉）：火柴光带来的主观温暖感——与体温解耦的心理状态
+    reference: TODO:SOURCE
     io_role: output
+  hope:
+    type: state
+    value: 40
     unit: score
-
-  - id: coins_earned
-    label: "售出收入"
-    description: "卖出火柴赚到的铜板（是否能回家的关键）"
-    min: 0
-    max: 100
-    initial: 0
+    bounds:
+    - 0
+    - 100
+    description: 希望感：对救助或奇迹的期待（随体温下降可能增幻觉）
+    reference: TODO:SOURCE
     io_role: output
+  coins_earned:
+    type: state
+    value: 0
     unit: score
-
+    bounds:
+    - 0
+    - 100
+    description: 售出收入：卖出火柴赚到的铜板（是否能回家的关键）
+    reference: TODO:SOURCE
+    io_role: output
 formulas:
-  - id: temperature_loss
-    description: "体温随时间下降，取暖和避风可减缓"
-    expr: |
-      base_loss = 0.8
-      shelter_gain = shelter_seeking * 0.4
-      match_warmth = match_burning * 0.3
-      body_temperature = max(20, body_temperature - base_loss + shelter_gain + match_warmth)
-
-  - id: match_consumption
-    description: "火柴被燃烧消耗"
-    expr: |
-      matches_remaining = max(0, matches_remaining - match_burning)
-
-  - id: selling_outcome
-    description: "叫卖成功率受体温（行动能力）和火柴库存影响"
-    expr: |
-      mobility = max(0.1, (body_temperature - 28) / 9.0)
-      sell_rate = match_selling_effort * 3.0 * mobility
-      coins_earned = min(100, coins_earned + sell_rate)
-
-  - id: warmth_feeling_dynamics
-    description: "温暖感随火柴燃烧和体温共同变化；低体温时幻觉强度增加"
-    expr: |
-      hallucination_factor = max(1.0, (36 - body_temperature) * 0.5)
-      warmth_gain = match_burning * 15.0 * hallucination_factor
-      warmth_decay = 8.0
-      warmth_feeling = max(0, min(100, warmth_feeling + warmth_gain - warmth_decay))
-
-  - id: hope_dynamics
-    description: "希望感随体温下降而以幻觉形式增强（低温神经症状）"
-    expr: |
-      if body_temperature < 32:
-        hope = min(100, hope + 8.0)   # 低温幻觉
-      else:
-        hope = max(0, hope - 3.0 + coins_earned * 0.1)
-
+  temperature_loss:
+    formula:
+      body_temperature: max(20, body_temperature - (0.8) + (shelter_seeking * 0.4) + (match_burning * 0.3))
+    description: 体温随时间下降，取暖和避风可减缓
+    reference: TODO:SOURCE
+  match_consumption:
+    formula:
+      matches_remaining: max(0, matches_remaining - match_burning)
+    description: 火柴被燃烧消耗
+    reference: TODO:SOURCE
+  selling_outcome:
+    formula:
+      coins_earned: min(100, coins_earned + (match_selling_effort * 3.0 * (max(0.1, (body_temperature - 28) / 9.0))))
+    description: 叫卖成功率受体温（行动能力）和火柴库存影响
+    reference: TODO:SOURCE
+  warmth_feeling_dynamics:
+    formula:
+      warmth_feeling: max(0, min(100, warmth_feeling + (match_burning * 15.0 * (max(1.0, (36 - body_temperature) * 0.5)))
+        - (8.0)))
+    description: 温暖感随火柴燃烧和体温共同变化；低体温时幻觉强度增加
+    reference: TODO:SOURCE
+  hope_dynamics:
+    formula:
+      hope: max(0, hope - 3.0 + coins_earned * 0.1)
+    description: 希望感随体温下降而以幻觉形式增强（低温神经症状）
+    reference: TODO:SOURCE
+simulation:
+  start_date: '1800-12-31'
+  end_date: '1800-12-31'
+  output_types:
+  - input
+  - state
 optimizer:
-  target: coins_earned
-  direction: maximize
-  secondary: body_temperature
-  note: "历史结局：coins_earned→0（无人买），body_temperature→降至致死；天明被发现时嘴角带着微笑（warmth_feeling最大）"
+  method: nsga2
+  objectives:
+  - variable: coins_earned
+    metric: final
+    direction: maximize
+  - variable: body_temperature
+    metric: final
+    direction: maximize
+  schedules:
+  - variable: match_selling_effort
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 叫卖努力程度
+    optimize:
+      value:
+      - 0
+      - 1
+  - variable: match_burning
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 燃烧火柴取暖
+    optimize:
+      value:
+      - 0
+      - 3
+  - variable: shelter_seeking
+    time: 09:00
+    days:
+    - Mon
+    - Tue
+    - Wed
+    - Thu
+    - Fri
+    - Sat
+    - Sun
+    label: 寻找避风处
+    optimize:
+      value:
+      - 0
+      - 1
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
