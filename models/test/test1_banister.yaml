@@ -180,11 +180,11 @@ simulation:
       time: "09:00"
       value: 70.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-01-07"
+      date_range: ["2026-01-01", "2026-01-07"]
       label: "主训练日"
     - variable: training_load
       time: "09:00"
       value: 35.0
       days: [Sat]
-      date_range: "2026-01-01 ~ 2026-01-07"
+      date_range: ["2026-01-01", "2026-01-07"]
       label: "恢复日"

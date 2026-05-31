@@ -138,17 +138,17 @@ simulation:
       time: "07:00"
       value: 50.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-03"
+      date_range: ["2026-01-01", "2026-01-03"]
       label: "早餐碳水"
     - variable: carb_intake
       time: "12:00"
       value: 80.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-03"
+      date_range: ["2026-01-01", "2026-01-03"]
       label: "午餐碳水"
     - variable: carb_intake
       time: "18:30"
       value: 60.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-03"
+      date_range: ["2026-01-01", "2026-01-03"]
       label: "晚餐碳水"

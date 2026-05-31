@@ -166,19 +166,19 @@ simulation:
       time: "08:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "抗生素晨服（标准剂量）"
     - variable: antibiotic_dose
       time: "20:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "抗生素晚服（标准剂量）"
     - variable: oxygen_therapy_flow
       time: "00:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-05"
+      date_range: ["2026-01-01", "2026-01-05"]
       label: "低流量氧疗3L/min（急性期5天）"
 
 optimizer:

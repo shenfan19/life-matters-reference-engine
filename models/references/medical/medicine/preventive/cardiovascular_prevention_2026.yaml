@@ -239,19 +239,19 @@ simulation:
       time: "08:00"
       value: 0.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2030-12-31"
+      date_range: ["2026-01-01", "2030-12-31"]
       label: "降压药（单药标准剂量）"
     - variable: statin_dose_rel
       time: "20:00"
       value: 0.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2030-12-31"
+      date_range: ["2026-01-01", "2030-12-31"]
       label: "他汀（中强度）"
     - variable: lifestyle_intensity
       time: "07:00"
       value: 0.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2030-12-31"
+      date_range: ["2026-01-01", "2030-12-31"]
       label: "生活方式干预（标准）"
 
 optimizer:

@@ -89,5 +89,5 @@ simulation:
       time: "19:00"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "每日中度饮酒（约20-30g乙醇）"

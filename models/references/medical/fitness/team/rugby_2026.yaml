@@ -135,13 +135,13 @@ simulation:
       time: "15:00"
       value: 1.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "擒抱频率（1.5次/min，后卫场景）"
     - variable: sprint_ratio
       time: "15:00"
       value: 0.15
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "冲刺比例（15%，后卫典型值）"
 
 optimizer:

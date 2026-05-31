@@ -253,19 +253,19 @@ simulation:
       time: "08:00"
       value: 8.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-29"
+      date_range: ["2026-01-01", "2026-06-29"]
       label: "16:8间歇性禁食（8小时进食窗口）"
     - variable: caloric_restriction_percent
       time: "08:00"
       value: 15.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-29"
+      date_range: ["2026-01-01", "2026-06-29"]
       label: "轻度热量限制15%"
     - variable: exercise_timing
       time: "06:30"
       value: 0.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-06-29"
+      date_range: ["2026-01-01", "2026-06-29"]
       label: "禁食态晨练（06:30，进食窗口08:00开始）"
 
 optimizer:

@@ -152,25 +152,25 @@ simulation:
       time: "07:00"
       value: 90.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "HIIT 强度（90% VO2max，经典 Nordic HIIT 方案）"
     - variable: interval_duration
       time: "07:00"
       value: 4.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "间隔时长（4 分钟/间隔）"
     - variable: n_intervals
       time: "07:00"
       value: 4.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "间隔次数（4 次，共 16 分钟工作时间）"
     - variable: recovery_ratio
       time: "07:00"
       value: 1.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "恢复比 1:1（4 分钟工作 + 4 分钟主动恢复）"
 
 optimizer:

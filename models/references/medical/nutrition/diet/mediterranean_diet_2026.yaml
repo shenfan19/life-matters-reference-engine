@@ -267,25 +267,25 @@ simulation:
       time: "12:00"
       value: 50.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: ["2026-01-01", "2026-12-31"]
       label: "特级初榨橄榄油50mL/day（PREDIMED干预剂量）"
     - variable: fish_servings_week
       time: "18:00"
       value: 3.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: ["2026-01-01", "2026-12-31"]
       label: "鱼类3份/周"
     - variable: legume_servings_week
       time: "12:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: ["2026-01-01", "2026-12-31"]
       label: "豆类4份/周"
     - variable: red_meat_servings_week
       time: "18:30"
       value: 1.0
       days: [Sun]
-      date_range: "2026-01-01 ~ 2026-12-31"
+      date_range: ["2026-01-01", "2026-12-31"]
       label: "红肉限制1份/周"
 
 optimizer:

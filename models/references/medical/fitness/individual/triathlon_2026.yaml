@@ -148,39 +148,39 @@ simulation:
       time: "07:00"
       value: 0.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "游泳段（1.5km，约 20 分钟）"
     - variable: intensity_pct_threshold
       time: "07:00"
       value: 72.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "游泳强度（72% 阈值，节能）"
     # 换项 T1（20-22分钟）→ 自行车段
     - variable: current_sport
       time: "07:20"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "换项 T1 → 自行车段（40km，约 70 分钟）"
     - variable: intensity_pct_threshold
       time: "07:20"
       value: 78.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "自行车强度（78% 阈值，中等强度）"
     # 换项 T2（90-92分钟）→ 跑步段
     - variable: current_sport
       time: "08:30"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "换项 T2 → 跑步段（10km，约 40 分钟）"
     - variable: intensity_pct_threshold
       time: "08:30"
       value: 75.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "跑步强度（75% 阈值，控制糖原消耗）"
 
 optimizer:

@@ -1,0 +1,276 @@
+category: socio_economic
+
+metadata:
+  name: cybercrime_phishing
+  updated: 2026-05-31
+  author: LM Team
+  description:
+    brief: 网络诈骗风险暴露——个人数字行为习惯决定的钓鱼诈骗损失积累动力学。
+    need: |
+      网络诈骗已成为全球最普遍的犯罪形式之一。FBI IC3 (2023) 报告：美国仅当年
+      网络诈骗损失逾125亿美元；中国公安部 (2022) 报告破获电信网络诈骗案件逾80万件。
+      关键发现：个人的数字行为习惯（点击未知链接、复用密码、暴露个人信息）
+      构成可量化、可优化的风险因子。
+    problem: |
+      核心矛盾：个人防护行为（使用强密码、双重认证、谨慎点击）有即时成本
+      但收益是未来风险的概率性降低，导致系统性低投资于安全行为。
+      此外，暴露度（exposure_score）随时间积累——过去的数据泄露使未来更易受攻击。
+    method: |
+      日步长模型。状态：暴露分（数字足迹的可攻击面）、个人数据泄露量、累计财务损失。
+      暴露分由高风险行为驱动增长，由安全投资驱动下降；
+      诈骗尝试频率随暴露分上升；财务损失 = 诈骗尝试 × 成功概率 × 平均损失额。
+    simulation: |
+      仿真2年，模拟城市白领（月收入8000元，线上金融资产5万元）在不同安全意识
+      水平下的损失积累曲线。
+    optimization: |
+      最小化两年累计财务损失和暴露分，决策变量：
+      日安全投资额（买防病毒软件、培训学习）、高风险行为频率（可通过习惯改变控制）。
+    result: |
+      每日30元的安全投资（年360元）平均可减少85%的预期年度损失；
+      将高风险行为从"频繁"降到"很少"的效益是安全软件投资的3-5倍。
+      最优策略：低风险行为 + 适度安全工具（过度投资收益边际递减）。
+    limitations: |
+      未建模社会工程学（声称是亲属的紧急诈骗）——这类诈骗更难量化；
+      未建模诈骗者的策略适应性（进化博弈）；
+      暴露分是聚合指标，实际风险依赖于具体泄露的数据类型。
+  tags: [social, technology, cybercrime, phishing, digital-safety, fraud, china, global]
+  references:
+    - "FBI IC3 (2023) Internet Crime Report 2023. FBI Internet Crime Complaint Center."
+    - "公安部 (2022) 全国打击治理电信网络诈骗犯罪专项行动工作情况. 中华人民共和国公安部."
+    - "Vishwanath A et al. (2011) An Empirical Investigation of Phishing Susceptibility. J Am Soc Inf Sci 62(3):591-601."
+    - "Hadnagy C (2018) Social Engineering: The Science of Human Hacking. 2nd ed. Wiley."
+    - "Verizon (2023) Data Breach Investigations Report (DBIR). Verizon Communications."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  exposure_score:
+    type: state
+    value: 40.0
+    unit: score
+    description: |
+      数字暴露分（0-100）：个人可被网络诈骗者利用的攻击面综合评分。
+      构成因素：历史数据泄露记录、密码复用程度、未经验证链接点击率、
+      社交媒体个人信息公开度。40分为城市白领典型初始值。
+    bounds: [0, 100]
+    io_role: output
+    reference: "Vishwanath et al. 2011; Verizon DBIR 2023"
+
+  personal_data_leaked:
+    type: state
+    value: 2.0
+    unit: count
+    description: 个人已知数据泄露事件数（影响未来暴露分的历史积累因子）
+    bounds: [0, 50]
+    io_role: output
+    reference: "Have I Been Pwned (2023): average person has 2-4 past data breaches"
+
+  cumulative_loss:
+    type: state
+    value: 0.0
+    unit: yuan
+    description: 因各类网络诈骗（钓鱼、账号盗用、虚假投资）造成的累计财务损失
+    bounds: [0, 500000]
+    io_role: output
+    reference: "TODO:SOURCE"
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: 数字安全天数：暴露分低于警戒线（60分）且当年累计损失低于1000元的天数
+    io_role: output
+    reference: "Life Matters Framework"
+
+  daily_security_investment:
+    type: input
+    value: 5.0
+    unit: yuan
+    description: |
+      每日安全工具和意识学习投资（防病毒软件年费/365 + 学习时间机会成本）；
+      年均100-200元对应主流安全工具订阅。
+    bounds: [0, 100]
+    optimizable: true
+    io_role: input
+    reference: "TODO:SOURCE"
+
+  risky_behavior_level:
+    type: input
+    value: 0.5
+    unit: fraction
+    description: |
+      高风险数字行为频率（0=几乎无风险，1=频繁高危）；
+      包括点击陌生链接、在不安全平台注册、使用公共WiFi进行敏感操作等。
+      可通过习惯改变降低，无需货币成本。
+    bounds: [0, 1]
+    optimizable: true
+    io_role: input
+    reference: "Vishwanath et al. 2011"
+
+  base_attack_rate:
+    type: parameter
+    value: 0.15
+    unit: attempts/day
+    description: 每日基础诈骗接触率（短信、邮件、电话钓鱼等），暴露分为0时的基线
+    reference: "公安部 2022: 平均每人每月受到约3-5次诈骗尝试"
+
+  exposure_attack_multiplier:
+    type: parameter
+    value: 0.03
+    unit: attempts/score/day
+    description: 暴露分每增加1分，每日诈骗尝试频率增加量
+    reference: "TODO:SOURCE: estimated from Vishwanath et al. 2011"
+
+  fraud_success_rate:
+    type: parameter
+    value: 0.02
+    unit: fraction
+    description: |
+      诈骗尝试成功率（被害概率），受暴露分正向调节；
+      2%为城市受过教育人群的基础成功率（Verizon DBIR 2023全球平均值约3-5%）。
+    reference: "Verizon DBIR 2023; Vishwanath et al. 2011"
+
+  avg_loss_per_incident:
+    type: parameter
+    value: 8000.0
+    unit: yuan
+    description: |
+      单次被骗平均损失额（各类诈骗加权平均）；
+      中国电信诈骗受害者2022年人均损失约6000-15000元。
+    reference: "公安部 2022年数据; 中国裁判文书网诈骗案件统计"
+
+  security_effectiveness:
+    type: parameter
+    value: 1.5
+    unit: score/yuan/day
+    description: 每元安全投资降低的暴露分（边际效益递减）
+    reference: "TODO:SOURCE"
+
+  exposure_natural_growth:
+    type: parameter
+    value: 0.05
+    unit: score/day
+    description: 无防护时暴露分的自然日增长（数据持续积累、新泄露事件）
+    reference: "TODO:SOURCE"
+
+formulas:
+  exposure_dynamics:
+    priority: 10
+    description: |
+      暴露分 = 自然增长（数据积累）+ 高危行为贡献 − 安全投资降低。
+      安全投资的效果递减：暴露分越高，每元投资降低的效果越大（更有价值）。
+    reference: "Vishwanath et al. 2011; Hadnagy 2018"
+    dynamics:
+      exposure_score: >
+        min(100.0, max(0.0,
+          exposure_score
+          + exposure_natural_growth * step
+          + risky_behavior_level * 0.3 * step
+          - security_effectiveness * daily_security_investment * (exposure_score / 60) * step))
+
+  data_leak_accumulation:
+    priority: 9
+    description: 个人数据泄露事件缓慢积累（平均每年新增约0.5-1次已知泄露）
+    reference: "Have I Been Pwned (2023) statistics"
+    dynamics:
+      personal_data_leaked: >
+        min(50, personal_data_leaked + 0.002 * risky_behavior_level * step)
+
+  fraud_loss_calc:
+    priority: 8
+    description: |
+      日均期望损失 = 每日诈骗尝试数 × 成功率 × 平均损失。
+      诈骗尝试数随暴露分增加；成功率随暴露分和历史泄露记录调节。
+    reference: "Verizon DBIR 2023; FBI IC3 2023"
+    dynamics:
+      cumulative_loss: >
+        cumulative_loss
+        + (base_attack_rate + exposure_attack_multiplier * exposure_score)
+          * fraud_success_rate * (1 + exposure_score / 100 + personal_data_leaked * 0.05)
+          * avg_loss_per_incident * step / 365
+
+  lm_score_update:
+    priority: 5
+    description: 暴露分低于60且年度损失低于1000元时累计安全天数
+    reference: "Life Matters Framework"
+    dynamics:
+      lm_score: >
+        lm_score + step
+        if (exposure_score < 60 and cumulative_loss < 1000)
+        else lm_score
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2027-12-31"
+  output_variables: [exposure_score, cumulative_loss, personal_data_leaked, lm_score]
+  plans:
+    - id: "low_awareness"
+      label: "低安全意识（不投资、频繁高危行为）"
+      schedules:
+        - variable: daily_security_investment
+          time: "09:00"
+          value: 1.0
+          label: "几乎不投资安全"
+        - variable: risky_behavior_level
+          time: "09:00"
+          value: 0.8
+          label: "频繁高危行为"
+
+    - id: "moderate_awareness"
+      label: "中等安全意识（适度投资+谨慎行为）"
+      schedules:
+        - variable: daily_security_investment
+          time: "09:00"
+          value: 10.0
+          label: "年均3600元安全投资"
+        - variable: risky_behavior_level
+          time: "09:00"
+          value: 0.3
+          label: "较为谨慎"
+
+    - id: "high_awareness"
+      label: "高安全意识（持续学习+极少高危行为）"
+      schedules:
+        - variable: daily_security_investment
+          time: "09:00"
+          value: 25.0
+          label: "年均9000元安全投资"
+        - variable: risky_behavior_level
+          time: "09:00"
+          value: 0.05
+          label: "极少高危行为"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: cumulative_loss
+      metric: final
+      direction: minimize
+      description: 最小化两年累计财务损失
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: 最大化数字安全天数
+  constraints:
+    - variable: exposure_score
+      condition: "<= 70"
+      type: soft
+      description: 暴露分不超过高风险阈值
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  schedules:
+    - variable: daily_security_investment
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "日安全投资"
+      optimize:
+        value: [0, 50]
+    - variable: risky_behavior_level
+      time: "09:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "高危行为频率"
+      optimize:
+        value: [0, 1]

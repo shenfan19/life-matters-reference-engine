@@ -136,11 +136,11 @@ simulation:
       time: "07:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "中等有氧强度跑步（RPE=5，约6 min/km）"
     - variable: pace
       time: "07:00"
       value: 6.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "配速6分/公里（中等有氧区）"

@@ -249,19 +249,19 @@ simulation:
       time: "10:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-07"
+      date_range: ["2026-01-01", "2026-01-07"]
       label: "第1周：床边活动指导"
     - variable: physical_therapy_intensity
       time: "10:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-08 ~ 2026-02-11"
+      date_range: ["2026-01-08", "2026-02-11"]
       label: "第2-6周：步行与阶梯训练"
     - variable: warfarin_dose
       time: "18:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-02-11"
+      date_range: ["2026-01-01", "2026-02-11"]
       label: "华法林5mg晚服（生物瓣3个月方案）"
 
 optimizer:

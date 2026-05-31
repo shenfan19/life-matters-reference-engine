@@ -267,25 +267,25 @@ simulation:
       time: "09:00"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-07"
+      date_range: ["2026-01-01", "2026-01-07"]
       label: "第1周：低强度床边活动"
     - variable: cardiac_rehabilitation_intensity
       time: "09:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-08 ~ 2026-01-21"
+      date_range: ["2026-01-08", "2026-01-21"]
       label: "第2-3周：中等强度步行训练"
     - variable: cardiac_rehabilitation_intensity
       time: "09:00"
       value: 8.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-22 ~ 2026-02-11"
+      date_range: ["2026-01-22", "2026-02-11"]
       label: "第4-6周：有氧运动训练"
     - variable: anticoagulation_dose
       time: "08:00"
       value: 1.2
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-02-11"
+      date_range: ["2026-01-01", "2026-02-11"]
       label: "术后抗凝（INR目标1.2，阿司匹林）"
 
 optimizer:
@@ -314,15 +314,15 @@ optimizer:
       label: "第1周康复强度"
       optimize:
         value: [1.0, 4.0]
-        date_range: "2026-01-01 ~ 2026-01-07"
+        date_range: ["2026-01-01", "2026-01-07"]
       - time: "09:00"
         dose_bounds: [3.0, 7.0]
         label: "第2-3周康复强度"
-        date_range: "2026-01-08 ~ 2026-01-21"
+        date_range: ["2026-01-08", "2026-01-21"]
       - time: "09:00"
         dose_bounds: [5.0, 10.0]
         label: "第4-6周康复强度"
-        date_range: "2026-01-22 ~ 2026-02-11"
+        date_range: ["2026-01-22", "2026-02-11"]
   algorithm:
     population_size: 60
     n_generations: 120

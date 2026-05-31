@@ -318,7 +318,7 @@ class Loader:
 
         # 应用计划表 (Schedules) — 从 simulation.schedules 读取
         # 支持两种格式：
-        #   新格式（list）：[{variable, time:"HH:MM", value, days:[...], date_range:"YYYY-MM-DD ~ YYYY-MM-DD"}]
+        #   新格式（list）：[{variable, time:"HH:MM", value, days:[...], date_range:["YYYY-MM-DD", "YYYY-MM-DD"]}]
         #   旧格式（dict）：{var_name: {interpolation, points:[{time:秒数, value}]}}
         schedules_raw = simulator_data.get('schedules', {})
 
@@ -356,9 +356,8 @@ class Loader:
                     )
 
                     dr = entry.get('date_range')
-                    if dr:
-                        parts = dr.split('~')
-                        rs, re_ = parts[0].strip(), parts[1].strip()
+                    if dr and isinstance(dr, list) and len(dr) == 2:
+                        rs, re_ = str(dr[0]), str(dr[1])
                         ry, rm, rd = [int(x) for x in rs.split('-')]
                         ry2, rm2, rd2 = [int(x) for x in re_.split('-')]
                         range_start = max(sim_start, _sdate(ry, rm, rd))

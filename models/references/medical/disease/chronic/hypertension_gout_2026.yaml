@@ -192,13 +192,13 @@ simulation:
       time: "08:00"
       value: 12.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "HCTZ 晨服（初始12.5mg）"
     - variable: purine_intake
       time: "00:00"
       value: 800.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "每日嘌呤摄入量（mg/day）"
 
 optimizer:

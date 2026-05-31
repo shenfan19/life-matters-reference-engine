@@ -136,13 +136,13 @@ simulation:
       time: "19:30"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "防守强度（RPE=7，NBA正常对抗）"
     - variable: fast_break_frequency
       time: "19:30"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "快攻频率（2次/min，NBA中等节奏）"
 
 optimizer:

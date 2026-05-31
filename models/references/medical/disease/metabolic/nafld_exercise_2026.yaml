@@ -141,7 +141,7 @@ simulation:
       time: "07:00"
       value: 3.5
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "低强度步行（MET 3.5，每天一次）"
 
 optimizer:

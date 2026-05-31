@@ -141,13 +141,13 @@ simulation:
       time: "09:00"
       value: 60.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-07-01"
+      date_range: ["2026-01-01", "2026-07-01"]
       label: "工作日训练负荷（TRIMP）"
     - variable: training_load
       time: "09:00"
       value: 80.0
       days: [Sat]
-      date_range: "2026-01-01 ~ 2026-07-01"
+      date_range: ["2026-01-01", "2026-07-01"]
       label: "周六长训练"
 
 optimizer:

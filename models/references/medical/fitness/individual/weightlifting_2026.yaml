@@ -154,13 +154,13 @@ simulation:
       time: "08:00"
       value: 40.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "训练日：4×10 次（总量 40 次）"
     - variable: training_load_pct_1rm
       time: "08:00"
       value: 75.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-03-26"
+      date_range: ["2026-01-01", "2026-03-26"]
       label: "训练强度：75%1RM（肌肥大优化区间）"
 
 optimizer:

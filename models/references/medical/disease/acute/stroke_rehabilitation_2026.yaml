@@ -192,19 +192,19 @@ simulation:
       time: "09:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "急性期物理治疗（强度3，约1.5h/day）"
     - variable: physiotherapy_intensity
       time: "09:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-15 ~ 2026-04-01"
+      date_range: ["2026-01-15", "2026-04-01"]
       label: "亚急性康复期强化物理治疗（强度5，约2.5h/day）"
     - variable: speech_therapy_hours_per_day
       time: "14:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-04-01"
+      date_range: ["2026-01-01", "2026-04-01"]
       label: "言语治疗1h/day（失语症康复）"
 
 optimizer:

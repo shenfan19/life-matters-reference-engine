@@ -177,45 +177,45 @@ simulation:
       schedules:
         - {variable: dietary_protein, time: "08:00", value: 0.22,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "早餐"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "早餐"}
         - {variable: dietary_protein, time: "12:00", value: 0.21,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "午餐"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "午餐"}
         - {variable: dietary_protein, time: "21:00", value: 0.22,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐（睡前）"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "晚餐（睡前）"}
 
     - id: "ewgsop2_standard"
       label: "EWGSOP2 补充蛋白（0.95 g/kg/day，肌肉保留极端）"
       schedules:
         - {variable: dietary_protein, time: "08:00", value: 0.33,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "早餐"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "早餐"}
         - {variable: dietary_protein, time: "12:00", value: 0.31,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "午餐"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "午餐"}
         - {variable: dietary_protein, time: "21:00", value: 0.31,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-12-31", label: "晚餐（睡前）"}
+           date_range: ["2026-01-01", "2026-12-31"], label: "晚餐（睡前）"}
 
     - id: "ihio_window"
       label: "IHIO 联合可行点（0.72 g/kg/day + 睡前蛋白 T2，待运行更新）"
       schedules:
         - {variable: dietary_protein, time: "08:00", value: 0.24,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期早餐"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "限制期早餐"}
         - {variable: dietary_protein, time: "12:00", value: 0.23,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期午餐"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "限制期午餐"}
         - {variable: dietary_protein, time: "21:00", value: 0.24,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-06-30", label: "限制期晚餐（睡前）"}
+           date_range: ["2026-01-01", "2026-06-30"], label: "限制期晚餐（睡前）"}
         - {variable: dietary_protein, time: "08:00", value: 0.26,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期早餐"}
+           date_range: ["2026-07-01", "2026-12-31"], label: "标准期早餐"}
         - {variable: dietary_protein, time: "12:00", value: 0.24,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期午餐"}
+           date_range: ["2026-07-01", "2026-12-31"], label: "标准期午餐"}
         - {variable: dietary_protein, time: "21:00", value: 0.26,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-07-01 ~ 2026-12-31", label: "标准期晚餐（睡前，T2 最优时机）"}
+           date_range: ["2026-07-01", "2026-12-31"], label: "标准期晚餐（睡前，T2 最优时机）"}

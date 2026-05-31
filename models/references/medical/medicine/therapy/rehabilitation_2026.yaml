@@ -239,31 +239,31 @@ simulation:
       time: "09:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "第1-2周：轻度被动活动"
     - variable: pt_intensity
       time: "09:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-15 ~ 2026-02-11"
+      date_range: ["2026-01-15", "2026-02-11"]
       label: "第3-6周：标准主动康复"
     - variable: pt_intensity
       time: "09:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-02-12 ~ 2026-03-27"
+      date_range: ["2026-02-12", "2026-03-27"]
       label: "第7-12周：强化功能训练"
     - variable: analgesia_dose
       time: "08:00"
       value: 4.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-28"
+      date_range: ["2026-01-01", "2026-01-28"]
       label: "早期镇痛（NSAIDs标准剂量）"
     - variable: analgesia_dose
       time: "08:00"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-29 ~ 2026-03-27"
+      date_range: ["2026-01-29", "2026-03-27"]
       label: "后期镇痛（减量至对乙酰氨基酚）"
 
 optimizer:
@@ -292,12 +292,12 @@ optimizer:
       days: [Mon, Tue, Wed, Thu, Fri]
       optimize:
         value: [1, 5]
-        date_range: "2026-01-01 ~ 2026-01-28"
+        date_range: ["2026-01-01", "2026-01-28"]
         label: "早期康复强度（周1-4）"
       - time: "09:00"
         dose_bounds: [4, 9]
         days: [Mon, Tue, Wed, Thu, Fri]
-        date_range: "2026-01-29 ~ 2026-03-27"
+        date_range: ["2026-01-29", "2026-03-27"]
         label: "强化期强度（周5-12）"
   algorithm:
     population_size: 80

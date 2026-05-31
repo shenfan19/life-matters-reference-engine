@@ -229,19 +229,19 @@ simulation:
       time: "09:00"
       value: 0.8
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-06-30"
+      date_range: ["2026-01-01", "2026-06-30"]
       label: "工作日高强度工作（80%承受上限）"
     - variable: workload
       time: "09:00"
       value: 0.1
       days: [Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
+      date_range: ["2026-01-01", "2026-06-30"]
       label: "周末休息"
     - variable: sleep_quality
       time: "00:00"
       value: 0.75
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-06-30"
+      date_range: ["2026-01-01", "2026-06-30"]
       label: "日常睡眠质量（6.5-7h/night）"
 
 optimizer:

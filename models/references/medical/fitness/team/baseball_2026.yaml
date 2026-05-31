@@ -123,13 +123,13 @@ simulation:
       time: "13:00"
       value: 90.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "投球速度（90 mph，先发投手）"
     - variable: batting_effort
       time: "13:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "打者挥击强度（RPE=7）"
 
 optimizer:

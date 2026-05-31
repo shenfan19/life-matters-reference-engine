@@ -255,37 +255,37 @@ simulation:
       time: "10:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "第1-2周：床边关节活动度训练（强度3）"
     - variable: weight_bearing_status
       time: "09:00"
       value: 1.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-14"
+      date_range: ["2026-01-01", "2026-01-14"]
       label: "第1-2周：脚尖点地负重"
     - variable: pt_intensity
       time: "10:00"
       value: 5.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-15 ~ 2026-02-11"
+      date_range: ["2026-01-15", "2026-02-11"]
       label: "第3-6周：步行训练+助力运动（强度5）"
     - variable: weight_bearing_status
       time: "09:00"
       value: 2.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-15 ~ 2026-02-11"
+      date_range: ["2026-01-15", "2026-02-11"]
       label: "第3-6周：保护性完全负重"
     - variable: pt_intensity
       time: "10:00"
       value: 7.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-02-12 ~ 2026-03-31"
+      date_range: ["2026-02-12", "2026-03-31"]
       label: "第7-12周：抗阻训练+步态强化（强度7）"
     - variable: weight_bearing_status
       time: "09:00"
       value: 3.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-02-12 ~ 2026-03-31"
+      date_range: ["2026-02-12", "2026-03-31"]
       label: "第7-12周：完全负重"
 
 optimizer:
@@ -314,15 +314,15 @@ optimizer:
       label: "第1-2周PT强度"
       optimize:
         value: [1.0, 5.0]
-        date_range: "2026-01-01 ~ 2026-01-14"
+        date_range: ["2026-01-01", "2026-01-14"]
       - time: "10:00"
         dose_bounds: [3.0, 7.0]
         label: "第3-6周PT强度"
-        date_range: "2026-01-15 ~ 2026-02-11"
+        date_range: ["2026-01-15", "2026-02-11"]
       - time: "10:00"
         dose_bounds: [5.0, 10.0]
         label: "第7-12周PT强度"
-        date_range: "2026-02-12 ~ 2026-03-31"
+        date_range: ["2026-02-12", "2026-03-31"]
   algorithm:
     population_size: 60
     n_generations: 120

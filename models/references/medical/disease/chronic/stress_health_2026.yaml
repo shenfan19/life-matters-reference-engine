@@ -222,19 +222,19 @@ simulation:
       time: "09:00"
       value: 0.8
       days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: "2026-01-01 ~ 2026-07-01"
+      date_range: ["2026-01-01", "2026-07-01"]
       label: "工作日高压工作（Karasek高需求低控制）"
     - variable: exercise_intensity
       time: "07:00"
       value: 4.0
       days: [Mon, Wed, Fri]
-      date_range: "2026-01-01 ~ 2026-07-01"
+      date_range: ["2026-01-01", "2026-07-01"]
       label: "有氧运动（4 MET-h/次）"
     - variable: sleep_quality
       time: "23:00"
       value: 0.7
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-07-01"
+      date_range: ["2026-01-01", "2026-07-01"]
       label: "每日睡眠质量"
 
 optimizer:

@@ -143,13 +143,13 @@ simulation:
       time: "19:00"
       value: 8.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "比赛班次强度（RPE=8）"
     - variable: shift_duration
       time: "19:00"
       value: 50.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: "2026-01-01 ~ 2026-01-01"
+      date_range: ["2026-01-01", "2026-01-01"]
       label: "班次时长（50秒，精英前锋典型值）"
 
 optimizer:

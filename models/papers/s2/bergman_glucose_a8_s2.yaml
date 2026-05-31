@@ -233,52 +233,52 @@ simulation:
       schedules:
         - {variable: carb_intake_per_meal, time: "00:00", value: 70.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "高碳水"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "高碳水"}
         - {variable: fasting_window_hours, time: "00:00", value: 10.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "无禁食"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "无禁食"}
 
     - id: "ada_standard"
       label: "ADA 标准干预（低碳水+餐后散步+无IF）"
       schedules:
         - {variable: carb_intake_per_meal, time: "00:00", value: 45.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "低碳水（45g/餐）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "低碳水（45g/餐）"}
         - {variable: exercise_met_min, time: "19:00", value: 150.0,
            days: [Mon, Wed, Fri, Sat],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "餐后运动（3次+周六）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "餐后运动（3次+周六）"}
         - {variable: fasting_window_hours, time: "00:00", value: 12.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "轻度12h禁食"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "轻度12h禁食"}
 
     - id: "fasting_exercise_optimized"
       label: "空腹运动+16:8 IF 方案（时间营养学）"
       schedules:
         - {variable: carb_intake_per_meal, time: "00:00", value: 45.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "低碳水"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "低碳水"}
         - {variable: exercise_met_min, time: "07:00", value: 180.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "空腹晨练（07:00）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "空腹晨练（07:00）"}
         - {variable: fasting_window_hours, time: "00:00", value: 16.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "16:8 间歇性禁食"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "16:8 间歇性禁食"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（待运行更新）"
       schedules:
         - {variable: carb_intake_per_meal, time: "00:00", value: 42.0,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "低GI饮食"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "低GI饮食"}
         - {variable: exercise_met_min, time: "06:30", value: 200.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-07-01", label: "空腹晨练（T2优化）"}
+           date_range: ["2026-01-01", "2026-07-01"], label: "空腹晨练（T2优化）"}
         - {variable: fasting_window_hours, time: "00:00", value: 16.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-02-01 ~ 2026-07-01", label: "16:8 IF（T4起始第4周）"}
+           date_range: ["2026-02-01", "2026-07-01"], label: "16:8 IF（T4起始第4周）"}
         - {variable: fasting_window_hours, time: "00:00", value: 13.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-01-31", label: "过渡期14:10（T4前）"}
+           date_range: ["2026-01-01", "2026-01-31"], label: "过渡期14:10（T4前）"}
 
 # ── 优化设置（T1+T2+T3+T4 血糖管理优化）──────────────────────────────────────
 optimizer:

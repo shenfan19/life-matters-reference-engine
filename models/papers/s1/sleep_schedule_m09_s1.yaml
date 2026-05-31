@@ -233,37 +233,37 @@ simulation:
       schedules:
         - {variable: sleep_hours, time: "00:00", value: 6.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "睡眠基线"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "睡眠基线"}
 
     - id: "early_bedtime"
       label: "早睡方案：7.5h睡眠，22:30就寝，不午睡"
       schedules:
         - {variable: sleep_hours, time: "22:30", value: 7.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "早睡7.5h"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "早睡7.5h"}
 
     - id: "nap_strategy"
       label: "午睡策略：6.5h夜间睡眠 + 每天20min午睡"
       schedules:
         - {variable: sleep_hours, time: "00:00", value: 6.5,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "夜间睡眠"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "夜间睡眠"}
         - {variable: nap_minutes, time: "13:00", value: 20.0,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日午睡20min"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "工作日午睡20min"}
 
     - id: "k4_optimized"
       label: "K×4优化方案（参考点，待运行后更新）"
       schedules:
         - {variable: sleep_hours, time: "22:30", value: 7.5,
            days: [Mon, Tue, Wed, Thu, Fri],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日早睡"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "工作日早睡"}
         - {variable: sleep_hours, time: "23:00", value: 8.5,
            days: [Sat, Sun],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "周末补觉"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "周末补觉"}
         - {variable: nap_minutes, time: "13:00", value: 15.0,
            days: [Mon, Wed, Fri],
-           date_range: "2026-01-01 ~ 2026-01-28", label: "工作日午睡（间隔执行）"}
+           date_range: ["2026-01-01", "2026-01-28"], label: "工作日午睡（间隔执行）"}
 
 # ── 优化设置（T1+T2+T3 联合优化）──────────────────────────────────────────────
 optimizer:
@@ -325,6 +325,12 @@ optimizer:
         value: [0.0, 30.0]
         days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
         days_n: [3, 7]
+
+  mc:
+    enabled: false
+    sim_runs: 20
+    seed: 42
+    description: "MC 采样 tau_s_sleep（睡眠消散时间常数，±15%个体差异），验证昼夜节律对齐策略对不同睡眠类型人群（早鸟/夜枭）的稳健性"
 
   algorithm:
     population_size: 60

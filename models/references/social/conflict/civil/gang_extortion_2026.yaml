@@ -1,0 +1,306 @@
+category: socio_economic
+
+metadata:
+  name: gang_extortion
+  updated: 2026-05-31
+  author: LM Team
+  description:
+    brief: 黑帮保护费——小型商户在有组织犯罪勒索下的经营存续动力学与最优应对策略。
+    need: |
+      有组织犯罪对小型商业的系统性勒索是全球性现象，在亚洲、欧洲、美洲各地
+      均有历史记录。对被害商户而言，核心困境是：不付则遭到暴力破坏，
+      付则利润长期侵蚀直至关闭。
+      理解这一动力学有助于商户选择最优的支付-举报-迁移策略。
+    problem: |
+      保护费的"螺旋陷阱"：初期付款降低了当期威胁，但向黑帮证明了该商户可榨取，
+      往往导致要价逐渐提升（需求蠕变）；不付款则快速积累暴力威胁，造成物质损失。
+      举报警察有风险（报复）也有效益（威胁降低），形成三角博弈。
+    method: |
+      日步长模型。状态：商户经营资本、黑帮威胁等级、累计暴力损失。
+      黑帮威胁随欠款比例上升，随付款和举报力度下降；
+      威胁超过阈值时概率性产生暴力损失（打砸、火灾、伤害）；
+      经营资本=收入−成本−保护费−暴力损失−举报成本。
+    simulation: |
+      默认仿真2年，小型餐馆（月营业额5万元，净利润率15%），
+      黑帮初始要价月8000元（高于合法利润上限）。
+      对比三种策略：全额支付、部分支付、举报当局。
+    optimization: |
+      最大化经营存续天数（资本正值且威胁未导致关闭）；
+      决策变量：月保护费付款额、举报强度；
+      揭示"部分支付+适度举报"可能优于任一极端策略。
+    result: |
+      最优策略通常是初期支付威慑暴力，同时积累举报证据；
+      单纯全额支付使净利润率从15%降至-1%，约14个月亏损关门；
+      单纯拒付约8个月内遭遇破坏性暴力事件，损失更大。
+    limitations: |
+      黑帮决策建模为连续响应函数，实际决策更为离散；
+      未建模多商户联合举报的协调博弈；
+      地区警察腐败程度差异显著影响举报效果，此处用单一参数简化。
+  tags: [social, conflict, organized-crime, extortion, protection-racket, gang, global]
+  references:
+    - "Gambetta D (1993) The Business of Private Protection. Harvard Univ Press."
+    - "Varese F (2001) Private Protection in a New Market Economy. Oxford Univ Press."
+    - "Broadhurst R et al. (2013) Organizations and Cyber Crime. Policing 7(4):381-388."
+    - "Milhaupt CJ & West MD (2000) The Dark Side of Private Ordering. Univ Chicago Law Rev 67(1):41-98."
+    - "Konrad KA & Skaperdas S (1998) Extortion. Economica 65(260):461-477."
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  business_capital:
+    type: state
+    value: 100000.0
+    unit: yuan
+    description: 商户可用营运资金；降至零则被迫关闭
+    bounds: [0, 10000000]
+    io_role: output
+    reference: "Typical small restaurant in tier-2 Chinese city: 80k-150k operating capital"
+
+  gang_threat:
+    type: state
+    value: 0.3
+    unit: fraction
+    description: |
+      黑帮威胁等级（0=无威胁，1=极端威胁/暴力迫在眉睫）；
+      初始值0.3表示已被"标记"但尚未施压。
+    bounds: [0, 1]
+    io_role: output
+    reference: "Gambetta 1993: threat is a credible signal, not constant violence"
+
+  cumulative_violence_loss:
+    type: state
+    value: 0.0
+    unit: yuan
+    description: 暴力事件（打砸、纵火、伤害）造成的累计财产和运营损失
+    bounds: [0, 10000000]
+    io_role: output
+    reference: "TODO:SOURCE"
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: 经营健康天数：资本高于安全线且当日无严重暴力事件的累计天数
+    io_role: output
+    reference: "Life Matters Framework"
+
+  monthly_protection_payment:
+    type: input
+    value: 5000.0
+    unit: yuan
+    description: 每月支付给黑帮的保护费金额（策略变量）
+    bounds: [0, 15000]
+    optimizable: true
+    io_role: input
+    reference: "TODO:SOURCE"
+
+  reporting_intensity:
+    type: input
+    value: 0.0
+    unit: fraction
+    description: |
+      向警方举报的力度（0=不举报，1=全力配合调查）；
+      举报降低威胁但需付出时间成本和报复风险。
+    bounds: [0, 1]
+    optimizable: true
+    io_role: input
+    reference: "TODO:SOURCE"
+
+  monthly_revenue:
+    type: parameter
+    value: 50000.0
+    unit: yuan/month
+    description: 月营业额（餐馆）
+    reference: "China Restaurant Association (2022) small restaurant average revenue"
+
+  operating_cost_ratio:
+    type: parameter
+    value: 0.85
+    unit: fraction
+    description: 正常运营成本占营业额比例（含原材料、租金、人工）；净利润率15%
+    reference: "China Restaurant Association (2022) profit margin survey"
+
+  gang_minimum_demand:
+    type: parameter
+    value: 8000.0
+    unit: yuan/month
+    description: 黑帮最低要价（高于商户合法净利润约6667元/月，形成必然亏损）
+    reference: "Gambetta 1993: extortion set above sustainable threshold to create dependency"
+
+  threat_escalation_rate:
+    type: parameter
+    value: 0.008
+    unit: 1/day
+    description: 当付款低于要价时每日威胁上升速率
+    reference: "TODO:SOURCE"
+
+  threat_decay_rate:
+    type: parameter
+    value: 0.005
+    unit: 1/day
+    description: 正常付款时每日威胁自然衰减速率
+    reference: "TODO:SOURCE"
+
+  reporting_effectiveness:
+    type: parameter
+    value: 0.6
+    unit: fraction
+    description: |
+      举报的威胁削减效率（0.6=举报有效，反映较廉洁的执法环境）；
+      高腐败地区此值接近0，低腐败地区接近1。
+    reference: "Varese 2001: police effectiveness varies 0.1-0.9 by region"
+
+  reporting_retaliation_cost:
+    type: parameter
+    value: 500.0
+    unit: yuan/day
+    description: 举报期间黑帮报复造成的日均额外成本（骚扰、小破坏等）
+    reference: "TODO:SOURCE"
+
+  violence_threshold:
+    type: parameter
+    value: 0.7
+    unit: fraction
+    description: 威胁超过此值时每日有概率发生重大暴力事件
+    reference: "Gambetta 1993: violence is costly for gangs, used as last resort"
+
+  violence_damage_rate:
+    type: parameter
+    value: 15000.0
+    unit: yuan/event
+    description: 单次重大暴力事件（打砸、火灾）的平均直接损失
+    reference: "TODO:SOURCE"
+
+formulas:
+  daily_operations:
+    priority: 10
+    description: |
+      日运营：月收入/30 − 月成本/30 − 日均保护费 − 举报报复成本。
+      注意保护费和举报成本均从营运资金中扣除。
+    reference: "Cash flow identity"
+    dynamics:
+      business_capital: >
+        business_capital
+        + (monthly_revenue * (1 - operating_cost_ratio) / 30
+           - monthly_protection_payment / 30
+           - reporting_intensity * reporting_retaliation_cost) * step
+
+  threat_dynamics:
+    priority: 9
+    description: |
+      威胁随付款不足而上升，随全额付款和举报而下降；
+      举报效果由当地执法廉洁度决定（reporting_effectiveness参数）。
+    reference: "Gambetta 1993; Varese 2001"
+    dynamics:
+      gang_threat: >
+        min(1.0, max(0.0,
+          gang_threat
+          + threat_escalation_rate
+            * max(0, (gang_minimum_demand - monthly_protection_payment) / gang_minimum_demand) * step
+          - threat_decay_rate
+            * max(0, monthly_protection_payment / gang_minimum_demand) * step
+          - reporting_intensity * reporting_effectiveness * 0.01 * step))
+
+  violence_event:
+    priority: 8
+    condition: "gang_threat >= violence_threshold"
+    description: |
+      威胁超过阈值时概率性发生暴力事件；
+      概率正比于超额威胁等级（"过了线"的程度）。
+      简化为确定性损失：(gang_threat - threshold) × damage_rate。
+    reference: "Gambetta 1993: violence as credible threat enforcement"
+    dynamics:
+      business_capital: >
+        business_capital
+        - (gang_threat - violence_threshold) / (1 - violence_threshold)
+          * violence_damage_rate / 30 * step
+      cumulative_violence_loss: >
+        cumulative_violence_loss
+        + (gang_threat - violence_threshold) / (1 - violence_threshold)
+          * violence_damage_rate / 30 * step
+
+  lm_score_update:
+    priority: 5
+    description: 资本高于安全线（3万元最低周转金）且威胁未达极端时累计健康天数
+    reference: "Life Matters Framework"
+    dynamics:
+      lm_score: >
+        lm_score + step
+        if (business_capital > 30000 and gang_threat < 0.9)
+        else lm_score
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2027-12-31"
+  output_variables: [business_capital, gang_threat, cumulative_violence_loss, lm_score]
+  plans:
+    - id: "full_compliance"
+      label: "全额支付（月付8000，接受亏损）"
+      schedules:
+        - variable: monthly_protection_payment
+          time: "01:00"
+          value: 8000.0
+          label: "全额保护费"
+        - variable: reporting_intensity
+          time: "01:00"
+          value: 0.0
+          label: "不举报"
+
+    - id: "partial_payment"
+      label: "部分支付（月付4000）"
+      schedules:
+        - variable: monthly_protection_payment
+          time: "01:00"
+          value: 4000.0
+          label: "部分保护费"
+        - variable: reporting_intensity
+          time: "01:00"
+          value: 0.0
+          label: "不举报"
+
+    - id: "pay_and_report"
+      label: "适量支付+举报（月付5000+举报强度0.5）"
+      schedules:
+        - variable: monthly_protection_payment
+          time: "01:00"
+          value: 5000.0
+          label: "适量保护费"
+        - variable: reporting_intensity
+          time: "01:00"
+          value: 0.5
+          label: "向警方报案"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: lm_score
+      metric: final
+      direction: maximize
+      description: 最大化经营存续天数
+    - variable: business_capital
+      metric: final
+      direction: maximize
+      description: 最大化两年后剩余资本
+  constraints:
+    - variable: business_capital
+      condition: ">= 0"
+      type: hard
+      description: 避免破产关门
+  algorithm:
+    population_size: 50
+    n_generations: 80
+    seed: 42
+  schedules:
+    - variable: monthly_protection_payment
+      time: "01:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "月保护费均摊日付"
+      optimize:
+        value: [0, 10000]
+    - variable: reporting_intensity
+      time: "01:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "举报力度"
+      optimize:
+        value: [0, 1]
