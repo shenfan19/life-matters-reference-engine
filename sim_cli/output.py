@@ -1,11 +1,10 @@
-"""File output utilities: log setup, CSV (Pareto front), YAML (full model + results)."""
+"""File output utilities: log setup and CSV writing (sim time-series + opt Pareto front)."""
 
 import csv
 import logging
-import yaml
-from datetime import datetime, date
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 logger = logging.getLogger('lm_cli')
 
@@ -59,38 +58,3 @@ def write_opt_csv(pareto_front: List[Dict], objectives: List[Dict], out_path: Pa
     logger.info(f'Pareto CSV: {out_path.name}  ({len(pareto_front)} solutions)')
 
 
-def write_opt_yaml(model_path: Path, opt_result: Dict[str, Any],
-                   objectives: List[Dict], out_path: Path) -> None:
-    """Write full model YAML with optimizer.results block injected."""
-    with open(model_path, 'r', encoding='utf-8') as f:
-        model = yaml.safe_load(f)
-
-    results_block = {
-        'generated_at': date.today().isoformat(),
-        'method': opt_result.get('method', 'nsga2'),
-        'n_solutions': opt_result.get('n_solutions', 0),
-        'elapsed_seconds': round(opt_result.get('elapsed_seconds', 0), 1),
-        'stopped_early': opt_result.get('stopped', False),
-        'pareto_front': opt_result.get('pareto_front', []),
-    }
-
-    # Build human-readable reference point (best solution = first in front)
-    front = opt_result.get('pareto_front', [])
-    if front:
-        best = front[0]
-        results_block['reference'] = {
-            'x': best.get('x', []),
-            'f': best.get('f', []),
-            'objectives': {
-                o.get('variable', f'f{i}'): v
-                for i, (o, v) in enumerate(zip(objectives, best.get('f', [])))
-            },
-        }
-
-    if 'optimizer' not in model:
-        model['optimizer'] = {}
-    model['optimizer']['results'] = results_block
-
-    with open(out_path, 'w', encoding='utf-8') as f:
-        yaml.dump(model, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
-    logger.info(f'Opt YAML: {out_path.name}')

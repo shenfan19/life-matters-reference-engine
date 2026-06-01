@@ -29,5 +29,6 @@ _saved_/
 *.code-workspace
 messages.mo
 
-# CLI outputs
-output/
+# CLI outputs (folder tracked, contents ignored)
+output/*
+!output/.gitkeep

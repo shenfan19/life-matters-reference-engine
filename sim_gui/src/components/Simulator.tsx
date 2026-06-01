@@ -328,7 +328,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     optCurGen, optTotalGen,
     optLogs, optHistory, optElapsed, optMethod,
     startOptimization, cancelOptimization, stopOptJobs,
-    downloadModelYAML, saveResultsToFile,
+    downloadModelYAML, saveResultsToFile, importParetoFromCSV,
   } = useOptimizer({
     selectedModel, selectedKey,
     inputEvents, inputVars,
@@ -1234,6 +1234,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onSaveResults={scsMode
         ? () => { message.success('结果已保存到 Session'); }
         : saveResultsToFile}
+      onImportCSV={importParetoFromCSV}
       scsMode={scsMode}
       setOptResult={setOptResult}
       t={t} c={c as any}

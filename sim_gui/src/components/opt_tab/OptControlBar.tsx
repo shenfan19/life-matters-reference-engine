@@ -1,8 +1,8 @@
 // OptControlBar.tsx — optimization tab toolbar (run / cancel / warm-start + date/step/MC config)
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
 interface OptControlBarProps {
@@ -36,6 +36,7 @@ interface OptControlBarProps {
   onDownload: () => void;
   onReload: () => void;
   onSaveResults: () => void;
+  onImportCSV: (csvText: string) => void;
   scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string) => string;
@@ -51,11 +52,12 @@ export function OptControlBar({
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onDownload, onReload, onSaveResults,
+  onDownload, onReload, onSaveResults, onImportCSV,
   scsMode,
   setOptResult,
   t, c,
 }: OptControlBarProps) {
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const warmStartTooltip = warmStartDirty && warmStartEnabled
     ? '⚠ 目标、约束或决策变量已修改，热启动将沿用上次前沿，可能匹配度下降'
     : (warmStartEnabled && hasExistingResults)
@@ -161,6 +163,25 @@ export function OptControlBar({
           disabled={!optResult || optRunning}
           style={{ whiteSpace: 'nowrap', color: optResult ? c.primary : c.textMute }}
         >保存结果</Button>
+      </Tooltip>
+
+      <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => {
+            onImportCSV(ev.target?.result as string);
+            e.target.value = '';
+          };
+          reader.readAsText(file);
+        }} />
+      <Tooltip title="从 _opt.csv 导入 Pareto 解（合并到当前 session，开启热启动）">
+        <Button size="small" icon={<UploadOutlined />}
+          onClick={() => csvInputRef.current?.click()}
+          disabled={optRunning || !selectedModel}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >导入 CSV</Button>
       </Tooltip>
 
       <Tooltip title={scsMode ? '从 YAML 重新加载（清除 session）' : '从 YAML 重新加载（清除 session，恢复模型默认值）'}>
