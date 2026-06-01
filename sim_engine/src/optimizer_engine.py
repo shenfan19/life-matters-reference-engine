@@ -403,6 +403,10 @@ def run_optimizer(simulator_engine, model_name: str,
 
 # ── NSGA-II ────────────────────────────────────────────────────────────────────
 
+class _StopOptimization(Exception):
+    """Raised by progress callback to request graceful early stop."""
+
+
 def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, objectives,
                progress_callback=None, warm_x=None):
     try:
@@ -428,6 +432,10 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
                     out['G'] = np.array(G_list)
 
         class _ProgressCb(_PymooCallback):
+            def __init__(self):
+                super().__init__()
+                self.latest_front = []  # saved each generation for early-stop recovery
+
             def notify(self, algorithm):
                 if progress_callback is not None and algorithm.opt is not None:
                     F = algorithm.opt.get('F')
@@ -461,12 +469,15 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
                             }
                             for j in range(len(objectives))
                         ]
+                        self.latest_front = front  # keep latest for early-stop recovery
                     if CV is not None and len(CV) > 0:
                         cv_arr = np.asarray(CV, dtype=float).reshape(-1)
                         entry['feasible_ratio'] = float(np.mean(cv_arr <= 1e-9))
                         entry['mean_cv'] = float(np.mean(np.maximum(cv_arr, 0)))
                         entry['max_cv'] = float(np.max(np.maximum(cv_arr, 0)))
-                    progress_callback(entry)
+                    should_stop = progress_callback(entry)
+                    if should_stop:
+                        raise _StopOptimization()
 
         _cb = _ProgressCb() if progress_callback else None
 
@@ -489,9 +500,28 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
         problem = LMProblem()
         algo = NSGA2(pop_size=pop_size) if sampling is None else NSGA2(pop_size=pop_size, sampling=sampling)
         termination = get_termination("n_gen", n_gen)
-        res = pymoo_minimize(problem, algo, termination, seed=seed, verbose=False, callback=_cb)
 
-        if res.X is None:
+        _stopped_early = False
+        try:
+            res = pymoo_minimize(problem, algo, termination, seed=seed, verbose=False, callback=_cb)
+        except _StopOptimization:
+            _stopped_early = True
+            res = None
+
+        # Early stop: use latest saved Pareto front from callback
+        if _stopped_early or res is None or res.X is None:
+            if _cb and _cb.latest_front:
+                front = _cb.latest_front
+                best = front[0]
+                return {
+                    "success": True,
+                    "method": "nsga2",
+                    "pareto_front": front,
+                    "n_solutions": len(front),
+                    "best_x": best['x'],
+                    "best_f": best['f'],
+                    "stopped": True,
+                }
             return {"success": False, "error": "NSGA-II returned no solutions"}
 
         X = np.atleast_2d(res.X)
@@ -516,6 +546,7 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
             "n_solutions": len(pareto_front),
             "best_x": best['x'],
             "best_f": best['f'],
+            "stopped": False,
         }
 
     except ImportError:

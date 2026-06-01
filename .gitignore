@@ -28,3 +28,6 @@ AGENTS.md
 _saved_/
 *.code-workspace
 messages.mo
+
+# CLI outputs
+output/
