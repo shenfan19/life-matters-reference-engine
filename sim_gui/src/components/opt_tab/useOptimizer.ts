@@ -291,6 +291,55 @@ export function useOptimizer({
     } catch (e: any) { message.error(e.message); }
   };
 
+  // ── import Pareto front from CSV text ────────────────────────────────────────
+
+  const importParetoFromCSV = (csvText: string) => {
+    const lines = csvText.trim().split(/\r?\n/);
+    if (lines.length < 2) { message.warning('CSV 文件为空或格式错误'); return; }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const xIndices: number[] = [];
+    const fIndices: number[] = [];
+    headers.forEach((h, i) => {
+      if (/^x\d+$/.test(h)) xIndices.push(i);
+      else fIndices.push(i);
+    });
+
+    if (xIndices.length === 0) {
+      message.warning('CSV 中未找到 x0, x1... 列，请确认是 _opt.csv 格式');
+      return;
+    }
+
+    const imported: Array<{ x: number[]; f: number[] }> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',').map(v => v.trim());
+      if (row.length < headers.length) continue;
+      const x = xIndices.map(idx => parseFloat(row[idx]));
+      const f = fIndices.map(idx => parseFloat(row[idx]));
+      if (x.some(Number.isNaN) || f.some(Number.isNaN)) continue;
+      imported.push({ x, f });
+    }
+
+    if (imported.length === 0) { message.warning('未能解析任何有效解，请检查 CSV 格式'); return; }
+
+    const existingFront: any[] = optResult?.pareto_front ?? storedOptResult?.pareto_front ?? [];
+    const merged = [...existingFront, ...imported];
+    const objectivesMeta = optResult?.objectives
+      ?? objectives.map(o => ({ variable: o.variable, direction: o.direction }));
+
+    setOptResult({
+      ...(optResult || {}),
+      pareto_front: merged,
+      n_solutions: merged.length,
+      objectives: objectivesMeta,
+      method: optResult?.method || 'nsga2',
+      best_x: merged[0]?.x,
+      best_f: merged[0]?.f,
+    });
+    setWarmStartEnabled(true);
+    message.success(`导入 ${imported.length} 个解，共 ${merged.length} 个（已开启热启动）`);
+  };
+
   const warmStartDirty = lastRunSignature !== null
     && buildProblemSignature(objectives, constraints, inputEvents) !== lastRunSignature;
 
@@ -309,5 +358,6 @@ export function useOptimizer({
     stopOptJobs,
     downloadModelYAML,
     saveResultsToFile,
+    importParetoFromCSV,
   };
 }

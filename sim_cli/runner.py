@@ -1,10 +1,11 @@
 """Sim and opt execution: loads engine, runs, returns results."""
 
+import csv
 import logging
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 logger = logging.getLogger('lm_cli')
 
@@ -46,6 +47,27 @@ def _time_hours(engine) -> float:
     return float(sim.get('total_time', 24))
 
 
+def load_pareto_from_csv(csv_path: Path) -> List[Dict]:
+    """Parse _opt.csv into [{x: [...], f: [...]}] for warm-start.
+
+    x columns are named x0, x1, ...; all other columns are f values.
+    """
+    solutions = []
+    with open(csv_path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            x_items = sorted(
+                [(int(k[1:]), float(v)) for k, v in row.items()
+                 if k.startswith('x') and k[1:].isdigit()],
+                key=lambda t: t[0],
+            )
+            f_vals = [float(v) for k, v in row.items()
+                      if not (k.startswith('x') and k[1:].isdigit())]
+            if x_items:
+                solutions.append({'x': [v for _, v in x_items], 'f': f_vals})
+    return solutions
+
+
 # ── public runners ────────────────────────────────────────────────────────────
 
 def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> bool:
@@ -73,7 +95,19 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> bool:
 
 
 def run_opt(model_path: Path, project_root: Path,
-            warm_start: bool, opt_callback: Callable) -> Optional[Dict[str, Any]]:
+            warm_start: Union[bool, Path],
+            opt_callback: Callable,
+            incremental_csv: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """Run optimizer.
+
+    warm_start:
+      False       – cold start (ignores stored YAML results)
+      True        – warm start from model YAML optimizer.results
+      Path        – warm start from a specific _opt.csv file
+    incremental_csv:
+      If given, overwrites this path with the current Pareto front after every
+      generation so partial results survive an interrupted run.
+    """
     _bootstrap(project_root)
     engine = _make_engine(project_root)
     name = _model_name(model_path, project_root)
@@ -81,13 +115,39 @@ def run_opt(model_path: Path, project_root: Path,
     from sim_engine.src.optimizer_engine import run_optimizer
 
     override: Dict = {}
-    if not warm_start:
-        override['warm_start'] = []   # force cold start even if model has stored results
+    if warm_start is False:
+        override['warm_start'] = []   # force cold start
+    elif isinstance(warm_start, Path):
+        pareto = load_pareto_from_csv(warm_start)
+        override['warm_start'] = pareto
+        logger.info(f'Warm-start CSV: {warm_start.name}  ({len(pareto)} solutions)')
 
-    logger.info(f'Optimizer start: {name}  (warm_start={warm_start})')
+    # Pre-load model to extract objectives for incremental CSV saves.
+    # run_optimizer will reload internally; the extra load is a small one-time cost.
+    objectives: List[Dict] = []
+    if incremental_csv:
+        engine.load_models([name])
+        try:
+            objectives = list(engine.current_model.optimizer.get('objectives', []))
+        except Exception:
+            pass
+
+    # Wrap callback: per-generation display + incremental save
+    if incremental_csv and objectives:
+        from output import write_opt_csv as _write_csv
+
+        def _callback(entry: dict) -> bool:
+            front = entry.get('pareto_front', [])
+            if front:
+                _write_csv(front, objectives, incremental_csv)
+            return opt_callback(entry) if opt_callback else False
+    else:
+        _callback = opt_callback
+
+    logger.info(f'Optimizer start: {name}  (warm_start={warm_start!r})')
     result = run_optimizer(
         engine, name,
-        progress_callback=opt_callback,
+        progress_callback=_callback,
         optimizer_override=override or None,
     )
     print()   # newline after last \r progress line
