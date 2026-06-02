@@ -1,0 +1,266 @@
+category: physiological
+
+metadata:
+  name: fatty_liver_periodization
+  version: "1.0.0"
+  author: "Fan Shen"
+  description:
+    brief: "NAFLD 运动进阶方案优化：T1 强度 × T3 频率 × T4 升级时机的 Pareto 权衡（减脂速率 vs 疲劳积累）。"
+    need: >
+      EASL/AGA 指南建议 NAFLD 患者先从中等强度开始、逐步进阶至较高强度，
+      但对"何时升级"和"多高频率"没有量化依据。本模型将 Banister 周期化理论引入
+      NAFLD 运动处方，通过多目标优化提供可量化的 Pareto 前沿。
+    problem: >
+      更激进的运动方案（T4 早升级 + T3 高频 + T1 高强度）减脂更快，
+      但 Banister 疲劳动力学表明久坐人群疲劳积累显著高于运动员，增加损伤和脱落风险。
+      减脂效率与疲劳负担之间存在真实的 Pareto 权衡，不存在同时最优的单一方案。
+    method: >
+      日步长模型，K=2 分段（基础适应期 + 强化期）。
+      每日基础活动（T1_base）全程存在；强化训练课（T1_extra）叠加在基础之上，
+      仅在 T4 日期后的 T3 选定天数触发，两者 pulse 累加为当日总运动强度。
+      核心动力学：（1）肝脂肪随运动剂量线性下降（Keating 2015 meta 推导，
+      假设每次训练 ~45 分钟）；（2）ALT 随训练慢性改善（Frontiers Physiol 2022
+      meta 推导）；（3）疲劳积累遵循 Banister fitness-fatigue 结构，k₂=1/15/day
+      直接沿用 Morton 1990 Table 1，h 系数从运动员参数缩放至久坐人群 MET 单位。
+    optimization: >
+      双目标 NSGA-II：最小化 12 周末肝脂肪 vs 最小化训练期疲劳峰值。
+      T1×2（基础强度 + 强化叠加量）+ T3（每周几次强化）+
+      T4（升级时机，第 1–6 周搜索窗）。
+      科学问题：最优升级时机是第几周？每周几次强化使减脂–疲劳权衡最优？
+    result: >
+      预期 Pareto 前沿：激进端（第 1 周升级，5 次/周）减脂最快但疲劳峰值高；
+      保守端（第 5–6 周升级，3 次/周）疲劳低但减脂慢。
+      参考点预计在第 3–4 周升级、每周 3–4 次强化，12 周末肝脂肪约降至 9–11%，
+      同期 ALT 下降至 ≤40 IU/L，健康时长 lm_score ≈ 25–35 天。
+    conclusion: >
+      运动升级时机（T4）和频率（T3）在相同最大强度下，通过疲劳–减脂 Pareto
+      前沿可量化展示对结局路径的结构性影响，为"渐进超负荷"原则提供计算依据。
+      本模型不作临床处方；参数为人群均值，个体应用需重新校准疲劳系数。
+    limitations: >
+      肝脂肪动力学为线性近似，不含饮食、体重或胰岛素抵抗协同效应；
+      疲劳 h 系数从运动员数据按 MET 比例缩放，未经 NAFLD 人群直接验证；
+      未建模依从性下降（高疲劳会降低实际完成率，模型假设方案完全执行）；
+      ALT 动力学仅反映慢性训练适应，不含个体急性反应差异。
+  tags: [fatty_liver, NAFLD, exercise, periodization, Banister, T1, T3, T4, NSGA2]
+  references:
+    - "Keating SE et al. (2015) Exercise and NAFLD: a systematic review and meta-analysis. J Hepatol 63(2):509-521"
+    - "Morton RH et al. (1990) Modelling human performance in running. J Appl Physiol 69(3):1171-1177"
+    - "Exercise Training on Serum Transaminases in NAFLD: Meta-Analysis. Front Physiol (2022) doi:10.3389/fphys.2022.894044"
+    - "Prati D et al. (2002) Updated definitions of healthy ranges for serum ALT. Ann Intern Med 137(1):1-10"
+    - "Mofrad P et al. (2003) Clinical and histologic spectrum of NAFLD. Hepatology 37(6):1286"
+    - "EASL-EASD-EASO Clinical Practice Guidelines (2016) Management of NAFLD. J Hepatol 64(6):1388-1402"
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  liver_fat_pct:
+    type: state
+    value: 15.0
+    unit: "%"
+    bounds: [0, 60]
+    description: "肝脏脂肪含量（%，MRI-PDFF），NAFLD 典型初值 15%"
+    reference: "Kleiner DE et al. (2005) Hepatology 41(6):1313"
+
+  alt_level:
+    type: state
+    value: 45.0
+    unit: IU/L
+    bounds: [5, 200]
+    description: "丙氨酸氨基转移酶（NAFLD 患者轻度升高基线，ULN=40 IU/L），随运动训练慢性下降"
+    reference: "Mofrad P et al. (2003) Hepatology 37(6):1286"
+
+  fatigue_score:
+    type: state
+    value: 0.0
+    unit: AU
+    bounds: [0, 500]
+    description: "运动疲劳积累（Banister fitness-fatigue 结构，任意单位），代理损伤和脱落风险"
+    reference: "Morton RH et al. (1990)"
+
+  exercise_intensity:
+    type: input
+    value: 0.0
+    unit: MET
+    bounds: [0, 12]
+    description: "当日总运动强度（基础活动与强化训练在同一时刻 pulse 累加；非训练日为 0）"
+    io_role: input
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: "健康时长：liver_fat_pct ≤ 10% 且 alt_level ≤ 40 IU/L 同时满足的累计天数"
+    reference: "Life Matters Framework core metric"
+
+  alpha_fat:
+    type: parameter
+    value: 0.016
+    unit: "% per MET·day"
+    description: >
+      运动减脂系数（每 MET 训练日对应的肝脂肪下降百分比）。
+      推导：Keating 2015 meta 报告典型有氧干预（~180 min/week at ~4.5 MET，4 次/周）
+      12 周减少肝脂肪约 3.5%；总训练日 48 天；
+      alpha = 3.5 / (4.5 × 48) ≈ 0.016 %/(MET·day)。
+    reference: "Keating SE et al. (2015) J Hepatol 63(2):509-521"
+
+  gamma_alt:
+    type: parameter
+    value: 0.032
+    unit: "IU/L per MET·day"
+    description: >
+      运动训练对 ALT 的慢性改善系数。
+      推导：Frontiers Physiol 2022 meta 报告有氧干预平均减少 ALT 约 7 IU/L/12 周；
+      典型干预剂量同 alpha_fat 推导（48 训练日 @ 4.5 MET）；
+      gamma = 7 / (4.5 × 48) ≈ 0.032 IU/L/(MET·day)。
+    reference: "Front Physiol (2022) doi:10.3389/fphys.2022.894044"
+
+  h_fatigue:
+    type: parameter
+    value: normal(0.40, 0.10)
+    unit: "AU per MET·day"
+    description: >
+      Banister 疲劳增益系数，缩放自 Morton 1990 运动员参数至久坐人群 MET 单位。
+      原参数 h=2.0 对应运动员训练单位（~50 AU/session）；
+      NAFLD 患者典型运动 5–8 MET/session，缩放比 ≈ 1/10，
+      再乘久坐人群疲劳敏感性修正 1.5× → h ≈ 0.35–0.45；
+      取均值 0.40，σ=0.10（±25% 个体间差异）。MC 模式每 run 采样一次。
+    reference: "Morton RH et al. (1990) J Appl Physiol 69(3):1171 — Table 1, adapted for MET units"
+
+  k_fatigue:
+    type: parameter
+    value: 0.067
+    unit: 1/day
+    description: "疲劳衰减速率，对应时间常数 τ₂=15 天，直接使用 Morton 1990 Table 1 原始值。"
+    reference: "Morton RH et al. (1990) J Appl Physiol 69(3):1171 — Table 1"
+
+formulas:
+  fat_reduction:
+    description: "肝脂肪：运动剂量线性减少（Keating 2015）"
+    priority: 5
+    dynamics:
+      liver_fat_pct: "max(0, liver_fat_pct - alpha_fat * exercise_intensity * step)"
+    reference: "Keating SE et al. (2015)"
+
+  alt_improvement:
+    description: "ALT：运动训练慢性改善；非训练日（exercise_intensity=0）保持不变"
+    priority: 4
+    dynamics:
+      alt_level: "max(10, alt_level - gamma_alt * exercise_intensity * step)"
+    reference: "Front Physiol (2022) doi:10.3389/fphys.2022.894044"
+
+  fatigue_accumulation:
+    description: "疲劳：Banister fitness-fatigue 结构 dF/dt = h·w − k₂·F（Morton 1990 eq.2）"
+    priority: 3
+    dynamics:
+      fatigue_score: "fatigue_score + (h_fatigue * exercise_intensity - k_fatigue * fatigue_score) * step"
+    reference: "Morton RH et al. (1990)"
+
+  lm_score_update:
+    description: "累加健康时长（可恢复）：liver_fat_pct ≤ 10% 且 alt_level ≤ 40 IU/L"
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if (liver_fat_pct <= 10 and alt_level <= 40) else lm_score"
+    reference: "Life Matters Framework core metric"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-03-27"
+  output_variables:
+    - liver_fat_pct
+    - alt_level
+    - fatigue_score
+    - exercise_intensity
+    - lm_score
+  plans:
+    - id: "daily_walk"
+      label: "每日步行（基准，3.5 MET × 7 天/周）"
+      schedules:
+        - variable: exercise_intensity
+          time: "07:00"
+          value: 3.5
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-01-01", "2026-03-27"]
+          label: "每日中等强度步行"
+
+    - id: "progressive_wk4"
+      label: "渐进方案（第 4 周升级，强化 3 次/周，+4.0 MET）"
+      schedules:
+        - variable: exercise_intensity
+          time: "07:00"
+          value: 3.5
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-01-01", "2026-03-27"]
+          label: "每日基础活动 3.5 MET"
+        - variable: exercise_intensity
+          time: "07:00"
+          value: 4.0
+          days: [Mon, Wed, Fri]
+          date_range: ["2026-01-22", "2026-03-27"]
+          label: "强化叠加 +4.0 MET（第 4 周起，3 次/周）"
+
+    - id: "aggressive_wk1"
+      label: "激进方案（第 1 周即升级，强化 5 次/周，+4.5 MET）"
+      schedules:
+        - variable: exercise_intensity
+          time: "07:00"
+          value: 3.5
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-01-01", "2026-03-27"]
+          label: "每日基础活动 3.5 MET"
+        - variable: exercise_intensity
+          time: "07:00"
+          value: 4.5
+          days: [Mon, Tue, Wed, Thu, Fri]
+          date_range: ["2026-01-01", "2026-03-27"]
+          label: "强化叠加 +4.5 MET（全程，5 次/周）"
+
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2026-03-27"
+  step_size:
+    value: 1
+    unit: day
+
+  objectives:
+    - variable: liver_fat_pct
+      metric: final
+      direction: minimize
+      description: "最小化 12 周末肝脂肪百分比（主要健康结局）"
+    - variable: fatigue_score
+      metric: max
+      direction: minimize
+      description: "最小化训练期疲劳峰值（损伤/脱落风险代理指标）"
+
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    seed: 42
+
+  schedules:
+    # T1: 基础日常活动（全程每日，中低强度）
+    - variable: exercise_intensity
+      time: "07:00"
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "基础日常活动强度"
+      optimize:
+        value: [2.5, 5.0]
+
+    # T1+T3+T4: 强化训练叠加（在基础之上；T3 控制频率，T4 控制升级时机）
+    # 物理含义：强化日总强度 = 基础值 + 叠加值（两个 pulse 同时刻累加）
+    - variable: exercise_intensity
+      time: "07:00"
+      label: "强化训练叠加量 × 频率 × 升级时机"
+      optimize:
+        value: [2.0, 5.5]
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat]
+        days_n: [3, 5]
+        date_range:
+          - ["2026-01-01", "2026-02-12"]
+          - ["2026-03-27", "2026-03-27"]
