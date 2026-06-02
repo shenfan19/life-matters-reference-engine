@@ -30,7 +30,8 @@ metadata:
       未建模抗生素耐药；不含重症CAP（PSI IV-V级）的机械通气场景；
       CRP动力学为简化模型，未含细胞因子级联。
   ratings:
-    research_demand: 4 - CAP是全球最常见住院感染，抗生素剂量优化是临床重点
+    topic_importance: 4 - CAP是全球最常见住院感染，抗生素剂量优化是临床重点
+    framework_demand: 2 - 急性病模型，上层场景复用少
     evidence_quality: 4 - 引用IDSA/ATS指南及多篇高质量文献，核心参数有据
     popularity: 4 - 肺炎模型在感染病学和重症医学中有广泛参考价值
   tags: [pneumonia, CAP, antibiotic, respiratory, inflammation, SpO2]

@@ -11,7 +11,8 @@ metadata:
     simulation: 默认仿真从 2026-01-01 到 2026-01-02，三餐 schedule 触发，观察胃部营养蓄积。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   ratings:
-    research_demand: 1 - 游戏专用简化营养模型，仅为演示/校验用途，无研究需求
+    topic_importance: 1 - 游戏专用简化营养模型，仅为演示/校验用途，无研究需求
+    framework_demand: 1 - _ag游戏专用模型，框架内复用价值极低
     evidence_quality: 2 - 基本营养成分数值合理，但模型极简，缺少生理动力学
     popularity: 1 - 游戏（_ag）专用演示组件，无通用性
   tags: [nutrition, simple, demo]

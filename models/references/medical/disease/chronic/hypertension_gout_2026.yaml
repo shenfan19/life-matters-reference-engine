@@ -18,7 +18,8 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   ratings:
-    research_demand: 5 - 药物冲突问题临床高发，被 A5 系列多次引用，患者群体庞大
+    topic_importance: 5 - 药物冲突问题临床高发，被 A5 系列多次引用，患者群体庞大
+    framework_demand: 4 - 被A5系列多次引用，跨科室冲突场景核心组件
     evidence_quality: 4 - ESC/ACR 双指南支撑，HCTZ 效应系数有文献来源
     popularity: 4 - 跨科室冲突领域代表性模型，多方案比较首选组件
   tags: [cardiology, rheumatology, hypertension, gout, uric_acid, optimization, physiological, A5]

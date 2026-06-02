@@ -28,7 +28,8 @@ metadata:
       心理因素（疼痛耐受、配速感知误差）未建模；
       三项运动间的肌肉特异性疲劳转移未区分。
   ratings:
-    research_demand: 4 - 铁人三项多运动模式整合是运动生理学重要研究方向
+    topic_importance: 3 - 铁人三项多运动模式整合是运动生理学重要研究方向
+    framework_demand: 2 - 综合了多个运动但专项性强，上层引用预期低
     evidence_quality: 4 - 引用Hausswirth/O'Toole等权威文献，糖原-配速模型有据
     popularity: 3 - 铁人三项模型在竞技体育中有价值但通用度不及单项运动
   tags: [triathlon, olympic, swim, bike, run, glycogen, fatigue, bonk, pacing, energy_system]

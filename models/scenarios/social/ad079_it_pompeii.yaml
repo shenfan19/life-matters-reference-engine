@@ -23,7 +23,8 @@ metadata:
     time_scale: 步长为 1 小时，覆盖 79-08-24 至 79-08-25 的喷发和逃离窗口。
 
   ratings:
-    research_demand: 3 - 历史场景，展示极端约束下的决策优化
+    topic_importance: 4 - 庞贝是人类最著名的自然灾难之一，全球家喻户晓
+    framework_demand: 1 - 历史叙事场景，不被其他模型引用
     evidence_quality: 4 - 基于火山学重建研究，灰层积累速率和坍塌阈值有地质文献支撑
     innovation: 3 - 逃离动力学建模较直观，创新点在于将火山学参数引入个体决策
     social_value: 4 - 文化记忆深厚，极端环境下理性决策的教学案例

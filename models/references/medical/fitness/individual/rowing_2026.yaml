@@ -27,7 +27,8 @@ metadata:
       水流、风阻等环境条件未建模；
       乳酸清除模型为简化一室指数模型。
   ratings:
-    research_demand: 3 - 划船是有氧运动之一，应用场景较专项，复用度中等
+    topic_importance: 3 - 划船是有氧运动之一，应用场景较专项，复用度中等
+    framework_demand: 2 - 专项竞技模型，上层场景复用少
     evidence_quality: 4 - 引用Secher/Hagerman等划船生理学权威文献，参数有据
     popularity: 3 - 划船在运动科学中有专科地位，但通用度不及跑步/游泳
   tags: [rowing, ergometer, Concept2, VO2, lactate, aerobic, anaerobic, endurance, 2000m]

@@ -9,7 +9,8 @@ metadata:
     simulation: 默认仿真从 2026-01-01 到 2026-01-25，用于观察核心状态随时间变化。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   ratings:
-    research_demand: 4 - 感冒是最常见急性感染，免疫-病毒动力学有广泛复用价值
+    topic_importance: 4 - 感冒是最常见急性感染，免疫-病毒动力学有广泛复用价值
+    framework_demand: 1 - noref + 未被其他模型引用，复用价值极低
     evidence_quality: 2 - noref标记，参数无文献来源，机制为定性近似
     popularity: 3 - 感冒模型常见但非教科书经典基准
   tags: [medical, physiological, flu]

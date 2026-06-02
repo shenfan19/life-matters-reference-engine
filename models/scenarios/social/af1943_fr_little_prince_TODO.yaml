@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 3 - 小王子是最广泛阅读的文学作品之一，沙漠生存+哲学对话有独特展示价值
+    topic_importance: 4 - 小王子是最广泛阅读的文学作品之一，沙漠生存+哲学对话有独特展示价值
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未实现，且为文学设定
     innovation: 2 - 将叙事选择（聆听vs修飞机）转化为可优化动力学意图存在，但尚未实现
     social_value: 5 - 触及人与人之间联系、意义和告别的普世主题，文学价值极高

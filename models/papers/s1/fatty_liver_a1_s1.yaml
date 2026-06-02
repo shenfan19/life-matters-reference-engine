@@ -40,7 +40,8 @@ metadata:
       参数待从 Keating 2015 / Promrat 2010 等文献精化；
       beta_hiit 当前为演示值，应从 HIIT vs MICT 对比 RCT 中提取效应量。
   ratings:
-    research_demand: 4 - NAFLD 全球高发，HIIT 处方优化有临床价值
+    topic_importance: 4 - NAFLD 全球高发，HIIT 处方优化有临床价值
+    framework_demand: 2 - S1方法论展示模型，未被其他论文引用
     evidence_quality: 2 - beta_hiit 和 delta_alt 均标注 TODO:SOURCE，投稿前必须精化
     paper_value: 3 - 框架演示，参数精化前不宜作为论文主线
     innovation: 4 - K=3 分段 + T3+T4 完整优化链，临床解释直觉清晰

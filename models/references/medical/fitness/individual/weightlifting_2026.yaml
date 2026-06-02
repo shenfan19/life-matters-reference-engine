@@ -29,7 +29,8 @@ metadata:
       未包含营养状态（蛋白质摄入、热量盈余）对肌肥大的调节；
       疲劳模型采用单室指数清除，真实情况为多室（中枢+外周）。
   ratings:
-    research_demand: 5 - 阻力训练是健身/肌少症/力量训练的核心，渐进超负荷原则广泛应用
+    topic_importance: 4 - 阻力训练是健身/肌少症/力量训练的核心，渐进超负荷原则广泛应用
+    framework_demand: 3 - 力量训练通用组件，被肌少症/健身场景引用预期中等
     evidence_quality: 4 - 引用Kraemer/Schoenfeld/ACSM等权威文献，参数有据可查
     popularity: 4 - 力量训练肌肥大模型是运动科学教科书标准内容
   tags: [weightlifting, strength, hypertrophy, 1RM, progressive_overload, fatigue, protein_synthesis, ACSM]

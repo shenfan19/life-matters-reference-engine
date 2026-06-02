@@ -31,7 +31,8 @@ metadata:
       个体差异（年龄、基础功能状态、梗死体积）未建模；
       神经可塑性指数为概念模型，非直接可测量量。
   ratings:
-    research_demand: 5 - 脑卒中是全球第二大死亡原因，康复时序优化是神经科研究热点
+    topic_importance: 5 - 脑卒中是全球第二大死亡原因，康复时序优化是神经科研究热点
+    framework_demand: 2 - 急性病模型，上层场景复用少
     evidence_quality: 4 - 引用AHA指南及Langhorne 2011等高质量文献，参数有据可查
     popularity: 4 - NIHSS/mRS/Fugl-Meyer是神经康复教科书核心评估量表
   tags: [stroke, rehabilitation, NIHSS, mRS, Fugl-Meyer, neuroplasticity, aphasia]

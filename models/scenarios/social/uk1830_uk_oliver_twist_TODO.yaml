@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 4 - 《雾都孤儿》是童工制度和儿童剥削的最著名文学控诉，社会学意义重大
+    topic_importance: 4 - 《雾都孤儿》是童工制度和儿童剥削的最著名文学控诉，社会学意义重大
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将服从-抵抗-人际连接的生存策略博弈转化为动力学意图清晰，但尚未完善
     social_value: 5 - 触及儿童权利、阶级固化和社会责任的普世主题，狄更斯社会批判精髓

@@ -40,7 +40,8 @@ metadata:
       脱位风险模型基于人群平均值，未纳入体重（BMI>30增加2倍风险）和认知状态等个体因素；
       骨整合完成时间采用6周固定假设（实际因骨质密度和患者年龄差异显著）。
   ratings:
-    research_demand: 4 - THA是全球最常见骨科手术之一，术后康复方案优化有重要临床价值
+    topic_importance: 3 - THA是全球最常见骨科手术之一，术后康复方案优化有重要临床价值
+    framework_demand: 2 - 骨科专项模型，上层场景复用少
     evidence_quality: 4 - 引用Learmonth/Charnley等经典文献及ERAS方案，参数有据
     popularity: 4 - 全髋关节置换术是骨科教科书最重要手术，康复模型有广泛需求
   tags: [tha, hip_replacement, oxford_score, dislocation_risk, gait_symmetry, physical_therapy, orthopedic]

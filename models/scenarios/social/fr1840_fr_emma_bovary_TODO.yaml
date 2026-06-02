@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 3 - 包法利夫人是抑郁、浪漫幻觉与债务螺旋的经典文学案例
+    topic_importance: 3 - 包法利夫人是抑郁、浪漫幻觉与债务螺旋的经典文学案例
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将浪漫主义追求强度与心理健康、债务动力学结合的建模意图存在，但尚未完善
     social_value: 4 - 探索社会期望与个人欲望的冲突及其代价，是女性主义文学的重要文本

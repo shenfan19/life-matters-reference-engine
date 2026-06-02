@@ -12,7 +12,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 3 - 《卖火柴的小女孩》是全球最广泛阅读的童话之一，儿童贫困的建模意义深远
+    topic_importance: 4 - 《卖火柴的小女孩》是全球最广泛阅读的童话之一，儿童贫困的建模意义深远
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定（失温-幻觉机制需参数化）
     innovation: 2 - 将失温过程和幻觉作为资源消耗动力学的意图有新意，但尚未完善
     social_value: 5 - 触及儿童贫困、系统性冷漠和社会良知的普世主题，文学价值极高

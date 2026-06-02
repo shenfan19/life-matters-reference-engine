@@ -45,7 +45,8 @@ metadata:
       由 parameter 分布表达但未精确建模；
       认知表现公式为线性近似，高强度认知任务场景需要更精确模型。
   ratings:
-    research_demand: 4 - 睡眠管理跨域需求广泛，认知绩效优化实用价值明确
+    topic_importance: 4 - 睡眠管理跨域需求广泛，认知绩效优化实用价值明确
+    framework_demand: 2 - S1方法论展示模型，未被其他论文引用
     evidence_quality: 4 - Borbély 二过程模型参数文献基础扎实，日步长近似是已知弱点
     paper_value: 4 - 跨域案例贡献清晰，"早睡 vs 午睡"Pareto 对比向非专业读者可解释
     innovation: 3 - Borbély 模型已知，T1+T2+T3 优化是增量贡献，T4 缺失略弱

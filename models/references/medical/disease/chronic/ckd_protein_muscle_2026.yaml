@@ -19,7 +19,8 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   ratings:
-    research_demand: 5 - CKD 营养管理是临床核心问题，被多个 A4 系列场景复用
+    topic_importance: 5 - CKD 营养管理是临床核心问题，被多个 A4 系列场景复用
+    framework_demand: 4 - 被多个A4系列场景import，肾病领域核心依赖组件
     evidence_quality: 4 - KDIGO 指南和多项 RCT 支撑，个别机制系数估算
     popularity: 4 - 肾病领域核心场景依赖，A4 系列多次导入的基础组件
   tags: [nephrology, ckd, protein, muscle, sarcopenia, optimization, physiological, A4]

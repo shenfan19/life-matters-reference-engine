@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 4 - 《鼠疫》是加缪存在主义代表作，医者在流行病中的坚守是永恒命题
+    topic_importance: 4 - 《鼠疫》是加缪存在主义代表作，医者在流行病中的坚守是永恒命题
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将救治强度与自我保护的动态权衡转化为可优化系统意图存在，但尚未完善
     social_value: 5 - 触及责任、荒诞和人类团结的普世伦理，文学和哲学价值极高

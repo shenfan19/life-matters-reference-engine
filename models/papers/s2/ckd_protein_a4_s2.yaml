@@ -41,7 +41,8 @@ metadata:
       不构成 KDIGO 指南替代，而是对指南框架内的个体化路径优化。
     limitations: 参数为文献启发的演示值，未替代 KDIGO 指南或个体化营养医嘱。
   ratings:
-    research_demand: 5 - KDIGO 指南明确空白，真实未解临床问题，患者群体庞大
+    topic_importance: 5 - KDIGO 指南明确空白，真实未解临床问题，患者群体庞大
+    framework_demand: 4 - 旗舰核心论文模型，被A4系列s3/s4引用
     evidence_quality: 4 - 核心文献扎实，alpha（蛋白-GFR 损伤系数）为估算值
     paper_value: 5 - 临床冲突典型案例，T2+T4 原创贡献，临床转化路径清晰
     innovation: 5 - 睡前蛋白 T2 时间营养学 + T4 切换时机双重首创，reviewer 难找先例

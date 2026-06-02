@@ -49,7 +49,8 @@ metadata:
       皮质醇动力学为一室简化模型，未建模 HPA 负反馈完整非线性。
       营养得分为聚合性标量，未区分宏量营养素组成。
   ratings:
-    research_demand: 4 - 职业倦怠社会问题严重，临床和政策均有真实需求
+    topic_importance: 4 - 职业倦怠社会问题严重，临床和政策均有真实需求
+    framework_demand: 2 - S1方法论展示模型，未被其他论文引用
     evidence_quality: 2 - 皮质醇回落速率和 CVD 积累系数均为估算，无直接文献动力学系数
     paper_value: 5 - S1 旗帜性论点，跨域最深，JAMIA 独特吸引力
     innovation: 5 - 职业心理×神经内分泌×心血管三域联合，全维度 T1-T4，framing 独一无二

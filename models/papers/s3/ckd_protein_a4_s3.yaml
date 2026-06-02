@@ -43,7 +43,8 @@ metadata:
       52 周线性动力学假设忽略了 CKD 病程中肾纤维化的非线性加速；
       个体差异（残余肾功能）由 MC 参数分布隐含。
   ratings:
-    research_demand: 4 - 联合可行域分析兼具运筹学和临床双重价值
+    topic_importance: 4 - 联合可行域分析兼具运筹学和临床双重价值
+    framework_demand: 3 - S3分析模型，import自s2 A4，被s4引用
     evidence_quality: 4 - 文献基础继承 S2 A4，alpha 估算是主要制约
     paper_value: 4 - S3 第二支撑实例，与 A7-S3 分岔论证形成互补
     innovation: 4 - IHIO 联合可行域数学展示，Pareto 约束投影可视化方法

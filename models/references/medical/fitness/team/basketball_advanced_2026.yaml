@@ -25,7 +25,8 @@ metadata:
       决策质量模型为认知负荷的近似；
       未包含暂停、犯规停钟期间的恢复动力学。
   ratings:
-    research_demand: 3 - 篮球精英分析有价值，但认知衰减-生理疲劳联合建模较专项
+    topic_importance: 3 - 篮球精英分析有价值，但认知衰减-生理疲劳联合建模较专项
+    framework_demand: 2 - 团队运动专项模型，上层引用预期低
     evidence_quality: 3 - 引用McInnes/Ben Abdelkrim等文献，参数覆盖基本
     popularity: 3 - 篮球在全球主流运动中有地位，进阶模型受众比基础版更小
   tags: [basketball, advanced, NBA, decision_making, jump_fatigue, shot_accuracy, fast_break, VO2max]

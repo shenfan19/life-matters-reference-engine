@@ -44,7 +44,8 @@ metadata:
       未包含心律失常（室性早搏）对训练安全性的影响；
       VO2peak与MET的转换采用标准系数（1 MET = 3.5 mL/kg/min），未考虑体重差异。
   ratings:
-    research_demand: 5 - 心脏康复是心血管事件后A级推荐干预，个体化处方是临床核心问题
+    topic_importance: 5 - 心脏康复是心血管事件后A级推荐干预，个体化处方是临床核心问题
+    framework_demand: 2 - 术后专项模型，与其他场景交叉引用少
     evidence_quality: 5 - 基于Anderson 2016 Cochrane（63 RCT）等最高质量证据，参数精确
     popularity: 5 - 心脏康复处方是心血管内科和康复医学教科书必备内容
   tags: [cardiac_rehabilitation, exercise_capacity, ejection_fraction, 6mwt, heart_rate, quality_of_life]

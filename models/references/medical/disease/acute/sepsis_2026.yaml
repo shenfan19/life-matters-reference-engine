@@ -31,7 +31,8 @@ metadata:
       不区分脓毒症病因（肺源性vs腹源性vs尿路源性）；
       升压药-心脏相互作用未建模；未含机械通气策略。
   ratings:
-    research_demand: 5 - 脓毒症是ICU最高死亡率急症，时序优化是生死攸关的研究问题
+    topic_importance: 5 - 脓毒症是ICU最高死亡率急症，时序优化是生死攸关的研究问题
+    framework_demand: 2 - 急性病模型，上层场景复用少
     evidence_quality: 5 - 引用Sepsis-3/SSC指南及Kumar 2006等关键RCT，参数精确
     popularity: 4 - SOFA评分和集束化治疗是重症医学教科书内容
   tags: [sepsis, ICU, SOFA, lactate, antibiotics, septic shock, critical care]

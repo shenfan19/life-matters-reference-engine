@@ -35,7 +35,8 @@ metadata:
       电解质紊乱（Na、K、Mg丢失）的"酮症流感"未建模；
       长期（>1年）的生酮适应和代谢灵活性提升未包含。
   ratings:
-    research_demand: 5 - 生酮饮食在糖尿病/减重领域证据强，是当前营养学热点
+    topic_importance: 4 - 生酮饮食在糖尿病/减重领域证据强，是当前营养学热点
+    framework_demand: 3 - 饮食干预常用背景组件，代谢/糖尿病场景引用预期中等
     evidence_quality: 4 - 引用Volek/Westman等高质量RCT，酮症动力学参数有据
     popularity: 4 - 生酮饮食是营养医学教科书重点内容，学术和大众关注度高
   tags: [nutrition, ketogenic, ketosis, blood_glucose, weight_loss, fat_oxidation, diabetes]

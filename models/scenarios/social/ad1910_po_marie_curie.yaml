@@ -22,7 +22,8 @@ metadata:
     time_scale: 步长为 1 月，总时长 96 月（8 年）。
 
   ratings:
-    research_demand: 3 - 历史案例，教育价值为主
+    topic_importance: 5 - 居里夫人是全球最知名女科学家，辐射与性别权衡具有普世意义
+    framework_demand: 1 - 历史叙事场景，不被其他模型引用
     evidence_quality: 3 - 辐射暴露动力学基础较好，历史细节估算成分中等
     innovation: 4 - 辐射累积 × 性别压制 × 研究节律三维权衡建模，视角独特
     social_value: 5 - 科学史最具代表性的性别与健康权衡案例，兼具科学教育和社会正义价值

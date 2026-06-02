@@ -28,7 +28,8 @@ metadata:
       未考虑肠溶片的延迟吸收；
       个体间差异（CYP2C9、肾功能）可通过参数分布建模。
   ratings:
-    research_demand: 4 - 心血管预防最常用药物，PK 建模基础价值高
+    topic_importance: 4 - 心血管预防最常用药物，PK 建模基础价值高
+    framework_demand: 4 - 被多个药理场景引用，心血管预防建模必备组件
     evidence_quality: 5 - Rowland 1968 双室参数权威，Michaelis-Menten 来源清晰
     popularity: 4 - PK 领域经典基准，可用于多种心血管和镇痛场景
   tags: [pharmacology, aspirin, salicylate, PK, cardiovascular, pain]

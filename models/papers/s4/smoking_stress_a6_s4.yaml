@@ -46,7 +46,8 @@ metadata:
       health_economic_index 权重系数需通过效用研究校准；
       工作压力 work_pressure 在当前模型中为固定参数，未来可参数化为季节性曲线。
   ratings:
-    research_demand: 3 - 跨域广度展示，非最紧迫单一医学需求
+    topic_importance: 3 - 跨域广度展示，非最紧迫单一医学需求
+    framework_demand: 2 - S4多样性案例，不被其他模型引用
     evidence_quality: 2 - health_economic_index 权重无文献依据，5 年误差积累大
     paper_value: 3 - 跨域广度展示，适合 S4 多样性案例，非定量强旗舰
     innovation: 4 - 心理×行为×肺功能×经济四域建模，戒烟时机优化是政策级贡献

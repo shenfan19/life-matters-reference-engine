@@ -15,7 +15,8 @@ metadata:
       未包含基因型（ALDH2、ADH1B）、营养状态等修饰因素；
       不适用于预测个体急性酒精中毒风险（需要不同模型尺度）。
   ratings:
-    research_demand: 4 - 酒精性肝病是全球重大公卫问题，剂量-纤维化因果链有复用价值
+    topic_importance: 4 - 酒精性肝病是全球重大公卫问题，剂量-纤维化因果链有复用价值
+    framework_demand: 3 - 潜在被社会/生活方式场景使用，中等复用预期
     evidence_quality: 4 - 引用Rehm 2010、Stickel 2017等权威文献，损伤函数有据
     popularity: 3 - 酒精肝模型有一定参考价值但不属于教科书级经典基准
   tags: [alcohol, liver_disease, fibrosis, dose_response, chronic]

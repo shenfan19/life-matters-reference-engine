@@ -11,7 +11,8 @@ metadata:
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   name: football
   ratings:
-    research_demand: 4 - 足球是全球第一大运动，间歇高强度生理特征有广泛研究价值
+    topic_importance: 3 - 足球是全球第一大运动，间歇高强度生理特征有广泛研究价值
+    framework_demand: 1 - noref，复用价值极低
     evidence_quality: 2 - noref标记，参数无文献来源，机制为定性描述
     popularity: 3 - 足球生理模型有参考价值但此版本参数质量待补充
   tags:

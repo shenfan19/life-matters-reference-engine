@@ -30,7 +30,8 @@ metadata:
       HbF升高动力学为简化模型，实际个体间差异很大（F细胞数量遗传决定）；
       未区分HbSS vs HbSC vs HbS/β-地中海贫血亚型。
   ratings:
-    research_demand: 3 - SCD影响700万人，但为特定遗传病，复用场景较有限
+    topic_importance: 3 - SCD影响700万人，但为特定遗传病，复用场景较有限
+    framework_demand: 2 - 遗传病专项模型，上层场景引用预期低
     evidence_quality: 5 - 引用Charache 1995 MSH RCT等里程碑文献，参数精确可靠
     popularity: 3 - 羟基脲-HbF模型在血液病学专科有重要地位但通用度有限
   tags: [sickle cell disease, SCD, hydroxyurea, HbF, VOC, pain, hematology, genetic]

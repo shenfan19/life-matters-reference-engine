@@ -39,7 +39,8 @@ metadata:
       INR模型采用简化的一室动力学，未考虑CYP2C9/VKORC1基因型差异；
       未建模TAVR特有并发症：传导阻滞（需起搏器植入率约10%）、卒中（30天约2-3%）。
   ratings:
-    research_demand: 4 - 主动脉瓣置换（TAVR）是近年心外科最重要进展，血流动力学管理是核心
+    topic_importance: 4 - 主动脉瓣置换（TAVR）是近年心外科最重要进展，血流动力学管理是核心
+    framework_demand: 2 - 心外科专项模型，上层场景复用少
     evidence_quality: 4 - 引用PARTNER Trial及ACC/AHA/ESC多项权威指南，参数有据
     popularity: 4 - 瓣膜置换术后管理是心外科和结构性心脏病教科书重要内容
   tags: [tavr, savr, valve_replacement, aortic_stenosis, cardiac_index, anticoagulation, warfarin]

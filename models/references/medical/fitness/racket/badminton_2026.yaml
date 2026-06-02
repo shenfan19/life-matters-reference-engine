@@ -24,7 +24,8 @@ metadata:
       未区分不同技术动作（网前搓球vs后场扣杀）的代谢差异；
       未包含赛间热调节和补水因素。
   ratings:
-    research_demand: 3 - 羽毛球是亚洲主流运动，间歇高强度特征有一定研究价值
+    topic_importance: 2 - 羽毛球是亚洲主流运动，间歇高强度特征有一定研究价值
+    framework_demand: 2 - 专项运动模型，上层引用预期低
     evidence_quality: 3 - 引用Chin 1995/Faude 2007等文献，但参数数量有限
     popularity: 2 - 羽毛球生理模型较专项，在运动科学中地位有限
   tags: [badminton, racket, interval, explosive, anaerobic, reaction_time, VO2]

@@ -17,7 +17,8 @@ metadata:
       参数基于70kg成年男性；未包含气温、坡度、海拔等环境因素；
       疲劳模型未区分中枢和外周疲劳机制。
   ratings:
-    research_demand: 5 - 跑步是最普及的有氧运动，配速-心率-乳酸动力学是运动医学核心
+    topic_importance: 4 - 跑步是最普及的有氧运动，配速-心率-乳酸动力学是运动医学核心
+    framework_demand: 3 - 最通用有氧运动模型，被多个场景使用预期
     evidence_quality: 4 - 引用Daniels公式/ACSM指南等经典来源，参数有据可查
     popularity: 5 - 跑步生理模型是运动科学教科书最常见基准模型
   tags: [sport, running, aerobic, endurance, VO2max, Daniels, lactate]

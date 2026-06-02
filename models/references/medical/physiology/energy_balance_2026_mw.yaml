@@ -11,7 +11,8 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   ratings:
-    research_demand: 5 - 能量平衡是肥胖/代谢病建模的根本基础，无法绕开的核心组件
+    topic_importance: 5 - 能量平衡是肥胖/代谢病建模的根本基础，无法绕开的核心组件
+    framework_demand: 3 - 被1个上层模型import，有潜力但目前引用偏少
     evidence_quality: 2 - 模块为生成代码，参数描述简略，缺少文献来源标注
     popularity: 4 - BMR/能量平衡是生理学教科书基础内容，应用广泛
   tags:

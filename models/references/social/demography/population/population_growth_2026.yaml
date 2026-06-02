@@ -31,7 +31,8 @@ metadata:
       月步长不适合短期（年以内）快速变化分析；
       参数来自联合国人口部数据，需按具体国家调整。
   ratings:
-    research_demand: 5 - 人口动力学是人口学、经济学和公共政策最基础的模型之一
+    topic_importance: 4 - 人口动力学是人口学、经济学和公共政策最基础的模型之一
+    framework_demand: 3 - 人口是社会建模基础，被历史/社会场景引用预期中等
     evidence_quality: 4 - 引用联合国/WHO/Notestein等权威来源，参数可靠
     popularity: 5 - Lotka-Leslie人口模型是人口学教科书经典，跨领域广泛应用
   tags: [demography, population, aging, fertility, mortality, Lotka-Leslie]

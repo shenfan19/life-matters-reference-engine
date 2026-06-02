@@ -36,7 +36,8 @@ metadata:
       女性月经周期对禁食响应的差异未包含；
       长期（>1年）IF的代谢适应和平台期未建模。
   ratings:
-    research_demand: 5 - 间歇性禁食是当前代谢健康最热门干预，学术和公众需求均高
+    topic_importance: 5 - 间歇性禁食是当前代谢健康最热门干预，学术和公众需求均高
+    framework_demand: 3 - 饮食干预常用背景组件，代谢/糖尿病场景引用预期中等
     evidence_quality: 4 - 引用Sutton 2018、Wilkinson 2020等Cell Metab高质量RCT
     popularity: 4 - 16:8禁食已成为主流健康干预，教科书和媒体广泛关注
   tags: [nutrition, intermittent_fasting, insulin_sensitivity, autophagy, body_composition, IGF1, time_restricted_eating]
