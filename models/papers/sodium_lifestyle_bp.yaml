@@ -42,6 +42,11 @@ metadata:
       以 INTERSALT 经验系数整体替代；汗液钠浓度固定（实际随训练适应下降约 20-30%）；
       不含年龄相关血管硬化、BMI、糖尿病等协变量；
       MC 模式通过 k_pressure 分布体现盐敏感性个体差异，但均值基于人群平均。
+  ratings:
+    research_demand: 5 - 全球高血压负担最重，钠与活动的机制争议持续存在
+    evidence_quality: 4 - INTERSALT 52 人群数据支撑，汗液浓度固定是已知简化
+    paper_value: 3 - 进化错配视角独特，目前无论文归属
+    innovation: 5 - 汗液代偿机制显式建模 + 进化错配假说动力学化，视角原创，无直接先例
   tags: [sodium, hypertension, exercise, evolutionary_mismatch, INTERSALT, sweat, T1, T3]
   references:
     - "INTERSALT Cooperative Research Group (1988) Intersalt: an international study of electrolyte excretion and blood pressure. BMJ 297:319-328"

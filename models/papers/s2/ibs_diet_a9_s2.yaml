@@ -51,12 +51,11 @@ metadata:
       IBS 症状评分（IBS-SSS）受安慰剂效应影响约 20-30%，模型未建模；
       肠道菌群多样性指数为简化聚合量，未区分具体菌种；
       FODMAP 阈值存在显著个体差异（FODMAP 耐受性测试需个体化校准）。
-    value_for_paper: >
-      消化科实用案例：IBS 患病率高（全球10-15%），低FODMAP 三阶段时机优化（T4）直接可操作；
-      "高工作压力下需更长限制期"的跨域（应激×消化）结论是区别于纯饮食建议的原创视角。
-      主要限制：安慰剂效应（约20-30%症状改善）模型未建模，reviewer 会质疑；
-      菌群稳定性为聚合代理指标，生态学效度有限。
-      适合作为论文多样性案例展示跨域建模范围，非论文主线旗舰案例。
+  ratings:
+    research_demand: 4 - IBS 患病率 10-15%，低 FODMAP 时机优化有实用价值
+    evidence_quality: 3 - 安慰剂效应未建模，菌群稳定性为聚合代理，生态效度有限
+    paper_value: 3 - 多样性案例，展示跨域建模范围，非论文主线旗舰
+    innovation: 4 - 应激×消化跨域 + T4 阶段时机，原创结合视角
   tags: [paper2, IBS, FODMAP, digestive, gut_microbiome, dietary_management, A9, T3, T4, work_pressure]
   references:
     - "Gibson PR & Shepherd SJ (2010) Evidence-based dietary management of functional GI symptoms. J Gastroenterol Hepatol 25(2):252-258"
