@@ -40,11 +40,11 @@ metadata:
       动态切换时机（T4）比固定26周切换更能适应个体 GFR 轨迹；
       不构成 KDIGO 指南替代，而是对指南框架内的个体化路径优化。
     limitations: 参数为文献启发的演示值，未替代 KDIGO 指南或个体化营养医嘱。
-    value_for_paper: >
-      临床冲突建模典型案例（KDIGO 低蛋白 vs EWGSOP2 足蛋白），文献基础扎实，指南冲突明确；
-      睡前蛋白（T2 时间营养学，Snijders 2015）是结论的独特创新点，reviewer 难以找到先例对比。
-      动力学参数 alpha（蛋白-GFR 损伤系数）为估算级别，建议在论文附录加入该系数的敏感性分析，
-      证明结论方向性在参数扰动下稳健。临床转化路径清晰（时间表可直接给患者），适合 JAMIA。
+  ratings:
+    research_demand: 5 - KDIGO 指南明确空白，真实未解临床问题，患者群体庞大
+    evidence_quality: 4 - 核心文献扎实，alpha（蛋白-GFR 损伤系数）为估算值
+    paper_value: 5 - 临床冲突典型案例，T2+T4 原创贡献，临床转化路径清晰
+    innovation: 5 - 睡前蛋白 T2 时间营养学 + T4 切换时机双重首创，reviewer 难找先例
   tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4, T2, T4, K2]
   references:
     - "KDIGO 2020 Clinical Practice Guideline §3.1.13 Grade 2C"

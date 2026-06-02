@@ -10,6 +10,10 @@ metadata:
     optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
+  ratings:
+    research_demand: 5 - 糖尿病是全球最重大代谢流行病，综合动力学模型复用价值极高
+    evidence_quality: 2 - noref标记，12个变量均无文献来源，参数需校准
+    popularity: 4 - 糖尿病综合模型（血糖-胰岛素-并发症）是代谢建模标准框架
   tags: [medical, physiological, core]
   step_size:
     value: 1

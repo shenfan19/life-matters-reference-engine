@@ -20,6 +20,11 @@ metadata:
       该机制对应牛顿沉浸研究、忽视饮食的历史记录。
     time_scale: 步长为 1 分钟，总时长 1440 分钟（1 天）；食物变量表示摄入速率（g/min 或 ml/min）。
 
+  ratings:
+    research_demand: 3 - 历史案例，叙事和教育价值为主
+    evidence_quality: 3 - 认知负荷理论基础，历史营养数值估算成分高
+    innovation: 4 - 洞见积累动力学 × 营养 × 疲劳三维建模，研究节律优化首次历史应用
+    social_value: 5 - 科学史最传奇的创造力爆发案例，"天才神话 vs 系统建模"的颠覆性对比
   tags: [historical, newton, cognition, nutrition, 17th-century, england]
   period: "1665-1667"
   location: "Woolsthorpe Manor, Lincolnshire, England"

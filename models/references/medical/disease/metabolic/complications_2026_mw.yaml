@@ -11,6 +11,10 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   conflicts: []
+  ratings:
+    research_demand: 4 - 糖尿病并发症（神经/肾/视网膜/心血管）是糖尿病管理核心模块
+    evidence_quality: 2 - 模块为生成代码，参数描述简略，缺少文献标注
+    popularity: 3 - 并发症进展组件在糖尿病建模中有复用价值但不独立使用
   tags:
   - complications
   - diabetes

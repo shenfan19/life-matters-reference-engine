@@ -19,6 +19,10 @@ metadata:
       beta_hiit 系数为估计值，需从 HIIT vs MICT 对比 RCT 中精化（Keating 2015 或 Promrat 2010 subgroup）；
       未建模饮食、体重、胰岛素抵抗对肝脂的影响（更完整模型见 paper2/masld_insulin_a7_p2）；
       参数基于人群均值，未含 MC 分布。
+  ratings:
+    research_demand: 4 - NAFLD 全球患病率高，运动机制组件有广泛应用价值
+    evidence_quality: 3 - ALT 动力学来源良好，beta_hiit 系数为估算值（TODO:SOURCE）
+    popularity: 3 - 专项模型，主要被 A1/MASLD 系列场景导入
   tags: [nafld, fatty_liver, exercise, HIIT, ALT, hepatology]
   references:
     - "Keating SE et al. (2015) Exercise and nonalcoholic fatty liver disease. J Hepatol 63(2):509-521."

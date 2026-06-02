@@ -43,6 +43,10 @@ metadata:
       未建模β受体阻滞剂对心率储备的抑制效应（HR_max降低约20-30bpm）；
       未包含心律失常（室性早搏）对训练安全性的影响；
       VO2peak与MET的转换采用标准系数（1 MET = 3.5 mL/kg/min），未考虑体重差异。
+  ratings:
+    research_demand: 5 - 心脏康复是心血管事件后A级推荐干预，个体化处方是临床核心问题
+    evidence_quality: 5 - 基于Anderson 2016 Cochrane（63 RCT）等最高质量证据，参数精确
+    popularity: 5 - 心脏康复处方是心血管内科和康复医学教科书必备内容
   tags: [cardiac_rehabilitation, exercise_capacity, ejection_fraction, 6mwt, heart_rate, quality_of_life]
   references:
     - "Anderson L et al. (2016) Exercise-based cardiac rehabilitation for coronary heart disease. Cochrane Database Syst Rev (1):CD001800. [63 RCTs, n=14,486; VO2peak +18-25%, EF +3.7%]"

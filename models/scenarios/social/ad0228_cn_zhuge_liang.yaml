@@ -21,6 +21,11 @@ metadata:
       这一结构对应“食少事烦，其能久乎”的历史叙述。
     time_scale: 步长为 1 天，总时长 180 天，近似一次北伐季。
 
+  ratings:
+    research_demand: 3 - 历史展示场景，教育和叙事价值为主
+    evidence_quality: 3 - 过劳动力学参数有当代文献基础，历史数值估算成分高
+    innovation: 4 - 将慢性过劳动力学应用于三国历史叙事，叙事与科学跨越形式独特
+    social_value: 4 - 以历史人物为载体探讨健康管理与国家使命的终极冲突，文化共鸣强
   tags: [historical, china, three-kingdoms, cognition, strategy, overwork]
   period: "228-234"
   location: "Qishan Camp, Wei-Shu Border, China"

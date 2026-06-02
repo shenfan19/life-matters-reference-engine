@@ -24,6 +24,10 @@ metadata:
       未区分不同投球类型（直球/曲球/变速球）的生物力学差异；
       肩关节应力为综合指标，未建模具体解剖学损伤；
       未包含打者等待时间的体温下降和肌肉预激活问题。
+  ratings:
+    research_demand: 3 - 棒球肩关节管理有专项研究价值，但受众限于特定运动圈
+    evidence_quality: 3 - 引用Potteiger/Mangine等文献，参数覆盖基本但数量有限
+    popularity: 2 - 棒球在东亚和北美有受众，但全球通用度有限
   tags: [baseball, team, shoulder_stress, reaction_time, grip_strength, pitch_count, explosive]
   references:
     - "Potteiger JA et al. (1992) Physiological and performance responses to prolonged, competitive baseball games. J Strength Cond Res 6(3):149-153."

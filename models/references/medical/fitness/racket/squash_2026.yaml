@@ -24,6 +24,10 @@ metadata:
       核心体温模型为简化热平衡近似，未包含环境温度和湿度输入；
       脱水对心率和表现的影响通过出汗率间接体现；
       参数基于70kg成年男性运动员。
+  ratings:
+    research_demand: 3 - 壁球MET最高但受众有限，热调节-代谢交互有专项研究价值
+    evidence_quality: 3 - 引用Steininger/Duncombe等文献，但文献数量和参数覆盖有限
+    popularity: 2 - 壁球在运动科学中较小众，通用度有限
   tags: [squash, racket, high_intensity, heat_stress, sweating, core_temperature, MET12]
   references:
     - "Duncombe SL et al. (2006) The relationship between physical characteristics, fitness and match performance in senior elite squash players. Int J Sports Med 27(9):734-740."

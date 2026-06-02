@@ -33,6 +33,10 @@ metadata:
       未建模社会工程学（声称是亲属的紧急诈骗）——这类诈骗更难量化；
       未建模诈骗者的策略适应性（进化博弈）；
       暴露分是聚合指标，实际风险依赖于具体泄露的数据类型。
+  ratings:
+    research_demand: 4 - 网络诈骗是全球最普遍犯罪之一，个人风险行为量化有重要防护价值
+    evidence_quality: 3 - 引用FBI IC3/公安部等权威统计数据，模型参数部分为估算
+    popularity: 3 - 网络安全行为建模在数字安全领域有价值，但动力学框架仍新兴
   tags: [social, technology, cybercrime, phishing, digital-safety, fraud, china, global]
   references:
     - "FBI IC3 (2023) Internet Crime Report 2023. FBI Internet Crime Complaint Center."

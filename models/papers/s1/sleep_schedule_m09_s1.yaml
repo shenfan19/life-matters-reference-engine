@@ -44,12 +44,11 @@ metadata:
       日步长近似丢失了小时级昼夜节律细节；昼夜节律相位个体差异（owl vs lark）
       由 parameter 分布表达但未精确建模；
       认知表现公式为线性近似，高强度认知任务场景需要更精确模型。
-    value_for_paper: >
-      跨域案例（睡眠科学×认知心理×健康风险）：Borbély 经典模型参数来源扎实，
-      "早睡 vs 午睡"的 Pareto 对比有直接实用价值，向非专业读者可解释。
-      注意：本模型优化维度为 T1+T2+T3，未启用 T4（日期窗口搜索），K×4 完整性略弱。
-      日步长近似是最大弱点，论文方法节须补充论证：日均建模误差量级相比参数不确定性可忽略。
-      结论方向性可靠，但定量绝对值（如"认知提升12-18%"）在日步长 Borbély 近似下应标注误差范围。
+  ratings:
+    research_demand: 4 - 睡眠管理跨域需求广泛，认知绩效优化实用价值明确
+    evidence_quality: 4 - Borbély 二过程模型参数文献基础扎实，日步长近似是已知弱点
+    paper_value: 4 - 跨域案例贡献清晰，"早睡 vs 午睡"Pareto 对比向非专业读者可解释
+    innovation: 3 - Borbély 模型已知，T1+T2+T3 优化是增量贡献，T4 缺失略弱
   tags: [paper1, sleep, psychology, circadian, Borbely, M09, cross-domain, cognitive, productivity]
   references:
     - "Borbély AA (1982) A two process model of sleep regulation. Hum Neurobiol 1(3):195-204"

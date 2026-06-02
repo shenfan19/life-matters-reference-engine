@@ -26,6 +26,10 @@ metadata:
       参数来自阿托伐他汀，不适用于瑞舒伐他汀（疏水性更低）；
       未建模药物-药物相互作用（CYP3A4抑制剂如克拉霉素可3-4倍升高他汀血药浓度）；
       个体间差异（SLCO1B1基因型）未包含。
+  ratings:
+    research_demand: 5 - 他汀是全球最广泛处方药之一，剂量-效益-风险权衡是核心临床问题
+    evidence_quality: 5 - 引用AHA/ACC指南及CURVES/SLCO1B1等高质量RCT，参数精确
+    popularity: 5 - 他汀PK/PD是临床药理学教科书标准案例
   tags: [pharmacology, statin, LDL, cholesterol, cardiovascular, PK/PD, myopathy]
   references:
     - "Jones PH et al. (2003) Atorvastatin vs simvastatin in patients with hypercholesterolaemia (CURVES study). Am J Cardiol 81(5):582-587."

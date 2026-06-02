@@ -8,6 +8,10 @@ metadata:
     method: 包含 4 个变量和 2 个方程，描述 savings、fatigue、work_intensity、hourly_wage 的状态演化。
     simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
+  ratings:
+    research_demand: 3 - 劳动-储蓄-疲劳日模型是场景驱动的基础组件，演示价值为主
+    evidence_quality: 2 - noref标记，参数无文献来源，为极简演示模型
+    popularity: 2 - 日步长劳动模型较简单，不属于劳动经济学主流基准
   tags: [economic, social, labor]
   step_size:
     value: 1

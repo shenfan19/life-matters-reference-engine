@@ -22,6 +22,11 @@ metadata:
     geography: 庞贝至 Stabiae 约 8 km，至 Nuceria 约 10 km；成人步行 4-6 km/h，灰雨中降至约 3 km/h。
     time_scale: 步长为 1 小时，覆盖 79-08-24 至 79-08-25 的喷发和逃离窗口。
 
+  ratings:
+    research_demand: 3 - 历史场景，展示极端约束下的决策优化
+    evidence_quality: 4 - 基于火山学重建研究，灰层积累速率和坍塌阈值有地质文献支撑
+    innovation: 3 - 逃离动力学建模较直观，创新点在于将火山学参数引入个体决策
+    social_value: 4 - 文化记忆深厚，极端环境下理性决策的教学案例
   tags: [historical, disaster, volcanic, survival, ancient-rome, 1st-century]
   period: "79-08-24 13:00 ~ 79-08-25 08:00"
   location: "Pompeii, Roman Empire (modern-day Campania, Italy)"

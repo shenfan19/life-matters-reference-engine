@@ -25,6 +25,10 @@ metadata:
       参数基于 70kg 训练有素骑手（FTP=250W，VO2max=65 mL/kg/min）；
       未包含爬坡坡度、风阻、空气密度等环境因素；
       踏频-效率关系为线性近似（真实为倒 U 形曲线，最佳踏频约 90 rpm）。
+  ratings:
+    research_demand: 4 - 自行车是主流耐力运动，功率-乳酸动力学有广泛训练科学复用价值
+    evidence_quality: 4 - 引用Coggan/Coyle/ACSM等权威来源，核心参数有据可查
+    popularity: 4 - FTP/功率区间训练体系是运动科学教科书内容
   tags: [cycling, power, FTP, lactate, VO2, heart_rate, Coggan, aerobic, endurance]
   references:
     - "Coggan AR & Allen H (2010) Training and Racing with a Power Meter, 2nd ed. VeloPress, Boulder, CO."

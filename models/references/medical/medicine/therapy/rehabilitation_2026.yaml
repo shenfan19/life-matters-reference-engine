@@ -31,6 +31,10 @@ metadata:
     limitations: |
       参数来自TKR文献；ACL重建的时间常数不同（愈合更慢）。
       未建模肌腱/韧带愈合的生物学约束（4-8周腱骨整合期）。
+  ratings:
+    research_demand: 4 - 骨科术后康复是重要临床问题，物理治疗强度优化有广泛需求
+    evidence_quality: 4 - 引用Kehlet/Mizner/Bade等高质量文献，参数有据可查
+    popularity: 3 - TKR康复模型在骨科领域有地位，通用度中等
   tags: [surgery, rehabilitation, orthopedic, TKR, pain, physiotherapy]
   references:
     - "Kehlet H & Wilmore DW (2008) Evidence-based surgical care and the evolution of fast-track surgery. Ann Surg 248(2):189-198."

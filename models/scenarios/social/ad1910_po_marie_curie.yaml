@@ -21,6 +21,11 @@ metadata:
     resource_model: 每回合有固定支出；授课和经费申请是主要收入来源，因此研究强度与财务维持互相牵制。
     time_scale: 步长为 1 月，总时长 96 月（8 年）。
 
+  ratings:
+    research_demand: 3 - 历史案例，教育价值为主
+    evidence_quality: 3 - 辐射暴露动力学基础较好，历史细节估算成分中等
+    innovation: 4 - 辐射累积 × 性别压制 × 研究节律三维权衡建模，视角独特
+    social_value: 5 - 科学史最具代表性的性别与健康权衡案例，兼具科学教育和社会正义价值
   tags: [historical, curie, radiation, research, 19th-century, france, women-in-science]
   period: "1898-1906"
   location: "Paris, France"

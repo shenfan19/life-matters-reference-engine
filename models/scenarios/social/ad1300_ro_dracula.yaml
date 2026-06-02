@@ -7,6 +7,11 @@ metadata:
     problem: 在该情境中，需要平衡 blood_reserve、thirst_level、sun_exposure、hunt_intensity 对生存、目标进展或长期代价的影响。
     method: 包含 4 个可调输入、4 个状态变量和 3 个方程，将叙事冲突转化为可运行的动态系统。
     simulation: 默认仿真从 1462-06-01 到 1562-05-31，用于观察核心状态随时间变化。
+  ratings:
+    research_demand: 2 - 虚构场景，纯展示用途
+    evidence_quality: 2 - 神话设定，物理参数完全为创作设计
+    innovation: 3 - 将虚构生物动力学建模，展示框架的极端泛化能力
+    social_value: 3 - 娱乐价值高，展示 LM 框架的叙事灵活性，学术价值有限
   tags: [mythical, physiological, dracula]
   step_size:
     value: 1

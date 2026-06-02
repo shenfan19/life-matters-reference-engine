@@ -10,6 +10,10 @@ metadata:
     method: 包含 29 个变量和 16 个方程，描述 amino_acids、bile_acids、bile_function、cholecystokinin_level 的基础动态。
     simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
+  ratings:
+    research_demand: 4 - 消化系统是营养吸收的核心组件，在代谢/糖尿病建模中广泛复用
+    evidence_quality: 2 - 模块为生成代码，29变量的参数缺乏文献来源标注
+    popularity: 3 - 消化系统生理组件在代谢建模中有一定地位，但不独立使用
   tags: [digestion, gastrointestinal]
   step_size:
     value: 1

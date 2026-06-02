@@ -8,6 +8,10 @@ metadata:
     method: 包含 7 个变量和 3 个方程，描述 viral_load、immune_activity、body_temperature、vitality 的基础动态。
     simulation: 默认仿真从 2026-01-01 到 2026-01-25，用于观察核心状态随时间变化。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
+  ratings:
+    research_demand: 4 - 感冒是最常见急性感染，免疫-病毒动力学有广泛复用价值
+    evidence_quality: 2 - noref标记，参数无文献来源，机制为定性近似
+    popularity: 3 - 感冒模型常见但非教科书经典基准
   tags: [medical, physiological, flu]
   step_size:
     value: 1

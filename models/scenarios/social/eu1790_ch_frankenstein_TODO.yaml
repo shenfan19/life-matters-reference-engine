@@ -10,6 +10,11 @@ metadata:
     optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  ratings:
+    research_demand: 4 - 弗兰肯斯坦是科学伦理和创造者责任的最经典文学隐喻
+    evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
+    innovation: 2 - 将逃避责任的心理代价和身体崩溃转化为动力学系统意图清晰，但尚未完善
+    social_value: 5 - 触及科学伦理、造物者责任和现代技术隐患的普世主题，社会价值极高
   tags:
   - science
   - ethics

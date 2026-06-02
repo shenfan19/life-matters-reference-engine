@@ -27,6 +27,10 @@ metadata:
       适应速率假设线性累积（真实为非线性：初期快，后期平台）；
       未区分不同运动模式（跑步 HIIT vs 自行车 HIIT）的肌群特异性适应；
       胰岛素敏感性改善模型基于人群均值，个体差异大。
+  ratings:
+    research_demand: 5 - HIIT是当前运动医学最热门研究领域，代谢/心肺适应机制核心
+    evidence_quality: 4 - 引用Gibala/Wisløff/MacInnis等高质量RCT，参数有据可查
+    popularity: 4 - HIIT已成为健康运动处方主流，教科书广泛收录
   tags: [HIIT, VO2max, insulin_sensitivity, mitochondria, fat_oxidation, metabolic, Gibala, Wisløff, interval_training]
   references:
     - "Gibala MJ & McGee SL (2008) Metabolic adaptations to short-term high-intensity interval training. Exerc Sport Sci Rev 36(2):58-63."

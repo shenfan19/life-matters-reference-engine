@@ -10,6 +10,10 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   name: tennis
+  ratings:
+    research_demand: 3 - 网球是全球主流运动，间歇爆发特征有一定运动科学复用价值
+    evidence_quality: 2 - noref标记，参数无文献来源，机制为定性近似
+    popularity: 3 - 网球在运动科学有一定地位但不属于教科书级基准模型
   tags:
   - fitness
   - tennis

@@ -14,6 +14,10 @@ metadata:
       高度简化模型，未区分核威慑与常规战争；
       未包含国内政治（民族主义、领导人决策）；
       Richardson框架原为二元对立（两国），多边冲突需要网络扩展。
+  ratings:
+    research_demand: 4 - 战争冲突是全球最重要社会风险，Richardson军备竞赛模型是经典基准
+    evidence_quality: 4 - 引用Richardson经典著作及SIPRI等权威数据来源
+    popularity: 3 - Richardson军备竞赛模型在国际关系学有经典地位，但使用较专项
   tags: [war, conflict, geopolitics, Richardson, arms-race, social]
   references:
     - "Richardson LF (1960) Arms and Insecurity. Boxwood Press & Quadrangle Books, Pittsburgh."

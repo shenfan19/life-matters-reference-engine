@@ -35,6 +35,10 @@ metadata:
       聚合饱和度模型掩盖了地域传播的空间差异；
       未建模执法打压的离散事件；
       个人在组织内层级决定返利率，此处用平均值简化。
+  ratings:
+    research_demand: 4 - 传销/庞氏骗局是全球常见金融欺诈，崩盘动力学建模有监管价值
+    evidence_quality: 3 - 引用Vander Nat等经济学文献及中国监管数据，但部分参数为经验估计
+    popularity: 2 - 传销动力学模型在反欺诈研究中有一定地位，通用度有限
   tags: [social, economy, fraud, pyramid-scheme, MLM, china, exploitation]
   references:
     - "Vander Nat PJ & Keep WW (2002) Marketing Fraud: An Approach for Differentiating Multilevel Marketing from Pyramid Schemes. J Public Policy Mark 21(1):139-151."

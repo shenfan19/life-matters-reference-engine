@@ -9,6 +9,11 @@ metadata:
     need: "以高度反乌托邦虚构设定检验 LM 框架对人机融合（Cyberware）、心理健康（Cyberpsychosis）与生存资源的建模能力。"
     problem: "核心张力：植入体强化提升战斗力但积累 Cyberpsychosis 风险；Relic 芯片持续消耗神经系统；NCPD、企业和帮派三重威胁。"
     limitations: "TODO：Cyberware 参数（每件植入体对 Humanity 和战斗力的量化效应）、Relic 进展速率均需从游戏机制反推；完全虚构，无学术来源。"
+  ratings:
+    research_demand: 2 - 科幻游戏设定，跨媒体传播价值中等，学术场景复用度有限
+    evidence_quality: 1 - TODO存根且完全虚构，无客观依据，无法评估
+    innovation: 2 - 人机融合与Cyberpsychosis的量化建模意图有趣，但尚未实现
+    social_value: 3 - 探索人机融合的边界和身份认同，有科幻哲学讨论价值
   tags: [cyberpunk, fiction, 2077, transhumanism, TODO]
   references:
     - "CD Projekt Red (2020) Cyberpunk 2077 [Video Game]. CD Projekt."

@@ -29,6 +29,10 @@ metadata:
       未包含年龄分层、超级传播、变异株逃逸等机制；
       空间扩散效应（地理传播）需要网络模型扩展；
       参数来自通用流感类疾病，须按具体病原体调整。
+  ratings:
+    research_demand: 5 - SIR群体免疫是公共卫生最核心模型，疫情防控基础理论
+    evidence_quality: 4 - 引用Anderson & May教科书及Fine 2011等权威文献
+    popularity: 5 - SIR模型是流行病学教科书最经典基准，跨领域广泛引用
   tags: [epidemiology, vaccine, SIR, herd_immunity, preventive, public_health]
   references:
     - "Anderson RM & May RM (1991) Infectious Diseases of Humans: Dynamics and Control. Oxford University Press."

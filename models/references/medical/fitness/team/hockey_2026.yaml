@@ -25,6 +25,10 @@ metadata:
       未区分前锋与后卫位置的班次时长差异；
       班次制在分钟步长模型中为近似处理；
       未包含冰面温度和冰刀效率等环境因素。
+  ratings:
+    research_demand: 3 - 冰球班次制无氧主导特征有专项研究价值，受众集中北美/北欧
+    evidence_quality: 3 - 引用Montgomery/Cox等经典文献，参数基本有据
+    popularity: 2 - 冰球在特定地区主流，全球通用度有限
   tags: [hockey, ice_hockey, team, anaerobic, shift, lactate, skating_efficiency, VO2max]
   references:
     - "Montgomery DL (1988) Physiology of ice hockey. Sports Med 5(2):99-126."

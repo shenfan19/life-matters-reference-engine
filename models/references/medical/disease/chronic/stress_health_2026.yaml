@@ -28,6 +28,10 @@ metadata:
       简化了HPA轴的详细神经内分泌机制；
       个体差异（性格、既往健康史）通过参数分布建模；
       未包含药物干预（降压药、抗焦虑药）。
+  ratings:
+    research_demand: 5 - 慢性压力-健康影响是跨学科普适机制，HPA轴是核心生理通路
+    evidence_quality: 4 - 引用McEwen 1998、Kivimäki 2012等经典文献，机制有据
+    popularity: 4 - 压力-皮质醇-健康模型是心身医学教科书标准内容
   tags: [stress, cortisol, cardiovascular, immune, mental_health, HPA_axis, lifestyle]
   references:
     - "McEwen BS (1998) Stress, adaptation, and disease: Allostasis and allostatic load. Ann NY Acad Sci 840(1):33-44."

@@ -46,12 +46,11 @@ metadata:
       日步长 Bergman 简化丢失了分钟级血糖振荡（OGTT 曲线）；
       第一相胰岛素分泌动力学未建模；
       参数来自 IVGTT 实验均值，个体差异由 MC 表达。
-    value_for_paper: >
-      方法论展示案例：Bergman 最小模型是内分泌领域公认基准，日尺度适配展示 LMML 复现已知动力学的能力；
-      但结论（空腹运动改善胰岛素敏感性）在原文献中已有充分实验证据，
-      LMML 增量贡献主要是时序优化形式化（T2+T4），而非新生物学发现。
-      独立发表价值偏低；最佳定位是与 A7（MASLD×IR）通过 imports 耦合，
-      作为内分泌-消化联合场景的支撑模块，展示框架的模块化组合能力。
+  ratings:
+    research_demand: 3 - 内分泌基准验证，新发现需求有限，最佳作为支撑模块
+    evidence_quality: 5 - Bergman 最小模型是内分泌领域公认基准，参数来源权威
+    paper_value: 2 - 独立发表价值偏低，最佳定位是 A7 支撑模块
+    innovation: 3 - T2+T4 时序优化形式化是增量贡献，核心生物学已充分研究
   tags: [paper2, Bergman, glucose, insulin_sensitivity, HbA1c, endocrine, T2DM_prevention, A8, T2, T4]
   references:
     - "Bergman RN et al. (1981) Quantitative estimation of insulin sensitivity. Am J Physiol 236(6):E667-E677"

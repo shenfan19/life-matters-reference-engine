@@ -14,6 +14,10 @@ metadata:
       未包含空间传播（灾害扩散前锋）；
       未区分不同灾害类型（地震 vs 洪水 vs 飓风）的特异性动力学；
       参数来自典型地震研究，须按具体灾害类型校准。
+  ratings:
+    research_demand: 4 - 灾害响应动力学是全球公共安全研究核心，Sendai框架是国际标准
+    evidence_quality: 3 - 引用Sendai框架/FEMA等权威来源，但模型参数较简略
+    popularity: 3 - 灾害管理模型在应急管理领域有重要地位，跨学科应用有限
   tags: [disaster, earthquake, emergency_response, Sendai_framework, risk]
   references:
     - "UNDRR (2015) Sendai Framework for Disaster Risk Reduction 2015-2030. United Nations, Geneva."

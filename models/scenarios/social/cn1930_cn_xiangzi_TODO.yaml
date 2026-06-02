@@ -10,6 +10,11 @@ metadata:
     optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  ratings:
+    research_demand: 4 - 《骆驼祥子》是中国近现代文学经典，劳工剥削和阶级固化有深刻社会学价值
+    evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
+    innovation: 2 - 将系统性剥削对个人努力的抵消转化为可优化动力学意图清晰，但尚未完善
+    social_value: 5 - 探索劳工阶级在制度性剥削中的命运，触及中国现代化进程的深层问题
   tags:
   - labor
   - class

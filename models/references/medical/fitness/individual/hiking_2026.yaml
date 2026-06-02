@@ -26,6 +26,10 @@ metadata:
       海拔效应（>3000m 时 VO2max 下降约 7%/1000m 上升，Ainslie 2002）在此简化为线性校正；
       地形系数（η）固定为 1.2（丘陵），未实时更新；
       心理认知负荷（导航决策疲劳）未建模。
+  ratings:
+    research_demand: 3 - 山地徒步有军事/户外应用价值，但场景较专项
+    evidence_quality: 4 - 基于Pandolf 1977经典公式及多篇军事医学文献，参数有据
+    popularity: 3 - Pandolf代谢公式在军事生理学中有地位，通用度有限
   tags: [hiking, Pandolf, energy_expenditure, joint_stress, backpack, slope, military, outdoor]
   references:
     - "Pandolf KB et al. (1977) Predicting energy expenditure with loads while standing or walking very slowly. J Appl Physiol 43(4):577-581."
