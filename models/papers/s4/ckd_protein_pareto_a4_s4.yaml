@@ -23,10 +23,11 @@ metadata:
     result: 预期 Pareto 前沿更完整（10-15个解），hypervolume 提升约 5-10%；T2 最优时间收敛于 20:00-21:00。
     conclusion: 期望结论是 T2 晚餐时机优化结论对种群规模稳健，大预算搜索进一步精化了可行区间边界。
     limitations: 计算成本显著高于 Paper 2 A4，适合最终发表前的精化搜索而非实时交互。
-    value_for_paper: >
-      稳健性验证案例：更大搜索预算验证 T2 晚餐时机结论的搜索空间无关性，
-      属于方法论收尾工作而非独立贡献。
-      独立发表价值低；最佳定位是作为 S2/S3 论文附录中"算法收敛性与前沿质量"分析的数据来源。
+  ratings:
+    research_demand: 2 - 方法论收尾验证，非独立科学需求
+    evidence_quality: 4 - 文献基础同 S2 A4
+    paper_value: 2 - 附录级材料，最佳定位是收敛性分析数据源
+    innovation: 2 - 搜索预算扩展验证，方法论意义大于科学新颖性
   tags: [paper3, ckd, protein, muscle, A4, pareto, T2, T4, K2]
   references:
     - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"

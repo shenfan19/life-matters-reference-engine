@@ -41,6 +41,11 @@ metadata:
       疲劳 h 系数从运动员数据按 MET 比例缩放，未经 NAFLD 人群直接验证；
       未建模依从性下降（高疲劳会降低实际完成率，模型假设方案完全执行）；
       ALT 动力学仅反映慢性训练适应，不含个体急性反应差异。
+  ratings:
+    research_demand: 4 - NAFLD 患病率 > 25%，运动进阶时机量化有临床价值
+    evidence_quality: 4 - Keating 2015 meta + Morton 1990 参数来源明确，ALT 系数有 meta 推导
+    paper_value: 3 - 独立演示模型，尚无论文归属，展示 T1+T3+T4 完整链
+    innovation: 4 - Banister 周期化引入 NAFLD 运动处方，升级时机量化为首次尝试
   tags: [fatty_liver, NAFLD, exercise, periodization, Banister, T1, T3, T4, NSGA2]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: a systematic review and meta-analysis. J Hepatol 63(2):509-521"

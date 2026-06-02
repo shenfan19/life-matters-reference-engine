@@ -42,11 +42,11 @@ metadata:
       蛋白-GFR 动力学系数（alpha 在 A4 模型中）仍属估算级别；
       52 周线性动力学假设忽略了 CKD 病程中肾纤维化的非线性加速；
       个体差异（残余肾功能）由 MC 参数分布隐含。
-    value_for_paper: >
-      S3 论点的第二支撑实例：联合可行窗口（0.65-0.80 g/kg/day）是 IHIO 涌现性的数学展示，
-      Pareto 前沿约束投影可直接可视化，与 A7-S3（可行域收缩/分岔）形成互补——一展示新兴可行域，一展示域收缩。
-      在系统科学或运筹学期刊有独立发表价值；医学期刊 reviewer 需额外临床解读。
-      注意：alpha 参数估算性是结论定量精度的主要制约，建议配套敏感性分析。
+  ratings:
+    research_demand: 4 - 联合可行域分析兼具运筹学和临床双重价值
+    evidence_quality: 4 - 文献基础继承 S2 A4，alpha 估算是主要制约
+    paper_value: 4 - S3 第二支撑实例，与 A7-S3 分岔论证形成互补
+    innovation: 4 - IHIO 联合可行域数学展示，Pareto 约束投影可视化方法
   tags: [S3, CKD, protein, muscle, IHIO, feasibility_window, joint_constraint, A4, T2, T4, K2]
   references:
     - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"
