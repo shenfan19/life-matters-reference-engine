@@ -1,0 +1,283 @@
+category: physiological
+
+metadata:
+  name: sodium_lifestyle_bp
+  version: "1.0.0"
+  author: "Fan Shen"
+  description:
+    brief: "钠摄入 × 体力活动对长期血压的影响：古代低钠重劳动 vs 现代高钠重劳动 vs 现代高钠久坐的场景对比与运动方案优化。"
+    need: >
+      INTERSALT 研究记录了体力活动人群的低血压现象，但"汗液钠排泄"作为天然代偿机制
+      在建模文献中鲜被显式量化。本模型用动力学仿真展示：相同高钠饮食下，
+      汗液排泄能否完全补偿现代饮食的钠盈余，并从机制上解释进化错配假说。
+    problem: >
+      人类肾脏在低钠高活动的进化压力下被选择为最大化钠保留；
+      现代高钠饮食 + 久坐生活使钠盈余持续为正，引发慢性 SBP 上升。
+      核心问题：决定血压的是钠的绝对摄入量，还是"摄入减去汗液排泄"的净盈余？
+    method: >
+      日步长，3 年仿真。两个输入：每日钠摄入（mg/day）和每日有效运动当量
+      （MET-hour/day，即静息以上 MET × 活动小时数）。
+      SBP 以一阶时滞趋向盈余驱动的目标值，时间常数 τ=180 天；
+      系数 k_pressure 从 INTERSALT 52 人群跨度（约 30 mmHg / 5000 mg/day）推导。
+      4 个预置方案：古代低钠重劳动、现代高钠重劳动（工作日）、
+      现代高钠中等运动、现代高钠久坐。
+    optimization: >
+      固定现代高钠饮食（4000 mg/天），双目标优化运动方案：
+      最小化 3 年末 SBP + 最小化累计运动负担（exercise_burden）；
+      约束 SBP ≤ 120 mmHg。
+      T1：每次运动的 MET-hour 量；T3：每周几天运动。
+      科学问题：维持 SBP ≤ 120 的最低运动剂量是多少？
+    result: >
+      预期：古代方案和现代重劳动方案钠盈余均为 0，SBP 维持基线 ~100 mmHg，
+      3 年健康时长 lm_score = 1095 天；
+      中等运动方案 SBP 升至 ~117 mmHg，仍在 120 以内，lm_score = 1095 天；
+      久坐方案 SBP 升至 ~123 mmHg，约第 13 个月超过 120，lm_score ≈ 378 天（仅 34%）。
+      优化器 Pareto 前沿确定：维持 SBP ≤ 120 所需最低运动量约为 4 MET-hour/天。
+    conclusion: >
+      血压的决定因素是钠的净盈余而非绝对摄入量：现代重体力劳动者即使摄入与久坐者
+      相同的高钠食物，血压结局与古代人相当。汗液代偿机制为"高活动人群低血压"
+      提供了动力学解释，亦揭示久坐是现代高血压流行的关键环境因子。
+    limitations: >
+      不含肾脏钠调节的机制细节（RAAS、ANP、压力-利钠曲线斜率等），
+      以 INTERSALT 经验系数整体替代；汗液钠浓度固定（实际随训练适应下降约 20-30%）；
+      不含年龄相关血管硬化、BMI、糖尿病等协变量；
+      MC 模式通过 k_pressure 分布体现盐敏感性个体差异，但均值基于人群平均。
+  tags: [sodium, hypertension, exercise, evolutionary_mismatch, INTERSALT, sweat, T1, T3]
+  references:
+    - "INTERSALT Cooperative Research Group (1988) Intersalt: an international study of electrolyte excretion and blood pressure. BMJ 297:319-328"
+    - "Eaton SB & Konner M (1985) Paleolithic nutrition. N Engl J Med 312(5):283-289"
+    - "Shirreffs SM & Maughan RJ (1997) Whole body sweat collection in humans. J Physiol 505(Pt 1):225-234"
+    - "Armstrong LE et al. (2007) Sweat rate and fluid turnover during exercise. J Athl Train 42(3):333-340"
+    - "He FJ & MacGregor GA (2002) Effect of modest salt reduction on blood pressure. J Hum Hypertens 16(11):761-770"
+    - "WHO (2023) Guideline: sodium intake for adults and children. Geneva"
+    - "Whelton PK et al. (2018) 2017 ACC/AHA hypertension guideline. J Am Coll Cardiol 71(19):e127-e248"
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  sbp:
+    type: state
+    value: 100.0
+    unit: mmHg
+    bounds: [80, 200]
+    description: "收缩压初始值 100 mmHg，对应 INTERSALT Yanomami 人群基线（钠摄入 ~20 mg/天，无年龄相关升高）"
+    reference: "INTERSALT (1988) BMJ 297:319-328 — Yanomami population"
+
+  exercise_burden:
+    type: state
+    value: 0.0
+    unit: MET·hour
+    bounds: [0, 100000]
+    description: "累计运动负担（active_met_hours 的时间积分），代理运动时间与体能成本"
+    reference: "Life Matters Framework derived metric"
+
+  lm_score:
+    type: state
+    value: 0.0
+    unit: day
+    description: "健康时长：SBP ≤ 120 mmHg（AHA 2017 正常值上限）的累计天数"
+    reference: "Life Matters Framework core metric"
+
+  sodium_intake:
+    type: input
+    value: 0.0
+    unit: mg/day
+    bounds: [0, 10000]
+    description: "每日膳食钠摄入量（pulse：每天触发一次，代表全天饮食）"
+    io_role: input
+
+  active_met_hours:
+    type: input
+    value: 0.0
+    unit: MET·hour/day
+    bounds: [0, 40]
+    description: "每日有效运动当量（静息以上 MET × 活动小时数；古代重劳动 ≈ (4-1)×8=24，久坐 ≈ 1）"
+    io_role: input
+
+  sweat_rate_slope:
+    type: parameter
+    value: 0.175
+    unit: "L per MET·hour"
+    description: "每 MET-hour（静息以上）的产汗量，来自运动生理学实验室标准值"
+    reference: "Armstrong LE et al. (2007) J Athl Train 42(3):333-340"
+
+  sweat_sodium_conc:
+    type: parameter
+    value: 1150.0
+    unit: mg/L
+    description: "汗液钠浓度 50 mmol/L × 23 mg/mmol = 1150 mg/L，全身汗液采集实测值"
+    reference: "Shirreffs SM & Maughan RJ (1997) J Physiol 505(Pt 1):225-234"
+
+  sbp_baseline:
+    type: parameter
+    value: 100.0
+    unit: mmHg
+    description: "零钠盈余条件下的 SBP 基线（Yanomami 人群，近乎零钠饮食 + 全天重劳动）"
+    reference: "INTERSALT (1988) BMJ 297:319-328"
+
+  k_pressure:
+    type: parameter
+    value: normal(0.006, 0.002)
+    unit: "mmHg per mg/day"
+    description: >
+      钠日盈余对 SBP 长期影响系数。
+      推导：INTERSALT 52 人群，钠排泄范围 0–250 mmol/day（0–5750 mg/day），
+      对应 SBP 跨度约 30 mmHg；斜率 = 30/5000 = 0.006 mmHg/(mg/day)。
+      σ=0.002 反映个体盐敏感性差异（Weinberger 1996 报告约 50% 人群为盐敏感型）；
+      MC 模式每 run 采样一次。
+    reference: "INTERSALT (1988) BMJ 297:319-328; Weinberger MH (1996) Hypertension 27(3):481-490"
+
+  tau_bp:
+    type: parameter
+    value: 180.0
+    unit: day
+    description: "SBP 对持续钠盈余变化的适应时间常数（约 6 个月），来自减盐干预纵向 BP 响应数据"
+    reference: "He FJ & MacGregor GA (2002) J Hum Hypertens 16(11):761-770"
+
+formulas:
+  bp_dynamics:
+    description: >
+      SBP 以一阶时滞趋向目标值。目标 = 基线 + k × max(0, 钠摄入 - 汗液钠排泄)；
+      汗液排泄 = sweat_rate_slope × active_met_hours × sweat_sodium_conc。
+    priority: 5
+    dynamics:
+      sbp: >
+        sbp + (sbp_baseline + k_pressure * max(0, sodium_intake - sweat_rate_slope * active_met_hours * sweat_sodium_conc) - sbp) / tau_bp * step
+    reference: "INTERSALT (1988); He & MacGregor (2002)"
+
+  burden_accumulation:
+    description: "累计运动负担：每日 active_met_hours 的积分"
+    priority: 3
+    dynamics:
+      exercise_burden: "exercise_burden + active_met_hours * step"
+    reference: "Life Matters Framework derived metric"
+
+  lm_score_update:
+    description: "累加健康时长（可恢复）：SBP ≤ 120 mmHg"
+    priority: 90
+    dynamics:
+      lm_score: "lm_score + step if sbp <= 120 else lm_score"
+    reference: "Life Matters Framework core metric; Whelton PK et al. (2018)"
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2028-12-31"
+  output_variables:
+    - sbp
+    - lm_score
+    - exercise_burden
+    - sodium_intake
+    - active_met_hours
+  plans:
+    - id: "ancient"
+      label: "古代：低钠饮食（700 mg/天）× 全天重体力劳动（24 MET-h/天）"
+      schedules:
+        - variable: sodium_intake
+          time: "12:00"
+          value: 700
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "古代饮食钠摄入（天然食物，Eaton 1985）"
+        - variable: active_met_hours
+          time: "08:00"
+          value: 24
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "全天重体力劳动（(4-1) MET × 8h = 24 MET-h）"
+
+    - id: "modern_heavy"
+      label: "现代重体力：高钠饮食（4000 mg/天）× 工作日重劳动（24 MET-h）+ 周末轻活动"
+      schedules:
+        - variable: sodium_intake
+          time: "12:00"
+          value: 4000
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "现代饮食钠摄入（WHO 全球均值）"
+        - variable: active_met_hours
+          time: "08:00"
+          value: 24
+          days: [Mon, Tue, Wed, Thu, Fri]
+          label: "工作日重体力劳动（建筑、农业等）"
+        - variable: active_met_hours
+          time: "08:00"
+          value: 2
+          days: [Sat, Sun]
+          label: "周末轻度活动（约 1h 散步）"
+
+    - id: "modern_moderate"
+      label: "现代中等运动：高钠饮食（4000 mg/天）× 每日中等运动（6 MET-h/天）"
+      schedules:
+        - variable: sodium_intake
+          time: "12:00"
+          value: 4000
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "现代饮食钠摄入"
+        - variable: active_met_hours
+          time: "08:00"
+          value: 6
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "每日中等运动（约 1.2h 慢跑，(6-1)MET×1.2h ≈ 6 MET-h）"
+
+    - id: "modern_sedentary"
+      label: "现代久坐：高钠饮食（4000 mg/天）× 久坐生活（1 MET-h/天）"
+      schedules:
+        - variable: sodium_intake
+          time: "12:00"
+          value: 4000
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "现代饮食钠摄入"
+        - variable: active_met_hours
+          time: "08:00"
+          value: 1
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          label: "久坐生活（约 30min 慢走，(3-1)MET×0.5h = 1 MET-h）"
+
+optimizer:
+  method: nsga2
+  start_date: "2026-01-01"
+  end_date:   "2028-12-31"
+  step_size:
+    value: 1
+    unit: day
+
+  objectives:
+    - variable: sbp
+      metric: final
+      direction: minimize
+      description: "最小化 3 年末 SBP（主要健康结局）"
+    - variable: exercise_burden
+      metric: final
+      direction: minimize
+      description: "最小化累计运动负担（MET-hour，运动时间成本代理）"
+
+  constraints:
+    - variable: sbp
+      condition: "<= 120"
+      type: hard
+      description: "SBP 不超过 AHA 正常值上限（Whelton 2018）"
+
+  mc:
+    enabled: true
+    sim_runs: 20
+    seed: 42
+
+  algorithm:
+    population_size: 80
+    n_generations: 150
+    seed: 42
+
+  schedules:
+    # 背景：现代高钠饮食固定
+    - variable: sodium_intake
+      time: "12:00"
+      value: 4000
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      label: "现代饮食背景（4000 mg/天，固定不优化）"
+
+    # T1+T3: 运动量 × 每周频率
+    - variable: active_met_hours
+      time: "08:00"
+      label: "运动方案：每次运动量 × 每周频率"
+      optimize:
+        value: [1.0, 30.0]
+        days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        days_n: [3, 7]
