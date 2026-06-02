@@ -10,6 +10,10 @@ metadata:
     method: 包含 9 个变量和 7 个方程，描述 game_intensity、sprint_frequency、heart_rate、calories_burned 的基础动态。
     simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
+  ratings:
+    research_demand: 3 - 篮球是全球主流运动，间歇高强度特征有运动医学研究价值
+    evidence_quality: 2 - noref标记，参数无文献来源，机制为定性描述
+    popularity: 3 - 篮球运动生理模型有一定参考价值但不属于教科书基准
   tags: [sport, basketball, interval, explosive]
   step_size:
     value: 1

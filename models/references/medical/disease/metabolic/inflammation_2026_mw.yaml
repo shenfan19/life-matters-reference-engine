@@ -11,6 +11,10 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   conflicts: []
+  ratings:
+    research_demand: 4 - 系统炎症是代谢病/糖尿病共同机制，作为组件有广泛复用价值
+    evidence_quality: 2 - 模块为生成代码，变量描述简略，缺少文献标注
+    popularity: 3 - 炎症组件在代谢建模中有一定地位但非独立经典模型
   tags:
   - inflammation
   - immune

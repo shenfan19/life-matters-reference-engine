@@ -23,6 +23,10 @@ metadata:
       未区分不同位置（二传/主攻/自由人）的代谢差异；
       跳跃次数模型未细分起跳类型（助跑扣球vs原地拦网）；
       参数基于精英男子排球运动员。
+  ratings:
+    research_demand: 3 - 排球爆发力衰减建模有一定运动科学价值，受众较专项
+    evidence_quality: 3 - 引用Sheppard/Gabbett等文献，参数基本有据
+    popularity: 2 - 排球生理模型较小众，通用度有限
   tags: [volleyball, team, interval, explosive, jump_power, blocking, VO2]
   references:
     - "Sheppard JM et al. (2008) Relative importance of strength, power, and anthropometric measures on jump performance in elite volleyball players. J Strength Cond Res 22(3):758-765."

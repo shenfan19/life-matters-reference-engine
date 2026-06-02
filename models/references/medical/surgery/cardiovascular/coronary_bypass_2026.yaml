@@ -40,6 +40,10 @@ metadata:
       未建模主动脉球囊反搏（IABP）等机械循环支持；
       肌酐动力学采用简化的一室清除模型，未包含肌肉质量、年龄等个体差异；
       EF改善系数基于Anderson 2016荟萃分析均值，个体间差异较大。
+  ratings:
+    research_demand: 4 - CABG是最常见心脏外科手术，术后康复时序优化是真实临床需求
+    evidence_quality: 4 - 引用ESC/EACTS指南及Anderson 2016 Cochrane等权威文献
+    popularity: 4 - CABG围手术期管理是心外科和重症医学教科书核心内容
   tags: [cabg, cardiac_surgery, ejection_fraction, cardiac_rehabilitation, creatinine, wound_healing]
   references:
     - "Kolh P et al. (2014) 2014 ESC/EACTS Guidelines on myocardial revascularization. Eur J Cardiothorac Surg 46(4):517-592."

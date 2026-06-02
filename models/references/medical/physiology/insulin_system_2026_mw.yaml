@@ -11,6 +11,10 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   conflicts: []
+  ratings:
+    research_demand: 5 - 胰岛素系统是糖尿病建模最核心组件，与血糖调节不可分割
+    evidence_quality: 3 - 变量范围符合临床标准，但方程参数（β细胞质量等）无文献标注
+    popularity: 5 - 胰岛素分泌/β细胞功能是内分泌学教科书最重要内容之一
   tags:
   - insulin
   - beta_cell

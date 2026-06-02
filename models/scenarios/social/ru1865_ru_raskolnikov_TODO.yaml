@@ -11,6 +11,11 @@ metadata:
     optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
+  ratings:
+    research_demand: 4 - 《罪与罚》是心理犯罪小说的巅峰，道德-精神健康-贫困的耦合极具研究价值
+    evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
+    innovation: 2 - 将道德冲突外化为"精神发烧"动力学的意图极具创意，但尚未完善
+    social_value: 5 - 探索道德越界的心理代价和救赎的可能性，是陀思妥耶夫斯基最重要作品
   tags:
   - poverty
   - crime

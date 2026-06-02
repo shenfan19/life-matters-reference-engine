@@ -30,6 +30,10 @@ metadata:
       省略了移民、伴侣关系、性别比等细节；
       月步长不适合短期（年以内）快速变化分析；
       参数来自联合国人口部数据，需按具体国家调整。
+  ratings:
+    research_demand: 5 - 人口动力学是人口学、经济学和公共政策最基础的模型之一
+    evidence_quality: 4 - 引用联合国/WHO/Notestein等权威来源，参数可靠
+    popularity: 5 - Lotka-Leslie人口模型是人口学教科书经典，跨领域广泛应用
   tags: [demography, population, aging, fertility, mortality, Lotka-Leslie]
   references:
     - "United Nations DESA (2022) World Population Prospects 2022. UN Department of Economic and Social Affairs."

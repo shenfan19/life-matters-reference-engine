@@ -10,6 +10,10 @@ metadata:
     method: 包含 6 个变量和 4 个方程，描述 exercise_intensity、food_carbohydrate、food_fat、food_protein 的基础动态。
     simulation: 默认仿真从 2026-01-01 到 2026-01-02，用于观察核心状态随时间变化。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
+  ratings:
+    research_demand: 4 - 营养摄入转移是代谢建模基础组件，供消化系统等多模型调用
+    evidence_quality: 2 - 模块为生成代码，参数无文献标注，仅提供基本转移逻辑
+    popularity: 3 - 营养摄入组件在代谢/糖尿病建模中有复用价值但不独立使用
   tags: [nutrition, intake]
   step_size:
     value: 1

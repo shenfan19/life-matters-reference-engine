@@ -24,6 +24,10 @@ metadata:
       未区分控卫/前锋/中锋位置代谢差异；
       决策质量模型为认知负荷的近似；
       未包含暂停、犯规停钟期间的恢复动力学。
+  ratings:
+    research_demand: 3 - 篮球精英分析有价值，但认知衰减-生理疲劳联合建模较专项
+    evidence_quality: 3 - 引用McInnes/Ben Abdelkrim等文献，参数覆盖基本
+    popularity: 3 - 篮球在全球主流运动中有地位，进阶模型受众比基础版更小
   tags: [basketball, advanced, NBA, decision_making, jump_fatigue, shot_accuracy, fast_break, VO2max]
   references:
     - "McInnes SE et al. (1995) The physiological load imposed on basketball players during competition. J Sports Sci 13(5):387-397."

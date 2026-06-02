@@ -27,6 +27,10 @@ metadata:
       未包含补给策略（赛中补糖）对糖原储量的影响；
       心理因素（疼痛耐受、配速感知误差）未建模；
       三项运动间的肌肉特异性疲劳转移未区分。
+  ratings:
+    research_demand: 4 - 铁人三项多运动模式整合是运动生理学重要研究方向
+    evidence_quality: 4 - 引用Hausswirth/O'Toole等权威文献，糖原-配速模型有据
+    popularity: 3 - 铁人三项模型在竞技体育中有价值但通用度不及单项运动
   tags: [triathlon, olympic, swim, bike, run, glycogen, fatigue, bonk, pacing, energy_system]
   references:
     - "Hausswirth C & Lehénaff D (2001) Physiological demands of running during long distance runs and triathlons. Sports Med 31(9):679-689."

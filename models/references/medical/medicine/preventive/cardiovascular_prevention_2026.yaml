@@ -27,6 +27,10 @@ metadata:
       危险因素相互作用矩阵为线性近似（真实情况更复杂）；
       Framingham方程来自美国白人人群，应用于其他种族须校正；
       未包含遗传风险评分（多基因风险评分）。
+  ratings:
+    research_demand: 5 - 多危险因素CVD综合预防是全球最重要的慢性病管理问题
+    evidence_quality: 5 - 引用Framingham方程及ACC/AHA/ADA等权威指南，参数可靠
+    popularity: 5 - Framingham风险评分是心血管预防教科书核心内容
   tags: [cardiovascular, prevention, Framingham, blood_pressure, cholesterol, diabetes, smoking, BMI, multi_risk]
   references:
     - "D'Agostino RB Sr et al. (2008) General cardiovascular risk profile for use in primary care. Circulation 117(6):743-753."

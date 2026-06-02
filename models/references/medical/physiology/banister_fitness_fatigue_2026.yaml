@@ -15,6 +15,10 @@ metadata:
     optimization: 包含优化配置，包含优化目标，用于搜索可行的干预或参数组合。
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
+  ratings:
+    research_demand: 5 - Banister模型是运动科学最核心的训练负荷-表现模型，极高复用价值
+    evidence_quality: 4 - 引用Banister 1975原始论文及Morton/Busso等后续验证文献
+    popularity: 5 - Banister适应-疲劳模型是运动科学教科书经典，被广泛引用和验证
   tags: [sports_science, training, optimization, physiological, banister, B3]
   references:
   - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61."

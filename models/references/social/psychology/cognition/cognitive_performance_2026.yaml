@@ -28,6 +28,10 @@ metadata:
       参数来自实验室研究，与真实工作环境存在差异；
       个体差异（神经质、内外向）通过参数分布建模；
       未包含社会支持、组织文化等外部调节因子。
+  ratings:
+    research_demand: 5 - Yerkes-Dodson压力-表现模型是心理学/职场健康最普适基础之一
+    evidence_quality: 4 - 引用Yerkes-Dodson/Maslach/Kahneman等心理学经典文献
+    popularity: 5 - 工作压力-认知表现-Burnout是组织心理学和职场健康教科书核心内容
   tags: [psychology, cognition, stress, burnout, Yerkes-Dodson, performance, work]
   references:
     - "Yerkes RM & Dodson JD (1908) The relation of strength of stimulus to rapidity of habit-formation. J Comp Neurol Psychol 18(5):459-482."

@@ -31,6 +31,10 @@ metadata:
       采用聚合变量，未建模个体异质性和网络结构；
       未区分城市/农村动乱的空间扩散；
       Epstein智能体模型的涌现效应在方程近似中有所损失。
+  ratings:
+    research_demand: 4 - 公民动乱是当代政治科学核心议题，Epstein/Gurr模型有广泛引用
+    evidence_quality: 4 - 引用Epstein/Gurr/Chenoweth等经典政治科学文献
+    popularity: 3 - 委屈-动员-镇压循环模型在政治学中知名，但建模框架不如物理/医学通用
   tags: [civil-unrest, protest, repression, grievance, social-stability, Epstein, Gurr]
   references:
     - "Epstein JM (2002) Modeling civil violence: An agent-based computational approach. Proc Natl Acad Sci 99(suppl 3):7243-7250."

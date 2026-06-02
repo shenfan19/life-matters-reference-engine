@@ -15,6 +15,10 @@ metadata:
       未包含通货膨胀、失业风险和社会保障；
       个体间差异（技能初值、行业类型）通过参数调整；
       单个劳动者模型，不反映市场均衡和宏观动态。
+  ratings:
+    research_demand: 4 - 人力资本-效率工资-疲劳健康耦合是劳动经济学核心研究问题
+    evidence_quality: 4 - 引用Becker/Shapiro-Stiglitz经典文献及OECD数据，参数有据
+    popularity: 4 - 人力资本理论是经济学教科书核心内容，劳动-健康耦合有广泛应用
   tags: [labor, economics, human_capital, efficiency_wage, fatigue, savings]
   references:
     - "Becker GS (1964) Human Capital: A Theoretical and Empirical Analysis. Columbia University Press, New York."

@@ -25,6 +25,10 @@ metadata:
       参数来自女性受试者为主的 RCT（Cramer 2013），男性效应可能偏小；
       正念效应（冥想成分）与纯体式练习未区分；
       个体基线柔韧性差异对增益速率影响较大。
+  ratings:
+    research_demand: 4 - 瑜伽对皮质醇/HRV/精神健康的影响是当前压力管理研究热点
+    evidence_quality: 4 - 引用Cramer 2013 meta等高质量系统综述，参数有文献依据
+    popularity: 3 - 瑜伽生理模型在压力管理领域有价值但非主流经典框架
   tags: [yoga, flexibility, cortisol, HRV, mindfulness, stress, parasympathetic, relaxation]
   references:
     - "Cramer H et al. (2013) A systematic review and meta-analysis of yoga for low back pain. Clin J Pain 29(5):450-460."

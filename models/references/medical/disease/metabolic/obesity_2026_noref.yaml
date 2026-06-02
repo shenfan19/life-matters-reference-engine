@@ -11,6 +11,10 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   conflicts: []
+  ratings:
+    research_demand: 5 - 肥胖是全球最重大代谢流行病之一，与糖尿病高度耦合
+    evidence_quality: 2 - noref标记，参数无文献来源，obesity_index为定性级别
+    popularity: 4 - 肥胖-糖尿病风险模型是代谢建模基础组件
   tags:
   - obesity
   - diabetes
