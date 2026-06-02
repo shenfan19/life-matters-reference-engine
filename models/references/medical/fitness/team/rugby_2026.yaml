@@ -24,7 +24,8 @@ metadata:
       肌肉损伤（CK动力学）为简化近似，实际CK峰值出现在比赛后24-48小时；
       未建模碰撞时的骨骼应力和神经肌肉震荡效应。
   ratings:
-    research_demand: 3 - 橄榄球冲撞-疲劳模型有专项运动医学价值，受众较集中
+    topic_importance: 3 - 橄榄球冲撞-疲劳模型有专项运动医学价值，受众较集中
+    framework_demand: 2 - 团队运动专项模型，上层引用预期低
     evidence_quality: 3 - 引用Duthie/Cunniffe等文献，参数基本有据
     popularity: 2 - 橄榄球在特定国家主流，全球通用度有限
   tags: [rugby, team, contact, collision, sprint, muscle_damage, CK, VO2max]

@@ -52,7 +52,8 @@ metadata:
       肠道菌群多样性指数为简化聚合量，未区分具体菌种；
       FODMAP 阈值存在显著个体差异（FODMAP 耐受性测试需个体化校准）。
   ratings:
-    research_demand: 4 - IBS 患病率 10-15%，低 FODMAP 时机优化有实用价值
+    topic_importance: 4 - IBS 患病率 10-15%，低 FODMAP 时机优化有实用价值
+    framework_demand: 3 - 多样性案例，被论文体系收录，单独引用预期中等
     evidence_quality: 3 - 安慰剂效应未建模，菌群稳定性为聚合代理，生态效度有限
     paper_value: 3 - 多样性案例，展示跨域建模范围，非论文主线旗舰
     innovation: 4 - 应激×消化跨域 + T4 阶段时机，原创结合视角

@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 3 - 魔山是德国文学经典，肺结核疗养院时间感的量化建模有独特研究价值
+    topic_importance: 3 - 魔山是德国文学经典，肺结核疗养院时间感的量化建模有独特研究价值
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未实现，且为文学设定
     innovation: 2 - 将"时间感扭曲"和疗养规程的依从性转化为动力学意图存在，但尚未实现
     social_value: 4 - 探索疾病与时间感知、欧洲文明在战争前夜的深层主题

@@ -24,7 +24,8 @@ metadata:
     time_scale: 步长为 1 月，总时长 216 月（18 年）。
 
   ratings:
-    research_demand: 3 - 历史案例，教育价值为主，受众限于医学史和科学政策圈
+    topic_importance: 4 - 医学史最著名的知识阻力案例，医学史和科学政策圈高度关注
+    framework_demand: 1 - 历史叙事场景，不被其他模型引用
     evidence_quality: 4 - Rogers 扩散理论和 Carter 传记提供良好文献基础
     innovation: 5 - 首次将科学创新接受度动力学建模为可优化问题
     social_value: 5 - 医学史最著名的知识阻力案例，直接关联循证医学政策

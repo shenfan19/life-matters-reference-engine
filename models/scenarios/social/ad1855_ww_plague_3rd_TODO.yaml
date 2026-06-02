@@ -10,7 +10,8 @@ metadata:
     problem: "鼠疫在前抗生素时代几乎等于死刑；个人能做的干预极其有限（逃离、隔离、消灭鼠患）。"
     limitations: "TODO：人物视角、地理背景、核心干预变量均未确定；需参考 Benedict 1996 和 Echenberg 2007。"
   ratings:
-    research_demand: 4 - 第三次鼠疫是现代流行病学起源事件，历史和公卫价值高
+    topic_importance: 4 - 第三次鼠疫是现代流行病学起源事件，历史和公卫价值高
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO存根，变量和公式未实现，无法评估参数质量
     innovation: 2 - 鼠疫个人视角建模意图存在，但尚未实现
     social_value: 4 - 触及现代公共卫生制度起源，有重要历史教育价值

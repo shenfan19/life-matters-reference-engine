@@ -12,7 +12,8 @@ metadata:
     result: 预期用于观察候选干预或参数组合的风险收益边界。
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   ratings:
-    research_demand: 2 - 香蕉营养组件是游戏场景专用，复用价值有限
+    topic_importance: 2 - 香蕉营养组件是游戏场景专用，复用价值有限
+    framework_demand: 1 - _ag游戏专用模型，框架内复用价值极低
     evidence_quality: 3 - 参数来自标准营养成分表，数值可靠但模型极简
     popularity: 1 - 专为游戏（_ag）设计的简化食物模块，通用度极低
   tags:

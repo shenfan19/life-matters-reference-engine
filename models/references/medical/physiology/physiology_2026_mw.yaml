@@ -12,7 +12,8 @@ metadata:
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   conflicts: []
   ratings:
-    research_demand: 4 - 多器官功能系数聚合组件，为复杂场景提供生理基础
+    topic_importance: 4 - 多器官功能系数聚合组件，为复杂场景提供生理基础
+    framework_demand: 2 - 顶层聚合组件，被1个上层模型import，实际引用低
     evidence_quality: 2 - 模块为生成代码，15个变量参数无文献标注，为定性近似
     popularity: 3 - 顶层生理聚合组件在多系统建模中有价值，但不独立引用
   tags:

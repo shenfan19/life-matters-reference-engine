@@ -29,7 +29,8 @@ metadata:
       EF恢复参数来自人群均值，个体差异（梗死面积、年龄）未包含；
       未区分前壁vs下壁心梗的不同预后特征。
   ratings:
-    research_demand: 5 - STEMI是心血管最高危急症，PCI术后康复优化是临床研究核心
+    topic_importance: 5 - STEMI是心血管最高危急症，PCI术后康复优化是临床研究核心
+    framework_demand: 2 - 急性病模型，上层场景复用少
     evidence_quality: 4 - 引用ESC/ACC/AHA指南及5篇高质量文献，参数有据可查
     popularity: 4 - 心肌梗死模型在心血管研究中地位重要，临床广泛应用
   tags: [STEMI, myocardial infarction, PCI, cardiac rehabilitation, ejection fraction, remodeling]

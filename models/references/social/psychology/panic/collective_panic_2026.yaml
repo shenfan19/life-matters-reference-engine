@@ -29,7 +29,8 @@ metadata:
       未包含媒体放大效应和社交平台算法的信息茧房机制；
       参数来自历史事件，现代社交媒体环境下R₀可能高得多。
   ratings:
-    research_demand: 4 - 集体恐慌和谣言传播是危机管理和社会心理学的核心问题
+    topic_importance: 4 - 集体恐慌和谣言传播是危机管理和社会心理学的核心问题
+    framework_demand: 3 - 灾难/战争场景常用背景组件，被危机场景引用预期中等
     evidence_quality: 3 - 引用Quarantelli/Daley/Coombs等文献，但SEPA模型为本文改进
     popularity: 3 - SIR类社会传播模型有跨学科应用，但恐慌特化模型较专项
   tags: [panic, social, psychology, rumor, SIR, collective_behavior, crisis_management]

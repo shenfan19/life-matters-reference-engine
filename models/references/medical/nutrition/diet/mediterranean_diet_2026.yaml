@@ -34,7 +34,8 @@ metadata:
       未建模微量营养素（多酚、类黄酮）协同效应；
       个体基因多态性（如APOE ε4）对LDL响应的影响未包含。
   ratings:
-    research_demand: 5 - 地中海饮食是证据最强的心血管保护饮食，全球营养研究核心
+    topic_importance: 5 - 地中海饮食是证据最强的心血管保护饮食，全球营养研究核心
+    framework_demand: 3 - 饮食干预是场景常用背景组件，中等引用预期
     evidence_quality: 5 - 基于PREDIMED大型RCT（N>7000），LDL/CRP参数精确可靠
     popularity: 5 - 地中海饮食是营养学教科书最重要基准，WHO/AHA广泛推荐
   tags: [nutrition, mediterranean, cardiovascular, LDL, CRP, blood_pressure, HDL, PREDIMED, olive_oil]

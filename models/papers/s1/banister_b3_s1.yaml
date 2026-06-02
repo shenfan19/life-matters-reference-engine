@@ -34,7 +34,8 @@ metadata:
       K×4 T1+T3+T4 联合优化揭示了纯负荷优化（T1 only）无法发现的结构性规律。
     limitations: 参数采用文献标准值和演示协议，未针对具体运动员个体校准。
   ratings:
-    research_demand: 3 - 方法论验证展示，无独立临床需求，以框架能力证明为主
+    topic_importance: 3 - 方法论验证展示，无独立临床需求，以框架能力证明为主
+    framework_demand: 2 - 框架验证用途，未被其他论文import或引用
     evidence_quality: 5 - Morton 1990 原始数据可对照，参数来源最扎实
     paper_value: 3 - 定位为框架验证，不宜作为论文主线案例
     innovation: 3 - Banister 模型已知，T3+T4 联合优化是增量贡献

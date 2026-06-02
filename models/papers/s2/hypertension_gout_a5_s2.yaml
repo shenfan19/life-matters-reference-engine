@@ -41,7 +41,8 @@ metadata:
       单病种指南的局部最优可能造成跨病种风险，多目标建模能显式暴露并优化冲突。
     limitations: 尿酸昼夜节律效应和部分药效参数仍待文献精化，当前结果用于方法验证。
   ratings:
-    research_demand: 5 - 临床最常见药物冲突之一，全球患者群体庞大
+    topic_importance: 5 - 临床最常见药物冲突之一，全球患者群体庞大
+    framework_demand: 4 - 旗舰核心论文模型，被A5系列s4引用
     evidence_quality: 4 - MAPEC RCT 证据支撑，尿酸昼夜节律系数待精化
     paper_value: 5 - 论文最强候选案例，Pareto 结论直接可操作，参数可信度最高
     innovation: 4 - 时间药理学框架化，先例存在但多目标组合形式为新贡献

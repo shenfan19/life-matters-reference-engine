@@ -24,7 +24,8 @@ metadata:
     conclusion: 期望结论是 T2 晚餐时机优化结论对种群规模稳健，大预算搜索进一步精化了可行区间边界。
     limitations: 计算成本显著高于 Paper 2 A4，适合最终发表前的精化搜索而非实时交互。
   ratings:
-    research_demand: 2 - 方法论收尾验证，非独立科学需求
+    topic_importance: 2 - 方法论收尾验证，非独立科学需求
+    framework_demand: 2 - S4收尾模型，附录级，不被其他模型引用
     evidence_quality: 4 - 文献基础同 S2 A4
     paper_value: 2 - 附录级材料，最佳定位是收敛性分析数据源
     innovation: 2 - 搜索预算扩展验证，方法论意义大于科学新颖性

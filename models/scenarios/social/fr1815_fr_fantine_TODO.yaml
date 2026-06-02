@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 4 - 芳汀是贫困单亲母亲劳工剥削的经典文学形象，具有重要社会学复用价值
+    topic_importance: 4 - 芳汀是贫困单亲母亲劳工剥削的经典文学形象，具有重要社会学复用价值
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将自我牺牲程度与健康损耗的动态建模意图存在，但尚未完善
     social_value: 5 - 触及贫困、母爱与制度性压迫的普世主题，是《悲惨世界》最动人的叙事

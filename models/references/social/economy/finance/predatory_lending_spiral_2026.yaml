@@ -36,7 +36,8 @@ metadata:
       未考虑债务重组（向监管机构举报高利贷后可能获得法律保护）；
       仅单一利率，实际高利贷常有隐藏手续费。
   ratings:
-    research_demand: 4 - 高利贷债务螺旋是全球常见金融剥削，量化临界点有重要政策价值
+    topic_importance: 4 - 高利贷债务螺旋是全球常见金融剥削，量化临界点有重要政策价值
+    framework_demand: 2 - 金融欺诈专项模型，跨场景引用预期低
     evidence_quality: 3 - 引用Skiba/Karlan等经济学文献及中国监管数据，参数有据
     popularity: 3 - 债务螺旋模型在金融经济学中有研究价值，但通用度中等
   tags: [social, economy, debt, financial-trap, china, exploitation, predatory-lending]

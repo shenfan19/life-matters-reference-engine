@@ -12,7 +12,8 @@ metadata:
     limitations: 该模块偏基础组件，参数应在被场景调用时结合具体上下文校准。
   conflicts: []
   ratings:
-    research_demand: 4 - 内分泌系统（胰高血糖素/皮质醇/生长激素）是代谢调控核心组件
+    topic_importance: 4 - 内分泌系统（胰高血糖素/皮质醇/生长激素）是代谢调控核心组件
+    framework_demand: 3 - 被2个上层模型import，中频调用的代谢调控组件
     evidence_quality: 2 - 模块为生成代码，变量描述简略，参数缺少文献来源
     popularity: 3 - 内分泌组件在代谢建模中有复用价值，但不独立使用
   tags:

@@ -11,7 +11,8 @@ metadata:
     limitations: 文件名标记 noref，表示参数和机制仍需补充正式文献来源。
   name: tabletennis
   ratings:
-    research_demand: 2 - 乒乓球在亚洲普及但反应速度-神经疲劳模型复用场景有限
+    topic_importance: 3 - 乒乓球在亚洲普及但反应速度-神经疲劳模型复用场景有限
+    framework_demand: 1 - noref，复用价值极低
     evidence_quality: 2 - noref标记，参数无文献来源，机制为定性近似
     popularity: 2 - 乒乓球生理模型较小众，不属于运动科学主流基准
   tags:

@@ -11,7 +11,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 4 - 冉·阿让是文学史上最著名的救赎叙事，司法不公与道德重生有深刻社会意义
+    topic_importance: 4 - 冉·阿让是文学史上最著名的救赎叙事，司法不公与道德重生有深刻社会意义
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将善行-隐藏身份-自我照料的三角权衡转化为动力学意图清晰，但尚未完善
     social_value: 5 - 《悲惨世界》是探讨社会正义和人性救赎的世界级经典，社会价值极高

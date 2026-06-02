@@ -26,7 +26,8 @@ metadata:
     conclusion: 期望结论是三目标 Pareto 面比二目标更完整地展示跨病种权衡；时间药理学维度（T2）在三目标下仍具方向性一致性。
     limitations: 三目标 Pareto 面可视化需要降维投影；体重动力学参数与减重速率约束需要精化。
   ratings:
-    research_demand: 4 - 三目标揭示额外临床权衡，有独立发表价值
+    topic_importance: 4 - 三目标揭示额外临床权衡，有独立发表价值
+    framework_demand: 2 - S4收尾模型，独立引用预期低
     evidence_quality: 4 - 文献基础继承 S2 A5
     paper_value: 4 - 三维 Pareto 揭示"减重升尿酸"反向关系，超出二目标框架
     innovation: 4 - 跨越目标维度的新权衡发现，三维可视化方法是独立贡献

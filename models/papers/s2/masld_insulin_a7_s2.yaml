@@ -57,7 +57,8 @@ metadata:
       饮食升糖负荷的量化模型为简化近似；
       个体基因变异（PNPLA3、TM6SF2）由 MC 参数分布隐含。
   ratings:
-    research_demand: 5 - 内分泌×消化双向共病最常见，跨科室指南冲突无争议
+    topic_importance: 5 - 内分泌×消化双向共病最常见，跨科室指南冲突无争议
+    framework_demand: 4 - 旗舰核心论文模型，被A7系列s3引用
     evidence_quality: 3 - Cell Metab 支撑 T2 核心结论，IL-6 双向耦合系数为估算
     paper_value: 5 - 论文旗舰案例，三目标 Pareto 可视化丰富，独立发表价值最高
     innovation: 5 - 双向耦合机制 + T2 空腹运动时机 + 三目标，无直接先例

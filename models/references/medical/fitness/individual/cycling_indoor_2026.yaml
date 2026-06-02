@@ -26,7 +26,8 @@ metadata:
       功能性阈值功率（FTP）固定为参考值，未建模训练适应后的FTP提升；
       未包含营养、睡眠等恢复因素对CTL/ATL的影响。
   ratings:
-    research_demand: 4 - 室内功率车是精确运动负荷管理的重要工具，CTL/ATL体系广泛应用
+    topic_importance: 3 - 室内功率车是精确运动负荷管理的重要工具，CTL/ATL体系广泛应用
+    framework_demand: 2 - 专项训练模型，通用度低于基础生理模型
     evidence_quality: 4 - 引用Coggan/Rønnestad等权威来源，TSS/CTL/ATL公式有据
     popularity: 3 - TSS训练负荷模型是功率训练专项内容，通用度略低于基础生理模型
   tags: [cycling, indoor, power_meter, TSS, CTL, ATL, Form, lactate, Zwift, periodization]

@@ -32,7 +32,8 @@ metadata:
       未区分城市/农村动乱的空间扩散；
       Epstein智能体模型的涌现效应在方程近似中有所损失。
   ratings:
-    research_demand: 4 - 公民动乱是当代政治科学核心议题，Epstein/Gurr模型有广泛引用
+    topic_importance: 4 - 公民动乱是当代政治科学核心议题，Epstein/Gurr模型有广泛引用
+    framework_demand: 2 - 政治科学专项模型，跨场景引用预期低
     evidence_quality: 4 - 引用Epstein/Gurr/Chenoweth等经典政治科学文献
     popularity: 3 - 委屈-动员-镇压循环模型在政治学中知名，但建模框架不如物理/医学通用
   tags: [civil-unrest, protest, repression, grievance, social-stability, Epstein, Gurr]

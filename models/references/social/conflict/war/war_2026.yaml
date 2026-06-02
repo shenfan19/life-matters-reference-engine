@@ -15,7 +15,8 @@ metadata:
       未包含国内政治（民族主义、领导人决策）；
       Richardson框架原为二元对立（两国），多边冲突需要网络扩展。
   ratings:
-    research_demand: 4 - 战争冲突是全球最重要社会风险，Richardson军备竞赛模型是经典基准
+    topic_importance: 5 - 战争冲突是全球最重要社会风险，Richardson军备竞赛模型是经典基准
+    framework_demand: 3 - 战争是多个历史场景的基础背景组件，中等引用预期
     evidence_quality: 4 - 引用Richardson经典著作及SIPRI等权威数据来源
     popularity: 3 - Richardson军备竞赛模型在国际关系学有经典地位，但使用较专项
   tags: [war, conflict, geopolitics, Richardson, arms-race, social]

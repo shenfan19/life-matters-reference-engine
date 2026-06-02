@@ -28,7 +28,8 @@ metadata:
       未区分不同运动模式（跑步 HIIT vs 自行车 HIIT）的肌群特异性适应；
       胰岛素敏感性改善模型基于人群均值，个体差异大。
   ratings:
-    research_demand: 5 - HIIT是当前运动医学最热门研究领域，代谢/心肺适应机制核心
+    topic_importance: 5 - HIIT是当前运动医学最热门研究领域，代谢/心肺适应机制核心
+    framework_demand: 3 - 研究热点，被NAFLD/代谢场景引用预期中等
     evidence_quality: 4 - 引用Gibala/Wisløff/MacInnis等高质量RCT，参数有据可查
     popularity: 4 - HIIT已成为健康运动处方主流，教科书广泛收录
   tags: [HIIT, VO2max, insulin_sensitivity, mitochondria, fat_oxidation, metabolic, Gibala, Wisløff, interval_training]

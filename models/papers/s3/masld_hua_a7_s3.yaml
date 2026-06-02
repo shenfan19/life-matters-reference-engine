@@ -41,7 +41,8 @@ metadata:
       酮体-IR 恶化的动力学系数为估算值（待精化）；
       分岔阈值 0.3 kg/w 来自 MASLD 文献，个体差异（PNPLA3 基因型）由 MC 参数隐含。
   ratings:
-    research_demand: 4 - 分岔点分析兼具系统科学和临床双重意义
+    topic_importance: 4 - 分岔点分析兼具系统科学和临床双重意义
+    framework_demand: 3 - S3分析模型，import自s2 A7，被s4引用
     evidence_quality: 3 - IL-6 耦合系数仍为估算，分岔断言对该系数敏感
     paper_value: 5 - S3 理论深度最强案例，IHIO 框架核心证据
     innovation: 5 - 减重速率作为控制分岔点，超参数扫描展示连续变化，无先例

@@ -16,7 +16,8 @@ metadata:
       未区分游泳项目（自由泳vs蝶泳）的技术差异；
       水温、阻力等环境因素未建模。
   ratings:
-    research_demand: 4 - 游泳是低冲击有氧运动，在康复和健身中有广泛应用价值
+    topic_importance: 4 - 游泳是低冲击有氧运动，在康复和健身中有广泛应用价值
+    framework_demand: 3 - 最通用有氧运动模型之一，康复场景可用
     evidence_quality: 3 - 引用Costill/Toussaint等文献，但参数description较简略
     popularity: 4 - 游泳是教科书级有氧运动，在运动科学和心肺康复中广泛参考
   tags: [sport, swimming, aerobic, technique, vo2, low_impact]

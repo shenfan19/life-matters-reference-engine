@@ -12,7 +12,8 @@ metadata:
     result: 预期用于比较不同策略在主要目标和约束之间的取舍。
     limitations: 当前仍是草案或 TODO 文件，参数、目标和叙事细节需要后续校准。
   ratings:
-    research_demand: 4 - 《伊万·伊里奇之死》是临终关怀和真实性的最深刻文学探讨
+    topic_importance: 4 - 《伊万·伊里奇之死》是临终关怀和真实性的最深刻文学探讨
+    framework_demand: 1 - TODO存根，尚未被其他模型引用
     evidence_quality: 1 - TODO草案，参数未完善，且为文学设定
     innovation: 2 - 将社会体面与真实表达的权衡转化为可优化动力学的意图深刻，但尚未完善
     social_value: 5 - 触及死亡的尊严、社会体面的代价和真实陪伴的珍贵，托尔斯泰最重要中篇

@@ -47,7 +47,8 @@ metadata:
       第一相胰岛素分泌动力学未建模；
       参数来自 IVGTT 实验均值，个体差异由 MC 表达。
   ratings:
-    research_demand: 3 - 内分泌基准验证，新发现需求有限，最佳作为支撑模块
+    topic_importance: 3 - 内分泌基准验证，新发现需求有限，最佳作为支撑模块
+    framework_demand: 2 - 基准验证模型，定位为A7支撑模块，独立引用少
     evidence_quality: 5 - Bergman 最小模型是内分泌领域公认基准，参数来源权威
     paper_value: 2 - 独立发表价值偏低，最佳定位是 A7 支撑模块
     innovation: 3 - T2+T4 时序优化形式化是增量贡献，核心生物学已充分研究
