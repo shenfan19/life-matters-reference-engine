@@ -1,7 +1,5 @@
 metadata:
   name: a5_hypertension_gout_3obj
-  paper: S4
-  case_id: A5-S4
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -33,7 +31,7 @@ metadata:
     evidence_quality: 4 - 文献基础继承 S2 A5
     paper_value: 4 - 三维 Pareto 揭示"减重升尿酸"反向关系，超出二目标框架
     innovation: 4 - 跨越目标维度的新权衡发现，三维可视化方法是独立贡献
-  tags: [paper3, hypertension, gout, 3obj, pareto, A5, T2, T4, chronotherapy]
+  tags: [hypertension, gout, pareto, chronotherapy]
   references:
     - "参见 s2/hypertension_gout_a5_s2.yaml 完整引用"
     - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"

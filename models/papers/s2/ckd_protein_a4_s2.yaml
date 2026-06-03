@@ -1,7 +1,5 @@
 metadata:
   name: a4_ckd_protein
-  paper: Paper 2 (JAMIA)
-  case_id: A4
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -48,7 +46,7 @@ metadata:
     evidence_quality: 4 - 核心文献扎实，alpha（蛋白-GFR 损伤系数）为估算值
     paper_value: 5 - 临床冲突典型案例，T2+T4 原创贡献，临床转化路径清晰
     innovation: 5 - 睡前蛋白 T2 时间营养学 + T4 切换时机双重首创，reviewer 难找先例
-  tags: [paper2, ckd, protein, muscle, GFR, mc, opt, A4, T2, T4, K2]
+  tags: [ckd, protein, muscle, GFR]
   references:
     - "KDIGO 2020 Clinical Practice Guideline §3.1.13 Grade 2C"
     - "Carrero JJ et al. (2013) Etiology of PEW in CKD. J Ren Nutr 23(2):77-90"

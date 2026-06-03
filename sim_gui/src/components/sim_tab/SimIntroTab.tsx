@@ -72,7 +72,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
 
-      <Section id="meta" title="Description" badge={meta.case_id ? `#${meta.case_id}` : (meta.name || undefined)}>
+      <Section id="meta" title="Description" badge={meta.name || undefined}>
         {descSections.length > 0
           ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {descSections.map(section => (
@@ -96,32 +96,21 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
               </span>
             ));
           })()}
-          {meta.paper && <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.paper}</span>}
           {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.tags.join(' · ')}</span>}
         </div>
         {meta.ratings && (() => {
-          const r = meta.ratings;
-          const FIELDS = [
-            { key: 'topic_importance', label: '话题' },
-            { key: 'framework_demand', label: '框架' },
-            { key: 'evidence_quality', label: '证据' },
-            { key: 'popularity', label: '通用度' },
-            { key: 'paper_value', label: '论文' },
-            { key: 'innovation', label: '创新' },
-            { key: 'social_value', label: '社会' },
-          ];
-          const present = FIELDS.filter(f => r[f.key] != null);
-          if (present.length === 0) return null;
+          const entries = Object.entries(meta.ratings).filter(([, v]) => v != null);
+          if (entries.length === 0) return null;
           return (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${c.border}` }}>
-              {present.map(f => {
-                const raw = String(r[f.key]);
+              {entries.map(([key, val]) => {
+                const raw = String(val);
                 const score = parseInt(raw) || 0;
                 const note = raw.replace(/^\d+\s*-\s*/, '');
                 return (
-                  <Tooltip key={f.key} title={note}>
+                  <Tooltip key={key} title={note}>
                     <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace', cursor: 'default' }}>
-                      {f.label} {'●'.repeat(score)}{'○'.repeat(5 - score)}
+                      {key} {'●'.repeat(score)}{'○'.repeat(5 - score)}
                     </span>
                   </Tooltip>
                 );

@@ -1,7 +1,5 @@
 metadata:
   name: m09_sleep_schedule
-  paper: Paper 1 (S1)
-  case_id: M09
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -52,7 +50,7 @@ metadata:
     evidence_quality: 4 - Borbély 二过程模型参数文献基础扎实，日步长近似是已知弱点
     paper_value: 4 - 跨域案例贡献清晰，"早睡 vs 午睡"Pareto 对比向非专业读者可解释
     innovation: 3 - Borbély 模型已知，T1+T2+T3 优化是增量贡献，T4 缺失略弱
-  tags: [paper1, sleep, psychology, circadian, Borbely, M09, cross-domain, cognitive, productivity]
+  tags: [sleep, psychology, circadian, Borbely, cross-domain, cognitive, productivity]
   references:
     - "Borbély AA (1982) A two process model of sleep regulation. Hum Neurobiol 1(3):195-204"
     - "Daan S, Beersma DGM, Borbély AA (1984) Timing of human sleep. Am J Physiol 246(2):R161-R178"

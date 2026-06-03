@@ -1,7 +1,5 @@
 metadata:
   name: a5_hypertension_gout
-  paper: Paper 2 (JAMIA)
-  case_id: A5
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -48,7 +46,7 @@ metadata:
     evidence_quality: 4 - MAPEC RCT 证据支撑，尿酸昼夜节律系数待精化
     paper_value: 5 - 论文最强候选案例，Pareto 结论直接可操作，参数可信度最高
     innovation: 4 - 时间药理学框架化，先例存在但多目标组合形式为新贡献
-  tags: [paper2, hypertension, gout, HCTZ, uric_acid, A5, mc, opt, T2, T4, chronotherapy]
+  tags: [hypertension, gout, HCTZ, uric_acid, chronotherapy]
   references:
     - "Williams B et al. (2018) 2018 ESC/ESH Guidelines for arterial hypertension. Eur Heart J 39(33):3021-3104"
     - "FitzGerald JD et al. (2020) 2020 ACR Guideline for Management of Gout. Arthritis Care Res 72(6):744-760"

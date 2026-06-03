@@ -1,7 +1,5 @@
 metadata:
   name: a7_masld_hua_ihio
-  paper: S3
-  case_id: A7-S3
   updated: 2026-05-26
   authors:
   - name: Fan Shen
@@ -48,7 +46,7 @@ metadata:
     evidence_quality: 3 - IL-6 耦合系数仍为估算，分岔断言对该系数敏感
     paper_value: 5 - S3 理论深度最强案例，IHIO 框架核心证据
     innovation: 5 - 减重速率作为控制分岔点，超参数扫描展示连续变化，无先例
-  tags: [S3, MASLD, insulin_resistance, HOMA-IR, IHIO, bifurcation, feasibility, A7, T2, K4]
+  tags: [MASLD, insulin_resistance, HOMA-IR, IHIO, bifurcation, feasibility]
   references:
     - "参见 s2/masld_insulin_a7_s2.yaml 完整引用"
     - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"

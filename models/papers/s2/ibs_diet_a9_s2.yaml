@@ -1,7 +1,5 @@
 metadata:
   name: a9_ibs_dietary_management
-  paper: Paper 2 (S2)
-  case_id: A9
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -59,7 +57,7 @@ metadata:
     evidence_quality: 3 - 安慰剂效应未建模，菌群稳定性为聚合代理，生态效度有限
     paper_value: 3 - 多样性案例，展示跨域建模范围，非论文主线旗舰
     innovation: 4 - 应激×消化跨域 + T4 阶段时机，原创结合视角
-  tags: [paper2, IBS, FODMAP, digestive, gut_microbiome, dietary_management, A9, T3, T4, work_pressure]
+  tags: [IBS, FODMAP, digestive, gut_microbiome, dietary_management, work_pressure]
   references:
     - "Gibson PR & Shepherd SJ (2010) Evidence-based dietary management of functional GI symptoms. J Gastroenterol Hepatol 25(2):252-258"
     - "Halmos EP et al. (2014) A diet low in FODMAPs reduces symptoms of IBS. Gastroenterology 146(1):67-75"

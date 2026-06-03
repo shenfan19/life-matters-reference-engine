@@ -1,7 +1,5 @@
 metadata:
   name: a1_fatty_liver
-  paper: Paper 1 (JOSS)
-  case_id: A1
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -47,7 +45,7 @@ metadata:
     evidence_quality: 2 - beta_hiit 和 delta_alt 均标注 TODO:SOURCE，投稿前必须精化
     paper_value: 3 - 框架演示，参数精化前不宜作为论文主线
     innovation: 4 - K=3 分段 + T3+T4 完整优化链，临床解释直觉清晰
-  tags: [paper1, fatty_liver, A1, demo, opt, exercise, ALT, T3, T4, K3]
+  tags: [fatty_liver, demo, exercise, ALT]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: systematic review. J Hepatol 63(2):509-521"
     - "Younossi ZM et al. (2018) Global epidemiology of NAFLD. Hepatology 64(1):73-84"

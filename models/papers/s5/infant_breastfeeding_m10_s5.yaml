@@ -1,9 +1,5 @@
-category: medical
-
 metadata:
   name: infant_breastfeeding_m10
-  paper: Paper 5 (S5)
-  case_id: M10
   updated: 2026-05-30
   authors:
   - name: Fan Shen
@@ -59,7 +55,7 @@ metadata:
     evidence_quality: 5 - 胃排空参数来源扎实，动态胃容量模型科学性强，WHO 自校验
     paper_value: 5 - 传播力最强案例，向非专业读者完全可解释，旗舰展示
     innovation: 4 - 夜间 T2 喂奶时机优化独特，动态胃容量实时更新为方法亮点
-  tags: [infant, breastfeeding, newborn, sleep, nutrition, pediatrics, postnatal, M10, paper5]
+  tags: [infant, breastfeeding, newborn, sleep, nutrition, pediatrics, postnatal]
   references:
     - "Kent JC et al. (2006) Volume and frequency of breastfeedings and fat content of breast milk throughout the day. Pediatrics 117(3):e387-e395."
     - "Scammon RE & Doyle LO (1920) Observations on the capacity of the stomach in the first ten days of postnatal life. AJDC 20:516-538."

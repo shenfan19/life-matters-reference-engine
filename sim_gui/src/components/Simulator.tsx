@@ -870,7 +870,11 @@ const Simulator: React.FC<SimulatorProps> = ({
         const res = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`);
         const resolved = await res.json();
         if (resolved?.success && resolved.data) {
-          resolvedContent = { ...content, ...resolved.data };
+          resolvedContent = {
+            ...content,
+            ...resolved.data,
+            metadata: { ...content.metadata, ...resolved.data.metadata },
+          };
         } else if (!res.ok) {
           console.warn('Model resolution failed:', resolved?.detail || 'unknown error');
         }
