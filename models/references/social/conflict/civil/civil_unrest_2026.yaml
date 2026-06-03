@@ -3,7 +3,9 @@ category: socio_economic
 metadata:
   name: civil_unrest
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 城市公民动乱动力学模型，模拟抗议积累→骚乱爆发→镇压循环的演化过程。
     need: |

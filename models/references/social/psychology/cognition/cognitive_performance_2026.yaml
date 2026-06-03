@@ -3,7 +3,9 @@ category: socio_economic
 metadata:
   name: cognitive_performance
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 工作压力-认知表现动力学模型，基于Yerkes-Dodson定律和认知负荷理论，量化压力、疲劳与工作效率的时序关系。
     need: |

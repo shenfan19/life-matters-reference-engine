@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: fr1815_fr_jean_valjean
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 冉·阿让：苦役之后的人。冉·阿让因偷一块面包被判五年苦役，屡次逃跑变成十九年。 出狱后：没有人愿意收留一个前囚犯。 直到一个主教给了他银烛台，并说：我用这些买下了你的灵魂。 他选择成为另一种人。但贾维尔警探永远不会停下来。
     problem: 在该情境中，需要平衡 践行善行强度、隐藏身份、自我照料 对生存、目标进展或长期代价的影响。

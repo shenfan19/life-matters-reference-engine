@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: myocardial_infarction
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: STEMI急性心肌梗死PCI术后心肌修复动力学：射血分数恢复、梗死区纤维化与心室重构（4周）。
     need: |

@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: cn1930_cn_xiangzi
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 祥子：骆驼的梦想。祥子，一个从农村来到北京的年轻人，他的梦想只有一件事：买一辆属于自己的洋车。 他做到了。车被军阀没收了。他再次攒钱。被骗走了。 第三次，他放弃了。 这是一个关于：在系统性剥削中，个人的努力能走多远的模拟。
     problem: 在该情境中，需要平衡 拉车强度、接单风险度、社交维护 对生存、目标进展或长期代价的影响。

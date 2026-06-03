@@ -1,7 +1,9 @@
 metadata:
   name: banister_fitness_fatigue
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       Banister双分量适应-疲劳模型（场景B3）：量化运动训练对运动表现的动态影响。

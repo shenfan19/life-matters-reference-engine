@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: ch1907_de_hans_castorp
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 汉斯·卡斯托普：魔山上的时间。汉斯·卡斯托普，一个德国工程师，去瑞士高山疗养院探望表兄， 原计划停留三周。他留了七年。 疗养院有奇特的时间——疾病让时间变慢，让思想变得更清醒或更混乱。 窗外，欧洲正在滑向1914年。
     problem: 在该情境中，需要平衡 遵从疗养规程、思想探索、与外部世界的联系 对生存、目标进展或长期代价的影响。

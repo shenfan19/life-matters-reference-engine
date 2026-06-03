@@ -1,7 +1,9 @@
 metadata:
   name: ad1847_hu_semmelweis
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       塞麦尔维斯洗手倡导仿真场景（1847–1865，维也纳产科医院）。

@@ -64,7 +64,9 @@ category: physiological | socio_economic | environmental | risk | simple
 metadata:
   name: "唯一标识符"
   version: "1.0.0"
-  author: "作者或团队"
+  authors:
+    - name: "姓名"
+      email: "邮箱（可选）"
   description:
     brief: "一行说明模型是什么、服务哪个案例。"
     need: "为什么需要这个模型。"

@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: aspirin_pk
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 阿司匹林（乙酰水杨酸）双室药代动力学模型，适用于心血管预防（低剂量81mg）和镇痛（标准325mg）方案评估。
     need: 为心血管病预防、疼痛管理场景提供严格的PK基础模块，量化血浆水杨酸浓度-时间曲线。

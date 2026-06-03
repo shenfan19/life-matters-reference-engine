@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: volleyball
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 排球比赛生理模型（90分钟），间歇性爆发为主，扣球、拦网与防守滑步交替。
     need: 为排球训练、爆发力-耐力结合运动干预场景提供运动生理基础模块。

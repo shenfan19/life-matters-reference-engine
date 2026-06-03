@@ -3,7 +3,9 @@ metadata:
   paper: Paper 1 (JOSS)
   case_id: B3
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: Banister 双室适应-疲劳模型（B3），用于 Paper 1 的数值验证和经典训练模型复现。
     need: 验证 LM 的日步长 Euler 积分能否稳定表达 fitness-fatigue 这类已知动力学模型，并展示 K×4 T1+T3+T4 全维度优化。

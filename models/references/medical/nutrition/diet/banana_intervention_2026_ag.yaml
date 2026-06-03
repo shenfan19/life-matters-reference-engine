@@ -2,7 +2,9 @@ category: intervention
 metadata:
   name: banana2
   updated: 2026-04-23
-  author: Antigravity
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 标准香蕉营养模型。每100g含：碳水化合物 23g, 蛋白质 1.1g, 脂肪 0.3g, 水分 75g。
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

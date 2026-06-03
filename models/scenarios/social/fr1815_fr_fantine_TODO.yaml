@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: fr1815_fr_fantine
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 芳汀：母亲的代价。芳汀，一个被情人抛弃的年轻工人，把女儿珂赛特托付给客栈老板，独自去城里工厂做工。 她寄钱，工厂因为她是未婚母亲而解雇她，她找其他活路， 钱越来越不够，她卖掉头发，卖掉牙齿，最后卖掉身体。 她只是想让女儿活下去。
     problem: 在该情境中，需要平衡 劳动强度、自我牺牲程度、寻求援助 对生存、目标进展或长期代价的影响。

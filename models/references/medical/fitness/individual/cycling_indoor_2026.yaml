@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: cycling_indoor
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 室内功率自行车生理模型（Spin/Zwift训练），基于功率区间的精确训练负荷管理，包含TSS/CTL/ATL/Form指标。
     need: 为室内功率车训练、周期化训练负荷管理和运动表现峰值预测场景提供运动生理基础模块。

@@ -1,7 +1,9 @@
 metadata:
   name: dracula
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "德古拉生存模型：吸血鬼的血液管理与日夜循环。展示了时间依赖的日照暴露与资源消耗。"
     problem: 在该情境中，需要平衡 blood_reserve、thirst_level、sun_exposure、hunt_intensity 对生存、目标进展或长期代价的影响。

@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: cycling
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 公路自行车训练生理模型（单次训练课，分钟步长）。功率输出驱动心率、VO2、乳酸和疲劳动力学，基于 Coggan 功率区间体系和 Coyle 有氧代谢理论。
     need: 为自行车训练周期、心肺康复和运动处方提供功率-生理响应基础模块，支持 FTP（功能性阈值功率）导向的训练方案优化。

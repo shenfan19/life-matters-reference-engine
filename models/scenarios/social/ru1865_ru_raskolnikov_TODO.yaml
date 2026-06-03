@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: ru1865_ru_raskolnikov
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 拉斯柯尔尼科夫：道德的发烧。圣彼得堡，1865年夏。一个贫困的法律学生相信自己是"超人"—— 能够越过普通人的道德限制，为更大善意杀死一个"有害的"放贷人。 他杀了。他没想到，道德不是一个可以推翻的哲学命题，而是烧在身体里的病。
       这个模拟从谋杀之后开始：发烧、妄想、追踪、忏悔的边界。

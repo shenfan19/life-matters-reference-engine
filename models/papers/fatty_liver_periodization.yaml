@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: fatty_liver_periodization
   version: "1.0.0"
-  author: "Fan Shen"
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "NAFLD 运动进阶方案优化：T1 强度 × T3 频率 × T4 升级时机的 Pareto 权衡（减脂速率 vs 疲劳积累）。"
     need: >

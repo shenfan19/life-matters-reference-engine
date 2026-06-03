@@ -3,7 +3,9 @@ category: socio_economic
 metadata:
   name: pyramid_scheme_dynamics
   updated: 2026-05-31
-  author: LM Team
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 传销/庞氏骗局动力学——个人参与者在市场饱和驱动的崩盘前的损益演化。
     need: |

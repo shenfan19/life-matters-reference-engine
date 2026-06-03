@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: stress_health
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 慢性工作压力与生活方式对多项健康指标影响的综合动力学模型，包含心血管风险、免疫功能和精神健康的耦合机制。
     need: |

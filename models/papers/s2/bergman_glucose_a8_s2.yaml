@@ -3,7 +3,9 @@ metadata:
   paper: Paper 2 (S2)
   case_id: A8
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: Bergman 最小模型日尺度适配（A8），Paper 2 内分泌主轴——血糖-胰岛素敏感性动力学与用餐/运动时机优化。
     need: >

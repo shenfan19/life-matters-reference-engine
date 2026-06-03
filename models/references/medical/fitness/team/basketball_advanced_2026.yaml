@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: basketball_advanced
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 篮球进阶生理模型（40分钟比赛），含决策认知衰减、快攻频率管理和球员负荷峰值追踪。
     need: 为精英篮球训练、球员负荷管理和运动认知表现研究场景提供进阶生理基础模块。

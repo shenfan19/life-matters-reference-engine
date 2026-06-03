@@ -3,7 +3,9 @@ category: dynamics
 metadata:
   name: ad2077_nightcity_v
   updated: 2026-05-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "赛博朋克2077：V在夜之城的生存与身份认同场景（虚构，2077年）。TODO：选定具体弧线（主线/义侠/街头小子起源？）后完善。"
     need: "以高度反乌托邦虚构设定检验 LM 框架对人机融合（Cyberware）、心理健康（Cyberpsychosis）与生存资源的建模能力。"

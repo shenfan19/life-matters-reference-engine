@@ -1,5 +1,7 @@
 metadata:
-  author: Minghui Wu
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   conflicts: []
   description:
     brief: 糖尿病核心模型，包括类型、饥饿感、体液和总体健康指标

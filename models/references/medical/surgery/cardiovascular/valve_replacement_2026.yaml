@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: valve_replacement
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 主动脉瓣置换术（TAVR/SAVR）术后血流动力学恢复与抗凝管理模型（6周）。
     need: |

@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: fr1482_fr_quasimodo
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 卡西莫多：钟楼之上的庇护。巴黎圣母院的敲钟人卡西莫多，驼背、独眼、几乎全聋。 他从未被这个城市当作人——直到艾丝美拉达对他温柔。 她被捕了，被判死刑。他用尽所有力气把她从绞架上夺下来，藏进圣母院。 圣母院就是他的整个世界。他必须决定：用什么代价，守护她多久。
     problem: 在该情境中，需要平衡 防守强度、对艾丝美拉达的照料、与外界沟通尝试 对生存、目标进展或长期代价的影响。

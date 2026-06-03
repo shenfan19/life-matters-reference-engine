@@ -3,7 +3,9 @@ metadata:
   paper: S4
   case_id: A4-S4
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: CKD 蛋白质-肌肉权衡深化版（A4-P3），扩展 Pareto 前沿搜索并加入 T2 晚餐时机优化。
     need: 为 S4 展示在 S2 A4 基础上扩大种群（pop=150/gen=300）获得更完整 Pareto 前沿，并验证 T2 晚餐时机优化的稳健性。

@@ -5,7 +5,9 @@ metadata:
   paper: Paper 5 (S5)
   case_id: M10
   updated: 2026-05-30
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: >
       新生儿母乳喂养优化模型（M10）：在宝宝充分摄奶与妈妈夜间睡眠质量之间寻找 Pareto 最优喂养方案。

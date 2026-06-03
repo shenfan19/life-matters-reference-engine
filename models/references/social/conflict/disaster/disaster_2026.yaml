@@ -1,7 +1,9 @@
 metadata:
   name: disaster
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 自然灾害响应动力学模型，基于Sendai框架和灾害风险管理理论，量化灾害强度、损毁程度、救援资源和人群安全的时序演化。
     need: 为历史灾难场景（庞贝、广岛、唐山地震）和现代灾害管理场景提供可复用的灾害动力学基础模块。

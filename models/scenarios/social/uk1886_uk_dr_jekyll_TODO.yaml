@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: uk1886_uk_dr_jekyll
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 杰基尔博士：失控的实验。亨利·杰基尔博士，维多利亚社会的体面绅士，秘密研发出一种药物， 能够让他暂时变成另一个人——海德先生，那个被压抑的阴暗面。 起初他能自由切换。后来需要药物才能变回来。 再后来，他在睡梦中就开始变化了。
       这是一个关于：成瘾是如何从控制变为被控制的模拟。

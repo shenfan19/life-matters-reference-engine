@@ -84,12 +84,51 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
             </div>
           : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_description')}</div>
         }
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4, alignItems: 'center' }}>
           {meta.updated && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
-          {meta.author && meta.author !== 'TODO:AUTHOR' && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.author}</span>}
+          {(() => {
+            const authors: any[] = Array.isArray(meta.authors) ? meta.authors
+              : (meta.author && meta.author !== 'TODO:AUTHOR') ? [{ name: meta.author }] : [];
+            return authors.map((a: any, i: number) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
+                {a.name}
+                {a.email && <a href={`mailto:${a.email}`} style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{a.email}</a>}
+              </span>
+            ));
+          })()}
           {meta.paper && <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.paper}</span>}
           {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.tags.join(' · ')}</span>}
         </div>
+        {meta.ratings && (() => {
+          const r = meta.ratings;
+          const FIELDS = [
+            { key: 'topic_importance', label: '话题' },
+            { key: 'framework_demand', label: '框架' },
+            { key: 'evidence_quality', label: '证据' },
+            { key: 'popularity', label: '通用度' },
+            { key: 'paper_value', label: '论文' },
+            { key: 'innovation', label: '创新' },
+            { key: 'social_value', label: '社会' },
+          ];
+          const present = FIELDS.filter(f => r[f.key] != null);
+          if (present.length === 0) return null;
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${c.border}` }}>
+              {present.map(f => {
+                const raw = String(r[f.key]);
+                const score = parseInt(raw) || 0;
+                const note = raw.replace(/^\d+\s*-\s*/, '');
+                return (
+                  <Tooltip key={f.key} title={note}>
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace', cursor: 'default' }}>
+                      {f.label} {'●'.repeat(score)}{'○'.repeat(5 - score)}
+                    </span>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          );
+        })()}
       </Section>
 
       <Section id="variables" title={t('sim.tabs.variables')} badge={`${Object.keys(allV).length} 个`}>

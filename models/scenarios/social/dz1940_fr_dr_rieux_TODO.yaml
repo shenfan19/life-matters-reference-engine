@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: dz1940_fr_dr_rieux
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 里厄医生：鼠疫中的坚守。1940年代，阿尔及利亚的奥兰城突然爆发鼠疫。城市被封锁。 里厄医生留了下来——他的妻子在封城前刚去了另一个城市疗养。 他不知道她是否还活着。他继续工作。 这是一个关于：在荒诞世界中选择反抗的代价的模拟。
     problem: 在该情境中，需要平衡 救治强度、隔离执行严格度、自我保护与休息 对生存、目标进展或长期代价的影响。

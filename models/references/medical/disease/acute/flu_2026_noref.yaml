@@ -1,7 +1,9 @@
 metadata:
   name: flu
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "感冒动力学模型：包含病毒载量（R1）、免疫响应（R2）与体能状态（R3）。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

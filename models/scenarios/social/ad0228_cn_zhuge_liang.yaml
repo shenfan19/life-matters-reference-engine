@@ -1,7 +1,9 @@
 metadata:
   name: ad0228_cn_zhuge_liang
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       诸葛亮北伐仿真场景（228–234 AD，祁山大营）。

@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: squash
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 壁球比赛生理模型（60分钟），封闭空间极高强度，MET约12，热调节负荷极高。
     need: 为壁球运动训练、高强度闭合环境运动干预和热应激研究场景提供运动生理基础模块。

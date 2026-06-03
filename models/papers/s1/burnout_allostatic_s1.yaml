@@ -3,7 +3,9 @@ metadata:
   paper: Paper 1 (S1)
   case_id: C1
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 工作应激-恢复行为-健康结局跨域模型（C1），工作压力为外生参数，优化个体可控的恢复行为组合。
     need: >

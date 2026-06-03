@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: rowing
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 划船运动生理模型（单次训练/竞技，分钟步长）。有氧-无氧双能量系统驱动划桨速度、VO2、乳酸和疲劳，基于 Secher 有氧容量模型和 Hagerman 划船生理学研究。
     need: 为划船训练计划、2000m 竞技比赛策略优化和心肺适应研究提供功率-速度-生理的量化基础模块。

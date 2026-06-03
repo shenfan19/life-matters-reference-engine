@@ -1,7 +1,9 @@
 metadata:
   name: ad079_it_pompeii
   updated: 2026-04-25
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       庞贝逃离仿真（公元79年8月24日-25日，维苏威火山喷发）。

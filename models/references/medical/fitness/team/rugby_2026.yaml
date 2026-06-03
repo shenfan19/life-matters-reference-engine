@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: rugby
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 橄榄球比赛生理模型（80分钟），全身接触运动，冲撞应激与间歇高强度跑动并存。
     need: 为橄榄球训练、接触运动损伤风险和极限体能评估场景提供运动生理基础模块。

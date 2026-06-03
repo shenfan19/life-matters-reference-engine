@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: hockey
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 冰球比赛生理模型（60分钟），每班次45-60秒高强度滑行，无氧代谢主导，班次间休息3-4分钟。
     need: 为冰球训练、无氧主导间歇运动和滑行效率研究场景提供运动生理基础模块。

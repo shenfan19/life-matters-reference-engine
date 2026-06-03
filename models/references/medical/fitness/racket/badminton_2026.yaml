@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: badminton
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 羽毛球单打比赛生理模型（45分钟），爆发力与反应速度主导，无氧代谢比例约40%。
     need: 为羽毛球运动训练、间歇高强度运动干预场景提供可复用的运动生理基础模块。

@@ -3,7 +3,9 @@ category: dynamics
 metadata:
   name: "simple_nutrition"
   updated: 2026-05-17
-  author: "Antigravity"
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "简化的营养摄入动态模型，用于对照香蕉模型进行基础校验。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。
