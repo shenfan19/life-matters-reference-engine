@@ -119,7 +119,8 @@ def _eval_G(history: Dict[str, List[float]], constraints: List[Dict]) -> List[fl
 
 def run_optimizer(simulator_engine, model_name: str,
                   folder: Optional[str] = None, progress_callback=None,
-                  optimizer_override: Optional[Dict] = None) -> Dict[str, Any]:
+                  optimizer_override: Optional[Dict] = None,
+                  log_cb=None) -> Dict[str, Any]:
     """
     Run the optimizer defined in YAML optimizer: block.
     Returns {success, method, objectives, pareto_front, best_x, best_f, n_solutions}.
@@ -146,6 +147,15 @@ def run_optimizer(simulator_engine, model_name: str,
                     'start_date', 'end_date', 'step_size', 'schedules'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
+
+    # ── log model info ────────────────────────────────────────────────────────
+    if log_cb:
+        n_vars = len(base_model.variables)
+        n_formulas = len(base_model.formulas) if hasattr(base_model, 'formulas') else 0
+        log_cb(f"Model: {model_name} ({n_vars} vars, {n_formulas} formulas)")
+        prov_imports = (base_model.provenance or {}).get('imports', [])
+        if prov_imports:
+            log_cb(f"Imports: {', '.join(prov_imports)}")
 
     # ── parse objectives ──────────────────────────────────────────────────────
     objectives: List[Dict] = []
@@ -223,6 +233,21 @@ def run_optimizer(simulator_engine, model_name: str,
 
     if not var_specs:
         return {"success": False, "error": "No decision dimensions found in optimize: blocks"}
+
+    if log_cb:
+        obj_strs = [f"{'↑' if o.get('direction') == 'maximize' else '↓'}{o['variable']}({o.get('metric','final')})"
+                    for o in objectives]
+        log_cb(f"Objectives ({len(objectives)}): {', '.join(obj_strs)}")
+        if constraints:
+            con_strs = [f"{c['variable']}{c.get('condition','')}" for c in constraints]
+            log_cb(f"Constraints ({len(constraints)}): {', '.join(con_strs)}")
+        dec_vars = list({s['variable'] for s in var_specs})
+        log_cb(f"Decision vars ({len(var_specs)} dims): {', '.join(dec_vars)}")
+        method = opt_block.get('method', 'nsga2')
+        algo = opt_block.get('algorithm', {})
+        pop = algo.get('population_size', 50)
+        gen = algo.get('n_generations', 80)
+        log_cb(f"Algorithm: {method}, pop={pop}, gen={gen}")
 
     reg_variable = opt_entries[0].get('variable', '')
     reg_events = [{'label': s['label'], 'variable': s['variable']}
