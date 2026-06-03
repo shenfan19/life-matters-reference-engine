@@ -3,7 +3,9 @@ metadata:
   paper: Paper 2 (S2)
   case_id: A9
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 肠易激综合征（IBS）饮食管理优化（A9），Paper 2 消化科核心案例——低FODMAP方案分阶段实施与时机优化。
     need: >

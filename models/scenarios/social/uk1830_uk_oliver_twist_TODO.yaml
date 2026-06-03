@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: uk1830_uk_oliver_twist
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 奥利弗：济贫院的孩子。1830年代的英国伦敦。奥利弗·退斯特，一个济贫院的孤儿， 在法律允许范围内被当作劳动力分配——棺材铺、工厂、偷窃团伙。 他的生存取决于：服从多少、抵抗多少、以及一点点运气。 但规律不是运气——规律是整个制度。
     problem: 在该情境中，需要平衡 服从程度、抵抗与逃跑尝试、建立人际连接 对生存、目标进展或长期代价的影响。

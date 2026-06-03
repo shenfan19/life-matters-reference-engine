@@ -1,7 +1,9 @@
 metadata:
   name: hypertension_gout
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       高血压合并痛风联合动力学模型（场景A5）。

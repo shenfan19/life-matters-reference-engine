@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: triathlon
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 奥林匹克铁人三项（游泳 1.5km + 自行车 40km + 跑步 10km）整合生理模型（分钟步长）。三项能量系统转换、糖原-脂肪双燃料消耗和疲劳积累动力学，关注"邦克"（glycogen 耗尽）风险。
     need: 为铁人三项赛事配速策略优化和竞技营养学提供整合多运动模式的生理基础模型，量化糖原储备在三项间的分配。

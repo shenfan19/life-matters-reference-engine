@@ -1,7 +1,9 @@
 metadata:
   name: alcohol_liver_disease
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 酒精性肝病剂量-响应动力学模型，量化慢性饮酒对肝纤维化进展和肝功能评分的影响。
     need: 为酒精相关健康场景（慢性酗酒、戒酒干预）提供可复用的肝损伤动力学基础模块。

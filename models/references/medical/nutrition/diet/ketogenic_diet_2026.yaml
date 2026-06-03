@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: ketogenic_diet
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 生酮饮食（<50g碳水/天）的血酮、血糖、体重和脂肪氧化动力学，基于Volek、Westman和Paoli研究。
     need: |

@@ -1,7 +1,9 @@
 metadata:
   name: diabetes
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "综合糖尿病动力学模型：包含血糖调节（R1）、胰岛素响应（R2）、并发症进展（R3）与系统炎症（R4）。单文件封装标准。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

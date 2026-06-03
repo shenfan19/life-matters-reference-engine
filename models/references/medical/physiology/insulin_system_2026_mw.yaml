@@ -1,7 +1,9 @@
 metadata:
   name: insulin_system
   updated: 2026-04-23
-  author: Minghui Wu
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 胰岛素分泌、敏感性和β细胞功能
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

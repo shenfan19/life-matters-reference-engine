@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: hip_replacement
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 全髋关节置换术（THA）术后12周功能恢复模型，包含Oxford评分、疼痛、步态和脱位风险。
     need: |

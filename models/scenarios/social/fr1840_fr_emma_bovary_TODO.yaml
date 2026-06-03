@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: fr1840_fr_emma_bovary
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 包法利夫人：浪漫主义的代价。艾玛·包法利，一个乡村医生的妻子，读了太多浪漫主义小说。 她相信自己应该过另一种生活——激情、华服、真爱。 她一次次行动，一次次失望，一次次借债。 最终的账单不只是金钱上的。
     problem: 在该情境中，需要平衡 浪漫主义追求强度、融入乡村生活、自我认知 对生存、目标进展或长期代价的影响。

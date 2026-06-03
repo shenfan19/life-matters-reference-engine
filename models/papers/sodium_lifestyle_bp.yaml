@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: sodium_lifestyle_bp
   version: "1.0.0"
-  author: "Fan Shen"
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "钠摄入 × 体力活动对长期血压的影响：古代低钠重劳动 vs 现代高钠重劳动 vs 现代高钠久坐的场景对比与运动方案优化。"
     need: >

@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: es1600_es_don_quixote
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 堂吉诃德：理想主义者的征途。一个西班牙乡绅读了太多骑士小说，决定自己也成为骑士。 他改名堂吉诃德·拉曼恰，骑上一匹瘦马，带着一个胖农民，出发了。 他把风车当成巨人，把客栈当成城堡，把羊群当成军队。 每次战斗，他都输。每次输了，他都找到了理由。
       这个模拟的问题是：坚守理想，代价是什么？

@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: cardiovascular_prevention
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 原发性心血管疾病（CVD）综合预防模型，整合血压、血脂、血糖、吸烟和体重五大危险因素动态，量化多重干预的协同与拮抗效应。
     need: |

@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: hiit_training
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 高强度间歇训练（HIIT）多周适应动力学模型（日步长）。量化 VO2max、胰岛素敏感性、线粒体密度和脂肪氧化能力在 4-12 周 HIIT 干预期间的协同改善。
     need: 为代谢综合征管理、2型糖尿病预防和心肺康复提供 HIIT 剂量-反应关系的量化基础，支持时间效率最优的运动处方设计。

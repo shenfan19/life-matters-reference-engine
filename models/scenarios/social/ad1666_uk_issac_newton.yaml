@@ -1,7 +1,9 @@
 metadata:
   name: ad1666_uk_issac_newton
   updated: 2026-04-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       牛顿奇迹年仿真/优化场景（1665-1667，伍尔斯索普庄园）。

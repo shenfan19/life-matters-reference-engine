@@ -3,7 +3,9 @@ category: socio_economic
 metadata:
   name: collective_panic
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 集体恐慌与谣言传播动力学模型，基于社会感染理论（SIR类模型），量化信息传播、恐慌扩散与权威干预之间的竞争动态。
     need: |

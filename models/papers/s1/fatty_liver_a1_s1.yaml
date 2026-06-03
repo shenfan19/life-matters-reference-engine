@@ -3,7 +3,9 @@ metadata:
   paper: Paper 1 (JOSS)
   case_id: A1
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 脂肪肝运动 Regimen 优化（A1），展示 K×4 T1+T3+T4 在 NAFLD 管理中的完整优化能力。
     need: >

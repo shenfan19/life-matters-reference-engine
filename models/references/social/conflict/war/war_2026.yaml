@@ -1,7 +1,9 @@
 metadata:
   name: war
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 战争风险动力学模型，基于Lewis Fry Richardson方程和Richardson Arms Race Model，量化地缘政治紧张度、冲突烈度与社会代价的动态关系。
     need: 为历史战争场景（二战、冷战、现代局部冲突）和文学场景提供可复用的冲突动力学基础模块。

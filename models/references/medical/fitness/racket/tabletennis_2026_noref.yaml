@@ -1,5 +1,7 @@
 metadata:
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   conflicts: []
   description:
     brief: 乒乓球比赛生理模型，60分钟，强调反应速度、技术精度与神经-肌肉疲劳

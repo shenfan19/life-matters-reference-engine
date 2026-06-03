@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: baseball
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 棒球运动生理模型（9局约180分钟），以投手肩关节累积负荷和打者爆发精准度为核心。
     need: 为棒球投手球数管理、肩关节损伤预防和爆发力精准度训练场景提供运动生理基础模块。

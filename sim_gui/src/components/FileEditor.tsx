@@ -411,7 +411,18 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                   onChange={tags => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.tags = tags; })} c={c} />
               </Row>
             )}
-            {mt.author && <Row label="作者" c={c}><span style={{ color: mute }}>{mt.author}</span></Row>}
+            {(Array.isArray(mt.authors) ? mt.authors.length > 0 : !!mt.author) && (
+              <Row label="作者" c={c}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {(Array.isArray(mt.authors) ? mt.authors : [{ name: mt.author }]).map((a: any, i: number) => (
+                    <span key={i} style={{ color: mute, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      {a.name}
+                      {a.email && <a href={`mailto:${a.email}`} style={{ color: primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{a.email}</a>}
+                    </span>
+                  ))}
+                </div>
+              </Row>
+            )}
           </Sect>
 
           {(Object.keys(vars).length > 0 || editing) && (

@@ -3,7 +3,9 @@ metadata:
   paper: S3
   case_id: A7-S3
   updated: 2026-05-26
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: MASLD×胰岛素抵抗 IHIO 可行域分析（A7-S3），S3 系统科学范式论文核心案例。
     need: >

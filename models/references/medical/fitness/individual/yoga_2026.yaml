@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: yoga
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 瑜伽练习对柔韧性、皮质醇水平和心率变异性（HRV）影响的多周干预动力学模型（日步长）。整合正念效应、自主神经调节和肌肉骨骼适应三条机制路径。
     need: 为慢性压力管理、焦虑症辅助干预和心理健康场景提供瑜伽练习的量化生理基础，连接运动强度与应激-恢复指标。

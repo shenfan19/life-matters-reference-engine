@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: ru1880_ru_ivan_ilyich
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 伊万·伊里奇：临终的真实。伊万·伊里奇是一位法官，一个在"正确"的社会阶层生活的正确的人。 然后他摔了一跤，开始感到疼痛，慢慢意识到自己快要死了。 他的家人继续表演正常。他的医生继续表演专业。 只有农民仆人格拉西姆，真实地陪伴着他。
       这是一个关于：你愿意用多少真实换取多少体面的模拟。

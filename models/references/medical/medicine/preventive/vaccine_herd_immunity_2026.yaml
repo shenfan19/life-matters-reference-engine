@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: vaccine_herd_immunity
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: SIR群体免疫动力学模型，量化疫苗覆盖率、疫苗效力与群体免疫阈值之间的关系。
     need: |

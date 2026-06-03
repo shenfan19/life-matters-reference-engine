@@ -1,7 +1,9 @@
 metadata:
   name: running
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       跑步训练模型（单次训练课，分钟步长）。有氧代谢主导：配速、心率、VO2、热量消耗与疲劳积累。

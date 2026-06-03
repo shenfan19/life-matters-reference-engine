@@ -3,7 +3,9 @@ category: dynamics
 metadata:
   name: "nutrition_intake"
   updated: 2026-04-23
-  author: "Minghui Wu, Antigravity"
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "营养摄入基础模型，处理食物向胃部的初步转移。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

@@ -1,7 +1,9 @@
 metadata:
   name: labor
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 劳动力经济动力学模型，基于人力资本理论和效率工资理论，量化工作量、收入、储蓄与疲劳的动态关系。
     need: 为历史劳动场景（产业革命工人、现代职场压力）和经济政策分析（最低工资、劳工保护）提供可复用的经济-健康基础模块。

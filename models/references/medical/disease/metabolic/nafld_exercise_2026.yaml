@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: nafld_exercise
   updated: 2026-05-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "NAFLD（非酒精性脂肪肝）运动干预基础机制：肝脂肪消耗、ALT 动力学与运动疲劳三态模型。"
     need: "为更高层场景、published 案例提供可复用的 NAFLD-运动核心机制组件。"

@@ -3,7 +3,9 @@ category: socio_economic
 metadata:
   name: cybercrime_phishing
   updated: 2026-05-31
-  author: LM Team
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 网络诈骗风险暴露——个人数字行为习惯决定的钓鱼诈骗损失积累动力学。
     need: |

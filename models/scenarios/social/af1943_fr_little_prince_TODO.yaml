@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: af1943_fr_little_prince
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 小王子：沙漠中的告别。一个飞行员的飞机在撒哈拉沙漠迫降。他遇见了一个小男孩——从另一颗星球来的王子。 他们交谈了八天。 小王子说：我的玫瑰，我必须回去了。 他不会飞，只有一种方式能回去。 这个模拟的问题是：飞行员能不能给小王子另一个选择。
     problem: 在该情境中，需要平衡 修飞机努力、真正聆听小王子、说服小王子留下 对生存、目标进展或长期代价的影响。

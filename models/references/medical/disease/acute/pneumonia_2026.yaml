@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: pneumonia
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 社区获得性细菌性肺炎（CAP）抗生素治疗动力学：细菌清除、炎症消退与肺功能恢复（14天）。
     need: |

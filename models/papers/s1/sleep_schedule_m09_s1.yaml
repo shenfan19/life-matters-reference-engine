@@ -3,7 +3,9 @@ metadata:
   paper: Paper 1 (S1)
   case_id: M09
   updated: 2026-05-22
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: Borbély 双过程睡眠模型（M09），展示 LMML 在心理生理跨域场景的表达能力，优化睡眠时间安排与工作效率权衡。
     need: >

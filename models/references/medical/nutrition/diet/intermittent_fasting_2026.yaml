@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: intermittent_fasting
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 间歇性禁食（16:8方案）对胰岛素敏感性、自噬标志物和体成分的影响动力学。
     need: |

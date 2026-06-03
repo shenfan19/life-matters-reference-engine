@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: statin_pk_pd
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 他汀类药物（阿托伐他汀）PK/PD模型，量化LDL胆固醇降低效果与肌病风险之间的剂量-响应关系。
     need: |

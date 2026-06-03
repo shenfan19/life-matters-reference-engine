@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: eu1800_dk_little_match_girl
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 卖火柴的小女孩：新年前夜。新年前夜，一个小女孩赤脚站在雪地里卖火柴，没有人买。 她不敢回家，因为没有卖出一根，父亲会打她。 寒冷越来越深。她开始划燃火柴——不是为了卖，而是为了片刻的温暖。 每根火柴，都是一个美丽的幻觉。
       这是一个关于：在系统性冷漠中，一个儿童能做出哪些选择，以及代价是什么的模拟。

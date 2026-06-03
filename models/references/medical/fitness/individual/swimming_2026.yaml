@@ -1,7 +1,9 @@
 metadata:
   name: swimming
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: |
       游泳训练模型（单次训练课，分钟步长）。技术效率主导：划水效率与体能共同决定速度。

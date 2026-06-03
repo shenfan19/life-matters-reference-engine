@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: rehabilitation
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 骨科术后康复动力学模型，量化肌力恢复、功能评分和疼痛管理之间的时序权衡。
     need: |

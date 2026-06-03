@@ -3,7 +3,9 @@ category: intervention
 metadata:
   name: "raw_berry"
   updated: 2026-04-23
-  author: "Antigravity"
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "生浆果营养模型。每100g含：碳水化合物 14g, 蛋白质 1.5g, 脂肪 0.5g, 水分 84g。"
     need: 作为医学参考模块，为更高层场景、published 案例或组合模型提供可复用机制。

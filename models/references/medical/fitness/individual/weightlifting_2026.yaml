@@ -3,7 +3,9 @@ category: physiological
 metadata:
   name: weightlifting
   updated: 2026-05-17
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 阻力训练肌肉力量和肌肥大动力学模型（日步长），基于渐进超负荷原则和蛋白质合成-降解平衡机制，量化 12 周力量训练的 1RM 增长和肌肥大轨迹。
     need: 为运动处方、肌少症干预和力量训练周期化提供机械性适应的量化基础，支持训练量-强度组合的科学优化。

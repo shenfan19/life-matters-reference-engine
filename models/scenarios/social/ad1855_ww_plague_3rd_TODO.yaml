@@ -3,7 +3,9 @@ category: dynamics
 metadata:
   name: ad1855_ww_plague_3rd
   updated: 2026-05-23
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: "第三次鼠疫大流行（1855，云南起源→全球扩散）生存场景。TODO：选定具体人物视角（云南农民/香港殖民地医生/孟买码头工人？）后完善。"
     need: "以真实历史流行病事件检验 LM 框架对传染病+人口动力学的建模能力。"

@@ -1,7 +1,9 @@
 category: social
 metadata:
   name: eu1790_ch_frankenstein
-  author: Fan Shen
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
   description:
     brief: 弗兰肯斯坦：造物者的代价。维克多·弗兰肯斯坦在日内瓦大学实验室中，用两年时间组装并激活了一个生命体。 他成功了。然后他逃走了。 这是模拟他在逃避、被追寻、目睹至亲死亡过程中的身体崩溃与伦理代价—— 创造者拒绝承担责任，造物于是替他做出了选择。
     problem: 在该情境中，需要平衡 压制造物知情范围、直面造物的意愿、继续研究强度 对生存、目标进展或长期代价的影响。
