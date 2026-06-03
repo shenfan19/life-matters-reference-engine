@@ -60,9 +60,10 @@ async def run_yaml_optimization(request: YamlOptRequest):
                 app_state.add_log(job, "  ".join(parts))
 
         app_state.add_log(job, "Starting optimizer...")
+        log_cb = lambda msg: app_state.add_log(job, msg)
         fn = functools.partial(run_optimizer, app_state.simulator_engine,
                                request.model_name, request.folder, progress_cb,
-                               request.optimizer_override)
+                               request.optimizer_override, log_cb=log_cb)
         asyncio.create_task(app_state.run_optimizer_job(job_id, fn))
         return {'success': True, 'job_id': job_id}
     except HTTPException:

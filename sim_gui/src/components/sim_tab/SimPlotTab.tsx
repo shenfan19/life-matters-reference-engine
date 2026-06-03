@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Collapse, Empty } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Collapse, Empty, Tooltip, message } from 'antd';
+import { CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimulationDataPoint, PlanResult } from '../../types';
 import { getC } from '../../core/theme';
 import SimChart, { VAR_COLORS } from './SimChart';
@@ -27,13 +27,14 @@ interface SimPlotTabProps {
   fontSize: number;
   comparedPlans?: PlanResult[];
   onExportCSV?: () => void;
+  simLogs?: Array<{ t: number; msg: string }>;
 }
 
 const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
-  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV,
+  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV, simLogs = [],
 }) => {
   const hasSimData = simulationData.length > 0;
   const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
@@ -322,7 +323,64 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
           />
         </>
       )}
+
+      {simLogs.length > 0 && <SimLogPanel logs={simLogs} c={c} />}
     </div>
+  );
+};
+
+const SimLogPanel: React.FC<{ logs: Array<{ t: number; msg: string }>; c: ReturnType<typeof getC> }> = ({ logs, c }) => {
+  const logRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logs.length]);
+
+  const logText = logs.map(l => {
+    const d = new Date(l.t * 1000);
+    const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+    return `${ts} ${l.msg}`;
+  }).join('\n');
+
+  return (
+    <Collapse size="small" style={{ marginTop: 6 }}
+      items={[{
+        key: 'log',
+        label: <span style={{ fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>Log</span>,
+        extra: (
+          <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+            <Tooltip title="Copy log">
+              <Button size="small" icon={<CopyOutlined />}
+                onClick={() => navigator.clipboard.writeText(logText)
+                  .then(() => message.success('已复制'))
+                  .catch(() => message.error('复制失败'))} />
+            </Tooltip>
+            <Tooltip title="Download .txt">
+              <Button size="small" icon={<DownloadOutlined />}
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(new Blob([logText], { type: 'text/plain' }));
+                  a.download = `sim_log_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+                  a.click();
+                }} />
+            </Tooltip>
+          </div>
+        ),
+        children: (
+          <div ref={logRef} style={{ maxHeight: 200, overflowY: 'auto', fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, padding: '4px 0' }}>
+            {logs.map((l, i) => {
+              const d = new Date(l.t * 1000);
+              const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+              return (
+                <div key={i} style={{ lineHeight: 1.5 }}>
+                  <span style={{ color: c.textMute }}>{ts}</span>{' '}{l.msg}
+                </div>
+              );
+            })}
+          </div>
+        ),
+      }]}
+    />
   );
 };
 

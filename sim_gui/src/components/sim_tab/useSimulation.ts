@@ -35,6 +35,7 @@ interface UseSimulationParams {
   setRunOutputVars: (vars: string[]) => void;
   setOutputWarnings: (w: string[]) => void;
   setRunningModelKey: (key: string | null) => void;
+  setSimLogs: (logs: Array<{ t: number; msg: string }>) => void;
   setInputEvents: React.Dispatch<React.SetStateAction<InputEvent[]>>;
   setMode: (mode: string) => void;
   switchCenterTab: (tab: string) => void;
@@ -48,7 +49,7 @@ export function useSimulation({
   inputEvents, inputVars, plans, activePlanId,
   simStartDate, simEndDate, stepValue, stepUnit,
   simRuns, mcSeed,
-  setRunOutputVars, setOutputWarnings, setRunningModelKey,
+  setRunOutputVars, setOutputWarnings, setRunningModelKey, setSimLogs,
   setInputEvents, setMode, switchCenterTab, stopOptJobs,
   t,
 }: UseSimulationParams) {
@@ -99,6 +100,7 @@ export function useSimulation({
       set('status', 'running'); set('progress', 0); set('currentStep', 0);
       setSimData([]); setComparedPlans([]);
       setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+      setSimLogs([]);
       isRunningRef.current = true;
       setRunningModelKey(selectedKey);
 
@@ -125,6 +127,7 @@ export function useSimulation({
         setOutputWarnings(warnings);
         if (warnings.length > 0) message.warning(warnings.join('；'));
         if (result.data.session_seed) set('sessionSeed', result.data.session_seed);
+        if (Array.isArray(result.data.logs)) setSimLogs(result.data.logs);
         runBatch(result.data.session_id);
       } else {
         message.error(result.error || t('sim.msg.start_failed'));
@@ -158,6 +161,7 @@ export function useSimulation({
               return { ...prev, dataPerRun: existing.map((run, i) => [...run, ...(incoming[i] || [])]) };
             });
           }
+          if (Array.isArray(res.data.logs)) setSimLogs(res.data.logs);
           if (res.data.completed) {
             set('status', 'completed'); isRunningRef.current = false; setRunningModelKey(null);
             message.success(t('sim.msg.sim_complete'));
@@ -206,6 +210,7 @@ export function useSimulation({
     isRunningRef.current = false;
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
+    setSimLogs([]);
   };
 
   // ── run Pareto solutions as compared plans ────────────────────────────────────

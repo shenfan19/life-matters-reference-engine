@@ -228,6 +228,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [reportGenerating, setReportGenerating] = useState(false);
   const [runOutputVars, setRunOutputVars] = useState<string[]>([]);
   const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
+  const [simLogs, setSimLogs] = useState<Array<{ t: number; msg: string }>>([]);
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
@@ -357,7 +358,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     inputEvents, inputVars, plans, activePlanId,
     simStartDate, simEndDate, stepValue, stepUnit,
     simRuns, mcSeed,
-    setRunOutputVars, setOutputWarnings, setRunningModelKey,
+    setRunOutputVars, setOutputWarnings, setRunningModelKey, setSimLogs,
     setInputEvents, setMode, switchCenterTab,
     stopOptJobs,
     t,
@@ -370,6 +371,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   useEffect(() => {
     setRunOutputVars([]);
     setOutputWarnings([]);
+    setSimLogs([]);
     if (!selectedModel?.content?.variables) return;
 
     // ── 1. Always: derive structural state (inputParams, stateVariables, optRanges) ──
@@ -1415,6 +1417,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
                   comparedPlans={comparedPlans}
                   onExportCSV={exportSimCSV}
+                  simLogs={simLogs}
                 />
               }
               progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} c={c} isDarkMode={isDarkMode} />}

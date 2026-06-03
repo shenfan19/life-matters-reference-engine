@@ -7,7 +7,9 @@
 
 import csv
 import logging
+import math
 import os
+from time import time as _time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -17,6 +19,21 @@ from .regimen_runner import apply_regimens
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model
 
 logger = logging.getLogger(__name__)
+
+
+def _make_log(msg: str) -> Dict[str, Any]:
+    return {'t': _time(), 'msg': msg}
+
+
+def _fmt_step(step_sec: float) -> str:
+    """Convert step size in seconds to a human-readable string."""
+    if step_sec >= 86400 and step_sec % 86400 == 0:
+        n = int(step_sec / 86400)
+        return f"{n} day{'s' if n != 1 else ''}"
+    if step_sec >= 3600 and step_sec % 3600 == 0:
+        n = int(step_sec / 3600)
+        return f"{n} hour{'s' if n != 1 else ''}"
+    return f"{int(step_sec / 60)} min"
 
 
 class SessionManagerMixin:
@@ -109,6 +126,34 @@ class SessionManagerMixin:
                     'completed': False,
                 })
 
+            # ── build initial log ──────────────────────────────────────────────
+            initial_logs: List[Dict] = []
+            n_vars = len(base_model.variables)
+            n_formulas = len(base_model.formulas) if hasattr(base_model, 'formulas') else 0
+            initial_logs.append(_make_log(
+                f"Model: {model_name} ({n_vars} vars, {n_formulas} formulas)"
+            ))
+            prov_imports = (base_model.provenance or {}).get('imports', [])
+            if prov_imports:
+                initial_logs.append(_make_log(f"Imports: {', '.join(prov_imports)}"))
+            start_date = str(base_model.simulator.get('start_date', ''))
+            step_label = _fmt_step(step_size)
+            initial_logs.append(_make_log(
+                f"Sim: start={start_date}, step={step_label}, {total_steps} steps"
+            ))
+            out_labels = output_variables[:8]
+            suffix = f" (+{len(output_variables) - 8} more)" if len(output_variables) > 8 else ""
+            initial_logs.append(_make_log(f"Outputs ({len(output_variables)}): {', '.join(out_labels)}{suffix}"))
+            if output_warnings:
+                for w in output_warnings:
+                    initial_logs.append(_make_log(f"⚠ {w}"))
+            regimen_vars = [r.get('variable', '') for r in (regimens or []) if r.get('variable')]
+            if regimen_vars:
+                initial_logs.append(_make_log(f"Regimens: {', '.join(regimen_vars)}"))
+            if n_runs > 1:
+                initial_logs.append(_make_log(f"MC: {n_runs} runs, seed {session_seed}"))
+            # ──────────────────────────────────────────────────────────────────
+
             self.sessions[session_id] = {
                 'model': runs[0]['model'],
                 'model_name': model_name,
@@ -129,7 +174,10 @@ class SessionManagerMixin:
                 'runs': runs,
                 'param_distributions': param_distributions,
                 'input_params': input_params or {},
-                'sim_start_date': str(base_model.simulator.get('start_date', '')),
+                'sim_start_date': start_date,
+                'logs': initial_logs,
+                'warned_vars': set(),
+                'start_time': _time(),
             }
 
             logger.info(
@@ -151,6 +199,7 @@ class SessionManagerMixin:
                     "warnings": output_warnings,
                     "sim_runs": n_runs,
                     "session_seed": session_seed,
+                    "logs": initial_logs,
                 },
             }
 
@@ -218,6 +267,49 @@ class SessionManagerMixin:
                 completed = session['current_step'] >= session['total_steps']
                 progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
 
+                # ── NaN/Inf and bounds warnings ────────────────────────────────
+                warned = session['warned_vars']
+                for out_row in outputs:
+                    for var_name in output_variables:
+                        if var_name in warned:
+                            continue
+                        val = out_row.get(var_name)
+                        if val is None:
+                            continue
+                        var_obj = model.variables.get(var_name)
+                        if var_obj is None:
+                            continue
+                        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                            session['logs'].append(_make_log(
+                                f"⚠ NaN/Inf in '{var_name}' at step {out_row['step']}"
+                            ))
+                            warned.add(var_name)
+                        elif var_obj.bounds and len(var_obj.bounds) == 2:
+                            lo, hi = var_obj.bounds
+                            if val < lo or val > hi:
+                                session['logs'].append(_make_log(
+                                    f"⚠ Bounds: '{var_name}'={val:.4g} ∉ [{lo}, {hi}] at step {out_row['step']}"
+                                ))
+                                warned.add(var_name)
+
+                if completed:
+                    elapsed = _time() - session.get('start_time', _time())
+                    session['logs'].append(_make_log(
+                        f"Done in {elapsed:.1f}s — {session['current_step']} steps"
+                    ))
+                    # Schedule hit stats from session data
+                    input_var_names = [
+                        v for v in output_variables
+                        if model.variables.get(v) and model.variables[v].type.value == 'input'
+                    ]
+                    if input_var_names:
+                        hits = {v: sum(1 for d in session['data'] if d.get(v, 0) != 0)
+                                for v in input_var_names}
+                        hit_parts = [f"{v}={n}" for v, n in hits.items() if n > 0]
+                        if hit_parts:
+                            session['logs'].append(_make_log(f"Schedule hits: {', '.join(hit_parts)}"))
+                # ──────────────────────────────────────────────────────────────
+
                 logger.info(
                     "单条批量执行: session=%s, steps=%d, total=%d/%d",
                     session_id, actual_steps, session['current_step'], session['total_steps'],
@@ -235,6 +327,7 @@ class SessionManagerMixin:
                         "session_seed": session.get('session_seed', 0),
                         "completed": completed,
                         "steps_executed": len(outputs),
+                        "logs": list(session['logs']),
                     },
                 }
 
@@ -304,6 +397,50 @@ class SessionManagerMixin:
             completed = all(r['completed'] for r in runs)
             progress = (run0['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
 
+            # ── NaN/Inf and bounds warnings (check run 0 outputs) ─────────────
+            warned = session['warned_vars']
+            run0_outputs = all_run_outputs[0] if all_run_outputs else []
+            run0_model = runs[0]['model']
+            for out_row in run0_outputs:
+                for var_name in output_variables:
+                    if var_name in warned:
+                        continue
+                    val = out_row.get(var_name)
+                    if val is None:
+                        continue
+                    var_obj = run0_model.variables.get(var_name)
+                    if var_obj is None:
+                        continue
+                    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                        session['logs'].append(_make_log(
+                            f"⚠ NaN/Inf in '{var_name}' at step {out_row['step']}"
+                        ))
+                        warned.add(var_name)
+                    elif var_obj.bounds and len(var_obj.bounds) == 2:
+                        lo, hi = var_obj.bounds
+                        if val < lo or val > hi:
+                            session['logs'].append(_make_log(
+                                f"⚠ Bounds: '{var_name}'={val:.4g} ∉ [{lo}, {hi}] at step {out_row['step']}"
+                            ))
+                            warned.add(var_name)
+
+            if completed:
+                elapsed = _time() - session.get('start_time', _time())
+                session['logs'].append(_make_log(
+                    f"Done in {elapsed:.1f}s — {run0['current_step']} steps × {sim_runs} runs"
+                ))
+                input_var_names = [
+                    v for v in output_variables
+                    if run0_model.variables.get(v) and run0_model.variables[v].type.value == 'input'
+                ]
+                if input_var_names:
+                    hits = {v: sum(1 for d in session['data'] if d.get(v, 0) != 0)
+                            for v in input_var_names}
+                    hit_parts = [f"{v}={n}" for v, n in hits.items() if n > 0]
+                    if hit_parts:
+                        session['logs'].append(_make_log(f"Schedule hits: {', '.join(hit_parts)}"))
+            # ──────────────────────────────────────────────────────────────────
+
             logger.info(
                 "多条批量执行: session=%s, steps=%d, runs=%d, progress=%.1f%%",
                 session_id, n_steps, sim_runs, progress,
@@ -321,6 +458,7 @@ class SessionManagerMixin:
                     "session_seed": session.get('session_seed', 0),
                     "completed": completed,
                     "steps_executed": n_steps,
+                    "logs": list(session['logs']),
                 },
             }
 
