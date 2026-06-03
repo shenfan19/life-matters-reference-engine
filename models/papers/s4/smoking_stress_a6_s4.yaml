@@ -1,7 +1,5 @@
 metadata:
   name: a6_smoking_stress
-  paper: S4
-  case_id: A6
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -53,7 +51,7 @@ metadata:
     evidence_quality: 2 - health_economic_index 权重无文献依据，5 年误差积累大
     paper_value: 3 - 跨域广度展示，适合 S4 多样性案例，非定量强旗舰
     innovation: 4 - 心理×行为×肺功能×经济四域建模，戒烟时机优化是政策级贡献
-  tags: [paper3, smoking, stress, mental_health, A6, 3obj, T3, T4, K3]
+  tags: [smoking, stress, mental_health]
   references:
     - "Feyerabend C et al. (1985) Nicotine absorption and metabolism. Clin Pharmacol Ther 38(1):113-121"
     - "Fletcher CM & Peto R (1977) Natural history of chronic airflow obstruction. BMJ 1(6077):1645-1648"

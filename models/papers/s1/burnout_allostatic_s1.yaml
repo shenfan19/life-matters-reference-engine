@@ -1,7 +1,5 @@
 metadata:
   name: p1_burnout_allostatic
-  paper: Paper 1 (S1)
-  case_id: C1
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -56,7 +54,7 @@ metadata:
     evidence_quality: 2 - 皮质醇回落速率和 CVD 积累系数均为估算，无直接文献动力学系数
     paper_value: 5 - S1 旗帜性论点，跨域最深，JAMIA 独特吸引力
     innovation: 5 - 职业心理×神经内分泌×心血管三域联合，全维度 T1-T4，framing 独一无二
-  tags: [paper1, burnout, allostatic_load, cortisol, recovery_behaviors, cross-domain, psychology, endocrine, C1]
+  tags: [burnout, allostatic_load, cortisol, recovery_behaviors, cross-domain, psychology, endocrine]
   references:
     - "McEwen BS (1998) Stress, adaptation, and disease - allostasis and allostatic load. Ann NY Acad Sci 840:33-44"
     - "Maslach C, Schaufeli WB, Leiter MP (2001) Job burnout. Annu Rev Psychol 52:397-422"

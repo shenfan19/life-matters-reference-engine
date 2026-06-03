@@ -1,7 +1,5 @@
 metadata:
   name: b3_banister
-  paper: Paper 1 (JOSS)
-  case_id: B3
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -41,7 +39,7 @@ metadata:
     evidence_quality: 5 - Morton 1990 原始数据可对照，参数来源最扎实
     paper_value: 3 - 定位为框架验证，不宜作为论文主线案例
     innovation: 3 - Banister 模型已知，T3+T4 联合优化是增量贡献
-  tags: [paper1, banister, B3, validation, fitness, fatigue, T3, T4]
+  tags: [banister, validation, fitness, fatigue]
   references:
     - "Morton RH, Fitz-Clarke JR, Banister EW (1990) Modeling human performance in running. J Appl Physiol 69(3):1171-1177"
     - "Banister EW, Calvert TW, Savage MV, Bach TM (1975) A systems model of training for athletic performance. Aust J Sports Med 7(3):57-61"

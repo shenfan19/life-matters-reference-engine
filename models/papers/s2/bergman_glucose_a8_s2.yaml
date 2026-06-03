@@ -1,7 +1,5 @@
 metadata:
   name: a8_bergman_glucose_insulin
-  paper: Paper 2 (S2)
-  case_id: A8
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -54,7 +52,7 @@ metadata:
     evidence_quality: 5 - Bergman 最小模型是内分泌领域公认基准，参数来源权威
     paper_value: 2 - 独立发表价值偏低，最佳定位是 A7 支撑模块
     innovation: 3 - T2+T4 时序优化形式化是增量贡献，核心生物学已充分研究
-  tags: [paper2, Bergman, glucose, insulin_sensitivity, HbA1c, endocrine, T2DM_prevention, A8, T2, T4]
+  tags: [Bergman, glucose, insulin_sensitivity, HbA1c, endocrine, T2DM_prevention]
   references:
     - "Bergman RN et al. (1981) Quantitative estimation of insulin sensitivity. Am J Physiol 236(6):E667-E677"
     - "Matthews DR et al. (1985) HOMA model. Diabetologia 28(7):412-419"

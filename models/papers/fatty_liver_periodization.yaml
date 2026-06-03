@@ -1,7 +1,6 @@
-category: physiological
-
 metadata:
   name: fatty_liver_periodization
+  updated: 2026-05-22
   version: "1.0.0"
   authors:
   - name: Fan Shen
@@ -49,7 +48,7 @@ metadata:
     evidence_quality: 4 - Keating 2015 meta + Morton 1990 参数来源明确，ALT 系数有 meta 推导
     paper_value: 3 - 独立演示模型，尚无论文归属，展示 T1+T3+T4 完整链
     innovation: 4 - Banister 周期化引入 NAFLD 运动处方，升级时机量化为首次尝试
-  tags: [fatty_liver, NAFLD, exercise, periodization, Banister, T1, T3, T4, NSGA2]
+  tags: [fatty_liver, NAFLD, exercise, periodization, Banister, NSGA2]
   references:
     - "Keating SE et al. (2015) Exercise and NAFLD: a systematic review and meta-analysis. J Hepatol 63(2):509-521"
     - "Morton RH et al. (1990) Modelling human performance in running. J Appl Physiol 69(3):1171-1177"

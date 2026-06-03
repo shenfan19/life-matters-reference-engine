@@ -1,7 +1,5 @@
 metadata:
   name: a4_ckd_protein_pareto
-  paper: S4
-  case_id: A4-S4
   updated: 2026-05-22
   authors:
   - name: Fan Shen
@@ -31,7 +29,7 @@ metadata:
     evidence_quality: 4 - 文献基础同 S2 A4
     paper_value: 2 - 附录级材料，最佳定位是收敛性分析数据源
     innovation: 2 - 搜索预算扩展验证，方法论意义大于科学新颖性
-  tags: [paper3, ckd, protein, muscle, A4, pareto, T2, T4, K2]
+  tags: [ckd, protein, muscle]
   references:
     - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"
     - "Deb K et al. (2002) NSGA-II. IEEE Trans Evol Comput 6(2):182-197"

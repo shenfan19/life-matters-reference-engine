@@ -1,5 +1,3 @@
-category: physiological
-
 metadata:
   name: sodium_lifestyle_bp
   version: "1.0.0"
@@ -50,7 +48,7 @@ metadata:
     evidence_quality: 4 - INTERSALT 52 人群数据支撑，汗液浓度固定是已知简化
     paper_value: 3 - 进化错配视角独特，目前无论文归属
     innovation: 5 - 汗液代偿机制显式建模 + 进化错配假说动力学化，视角原创，无直接先例
-  tags: [sodium, hypertension, exercise, evolutionary_mismatch, INTERSALT, sweat, T1, T3]
+  tags: [sodium, hypertension, exercise, evolutionary_mismatch, INTERSALT, sweat]
   references:
     - "INTERSALT Cooperative Research Group (1988) Intersalt: an international study of electrolyte excretion and blood pressure. BMJ 297:319-328"
     - "Eaton SB & Konner M (1985) Paleolithic nutrition. N Engl J Med 312(5):283-289"

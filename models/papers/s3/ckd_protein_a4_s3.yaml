@@ -1,7 +1,5 @@
 metadata:
   name: a4_ckd_protein_ihio
-  paper: S3
-  case_id: A4-S3
   updated: 2026-05-26
   authors:
   - name: Fan Shen
@@ -50,7 +48,7 @@ metadata:
     evidence_quality: 4 - 文献基础继承 S2 A4，alpha 估算是主要制约
     paper_value: 4 - S3 第二支撑实例，与 A7-S3 分岔论证形成互补
     innovation: 4 - IHIO 联合可行域数学展示，Pareto 约束投影可视化方法
-  tags: [S3, CKD, protein, muscle, IHIO, feasibility_window, joint_constraint, A4, T2, T4, K2]
+  tags: [CKD, protein, muscle, IHIO, feasibility_window, joint_constraint]
   references:
     - "参见 s2/ckd_protein_a4_s2.yaml 完整引用"
     - "KDIGO (2020) CKD Evaluation and Management Guidelines. Kidney Int Suppl 10(1):1-4"
