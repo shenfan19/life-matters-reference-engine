@@ -84,35 +84,56 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
             </div>
           : <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_description')}</div>
         }
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4, alignItems: 'center' }}>
-          {meta.updated && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace' }}>updated: {meta.updated}</span>}
-          {(() => {
-            const authors: any[] = Array.isArray(meta.authors) ? meta.authors
-              : (meta.author && meta.author !== 'TODO:AUTHOR') ? [{ name: meta.author }] : [];
-            return authors.map((a: any, i: number) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
-                {a.name}
-                {a.email && <a href={`mailto:${a.email}`} style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{a.email}</a>}
-              </span>
-            ));
-          })()}
-          {meta.tags?.length > 0 && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{meta.tags.join(' · ')}</span>}
-        </div>
+        {(() => {
+          const fs = 'calc(var(--lm-font-size, 14px) * 0.7857)';
+          const sep = <span style={{ color: c.textMute, fontSize: fs, userSelect: 'none', opacity: 0.4, padding: '0 8px' }}>|</span>;
+          const authors: any[] = Array.isArray(meta.authors) ? meta.authors
+            : (meta.author && meta.author !== 'TODO:AUTHOR') ? [{ name: meta.author }] : [];
+          const fields: React.ReactNode[] = [];
+          if (meta.updated) fields.push(
+            <span key="updated" style={{ color: c.textMute, fontSize: fs, fontFamily: 'monospace' }}>updated: {meta.updated}</span>
+          );
+          if (authors.length > 0) fields.push(
+            <span key="authors" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: c.textMute, fontSize: fs, fontFamily: 'monospace' }}>
+              authors: {authors.map((a: any, i: number) => (
+                <span key={i}>
+                  {a.email ? <a href={`mailto:${a.email}`} style={{ color: c.textMute, fontSize: fs }}>{a.name}</a> : a.name}
+                  {i < authors.length - 1 && ', '}
+                </span>
+              ))}
+            </span>
+          );
+          if (meta.tags?.length > 0) fields.push(
+            <span key="tags" style={{ color: c.textMute, fontSize: fs, fontFamily: 'monospace' }}>tags: {meta.tags.join(', ')}</span>
+          );
+          if (fields.length === 0) return null;
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: `1px solid ${c.border}` }}>
+              {fields.map((f, i) => <React.Fragment key={i}>{i > 0 && sep}{f}</React.Fragment>)}
+            </div>
+          );
+        })()}
         {meta.ratings && (() => {
           const entries = Object.entries(meta.ratings).filter(([, v]) => v != null);
           if (entries.length === 0) return null;
+          const fs = 'calc(var(--lm-font-size, 14px) * 0.7143)';
+          const sep = <span style={{ color: c.textMute, fontSize: fs, userSelect: 'none', opacity: 0.4, padding: '0 8px' }}>|</span>;
           return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${c.border}` }}>
-              {entries.map(([key, val]) => {
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+              <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace', marginRight: 4 }}>ratings:</span>
+              {entries.map(([key, val], i) => {
                 const raw = String(val);
                 const score = parseInt(raw) || 0;
                 const note = raw.replace(/^\d+\s*-\s*/, '');
                 return (
-                  <Tooltip key={key} title={note}>
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', fontFamily: 'monospace', cursor: 'default' }}>
-                      {key} {'●'.repeat(score)}{'○'.repeat(5 - score)}
-                    </span>
-                  </Tooltip>
+                  <React.Fragment key={key}>
+                    {i > 0 && sep}
+                    <Tooltip title={note}>
+                      <span style={{ color: c.textMute, fontSize: fs, fontFamily: 'monospace', cursor: 'default' }}>
+                        {key} {'●'.repeat(score)}{'○'.repeat(5 - score)}
+                      </span>
+                    </Tooltip>
+                  </React.Fragment>
                 );
               })}
             </div>

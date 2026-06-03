@@ -4,6 +4,8 @@ metadata:
   authors:
   - name: Fan Shen
     email: shenfan@mail.sysu.edu.cn
+  - name: Minghui Wu
+    email: wuminghui@gzucm.edu.cn
   description:
     brief: CKD 蛋白质-肌肉权衡（A4），展示低蛋白保护肾功能与肌少症风险的临床冲突，并通过 T1+T2+T4 全维度优化。
     need: >

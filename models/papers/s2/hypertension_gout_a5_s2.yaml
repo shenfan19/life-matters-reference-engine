@@ -4,6 +4,8 @@ metadata:
   authors:
   - name: Fan Shen
     email: shenfan@mail.sysu.edu.cn
+  - name: Minghui Wu
+    email: wuminghui@gzucm.edu.cn
   description:
     brief: 高血压合并痛风药物冲突（A5），展示 HCTZ 降压收益与尿酸风险权衡，并通过 T1+T2+T4 优化药物时机。
     need: >
