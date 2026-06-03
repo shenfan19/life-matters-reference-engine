@@ -4,6 +4,8 @@ metadata:
   authors:
   - name: Fan Shen
     email: shenfan@mail.sysu.edu.cn
+  - name: Minghui Wu
+    email: wuminghui@gzucm.edu.cn
   description:
     brief: MASLD×胰岛素抵抗联合仿真（A7），Paper 2 主力案例，内分泌科×消化科临床交叉。
     need: >
