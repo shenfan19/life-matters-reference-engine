@@ -236,6 +236,10 @@ simulation:
           value: 1
           days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
           label: "久坐生活（约 30min 慢走，(3-1)MET×0.5h = 1 MET-h）"
+  mc:
+    runs: 20
+    seed: 42
+
 
 optimizer:
   method: nsga2
@@ -261,10 +265,6 @@ optimizer:
       type: hard
       description: "SBP 不超过 AHA 正常值上限（Whelton 2018）"
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
 
   algorithm:
     population_size: 80

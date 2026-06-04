@@ -61,6 +61,11 @@ imports:
 
 # 继承 s2/masld_insulin_a7_s2 全部变量、公式和约束
 # 覆盖 optimizer：双约束对比验证分岔假说（减重速率 ≤0.38 vs ≤0.27 kg/w）
+  mc:
+    runs: 20
+    seed: 42
+    description: "MC 验证分岔结论稳健性（alpha_exercise_fat, gamma_IR_liverfat 个体差异）"
+
 
 optimizer:
   method: nsga2
@@ -135,11 +140,6 @@ optimizer:
         value: [95.0, 120.0]
         date_range: [["2026-02-26", "2026-05-01"], ["2026-07-01", "2026-07-01"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 验证分岔结论稳健性（alpha_exercise_fat, gamma_IR_liverfat 个体差异）"
 
   algorithm:
     population_size: 100

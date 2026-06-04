@@ -87,6 +87,3 @@ optimizer:
     population_size: 25
     n_generations: 40
     seed: 42
-  mc:
-    enabled: false
-    sim_runs: 1

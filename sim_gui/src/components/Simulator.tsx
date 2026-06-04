@@ -437,8 +437,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptResult(session.optResult ?? yamlOptResult ?? null);
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
       // simRuns / mcSeed 存在 session 中（用户可自定义），若 session 没有则回退 YAML 默认值
-      set('simRuns', session.simRuns ?? (optBlock?.mc?.enabled && optBlock?.mc?.sim_runs ? Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))) : 1));
-      set('mcSeed', 'mcSeed' in session ? session.mcSeed : (optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null));
+      set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
+      set('mcSeed', 'mcSeed' in session ? session.mcSeed : (sim?.mc?.seed != null ? Number(sim.mc.seed) : null));
       // Re-apply YAML optimizer.schedules opt fields to any session events that never had them set
       // (handles stale sessions created before the schedules bridge, or plan-switched events)
       if (Array.isArray(optBlock?.schedules)) {
@@ -616,8 +616,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
     }
 
-    // mcSeed 来自模型 YAML，无论是否有 optimizer 块都需要重置
-    set('mcSeed', optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null);
+    // mcSeed 来自 simulation.mc.seed，无论是否有 optimizer 块都需要重置
+    set('mcSeed', sim?.mc?.seed != null ? Number(sim.mc.seed) : null);
 
     // Opt config from YAML
     if (optBlock && optBlock.enabled !== false) {
@@ -643,7 +643,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       const algoBlock = optBlock.algorithm || {};
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
-      if (optBlock.mc?.enabled && optBlock.mc?.sim_runs) set('simRuns', Math.max(1, Math.min(50, Number(optBlock.mc.sim_runs))));
+      if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
 
       // Apply optimizer.schedules decision entries to inputEvents

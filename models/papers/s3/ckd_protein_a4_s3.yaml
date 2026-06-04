@@ -64,6 +64,11 @@ imports:
 
 # 继承 s2/ckd_protein_a4_s2 全部变量、公式和约束
 # 覆盖 optimizer：同规模 NSGA-II，核心目的是展示联合可行窗口的涌现性（IHIO 论点）
+  mc:
+    runs: 20
+    seed: 42
+    description: "MC 验证联合可行窗口在个体差异（残余肾功能、肌肉合成响应）下的稳健性"
+
 
 optimizer:
   method: nsga2
@@ -131,11 +136,6 @@ optimizer:
         value: [0.27, 0.40]
         date_range: [["2026-04-01", "2026-10-01"], ["2026-12-31", "2026-12-31"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 验证联合可行窗口在个体差异（残余肾功能、肌肉合成响应）下的稳健性"
 
   algorithm:
     population_size: 100

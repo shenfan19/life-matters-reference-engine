@@ -137,6 +137,9 @@ simulation:
       value: 5.0
       label: "22:00 dose (mg)"
   output_variables: [plasma_level, liver_load, slot_6am, slot_8am, slot_12pm, slot_5pm, slot_10pm]
+  mc:
+    runs: 2
+
 
 optimizer:
   method: nsga2
@@ -195,6 +198,3 @@ optimizer:
     n_generations: 30
     seed: 42
 
-  mc:
-    enabled: true
-    sim_runs: 2

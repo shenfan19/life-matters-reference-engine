@@ -255,6 +255,10 @@ simulation:
         - {variable: dietary_protein, time: "21:00", value: 0.37,
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: ["2026-01-01", "2026-12-31"], label: "晚餐蛋白（睡前）"}
 
+  mc:
+    runs: 20
+    seed: 42
+
 # ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:
   method: nsga2
@@ -329,11 +333,6 @@ optimizer:
         value: [0.27, 0.42]
         date_range: [["2026-04-01", "2026-10-01"], ["2026-12-31", "2026-12-31"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样 alpha、mu_s、mu_u，展示个体间最优蛋白质方案的差异"
 
   algorithm:
     population_size: 100

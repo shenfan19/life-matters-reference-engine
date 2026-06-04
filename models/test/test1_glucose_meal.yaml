@@ -83,6 +83,7 @@ formulas:
       blood_glucose: blood_glucose + (85 - blood_glucose) * 0.05 * step
 
 # ── 优化设置 ──────────────────────────────────────────────────────────────────
+
 # Opt 目标：最小化三日平均餐后血糖峰值，决策变量为每餐碳水量
 optimizer:
   enabled: true
@@ -115,10 +116,6 @@ optimizer:
         label: "晚餐碳水"
     daily_total_min: 150          # g/day，每日最低碳水摄入约束
 
-  mc:
-    enabled: true
-    sim_runs: 10
-    description: "MC 采样 insulin_sensitivity 与 absorption_efficiency 的个体差异"
 
   algorithm:
     population_size: 40
@@ -152,3 +149,5 @@ simulation:
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: ["2026-01-01", "2026-01-03"]
       label: "晚餐碳水"
+  mc:
+    runs: 10

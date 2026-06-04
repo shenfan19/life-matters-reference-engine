@@ -171,6 +171,9 @@ simulation:
   start_date: "YYYY-MM-DD"        # 仿真起始日
   end_date:   "YYYY-MM-DD"        # 仿真结束日（含）
   # step / step_unit 已移至 metadata.step_size，此处不再声明
+  mc:                               # 可选；缺席或 runs=1 = 确定性模式
+    runs: 30                        # 仿真可视化 MC run 数；默认 1
+    seed: 42                        # 可选；固定整数=可复现，省略或 null=每次随机
   output_variables: [var1, var2]   # 可选；指定按名字输出的变量
   output_types: [input, state]     # 可选；input | parameter | state，按类型输出变量
   schedules:                      # 可选；单方案默认调度（向后兼容）
@@ -209,10 +212,9 @@ optimizer:                          # 可选；优化器配置；详见「optimi
   algorithm:                        # 可选；缺省 pop=50, gen=80, seed=42
     population_size: 50
     n_generations: 80
-    seed: 42
-  mc:                               # 可选；Monte Carlo 模式
-    enabled: false
-    sim_runs: 30
+    seed: 42                        # NSGA-II 遗传算法 seed，与 MC 无关
+  mc:                               # 可选；优化器内层 MC 评估；缺席或 runs=1 = 单次评估
+    runs: 5                         # 每次候选评估的内层 MC run 数；默认 1
     seed: 42                        # 可选；固定整数=可复现，省略或 null=每次随机
   schedules:                        # 决策变量 + 固定背景输入（统一列表，取代旧 inputs:）
     - variable: var_name            # 固定背景量（无 optimize 块）——每次评估以固定值注入

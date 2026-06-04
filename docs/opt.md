@@ -229,13 +229,12 @@ optimizer:
   algorithm:
     population_size: 10
     n_generations: 15
-    seed: 42
+    seed: 42                 # NSGA-II 遗传算法 seed，与 MC 无关
   constraints:
     - variable: constraint_var
       condition: "<= 250"
-  mc:
-    enabled: false
-    sim_runs: 1
+  mc:                        # 可选；缺席或 runs=1 = 单次评估（默认）
+    runs: 5                  # 每次候选评估的内层 MC run 数
 ```
 
 **regimen: 格式（旧，向后兼容）**

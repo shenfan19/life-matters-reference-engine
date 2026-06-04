@@ -332,11 +332,6 @@ optimizer:
         days_pool: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
         days_n: [3, 7]
 
-  mc:
-    enabled: false
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样 tau_s_sleep（睡眠消散时间常数，±15%个体差异），验证昼夜节律对齐策略对不同睡眠类型人群（早鸟/夜枭）的稳健性"
 
   algorithm:
     population_size: 60
