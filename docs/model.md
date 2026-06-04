@@ -17,20 +17,19 @@
 - 文献给你一个直接可进公式的数（但来自数学拟合而非直接测量，如 Bergman 模型系数）→ `parameter`（交由 Modeller 内环优化校准）
 - 文献给你原始统计效应量（OR=1.65、HR=0.82、d=0.68、ke=0.198 h⁻¹）→ `evidence`（Loader 自动换算）
 
-**`input` 变量的单位规范（事件量 vs 速率量）：**
+**`input` 变量的单位规范（事件量，唯一规则）：**
 
-LM 引擎以 pulse 模式执行 input 变量：schedule 触发时写入值，其余步为 0。`unit` 字段应反映每次触发时值的物理意义，分两类：
+LM 引擎以 pulse 模式执行 input 变量：schedule 触发时写入值，其余步为 0。`unit` 字段描述**一次脉冲触发交付的物理量**，始终使用裸单位，不含时间分母。`input` 公式直接加减，**不乘 `step`**：
 
-| 类型 | 含义 | 单位示例 | 典型场景 |
-|------|------|---------|---------|
-| **事件量**（per-event amount） | 每次给药/执行的离散量，schedule 触发频率由 `days` 控制，不体现在单位里 | `mg`、`g`、`sessions`、`次` | 药物剂量、单次运动场次 |
-| **速率量**（rate）| 持续进行中的速率，每步 pulse 是"当前速率的快照"，公式须 `× step` 积分 | `kcal/day`、`g/kg/day`、`kg/week`、`支/day` | 热量缺口、蛋白质日摄入率、减重速率、吸烟频率 |
+| 正确写法 | 禁止写法 | 原因 |
+|---------|---------|------|
+| `mg`、`g`、`kcal`、`kg`、`MET-h`、`sessions` | ~~`mg/day`、`g/kg/day`、`kcal/day`、`kg/week`~~ | schedule 是离散脉冲，触发频率由 `days` 控制，`/day` 与 T3/T4 优化器不兼容 |
 
-判断准则：若公式中所有用到该变量的参数单位与 `/day`（或 `/week`）一致，则为速率量；若有参数以裸单位（如 `1/mg`、`μmol/L per mg`）乘以该变量，则为事件量，应去掉时间分母。
+文献给出的速率参考值（如"500 mg/day"、"2 mg/kg/day"）记录在 `reference` 或 `description` 字段，不进入 `unit`。真正的持续速率过程（如静脉输注速率）建模为 `parameter`（带 `1/day`、`1/min` 单位），配合 `× step` 在公式中积分；`input` 变量的公式不使用 `× step`。
 
-> 示例：`thiazide_dose`（HCTZ 晨服剂量）的 `unit` 应为 `mg`，不是 `mg/day`——
-> 因为公式里 `gamma_T [1/mg] × thiazide_dose` 要求无时间分母；
-> 而 `caloric_deficit` 的 `unit` 保持 `kcal/day`，因为它代表持续的热量亏缺速率。
+> 示例：`aspirin_dose = 50 mg`（晨服，文献"100 mg/day"记入 `reference`，`unit` 只写 `mg`）；
+> `caloric_deficit = 500 kcal`（每日触发，不写 `kcal/day`）；
+> `weight_loss_weekly = 0.5 kg`（每周一触发，不写 `kg/week`）。
 
 **evidence 的 8 种子类型：**
 

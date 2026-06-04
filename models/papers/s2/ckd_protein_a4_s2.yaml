@@ -87,9 +87,9 @@ variables:
     reference: "KDIGO 2020"
 
   dietary_protein:
-    description: 每日蛋白质摄入量（g/kg/day），KDIGO建议范围 0.6–1.0
+    description: 每次蛋白质摄入事件量（g/kg，每次进餐触发），KDIGO建议日合计范围 0.6–1.0 g/kg
     value: 0.8
-    unit: g/kg/day
+    unit: g/kg
     type: input
 
   body_weight:
@@ -105,17 +105,17 @@ variables:
       蛋白质摄入超过安全阈值对 GFR 的损伤敏感性（Kalantar-Zadeh 2017）。
       MC 时各条曲线采样不同值，代表个体肾功能对蛋白质负荷的耐受差异。
     value: "normal(0.0012, 0.0003)"
-    unit: 1/(day·g/kg/day)
+    unit: 1/(g/kg)
     type: parameter
     bounds: [0.0003, 0.003]
     reference: "Kalantar-Zadeh K et al. (2017)"
 
   mu_s:
     description: |
-      肌肉蛋白合成效率（每 g/kg/day 蛋白质每天生成 kg 肌肉）。
+      肌肉蛋白合成效率（每 g/kg 蛋白质事件量生成 kg 肌肉）。
       MC 时代表个体合成代谢能力差异（Carrero 2013）。
     value: "normal(0.008, 0.002)"
-    unit: kg/(day·g/kg/day)
+    unit: kg/(g/kg)
     type: parameter
     bounds: [0.002, 0.018]
     reference: "Carrero JJ et al. (2013)"
@@ -147,9 +147,9 @@ variables:
     reference: "Wang XH & Mitch WE (2014)"
 
   sigma_urea:
-    description: 蛋白质分解产生尿素的速率系数
+    description: 蛋白质分解产生尿素的系数（BUN 变化量 per 克总蛋白）
     value: 0.028
-    unit: mg/dL·day⁻¹·(g/day)⁻¹
+    unit: mg/(dL·g)
     type: parameter
     reference: "TODO:SOURCE 蛋白-BUN关系文献"
 
@@ -175,7 +175,7 @@ formulas:
     condition: true
     priority: 6
     dynamics:
-      GFR: GFR - (alpha * max(0, dietary_protein - 0.6) * GFR + beta0 * GFR) * step
+      GFR: GFR - alpha * max(0, dietary_protein - 0.6) * GFR - beta0 * GFR * step
     reference: "KDIGO 2020; Kalantar-Zadeh K et al. (2017)"
 
   muscle_dynamics:
@@ -186,9 +186,8 @@ formulas:
     priority: 5
     dynamics:
       muscle_mass: >
-        muscle_mass + (mu_s * dietary_protein * min(1.0, GFR / GFR_initial)
-        - mu_d * muscle_mass
-        - mu_u * max(0, GFR_initial - GFR) * muscle_mass) * step
+        muscle_mass + mu_s * dietary_protein * min(1.0, GFR / GFR_initial)
+        - (mu_d * muscle_mass + mu_u * max(0, GFR_initial - GFR) * muscle_mass) * step
     reference: "Carrero JJ et al. (2013); Wang XH & Mitch WE (2014)"
 
   bun_dynamics:
@@ -198,7 +197,7 @@ formulas:
     condition: true
     priority: 4
     dynamics:
-      BUN: BUN + (sigma_urea * dietary_protein * body_weight - 0.0015 * GFR * BUN) * step
+      BUN: BUN + sigma_urea * dietary_protein * body_weight - 0.0015 * GFR * BUN * step
     reference: "TODO:SOURCE BUN-蛋白关系文献"
 
   lm_score_update:

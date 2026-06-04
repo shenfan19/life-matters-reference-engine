@@ -115,29 +115,29 @@ variables:
   # P2: Dietary Purine Intake
   purine_intake:
     description: |
-      每日嘌呤摄入量（mg/day）。
+      每日嘌呤摄入事件量（mg，每日触发一次代表全天饮食）。
       高嘌呤食物：内脏（肝/肾/脑），贝类，红肉 → 每100g约150-1000mg嘌呤。
-      低嘌呤目标：<500 mg/day（ACR 2020建议）。
-      参考基线：普通饮食约1000 mg/day（Choi 2005）。
+      低嘌呤目标：<500 mg/日（ACR 2020建议）。
+      参考基线：普通饮食约1000 mg/日（Choi 2005）。
       每降低500mg嘌呤 → 尿酸降低约30 μmol/L（Choi 2005数据估算）。
     value: 1000.0
-    unit: "mg/day"
+    unit: "mg"
     type: input
     bounds: [0.0, 3000.0]
 
   # P3: Weight Loss Rate — 双刃剑输入
   weight_loss_rate:
     description: |
-      目标减重速率（kg/week）。
+      每日减重事件量（kg/日，每日触发一次）。
       正面效应：减重1kg → 收缩压降低约1 mmHg（Neter 2003）；同时降低尿酸。
-      负面效应（快速减重>0.5kg/week）：酮体在肾小管竞争尿酸排泄 →
-      尿酸反而升高约50 μmol/L per 超额kg/week（Fam 2005）。
-      ACR 2020推荐：≤0.5 kg/week（避免痛风急性发作）。
-      约束：0-1.0 kg/week（超过1.0不安全）。
+      负面效应（快速减重>0.071 kg/日，即>0.5 kg/周）：酮体在肾小管竞争尿酸排泄 →
+      尿酸反而升高（Fam 2005）。
+      ACR 2020推荐：≤0.071 kg/日（≤0.5 kg/周，避免痛风急性发作）。
+      约束：0-0.143 kg/日（对应≤1.0 kg/周）。
     value: 0.0
-    unit: "kg/week"
+    unit: "kg"
     type: input
-    bounds: [0.0, 1.0]
+    bounds: [0.0, 0.143]
 
 formulas:
   # F1: Blood Pressure Dynamics（一阶趋向平衡动力学）
@@ -166,16 +166,16 @@ formulas:
       来源：Gurwitz 1992 (HCTZ); Choi 2005 (饮食); Fam 2005 (减重)。
     condition: true
     dynamics:
-      uric_acid: "uric_acid + ((ua_baseline + diuretic_dose * 2.8 + (purine_intake - 1000.0) * 0.06 + max(0.0, weight_loss_rate - 0.5) * 50.0) - uric_acid) * (1.0/14.0) * step"
+      uric_acid: "uric_acid + ((ua_baseline + diuretic_dose * 2.8 + (purine_intake - 1000.0) * 0.06 + max(0.0, weight_loss_rate - 0.0714) * 350.0) - uric_acid) * (1.0/14.0) * step"
     priority: 7
 
   # F3: Body Weight Dynamics
-  # 每日体重变化 = -weight_loss_rate / 7（kg/day）
+  # 每次体重变化 = -weight_loss_rate（kg，每日触发）
   weight_dynamics:
-    description: "体重按目标减重速率线性下降（安全约束：0-1.0 kg/week）。"
+    description: "体重按每日减重事件量线性下降（安全约束：≤0.143 kg/日，即≤1.0 kg/周）。"
     condition: weight_loss_rate > 0.0
     dynamics:
-      body_weight: "max(50.0, body_weight - weight_loss_rate / 7.0 * step)"
+      body_weight: "max(50.0, body_weight - weight_loss_rate)"
     priority: 5
 
   # F4: Composite Goal Score
@@ -206,7 +206,7 @@ simulation:
       value: 800.0
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_range: ["2026-01-01", "2026-04-01"]
-      label: "每日嘌呤摄入量（mg/day）"
+      label: "每日嘌呤摄入量（mg）"
 
 optimizer:
   method: nsga2
@@ -221,9 +221,9 @@ optimizer:
       description: "最小化90天末血尿酸（ACR 2020目标<360 μmol/L）"
   constraints:
     - variable: weight_loss_rate
-      condition: "<= 0.5"
+      condition: "<= 0.071"
       type: hard
-      description: "ACR 2020：减重速率≤0.5kg/week，防止酮体竞争排泄升高尿酸"
+      description: "ACR 2020：减重≤0.071 kg/日（≤0.5 kg/周），防止酮体竞争排泄升高尿酸"
     - variable: diuretic_dose
       condition: "<= 25"
       type: hard

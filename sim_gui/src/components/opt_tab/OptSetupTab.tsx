@@ -133,6 +133,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                   onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })} />
               )}
               {varDef?.unit && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>}
+              {!ev.timeEnabled && !ev.daysEnabled && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>· {t('sim.setup.daily')}</span>}
             </div>
 
             {/* T2: time row */}

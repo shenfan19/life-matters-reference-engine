@@ -84,6 +84,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
               <InputNumber size="small" value={ev.value} style={{ flex: 1, minWidth: 0 }}
                 onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })} />
               {varDef?.unit && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>}
+              {!ev.timeEnabled && !ev.daysEnabled && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>· {t('sim.setup.daily')}</span>}
             </div>
             {hasDetails && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>

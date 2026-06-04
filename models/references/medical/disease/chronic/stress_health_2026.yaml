@@ -100,11 +100,11 @@ variables:
 
   exercise_intensity:
     description: |
-      每日运动强度（MET-hours/day）。
-      WHO建议：150分钟/周中等强度（约3.5 MET-h/day）或75分钟高强度。
-      适度运动（3-6 MET-h/day）降低皮质醇；过度训练（>10 MET-h/day）升高皮质醇。
+      每次运动事件量（MET-hours，每次触发代表一次训练）。
+      WHO建议：150分钟/周中等强度（约3.5 MET-h/次 × 3次/周）或75分钟高强度。
+      适度运动（3-6 MET-h/次）降低皮质醇；过度训练（>10 MET-h/次）升高皮质醇。
     value: 0.0
-    unit: "MET-hours/day"
+    unit: "MET-h"
     type: input
     bounds: [0.0, 15.0]
 
@@ -131,10 +131,10 @@ variables:
   exercise_cortisol_effect:
     description: |
       运动对皮质醇的双相效应系数。
-      中等运动（3-6 MET-h/day）每天降低约0.1皮质醇单位；
-      过度训练（>8 MET-h/day）每天升高约0.05皮质醇单位（净效应用max-min截断）。
+      中等运动（3-6 MET-h/次）每次降低约0.1皮质醇单位；
+      过度训练（>8 MET-h/次）每次升高约0.05皮质醇单位（净效应用max-min截断）。
     value: 0.025
-    unit: "1/(MET-h/day)"
+    unit: "1/MET-h"
     type: parameter
 
   cvd_risk_rate:
@@ -169,8 +169,8 @@ formulas:
         max(0.5, min(5.0,
         cortisol_level
         + (1.0 + stress_cortisol_coeff * work_stress * (1.0 - 0.2 * sleep_quality) - cortisol_level) * (1.0/7.0)
-        - exercise_cortisol_effect * min(6.0, exercise_intensity) * step
-        + max(0, exercise_cortisol_effect * 0.5 * (exercise_intensity - 8.0)) * step))
+        - exercise_cortisol_effect * min(6.0, exercise_intensity)
+        + max(0, exercise_cortisol_effect * 0.5 * (exercise_intensity - 8.0))))
 
   # F2: CVD风险积累（皮质醇驱动，运动保护）
   cvd_dynamics:
@@ -184,7 +184,7 @@ formulas:
         max(0.0, min(1.0,
         cvd_risk
         + cvd_risk_rate * max(0, cortisol_level - 1.0) * step
-        - 0.00008 * min(6.0, exercise_intensity) * step))
+        - 0.00008 * min(6.0, exercise_intensity)))
 
   # F3: 免疫功能（皮质醇抑制，运动适度提升，睡眠恢复）
   immune_dynamics:
@@ -197,7 +197,7 @@ formulas:
         max(0.0, min(1.0,
         immune_function
         - 0.01 * max(0, cortisol_level - 1.2) * step
-        + 0.005 * min(5.0, exercise_intensity) * step
+        + 0.005 * min(5.0, exercise_intensity)
         + immune_recovery_rate * sleep_quality * step
         - immune_recovery_rate * (1.0 - sleep_quality) * 0.5 * step))
 
@@ -213,7 +213,7 @@ formulas:
         mental_health
         - 2.0 * work_stress * step
         - 1.5 * max(0, cortisol_level - 1.5) * step
-        + 1.5 * min(5.0, exercise_intensity) * step
+        + 1.5 * min(5.0, exercise_intensity)
         + 2.0 * sleep_quality * step))
 
 simulation:

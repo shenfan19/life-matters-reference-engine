@@ -103,15 +103,15 @@ variables:
     reference: "Staudacher HM et al. (2012)"
 
   fodmap_intake:
-    description: 每日 FODMAP 摄入量（g/day；高FODMAP饮食约30-50g，低FODMAP目标<10g）
+    description: 每日 FODMAP 摄入事件量（g，每日触发一次；高FODMAP饮食约30-50g，低FODMAP目标<10g）
     value: 35.0
-    unit: g/day
+    unit: g
     type: input
 
   fiber_soluble:
-    description: 每日可溶性膳食纤维摄入量（g/day；低FODMAP限制期需主动补充）
+    description: 每日可溶性膳食纤维摄入事件量（g，每日触发一次；低FODMAP限制期需主动补充）
     value: 8.0
-    unit: g/day
+    unit: g
     type: input
 
   # ── 外生参数（不参与优化）─────────────────────────────────────────────────────
@@ -126,9 +126,9 @@ variables:
 
   # ── 动力学参数 ─────────────────────────────────────────────────────────────────
   fodmap_symptom_coeff:
-    description: 每 g/day FODMAP 对症状评分的直接贡献系数（Halmos 2014 估算）
+    description: 每 g FODMAP 对症状评分的直接贡献系数（Halmos 2014 估算）
     value: 4.5
-    unit: AU/(g/day)
+    unit: AU/g
     type: parameter
     reference: "Halmos EP et al. (2014)"
 
@@ -172,10 +172,10 @@ formulas:
     dynamics:
       symptom_score: >
         symptom_score
-        + (fodmap_symptom_coeff * fodmap_intake - 30.0) * 0.1 * step
+        + (fodmap_symptom_coeff * fodmap_intake - 30.0) * 0.1
         + stress_symptom_coeff * work_pressure * step
-        - 0.4 * max(0, 10.0 - fodmap_intake) * step
-        - 0.3 * fiber_soluble * step
+        - 0.4 * max(0, 10.0 - fodmap_intake)
+        - 0.3 * fiber_soluble
         - 0.05 * max(0, symptom_score - 50) * step
     reference: "Gibson PR (2010); Halmos EP (2014); Koloski NA (2012)"
 
@@ -186,9 +186,9 @@ formulas:
     dynamics:
       gut_permeability: >
         gut_permeability
-        + 0.005 * max(0, fodmap_intake - 10) * step
+        + 0.005 * max(0, fodmap_intake - 10)
         - permeability_recovery_rate * max(0, gut_permeability - 1.0) * step
-        - 0.005 * fiber_soluble * step
+        - 0.005 * fiber_soluble
     reference: "Camilleri M et al. (2012)"
 
   microbiome_stability_dynamics:
@@ -201,7 +201,7 @@ formulas:
       microbiome_stability: >
         microbiome_stability
         - microbiome_decline_rate * max(0, 8.0 - fodmap_intake) * step
-        + 0.004 * min(fiber_soluble, 12) * step
+        + 0.004 * min(fiber_soluble, 12)
         - 0.003 * max(0, microbiome_stability - 1.0) * step
     reference: "Staudacher HM et al. (2012); Moayyedi P (2020)"
 

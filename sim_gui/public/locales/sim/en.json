@@ -164,6 +164,7 @@
   "sim.setup.tog.day_opt_tip": "Optimize execution days (define candidate patterns via YAML days_options)",
   "sim.setup.tog.range": "R",
   "sim.setup.tog.range_tip": "Set valid range",
+  "sim.setup.daily": "daily",
   "sim.setup.opt.date_start_label": "from",
   "sim.setup.opt.date_end_label": "to",
   "sim.setup.opt.time_win": "Switch to time-window optimization",

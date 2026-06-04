@@ -110,11 +110,11 @@ variables:
   # ── 输入变量 ──────────────────────────────────────────────────────────────────
   daily_vaccination_rate:
     description: |
-      每日新接种人口比例（/day）。
-      大规模接种运动：0.005-0.01/day（即每天接种总人口的0.5-1%）。
-      COVID-19高峰接种率（美国2021年春季）：约0.006/day。
+      每日接种事件量（每次触发接种的人口比例）。
+      大规模接种运动：0.005-0.01/次（每天接种总人口的0.5-1%，每日触发）。
+      COVID-19高峰接种率（美国2021年春季）：约0.006/次。
     value: 0.0
-    unit: "比例/day"
+    unit: "比例"
     type: input
     bounds: [0.0, 0.02]
 
@@ -207,8 +207,8 @@ formulas:
     condition: daily_vaccination_rate > 0 and susceptible > 0
     priority: 6
     dynamics:
-      susceptible: max(0.0, susceptible - daily_vaccination_rate * susceptible * step)
-      vaccinated: min(1.0, vaccinated + daily_vaccination_rate * susceptible * step - vaccine_efficacy_waning * vaccinated * step)
+      susceptible: max(0.0, susceptible - daily_vaccination_rate * susceptible)
+      vaccinated: min(1.0, vaccinated + daily_vaccination_rate * susceptible - vaccine_efficacy_waning * vaccinated * step)
 
   # F4: 有效免疫比例计算
   immune_fraction_calc:
@@ -255,7 +255,7 @@ optimizer:
   schedules:
     - variable: daily_vaccination_rate
       time: "00:00"
-      label: "每日接种率（比例/day）"
+      label: "每日接种率（比例）"
       optimize:
         value: [0.001, 0.015]
   algorithm:

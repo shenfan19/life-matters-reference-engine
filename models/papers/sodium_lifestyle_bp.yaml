@@ -88,17 +88,17 @@ variables:
   sodium_intake:
     type: input
     value: 0.0
-    unit: mg/day
+    unit: mg
     bounds: [0, 10000]
-    description: "每日膳食钠摄入量（pulse：每天触发一次，代表全天饮食）"
+    description: "每日膳食钠摄入事件量（每天触发一次，代表全天饮食摄入总量）"
     io_role: input
 
   active_met_hours:
     type: input
     value: 0.0
-    unit: MET·hour/day
+    unit: MET·h
     bounds: [0, 40]
-    description: "每日有效运动当量（静息以上 MET × 活动小时数；古代重劳动 ≈ (4-1)×8=24，久坐 ≈ 1）"
+    description: "每次运动事件量（静息以上 MET × 活动小时数；古代重劳动 ≈ (4-1)×8=24，久坐 ≈ 1）"
     io_role: input
 
   sweat_rate_slope:
@@ -125,7 +125,7 @@ variables:
   k_pressure:
     type: parameter
     value: normal(0.006, 0.002)
-    unit: "mmHg per mg/day"
+    unit: "mmHg per mg"
     description: >
       钠日盈余对 SBP 长期影响系数。
       推导：INTERSALT 52 人群，钠排泄范围 0–250 mmol/day（0–5750 mg/day），
@@ -156,7 +156,7 @@ formulas:
     description: "累计运动负担：每日 active_met_hours 的积分"
     priority: 3
     dynamics:
-      exercise_burden: "exercise_burden + active_met_hours * step"
+      exercise_burden: "exercise_burden + active_met_hours"
     reference: "Life Matters Framework derived metric"
 
   lm_score_update:
