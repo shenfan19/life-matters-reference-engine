@@ -45,6 +45,11 @@ imports:
 
 # 继承 s2/hypertension_gout_a5_s2 的全部变量、公式和约束
 # 覆盖 optimizer：加入第三目标 body_weight + 更大种群
+  mc:
+    runs: 30
+    seed: 42
+    description: "MC 采样 gamma_T（HCTZ尿酸副作用系数）和 beta_allo（别嘌醇降尿酸效力），与S2 A5保持一致的个体差异建模"
+
 
 optimizer:
   method: nsga2
@@ -104,11 +109,6 @@ optimizer:
         value: [50.0, 300.0]
         date_range: [["2026-01-29", "2026-04-30"], ["2026-07-01", "2026-07-01"]]
 
-  mc:
-    enabled: true
-    sim_runs: 30
-    seed: 42
-    description: "MC 采样 gamma_T（HCTZ尿酸副作用系数）和 beta_allo（别嘌醇降尿酸效力），与S2 A5保持一致的个体差异建模"
 
   algorithm:
     population_size: 150

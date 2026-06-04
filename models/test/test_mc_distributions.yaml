@@ -5,18 +5,18 @@ metadata:
     method: |
       Three parameters each with a different distribution form.
       In deterministic mode the engine uses the distribution mean.
-      In MC mode (sim_runs=5) each run re-samples all three parameters.
+      In MC mode (simulation.mc.runs=5) each run re-samples all three parameters.
 
         clearance_rate  ~ normal(0.30, 0.05)   → mean 0.30, sd 0.05
         bioavailability ~ uniform(0.60, 0.90)  → mean 0.75, range 0.60–0.90
         volume_dist     ~ lognormal(3.9, 0.2)  → median e^3.9 ≈ 49 L, log-sd 0.2
 
-      NSGA-II with mc.enabled=true, sim_runs=5: each candidate solution is
+      NSGA-II with simulation.mc.runs=5: each candidate solution is
       evaluated 5 times and results are averaged, testing the MC evaluation loop.
     optimization: |
       Single input: dose [50,400] mg.
       Two objectives: maximize mean_plasma (therapeutic coverage) + minimize peak_plasma.
-      MC: enabled, sim_runs=5, seed=7 (fixed for reproducibility).
+      MC: simulation.mc.runs=5, seed=7 (fixed for reproducibility).
   tags: [test, mc, distributions, normal, uniform, lognormal, nsga2]
   references: ["TEST: Monte Carlo parameter distributions — normal/uniform/lognormal"]
   step_size:
@@ -97,6 +97,10 @@ simulation:
       value: 200.0
       label: "Daily dose 200 mg"
   output_variables: [plasma_conc, peak_plasma, daily_dose]
+  mc:
+    runs: 5
+    seed: 7
+
 
 optimizer:
   method: nsga2
@@ -117,7 +121,3 @@ optimizer:
     population_size: 20
     n_generations: 25
     seed: 42
-  mc:
-    enabled: true
-    sim_runs: 5
-    seed: 7

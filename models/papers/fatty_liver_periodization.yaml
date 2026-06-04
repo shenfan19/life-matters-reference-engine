@@ -221,6 +221,10 @@ simulation:
           days: [Mon, Tue, Wed, Thu, Fri]
           date_range: ["2026-01-01", "2026-03-27"]
           label: "强化叠加 +4.5 MET（全程，5 次/周）"
+  mc:
+    runs: 20
+    seed: 42
+
 
 optimizer:
   method: nsga2
@@ -245,10 +249,6 @@ optimizer:
     n_generations: 150
     seed: 42
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
 
   schedules:
     # T1: 基础日常活动（全程每日，中低强度）

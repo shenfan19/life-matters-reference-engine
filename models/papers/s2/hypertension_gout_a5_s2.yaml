@@ -243,6 +243,10 @@ simulation:
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
            date_range: ["2026-01-01", "2026-07-01"], label: "每日热量缺口"}
 
+  mc:
+    runs: 20
+    seed: 42
+
 # ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:
   method: nsga2
@@ -310,11 +314,6 @@ optimizer:
         value: [50.0, 300.0]
         date_range: [["2026-01-29", "2026-04-30"], ["2026-07-01", "2026-07-01"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样个体尿酸清除能力（FEUA变异），识别哪类患者需要别嘌醇"
 
   algorithm:
     population_size: 100

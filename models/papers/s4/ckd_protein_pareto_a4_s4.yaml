@@ -43,6 +43,11 @@ imports:
 
 # 继承 s2/ckd_protein_a4_s2 的全部变量、公式、约束
 # 仅覆盖 optimizer 配置（更大种群 + 同一 T1+T2+T4 inputs）
+  mc:
+    runs: 30
+    seed: 42
+    description: "MC 采样 alpha、mu_s、mu_u（比 Paper2 多10次），验证 T2 结论稳健性"
+
 
 optimizer:
   method: nsga2
@@ -111,11 +116,6 @@ optimizer:
         value: [0.27, 0.42]
         date_range: [["2026-04-01", "2026-10-01"], ["2026-12-31", "2026-12-31"]]
 
-  mc:
-    enabled: true
-    sim_runs: 30
-    seed: 42
-    description: "MC 采样 alpha、mu_s、mu_u（比 Paper2 多10次），验证 T2 结论稳健性"
 
   algorithm:
     population_size: 150

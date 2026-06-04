@@ -217,6 +217,10 @@ simulation:
            days: [Tue, Thu, Sat, Sun],
            date_range: ["2026-01-29", "2026-03-27"], label: "辅助低强度"}
 
+  mc:
+    runs: 20
+    seed: 42
+
 # ── 优化设置（T1+T3+T4 联合优化）──────────────────────────────────────────────
 optimizer:
   method: nsga2
@@ -283,11 +287,6 @@ optimizer:
         value: [6.5, 9.0]
         date_range: [["2026-01-08", "2026-02-12"], ["2026-03-27", "2026-03-27"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样 alpha_HIIT（有氧运动对肝脂的减脂系数，个体差异 ±25%）和 alt_sensitivity（运动强度对ALT的敏感性）"
 
   algorithm:
     population_size: 80

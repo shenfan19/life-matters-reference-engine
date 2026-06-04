@@ -264,6 +264,10 @@ simulation:
            days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
            date_range: ["2026-01-01", "2026-06-30"], label: "全程可溶性纤维"}
 
+  mc:
+    runs: 20
+    seed: 42
+
 # ── 优化设置（T1+T3+T4）──────────────────────────────────────────────────────────
 optimizer:
   method: nsga2
@@ -333,11 +337,6 @@ optimizer:
         value: [14.0, 22.0]
         date_range: [["2026-01-22", "2026-03-05"], ["2026-06-30", "2026-06-30"]]
 
-  mc:
-    enabled: true
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样 work_pressure 和 fodmap_symptom_coeff，表达个体肠道敏感性差异"
 
   algorithm:
     population_size: 80

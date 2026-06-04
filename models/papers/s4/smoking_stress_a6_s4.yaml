@@ -344,11 +344,6 @@ optimizer:
         value: [5.0, 15.0]
         date_range: [["2026-06-01", "2027-06-30"], ["2030-12-31", "2030-12-31"]]
 
-  mc:
-    enabled: false
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样 alpha_DA（尼古丁-多巴胺系数，个体成瘾性差异 ±30%）和 delta_fev1_smk（吸烟FEV1损伤速率，吸烟史差异），验证T3/T4结论稳健性"
 
   algorithm:
     population_size: 100

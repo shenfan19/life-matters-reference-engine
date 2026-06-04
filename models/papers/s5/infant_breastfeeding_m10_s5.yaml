@@ -283,11 +283,6 @@ optimizer:
       type: hard
       description: "宝宝体重不低于2.7kg（出生体重90%），防止极端喂养不足方案"
 
-  mc:
-    enabled: false
-    sim_runs: 20
-    seed: 42
-    description: "MC 采样胃排空速率（±15%个体差异）和睡眠恢复率（±20%），验证最优方案对不同体质新生儿的稳健性"
 
   algorithm:
     population_size: 50

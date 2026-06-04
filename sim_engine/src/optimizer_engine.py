@@ -347,10 +347,10 @@ def run_optimizer(simulator_engine, model_name: str,
 
     # ── MC settings ───────────────────────────────────────────────────────────
     mc_cfg = opt_block.get('mc', {})
-    mc_enabled = mc_cfg.get('enabled', False)
-    mc_runs = max(1, int(mc_cfg.get('sim_runs', 1))) if mc_enabled else 1
-    # mc.seed 优先；回退到 algorithm.seed；最终默认 42
-    mc_seed = int(mc_cfg.get('seed', opt_block.get('algorithm', {}).get('seed', 42)))
+    mc_runs = max(1, int(mc_cfg.get('runs', 1)))
+    # optimizer.mc.seed 独立于 algorithm.seed（algorithm.seed 只用于 NSGA-II）
+    mc_seed_raw = mc_cfg.get('seed')
+    mc_seed = int(mc_seed_raw) if mc_seed_raw is not None else None
 
     # Collect MC distributions once
     from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model

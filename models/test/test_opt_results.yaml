@@ -169,9 +169,6 @@ optimizer:
     n_generations: 60
     seed: 42
 
-  mc:
-    enabled: false
-    sim_runs: 1
 
   # Pre-filled results block — tests GUI warm-start display and Pareto visualization
   results:

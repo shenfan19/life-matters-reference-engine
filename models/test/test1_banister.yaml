@@ -113,6 +113,7 @@ formulas:
       performance: p0 + fitness - fatigue
 
 # ── 优化设置 ──────────────────────────────────────────────────────────────────
+
 # Opt：双目标 Pareto — 最大化第16周末表现 × 最小化峰值疲劳
 optimizer:
   enabled: true
@@ -155,10 +156,6 @@ optimizer:
         days: [Sat, Sun]
         label: "恢复/休息日"
 
-  mc:
-    enabled: true
-    sim_runs: 8
-    description: "MC 采样 g（适应增益）和 h（疲劳增益）的个体差异，观察最优训练方案对个体变异的稳健性"
 
   algorithm:
     population_size: 60
@@ -188,3 +185,5 @@ simulation:
       days: [Sat]
       date_range: ["2026-01-01", "2026-01-07"]
       label: "恢复日"
+  mc:
+    runs: 8

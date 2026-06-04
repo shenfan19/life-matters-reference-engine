@@ -151,6 +151,3 @@ optimizer:
     n_generations: 20
     seed: 42
 
-  mc:
-    enabled: false
-    sim_runs: 1
