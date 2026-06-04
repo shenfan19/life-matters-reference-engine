@@ -54,25 +54,25 @@ variables:
   protein_intake:
     type: input
     value: 0.8
-    unit: g/kg/day
-    description: Daily protein intake rate (continuous rate; formula multiplies by step).
+    unit: g/kg
+    description: Daily protein intake event (per-event amount; fires once per day).
 
   carb_load:
     type: input
     value: 200.0
-    unit: g/day
-    description: Daily carbohydrate intake rate (continuous rate; formula multiplies by step).
+    unit: g
+    description: Daily carbohydrate intake event (per-event amount; fires once per day).
 
   protein_anabolic_threshold:
     type: parameter
     value: 0.8
-    unit: g/kg/day
-    description: Minimum protein intake for net muscle synthesis.
+    unit: g/kg
+    description: Minimum protein intake per event for net muscle synthesis.
 
   muscle_gain_rate:
     type: parameter
     value: 0.03
-    unit: kg per g/kg/day excess
+    unit: kg per g/kg excess
     description: Muscle gain per unit excess protein above threshold per day.
 
   muscle_loss_rate:
@@ -84,20 +84,20 @@ variables:
   fat_gain_per_carb:
     type: parameter
     value: 0.000025
-    unit: kg per g/day
+    unit: kg per g
     description: Fat mass increase per g/day excess carbohydrate.
 
 formulas:
   muscle_dynamics:
     description: Net muscle mass change from protein excess and basal catabolism (rate × step).
     dynamics:
-      muscle_mass: "max(5.0, muscle_mass + ((protein_intake - protein_anabolic_threshold) * muscle_gain_rate - muscle_loss_rate) * step)"
+      muscle_mass: "max(5.0, muscle_mass + (protein_intake - protein_anabolic_threshold) * muscle_gain_rate - muscle_loss_rate * step)"
     priority: 5
 
   fat_dynamics:
     description: Fat mass increases with carbohydrate surplus (simplified; rate × step).
     dynamics:
-      fat_mass: "max(3.0, fat_mass + carb_load * fat_gain_per_carb * step)"
+      fat_mass: "max(3.0, fat_mass + carb_load * fat_gain_per_carb)"
     priority: 5
 
   cholesterol_dynamics:

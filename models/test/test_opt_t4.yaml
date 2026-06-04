@@ -34,8 +34,8 @@ variables:
   caloric_restriction:
     type: input
     value: 0.0
-    unit: kcal/day
-    description: Daily caloric deficit (rate input; formula multiplies by step).
+    unit: kcal
+    description: Daily caloric deficit event (per-event amount; fires once per day).
 
   weight_loss_factor:
     type: parameter
@@ -47,13 +47,13 @@ formulas:
   weight_loss:
     description: Body weight decreases proportionally to daily caloric deficit (rate × step).
     dynamics:
-      body_weight: "max(50.0, body_weight - caloric_restriction * weight_loss_factor * step)"
+      body_weight: "max(50.0, body_weight - caloric_restriction * weight_loss_factor)"
     priority: 5
 
   deficit_accumulation:
     description: Track cumulative caloric deficit (rate × step).
     dynamics:
-      cumulative_deficit: "cumulative_deficit + caloric_restriction * step"
+      cumulative_deficit: "cumulative_deficit + caloric_restriction"
     priority: 3
 
 simulation:

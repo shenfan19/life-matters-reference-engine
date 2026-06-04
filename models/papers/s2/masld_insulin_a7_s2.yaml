@@ -129,9 +129,9 @@ variables:
 
   # ── 干预变量（inputs）
   caloric_deficit:
-    description: 每日热量缺口（kcal/day；约束≤700防减重过快）
+    description: 每日热量缺口事件量（kcal，每日触发一次；约束≤700防减重过快）
     value: 350.0
-    unit: kcal/day
+    unit: kcal
     type: input
 
   dietary_glycemic_load:
@@ -198,7 +198,7 @@ variables:
   weight_loss_factor:
     description: 热量缺口转换为体重下降的系数（7700 kcal/kg）
     value: 0.000130
-    unit: kg/(kcal/day)
+    unit: kg/kcal
     type: parameter
     reference: "Hall KD et al. (2011) Lancet 378(9793):826"
 
@@ -239,8 +239,8 @@ formulas:
     dynamics:
       liver_fat: >
         liver_fat
-        - (alpha_exercise_fat * exercise_met_min * (1 + fasting_exercise_bonus)) * step
-        - max(0, 0.0005 * caloric_deficit) * step
+        - alpha_exercise_fat * exercise_met_min * (1 + fasting_exercise_bonus)
+        - max(0, 0.0005 * caloric_deficit)
         + gamma_IR_liverfat * max(0, HOMA_IR - 2.5) * step
         + max(0, (dietary_glycemic_load - 100) * 0.0002) * step
     reference: "Bril F & Cusi (2019); Keating SE (2015)"
@@ -251,8 +251,8 @@ formulas:
     priority: 6
     dynamics:
       ALT: >
-        ALT + (delta_alt * max(0, exercise_met_min - 180)
-        - epsilon_alt * (ALT - 28)) * step
+        ALT + delta_alt * max(0, exercise_met_min - 180)
+        - epsilon_alt * (ALT - 28) * step
     reference: "Chalasani N et al. (2012)"
 
   homa_ir_dynamics:
@@ -266,7 +266,7 @@ formulas:
     dynamics:
       HOMA_IR: >
         HOMA_IR
-        - alpha_exercise_IR * exercise_met_min * step
+        - alpha_exercise_IR * exercise_met_min
         + beta_GI_IR * max(0, dietary_glycemic_load - 100) * 0.01 * step
         + 0.001 * max(0, visceral_fat - 100) * step
         + 0.003 * work_pressure_level * HOMA_IR * step
@@ -281,7 +281,7 @@ formulas:
       blood_glucose: >
         blood_glucose
         + 0.05 * max(0, HOMA_IR - 2.0) * step
-        - 0.0002 * exercise_met_min * step
+        - 0.0002 * exercise_met_min
         - 0.01 * (blood_glucose - 5.5) * step
     reference: "ADA Standards of Care (2024)"
 
@@ -290,7 +290,7 @@ formulas:
     condition: true
     priority: 3
     dynamics:
-      body_weight: body_weight - weight_loss_factor * caloric_deficit * step
+      body_weight: body_weight - weight_loss_factor * caloric_deficit
     reference: "Hall KD et al. (2011)"
 
   visceral_fat_dynamics:
@@ -298,7 +298,7 @@ formulas:
     condition: true
     priority: 2
     dynamics:
-      visceral_fat: visceral_fat - weight_loss_factor * caloric_deficit * 1.5 * step
+      visceral_fat: visceral_fat - weight_loss_factor * caloric_deficit * 1.5
     reference: "Ross R et al. (2020) Lancet Diabetes Endocrinol 8(11):934"
 
   lm_score_update:

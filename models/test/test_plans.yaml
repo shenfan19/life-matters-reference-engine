@@ -32,8 +32,8 @@ variables:
   caloric_deficit:
     type: input
     value: 0.0
-    unit: kcal/day
-    description: Daily caloric restriction rate (continuous rate; formula multiplies by step).
+    unit: kcal
+    description: Daily caloric deficit event (per-event amount; fires once per day).
 
   exercise_minutes:
     type: input
@@ -57,7 +57,7 @@ formulas:
   weight_dynamics:
     description: Daily weight change from caloric deficit (rate × step) + exercise burn (pulse).
     dynamics:
-      body_weight: "max(50.0, body_weight - caloric_deficit * weight_loss_factor * step - exercise_minutes * exercise_burn)"
+      body_weight: "max(50.0, body_weight - caloric_deficit * weight_loss_factor - exercise_minutes * exercise_burn)"
     priority: 5
 
 simulation:

@@ -93,9 +93,9 @@ variables:
     type: input
 
   caloric_deficit:
-    description: 每日热量缺口（kcal/day），约束 ≤700 防止尿酸峰值
+    description: 每日热量缺口事件量（kcal，每日触发一次），约束 ≤700 防止尿酸峰值
     value: 400.0
-    unit: kcal/day
+    unit: kcal
     type: input
 
   allopurinol_dose:
@@ -108,7 +108,7 @@ variables:
   lambda_T:
     description: HCTZ 降压效力（Law 2009 meta-analysis：25mg↓约8mmHg）
     value: 0.32
-    unit: mmHg/mg/day
+    unit: mmHg/mg
     type: parameter
     reference: "Law MR et al. (2009)"
 
@@ -162,7 +162,9 @@ formulas:
     priority: 6
     dynamics:
       blood_pressure: >
-        blood_pressure - (lambda_T * thiazide_dose + lambda_W * (caloric_deficit / 7700)) * step
+        blood_pressure
+        - lambda_T * thiazide_dose
+        - lambda_W * (caloric_deficit / 7700)
         - 0.04 * (blood_pressure - 155) * step
     reference: "Law MR et al. (2009)"
 
@@ -174,10 +176,10 @@ formulas:
     priority: 5
     dynamics:
       uric_acid: >
-        uric_acid + (ua_baseline_prod
-        - 0.001 * uric_acid * (1 - gamma_T * thiazide_dose)
+        uric_acid
+        + (ua_baseline_prod - 0.001 * uric_acid * (1 - gamma_T * thiazide_dose)) * step
         - kappa_A * allopurinol_dose
-        + max(0, psi_ketone * caloric_deficit / 700 - 15.0)) * step
+        + max(0, psi_ketone * caloric_deficit / 700 - 15.0)
     reference: "Choi HK et al. (2012); Dessein PH et al. (2000)"
 
   weight_dynamics:
@@ -185,7 +187,7 @@ formulas:
     condition: true
     priority: 4
     dynamics:
-      body_weight: body_weight - (caloric_deficit / 7700) * step
+      body_weight: body_weight - caloric_deficit / 7700
     reference: "Hall KD et al. (2011) Lancet 378(9793):826"
 
   lm_score_update:

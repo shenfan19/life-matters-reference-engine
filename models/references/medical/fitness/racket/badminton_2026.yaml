@@ -49,9 +49,9 @@ variables:
   smash_frequency:
     type: input
     value: 2.0
-    unit: "次/min"
+    unit: "次"
     bounds: [0.0, 8.0]
-    description: "扣杀频率（精英选手每分钟约2-4次有效扣杀）"
+    description: "每分钟扣杀事件量（精英选手每分钟约2-4次有效扣杀）"
   heart_rate:
     type: state
     value: 75.0

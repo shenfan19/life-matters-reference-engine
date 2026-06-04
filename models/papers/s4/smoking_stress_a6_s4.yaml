@@ -112,9 +112,9 @@ variables:
     bounds: [0, 2]
 
   cigarettes_per_day:
-    description: 每日吸烟支数（由 Regimen 驱动；戒烟后为0）
+    description: 每次触发的吸烟支数（每日触发一次；戒烟后为0）
     value: 0.0
-    unit: 支/day
+    unit: 支
     type: input
 
   work_pressure:
@@ -154,9 +154,9 @@ variables:
     reference: "TODO:SOURCE Heishman SJ et al. (2010) 推算"
 
   delta_fev1_smk:
-    description: 每日每包烟FEV1加速下降量（Fletcher & Peto 1977）
+    description: 每支烟FEV1加速下降量（Fletcher & Peto 1977：每日20支约下降0.004L）
     value: 0.0002
-    unit: L/day
+    unit: L/支
     type: parameter
     reference: "Fletcher CM & Peto R (1977)"
 
@@ -174,7 +174,7 @@ formulas:
     condition: true
     priority: 7
     dynamics:
-      nicotine_plasma: nicotine_plasma + (eta_abs * cigarettes_per_day - k_nic * nicotine_plasma) * step
+      nicotine_plasma: nicotine_plasma + eta_abs * cigarettes_per_day - k_nic * nicotine_plasma * step
     reference: "Feyerabend C et al. (1985)"
 
   dopamine_dynamics:
@@ -206,7 +206,7 @@ formulas:
     condition: true
     priority: 3
     dynamics:
-      fev1: fev1 - (delta_fev1_smk * cigarettes_per_day + delta_fev1_age) * step
+      fev1: fev1 - delta_fev1_smk * cigarettes_per_day - delta_fev1_age * step
     reference: "Fletcher CM & Peto R (1977)"
 
   health_economic_index_update:
