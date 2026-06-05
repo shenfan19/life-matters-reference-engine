@@ -229,7 +229,7 @@ optimizer:
   algorithm:
     population_size: 10
     n_generations: 15
-    seed: 42                 # NSGA-II 遗传算法 seed，与 MC 无关
+    seed: 19                 # NSGA-II 遗传算法 seed，与 MC 无关
   constraints:
     - variable: constraint_var
       condition: "<= 250"

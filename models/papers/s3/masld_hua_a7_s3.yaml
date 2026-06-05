@@ -63,7 +63,7 @@ imports:
 # 覆盖 optimizer：双约束对比验证分岔假说（减重速率 ≤0.38 vs ≤0.27 kg/w）
   mc:
     runs: 20
-    seed: 42
+    seed: 19
     description: "MC 验证分岔结论稳健性（alpha_exercise_fat, gamma_IR_liverfat 个体差异）"
 
 
@@ -144,7 +144,7 @@ optimizer:
   algorithm:
     population_size: 100
     n_generations: 200
-    seed: 42
+    seed: 19
 
   results:
     generated_at: "2026-05-26"
