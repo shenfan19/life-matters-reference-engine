@@ -160,7 +160,7 @@ optimizer:
   algorithm:
     population_size: 60
     n_generations: 100
-    seed: 42
+    seed: 19
 
 # ── 仿真设置 ──────────────────────────────────────────────────────────────────
 # 测试用：1 周训练模式验证 Fitness-Fatigue 动力学，7 步快速完成

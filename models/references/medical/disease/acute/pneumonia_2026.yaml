@@ -222,7 +222,7 @@ optimizer:
   algorithm:
     population_size: 60
     n_generations: 100
-    seed: 42
+    seed: 19
   results:
     generated_at: "2026-05-17"
     method: nsga2
