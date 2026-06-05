@@ -2,12 +2,11 @@
 
 import React, { useRef } from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, ReloadOutlined, StepForwardOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimPlan, StepUnit } from '../../types';
 
 interface SimControlBarProps {
   status: string;
-  sessionId: string;
   sessionSeed: number;
   plans: SimPlan[];
   simStartDate: string;
@@ -23,7 +22,6 @@ interface SimControlBarProps {
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
-  onStep: () => void;
   onReset: () => void;
   onRunAllPlans: () => void;
   onDownload: () => void;
@@ -41,10 +39,10 @@ interface SimControlBarProps {
 }
 
 export function SimControlBar({
-  status, sessionId, sessionSeed, plans,
+  status, sessionSeed, plans,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
   selectedModel, isOtherRunning, otherRunningTip, optRunning,
-  onStart, onPause, onResume, onStep, onReset, onRunAllPlans,
+  onStart, onPause, onResume, onReset, onRunAllPlans,
   onDownload, onExportCSV, onImportCSV, onReload,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
@@ -53,7 +51,6 @@ export function SimControlBar({
   const csvInputRef = useRef<HTMLInputElement>(null);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
-  const isCompleted = status === 'completed';
   const multiPlan = plans.length > 1;
 
   const handleMainClick = isOtherRunning ? undefined
@@ -76,7 +73,7 @@ export function SimControlBar({
             type="primary" size="small"
             icon={!isOtherRunning && isRunning ? <PauseOutlined /> : <PlayCircleOutlined />}
             onClick={handleMainClick}
-            disabled={!selectedModel || isCompleted || isOtherRunning}
+            disabled={!selectedModel || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
           >
             {mainLabel}
@@ -84,15 +81,9 @@ export function SimControlBar({
         </span>
       </Tooltip>
 
-      <Button size="small" icon={<StepForwardOutlined />}
-        onClick={onStep}
-        disabled={!sessionId || isRunning || isCompleted}
-        style={{ whiteSpace: 'nowrap' }}
-      >{t('sim.control.step')}</Button>
-
       <Button size="small" icon={<StopOutlined />}
         onClick={onReset}
-        disabled={status === 'idle'}
+        disabled={!isRunning && !isPaused}
         style={{ whiteSpace: 'nowrap' }}
       >{t('sim.control.reset')}</Button>
 

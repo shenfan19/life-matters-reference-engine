@@ -22,21 +22,29 @@ Importing CSV has tab-specific consequences that follow naturally from what each
 
 | Tab | Export CSV content | Import CSV → automatic consequence |
 |-----|-------------------|-------------------------------------|
-| Sim | 仿真时序（时间序列） | 叠加为对比曲线 |
+| Sim | 仿真时序（时间序列） | 新增一条带标签的对比曲线 |
 | Opt | 优化结果（Pareto 前沿） | 合并入 Pareto 前沿，自动开启热启动 |
 | CLI --sim | Auto `_sim.csv` | — |
 | CLI --opt | Auto `_opt.csv` | `--continue [TIMESTAMP]` |
 
 "多曲线对比"和"热启动"不是独立功能——它们是导入 CSV 在各自上下文的直接结果，无需单独学习。
 
-### 2. YAML download is unified across Sim and Opt tabs
+### 2. Sim 仿真历史曲线（auto-snapshot）
+
+每次点击 Run 时，若当前已有完成的仿真结果，GUI 自动将其快照为一条历史对比曲线，标签为 `Sim {起始日} · {步长}`。CSV 导入的曲线与自动快照进同一列表。
+
+每条曲线在切换栏显示 × 按钮，可单独移除。切换模型或点击重载时列表清空。
+
+这使"多步长对比"的操作变为：Run → 改步长 → Run → 图中自动出现两条曲线。
+
+### 3. YAML download is unified across Sim and Opt tabs
 
 Both tabs share the same session (`ModelSession`). The model download button behaves identically regardless of which tab the user is on:
 
-- **有 opt 结果** → 下载含 `optimizer.results` 块的 YAML（另存为）
-- **无 opt 结果** → 下载原始模型 YAML（另存为）
+- **有 opt 结果** → 自动将 `optimizer.results` 块写入副本并下载
+- **无 opt 结果** → 下载原始模型 YAML
 
-The user is always informed via `message.success` what was included in the download.
+用户通过 `message.success` 得知下载内容（含解数量或"无优化结果"）。无需用户主动选择含/不含——会话状态即真相。
 
 **"保存结果到原文件" is permanently removed.** The source YAML is never overwritten from the GUI. Results travel via CSV (exchange) or YAML Save As (archive/publish).
 
@@ -86,7 +94,9 @@ Tooltip 进一步说明格式（CSV/YAML）和操作后果。
 - Opt YAML 下载的含/不含结果 Dropdown（合并为统一自动行为）。
 
 ### Added
-- Sim CSV import → overlay curves.
+- Sim CSV import → labeled overlay curve (auto-snapshot on Run + CSV import share same list).
+- Sim auto-snapshot: each new Run snapshots the previous completed result into the comparison list.
+- × close button on each comparison curve; list clears on model switch or reload.
 - Opt CSV export → Pareto front as CSV (symmetric with Sim).
 - Sim Reload button (symmetric with Opt Reload).
 - `message.success` notifications on all file operations.
