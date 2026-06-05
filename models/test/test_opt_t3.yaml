@@ -78,17 +78,20 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-03-31"
-  schedules:
-    - variable: aerobic_load
-      time: "07:00"
-      value: 40.0
-      days: [Mon, Wed, Fri]
-      label: "Aerobic 40 min MWF"
-    - variable: strength_load
-      time: "17:00"
-      value: 6.0
-      days: [Sat, Sun]
-      label: "Strength 6 sets weekend"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: aerobic_load
+          time: "07:00"
+          value: 40.0
+          days: [Mon, Wed, Fri]
+          label: "Aerobic 40 min MWF"
+        - variable: strength_load
+          time: "17:00"
+          value: 6.0
+          days: [Sat, Sun]
+          label: "Strength 6 sets weekend"
   output_variables: [fitness_score, fatigue_score, aerobic_load, strength_load]
 
 optimizer:

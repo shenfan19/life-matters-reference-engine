@@ -667,18 +667,18 @@ const Simulator: React.FC<SimulatorProps> = ({
       const rawObjs: Array<{ variable: string; direction: 'minimize' | 'maximize' }> = [];
       if (optBlock.objective) rawObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir(optBlock.objective.direction || 'minimize') });
       if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => rawObjs.push({ variable: o.variable || '', direction: parseDir(o.direction || 'minimize') }));
-      if (rawObjs.length > 0) setObjectives(rawObjs);
+      setObjectives(rawObjs);
 
       const parseCondition = (cond: string): { op: '≤' | '≥'; value: number } | null => {
         const m = cond.trim().match(/^([<>]=?)\s*(-?\d+(?:\.\d+)?)/);
         if (!m) return null;
         return { op: m[1] === '>=' || m[1] === '>' ? '≥' : '≤', value: parseFloat(m[2]) };
       };
+      const parsedCons: Array<{ variable: string; op: '≤' | '≥'; value: number }> = [];
       if (Array.isArray(optBlock.constraints)) {
-        const parsedCons: Array<{ variable: string; op: '≤' | '≥'; value: number }> = [];
         optBlock.constraints.forEach((con: any) => { const p = parseCondition(String(con.condition || '')); if (p && con.variable) parsedCons.push({ variable: con.variable, ...p }); });
-        if (parsedCons.length > 0) setConstraints(parsedCons);
       }
+      setConstraints(parsedCons);
       const methodMap: Record<string, string> = { 'nsga2':'NSGA-II','nsga-2':'NSGA-II','nsga_2':'NSGA-II','moead':'MOEA/D','moea/d':'MOEA/D','l-bfgs-b':'l-bfgs-b','lbfgsb':'l-bfgs-b','nelder-mead':'nelder-mead','nelder_mead':'nelder-mead' };
       const mappedMethod = methodMap[String(optBlock.method || '').toLowerCase()];
       if (mappedMethod) setOptAlgo(mappedMethod as any);
@@ -729,6 +729,14 @@ const Simulator: React.FC<SimulatorProps> = ({
           });
         }
       }
+    } else {
+      setObjectives([]);
+      setConstraints([]);
+      setInputEvents(prev => prev.map(ev => ({
+        ...ev,
+        optimizeValue: undefined, optimizeTime: undefined,
+        optimizeDays: undefined, optimizeDateRange: undefined,
+      })));
     }
 
     setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));

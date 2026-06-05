@@ -172,18 +172,21 @@ simulation:
     - fatigue
     - performance
     - training_load
-  schedules:
-    - variable: training_load
-      time: "09:00"
-      value: 70.0
-      days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: ["2026-01-01", "2026-01-07"]
-      label: "主训练日"
-    - variable: training_load
-      time: "09:00"
-      value: 35.0
-      days: [Sat]
-      date_range: ["2026-01-01", "2026-01-07"]
-      label: "恢复日"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: training_load
+          time: "09:00"
+          value: 70.0
+          days: [Mon, Tue, Wed, Thu, Fri]
+          date_range: ["2026-01-01", "2026-01-07"]
+          label: "主训练日"
+        - variable: training_load
+          time: "09:00"
+          value: 35.0
+          days: [Sat]
+          date_range: ["2026-01-01", "2026-01-07"]
+          label: "恢复日"
   mc:
     runs: 8

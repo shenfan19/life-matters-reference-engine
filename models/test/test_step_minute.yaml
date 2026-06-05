@@ -57,17 +57,20 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-01-03"
-  schedules:
-    - variable: meal_carbs
-      time: "07:30"
-      value: 60.0
-      label: "Breakfast 60 g carbs"
-    - variable: meal_carbs
-      time: "12:30"
-      value: 80.0
-      label: "Lunch 80 g carbs"
-    - variable: meal_carbs
-      time: "19:00"
-      value: 70.0
-      label: "Dinner 70 g carbs"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: meal_carbs
+          time: "07:30"
+          value: 60.0
+          label: "Breakfast 60 g carbs"
+        - variable: meal_carbs
+          time: "12:30"
+          value: 80.0
+          label: "Lunch 80 g carbs"
+        - variable: meal_carbs
+          time: "19:00"
+          value: 70.0
+          label: "Dinner 70 g carbs"
   output_types: [state, input]

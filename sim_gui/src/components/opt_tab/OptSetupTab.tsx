@@ -68,7 +68,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
     </Tooltip>
   );
 
-  // ── Inputs section (unified: all inputEvents, each with OPT toggle) ──────────
+  // ── Inputs section ──────────
   const inputsContent = (
     <div style={{ padding: '4px 0' }}>
       {inputEvents.length === 0 && (
@@ -383,7 +383,6 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
     </div>
   );
 
-  const decisionCount = inputEvents.filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateRange).length;
   const importDropdown = (
     <Dropdown
       menu={{
@@ -400,6 +399,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
       </Button>
     </Dropdown>
   );
+  const decisionCount = inputEvents.filter(ev => ev.optimizeValue || ev.optimizeTime || ev.optimizeDays || ev.optimizeDateRange).length;
   const tabs = [
     { key: 'opt-inputs', label: `${t('sim.tabs.inputs')}${inputEvents.length > 0 ? ` (${inputEvents.length}, OPT: ${decisionCount})` : ''}`, content: inputsContent, headerExtra: importDropdown },
     { key: 'opt-cfg',    label: t('sim.tabs.optimizer'), content: configContent },

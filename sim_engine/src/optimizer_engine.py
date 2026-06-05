@@ -138,15 +138,15 @@ def run_optimizer(simulator_engine, model_name: str,
     base_model = simulator_engine.current_model
     opt_block: Dict = dict(base_model.optimizer)
 
-    if not opt_block:
-        return {"success": False, "error": "No optimizer: block in YAML"}
-
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
         for key in ('objectives', 'constraints', 'algorithm', 'method',
                     'start_date', 'end_date', 'step_size', 'schedules'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
+
+    if not opt_block.get('objectives'):
+        return {"success": False, "error": "No objectives configured (add optimizer: block in YAML or set targets in UI)"}
 
     # ── log model info ────────────────────────────────────────────────────────
     if log_cb:

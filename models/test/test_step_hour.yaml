@@ -61,11 +61,14 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-01-30"
-  schedules:
-    - variable: oral_dose
-      time: "08:00"
-      value: 200.0
-      label: "Daily morning dose 200 mg"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: oral_dose
+          time: "08:00"
+          value: 200.0
+          label: "Daily morning dose 200 mg"
   output_variables: [plasma_conc, oral_dose]
 
 optimizer:

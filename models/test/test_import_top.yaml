@@ -70,12 +70,15 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-06-30"
-  schedules:
-    - variable: training_load
-      time: "07:00"
-      value: 45.0
-      days: [Mon, Tue, Wed, Thu, Fri]
-      label: "Training 45 min Mon–Fri"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: training_load
+          time: "07:00"
+          value: 45.0
+          days: [Mon, Tue, Wed, Thu, Fri]
+          label: "Training 45 min Mon–Fri"
   output_variables: [heart_rate, cardiac_output, vo2max, aerobic_fitness_index, training_load]
 
 optimizer:
