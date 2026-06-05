@@ -1,0 +1,43 @@
+metadata:
+  name: test_step_cross_import_base
+  description:
+    brief: "[TEST] Cross-step-size import base — step=day; used by test_step_cross_import_top."
+    method: |
+      Minimal daily model: one state variable decays by exactly 1% per day.
+      Formula: body_mass = body_mass - 0.01 * body_mass * step  (step=1 day)
+
+      Hand-calculated expected values:
+        Day 0:  body_mass = 100.000
+        Day 1:  body_mass =  99.000  (100 × 0.99^1)
+        Day 2:  body_mass =  98.010  (100 × 0.99^2)
+        Day 3:  body_mass =  97.030  (100 × 0.99^3)
+
+      These values are the GROUND TRUTH for the cross-step-size import test.
+      If test_step_cross_import_top (step=hour) imports this model and produces
+      different values for body_mass after 3 days, the multi-scale engine is wrong.
+    limitations: Purely structural; no physiological meaning.
+  tags: [test, step_size, cross_import, day, multi_scale]
+  references: ["TEST: cross-step-size import — base component (1-day step)"]
+  step_size:
+    value: 1
+    unit: day
+
+variables:
+  body_mass:
+    type: state
+    value: 100.0
+    unit: kg
+    description: Body mass; decays 1% per day (Euler). Known analytical trajectory.
+    reference: "TEST synthetic"
+
+formulas:
+  mass_decay:
+    description: 1% daily decay; step=1 day so coefficient is exactly 0.01 per day.
+    dynamics:
+      body_mass: "body_mass - 0.01 * body_mass * step"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-03"
+  output_variables: [body_mass]

@@ -1,0 +1,66 @@
+metadata:
+  name: test_step_cross_import_top
+  description:
+    brief: "[TEST] Cross-step-size import top — step=hour imports step=day base. Core multi-scale correctness check."
+    method: |
+      This model runs at 1-hour steps and imports test_step_cross_import_base (step=1 day).
+      It adds its own hourly PK variable that decays at 0.1% per hour.
+
+      HOW TO INTERPRET THE OUTPUT:
+      ──────────────────────────────────────────────────────────────────────────
+      Check body_mass (from the imported daily model) at 24-hour boundaries:
+
+        Hour  0  (Day 0 start): body_mass = 100.000
+        Hour 24  (Day 1 end):   body_mass should be  99.000  (100 × 0.99^1)
+        Hour 48  (Day 2 end):   body_mass should be  98.010  (100 × 0.99^2)
+        Hour 72  (Day 3 end):   body_mass should be  97.030  (100 × 0.99^3)
+
+      If body_mass reaches ~97.03 after 72 hours → engine handles step-size
+      differences correctly.
+
+      If body_mass drops to ~5.2 after 72 hours → engine is passing step=1
+      (hour) into the daily formula (running it 72 times with per-day rate),
+      which overcounts by 72×. WRONG.
+
+      If body_mass stays at exactly 100.0 → engine never runs the daily formula
+      in a hourly context. Also WRONG.
+
+      ──────────────────────────────────────────────────────────────────────────
+      Check plasma_drug (own hourly variable) at key steps:
+
+        Hour  0: plasma_drug = 100.000
+        Hour  1: plasma_drug =  99.900  (100 × 0.999^1)
+        Hour 24: plasma_drug =  97.625  (100 × 0.999^24)
+        Hour 72: plasma_drug =  93.054  (100 × 0.999^72)
+
+      This variable is purely in this model (step=hour) and should be correct
+      regardless of import handling. If it's wrong, the hourly step itself is broken.
+    limitations: Purely structural; values chosen for numeric clarity.
+  tags: [test, step_size, cross_import, hour, multi_scale]
+  references: ["TEST: cross-step-size import — top model (1-hour step)"]
+  step_size:
+    value: 1
+    unit: hour
+
+imports:
+  - test/test_step_cross_import_base
+
+variables:
+  plasma_drug:
+    type: state
+    value: 100.0
+    unit: mg/L
+    description: Plasma drug concentration; decays 0.1% per hour. Purely hourly variable.
+    reference: "TEST synthetic"
+
+formulas:
+  drug_decay:
+    description: 0.1% per hour elimination (step=1 hour).
+    dynamics:
+      plasma_drug: "plasma_drug - 0.001 * plasma_drug * step"
+    priority: 5
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2026-01-03"
+  output_variables: [body_mass, plasma_drug]
