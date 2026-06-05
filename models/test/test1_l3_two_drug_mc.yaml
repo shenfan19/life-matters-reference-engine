@@ -199,5 +199,5 @@ optimizer:
   algorithm:
     population_size: 25
     n_generations: 30
-    seed: 42
+    seed: 19
 

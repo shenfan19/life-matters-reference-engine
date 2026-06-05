@@ -325,7 +325,7 @@ simulation:
 
   mc:
     runs: 20
-    seed: 42
+    seed: 19
 
 # ── 优化设置（T1+T2+T3+T4 恢复行为优化，工作压力固定为参数）────────────────────
 optimizer:
@@ -414,7 +414,7 @@ optimizer:
   algorithm:
     population_size: 60
     n_generations: 100
-    seed: 42
+    seed: 19
 
   results:
     generated_at: "2026-05-26"

@@ -102,7 +102,7 @@ simulation:
   output_variables: [plasma_conc, peak_plasma, daily_dose]
   mc:
     runs: 5
-    seed: 7
+    seed: 19
 
 
 optimizer:
@@ -123,4 +123,4 @@ optimizer:
   algorithm:
     population_size: 20
     n_generations: 25
-    seed: 42
+    seed: 19

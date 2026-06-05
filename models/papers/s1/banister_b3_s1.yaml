@@ -268,7 +268,7 @@ optimizer:
   algorithm:
     population_size: 60
     n_generations: 120
-    seed: 42
+    seed: 19
 
   results:
     generated_at: "2026-05-26"
