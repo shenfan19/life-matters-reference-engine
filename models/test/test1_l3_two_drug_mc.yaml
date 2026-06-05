@@ -115,27 +115,30 @@ formulas:
 simulation:
   start_date: "2025-01-01"
   end_date: "2025-02-04"
-  schedules:
-    - variable: slot_6am
-      time: "06:00"
-      value: 5.0
-      label: "06:00 dose (mg)"
-    - variable: slot_8am
-      time: "08:00"
-      value: 5.0
-      label: "08:00 dose (mg)"
-    - variable: slot_12pm
-      time: "12:00"
-      value: 5.0
-      label: "12:00 dose (mg)"
-    - variable: slot_5pm
-      time: "17:00"
-      value: 5.0
-      label: "17:00 dose (mg)"
-    - variable: slot_10pm
-      time: "22:00"
-      value: 5.0
-      label: "22:00 dose (mg)"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: slot_6am
+          time: "06:00"
+          value: 5.0
+          label: "06:00 dose (mg)"
+        - variable: slot_8am
+          time: "08:00"
+          value: 5.0
+          label: "08:00 dose (mg)"
+        - variable: slot_12pm
+          time: "12:00"
+          value: 5.0
+          label: "12:00 dose (mg)"
+        - variable: slot_5pm
+          time: "17:00"
+          value: 5.0
+          label: "17:00 dose (mg)"
+        - variable: slot_10pm
+          time: "22:00"
+          value: 5.0
+          label: "22:00 dose (mg)"
   output_variables: [plasma_level, liver_load, slot_6am, slot_8am, slot_12pm, slot_5pm, slot_10pm]
   mc:
     runs: 2

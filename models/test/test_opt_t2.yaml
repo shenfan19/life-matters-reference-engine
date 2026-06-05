@@ -77,15 +77,18 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-01-07"
-  schedules:
-    - variable: breakfast_carbs
-      time: "08:00"
-      value: 60.0
-      label: "Breakfast 60 g carbs at 08:00"
-    - variable: lunch_carbs
-      time: "12:00"
-      value: 70.0
-      label: "Lunch 70 g carbs at 12:00"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: breakfast_carbs
+          time: "08:00"
+          value: 60.0
+          label: "Breakfast 60 g carbs at 08:00"
+        - variable: lunch_carbs
+          time: "12:00"
+          value: 70.0
+          label: "Lunch 70 g carbs at 12:00"
   output_variables: [blood_glucose, glucose_peak, breakfast_carbs, lunch_carbs]
 
 optimizer:

@@ -59,13 +59,16 @@ formulas:
 simulation:
   start_date: "2026-03-01"
   end_date:   "2026-08-31"
-  schedules:
-    - variable: caloric_restriction
-      time: "00:00"
-      value: 500.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: ["2026-04-15", "2026-08-31"]
-      label: "Default 500 kcal/day deficit starting Apr 15"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: caloric_restriction
+          time: "00:00"
+          value: 500.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-04-15", "2026-08-31"]
+          label: "Default 500 kcal/day deficit starting Apr 15"
   output_variables: [body_weight, cumulative_deficit, caloric_restriction]
 
 optimizer:

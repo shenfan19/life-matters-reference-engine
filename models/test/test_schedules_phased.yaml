@@ -81,63 +81,66 @@ simulation:
   start_date: "2026-01-01"
   end_date:   "2026-04-30"
 
-  schedules:
-    # === Aerobic load — 4 periodization phases ===
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        # === Aerobic load — 4 periodization phases ===
 
-    # Phase 1: Base (Jan) — Mon to Fri, 50 min
-    - variable: aerobic_minutes
-      time: "07:00"
-      value: 50.0
-      days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: ["2026-01-01", "2026-01-31"]
-      label: "Phase 1 Base: 50 min Mon–Fri"
+        # Phase 1: Base (Jan) — Mon to Fri, 50 min
+        - variable: aerobic_minutes
+          time: "07:00"
+          value: 50.0
+          days: [Mon, Tue, Wed, Thu, Fri]
+          date_range: ["2026-01-01", "2026-01-31"]
+          label: "Phase 1 Base: 50 min Mon–Fri"
 
-    # Phase 2: Build (Feb) — weekdays 70 min + weekend bonus 30 min
-    - variable: aerobic_minutes
-      time: "07:00"
-      value: 70.0
-      days: [Mon, Tue, Wed, Thu, Fri]
-      date_range: ["2026-02-01", "2026-02-28"]
-      label: "Phase 2 Build: 70 min Mon–Fri"
-    - variable: aerobic_minutes
-      time: "09:00"
-      value: 30.0
-      days: [Sat, Sun]
-      date_range: ["2026-02-01", "2026-02-28"]
-      label: "Phase 2 Build: 30 min weekend"
+        # Phase 2: Build (Feb) — weekdays 70 min + weekend bonus 30 min
+        - variable: aerobic_minutes
+          time: "07:00"
+          value: 70.0
+          days: [Mon, Tue, Wed, Thu, Fri]
+          date_range: ["2026-02-01", "2026-02-28"]
+          label: "Phase 2 Build: 70 min Mon–Fri"
+        - variable: aerobic_minutes
+          time: "09:00"
+          value: 30.0
+          days: [Sat, Sun]
+          date_range: ["2026-02-01", "2026-02-28"]
+          label: "Phase 2 Build: 30 min weekend"
 
-    # Phase 3: Peak (Mar) — every day, 90 min
-    - variable: aerobic_minutes
-      time: "07:00"
-      value: 90.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: ["2026-03-01", "2026-03-31"]
-      label: "Phase 3 Peak: 90 min daily"
+        # Phase 3: Peak (Mar) — every day, 90 min
+        - variable: aerobic_minutes
+          time: "07:00"
+          value: 90.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-03-01", "2026-03-31"]
+          label: "Phase 3 Peak: 90 min daily"
 
-    # Phase 4: Taper (Apr) — Mon/Wed/Fri only, 40 min
-    - variable: aerobic_minutes
-      time: "07:00"
-      value: 40.0
-      days: [Mon, Wed, Fri]
-      date_range: ["2026-04-01", "2026-04-30"]
-      label: "Phase 4 Taper: 40 min MWF"
+        # Phase 4: Taper (Apr) — Mon/Wed/Fri only, 40 min
+        - variable: aerobic_minutes
+          time: "07:00"
+          value: 40.0
+          days: [Mon, Wed, Fri]
+          date_range: ["2026-04-01", "2026-04-30"]
+          label: "Phase 4 Taper: 40 min MWF"
 
-    # === Strength training — 2 phases (no overlap with aerobic days tested) ===
+        # === Strength training — 2 phases (no overlap with aerobic days tested) ===
 
-    # Strength Phase A: Jan + Feb — Tue/Thu/Sat, 4 sets
-    - variable: strength_sets
-      time: "17:00"
-      value: 4.0
-      days: [Tue, Thu, Sat]
-      date_range: ["2026-01-01", "2026-02-28"]
-      label: "Strength Phase A: 4 sets Tue/Thu/Sat"
+        # Strength Phase A: Jan + Feb — Tue/Thu/Sat, 4 sets
+        - variable: strength_sets
+          time: "17:00"
+          value: 4.0
+          days: [Tue, Thu, Sat]
+          date_range: ["2026-01-01", "2026-02-28"]
+          label: "Strength Phase A: 4 sets Tue/Thu/Sat"
 
-    # Strength Phase B: Mar + Apr — Mon/Wed/Fri, 6 sets
-    - variable: strength_sets
-      time: "17:00"
-      value: 6.0
-      days: [Mon, Wed, Fri]
-      date_range: ["2026-03-01", "2026-04-30"]
-      label: "Strength Phase B: 6 sets Mon/Wed/Fri"
+        # Strength Phase B: Mar + Apr — Mon/Wed/Fri, 6 sets
+        - variable: strength_sets
+          time: "17:00"
+          value: 6.0
+          days: [Mon, Wed, Fri]
+          date_range: ["2026-03-01", "2026-04-30"]
+          label: "Strength Phase B: 6 sets Mon/Wed/Fri"
 
   output_variables: [fitness, fatigue, aerobic_minutes, strength_sets]

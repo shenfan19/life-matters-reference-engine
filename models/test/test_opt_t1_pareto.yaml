@@ -83,19 +83,22 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-01-31"
-  schedules:
-    - variable: morning_dose
-      time: "08:00"
-      value: 8.0
-      label: "Morning dose (mg)"
-    - variable: noon_dose
-      time: "12:00"
-      value: 5.0
-      label: "Noon dose (mg)"
-    - variable: evening_dose
-      time: "20:00"
-      value: 5.0
-      label: "Evening dose (mg)"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: morning_dose
+          time: "08:00"
+          value: 8.0
+          label: "Morning dose (mg)"
+        - variable: noon_dose
+          time: "12:00"
+          value: 5.0
+          label: "Noon dose (mg)"
+        - variable: evening_dose
+          time: "20:00"
+          value: 5.0
+          label: "Evening dose (mg)"
   output_variables: [plasma_conc, liver_load, total_daily_dose, morning_dose, noon_dose, evening_dose]
 
 optimizer:

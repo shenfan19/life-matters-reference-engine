@@ -146,30 +146,33 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-06-30"
-  schedules:
-    - variable: insulin_dose
-      time: "07:30"
-      value: 8.0
-      label: "Morning insulin 8 units"
-    - variable: meal_carbs
-      time: "08:00"
-      value: 50.0
-      label: "Breakfast carbs 50 g"
-    - variable: exercise_minutes
-      time: "17:00"
-      value: 30.0
-      days: [Mon, Wed, Fri]
-      label: "Exercise 30 min MWF"
-    - variable: metformin_dose
-      time: "08:00"
-      value: 500.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: ["2026-02-15", "2026-06-30"]
-      label: "Metformin 500 mg/day"
-    - variable: background_drug
-      time: "08:00"
-      value: 10.0
-      label: "Background drug 10 mg/day"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: insulin_dose
+          time: "07:30"
+          value: 8.0
+          label: "Morning insulin 8 units"
+        - variable: meal_carbs
+          time: "08:00"
+          value: 50.0
+          label: "Breakfast carbs 50 g"
+        - variable: exercise_minutes
+          time: "17:00"
+          value: 30.0
+          days: [Mon, Wed, Fri]
+          label: "Exercise 30 min MWF"
+        - variable: metformin_dose
+          time: "08:00"
+          value: 500.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-02-15", "2026-06-30"]
+          label: "Metformin 500 mg/day"
+        - variable: background_drug
+          time: "08:00"
+          value: 10.0
+          label: "Background drug 10 mg/day"
   output_variables: [blood_glucose, glucose_peak, lm_score, insulin_dose, meal_carbs, exercise_minutes, metformin_dose]
 
 optimizer:

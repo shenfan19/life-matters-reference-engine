@@ -121,19 +121,22 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2027-12-31"
-  schedules:
-    - variable: antihypertensive
-      time: "08:00"
-      value: 50.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: ["2026-01-01", "2026-06-30"]
-      label: "Antihypertensive 50 mg (first half)"
-    - variable: antihypertensive
-      time: "08:00"
-      value: 80.0
-      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-      date_range: ["2026-07-01", "2027-12-31"]
-      label: "Antihypertensive 80 mg (dose escalation)"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: antihypertensive
+          time: "08:00"
+          value: 50.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-01-01", "2026-06-30"]
+          label: "Antihypertensive 50 mg (first half)"
+        - variable: antihypertensive
+          time: "08:00"
+          value: 80.0
+          days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+          date_range: ["2026-07-01", "2027-12-31"]
+          label: "Antihypertensive 80 mg (dose escalation)"
   output_variables: [sbp, lm_score, lm_score_irreversible, lm_alive, antihypertensive]
 
 optimizer:

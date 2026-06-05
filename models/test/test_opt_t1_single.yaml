@@ -64,11 +64,14 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-03-31"
-  schedules:
-    - variable: protein_intake
-      time: "08:00"
-      value: 0.8
-      label: "Daily protein intake (g/kg/day)"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: protein_intake
+          time: "08:00"
+          value: 0.8
+          label: "Daily protein intake (g/kg/day)"
   output_variables: [muscle_mass, nitrogen_waste, protein_intake]
 
 optimizer:

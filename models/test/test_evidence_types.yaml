@@ -206,11 +206,14 @@ formulas:
 simulation:
   start_date: "2026-01-01"
   end_date:   "2026-12-31"
-  schedules:
-    - variable: drug_dose
-      time: "08:00"
-      value: 100.0
-      label: "Daily drug dose 100 mg"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: drug_dose
+          time: "08:00"
+          value: 100.0
+          label: "Daily drug dose 100 mg"
   output_variables:
     - cvd_risk_smoker
     - cvd_risk_baseline

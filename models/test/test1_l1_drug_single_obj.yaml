@@ -83,11 +83,14 @@ formulas:
 simulation:
   start_date: "2025-01-01"
   end_date: "2025-01-31"
-  schedules:
-    - variable: dose_mg
-      time: "08:00"
-      value: 10.0
-      label: "Daily dose"
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: dose_mg
+          time: "08:00"
+          value: 10.0
+          label: "Daily dose"
   output_variables: [plasma_level, liver_load, dose_mg]
 
 optimizer:

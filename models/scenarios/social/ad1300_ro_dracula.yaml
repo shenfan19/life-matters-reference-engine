@@ -65,12 +65,15 @@ schedules:
 simulation:
   start_date: "1462-06-01"
   end_date: "1562-05-31"
-  schedules:
-    - variable: hunt_intensity
-      time: "22:00"
-      value: 1.0
-      days: [Mon, Wed, Fri]
-      label: 夜间狩猎（每周三次）
+  plans:
+    - id: default
+      label: Default
+      schedules:
+        - variable: hunt_intensity
+          time: "22:00"
+          value: 1.0
+          days: [Mon, Wed, Fri]
+          label: 夜间狩猎（每周三次）
   output_variables: [blood_reserve, thirst_level, sun_exposure, hunt_intensity]
 
 optimizer:
