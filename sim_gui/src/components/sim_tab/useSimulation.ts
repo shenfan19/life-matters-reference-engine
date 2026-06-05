@@ -414,6 +414,7 @@ export function useSimulation({
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
     a.click();
+    message.success(`已下载仿真时序（${simulationData.length} 个数据点，CSV）`);
   };
 
   // ── raw YAML download ─────────────────────────────────────────────────────────
@@ -427,6 +428,7 @@ export function useSimulation({
     a.href = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
     a.download = `${name}.yaml`;
     a.click();
+    message.success('已下载模型（无优化结果）');
   };
 
   return {

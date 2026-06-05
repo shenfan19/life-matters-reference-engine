@@ -1,8 +1,8 @@
 // SimControlBar.tsx — simulation tab toolbar (play / pause / step / reset + date/step/MC config)
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, StepForwardOutlined, StopOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, ReloadOutlined, StepForwardOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimPlan, StepUnit } from '../../types';
 
 interface SimControlBarProps {
@@ -19,6 +19,7 @@ interface SimControlBarProps {
   selectedModel: ModelFile | null;
   isOtherRunning: boolean;
   otherRunningTip: string;
+  optRunning: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -26,6 +27,9 @@ interface SimControlBarProps {
   onReset: () => void;
   onRunAllPlans: () => void;
   onDownload: () => void;
+  onExportCSV: () => void;
+  onImportCSV: (csvText: string, fileName: string) => void;
+  onReload: () => void;
   onSimStartDateChange: (v: string) => void;
   onSimEndDateChange: (v: string) => void;
   onStepValueChange: (v: number) => void;
@@ -39,12 +43,14 @@ interface SimControlBarProps {
 export function SimControlBar({
   status, sessionId, sessionSeed, plans,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip,
-  onStart, onPause, onResume, onStep, onReset, onRunAllPlans, onDownload,
+  selectedModel, isOtherRunning, otherRunningTip, optRunning,
+  onStart, onPause, onResume, onStep, onReset, onRunAllPlans,
+  onDownload, onExportCSV, onImportCSV, onReload,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
   t, c,
 }: SimControlBarProps) {
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
@@ -63,6 +69,7 @@ export function SimControlBar({
 
   return (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      {/* Run controls */}
       <Tooltip title={otherRunningTip}>
         <span>
           <Button
@@ -137,12 +144,54 @@ export function SimControlBar({
         />
       </div>
 
-      <Tooltip title={t('sim.control.download_model')}>
+      {/* File operations — order: 下载模型 | 下载结果 | 上传结果 | 重置模型 */}
+      <div style={{ width: 1, height: 16, background: c.border }} />
+
+      <Tooltip title="下载模型（YAML 另存为；如有优化结果则自动写入）">
         <Button size="small" icon={<DownloadOutlined />}
           onClick={onDownload}
           disabled={!selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >YAML</Button>
+        >模型</Button>
+      </Tooltip>
+
+      <Tooltip title="下载仿真结果（时间序列，CSV 格式）">
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={onExportCSV}
+          disabled={!selectedModel}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >仿真</Button>
+      </Tooltip>
+
+      <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => {
+            onImportCSV(ev.target?.result as string, file.name);
+            e.target.value = '';
+          };
+          reader.readAsText(file);
+        }} />
+      <Tooltip title="上传仿真结果（导入历史时序 CSV，叠加为对比曲线）">
+        <Button size="small" icon={<UploadOutlined />}
+          onClick={() => csvInputRef.current?.click()}
+          disabled={!selectedModel}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >仿真</Button>
+      </Tooltip>
+
+      <Tooltip title={
+        (isRunning || isPaused) ? '仿真运行中，无法重载' :
+        optRunning ? '优化运行中，无法重载' :
+        '重载模型（清除 session，同时重置仿真和优化）'
+      }>
+        <Button size="small" icon={<ReloadOutlined />}
+          onClick={onReload}
+          disabled={!selectedModel || isOtherRunning || isRunning || isPaused || optRunning}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >重载</Button>
       </Tooltip>
     </div>
   );
