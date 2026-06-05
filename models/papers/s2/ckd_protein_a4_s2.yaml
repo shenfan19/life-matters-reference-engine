@@ -257,7 +257,7 @@ simulation:
 
   mc:
     runs: 20
-    seed: 42
+    seed: 19
 
 # ── 优化设置（T1+T2+T4 联合优化）──────────────────────────────────────────────
 optimizer:
@@ -337,7 +337,7 @@ optimizer:
   algorithm:
     population_size: 100
     n_generations: 200
-    seed: 42
+    seed: 19
 
   results:
     generated_at: "2026-05-26"

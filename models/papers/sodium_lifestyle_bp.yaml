@@ -238,7 +238,7 @@ simulation:
           label: "久坐生活（约 30min 慢走，(3-1)MET×0.5h = 1 MET-h）"
   mc:
     runs: 20
-    seed: 42
+    seed: 19
 
 
 optimizer:
@@ -269,7 +269,7 @@ optimizer:
   algorithm:
     population_size: 80
     n_generations: 150
-    seed: 42
+    seed: 19
 
   schedules:
     # 背景：现代高钠饮食固定

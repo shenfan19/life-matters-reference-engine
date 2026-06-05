@@ -223,7 +223,7 @@ simulation:
           label: "强化叠加 +4.5 MET（全程，5 次/周）"
   mc:
     runs: 20
-    seed: 42
+    seed: 19
 
 
 optimizer:
@@ -247,7 +247,7 @@ optimizer:
   algorithm:
     population_size: 80
     n_generations: 150
-    seed: 42
+    seed: 19
 
 
   schedules:

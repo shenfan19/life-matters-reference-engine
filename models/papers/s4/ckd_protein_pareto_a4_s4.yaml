@@ -45,7 +45,7 @@ imports:
 # 仅覆盖 optimizer 配置（更大种群 + 同一 T1+T2+T4 inputs）
   mc:
     runs: 30
-    seed: 42
+    seed: 19
     description: "MC 采样 alpha、mu_s、mu_u（比 Paper2 多10次），验证 T2 结论稳健性"
 
 
@@ -120,7 +120,7 @@ optimizer:
   algorithm:
     population_size: 150
     n_generations: 300
-    seed: 42
+    seed: 19
 
   results:
     generated_at: "2026-05-26"
