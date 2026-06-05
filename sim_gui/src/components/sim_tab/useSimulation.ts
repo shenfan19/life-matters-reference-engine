@@ -179,26 +179,6 @@ export function useSimulation({
     loop();
   };
 
-  // ── single step ───────────────────────────────────────────────────────────────
-
-  const runSingleStep = async () => {
-    if (!sessionId) return;
-    try {
-      const r = await fetch(`${API_BASE}/simulation/batch`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, steps: 1, input_changes: inputParams }),
-      });
-      const res = await r.json();
-      if (res.success && res.data) {
-        set('currentStep', res.data.current_step);
-        set('progress', res.data.progress);
-        setSimData(prev => [...prev, ...res.data.outputs]);
-        set('status', res.data.completed ? 'completed' : 'paused');
-        if (res.data.completed) message.success(t('sim.msg.sim_complete'));
-      }
-    } catch (e: any) { message.error(e.message); }
-  };
-
   // ── pause / resume / reset ────────────────────────────────────────────────────
 
   const pauseSimulation  = () => { isRunningRef.current = false; set('status', 'paused'); };
@@ -437,7 +417,6 @@ export function useSimulation({
     invalidateSim,
     startSimulation,
     runBatch,
-    runSingleStep,
     pauseSimulation,
     resumeSimulation,
     resetSimulation,

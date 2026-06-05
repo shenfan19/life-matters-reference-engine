@@ -42,10 +42,12 @@ localStorage.setItem('sim_prefs', JSON.stringify({ isDarkMode, fontSize, page, s
 
 恢复时通过 `readPrefs()` 读取，各字段带 `?? 默认值` 兜底。`sim_persist` 中的 `mode` 字段保留兼容（Simulator 组件内部仍使用），两套 key 并存。
 
+**2026-06-05 补充：** `sim_persist` 单 key 不区分模型，切换模型时 GUI 主动清空 `simulationData`、`dataPerRun` 和 `status`，防止上一个模型的数据以零值曲线形式出现在新模型的图表中。模型间仿真数据相互隔离。
+
 ## 后果
 
 - ✅ F5 刷新、意外关闭后状态完全恢复
-- ✅ 运行结果（图表数据）持久保留至下次 Reset
+- ✅ 运行结果（图表数据）持久保留至下次 Reset 或切换模型
 - ✅ 实现纯前端，无需后端改动
 - ⚠️ 单浏览器单设备，换设备/清缓存后数据丢失
 - ⚠️ 数据量大时（长仿真 + 多变量）可能接近 5MB 上限

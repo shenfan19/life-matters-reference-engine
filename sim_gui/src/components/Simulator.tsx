@@ -57,9 +57,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     fetch(`${API_BASE}/config`).then(r => r.json()).then(d => setScsMode(!!d.scs_mode)).catch(() => {});
   }, []);
 
-  // ── imported sim runs for overlay comparison (session-only, not persisted) ────
+  // ── imported/snapshotted sim runs for overlay comparison ────────────────────
   type ImportedSimRun = { key: string; label: string; color: string; data: any[] };
   const [importedSimRuns, setImportedSimRuns] = useState<ImportedSimRun[]>([]);
+  // Tracks total runs created so colors don't repeat within a session
+  const simRunCounterRef = useRef(0);
 
   const importSimCSV = (csvText: string, fileName: string) => {
     const lines = csvText.trim().split(/\r?\n/);
@@ -74,11 +76,16 @@ const Simulator: React.FC<SimulatorProps> = ({
       data.push(point);
     }
     if (!data.length) { message.warning('CSV 无有效数据行'); return; }
-    const label = fileName.replace(/\.csv$/i, '') || `导入 ${importedSimRuns.length + 1}`;
-    const color = PLAN_COLORS[importedSimRuns.length % PLAN_COLORS.length];
+    const label = fileName.replace(/\.csv$/i, '') || `导入 ${simRunCounterRef.current + 1}`;
+    const color = PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length];
+    simRunCounterRef.current += 1;
     const key = `imported-${Date.now()}`;
     setImportedSimRuns(prev => [...prev, { key, label, color, data }]);
     message.success(`已上传仿真时序 "${label}"（${data.length} 个数据点，已叠加为对比曲线）`);
+  };
+
+  const removeImportedRun = (key: string) => {
+    setImportedSimRuns(prev => prev.filter(r => r.key !== key));
   };
 
   // ── session imports (localStorage-persisted) ─────────────────────────────────
@@ -94,6 +101,13 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [treeLoading, setTreeLoading] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
   const [runningModelKey, setRunningModelKey] = useState<string | null>(null);
+
+  // Clear comparison runs and stale sim data when switching models
+  useEffect(() => {
+    setImportedSimRuns([]);
+    simRunCounterRef.current = 0;
+    setState(prev => ({ ...prev, simulationData: [], dataPerRun: [], status: 'idle', progress: 0, currentStep: 0, sessionId: '' }));
+  }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── center tab ───────────────────────────────────────────────────────────────
   const [centerTab, setCenterTab] = useState<CenterTab>('intro');
@@ -373,7 +387,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     isRunningRef,
     invalidateSim,
     startSimulation, runBatch,
-    runSingleStep, pauseSimulation, resumeSimulation, resetSimulation,
+    pauseSimulation, resumeSimulation, resetSimulation,
     handleRunCompared, runAllPlans,
     exportSimCSV, downloadRawModel,
   } = useSimulation({
@@ -387,6 +401,10 @@ const Simulator: React.FC<SimulatorProps> = ({
     stopOptJobs,
     t,
   });
+
+  // Clear compared plans when switching models (needs setComparedPlans from useSimulation)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setComparedPlans([]); }, [selectedKey]);
 
   // Combined stop (sim + opt)
   const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
@@ -1032,6 +1050,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     clearSession(selectedKey);
     sessionReadyRef.current = false;
     sessionEditedRef.current = false;
+    setImportedSimRuns([]);
+    simRunCounterRef.current = 0;
     if (selectedKey.startsWith('session/')) {
       const sessModel = sessionModels.find(m => m.key === selectedKey);
       if (sessModel) { setConfirmedModel({ ...sessModel }); onModelSelect({ ...sessModel }); }
@@ -1221,12 +1241,22 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const SimControls = (
     <SimControlBar
-      status={status} sessionId={sessionId} sessionSeed={sessionSeed}
+      status={status} sessionSeed={sessionSeed}
       plans={plans} simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''} optRunning={optRunning}
-      onStart={() => { sessionEditedRef.current = true; startSimulation(); }} onPause={pauseSimulation} onResume={resumeSimulation}
-      onStep={runSingleStep} onReset={resetSimulation} onRunAllPlans={runAllPlans}
+      onStart={() => {
+        // Snapshot current completed run before overwriting with new run
+        if (simulationData.length > 0 && status === 'completed') {
+          const color = PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length];
+          simRunCounterRef.current += 1;
+          const label = `Sim ${simStartDate} · ${stepValue}${stepUnit[0]}`;
+          setImportedSimRuns(prev => [...prev, { key: `run-${Date.now()}`, label, color, data: simulationData }]);
+        }
+        sessionEditedRef.current = true;
+        startSimulation();
+      }} onPause={pauseSimulation} onResume={resumeSimulation}
+      onReset={resetSimulation} onRunAllPlans={runAllPlans}
       onDownload={() => optResult ? downloadModelYAML(false, true) : downloadRawModel()} onExportCSV={exportSimCSV}
       onImportCSV={importSimCSV} onReload={reloadFromYAML}
       onSimStartDateChange={v => set('simStartDate', v)}
@@ -1439,6 +1469,14 @@ const Simulator: React.FC<SimulatorProps> = ({
                   simRuns={simRuns} sessionSeed={sessionSeed}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
                   comparedPlans={[
+                    // Include current run as a named plan when there are other runs to compare
+                    ...(simulationData.length > 0 && importedSimRuns.length > 0 ? [{
+                      id: 'current-sim',
+                      label: (status === 'running' || status === 'paused') ? '运行中…' : '当前',
+                      color: PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length],
+                      data: simulationData, runsData: dataPerRun,
+                      running: status === 'running', inputEvents: [] as any[],
+                    }] : []),
                     ...comparedPlans,
                     ...importedSimRuns.map(r => ({
                       id: r.key, label: r.label, color: r.color,
@@ -1446,6 +1484,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     })),
                   ]}
                   onExportCSV={exportSimCSV}
+                  onRemovePlan={removeImportedRun}
                   simLogs={simLogs}
                 />
               }

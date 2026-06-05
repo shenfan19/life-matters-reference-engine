@@ -27,6 +27,7 @@ interface SimPlotTabProps {
   fontSize: number;
   comparedPlans?: PlanResult[];
   onExportCSV?: () => void;
+  onRemovePlan?: (id: string) => void;
   simLogs?: Array<{ t: number; msg: string }>;
 }
 
@@ -34,7 +35,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
-  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV, simLogs = [],
+  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV, onRemovePlan, simLogs = [],
 }) => {
   const hasSimData = simulationData.length > 0;
   const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
@@ -80,20 +81,30 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '4px 8px', borderBottom: `1px solid ${c.border}`, background: c.sectionHd, flexShrink: 0 }}>
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('sim.plot.show')}</span>
       {comparedPlans.map(plan => (
-        <label key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none' }}>
-          <input type="checkbox"
-            checked={visiblePlanIds.has(plan.id)}
-            onChange={e => {
-              const next = new Set(visiblePlanIds);
-              if (e.target.checked) next.add(plan.id); else next.delete(plan.id);
-              setVisiblePlanIds(next);
-            }}
-            style={{ accentColor: plan.color }}
-          />
-          <span style={{ color: plan.running ? c.textMute : plan.color, fontSize: 'calc(var(--lm-font-size, 14px) * 0.82)', fontWeight: 600 }}>
-            {plan.label}{plan.running ? ' …' : ''}
-          </span>
-        </label>
+        <div key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none' }}>
+            <input type="checkbox"
+              checked={visiblePlanIds.has(plan.id)}
+              onChange={e => {
+                const next = new Set(visiblePlanIds);
+                if (e.target.checked) next.add(plan.id); else next.delete(plan.id);
+                setVisiblePlanIds(next);
+              }}
+              style={{ accentColor: plan.color }}
+            />
+            <span style={{ color: plan.running ? c.textMute : plan.color, fontSize: 'calc(var(--lm-font-size, 14px) * 0.82)', fontWeight: 600 }}>
+              {plan.label}{plan.running ? ' …' : ''}
+            </span>
+          </label>
+          {onRemovePlan && plan.id !== 'current-sim' && !plan.running && (
+            <Tooltip title="移除此对比曲线">
+              <button
+                onClick={() => onRemovePlan(plan.id)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.textMute, fontSize: 12, padding: '0 2px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+              >×</button>
+            </Tooltip>
+          )}
+        </div>
       ))}
     </div>
   ) : null;
