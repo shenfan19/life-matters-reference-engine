@@ -498,7 +498,18 @@ YAML: optimizer.schedules       pareto_front[i].x
 │    0%└──────────────────────→ 时间(天)          │
 │        0      30      60      90               │
 └─────────────────────────────────────────────────┘
+
+▼ Log  [复制] [下载]
+  12:34:05 Model: ckd_protein_a4 (31 vars, 12 formulas)
+  12:34:05 Imports: references/medical/physiology/glucose_regulation_2026_mw
+  12:34:05 Sim: start=2026-01-01, step=1 day, 365 steps
+  12:34:05 Outputs (5): GFR, muscle_mass, lm_score, ...
+  12:34:07 Done in 2.3s — 365 steps
+  12:34:07 Schedule hits: dietary_protein=1095
 ```
+
+Log 面板出现在曲线区底部（可折叠）。仅在有 log 内容时显示。  
+详细内容分层规则见 [ADR 0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md)。
 
 #### 优化模式（优化运行中）
 

@@ -79,3 +79,11 @@
 | [0083](0083-2026-05-22_sim_optimizer-evaluation-time-window.md) | Optimizer 评估时间窗独立配置（start_date / end_date / step_size） | ✅ 已实施 | 2026-05-22 |
 | [0084](0084-2026-05-23_sim_sim-opt-separation.md) | Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab 新组件 | ✅ 已实施 | 2026-05-23 |
 | [0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | 移除锁机制、自由切换模型、双箭头运行指示器、云端运行拦截 | ✅ 已实施 | 2026-05-25 |
+| [0086](0086-2026-05-26_project_lmml-rename-from-lmf.md) | 格式命名：LMF → LMML（Life Matters Model Language） | ✅ 已实施 | 2026-05-26 |
+| [0087](0087-2026-05-27_sim_schedules-plans-coexistence.md) | `simulation.schedules` 与 `plans` 共存语义：plans 优先，papers/ 禁止混用 | ✅ 已实施 | 2026-05-27 |
+| [0088](0088-2026-05-28_sim_optimizer-schedules-unified-format.md) | optimizer.schedules 统一格式：决策变量与固定背景量合并列表 | ✅ 已接受 | 2026-05-28 |
+| [0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | Session 精化：useSession 分离、userEdited 追踪、Warm-start Dirty 检测 | ✅ 已实施 | 2026-05-30 |
+| [0090](0090-2026-05-31_sim_remove-second-step-unit.md) | 移除 second 步长单位，统一 minute/hour/day | ✅ 已接受 | 2026-05-31 |
+| [0091](0091-2026-06-01_project_cli-batch-tool.md) | `sim_cli/`：批量仿真 CLI 工具 | ✅ 已实施 | 2026-06-01 |
+| [0092](0092-2026-06-05_model_input-variable-bare-unit-rule.md) | `type: input` 单位规范：裸单位（事件量），禁止速率单位（/day 等） | ✅ 已实施 | 2026-06-05 |
+| [0093](0093-2026-06-05_sim_runtime-log-panel.md) | Sim/Opt 运行时日志面板：内容分层（模型信息、NaN/bounds 警告、完成统计）与实现 | ✅ 已实施 | 2026-06-05 |

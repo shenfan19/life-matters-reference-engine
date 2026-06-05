@@ -72,6 +72,7 @@
 | [0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) | **Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab；optimizer.schedules** | ⭐ | ✅ |
 | [0085](decisions/0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | **移除锁机制；自由切换模型；双箭头运行指示器；SCS 模式仅拦截新启动** | ⭐ | ✅ |
 | [0089](decisions/0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | **Session 精化：`useSession` 分离、`userEdited` 追踪（`(edited)` 标记）、warm-start dirty 检测（⚠ 橙色警告）、非活跃模型 Opt Tab 隔离、rawContent fallback** | ⭐ | ✅ |
+| [0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md) | Sim/Opt 运行时日志面板：内容分层（模型信息、NaN/bounds 警告、完成统计）与实现 | | ✅ |
 
 ---
 
