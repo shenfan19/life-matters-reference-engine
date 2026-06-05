@@ -57,6 +57,30 @@ const Simulator: React.FC<SimulatorProps> = ({
     fetch(`${API_BASE}/config`).then(r => r.json()).then(d => setScsMode(!!d.scs_mode)).catch(() => {});
   }, []);
 
+  // ── imported sim runs for overlay comparison (session-only, not persisted) ────
+  type ImportedSimRun = { key: string; label: string; color: string; data: any[] };
+  const [importedSimRuns, setImportedSimRuns] = useState<ImportedSimRun[]>([]);
+
+  const importSimCSV = (csvText: string, fileName: string) => {
+    const lines = csvText.trim().split(/\r?\n/);
+    if (lines.length < 2) { message.warning('CSV 文件为空或格式错误'); return; }
+    const headers = lines[0].split(',').map((h: string) => h.trim());
+    const data: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',').map((v: string) => v.trim());
+      if (row.length < headers.length) continue;
+      const point: any = {};
+      headers.forEach((h: string, idx: number) => { point[h] = parseFloat(row[idx]); });
+      data.push(point);
+    }
+    if (!data.length) { message.warning('CSV 无有效数据行'); return; }
+    const label = fileName.replace(/\.csv$/i, '') || `导入 ${importedSimRuns.length + 1}`;
+    const color = PLAN_COLORS[importedSimRuns.length % PLAN_COLORS.length];
+    const key = `imported-${Date.now()}`;
+    setImportedSimRuns(prev => [...prev, { key, label, color, data }]);
+    message.success(`已上传仿真时序 "${label}"（${data.length} 个数据点，已叠加为对比曲线）`);
+  };
+
   // ── session imports (localStorage-persisted) ─────────────────────────────────
   const SESSION_KEY = 'lm_session_imports';
   const [sessionModels, setSessionModels] = useState<ModelFile[]>(() => {
@@ -329,7 +353,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     optCurGen, optTotalGen,
     optLogs, optHistory, optElapsed, optMethod,
     startOptimization, cancelOptimization, stopOptJobs,
-    downloadModelYAML, saveResultsToFile, importParetoFromCSV,
+    downloadModelYAML, exportOptCSV, importParetoFromCSV,
   } = useOptimizer({
     selectedModel, selectedKey,
     inputEvents, inputVars,
@@ -1000,7 +1024,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // exportSimCSV / downloadRawModel / pauseSimulation / resumeSimulation /
   // resetSimulation → useSimulation hook (see above)
-  // downloadModelYAML / saveResultsToFile → useOptimizer hook (see above)
+  // downloadModelYAML / exportOptCSV / importParetoFromCSV → useOptimizer hook (see above)
   // startOptimization / cancelOptimization → useOptimizer hook (see above)
 
   const reloadFromYAML = () => {
@@ -1200,10 +1224,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       status={status} sessionId={sessionId} sessionSeed={sessionSeed}
       plans={plans} simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
-      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''} optRunning={optRunning}
       onStart={() => { sessionEditedRef.current = true; startSimulation(); }} onPause={pauseSimulation} onResume={resumeSimulation}
       onStep={runSingleStep} onReset={resetSimulation} onRunAllPlans={runAllPlans}
-      onDownload={downloadRawModel}
+      onDownload={() => optResult ? downloadModelYAML(false, true) : downloadRawModel()} onExportCSV={exportSimCSV}
+      onImportCSV={importSimCSV} onReload={reloadFromYAML}
       onSimStartDateChange={v => set('simStartDate', v)}
       onSimEndDateChange={v => set('simEndDate', v)}
       onStepValueChange={v => set('stepValue', v)}
@@ -1226,7 +1251,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       optResult={optResult} storedOptResult={storedOptResult}
       simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
-      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''} simRunning={isSimulating}
       onStart={() => { sessionEditedRef.current = true; startOptimization(); }} onCancel={cancelOptimization}
       onWarmStartChange={setWarmStartEnabled}
       onSimStartDateChange={v => set('simStartDate', v)}
@@ -1235,11 +1260,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       onStepUnitChange={v => set('stepUnit', v)}
       onSimRunsChange={v => set('simRuns', v)}
       onMcSeedChange={v => set('mcSeed', v)}
-      onDownload={() => optResult ? downloadModelYAML(false) : downloadRawModel()}
+      onDownload={() => optResult ? downloadModelYAML(false, true) : downloadRawModel()}
       onReload={reloadFromYAML}
-      onSaveResults={scsMode
-        ? () => { message.success('结果已保存到 Session'); }
-        : saveResultsToFile}
+      onExportCSV={exportOptCSV}
       onImportCSV={importParetoFromCSV}
       scsMode={scsMode}
       setOptResult={setOptResult}
@@ -1415,7 +1438,13 @@ const Simulator: React.FC<SimulatorProps> = ({
                   stepValue={stepValue} stepUnit={stepUnit}
                   simRuns={simRuns} sessionSeed={sessionSeed}
                   isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
-                  comparedPlans={comparedPlans}
+                  comparedPlans={[
+                    ...comparedPlans,
+                    ...importedSimRuns.map(r => ({
+                      id: r.key, label: r.label, color: r.color,
+                      data: r.data, runsData: [] as any[][], running: false, inputEvents: [] as any[],
+                    })),
+                  ]}
                   onExportCSV={exportSimCSV}
                   simLogs={simLogs}
                 />

@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SaveOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
 interface OptControlBarProps {
@@ -24,6 +24,7 @@ interface OptControlBarProps {
   selectedModel: ModelFile | null;
   isOtherRunning: boolean;
   otherRunningTip: string;
+  simRunning: boolean;
   onStart: () => void;
   onCancel: () => void;
   onWarmStartChange: (enabled: boolean) => void;
@@ -34,9 +35,9 @@ interface OptControlBarProps {
   onSimRunsChange: (v: number) => void;
   onMcSeedChange: (v: number | null) => void;
   onDownload: () => void;
-  onReload: () => void;
-  onSaveResults: () => void;
+  onExportCSV: () => void;
   onImportCSV: (csvText: string) => void;
+  onReload: () => void;
   scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string) => string;
@@ -48,11 +49,11 @@ export function OptControlBar({
   warmStartEnabled, warmStartDirty, hasExistingResults, currentFrontCount,
   optResult, storedOptResult,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip,
+  selectedModel, isOtherRunning, otherRunningTip, simRunning,
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onDownload, onReload, onSaveResults, onImportCSV,
+  onDownload, onExportCSV, onImportCSV, onReload,
   scsMode,
   setOptResult,
   t, c,
@@ -70,6 +71,7 @@ export function OptControlBar({
 
   return (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      {/* Run / cancel */}
       <Tooltip title={runTooltip}>
         <span>
           <Button
@@ -154,15 +156,23 @@ export function OptControlBar({
         />
       </div>
 
-      {/* Session controls */}
+      {/* File operations — order: 下载模型 | 下载结果 | 上传结果 | 重置模型 */}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
-      <Tooltip title={optResult ? '保存结果到 Session' : '运行优化后可保存结果'}>
-        <Button size="small" icon={<SaveOutlined />}
-          onClick={onSaveResults}
+      <Tooltip title={optResult ? '下载模型（含 Pareto 结果，YAML 另存为）' : '下载模型（YAML 另存为，原文件不变）'}>
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={onDownload}
+          disabled={!selectedModel || optRunning}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >模型</Button>
+      </Tooltip>
+
+      <Tooltip title="下载优化结果（Pareto 前沿，CSV 格式）">
+        <Button size="small" icon={<DownloadOutlined />}
+          onClick={onExportCSV}
           disabled={!optResult || optRunning}
           style={{ whiteSpace: 'nowrap', color: optResult ? c.primary : c.textMute }}
-        >保存结果</Button>
+        >优化</Button>
       </Tooltip>
 
       <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
@@ -176,30 +186,24 @@ export function OptControlBar({
           };
           reader.readAsText(file);
         }} />
-      <Tooltip title="从 _opt.csv 导入 Pareto 解（合并到当前 session，开启热启动）">
+      <Tooltip title="上传优化结果（导入 Pareto 前沿 CSV，合并并开启热启动）">
         <Button size="small" icon={<UploadOutlined />}
           onClick={() => csvInputRef.current?.click()}
           disabled={optRunning || !selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >导入 CSV</Button>
+        >优化</Button>
       </Tooltip>
 
-      <Tooltip title={scsMode ? '从 YAML 重新加载（清除 session）' : '从 YAML 重新加载（清除 session，恢复模型默认值）'}>
+      <Tooltip title={
+        optRunning ? '优化运行中，无法重载' :
+        simRunning ? '仿真运行中，无法重载' :
+        '重载模型（清除 session，同时重置仿真和优化）'
+      }>
         <Button size="small" icon={<ReloadOutlined />}
           onClick={onReload}
-          disabled={!selectedModel || optRunning}
+          disabled={!selectedModel || optRunning || simRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        />
-      </Tooltip>
-
-      <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
-
-      <Tooltip title={optResult ? t('sim.opt.download_with_results') : t('sim.control.download_model')}>
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={onDownload}
-          disabled={!selectedModel}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >YAML</Button>
+        >重载</Button>
       </Tooltip>
     </div>
   );

@@ -8,7 +8,7 @@
 //   objectives, dates, step, setRunningModelKey, setCenterTab, modelSessionsRef)
 //
 // Returns: all state values + setters + startOptimization + cancelOptimization
-//   + stopAllJobs + downloadModelYAML + saveResultsToFile
+//   + stopAllJobs + downloadModelYAML + exportOptCSV + importParetoFromCSV
 
 import { useState, useRef, useEffect } from 'react';
 import { message } from 'antd';
@@ -250,14 +250,15 @@ export function useOptimizer({
     },
   });
 
-  const downloadModelYAML = async (flattenImports = false) => {
-    if (!selectedModel?.key || !optResult) return;
+  const downloadModelYAML = async (flattenImports = false, includeResults = true) => {
+    if (!selectedModel?.key) return;
     const modelKey = selectedModel.key.replace(/^models\//, '');
+    const results = includeResults && optResult ? buildResults(optElapsed) : undefined;
     try {
       const r = await fetch(`${API_BASE}/optimizer/export-model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_key: modelKey, results: buildResults(optElapsed), flatten_imports: flattenImports }),
+        body: JSON.stringify({ model_key: modelKey, results, flatten_imports: flattenImports }),
       });
       const d = await r.json();
       if (!d.success || !d.text) return;
@@ -266,29 +267,29 @@ export function useOptimizer({
       a.href = URL.createObjectURL(new Blob([d.text], { type: 'text/yaml' }));
       a.download = `${name}.yaml`;
       a.click();
+      const n = results?.pareto_front?.length ?? 0;
+      message.success(n > 0 ? `已下载模型（含 ${n} 个 Pareto 解）` : '已下载模型（无优化结果）');
     } catch {}
   };
 
-  const saveResultsToFile = async () => {
-    if (!selectedModel?.key || !optResult) { message.warning('无结果可保存'); return; }
-    const modelKey = selectedModel.key.replace(/^models\//, '');
-    try {
-      const exportResp = await fetch(`${API_BASE}/optimizer/export-model`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_key: modelKey, results: buildResults(optElapsed) }),
-      }).then(r => r.json());
-      if (!exportResp.success || !exportResp.text) { message.error('生成 YAML 失败'); return; }
-      const saveResp = await fetch(`${API_BASE}/file-raw/${modelKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: exportResp.text }),
-      }).then(r => r.json());
-      if (saveResp.success) {
-        message.success('结果已保存到模型文件');
-        setStoredOptResult(optResult);
-      } else {
-        message.error('保存失败：' + (saveResp.detail || ''));
-      }
-    } catch (e: any) { message.error(e.message); }
+  const exportOptCSV = () => {
+    const front: Array<{ x: number[]; f: number[] }> = optResult?.pareto_front ?? [];
+    if (!front.length) { message.warning('无 Pareto 解可导出'); return; }
+    const objNames = (objectives.length > 0 ? objectives : (optResult?.objectives ?? [])).map((o: any) => o.variable as string);
+    const xLen = front[0].x.length;
+    const xHeaders = Array.from({ length: xLen }, (_, i) => `x${i}`);
+    const headers = [...xHeaders, ...objNames];
+    const rows = front.map(sol => {
+      const fVals = objNames.length > 0 ? objNames.map((_, i) => sol.f[i] ?? '') : sol.f;
+      return [...sol.x, ...fVals].join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const name = selectedModel?.content?.metadata?.name || 'opt';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `${name}_opt.csv`;
+    a.click();
+    message.success(`已下载优化结果（${front.length} 个 Pareto 解，CSV）`);
   };
 
   // ── import Pareto front from CSV text ────────────────────────────────────────
@@ -357,7 +358,7 @@ export function useOptimizer({
     cancelOptimization,
     stopOptJobs,
     downloadModelYAML,
-    saveResultsToFile,
+    exportOptCSV,
     importParetoFromCSV,
   };
 }
