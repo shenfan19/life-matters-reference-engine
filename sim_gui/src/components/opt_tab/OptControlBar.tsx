@@ -1,7 +1,7 @@
 // OptControlBar.tsx — optimization tab toolbar (run / cancel / warm-start + date/step/MC config)
 
-import React, { useRef } from 'react';
-import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
+import React, { useRef, useState } from 'react';
+import { Button, Checkbox, Input, InputNumber, Popover, Select, Tooltip } from 'antd';
 import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
@@ -34,7 +34,7 @@ interface OptControlBarProps {
   onStepUnitChange: (v: StepUnit) => void;
   onSimRunsChange: (v: number) => void;
   onMcSeedChange: (v: number | null) => void;
-  onDownload: () => void;
+  onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onExportCSV: () => void;
   onImportCSV: (csvText: string) => void;
   onReload: () => void;
@@ -59,6 +59,10 @@ export function OptControlBar({
   t, c,
 }: OptControlBarProps) {
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [withResults, setWithResults] = useState(true);
+  const [flattenImports, setFlattenImports] = useState(true);
+  const hasOptResult = !!optResult;
   const warmStartTooltip = warmStartDirty && warmStartEnabled
     ? '⚠ 目标、约束或决策变量已修改，热启动将沿用上次前沿，可能匹配度下降'
     : (warmStartEnabled && hasExistingResults)
@@ -156,16 +160,8 @@ export function OptControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载模型 | 下载结果 | 上传结果 | 重置模型 */}
+      {/* File operations — order: 下载优化 | 上传优化 | 下载模型（Popover）| 重载 */}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
-
-      <Tooltip title={optResult ? '下载模型（含 Pareto 结果，YAML 另存为）' : '下载模型（YAML 另存为，原文件不变）'}>
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={onDownload}
-          disabled={!selectedModel || optRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >模型</Button>
-      </Tooltip>
 
       <Tooltip title="下载优化结果（Pareto 前沿，CSV 格式）">
         <Button size="small" icon={<DownloadOutlined />}
@@ -193,6 +189,33 @@ export function OptControlBar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >优化</Button>
       </Tooltip>
+
+      <Popover
+        open={downloadOpen}
+        onOpenChange={open => { if (selectedModel && !optRunning) setDownloadOpen(open); }}
+        trigger="click"
+        content={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
+            <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
+              onChange={e => setWithResults(e.target.checked)}>
+              带优化结果
+            </Checkbox>
+            <Checkbox checked={flattenImports}
+              onChange={e => setFlattenImports(e.target.checked)}>
+              展开 imports（单文件）
+            </Checkbox>
+            <Button size="small" type="primary" style={{ marginTop: 4 }}
+              onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
+              下载
+            </Button>
+          </div>
+        }
+      >
+        <Button size="small" icon={<DownloadOutlined />}
+          disabled={!selectedModel || optRunning}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >模型</Button>
+      </Popover>
 
       <Tooltip title={
         optRunning ? '优化运行中，无法重载' :
