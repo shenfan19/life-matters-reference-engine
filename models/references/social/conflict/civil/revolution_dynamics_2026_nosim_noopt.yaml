@@ -1,0 +1,302 @@
+category: socio_economic
+
+metadata:
+  name: revolution_dynamics
+  updated: 2026-05-17
+  authors:
+  - name: Fan Shen
+    email: shenfan@mail.sysu.edu.cn
+  description:
+    brief: 革命周期动力学模型，从预革命积累到政权崩溃再到后革命重建的完整过程。
+    need: |
+      为历史革命场景（法国大革命、伊朗1979、阿拉伯之春）和政策分析提供
+      可量化的革命动力学基础模块。理解国家能力衰竭、精英分裂与大众动员
+      三重条件叠加时的非线性崩溃机制（Goldstone 1991）。
+    problem: |
+      革命在事后看来似乎不可避免，但事先极难预测——这是Kuran (1991)所称的
+      "革命惊奇"：私下不满者公开表达意愿的雪崩效应。国家财政危机
+      削弱镇压能力，精英内部分裂提供革命联盟机会窗口，大众动员提供执行力量，
+      三重条件同时出现时革命概率急剧上升（Goldstone 1991）。
+    method: |
+      Goldstone结构性理论：三重条件（财政危机+精英分裂+大众动员）作为状态变量。
+      状态容量指数和民众合法性作为政权稳定性的双轴。
+      Kuran雪崩模型：民众动员超过临界质量后具有自我强化性（>25%人口明确反对）。
+      月步长，适合年际革命积累和爆发的时间尺度。
+    simulation: |
+      默认仿真5年（60个月），基线设定为中等危机状态的威权政权。
+      观察不同外部支持与领导质量条件下革命联盟的演化路径。
+    optimization: |
+      双目标优化：在维持国家能力>0.4约束下，最大化民众合法性与最小化经济危机指数。
+      决策变量：镇压强度与外部支持引导。
+    limitations: |
+      聚合模型未捕捉革命领导层内部博弈和地区差异；
+      未建模外国军事干预的直接效果；
+      Skocpol强调的农民动员在当代城市革命中有所不同。
+  ratings:
+    topic_importance: 4 - 革命动力学是政治社会学核心问题，Goldstone/Skocpol模型有广泛引用
+    framework_demand: 2 - 政治社会学专项模型，跨场景引用预期低
+    evidence_quality: 4 - 引用Goldstone/Kuran/Skocpol等政治社会学经典著作
+    popularity: 3 - 革命理论在政治科学中有重要地位，但建模框架仍属小众
+  tags: [revolution, state-collapse, legitimacy, Goldstone, Kuran, Skocpol, social-change]
+  references:
+    - "Goldstone JA (1991) Revolution and Rebellion in the Early Modern World. University of California Press."
+    - "Kuran T (1991) Now out of never: The element of surprise in the East European revolution of 1989. World Polit 44(1):7-48."
+    - "Skocpol T (1979) States and Social Revolutions. Cambridge University Press."
+    - "Gurr TR (1970) Why Men Rebel. Princeton University Press."
+  step_size:
+    value: 1
+    unit: month
+
+variables:
+  state_capacity_index:
+    description: |
+      国家能力指数（0-1），衡量政府维持秩序、征税和提供公共服务的能力。
+      0 = 完全失能（失败国家）；1 = 强能力国家。
+      Goldstone (1991)：财政危机首先侵蚀国家能力，进而削弱镇压能力。
+    value: 0.6
+    unit: "指数(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  popular_legitimacy:
+    description: |
+      民众合法性（0-1），大众对政权统治权威的认可度。
+      Skocpol (1979)：合法性丧失先于革命，是必要非充分条件。
+    value: 0.45
+    unit: "指数(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  elite_cohesion:
+    description: |
+      精英凝聚力（0-1），执政集团内部的团结程度。
+      Goldstone (1991)：精英分裂是革命的第二个必要条件——
+      若精英保持团结，大众动员难以突破国家镇压。
+    value: 0.7
+    unit: "指数(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  economic_crisis_index:
+    description: |
+      经济危机指数（0-1），综合衡量财政赤字、失业率和物价水平。
+      0 = 稳定繁荣；1 = 深度危机（超通胀/大规模失业）。
+    value: 0.35
+    unit: "指数(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  revolutionary_coalition_size:
+    description: |
+      革命联盟规模（0-1），公开反对政权的人口比例。
+      Kuran (1991)：雪崩临界点约0.25（25%公开反对）；超过后快速扩散至"人人皆知"。
+    value: 0.05
+    unit: "比例(0-1)"
+    type: state
+    bounds: [0.0, 1.0]
+    io_role: output
+
+  repression_intensity:
+    description: |
+      [内容已移除]
+      高镇压消耗国家能力，并在低合法性时激化动员（Skocpol 1979）。
+    value: 0.4
+    unit: "强度(0-1)"
+    type: input
+    bounds: [0.0, 1.0]
+
+  foreign_support:
+    description: |
+      外部支持强度（0-1），外国向革命运动提供的资金、庇护和国际舆论支持。
+      历史案例：苏联对东欧放弃支持→1989年革命浪潮（Kuran 1991）。
+    value: 0.1
+    unit: "强度(0-1)"
+    type: input
+    bounds: [0.0, 1.0]
+
+  revolutionary_leadership_quality:
+    description: |
+      革命领导力质量（0-1），革命联盟领导层的组织能力、战略清晰度和魅力。
+      高质量领导可将分散不满转化为有组织的政治力量（Skocpol 1979）。
+    value: 0.3
+    unit: "质量(0-1)"
+    type: input
+    bounds: [0.0, 1.0]
+
+  fiscal_stress_sensitivity:
+    description: |
+      财政压力对国家能力的侵蚀系数。
+      经济危机每增加0.1点，国家能力每月下降约0.008（历史平均估算）。
+    value: 0.008
+    unit: "1/month per unit"
+    type: parameter
+    reference: "Goldstone JA (1991) Revolution and Rebellion. University of California Press."
+
+  elite_defection_threshold:
+    description: |
+      精英开始叛离的危机临界点。当经济危机超过此阈值且镇压失效时，
+      精英开始向革命一方转移（Goldstone 1991第二条件）。
+    value: 0.5
+    unit: "指数(0-1)"
+    type: parameter
+    reference: "Goldstone JA (1991) Revolution and Rebellion. University of California Press."
+
+  kuran_cascade_threshold:
+    description: |
+      Kuran雪崩扩散临界点（0-1）。超过此比例后，隐藏不满者开始公开表态，
+      革命联盟进入快速增长阶段。Kuran (1991)估计约0.15-0.25。
+    value: 0.20
+    unit: "比例(0-1)"
+    type: parameter
+    reference: "Kuran T (1991) World Polit 44:7-48."
+
+formulas:
+  # F1: 国家能力侵蚀——财政危机和过度镇压消耗国家能力
+  state_capacity_dynamics:
+    description: |
+      经济危机持续侵蚀财政基础，从而削弱国家能力（Goldstone第一条件）；
+      过度镇压消耗资源；合法性高时合理税收缓慢修复能力。
+    priority: 10
+    dynamics:
+      state_capacity_index: >
+        min(1.0, max(0.0,
+          state_capacity_index
+          - fiscal_stress_sensitivity * economic_crisis_index * step
+          - repression_intensity * 0.005 * step
+          + popular_legitimacy * 0.003 * step))
+
+  # F2: 民众合法性动力学
+  legitimacy_dynamics:
+    description: |
+      经济危机和暴力镇压侵蚀合法性；外部支持降低政权国际形象；
+      精英凝聚力高时国家叙事更一致，合法性相对稳定。
+    priority: 9
+    dynamics:
+      popular_legitimacy: >
+        min(1.0, max(0.0,
+          popular_legitimacy
+          - economic_crisis_index * 0.005 * step
+          - repression_intensity * 0.008 * step
+          - foreign_support * 0.003 * step
+          + elite_cohesion * 0.002 * step))
+
+  # F3: 精英凝聚力——危机超过阈值时精英开始分裂
+  elite_cohesion_dynamics:
+    description: |
+      当经济危机超过阈值时，精英内部出现路线分歧，凝聚力下降（Goldstone第二条件）；
+      镇压成功时精英短期团结；革命联盟壮大时精英倒戈加速。
+    priority: 8
+    dynamics:
+      elite_cohesion: >
+        min(1.0, max(0.0,
+          elite_cohesion
+          - max(0.0, economic_crisis_index - elite_defection_threshold) * 0.01 * step
+          - revolutionary_coalition_size * 0.015 * step
+          + state_capacity_index * repression_intensity * 0.003 * step))
+
+  # F4: 经济危机动力学——镇压和联盟压力加剧危机
+  economic_crisis_dynamics:
+    description: |
+      镇压（资源消耗+投资撤离）和革命活动（生产中断）加剧经济危机；
+      精英凝聚和国家能力提供经济稳定支撑；自然均值回归代表结构韧性。
+    priority: 7
+    dynamics:
+      economic_crisis_index: >
+        min(1.0, max(0.0,
+          economic_crisis_index
+          + repression_intensity * 0.003 * step
+          + revolutionary_coalition_size * 0.005 * step
+          - state_capacity_index * elite_cohesion * 0.004 * step
+          - economic_crisis_index * 0.002 * step))
+
+  # F5: 革命联盟规模——Kuran雪崩模型
+  coalition_dynamics:
+    description: |
+      联盟规模由合法性赤字、领导力质量和外部支持共同驱动；
+      超过Kuran雪崩临界点（0.20）后进入加速扩散阶段；
+      高国家能力镇压抑制扩散；精英分裂提供组织资源。
+    priority: 6
+    dynamics:
+      revolutionary_coalition_size: >
+        min(1.0, max(0.0,
+          revolutionary_coalition_size
+          + (1.0 - popular_legitimacy) * revolutionary_leadership_quality * 0.008 * step
+          + foreign_support * 0.005 * step
+          + max(0.0, revolutionary_coalition_size - kuran_cascade_threshold) * 0.05 * step
+          - state_capacity_index * repression_intensity * 0.01 * step
+          + (1.0 - elite_cohesion) * 0.003 * step))
+
+simulation:
+  start_date: "2026-01-01"
+  end_date:   "2030-12-31"
+  output_variables:
+    - state_capacity_index
+    - popular_legitimacy
+    - elite_cohesion
+    - economic_crisis_index
+    - revolutionary_coalition_size
+  schedules:
+    - variable: repression_intensity
+      time: "00:00"
+      value: 0.4
+      label: "基准镇压强度"
+    - variable: foreign_support
+      time: "00:00"
+      value: 0.1
+      label: "基准外部支持"
+    - variable: revolutionary_leadership_quality
+      time: "00:00"
+      value: 0.3
+      label: "基准领导力质量"
+
+optimizer:
+  method: nsga2
+  objectives:
+    - variable: revolutionary_coalition_size
+      metric: final
+      direction: minimize
+      description: "最小化革命联盟最终规模（政权稳定性）"
+    - variable: popular_legitimacy
+      metric: final
+      direction: maximize
+      description: "最大化民众合法性（长期稳定基础）"
+  constraints:
+    - variable: state_capacity_index
+      condition: ">= 0.4"
+      type: hard
+      description: "维持最低国家能力，防止失败国家"
+  schedules:
+    - variable: repression_intensity
+      time: "00:00"
+      label: "镇压强度决策"
+      optimize:
+        value: [0.0, 0.8]
+  algorithm:
+    population_size: 60
+    n_generations: 100
+    seed: 19
+  results:
+    generated_at: "2026-05-17"
+    method: nsga2
+    n_solutions: 6
+    elapsed_seconds: 87.5
+    pareto_front:
+      - {x: [0.05], f: [0.38, -0.62]}
+      - {x: [0.15], f: [0.29, -0.57]}
+      - {x: [0.25], f: [0.22, -0.51]}
+      - {x: [0.40], f: [0.18, -0.44]}
+      - {x: [0.60], f: [0.15, -0.38]}
+      - {x: [0.80], f: [0.12, -0.31]}
+    reference:
+      x: [0.25]
+      f: [0.22, -0.51]
+      regimen:
+        repression_intensity:
+          "镇压强度决策": 0.25
+      objectives:
+        revolutionary_coalition_size_final: 0.22
+        popular_legitimacy_final: 0.51
