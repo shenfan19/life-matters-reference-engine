@@ -17,7 +17,7 @@
 python sim_cli/main.py <model.yaml> --sim
 python sim_cli/main.py <model.yaml> --opt
 python sim_cli/main.py <model.yaml> --opt --continue
-python sim_cli/main.py <model.yaml> --opt --continue 20260606_1122
+python sim_cli/main.py <model.yaml> --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
 ```
 
 ### 编译为独立可执行文件
@@ -38,14 +38,14 @@ pyinstaller sim_cli/build.spec
 | `--sim` | 运行仿真 |
 | `--opt` | 运行优化器（NSGA-II） |
 | `--continue` | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索 |
-| `--continue TIMESTAMP` | 热启动：从 `output/<model>_<TIMESTAMP>_opt.csv` 加载 Pareto 前沿，例如 `--continue 20260606_1122` |
+| `--continue PATH` | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
 
 ---
 
 ## 输出文件
 
 所有输出写入项目根的 `output/` 目录（内容已加入 `.gitignore`，目录本身入 git）。  
-文件名格式：`{模型名}_{YYYYMMDD_HHMM}_{模式}.{扩展名}`
+文件名格式：`{模型名}_{YYYY-MM-DD_HH-MM-SS}_{模式}.{扩展名}`
 
 | 文件 | 说明 |
 |------|------|
@@ -63,7 +63,7 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
   Life Matters CLI
   Model : masld_insulin_a7_s2.yaml
   Mode  : opt
-  Log   : masld_insulin_a7_s2_20260601_1423_opt.log
+  Log   : masld_insulin_a7_s2_2026-06-01_14-23-05_opt.log
 
   Type  q + Enter  at any time to stop and save current results.
 
@@ -89,9 +89,8 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
 下次从停止点继续，有两种方式：
 
 ```bash
-# 1. 从指定时间戳的 _opt.csv 热启动（推荐：不依赖模型文件是否已更新）
-python sim_cli/main.py <model.yaml> --opt --continue 20260606_1122
-#   等价于加载 output/<model>_20260606_1122_opt.csv
+# 1. 从指定 _opt.csv 文件热启动（推荐：路径明确，不依赖模型文件是否已更新）
+python sim_cli/main.py <model.yaml> --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
 
 # 2. 从模型 YAML 内嵌的 optimizer.results 热启动（需先在 GUI 保存结果到模型）
 python sim_cli/main.py <model.yaml> --opt --continue
@@ -125,6 +124,27 @@ CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致
 
 ---
 
+## 批量测试脚本 (`script/test_batch.sh`)
+
+`script/test_batch.sh` 遍历一个文件夹下的所有 YAML，对每个模型依次运行 `--sim` 和 `--opt`，汇总结果到 Markdown 报告。
+
+```bash
+bash script/test_batch.sh
+# 或指定参数：
+MODEL_FOLDER=models/papers RUN_OPT=false bash script/test_batch.sh
+```
+
+每次运行在 `output/` 下创建一个以秒级时间戳命名的子目录（`YYYY-MM-DD_HH-MM-SS/`），所有 CSV、log 和 `batch_report.md` 都放入该子目录。并发运行多个进程不会冲突。
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `MODEL_FOLDER` | `models/references` | 要测试的模型文件夹（相对于项目根） |
+| `RUN_OPT` | `true` | 是否同时跑 `--opt`（设 `false` 只跑 sim） |
+
+`batch_report.md` 中每个模型一行，标注 PASS / FAIL 及对应的 CSV 文件链接。FAIL 行附带引擎错误摘要，便于定位问题。
+
+---
+
 ## 目录结构
 
 ```
@@ -134,6 +154,9 @@ sim_cli/
   output.py     # CSV 写入与日志配置
   progress.py   # 实时进度显示与停止信号监听
   build.spec    # PyInstaller 构建配置
+
+script/
+  test_batch.sh # 批量测试脚本（遍历文件夹，生成 batch_report.md）
 
 output/         # CLI 输出目录（内容 gitignore，目录本身入 git）
 ```

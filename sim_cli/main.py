@@ -4,12 +4,12 @@ Usage:
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue 20260606_1122
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
 
 Outputs go to output/ at the project root:
-  <model>_<YYYYMMDD_HHMM>_sim.csv    (simulation time-series)
-  <model>_<YYYYMMDD_HHMM>_opt.csv    (Pareto front table; also saved incrementally per gen)
-  <model>_<YYYYMMDD_HHMM>_<mode>.log
+  <model>_<YYYY-MM-DD_HH-MM-SS>_sim.csv    (simulation time-series)
+  <model>_<YYYY-MM-DD_HH-MM-SS>_opt.csv    (Pareto front table; also saved incrementally per gen)
+  <model>_<YYYY-MM-DD_HH-MM-SS>_<mode>.log
 """
 
 import argparse
@@ -34,10 +34,11 @@ def main() -> None:
     parser.add_argument('--opt', action='store_true', help='Run optimizer (NSGA-II)')
     parser.add_argument(
         '--continue', dest='warm', nargs='?', const=True, default=False,
-        metavar='TIMESTAMP',
+        metavar='PATH',
         help=(
-            'Warm-start optimizer. No argument: use stored results in model YAML. '
-            'With TIMESTAMP (e.g. 20260606_1122): load output/<model>_<TIMESTAMP>_opt.csv.'
+            'Warm-start optimizer. '
+            'No argument: use stored results in model YAML. '
+            'PATH: path to a previous _opt.csv file (relative to project root or absolute).'
         ),
     )
     args = parser.parse_args()
@@ -90,10 +91,11 @@ def main() -> None:
         elif args.warm is True:
             warm_start = True
         else:
-            ts = str(args.warm)
-            warm_csv = out_dir / f'{model_path.stem}_{ts}_opt.csv'
+            warm_csv = Path(str(args.warm))
+            if not warm_csv.is_absolute():
+                warm_csv = root / warm_csv
             if not warm_csv.exists():
-                print(f'  Error: warm-start CSV not found: {warm_csv.name}')
+                print(f'  Error: warm-start CSV not found: {warm_csv}')
                 sys.exit(1)
             warm_start = warm_csv
             print(f'  Warm CSV : {warm_csv.name}\n')
