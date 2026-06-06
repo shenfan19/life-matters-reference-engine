@@ -6,12 +6,14 @@
 # Usage:
 #   bash script/test_batch.sh
 #   MODEL_FOLDER=models/papers RUN_OPT=false bash script/test_batch.sh
+#   MODEL_FOLDER=models/papers FILTER_BROKEN=true bash script/test_batch.sh
 
 set -euo pipefail
 
 # ── Parameters ───────────────────────────────────────────────────────────────
 MODEL_FOLDER="${MODEL_FOLDER:-models/references}"
 RUN_OPT="${RUN_OPT:-true}"
+FILTER_BROKEN="${FILTER_BROKEN:-false}"   # true = only test files with _nosim or _noopt suffix
 CLI="sim_cli/main.py"
 OUTPUT_DIR="output"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -23,7 +25,11 @@ BATCH_DIR="$OUTPUT_DIR/$BATCH_STAMP"
 REPORT="$BATCH_DIR/batch_report.md"
 mkdir -p "$BATCH_DIR"
 
-mapfile -t YAMLS < <(find "$MODEL_FOLDER" -name '*.yaml' | sort)
+if [[ "$FILTER_BROKEN" == "true" ]]; then
+  mapfile -t YAMLS < <(find "$MODEL_FOLDER" -name '*_nosim*.yaml' -o -name '*_noopt*.yaml' | sort)
+else
+  mapfile -t YAMLS < <(find "$MODEL_FOLDER" -name '*.yaml' | sort)
+fi
 TOTAL=${#YAMLS[@]}
 
 echo "============================================================"
@@ -31,6 +37,7 @@ echo "  Life Matters 批量模型测试"
 echo "  文件夹：$MODEL_FOLDER"
 echo "  模型数：$TOTAL"
 echo "  跑 Opt：$RUN_OPT"
+  [[ "$FILTER_BROKEN" == "true" ]] && echo "  过滤：仅 _nosim/_noopt"
 echo "============================================================"
 echo ""
 

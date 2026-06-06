@@ -2,6 +2,40 @@
 
 > 面向建模者的完整 YAML 格式规范。引擎实现细节见 `sim_impl.md`。
 
+## 文件名质量标记
+
+`models/` 中的 YAML 文件名用后缀表达质量状态，只有三种标记：
+
+| 后缀 | 含义 | 是否 gitignore |
+|------|------|--------------|
+| `_nosim` | sim 无法运行（YAML 解析错误、变量引用错误等） | ✓ |
+| `_noopt` | sim 通过，optimizer 块存在但运行失败 | ✓ |
+| `_noref` | 缺乏文献来源（存在 `TODO:SOURCE`） | ✓ |
+
+组合写法 `_nosim_noopt` 表示"未经测试"（保守默认），是新建或未验证模型的初始状态。
+
+**无后缀 = 已确认通过**：`--sim` ✓、`--opt` ✓（或无 `optimizer:` 块时自动跳过）、所有参数有文献来源。
+
+`_mw`（纯组件）和 `_TODO`（草稿）已废弃，统一使用上述三种标记替代。
+
+### test_batch 过滤模式
+
+```bash
+# 默认：测指定目录下所有文件
+MODEL_FOLDER=models/references bash script/test_batch.sh
+
+# 只测有问题标记的文件（修复队列模式）
+FILTER_BROKEN=true MODEL_FOLDER=models/references bash script/test_batch.sh
+```
+
+`FILTER_BROKEN=true` 时只测文件名含 `_nosim` 或 `_noopt` 的文件。通过后删除后缀，模型进入"干净"状态，不再被 batch 触碰。
+
+### reviewed: true
+
+可在 `metadata` 中加可选字段 `reviewed: true`，表示建模者已人工确认机制合理、参数量级正确。这不是发布门控，不加入文件名，不影响 gitignore。
+
+---
+
 ## 变量类型（4 种）
 
 | 类型 | 引擎读取 | 建模者填入 | 用途 | 优化归属 |
