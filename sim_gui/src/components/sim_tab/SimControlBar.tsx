@@ -1,7 +1,7 @@
 // SimControlBar.tsx — simulation tab toolbar (play / pause / step / reset + date/step/MC config)
 
-import React, { useRef } from 'react';
-import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
+import React, { useRef, useState } from 'react';
+import { Button, Checkbox, Input, InputNumber, Popover, Select, Tooltip } from 'antd';
 import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimPlan, StepUnit } from '../../types';
 
@@ -19,12 +19,13 @@ interface SimControlBarProps {
   isOtherRunning: boolean;
   otherRunningTip: string;
   optRunning: boolean;
+  hasOptResult: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
   onReset: () => void;
   onRunAllPlans: () => void;
-  onDownload: () => void;
+  onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onExportCSV: () => void;
   onImportCSV: (csvText: string, fileName: string) => void;
   onReload: () => void;
@@ -41,7 +42,7 @@ interface SimControlBarProps {
 export function SimControlBar({
   status, sessionSeed, plans,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip, optRunning,
+  selectedModel, isOtherRunning, otherRunningTip, optRunning, hasOptResult,
   onStart, onPause, onResume, onReset, onRunAllPlans,
   onDownload, onExportCSV, onImportCSV, onReload,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
@@ -49,6 +50,9 @@ export function SimControlBar({
   t, c,
 }: SimControlBarProps) {
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [withResults, setWithResults] = useState(true);
+  const [flattenImports, setFlattenImports] = useState(true);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
   const multiPlan = plans.length > 1;
@@ -135,16 +139,8 @@ export function SimControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载模型 | 下载结果 | 上传结果 | 重置模型 */}
+      {/* File operations — order: 下载仿真 | 上传仿真 | 下载模型（Popover）| 重载 */}
       <div style={{ width: 1, height: 16, background: c.border }} />
-
-      <Tooltip title="下载模型（YAML 另存为；如有优化结果则自动写入）">
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={onDownload}
-          disabled={!selectedModel}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >模型</Button>
-      </Tooltip>
 
       <Tooltip title="下载仿真结果（时间序列，CSV 格式）">
         <Button size="small" icon={<DownloadOutlined />}
@@ -172,6 +168,33 @@ export function SimControlBar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >仿真</Button>
       </Tooltip>
+
+      <Popover
+        open={downloadOpen}
+        onOpenChange={open => { if (selectedModel && !isOtherRunning) setDownloadOpen(open); }}
+        trigger="click"
+        content={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
+            <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
+              onChange={e => setWithResults(e.target.checked)}>
+              带优化结果
+            </Checkbox>
+            <Checkbox checked={flattenImports}
+              onChange={e => setFlattenImports(e.target.checked)}>
+              展开 imports（单文件）
+            </Checkbox>
+            <Button size="small" type="primary" style={{ marginTop: 4 }}
+              onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
+              下载
+            </Button>
+          </div>
+        }
+      >
+        <Button size="small" icon={<DownloadOutlined />}
+          disabled={!selectedModel || isOtherRunning}
+          style={{ whiteSpace: 'nowrap', color: c.textSec }}
+        >模型</Button>
+      </Popover>
 
       <Tooltip title={
         (isRunning || isPaused) ? '仿真运行中，无法重载' :

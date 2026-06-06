@@ -389,7 +389,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     startSimulation, runBatch,
     pauseSimulation, resumeSimulation, resetSimulation,
     handleRunCompared, runAllPlans,
-    exportSimCSV, downloadRawModel,
+    exportSimCSV,
   } = useSimulation({
     state, setState,
     selectedModel, selectedKey,
@@ -1265,7 +1265,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         startSimulation();
       }} onPause={pauseSimulation} onResume={resumeSimulation}
       onReset={resetSimulation} onRunAllPlans={runAllPlans}
-      onDownload={() => optResult ? downloadModelYAML(false, true) : downloadRawModel()} onExportCSV={exportSimCSV}
+      hasOptResult={!!optResult}
+      onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)} onExportCSV={exportSimCSV}
       onImportCSV={importSimCSV} onReload={reloadFromYAML}
       onSimStartDateChange={v => set('simStartDate', v)}
       onSimEndDateChange={v => set('simEndDate', v)}
@@ -1298,7 +1299,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onStepUnitChange={v => set('stepUnit', v)}
       onSimRunsChange={v => set('simRuns', v)}
       onMcSeedChange={v => set('mcSeed', v)}
-      onDownload={() => optResult ? downloadModelYAML(false, true) : downloadRawModel()}
+      onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
       onReload={reloadFromYAML}
       onExportCSV={exportOptCSV}
       onImportCSV={importParetoFromCSV}
