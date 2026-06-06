@@ -1,7 +1,7 @@
 # 0091 — `sim_cli/`：批量仿真 CLI 工具
 
 **日期**：2026-06-01  
-**状态**：✅ 已实施（2026-06-01 修订：去除 `_opt.yaml` 输出）  
+**状态**：✅ 已实施（2026-06-01 修订：去除 `_opt.yaml` 输出；2026-06-06 修订：时间戳格式、`--continue` 简化、批量测试脚本）  
 **类别**：架构 / 接口  
 **修订**：部分修订 ADR 0072（GUI-only）
 
@@ -41,7 +41,7 @@ ADR 0072 确立"GUI 是唯一正式用户接口，CLI 仅用于内部调试"。
 | `*_opt.csv` | Pareto 前沿（x 列 + f 列）；每代实时覆盖写入 |
 | `*_{mode}.log` | 运行日志 |
 
-文件名含时间戳（`YYYYMMDD_HHMM`），多次运行不覆盖，可追溯。  
+文件名含时间戳（`YYYY-MM-DD_HH-MM-SS`，精确到秒），多次运行不覆盖，可追溯。  
 所有输出写入 `output/`（内容 `.gitignore`，目录本身入 git）。
 
 **修订（2026-06-01）**：原设计含 `*_opt.yaml`（完整模型副本 + results）。
@@ -85,9 +85,46 @@ ADR 0072 的核心约束保持不变：
 
 ---
 
+---
+
+## 2026-06-06 修订
+
+### 1. 时间戳格式变更
+
+原格式 `YYYYMMDD_HHMM`（精度到分钟）改为 `YYYY-MM-DD_HH-MM-SS`（精度到秒）。  
+原因：同分钟内多次运行会覆盖输出文件；秒级精度消除冲突，且格式更易读。
+
+影响范围：`sim_cli/output.py::make_stem()`，文件名示例已更新至 `cli.md`。
+
+### 2. `--continue` 接口简化
+
+移除原"写法二"（`--continue TIMESTAMP`，形如 `--continue 20260606_1122`）。  
+保留：
+- `--continue`（无参数）：从模型 YAML 的 `optimizer.results` 热启动
+- `--continue PATH`：从指定 `_opt.csv` 文件热启动（相对于项目根或绝对路径）
+
+原因：时间戳写法依赖文件名格式的隐含约定，路径写法更明确，也兼容批量子目录布局。
+
+### 3. `script/test_batch.sh` — 批量测试脚本
+
+新增 `script/test_batch.sh`，作为 CLI 的批量编排层：
+
+- 遍历指定文件夹（默认 `models/references`）下所有 YAML
+- 对每个模型依次执行 `--sim` 和 `--opt`
+- 每次运行创建 `output/YYYY-MM-DD_HH-MM-SS/` 子目录，所有 CSV、log 和 `batch_report.md` 放入其中
+- 并发运行多个实例不冲突（子目录按脚本启动时间戳区分）
+- 参数通过环境变量控制：`MODEL_FOLDER`、`RUN_OPT`
+
+子目录管理是脚本的职责，CLI 本身始终写入 `output/` 根目录，对批量逻辑无感知。
+
+**公开性**：`batch_test.sh` 随代码公开发布（无敏感内容，合作者维护模型库时可用）；不进入 S1 论文（纯工程工具，非科学贡献）。
+
+---
+
 ## 关联
 
 - `docs/cli.md` — 使用文档
 - `sim_cli/` — 实现目录
+- `script/test_batch.sh` — 批量测试脚本
 - ADR 0072 — GUI-only 决策（部分修订）
 - `sim_engine/src/optimizer_engine.py` — `_StopOptimization` + `latest_front` 改动

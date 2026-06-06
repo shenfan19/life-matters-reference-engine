@@ -18,8 +18,8 @@ def setup_output_dir(project_root: Path) -> Path:
 
 
 def make_stem(model_path: Path, mode: str) -> str:
-    """e.g. masld_insulin_a7_s2_20260601_1423_sim"""
-    ts = datetime.now().strftime('%Y%m%d_%H%M')
+    """e.g. masld_insulin_a7_s2_2026-06-01_14-23-05_sim"""
+    ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     return f'{model_path.stem}_{ts}_{mode}'
 
 
