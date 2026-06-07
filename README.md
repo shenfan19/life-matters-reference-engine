@@ -1,8 +1,9 @@
-# Life Matters · 仿真引擎与模型库
+# Life Matters · 仿真引擎
 
 > 跨尺度多模型动力学仿真框架，对个体行为（Regimen）进行多目标优化决策。
 
-本仓库包含：仿真后端（FastAPI）、仿真前端 GUI（React）、YAML 模型生态。  
+本仓库包含：仿真后端（FastAPI）、仿真前端 GUI（React）。  
+YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/shenfan19/life-matters-model)**  
 游戏前端独立维护，见 → **[life-matters-game](https://github.com/shenfan19/life-matters-game)**
 
 ---
@@ -41,12 +42,12 @@
 ```
 sim_engine/   Python 仿真引擎 + FastAPI 后端（端口 18080）
 sim_gui/      仿真前端界面（React + Vite，端口 5173）
-models/       YAML 模型生态
-  references/   基于文献的参考组件模型（topic_year_author.yaml）
-  published/    与论文绑定的完整场景（topic_caseId_paperId.yaml）
-  in_process/   开发中的场景与测试固件
+sim_cli/      命令行批量运行接口
+script/       开发工具脚本（批量测试等）
 docs/         技术规范与架构决策（ADR）
 ```
+
+YAML 模型生态见 → [life-matters-model](https://github.com/shenfan19/life-matters-model)
 
 ---
 
@@ -96,7 +97,7 @@ cd sim_gui && npm install && npm run dev    # http://localhost:5173
 
 **前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
 
-**如何添加模型？** 将 `.yaml` 放入 `models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 `docs/model_design.md`。
+**如何添加模型？** 将 `.yaml` 放入 `../b_lm_model/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [life-matters-model/docs/model.md](https://github.com/shenfan19/life-matters-model/blob/main/docs/model.md)。
 
 ---
 
@@ -104,17 +105,19 @@ cd sim_gui && npm install && npm run dev    # http://localhost:5173
 
 | 文档 | 内容 |
 |------|------|
-| [docs/model_design.md](docs/model_design.md) | YAML Schema 完整规范（变量、公式、schedules、优化器） |
-| [docs/model_requirements.md](docs/model_requirements.md) | 建模数据标准（description、reference 强制要求） |
 | [docs/sim_design.md](docs/sim_design.md) | Simulator 软件设计（Regimen K×4、会话管理） |
 | [docs/sim_impl.md](docs/sim_impl.md) | Simulator 实现细节 |
+| [docs/sim_requirements.md](docs/sim_requirements.md) | 软件需求文档 |
+| [docs/opt.md](docs/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
+| [docs/cli.md](docs/cli.md) | CLI 批量运行接口说明 |
 | [docs/validation.md](docs/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
-| [docs/opt_impl.md](docs/opt_impl.md) | Optimizer 实现细节（NSGA-II、scipy、MC 内嵌） |
 | [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
+| [docs/data_flow.md](docs/data_flow.md) | 数据流设计 |
 | [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR） |
 
 ---
 
 ## License
 
-MIT License
+PolyForm Noncommercial 1.0.0 — 学术和非商业用途免费，商业使用需授权。  
+详见 [LICENSE](LICENSE) 或 https://polyformproject.org/licenses/noncommercial/1.0.0/
