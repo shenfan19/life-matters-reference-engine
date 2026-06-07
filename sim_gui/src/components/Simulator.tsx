@@ -461,6 +461,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       setStoredOptResult(null);
     }
 
+    // Needed in both session and no-session branches
+    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
+
     // ── 3. Session exists → restore user state, skip YAML defaults ──
     const session = modelSessionsRef.current[selectedModel.key];
     if (session) {
@@ -630,7 +633,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     }
 
     // Dates and step from YAML
-    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
     const DEFAULT_START = '2026-01-01';
     const DEFAULT_END   = '2026-12-31';
     const toStepUnit = (u: string): StepUnit => {

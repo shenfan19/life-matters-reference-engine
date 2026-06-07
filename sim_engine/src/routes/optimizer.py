@@ -98,7 +98,7 @@ async def export_model_with_results(request: ExportModelRequest):
     """
     import yaml
     try:
-        models_root = app_state.PROJECT_ROOT / "models"
+        models_root = app_state.MODELS_DIR
         target = models_root / request.model_key.lstrip('/')
         if not str(target.resolve()).startswith(str(models_root.resolve())):
             raise HTTPException(status_code=400, detail="Path outside models/")

@@ -1,0 +1,190 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        // ========================================
+        // 后端任务
+        // ========================================
+        // 任务1: 启动 FastAPI Backend
+        {
+            "label": "Sim Server",
+            "type": "shell",
+            "command": "python src/api_server.py",
+            "options": {
+                "cwd": "${workspaceFolder}/sim_engine",
+                "env": {
+                    "SCS_MODE": "true",
+                    "LM_MODELS_PATH": "${workspaceFolder}/../b_lm_model/models"
+                }
+            },
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "devGroup",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*Uvicorn running.*|.*Application startup complete.*"
+                }
+            }
+        },
+        // ========================================
+        // 前端任务
+        // ========================================
+        // 任务2: 启动 Frontend Dev Server
+        {
+            "label": "Sim GUI",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/sim_gui"
+            },
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "devGroup",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.*)$",
+                    "file": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*Local:.*http://localhost:5173.*|.*ready in.*"
+                }
+            }
+        },
+        // 任务3: 打开浏览器
+        {
+            "label": "Open Browser",
+            "type": "shell",
+            "command": "start http://localhost:5173 & start http://localhost:5174",
+            "windows": {
+                "command": "start http://localhost:5173 & start http://localhost:5174"
+            },
+            "linux": {
+                "command": "xdg-open http://localhost:5173 && xdg-open http://localhost:5174"
+            },
+            "osx": {
+                "command": "open http://localhost:5173 && open http://localhost:5174"
+            },
+            "presentation": {
+                "reveal": "never",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        // ========================================
+        // 游戏任务
+        // ========================================
+        // 任务2: 启动 Frontend Dev Server
+        {
+            "label": "Game GUI+Server",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/../b_lm_game_code/game"
+            },
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "devGroup",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.*)$",
+                    "file": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*Local:.*http://localhost:5174.*|.*ready in.*"
+                }
+            }
+        },
+        // ========================================
+        // 组合任务
+        // ========================================
+        // 任务4: 一键启动全栈
+        {
+            "label": "🚀 Run Full Stack",
+            "dependsOn": [
+                "Sim Server",
+                "Sim GUI",
+                "Game GUI+Server",
+                "Open Browser"
+            ],
+            "dependsOrder": "parallel",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        // ========================================
+        // 工具任务
+        // ========================================
+        // 任务5: 检查目录结构
+        {
+            "label": "Check Directories",
+            "type": "shell",
+            "command": "python check_directories.py",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        // 任务6: 安装前端依赖
+        {
+            "label": "Install Frontend Dependencies",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/sim_gui"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        // 任务7: 安装后端依赖
+        {
+            "label": "Install Backend Dependencies",
+            "type": "shell",
+            "command": "pip install -r requirements.txt",
+            "options": {
+                "cwd": "${workspaceFolder}/sim_engine"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

@@ -9,7 +9,7 @@ import logging
 import sys
 
 import app_state
-from app_state import PROJECT_ROOT, SRC_DIR, BACKEND_DIR
+from app_state import PROJECT_ROOT, SRC_DIR, BACKEND_DIR, MODELS_DIR
 
 # ── sys.path setup ──────────────────────────────────────────────────────────────
 sys.path.insert(0, str(SRC_DIR))
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     # Loader / Models
     try:
         from src.loader_engine import LoaderEngine
-        models_dir = PROJECT_ROOT / "models"
+        models_dir = MODELS_DIR
         if not models_dir.exists():
             models_dir.mkdir(parents=True, exist_ok=True)
         app_state.loader_engine = LoaderEngine(models_directory=str(models_dir))
@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
     # Simulator
     try:
         from src.simulator_engine import SimulatorEngine
-        app_state.simulator_engine = SimulatorEngine(models_directory=str(PROJECT_ROOT / "models"))
+        app_state.simulator_engine = SimulatorEngine(models_directory=str(MODELS_DIR))
         logger.info("✅ Simulation system initialized")
     except Exception as e:
         logger.error(f"❌ Simulation system error: {e}")
@@ -110,8 +110,8 @@ async def health_check():
             "loader_engine": app_state.loader_engine is not None
         },
         "plugins_loaded": len(app_state.plugin_manager.plugins) if app_state.plugin_manager else 0,
-        "models_directory": str(PROJECT_ROOT / "models"),
-        "models_exists": (PROJECT_ROOT / "models").exists(),
+        "models_directory": str(MODELS_DIR),
+        "models_exists": MODELS_DIR.exists(),
         "active_opt_jobs": active_jobs,
     }
 

@@ -66,12 +66,12 @@ _FILE_TEMPLATES = {
 }
 
 
-def _simple_yaml_merge(files, output_path, project_root):
+def _simple_yaml_merge(files, output_path, models_root):
     """Simple YAML merge: combine variables/formulas/simulator from multiple files."""
     merged = {'metadata': {'name': 'merged', 'description': '', 'tags': []},
               'variables': {}, 'formulas': {}, 'simulator': {}}
     for f in (files or []):
-        target = project_root / "models" / f.lstrip('/')
+        target = models_root / f.lstrip('/')
         if not target.exists():
             continue
         try:
@@ -84,7 +84,7 @@ def _simple_yaml_merge(files, output_path, project_root):
         sim = data.get('simulator') or data.get('simulation') or {}
         merged['simulator'].update(sim)
     if output_path:
-        out = project_root / "models" / output_path.lstrip('/')
+        out = models_root / output_path.lstrip('/')
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, 'w', encoding='utf-8') as fh:
             yaml.dump(merged, fh, allow_unicode=True, default_flow_style=False,
@@ -92,9 +92,9 @@ def _simple_yaml_merge(files, output_path, project_root):
     return merged
 
 
-def _simple_yaml_validate(file_path, project_root):
+def _simple_yaml_validate(file_path, models_root):
     """Semantic validation of a model YAML file."""
-    target = project_root / "models" / file_path.lstrip('/')
+    target = models_root / file_path.lstrip('/')
     if not target.exists():
         return False, [f'文件不存在: {file_path}']
     try:
@@ -195,7 +195,7 @@ async def list_files():
         return items
 
     try:
-        models_dir = app_state.PROJECT_ROOT / "models"
+        models_dir = app_state.MODELS_DIR
         tree = [{'title': 'models', 'key': 'models', 'type': 'folder',
                  'children': build_tree(str(models_dir))}]
         return {'success': True, 'data': tree}
@@ -208,10 +208,10 @@ async def list_files():
 @router.get("/api/file/{file_path:path}")
 async def get_file_content(file_path: str):
     try:
-        yaml_file = app_state.PROJECT_ROOT / "models" / file_path.lstrip('/')
+        yaml_file = app_state.MODELS_DIR / file_path.lstrip('/')
         if not yaml_file.suffix:
             yaml_file = yaml_file.with_suffix('.yaml')
-        if not str(yaml_file.resolve()).startswith(str((app_state.PROJECT_ROOT / "models").resolve())):
+        if not str(yaml_file.resolve()).startswith(str((app_state.MODELS_DIR).resolve())):
             raise HTTPException(status_code=400, detail="Path outside models/")
         if not yaml_file.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
@@ -227,8 +227,8 @@ async def get_file_content(file_path: str):
 @router.get("/api/file-raw/{file_path:path}")
 async def get_file_raw(file_path: str):
     try:
-        target = app_state.PROJECT_ROOT / "models" / file_path.lstrip('/')
-        if not str(target.resolve()).startswith(str((app_state.PROJECT_ROOT / "models").resolve())):
+        target = app_state.MODELS_DIR / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((app_state.MODELS_DIR).resolve())):
             raise HTTPException(status_code=400, detail="Path outside models/")
         if not target.exists():
             raise HTTPException(status_code=404, detail="File not found")
@@ -245,8 +245,8 @@ async def get_file_raw(file_path: str):
 async def save_file_raw(file_path: str, payload: dict):
     app_state.check_write()
     try:
-        target = app_state.PROJECT_ROOT / "models" / file_path.lstrip('/')
-        if not str(target.resolve()).startswith(str((app_state.PROJECT_ROOT / "models").resolve())):
+        target = app_state.MODELS_DIR / file_path.lstrip('/')
+        if not str(target.resolve()).startswith(str((app_state.MODELS_DIR).resolve())):
             raise HTTPException(status_code=400, detail="Path outside models/")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(payload.get('text', ''), encoding='utf-8')
@@ -262,7 +262,7 @@ async def save_file_raw(file_path: str, payload: dict):
 @router.post("/api/file-structured/{file_path:path}")
 async def save_file_structured(file_path: str, payload: dict):
     app_state.check_write()
-    target = app_state.PROJECT_ROOT / "models" / file_path.lstrip('/')
+    target = app_state.MODELS_DIR / file_path.lstrip('/')
     target.parent.mkdir(parents=True, exist_ok=True)
     text = yaml.dump(payload.get('data', {}), allow_unicode=True, default_flow_style=False,
                      sort_keys=False, indent=2)
@@ -276,8 +276,8 @@ async def save_file_structured(file_path: str, payload: dict):
 async def save_file_endpoint(request: SaveFileRequest):
     app_state.check_write()
     try:
-        target = app_state.PROJECT_ROOT / "models" / request.path.lstrip('/')
-        if not str(target.resolve()).startswith(str((app_state.PROJECT_ROOT / "models").resolve())):
+        target = app_state.MODELS_DIR / request.path.lstrip('/')
+        if not str(target.resolve()).startswith(str((app_state.MODELS_DIR).resolve())):
             raise HTTPException(status_code=400, detail="Path must be inside models directory")
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, 'w', encoding='utf-8') as f:
@@ -285,7 +285,7 @@ async def save_file_endpoint(request: SaveFileRequest):
                       default_flow_style=False, indent=2)
         if app_state.loader_engine:
             app_state.loader_engine.models_cache.clear()
-        return {'success': True, 'data': {'path': str(target.relative_to(app_state.PROJECT_ROOT / "models"))}}
+        return {'success': True, 'data': {'path': str(target.relative_to(app_state.MODELS_DIR))}}
     except HTTPException:
         raise
     except Exception as e:
@@ -297,7 +297,7 @@ async def save_file_endpoint(request: SaveFileRequest):
 @router.delete("/api/file/{file_path:path}")
 async def delete_file(file_path: str):
     app_state.check_write()
-    models_root = app_state.PROJECT_ROOT / "models"
+    models_root = app_state.MODELS_DIR
     target = models_root / file_path.lstrip('/')
     if not str(target.resolve()).startswith(str(models_root.resolve())):
         raise HTTPException(status_code=400, detail="Path must be inside models directory")
@@ -315,7 +315,7 @@ async def delete_file(file_path: str):
 async def move_file(request: FileMoveRequest):
     app_state.check_write()
     import shutil
-    models_root = app_state.PROJECT_ROOT / "models"
+    models_root = app_state.MODELS_DIR
     src = models_root / request.src.lstrip('/')
     dst = models_root / request.dst.lstrip('/')
     for p in (src, dst):
@@ -333,7 +333,7 @@ async def move_file(request: FileMoveRequest):
 @router.post("/api/file-new")
 async def create_new_file(request: FileNewRequest):
     app_state.check_write()
-    models_root = app_state.PROJECT_ROOT / "models"
+    models_root = app_state.MODELS_DIR
     target = models_root / request.path.lstrip('/')
     if not str(target.resolve()).startswith(str(models_root.resolve())):
         raise HTTPException(status_code=400, detail="Path must be inside models directory")
@@ -366,7 +366,7 @@ async def upload_model_temp(payload: dict):
     if app_state.loader_engine is None:
         raise HTTPException(status_code=503, detail="Models system not initialized")
 
-    temp_dir = app_state.PROJECT_ROOT / "models" / "temp"
+    temp_dir = app_state.MODELS_DIR / "temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_name = f"{uuid.uuid4().hex}_{safe_name}"
     temp_path = temp_dir / temp_name
@@ -416,8 +416,8 @@ async def diff_files(payload: dict):
     path_b = (payload.get('file_b') or '').lstrip('/')
     if not path_a or not path_b:
         raise HTTPException(status_code=400, detail="file_a and file_b required")
-    target_a = app_state.PROJECT_ROOT / "models" / path_a
-    target_b = app_state.PROJECT_ROOT / "models" / path_b
+    target_a = app_state.MODELS_DIR / path_a
+    target_b = app_state.MODELS_DIR / path_b
     try:
         text_a = target_a.read_text(encoding='utf-8').splitlines(keepends=True)
         text_b = target_b.read_text(encoding='utf-8').splitlines(keepends=True)
@@ -431,7 +431,7 @@ async def diff_files(payload: dict):
 
 @router.get("/api/validate/{file_path:path}")
 async def validate_file(file_path: str):
-    valid, errors = _simple_yaml_validate(file_path, app_state.PROJECT_ROOT)
+    valid, errors = _simple_yaml_validate(file_path, app_state.MODELS_DIR)
     return {'valid': valid, 'errors': errors}
 
 
@@ -461,7 +461,7 @@ async def validate_model(request: ValidateRequest):
 
     all_errors = []
     for fp in files_to_validate:
-        valid, errs = _simple_yaml_validate(fp, app_state.PROJECT_ROOT)
+        valid, errs = _simple_yaml_validate(fp, app_state.MODELS_DIR)
         all_errors.extend(errs)
     return {'valid': not all_errors, 'errors': all_errors}
 
@@ -477,7 +477,7 @@ async def merge_models(request: MergeRequest):
 
     if app_state.loader_engine is not None:
         try:
-            abs_out = (str(app_state.PROJECT_ROOT / "models" / out_path)
+            abs_out = (str(app_state.MODELS_DIR / out_path)
                        if out_path and not os.path.isabs(out_path) else out_path)
             result = app_state.loader_engine.merge_models(
                 model_names=request.files, folders=request.folders, output_path=abs_out)
@@ -487,7 +487,7 @@ async def merge_models(request: MergeRequest):
             logger.warning(f"Loader merge failed, falling back to simple merge: {e}")
 
     if merged is None:
-        merged = _simple_yaml_merge(request.files, out_path, app_state.PROJECT_ROOT)
+        merged = _simple_yaml_merge(request.files, out_path, app_state.MODELS_DIR)
 
     if app_state.SCS_MODE:
         yaml_text = yaml.dump(merged, allow_unicode=True, default_flow_style=False,
@@ -525,7 +525,7 @@ async def split_model(request: SplitRequest):
         if model_name.endswith(('.yaml', '.yml')):
             model_name = os.path.splitext(model_name)[0]
         clean_name = os.path.basename(model_name.replace('\\', '/'))
-        full_output_dir = str(app_state.PROJECT_ROOT / "models" / "components" / f"splitted_{clean_name}")
+        full_output_dir = str(app_state.MODELS_DIR / "components" / f"splitted_{clean_name}")
         result = app_state.loader_engine.split_model(model_name, full_output_dir, folder)
         if result['success']:
             return {'success': True, 'data': {'output_dir': result.get('output_dir'),
@@ -573,7 +573,7 @@ async def search_files(q: str = ""):
             logger.error(f"Search error in {directory}: {e}")
 
     try:
-        search_in_dir(str(app_state.PROJECT_ROOT / "models"))
+        search_in_dir(str(app_state.MODELS_DIR))
         return {'success': True, 'data': results}
     except Exception as e:
         return {'success': False, 'error': str(e)}
@@ -582,10 +582,10 @@ async def search_files(q: str = ""):
 @router.get("/api/story/{story_id:path}")
 async def get_story_data(story_id: str):
     try:
-        story_dir = app_state.PROJECT_ROOT / "models" / "stories" / story_id
+        story_dir = app_state.MODELS_DIR / "stories" / story_id
         story_file = story_dir / "story.yaml"
         if not story_file.exists():
-            story_file = app_state.PROJECT_ROOT / "models" / "stories" / f"{story_id}.yaml"
+            story_file = app_state.MODELS_DIR / "stories" / f"{story_id}.yaml"
             if not story_file.exists():
                 raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
             story_dir = story_file.parent
@@ -625,7 +625,7 @@ async def list_folders():
             logger.error(f"Error collecting folders from {directory}: {e}")
 
     try:
-        collect_folders(str(app_state.PROJECT_ROOT / "models"))
+        collect_folders(str(app_state.MODELS_DIR))
         return {'success': True, 'data': folders}
     except Exception as e:
         return {'success': False, 'error': str(e)}
