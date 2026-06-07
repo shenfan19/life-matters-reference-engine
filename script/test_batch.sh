@@ -39,7 +39,7 @@ set -euo pipefail
 MODELS_ROOT="${LM_MODELS_PATH:-../b_lm_model/models}"
 MODEL_FOLDER="${MODEL_FOLDER:-$MODELS_ROOT/references}"
 RUN_OPT="${RUN_OPT:-true}"
-FILTER_BROKEN="${FILTER_BROKEN:-false}"
+FILTER_BROKEN="${FILTER_BROKEN:-true}"
 CLI="sim_cli/main.py"
 CLI_OUT_DIR="output"                               # hardcoded in sim_cli/output.py — do not change
 OUTPUT_DIR="${LM_OUTPUT_DIR:-../b_lm_model/output}"  # where batch results land

@@ -1,29 +1,14 @@
 # Sim 决议汇总
 
-> 本文件是 `docs/decisions/` 中 61 条 ADR 的**主题分类摘要**，标注重要程度与对应文档。  
+> 本文件是 `docs/decisions/` 中仿真引擎、优化器、UI 和项目结构 ADR 的**主题分类摘要**。  
+> YAML 模型格式相关 ADR 见 `b_lm_model/docs/DECISIONS.md`。  
 > 完整时序索引见 [decisions/README.md](decisions/README.md)。
 
 **重要程度**：⭐⭐ = 核心约束，影响格式规范或架构，不可随意更改；⭐ = 重要实现决策；无标注 = 已实施，历史记录
 
 ---
 
-## 一、YAML 模型格式（→ model_design.md）
-
-| ADR | 标题 | 重要程度 | 状态 |
-|-----|------|---------|------|
-| [0022](decisions/0022-models-three-level-taxonomy.md) | Models 三层分类体系（medical/social → 学科 → 细分） | ⭐ | ✅ |
-| [0040](decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md) | **医学证据 8 子类型（evidence vs parameter 区分）** | ⭐⭐ | ✅ |
-| [0044](decisions/0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | **schedule 归属 simulation 块；pulse 模式；离散 input 不写零值点** | ⭐⭐ | ✅ |
-| [0046](decisions/0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | **step_size 元数据；公式用 `step`；simulation 不再声明 step/step_unit** | ⭐⭐ | ✅ |
-| [0053](decisions/0053-2026-05-03_sim_date_range调度字段与YAML-schedule优先级修复.md) | date_range 字段；YAML Schedule 优先于 GUI Regimen | ⭐ | ✅ |
-| [0063](decisions/0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | **Resolved imports 与输出变量选择规则（output_types / output_variables 语义）** | ⭐⭐ | ✅ |
-| [0065](decisions/0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化写法（brief/need/method 等字段） | ⭐ | ✅ |
-| [0057](decisions/0057-2026-05-04_project_models-paper-directory.md) | models/published/paper1-3/ 论文专用场景目录 | ⭐ | ✅ |
-| [0062](decisions/0062-2026-05-06_project_models-directory-rename.md) | models 目录重命名规范（source/ → in_process/ 等） | | ✅ |
-
----
-
-## 二、仿真引擎（→ sim_design.md, sim_impl.md）
+## 一、仿真引擎（→ sim_design.md, sim_impl.md）
 
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
@@ -80,8 +65,6 @@
 
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
-| [0041](decisions/0041-2026-04-22_project_命名规范下划线优先.md) | **命名规范：snake_case 下划线优先** | ⭐⭐ | ✅ |
-| [0042](decisions/0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名 | | ✅ |
 | [0055](decisions/0055-2026-05-04_project_docs-go-public-private-split.md) | **docs/ 公开 / go/ 内部不发布 分界规则** | ⭐⭐ | ✅ |
 | [0060](decisions/0060-2026-05-05_project_game-repo-separation.md) | **Game repo 独立（sim 和 game 分离为独立 repo）** | ⭐⭐ | ✅ |
 | [0061](decisions/0061-2026-05-06_project_temp-storage-no-user-accounts.md) | 临时存储方案，不做用户账号系统（upload-temp 并发问题见 ADR 0077 修订） | ⭐ | ✅ |
