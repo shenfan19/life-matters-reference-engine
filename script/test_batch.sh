@@ -1,21 +1,48 @@
 #!/usr/bin/env bash
 # Life Matters — batch model tester
-# Loops through all YAML files in MODEL_FOLDER, runs sim and (optionally) opt via CLI,
-# and produces a timestamped subdirectory under output/ with CSVs, logs, and batch_report.md.
+# Loops through all YAML files in MODEL_FOLDER, runs sim and (optionally) opt,
+# and saves a timestamped batch directory with CSVs, logs, and batch_report.md.
 #
-# Usage:
+# Run from anywhere — the script always cd's to the project root (b_lm_sim_code/).
+#
+# Variables (all optional, set before the command):
+#
+#   LM_MODELS_PATH   Root of the model library.
+#                    Default: ../b_lm_model/models
+#
+#   MODEL_FOLDER     Specific subfolder to scan (absolute or relative path).
+#                    Default: $LM_MODELS_PATH/references
+#                    Examples:
+#                      MODEL_FOLDER=../b_lm_model/models/papers
+#                      MODEL_FOLDER=../b_lm_model/models/references/medical
+#
+#   LM_OUTPUT_DIR    Where timestamped batch results are saved.
+#                    Default: ../b_lm_model/output
+#
+#   RUN_OPT          Whether to run the optimizer after sim (true/false).
+#                    Default: true
+#
+#   FILTER_BROKEN    If true, only test files with _nosim or _noopt suffix
+#                    (repair-queue mode — skips already-passing models).
+#                    Default: false
+#
+# Examples:
 #   bash script/test_batch.sh
-#   MODEL_FOLDER=models/papers RUN_OPT=false bash script/test_batch.sh
-#   MODEL_FOLDER=models/papers FILTER_BROKEN=true bash script/test_batch.sh
+#   RUN_OPT=false bash script/test_batch.sh
+#   MODEL_FOLDER=../b_lm_model/models/papers bash script/test_batch.sh
+#   FILTER_BROKEN=true RUN_OPT=false bash script/test_batch.sh
+#   LM_OUTPUT_DIR=/tmp/lm_out bash script/test_batch.sh
 
 set -euo pipefail
 
 # ── Parameters ───────────────────────────────────────────────────────────────
-MODEL_FOLDER="${MODEL_FOLDER:-models/references}"
+MODELS_ROOT="${LM_MODELS_PATH:-../b_lm_model/models}"
+MODEL_FOLDER="${MODEL_FOLDER:-$MODELS_ROOT/references}"
 RUN_OPT="${RUN_OPT:-true}"
-FILTER_BROKEN="${FILTER_BROKEN:-false}"   # true = only test files with _nosim or _noopt suffix
+FILTER_BROKEN="${FILTER_BROKEN:-false}"
 CLI="sim_cli/main.py"
-OUTPUT_DIR="output"
+CLI_OUT_DIR="output"                               # hardcoded in sim_cli/output.py — do not change
+OUTPUT_DIR="${LM_OUTPUT_DIR:-../b_lm_model/output}"  # where batch results land
 # ─────────────────────────────────────────────────────────────────────────────
 
 cd "$(dirname "$0")/.."   # run from project root
@@ -54,14 +81,15 @@ echo ""
 } > "$REPORT"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+# CLI writes to $CLI_OUT_DIR/ (project root staging); we move files to $BATCH_DIR/.
 move_run_files() {
   local mode="$1" csv="$2" model_name="$3"
   if [[ -n "$csv" ]]; then
-    mv "$OUTPUT_DIR/$csv"              "$BATCH_DIR/" 2>/dev/null || true
-    mv "$OUTPUT_DIR/${csv%.csv}.log"   "$BATCH_DIR/" 2>/dev/null || true
+    mv "$CLI_OUT_DIR/$csv"              "$BATCH_DIR/" 2>/dev/null || true
+    mv "$CLI_OUT_DIR/${csv%.csv}.log"   "$BATCH_DIR/" 2>/dev/null || true
   else
     local log
-    log=$(ls -t "$OUTPUT_DIR/${model_name}_"*"_${mode}.log" 2>/dev/null | head -1 || true)
+    log=$(ls -t "$CLI_OUT_DIR/${model_name}_"*"_${mode}.log" 2>/dev/null | head -1 || true)
     [[ -n "$log" ]] && mv "$log" "$BATCH_DIR/" 2>/dev/null || true
   fi
 }

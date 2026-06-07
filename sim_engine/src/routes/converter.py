@@ -42,10 +42,10 @@ async def convert_scenario(request: ConvertRequest):
     game_name = request.game_name
     health_var = request.health_variable
 
-    scen_file = app_state.PROJECT_ROOT / "models" / scenario_path
+    scen_file = app_state.MODELS_DIR / scenario_path
     if not scen_file.exists():
         raise HTTPException(status_code=404, detail=f"Model file not found: {scenario_path}")
-    if not str(scen_file.resolve()).startswith(str((app_state.PROJECT_ROOT / "models").resolve())):
+    if not str(scen_file.resolve()).startswith(str((app_state.MODELS_DIR).resolve())):
         raise HTTPException(status_code=400, detail="Path outside models/")
 
     with open(scen_file, 'r', encoding='utf-8') as f:
@@ -59,7 +59,7 @@ async def convert_scenario(request: ConvertRequest):
     total_time = simulator.get("total_time", 365)
     total_turns = max(1, round(total_time / 30)) if isinstance(total_time, (int, float)) else 12
 
-    out_dir = app_state.PROJECT_ROOT / "models" / "stories" / game_name
+    out_dir = app_state.MODELS_DIR / "stories" / game_name
     cards_dir = out_dir / "cards"
     out_dir.mkdir(parents=True, exist_ok=True)
     cards_dir.mkdir(parents=True, exist_ok=True)
