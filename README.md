@@ -117,6 +117,10 @@ cd sim_gui && npm install && npm run dev    # http://localhost:5173
 
 ---
 
+## Acknowledgments
+
+This project was developed with AI coding assistance, primarily [Claude Code](https://claude.ai/code) (Anthropic), for code generation, automated testing, and documentation.
+
 ## License
 
 PolyForm Noncommercial 1.0.0 — 学术和非商业用途免费，商业使用需授权。  
