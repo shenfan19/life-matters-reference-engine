@@ -24,16 +24,6 @@ YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/s
 4. 把科研模型输出为游戏化场景，供 [life-matters-game](https://github.com/shenfan19/life-matters-game) 消费
 5. 把多篇文献的参数装进同一框架，检验它们是否互相自洽（Simulation-as-Validation）
 
-### 与经典工具的层级关系
-
-| 工具 | 核心能力 | 与 LM 的关系 |
-|------|---------|------------|
-| **NONMEM / Monolix** | 群体参数估计（fit） | LM 消费其输出；LM 无严格统计拟合能力 |
-| **SimBiology / PKSim** | 单模型机制仿真（simulate） | LM 在其上加调度层 + 优化层；不替代 |
-| **LM** | 跨模型行为优化（decide） | 在模型之上的**行为优化层（Decision Layer）** |
-
-> **LM = argmax\_regimen f(state, regimen)**  
-> 把生物模型变成可执行的决策系统，而不是更好的建模或拟合工具。
 
 ---
 
