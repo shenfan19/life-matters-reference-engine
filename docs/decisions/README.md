@@ -87,3 +87,5 @@
 | [0091](0091-2026-06-01_project_cli-batch-tool.md) | `sim_cli/`：批量仿真 CLI 工具 | ✅ 已实施 | 2026-06-01 |
 | [0092](0092-2026-06-05_model_input-variable-bare-unit-rule.md) | `type: input` 单位规范：裸单位（事件量），禁止速率单位（/day 等） | ✅ 已实施 | 2026-06-05 |
 | [0093](0093-2026-06-05_sim_runtime-log-panel.md) | Sim/Opt 运行时日志面板：内容分层（模型信息、NaN/bounds 警告、完成统计）与实现 | ✅ 已实施 | 2026-06-05 |
+| [0096](0096-2026-06-06_model_filename-quality-markers.md) | 模型文件名质量标记约定（_nosim / _noopt / _noref） | ✅ 已实施 | 2026-06-06 |
+| [0097](0097-2026-06-08_model_description-3-fields.md) | papers/ 模型 description 简化为三字段（brief / problem / method） | ✅ 已实施 | 2026-06-08 |
