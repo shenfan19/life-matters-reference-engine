@@ -13,7 +13,7 @@ interface SimIntroTabProps {
   setIntroOpen: React.Dispatch<React.SetStateAction<Set<string>>>;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const SimIntroTab: React.FC<SimIntroTabProps> = ({
@@ -72,7 +72,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
 
-      <Section id="meta" title="Description" badge={meta.name || undefined}>
+      <Section id="meta" title={t('sim.report.section.intro')} badge={meta.name || undefined}>
         {descSections.length > 0
           ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {descSections.map(section => (
@@ -141,12 +141,12 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         })()}
       </Section>
 
-      <Section id="variables" title={t('sim.tabs.variables')} badge={`${Object.keys(allV).length} 个`}>
+      <Section id="variables" title={t('sim.tabs.variables')} badge={t('sim.report.badge.n_items', { n: Object.keys(allV).length })}>
         {Object.keys(allV).length === 0
           ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_variables')}</span>
           : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead><tr>
-                <th style={{ ...thS, width: '22%' }}>Name</th><th style={thS}>Description</th>
+                <th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.name')}</th><th style={thS}>{t('sim.intro.col.description')}</th>
                 <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.init_value')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
               </tr></thead>
               <tbody>
@@ -165,12 +165,12 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         }
       </Section>
 
-      <Section id="outputs" title={t('sim.intro.output_vars')} badge={`${outputVars.length} 个`}>
+      <Section id="outputs" title={t('sim.intro.output_vars')} badge={t('sim.report.badge.n_items', { n: outputVars.length })}>
         {outputVars.length === 0
           ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_outputs')}</span>
           : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead><tr>
-                <th style={{ ...thS, width: '22%' }}>Name</th><th style={thS}>Description</th>
+                <th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.name')}</th><th style={thS}>{t('sim.intro.col.description')}</th>
                 <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
               </tr></thead>
               <tbody>
@@ -192,11 +192,11 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
       </Section>
 
       {Object.keys(formulas).length > 0 && (
-        <Section id="formulas" title={t('sim.tabs.formulas')} badge={`${Object.keys(formulas).length} 个`}>
+        <Section id="formulas" title={t('sim.tabs.formulas')} badge={t('sim.report.badge.n_items', { n: Object.keys(formulas).length })}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead><tr>
-              <th style={{ ...thS, width: '20%' }}>Name</th><th style={{ ...thS, width: '26%' }}>Description</th>
-              <th style={thS}>Expression</th><th style={{ ...thS, width: '14%' }}>Condition</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th>
+              <th style={{ ...thS, width: '20%' }}>{t('sim.intro.col.name')}</th><th style={{ ...thS, width: '26%' }}>{t('sim.intro.col.description')}</th>
+              <th style={thS}>{t('sim.intro.col.expression')}</th><th style={{ ...thS, width: '14%' }}>{t('sim.intro.col.condition')}</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th>
             </tr></thead>
             <tbody>
               {Object.entries(formulas).map(([name, fd]: [string, any]) => {
@@ -220,7 +220,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
       )}
 
       {refs.length > 0 && (
-        <Section id="refs" title="References" badge={`${refs.length} 条`}>
+        <Section id="refs" title={t('sim.report.section.refs')} badge={t('sim.report.badge.refs', { n: refs.length })}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {refs.map((r, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>

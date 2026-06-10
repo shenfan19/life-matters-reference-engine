@@ -45,7 +45,7 @@ interface SimReportTabProps {
   setReportGenerating: React.Dispatch<React.SetStateAction<boolean>>;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   fontSize: number;
 }
 
@@ -84,13 +84,13 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
 
   function sectionBadge(key: ReportSection): string {
     if (key === 'intro')     return metaDescText ? t('sim.report.badge.has_desc') : t('sim.report.badge.no_desc');
-    if (key === 'overview')  return `${stateVars.length + inputVars.length} 个变量`;
-    if (key === 'formulas')  return `${Object.keys(formulas).length} 个`;
-    if (key === 'variables') return `${Object.keys(allV).length} 个`;
-    if (key === 'simcfg')    return `${Object.keys(inputParams).length} 项输入`;
-    if (key === 'plots')     return hasData ? `${outputVars.length} 条曲线` : t('sim.report.badge.no_data');
-    if (key === 'opt')       return `${objectives.length} 目标`;
-    if (key === 'refs')      return allRefs.length > 0 ? `${allRefs.length} 条` : '无';
+    if (key === 'overview')  return t('sim.report.badge.overview', { n: stateVars.length + inputVars.length });
+    if (key === 'formulas')  return t('sim.report.badge.n_items', { n: Object.keys(formulas).length });
+    if (key === 'variables') return t('sim.report.badge.n_items', { n: Object.keys(allV).length });
+    if (key === 'simcfg')    return t('sim.report.badge.simcfg', { n: Object.keys(inputParams).length });
+    if (key === 'plots')     return hasData ? t('sim.report.badge.plots', { n: outputVars.length }) : t('sim.report.badge.no_data');
+    if (key === 'opt')       return t('sim.report.badge.opt', { n: objectives.length });
+    if (key === 'refs')      return allRefs.length > 0 ? t('sim.report.badge.refs', { n: allRefs.length }) : t('sim.report.badge.refs_none');
     return '';
   }
 
@@ -116,9 +116,9 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
         <tr><TD>{t('sim.report.overview.name')}</TD><TD mono>{meta.name || selectedModel?.title || '—'}</TD></tr>
         <tr><TD>{t('sim.report.overview.desc')}</TD><TD>{(metaDescSummary || '—').slice(0, 120)}</TD></tr>
         {meta.tags?.length ? <tr><TD>{t('sim.report.overview.tags')}</TD><TD>{meta.tags.join(', ')}</TD></tr> : null}
-        <tr><TD>{t('sim.report.overview.state_vars')}</TD><TD mono>{stateVars.length} 个</TD></tr>
-        <tr><TD>{t('sim.report.overview.input_vars')}</TD><TD mono>{inputVars.length} 个</TD></tr>
-        <tr><TD>{t('sim.report.overview.formula_count')}</TD><TD mono>{Object.keys(formulas).length} 个</TD></tr>
+        <tr><TD>{t('sim.report.overview.state_vars')}</TD><TD mono>{t('sim.report.badge.n_items', { n: stateVars.length })}</TD></tr>
+        <tr><TD>{t('sim.report.overview.input_vars')}</TD><TD mono>{t('sim.report.badge.n_items', { n: inputVars.length })}</TD></tr>
+        <tr><TD>{t('sim.report.overview.formula_count')}</TD><TD mono>{t('sim.report.badge.n_items', { n: Object.keys(formulas).length })}</TD></tr>
       </tbody></table>
     );
     if (key === 'simcfg') return (
@@ -212,32 +212,32 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
 
   function buildMd(): string {
     const lines: string[] = [];
-    const ts = new Date().toLocaleString('zh-CN');
-    lines.push(`# 仿真报告\n\n> 生成时间：${ts}\n`);
+    const ts = new Date().toISOString().slice(0, 10);
+    lines.push(`# ${t('sim.report.md.title')}\n\n> ${t('sim.report.md.generated_at')}: ${ts}\n`);
     if (reportSections.has('intro') && metaDescText) {
-      lines.push(`## Description\n`);
+      lines.push(`## ${t('sim.report.section.intro')}\n`);
       lines.push(`${metaDescText}\n`);
-      if (meta.tags?.length) lines.push(`**标签**：${meta.tags.join('  ·  ')}\n`);
+      if (meta.tags?.length) lines.push(`${t('sim.report.md.tags_label')}${meta.tags.join('  ·  ')}\n`);
     }
     if (reportSections.has('overview')) {
-      lines.push(`## 模型概览\n`);
-      lines.push(`| 字段 | 值 |\n|------|-----|`);
-      lines.push(`| 名称 | ${meta.name || selectedModel?.title || '—'} |`);
-      lines.push(`| 描述 | ${(metaDescSummary || '—').replace(/\n/g, ' ')} |`);
-      if (meta.tags?.length) lines.push(`| 标签 | ${meta.tags.join(', ')} |`);
-      lines.push(`| 状态变量数 | ${stateVars.length} |\n| 输入变量数 | ${inputVars.length} |\n| 方程数 | ${Object.keys(formulas).length} |\n`);
+      lines.push(`## ${t('sim.report.section.overview')}\n`);
+      lines.push(`| ${t('sim.report.md.field_col')} | ${t('sim.report.md.value_col')} |\n|------|-----|`);
+      lines.push(`| ${t('sim.report.md.name_field')} | ${meta.name || selectedModel?.title || '—'} |`);
+      lines.push(`| ${t('sim.report.md.desc_field')} | ${(metaDescSummary || '—').replace(/\n/g, ' ')} |`);
+      if (meta.tags?.length) lines.push(`| ${t('sim.report.md.tags_field')} | ${meta.tags.join(', ')} |`);
+      lines.push(`| ${t('sim.report.md.state_vars_field')} | ${stateVars.length} |\n| ${t('sim.report.md.input_vars_field')} | ${inputVars.length} |\n| ${t('sim.report.md.equations_field')} | ${Object.keys(formulas).length} |\n`);
     }
     if (reportSections.has('simcfg')) {
-      lines.push(`## 仿真配置\n\n| 参数 | 值 |\n|------|-----|`);
-      lines.push(`| 时间范围 | ${simStartDate} ~ ${simEndDate} |\n| 步长 | ${stepValue} ${stepUnit} |\n| 批量大小 | ${batchSize} |`);
+      lines.push(`## ${t('sim.report.section.simcfg')}\n\n| ${t('sim.report.md.param_col')} | ${t('sim.report.md.value_col')} |\n|------|-----|`);
+      lines.push(`| ${t('sim.report.md.time_range_field')} | ${simStartDate} ~ ${simEndDate} |\n| ${t('sim.report.md.step_field')} | ${stepValue} ${stepUnit} |\n| ${t('sim.report.md.batch_field')} | ${batchSize} |`);
       if (Object.keys(inputParams).length) {
-        lines.push(`\n**输入参数**\n\n| 变量 | 含义 | 值 |\n|------|------|-----|`);
+        lines.push(`\n${t('sim.report.md.input_params_hd')}\n\n| ${t('sim.report.simcfg.variable')} | ${t('sim.report.simcfg.meaning')} | ${t('sim.report.simcfg.value')} |\n|------|------|-----|`);
         Object.entries(inputParams).forEach(([k, v]) => lines.push(`| \`${k}\` | ${allV[k]?.description || '—'} | ${v} |`));
       }
       lines.push('');
     }
     if (reportSections.has('variables')) {
-      lines.push(`## 变量汇总\n\n| 变量名 | 含义 | 类型 | 初始值 | 最终值 | 单位 |\n|--------|------|------|--------|--------|------|`);
+      lines.push(`## ${t('sim.report.section.variables')}\n\n| ${t('sim.report.var.name')} | ${t('sim.report.var.meaning')} | ${t('sim.report.var.type')} | ${t('sim.report.var.init')} | ${t('sim.report.var.final')} | ${t('sim.report.var.unit')} |\n|--------|------|------|--------|--------|------|`);
       Object.entries(allV).forEach(([name, d]: [string, any]) => {
         const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
         lines.push(`| \`${name}\` | ${d.description || '—'}${citeStr(d.reference)} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
@@ -245,15 +245,15 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       lines.push('');
     }
     if (reportSections.has('formulas')) {
-      lines.push(`## 方程列表\n\n| 方程名 | 含义 | 条件 | 影响变量 |\n|--------|------|------|----------|`);
+      lines.push(`## ${t('sim.report.section.formulas')}\n\n| ${t('sim.report.formula.name')} | ${t('sim.report.formula.meaning')} | ${t('sim.report.formula.condition')} | ${t('sim.report.formula.affect')} |\n|--------|------|------|----------|`);
       Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
-        const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '常驻';
+        const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : t('sim.report.formula.always');
         lines.push(`| \`${name}\` | ${fd.description || '—'}${citeStr(fd.reference)} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
       });
       lines.push('');
     }
     if (reportSections.has('plots') && hasData) {
-      lines.push(`## Plot 曲线\n`);
+      lines.push(`## ${t('sim.report.section.plots')}\n`);
       outputVars.forEach((varName, idx) => {
         const d = allV[varName] || {};
         const caption = [varName, d.description, d.unit ? `(${d.unit})` : ''].filter(Boolean).join('  ');
@@ -264,13 +264,13 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       lines.push('');
     }
     if (reportSections.has('opt') && mode === 'opt') {
-      lines.push(`## 优化配置\n`);
-      if (objectives.length) { lines.push(`**目标函数**\n`); objectives.forEach(o => lines.push(`- ${o.direction === 'maximize' ? '最大化' : '最小化'} \`${o.variable}\``)); }
-      if (constraints.length) { lines.push(`\n**约束条件**\n`); constraints.forEach(c2 => lines.push(`- \`${c2.variable}\` ${c2.op} ${c2.value}`)); }
-      lines.push(`\n算法: ${optAlgo} · 种群: ${optPop} · 代数: ${optGen}\n`);
+      lines.push(`## ${t('sim.report.md.opt_title')}\n`);
+      if (objectives.length) { lines.push(`${t('sim.report.md.objectives_hd')}\n`); objectives.forEach(o => lines.push(`- ${o.direction === 'maximize' ? t('sim.report.md.maximize') : t('sim.report.md.minimize')} \`${o.variable}\``)); }
+      if (constraints.length) { lines.push(`\n${t('sim.report.md.constraints_hd')}\n`); constraints.forEach(c2 => lines.push(`- \`${c2.variable}\` ${c2.op} ${c2.value}`)); }
+      lines.push(`\n${t('sim.report.md.algo_line', { algo: optAlgo, pop: optPop, gen: optGen })}\n`);
     }
     if (reportSections.has('refs') && allRefs.length > 0) {
-      lines.push(`## 参考文献\n`);
+      lines.push(`## ${t('sim.report.section.refs')}\n`);
       allRefs.forEach((ref, i) => lines.push(`[${i + 1}] ${ref}`));
       lines.push('');
     }
@@ -359,7 +359,7 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
           style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: hasData ? c.text : c.textMute, opacity: hasData ? 1 : 0.4 }}>
           {t('sim.report.export_csv')}
         </button>
-        <Tooltip title="DOCX 导出功能开发中">
+        <Tooltip title={t('sim.report.docx_wip')}>
           <button disabled style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: c.textMute, cursor: 'not-allowed', opacity: 0.4 }}>
             {t('sim.report.export_docx')}
           </button>

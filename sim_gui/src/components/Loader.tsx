@@ -139,7 +139,7 @@ const Loader: React.FC<LoaderProps> = ({
         message.error(`${t('common.error')}: ${result.error}`);
       }
     } catch (e: any) {
-      message.error(`网络错误: ${e.message}`);
+      message.error(t('loader.validation_fail_network', { msg: e.message }));
     } finally {
       setLoading(false);
     }
@@ -150,7 +150,7 @@ const Loader: React.FC<LoaderProps> = ({
     try {
       const cleanPath = filePath.replace(/^models\//, '');
       const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
-      if (!fileResult.success) { message.error(`读取失败: ${fileResult.error}`); return; }
+      if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return; }
 
       const { content, path } = fileResult.data;
       const model: ModelFile = {
@@ -175,7 +175,7 @@ const Loader: React.FC<LoaderProps> = ({
       setConfirmedModel(model);
       if (onModelSelect) onModelSelect(model);
     } catch (e: any) {
-      message.error(`加载失败: ${e.message}`);
+      message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -204,19 +204,19 @@ const Loader: React.FC<LoaderProps> = ({
       if (result.success) {
         setValidationResult({ success: true });
         setIsLocked(true);
-        message.success('✅ 验证通过，场景已锁定');
+        message.success(t('sim.msg.validation_ok'));
       } else {
         const errList: string[] =
           result.data?.errors ||
           (result.data?.error ? [result.data.error] : null) ||
-          (result.error ? [result.error] : ['验证失败（未知原因）']);
+          (result.error ? [result.error] : [t('loader.validation_fail_unknown')]);
         setValidationResult({ success: false, errors: errList });
         setIsLocked(false);
-        message.error('❌ 验证失败，请查看详情');
+        message.error(t('loader.validation_fail_detail'));
       }
     } catch (e: any) {
-      setValidationResult({ success: false, errors: [`网络错误: ${e.message}`] });
-      message.error(`校验出错: ${e.message}`);
+      setValidationResult({ success: false, errors: [t('loader.validation_fail_network', { msg: e.message })] });
+      message.error(t('loader.validation_fail_check', { msg: e.message }));
     } finally {
       setValidating(false);
     }
@@ -239,7 +239,7 @@ const Loader: React.FC<LoaderProps> = ({
 
   const renderVariables = (vars: Record<string, any>) => {
     const entries = Object.entries(vars || {});
-    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无变量" />;
+    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('loader.no_vars')} />;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {entries.map(([name, detail]) => (
@@ -254,9 +254,9 @@ const Loader: React.FC<LoaderProps> = ({
               {detail.type && <Tag color="cyan" style={{  }}>{detail.type}</Tag>}
             </div>
             <div style={{ color: isDarkMode ? '#94a3b8' : '#666' }}>
-              初值: {String(detail.value ?? 'N/A')}
+              {t('loader.var_init')}: {String(detail.value ?? 'N/A')}
               {detail.description ? `  |  ${detail.description}` : ''}
-              {detail.bounds ? `  |  范围: [${detail.bounds[0]}, ${detail.bounds[1]}]` : ''}
+              {detail.bounds ? `  |  ${t('loader.var_bounds')}: [${detail.bounds[0]}, ${detail.bounds[1]}]` : ''}
             </div>
           </div>
         ))}
@@ -266,7 +266,7 @@ const Loader: React.FC<LoaderProps> = ({
 
   const renderFormulas = (formulas: Record<string, any>) => {
     const entries = Object.entries(formulas || {});
-    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无公式" />;
+    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('loader.no_formulas')} />;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {entries.map(([name, detail]) => (
@@ -297,24 +297,24 @@ const Loader: React.FC<LoaderProps> = ({
 
   const detailTabs = selectedStory ? [
     {
-      key: 'meta', label: '基本信息',
+      key: 'meta', label: t('loader.tab_info'),
       children: (
         <div style={{ padding: '12px 0' }}>
           <Descriptions bordered column={2} size="small">
-            <Descriptions.Item label="路径" span={2}>
+            <Descriptions.Item label={t('loader.field_path')} span={2}>
               <code style={{ color: isDarkMode ? '#4ade80' : '#007A33' }}>{selectedStory.path}</code>
             </Descriptions.Item>
-            <Descriptions.Item label="类型">
+            <Descriptions.Item label={t('loader.field_type')}>
               <Tag>{(selectedStory.type || 'UNKNOWN').toUpperCase()}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="分类">{selectedStory.category || 'N/A'}</Descriptions.Item>
-            <Descriptions.Item label="描述" span={2}>
+            <Descriptions.Item label={t('loader.field_category')}>{selectedStory.category || 'N/A'}</Descriptions.Item>
+            <Descriptions.Item label={t('loader.field_description')} span={2}>
               <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', whiteSpace: 'pre-wrap' }}>
                 {formatDescription(selectedStory.metadata?.description)}
               </span>
             </Descriptions.Item>
             {selectedStory.imports && selectedStory.imports.length > 0 && (
-              <Descriptions.Item label="导入模型" span={2}>
+              <Descriptions.Item label={t('loader.field_imports')} span={2}>
                 {selectedStory.imports.map((imp: string, idx: number) => (
                   <Tag key={idx} color="cyan" style={{ marginBottom: 4 }}>{imp}</Tag>
                 ))}
@@ -325,11 +325,11 @@ const Loader: React.FC<LoaderProps> = ({
       ),
     },
     {
-      key: 'vars', label: `变量 (${varCount})`,
+      key: 'vars', label: `${t('loader.tab_vars')} (${varCount})`,
       children: <div style={{ padding: '8px 0' }}>{renderVariables(selectedStory.variables || {})}</div>,
     },
     {
-      key: 'formulas', label: `公式 (${formulaCount})`,
+      key: 'formulas', label: `${t('loader.tab_formulas')} (${formulaCount})`,
       children: <div style={{ padding: '8px 0' }}>{renderFormulas(selectedStory.formulas || {})}</div>,
     },
   ] : [];
@@ -354,7 +354,7 @@ const Loader: React.FC<LoaderProps> = ({
               {t('loader.story')} ({total})
             </strong>
             <Input
-              size="small" placeholder="搜索..." value={storyFilter}
+              size="small" placeholder={t('common.search')} value={storyFilter}
               onChange={e => setStoryFilter(e.target.value)}
               prefix={<FilterOutlined style={{ color: '#bfbfbf' }} />}
               style={{ width: 110 }} disabled={isSimulating}
@@ -369,7 +369,7 @@ const Loader: React.FC<LoaderProps> = ({
               disabled={isSimulating}
             />
             <Button size="small" onClick={() => { setSelectedKey(null); setConfirmedModel(null); setValidationResult(null); setIsLocked(false); loadFileTree(); }}>
-              刷新
+              {t('loader.refresh')}
             </Button>
           </div>
 
@@ -417,7 +417,7 @@ const Loader: React.FC<LoaderProps> = ({
         {/* 详情面板 */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
           {!selectedStory ? (
-            <Empty description="请在上方选择一个场景" style={{ marginTop: 40 }} />
+            <Empty description={t('loader.select_scenario')} style={{ marginTop: 40 }} />
           ) : (
             <>
               {/* 标题行 + 验证锁定按钮 */}
@@ -425,7 +425,7 @@ const Loader: React.FC<LoaderProps> = ({
                 <span style={{ fontWeight: 600, color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
                   {selectedStory.title}
                 </span>
-                <Tooltip title={isLocked ? '已锁定 · 点击解锁' : '验证并锁定'}>
+                <Tooltip title={isLocked ? t('loader.locked_tooltip') : t('loader.unlock_tooltip')}>
                   <Button
                     type={isLocked ? 'primary' : 'default'}
                     size="small"
@@ -442,9 +442,9 @@ const Loader: React.FC<LoaderProps> = ({
               {validationResult && (
                 <Alert
                   type={validationResult.success ? 'success' : 'error'}
-                  message={validationResult.success ? '验证通过' : '验证失败'}
+                  message={validationResult.success ? t('loader.validation_ok_msg') : t('loader.validation_fail_msg')}
                   description={
-                    validationResult.success ? '场景结构完整，已锁定可供模拟使用。' : (
+                    validationResult.success ? t('loader.validation_ok_desc') : (
                       <div style={{ maxHeight: 160, overflow: 'auto' }}>
                         {(validationResult.errors || []).map((err, i) => (
                           <div key={i} style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>

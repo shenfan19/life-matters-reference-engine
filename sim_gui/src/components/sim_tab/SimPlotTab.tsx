@@ -23,7 +23,7 @@ interface SimPlotTabProps {
   sessionSeed: number;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   fontSize: number;
   comparedPlans?: PlanResult[];
   onExportCSV?: () => void;
@@ -97,7 +97,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
             </span>
           </label>
           {onRemovePlan && plan.id !== 'current-sim' && !plan.running && (
-            <Tooltip title="移除此对比曲线">
+            <Tooltip title={t('sim.plot.remove_curve')}>
               <button
                 onClick={() => onRemovePlan(plan.id)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.textMute, fontSize: 12, padding: '0 2px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
@@ -363,8 +363,8 @@ const SimLogPanel: React.FC<{ logs: Array<{ t: number; msg: string }>; c: Return
             <Tooltip title="Copy log">
               <Button size="small" icon={<CopyOutlined />}
                 onClick={() => navigator.clipboard.writeText(logText)
-                  .then(() => message.success('已复制'))
-                  .catch(() => message.error('复制失败'))} />
+                  .then(() => message.success(t('sim.msg.copied')))
+                  .catch(() => message.error(t('sim.msg.copy_failed')))} />
             </Tooltip>
             <Tooltip title="Download .txt">
               <Button size="small" icon={<DownloadOutlined />}

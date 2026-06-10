@@ -57,6 +57,6 @@ export async function validateModelFile(
 
     return { valid, errors };
   } catch (e: any) {
-    return { valid: false, errors: [`请求失败: ${String(e)}`] };
+    return { valid: false, errors: [`Network error: ${String(e)}`] };
   }
 }

@@ -65,7 +65,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const importSimCSV = (csvText: string, fileName: string) => {
     const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length < 2) { message.warning('CSV 文件为空或格式错误'); return; }
+    if (lines.length < 2) { message.warning(t('sim.msg.csv_empty')); return; }
     const headers = lines[0].split(',').map((h: string) => h.trim());
     const data: any[] = [];
     for (let i = 1; i < lines.length; i++) {
@@ -75,13 +75,13 @@ const Simulator: React.FC<SimulatorProps> = ({
       headers.forEach((h: string, idx: number) => { point[h] = parseFloat(row[idx]); });
       data.push(point);
     }
-    if (!data.length) { message.warning('CSV 无有效数据行'); return; }
-    const label = fileName.replace(/\.csv$/i, '') || `导入 ${simRunCounterRef.current + 1}`;
+    if (!data.length) { message.warning(t('sim.msg.csv_no_data')); return; }
+    const label = fileName.replace(/\.csv$/i, '') || t('sim.import.default_label', { n: simRunCounterRef.current + 1 });
     const color = PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length];
     simRunCounterRef.current += 1;
     const key = `imported-${Date.now()}`;
     setImportedSimRuns(prev => [...prev, { key, label, color, data }]);
-    message.success(`已上传仿真时序 "${label}"（${data.length} 个数据点，已叠加为对比曲线）`);
+    message.success(t('sim.msg.sim_uploaded', { label, n: data.length }));
   };
 
   const removeImportedRun = (key: string) => {
@@ -180,7 +180,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         body: JSON.stringify({ files: builderCheckedFiles, output_path: mergeOutPath }),
       });
       const d = await r.json();
-      if (!d.success) { message.error('合并失败: ' + (d.detail || d.error || '')); return; }
+      if (!d.success) { message.error(`${t('sim.msg.merge_failed')}: ${d.detail || d.error || ''}`); return; }
 
       if (d.scs_mode && d.raw) {
         // SCS mode: load merged content as a session model
@@ -208,9 +208,9 @@ const Simulator: React.FC<SimulatorProps> = ({
           saveSession(next);
           return next;
         });
-        message.success('合并完成，已在编辑器中打开');
+        message.success(t('sim.msg.merge_done_editor'));
       } else {
-        message.success('合并成功');
+        message.success(t('sim.msg.merge_done'));
         loadFileTree();
       }
       setMergeDialogOpen(false);
@@ -219,7 +219,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const handleCreateFile = async () => {
-    if (!newFilePath.trim()) { message.warning('请填写名称'); return; }
+    if (!newFilePath.trim()) { message.warning(t('sim.msg.name_required')); return; }
     const rawName = newFilePath.trim();
     if (scsMode) {
       const safeName = rawName.replace(/[^a-zA-Z0-9_\-.]/g, '_').replace(/\.ya?ml$/i, '');
@@ -234,7 +234,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       openBuilder();
       setNewFileDialogOpen(false);
       setNewFilePath('');
-      message.success('已在 Session 中创建新模型');
+      message.success(t('sim.msg.session_model_created'));
       return;
     }
     let path = rawName;
@@ -247,11 +247,11 @@ const Simulator: React.FC<SimulatorProps> = ({
       });
       const d = await r.json();
       if (d.success) {
-        message.success('文件已创建');
+        message.success(t('sim.msg.file_created'));
         setNewFileDialogOpen(false);
         setNewFilePath('');
         loadFileTree();
-      } else message.error('创建失败: ' + (d.detail || ''));
+      } else message.error(`${t('sim.msg.create_failed')}: ${d.detail || ''}`);
     } catch (e: any) { message.error(String(e)); }
     finally { setCreatingFile(false); }
   };
@@ -750,7 +750,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       const bestX: number[] = rawResults.reference.x;
       Modal.confirm({
         title: t('sim.opt.ref_detected_title'),
-        content: `模型包含推荐解（${bestX.length} 个决策变量），是否将其预填为当前输入方案？`,
+        content: t('sim.opt.ref_detected_content', { n: bestX.length }),
         okText: t('sim.opt.load_reference'), cancelText: t('sim.opt.use_default_schedule'),
         onOk: () => setInputEvents(prev => xToInputEvents(bestX, optBlock ?? selectedModel?.rawContent?.optimizer, prev)),
       });
@@ -1041,7 +1041,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     const optimizer = selectedModel?.content?.optimizer;
     const bestX = optimizer?.results?.reference?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
-      message.warning('无推荐解可用'); return;
+      message.warning(t('sim.msg.no_best_solution')); return;
     }
     setInputEvents(prev => xToInputEvents(bestX, optimizer, prev));
     set('status', 'idle'); set('progress', 0); set('currentStep', 0);
@@ -1086,14 +1086,14 @@ const Simulator: React.FC<SimulatorProps> = ({
         body: JSON.stringify({ text, filename: file.name }),
       });
       const data = await resp.json();
-      if (!data.success) { message.error(data.error || '上传失败'); return; }
+      if (!data.success) { message.error(data.error || t('sim.msg.upload_failed')); return; }
       const content = { ...data.raw, ...data.resolved };
       const key = `session/${data.filename}`;
       handleBuilderSessionUpdate(key, content);
       setBuilderAutoEditKey(key);
       openBuilder();
-      message.success(`已上传到 Session: ${data.filename}`);
-    } catch (err: any) { message.error(err.message || '读取文件失败'); }
+      message.success(t('sim.msg.uploaded_to_session', { name: data.filename }));
+    } catch (err: any) { message.error(err.message || t('sim.msg.read_file_failed')); }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1108,7 +1108,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         body: JSON.stringify({ text, filename: file.name }),
       });
       const data = await resp.json();
-      if (!data.success) { message.error(data.error || '导入失败'); return; }
+      if (!data.success) { message.error(data.error || t('sim.msg.import_failed')); return; }
 
       // Backend resolved imports inline and deleted the temp file.
       // Build ModelFile directly from response — no second server call needed.
@@ -1132,7 +1132,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
       const rawImports = raw?.imports;
       if (!resolved?.resolved && Array.isArray(rawImports) && rawImports.length > 0) {
-        message.warning('模型已导入，但 imports 无法解析。路径从 models/ 根出发，如 papers/paper2/my_model');
+        message.warning(t('sim.msg.import_unresolved'));
       }
 
       setSelectedKey(modelKey);
@@ -1144,8 +1144,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         saveSession(next);
         return next;
       });
-      message.success(`已导入 ${data.filename}`);
-    } catch (err: any) { message.error(err.message || '读取文件失败'); }
+      message.success(t('sim.msg.imported_file', { name: data.filename }));
+    } catch (err: any) { message.error(err.message || t('sim.msg.read_file_failed')); }
   };
 
   // ── input event CRUD ──────────────────────────────────────────────────────────
@@ -1247,7 +1247,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const isOtherRunning = scsMode && !!runningModelKey && runningModelKey !== selectedKey;
-  const otherRunningTip = isOtherRunning ? `请先前往「${runningModelTitle || ''}」停止运行后再启动` : undefined;
+  const otherRunningTip = isOtherRunning ? t('sim.msg.other_running_tip', { name: runningModelTitle || '' }) : undefined;
 
   const SimControls = (
     <SimControlBar
@@ -1384,7 +1384,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           {/* Center tab bar */}
           <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 4 }}>
             {/* Left panel collapse/expand toggle — always visible before Overview */}
-            <Tooltip title={leftCollapsed ? '展开模型库' : '折叠模型库'}>
+            <Tooltip title={leftCollapsed ? t('sim.builder.expand_lib') : t('sim.builder.collapse_lib')}>
               <button
                 onClick={() => setLeftCollapsed(v => !v)}
                 style={{ padding: '5px 8px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', display: 'flex', alignItems: 'center', flexShrink: 0, borderBottom: '2px solid transparent', marginBottom: -1 }}
@@ -1393,17 +1393,17 @@ const Simulator: React.FC<SimulatorProps> = ({
               </button>
             </Tooltip>
             {([
-              { key: 'intro',        label: 'Overview' },
-              { key: 'simulation',   label: 'Simulation' },
-              { key: 'optimization', label: 'Optimization' },
-              { key: 'report',       label: t('sim.tab.report') || '报告' },
+              { key: 'intro',        label: t('sim.tab.overview') },
+              { key: 'simulation',   label: t('sim.tab.simulation') },
+              { key: 'optimization', label: t('sim.tab.optimization') },
+              { key: 'report',       label: t('sim.tab.report') },
             ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
               const locked = builderOpen;
               const color = locked ? c.textMute : (isActive ? c.primary : c.textMute);
               const underline = (!locked && isActive) ? `2px solid ${c.primary}` : '2px solid transparent';
               return (
-                <Tooltip key={tab.key} title={locked ? '请先关闭模型库编辑' : undefined}>
+                <Tooltip key={tab.key} title={locked ? t('sim.builder.tab_locked') : undefined}>
                   <button
                     onClick={() => {
                       if (locked) return;
@@ -1425,9 +1425,9 @@ const Simulator: React.FC<SimulatorProps> = ({
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px 6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.primary, fontWeight: 600, borderBottom: `2px solid ${c.primary}`, marginBottom: -1, outline: 'none' }}
                 >
                   <BuildOutlined style={{ fontSize: 12 }} />
-                  模型库
+                  {t('sim.builder.label')}
                 </button>
-                <Tooltip title="关闭编辑（完成）">
+                <Tooltip title={t('sim.builder.close_edit')}>
                   <button
                     onClick={closeBuilder}
                     style={{ padding: '4px 6px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', borderRadius: 4, display: 'flex', alignItems: 'center' }}
@@ -1483,7 +1483,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                     // Include current run as a named plan when there are other runs to compare
                     ...(simulationData.length > 0 && importedSimRuns.length > 0 ? [{
                       id: 'current-sim',
-                      label: (status === 'running' || status === 'paused') ? '运行中…' : '当前',
+                      label: (status === 'running' || status === 'paused') ? t('sim.tab.running') : t('sim.tab.current'),
                       color: PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length],
                       data: simulationData, runsData: dataPerRun,
                       running: status === 'running', inputEvents: [] as any[],
@@ -1583,22 +1583,22 @@ const Simulator: React.FC<SimulatorProps> = ({
       {/* ── Merge dialog ── */}
       <Modal
         open={mergeDialogOpen}
-        title="合并模型文件"
-        okText="合并"
-        cancelText="取消"
+        title={t('sim.modal.merge_title')}
+        okText={t('sim.modal.merge_ok')}
+        cancelText={t('sim.control.cancel')}
         confirmLoading={merging}
         onOk={handleMerge}
         onCancel={() => setMergeDialogOpen(false)}
       >
         <div style={{ marginBottom: 12, color: c.textSec }}>
-          选中的 {builderCheckedFiles.length} 个文件将合并：
+          {t('sim.modal.merge_n_files', { n: builderCheckedFiles.length })}
           {builderCheckedFiles.map(f => (
             <div key={f} style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 2, color: c.textMute }}>• {f}</div>
           ))}
         </div>
         {scsMode ? (
           <>
-            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>文件名（保存到 Session）：</div>
+            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>{t('sim.modal.merge_path_scs')}</div>
             <Input
               value={mergeOutPath.replace(/^.*\//, '').replace(/\.ya?ml$/i, '')}
               onChange={e => setMergeOutPath(e.target.value)}
@@ -1608,7 +1608,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           </>
         ) : (
           <>
-            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>输出路径（相对 models/）：</div>
+            <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>{t('sim.modal.merge_path')}</div>
             <Input
               value={mergeOutPath}
               onChange={e => setMergeOutPath(e.target.value)}
@@ -1622,15 +1622,15 @@ const Simulator: React.FC<SimulatorProps> = ({
       {/* ── New file dialog ── */}
       <Modal
         open={newFileDialogOpen}
-        title={scsMode ? '新建 Session 模型' : '新建模型文件'}
-        okText="创建"
-        cancelText="取消"
+        title={scsMode ? t('sim.modal.new_title_scs') : t('sim.modal.new_title')}
+        okText={t('sim.modal.new_ok')}
+        cancelText={t('sim.control.cancel')}
         confirmLoading={creatingFile}
         onOk={handleCreateFile}
         onCancel={() => { setNewFileDialogOpen(false); setNewFilePath(''); }}
       >
         <div style={{ marginBottom: 4, color: c.textSec, fontSize: 12 }}>
-          {scsMode ? '模型名称：' : '文件路径（相对 models/）：'}
+          {scsMode ? t('sim.modal.new_name_scs') : t('sim.modal.new_path')}
         </div>
         <Input
           value={newFilePath}
