@@ -84,6 +84,7 @@ class Loader:
                 'simulation': {},
                 'optimizer': {},
                 'imports': [],
+                'step_sizes': {},
             }
             imported_output_variables: List[str] = []
             imported_output_types: List[str] = []
@@ -183,6 +184,13 @@ class Loader:
                 merged_sources['variables'][var_name] = source_label
             for form_name in (data.get('formulas') or {}).keys():
                 merged_sources['formulas'][form_name] = source_label
+            local_step_size = data.get('metadata', {}).get('step_size')
+            if isinstance(local_step_size, dict) and 'unit' in local_step_size:
+                unit_raw = str(local_step_size.get('unit', 'minute')).lower()
+                if unit_raw in TIME_UNIT_SECONDS:
+                    merged_sources['step_sizes'][source_label] = (
+                        float(local_step_size.get('value', 1)) * TIME_UNIT_SECONDS[unit_raw]
+                    )
             if isinstance(local_sim, dict):
                 for key in local_sim.keys():
                     merged_sources['simulation'][key] = source_label
@@ -252,7 +260,8 @@ class Loader:
                 value=value,
                 type=VariableType(var_data.get('type', 'state')),
                 unit=var_data.get('unit'),
-                bounds=var_data.get('bounds')
+                bounds=var_data.get('bounds'),
+                reference=var_data.get('reference')
             )
             self.variable_history[var_name] = [self.variables[var_name].value]
         
@@ -267,7 +276,8 @@ class Loader:
                 condition=condition,
                 priority=form_data.get('priority', 0),
                 dynamics=form_data.get('dynamics', {}),
-                formula=form_data.get('formula')
+                formula=form_data.get('formula'),
+                reference=form_data.get('reference')
             )
         
         # 合并 simulator 和 optimizer
@@ -316,6 +326,17 @@ class Loader:
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 
+        # 跨步长 import：每条公式的 `step` 应按其来源模块自身的
+        # metadata.step_size 换算，而非当前运行模型的 step_size。
+        # 来源未知或未声明 step_size 的公式，回退为当前模型的 step_size。
+        own_step_size_sec = self.simulator.get('step_size')
+        sources = data.get('_sources', {})
+        formula_sources = sources.get('formulas', {})
+        step_sizes = sources.get('step_sizes', {})
+        for form_name in data.get('formulas', {}):
+            src = formula_sources.get(form_name)
+            self.formulas[form_name].step_size_sec = step_sizes.get(src, own_step_size_sec)
+
         # 解析 time_unit（默认 minute）
         time_unit_raw = str(simulator_data.get('time_unit', 'minute')).lower()
         if time_unit_raw not in TIME_UNIT_SECONDS:
@@ -324,86 +345,22 @@ class Loader:
         self.time_unit = time_unit_raw
 
         # 应用计划表 (Schedules)
-        # 支持两种格式：
-        #   新格式（list）：[{variable, time:"HH:MM", value, days:[...], date_range:["YYYY-MM-DD", "YYYY-MM-DD"]}]
-        #   旧格式（dict）：{var_name: {interpolation, points:[{time:秒数, value}]}}
-        # 按 ADR 0087：若 simulation.plans 非空，第一个 plan 的 schedules 作为
-        # 仿真的实际调度来源，simulation.schedules 被丢弃（仅作 optimizer fallback）。
+        # 唯一支持格式：simulation.plans[*].schedules（ADR 0076），每个 plan 是
+        # [{variable, time:"HH:MM", value, days:[...], date_range:["YYYY-MM-DD", "YYYY-MM-DD"]}]
+        # 不再支持旧版 simulation.schedules（扁平 list/dict）。
+        # 所有 plans 均解析并存入 self.plans[plan_id]；第一个 plan 作为
+        # self.schedules（当前激活方案，供 _apply_schedules 使用）。
+        self.plans = {}
         plans_raw = simulator_data.get('plans')
-        if isinstance(plans_raw, list) and len(plans_raw) > 0:
-            schedules_raw = plans_raw[0].get('schedules', [])
-        else:
-            schedules_raw = simulator_data.get('schedules', {})
-
-        if isinstance(schedules_raw, list):
-            from datetime import date as _sdate, timedelta as _std
-            from collections import defaultdict as _dd
-            _DAY_MAP = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
-
-            sd_str = str(simulator_data.get('start_date', '2000-01-01'))
-            ed_str = str(simulator_data.get('end_date', sd_str))
-            try:
-                sy, sm, sdd = [int(x) for x in sd_str.split('-')]
-                ey, em, edd = [int(x) for x in ed_str.split('-')]
-                sim_start = _sdate(sy, sm, sdd)
-                sim_end   = _sdate(ey, em, edd)
-            except Exception:
-                logger.warning("新格式 schedules 需要 start_date/end_date，跳过展开")
-                sim_start = sim_end = None
-
-            if sim_start is not None:
-                var_points_map = _dd(list)
-                for entry in schedules_raw:
-                    var_name = entry.get('variable')
-                    if not var_name:
-                        continue
-                    time_str = str(entry.get('time', '00:00'))
-                    hh, mm = [int(x) for x in time_str.split(':')]
-                    tod_sec = hh * 3600 + mm * 60
-                    value = float(entry.get('value', 0.0))
-
-                    days_raw = entry.get('days')
-                    valid_days = (
-                        {_DAY_MAP[d] for d in days_raw if d in _DAY_MAP}
-                        if days_raw else set(range(7))
-                    )
-
-                    dr = entry.get('date_range')
-                    if dr and isinstance(dr, list) and len(dr) == 2:
-                        rs, re_ = str(dr[0]), str(dr[1])
-                        ry, rm, rd = [int(x) for x in rs.split('-')]
-                        ry2, rm2, rd2 = [int(x) for x in re_.split('-')]
-                        range_start = max(sim_start, _sdate(ry, rm, rd))
-                        range_end   = min(sim_end,   _sdate(ry2, rm2, rd2))
-                    else:
-                        range_start, range_end = sim_start, sim_end
-
-                    cur = range_start
-                    while cur <= range_end:
-                        if cur.weekday() in valid_days:
-                            offset_sec = (cur - sim_start).days * 86400 + tod_sec
-                            var_points_map[var_name].append(
-                                SchedulePoint(time=float(offset_sec), value=value)
-                            )
-                        cur += _std(days=1)
-
-                for var_name, pts in var_points_map.items():
-                    self.schedules[var_name] = InputSchedule(
-                        variable=var_name,
-                        points=sorted(pts, key=lambda p: p.time),
-                        interpolation='pulse'
-                    )
-        else:
-            # 旧格式（dict）
-            for var_name, sched_data in schedules_raw.items():
-                points = []
-                for pt in sched_data.get('points', []):
-                    points.append(SchedulePoint(time=float(pt['time']), value=float(pt['value'])))
-                self.schedules[var_name] = InputSchedule(
-                    variable=var_name,
-                    points=sorted(points, key=lambda p: p.time),
-                    interpolation=sched_data.get('interpolation', 'step')
+        if isinstance(plans_raw, list):
+            for i, plan in enumerate(plans_raw):
+                plan_id = plan.get('id') or f'plan_{i}'
+                self.plans[plan_id] = self._parse_schedule_entries(
+                    plan.get('schedules', []), simulator_data
                 )
+            if self.plans:
+                first_plan_id = plans_raw[0].get('id') or 'plan_0'
+                self.schedules = self.plans[first_plan_id]
 
         # 应用每日输入 (daily_inputs) — 转换为 schedules，day 从 1 开始
         daily_inputs_raw = data.get('daily_inputs', {})
@@ -465,6 +422,70 @@ class Loader:
         
         # 更新符号表
         self._initialize_asteval()
+
+    def _parse_schedule_entries(self, entries: list, simulator_data: Dict[str, Any]) -> Dict[str, InputSchedule]:
+        """将单个 plan 的 schedules 列表展开为 {var_name: InputSchedule}。"""
+        from datetime import date as _sdate, timedelta as _std
+        from collections import defaultdict as _dd
+        _DAY_MAP = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
+
+        result: Dict[str, InputSchedule] = {}
+        if not isinstance(entries, list) or not entries:
+            return result
+
+        sd_str = str(simulator_data.get('start_date', '2000-01-01'))
+        ed_str = str(simulator_data.get('end_date', sd_str))
+        try:
+            sy, sm, sdd = [int(x) for x in sd_str.split('-')]
+            ey, em, edd = [int(x) for x in ed_str.split('-')]
+            sim_start = _sdate(sy, sm, sdd)
+            sim_end   = _sdate(ey, em, edd)
+        except Exception:
+            logger.warning("plan schedules 需要 start_date/end_date，跳过展开")
+            return result
+
+        var_points_map = _dd(list)
+        for entry in entries:
+            var_name = entry.get('variable')
+            if not var_name:
+                continue
+            time_str = str(entry.get('time', '00:00'))
+            hh, mm = [int(x) for x in time_str.split(':')]
+            tod_sec = hh * 3600 + mm * 60
+            value = float(entry.get('value', 0.0))
+
+            days_raw = entry.get('days')
+            valid_days = (
+                {_DAY_MAP[d] for d in days_raw if d in _DAY_MAP}
+                if days_raw else set(range(7))
+            )
+
+            dr = entry.get('date_range')
+            if dr and isinstance(dr, list) and len(dr) == 2:
+                rs, re_ = str(dr[0]), str(dr[1])
+                ry, rm, rd = [int(x) for x in rs.split('-')]
+                ry2, rm2, rd2 = [int(x) for x in re_.split('-')]
+                range_start = max(sim_start, _sdate(ry, rm, rd))
+                range_end   = min(sim_end,   _sdate(ry2, rm2, rd2))
+            else:
+                range_start, range_end = sim_start, sim_end
+
+            cur = range_start
+            while cur <= range_end:
+                if cur.weekday() in valid_days:
+                    offset_sec = (cur - sim_start).days * 86400 + tod_sec
+                    var_points_map[var_name].append(
+                        SchedulePoint(time=float(offset_sec), value=value)
+                    )
+                cur += _std(days=1)
+
+        for var_name, pts in var_points_map.items():
+            result[var_name] = InputSchedule(
+                variable=var_name,
+                points=sorted(pts, key=lambda p: p.time),
+                interpolation='pulse'
+            )
+        return result
 
     def load_model(self, file_path: str, module_name: str):
         """

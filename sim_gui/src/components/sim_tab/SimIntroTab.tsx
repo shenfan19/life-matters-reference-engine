@@ -31,12 +31,17 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
   const descSections = getDescriptionSections(meta.description);
 
-  const sourceOf = (kind: 'variables' | 'formulas', name: string) => provenance?.[kind]?.[name] || '';
+  const importLabels: string[] = Array.isArray(provenance?.imports) ? provenance.imports : [];
+  const sourceOf = (kind: 'variables' | 'formulas', name: string) => {
+    const src = provenance?.[kind]?.[name];
+    return src && importLabels.includes(src) ? src : '';
+  };
   const SourceTag = ({ source }: { source?: string }) => source ? (
     <span style={{ color: c.textMute, border: `1px solid ${c.border}`, borderRadius: 4, padding: '1px 5px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', whiteSpace: 'nowrap' }}>
       from {source}
     </span>
   ) : null;
+  const refStr = (ref: unknown): string => !ref ? '' : Array.isArray(ref) ? ref.filter(Boolean).join('; ') : String(ref);
 
   const toggleIntro = (key: string) => setIntroOpen(prev => {
     const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n;
@@ -146,43 +151,26 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
           ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_variables')}</span>
           : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead><tr>
-                <th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.name')}</th><th style={thS}>{t('sim.intro.col.description')}</th>
-                <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.init_value')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
+                <th style={{ ...thS, width: '12%' }}>{t('sim.intro.col.name')}</th><th style={thS}>{t('sim.intro.col.description')}</th>
+                <th style={{ ...thS, width: '7%' }}>{t('sim.intro.type')}</th><th style={{ ...thS, width: '7%' }}>{t('sim.intro.init_value')}</th>
+                <th style={{ ...thS, width: '7%' }}>{t('sim.intro.unit')}</th><th style={{ ...thS, width: '11%' }}>{t('sim.intro.source')}</th>
+                <th style={{ ...thS, width: '13%' }}>{t('sim.intro.col.reference')}</th>
               </tr></thead>
               <tbody>
-                {Object.entries(allV).map(([name, d]: [string, any]) => (
-                  <tr key={name}>
-                    <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
-                    <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
-                    <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
-                    <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
-                    <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
-                    <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-        }
-      </Section>
-
-      <Section id="outputs" title={t('sim.intro.output_vars')} badge={t('sim.report.badge.n_items', { n: outputVars.length })}>
-        {outputVars.length === 0
-          ? <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.intro.no_outputs')}</span>
-          : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <thead><tr>
-                <th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.name')}</th><th style={thS}>{t('sim.intro.col.description')}</th>
-                <th style={thS}>{t('sim.intro.type')}</th><th style={thS}>{t('sim.intro.unit')}</th><th style={thS}>{t('sim.intro.source')}</th>
-              </tr></thead>
-              <tbody>
-                {outputVars.map(name => {
-                  const d = allV[name] || {};
+                {Object.entries(allV).map(([name, d]: [string, any]) => {
+                  const ref = refStr(d.reference);
                   return (
                     <tr key={name}>
-                      <td style={{ ...tdS, fontFamily: 'monospace', color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
-                      <td style={{ ...tdS, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
+                      <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
+                        {name}
+                        {outputVars.includes(name) && <span style={{ color: c.textMute, marginLeft: 4 }}>({t('sim.intro.output_marker')})</span>}
+                      </td>
+                      <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
                       <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
+                      <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
                       <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
                       <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>
+                      <td style={{ ...tdS, color: c.textMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ref}>{ref || '—'}</td>
                     </tr>
                   );
                 })}
@@ -195,8 +183,9 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         <Section id="formulas" title={t('sim.tabs.formulas')} badge={t('sim.report.badge.n_items', { n: Object.keys(formulas).length })}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead><tr>
-              <th style={{ ...thS, width: '20%' }}>{t('sim.intro.col.name')}</th><th style={{ ...thS, width: '26%' }}>{t('sim.intro.col.description')}</th>
-              <th style={thS}>{t('sim.intro.col.expression')}</th><th style={{ ...thS, width: '14%' }}>{t('sim.intro.col.condition')}</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th>
+              <th style={{ ...thS, width: '14%' }}>{t('sim.intro.col.name')}</th><th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.description')}</th>
+              <th style={thS}>{t('sim.intro.col.expression')}</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.col.condition')}</th>
+              <th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.col.reference')}</th>
             </tr></thead>
             <tbody>
               {Object.entries(formulas).map(([name, fd]: [string, any]) => {
@@ -204,6 +193,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                 const expr = typeof fd.dynamics === 'object' && fd.dynamics
                   ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
                   : String(fd.dynamics ?? '');
+                const ref = refStr(fd.reference);
                 return (
                   <tr key={name}>
                     <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
@@ -211,6 +201,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                     <td style={{ ...tdS, color: isDarkMode ? '#86efac' : '#007A33', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={expr}>{expr || '—'}</td>
                     <td style={{ ...tdS, color: c.textMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cond || ''}>{cond || '—'}</td>
                     <td style={tdS}><SourceTag source={sourceOf('formulas', name)} /></td>
+                    <td style={{ ...tdS, color: c.textMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ref}>{ref || '—'}</td>
                   </tr>
                 );
               })}

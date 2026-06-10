@@ -37,8 +37,9 @@ class ModelStructure(Loader, Validator, Simulation):
         # 初始化 simulator 和 optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
-        # 初始化计划表
+        # 初始化计划表（self.schedules = 当前激活方案，self.plans = 全部命名方案）
         self.schedules: Dict[str, Any] = {}
+        self.plans: Dict[str, Dict[str, Any]] = {}
         # 初始化累积器
         self.accumulators: Dict[str, Accumulator] = {}
         # 初始化手动覆盖
