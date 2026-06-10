@@ -31,6 +31,9 @@ def main() -> None:
     )
     parser.add_argument('model', help='Path to model YAML file')
     parser.add_argument('--sim', action='store_true', help='Run simulation')
+    parser.add_argument('--all-plans', action='store_true',
+                         help='With --sim: run once per simulation.plans entry, '
+                              'writing one CSV per plan (<stem>__<plan_id>.csv)')
     parser.add_argument('--opt', action='store_true', help='Run optimizer (NSGA-II)')
     parser.add_argument(
         '--continue', dest='warm', nargs='?', const=True, default=False,
@@ -69,16 +72,26 @@ def main() -> None:
     print(f'  Mode  : {mode}')
     print(f'  Log   : {log_path.name}\n')
 
-    from runner import run_sim, run_opt
+    from runner import run_sim, run_sim_all_plans, run_opt
 
     if args.sim:
         csv_path = out_dir / f'{stem}.csv'
-        ok = run_sim(model_path, root, csv_path)
-        if ok:
-            print(f'\n  Done → {csv_path.name}')
+        if args.all_plans:
+            written = run_sim_all_plans(model_path, root, csv_path)
+            if written:
+                print('\n  Done →')
+                for name_ in written:
+                    print(f'    {name_}')
+            else:
+                print('\n  Simulation failed. Check log for details.')
+                sys.exit(1)
         else:
-            print('\n  Simulation failed. Check log for details.')
-            sys.exit(1)
+            ok = run_sim(model_path, root, csv_path)
+            if ok:
+                print(f'\n  Done → {csv_path.name}')
+            else:
+                print('\n  Simulation failed. Check log for details.')
+                sys.exit(1)
 
     elif args.opt:
         from progress import ProgressTracker

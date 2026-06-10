@@ -66,21 +66,23 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
   // Reference collection
   const allRefs: string[] = [];
   const refIdx = new Map<string, number>();
-  function collectRefs(val: unknown): number[] {
+  function collectRefs(val: unknown, allowNew: boolean): number[] {
     if (!val) return [];
     const arr = (Array.isArray(val) ? val : [val]) as string[];
     return arr.filter(Boolean).map(r => {
       if (refIdx.has(r)) return refIdx.get(r)!;
+      if (!allowNew) return 0;
       allRefs.push(r); refIdx.set(r, allRefs.length); return allRefs.length;
-    });
+    }).filter(n => n > 0);
   }
   function citeStr(val: unknown): string {
-    const nums = collectRefs(val);
+    const nums = collectRefs(val, false);
     return nums.length ? ' ' + nums.map(n => `[${n}]`).join('') : '';
   }
-  collectRefs((meta as any).references ?? (meta as any).reference);
-  Object.values(allV).forEach((d: any) => collectRefs(d.reference));
-  Object.values(formulas).forEach((fd: any) => collectRefs(fd.reference));
+  const refStr = (ref: unknown): string => !ref ? '' : Array.isArray(ref) ? ref.filter(Boolean).join('; ') : String(ref);
+  collectRefs((meta as any).references ?? (meta as any).reference, true);
+  Object.values(allV).forEach((d: any) => collectRefs(d.reference, false));
+  Object.values(formulas).forEach((fd: any) => collectRefs(fd.reference, false));
 
   function sectionBadge(key: ReportSection): string {
     if (key === 'intro')     return metaDescText ? t('sim.report.badge.has_desc') : t('sim.report.badge.no_desc');
@@ -140,26 +142,26 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
     );
     if (key === 'variables') return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><TH>{t('sim.report.var.name')}</TH><TH>{t('sim.report.var.meaning')}</TH><TH>{t('sim.report.var.type')}</TH><TH>{t('sim.report.var.init')}</TH><TH>{t('sim.report.var.final')}</TH><TH>{t('sim.report.var.unit')}</TH></tr></thead>
+        <thead><tr><TH>{t('sim.report.var.name')}</TH><TH>{t('sim.report.var.meaning')}</TH><TH>{t('sim.report.var.type')}</TH><TH>{t('sim.report.var.init')}</TH><TH>{t('sim.report.var.final')}</TH><TH>{t('sim.report.var.unit')}</TH><TH>{t('sim.intro.col.reference')}</TH></tr></thead>
         <tbody>{Object.entries(allV).map(([name, d]: [string, any]) => {
           const finalVal = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
           const cite = citeStr(d.reference);
           return <tr key={name}><TD mono>{name}</TD>
             <TD>{d.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
-            <TD>{d.type || '—'}</TD><TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD></tr>;
+            <TD>{d.type || '—'}</TD><TD mono>{d.value ?? '—'}</TD><TD mono>{finalVal}</TD><TD>{d.unit || '—'}</TD><TD>{refStr(d.reference) || '—'}</TD></tr>;
         })}</tbody>
       </table>
     );
     if (key === 'formulas') return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><TH>{t('sim.report.formula.name')}</TH><TH>{t('sim.report.formula.meaning')}</TH><TH>{t('sim.report.formula.condition')}</TH><TH>{t('sim.report.formula.affect')}</TH></tr></thead>
+        <thead><tr><TH>{t('sim.report.formula.name')}</TH><TH>{t('sim.report.formula.meaning')}</TH><TH>{t('sim.report.formula.condition')}</TH><TH>{t('sim.report.formula.affect')}</TH><TH>{t('sim.intro.col.reference')}</TH></tr></thead>
         <tbody>{Object.entries(formulas).map(([name, fd]: [string, any]) => {
           const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : t('sim.report.formula.always');
           const affected = Object.keys(fd.dynamics || {}).join(', ') || '—';
           const cite = citeStr(fd.reference);
           return <tr key={name}><TD mono>{name}</TD>
             <TD>{fd.description || '—'}{cite && <span style={{ color: c.primary, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>{cite}</span>}</TD>
-            <TD mono>{cond}</TD><TD mono>{affected}</TD></tr>;
+            <TD mono>{cond}</TD><TD mono>{affected}</TD><TD>{refStr(fd.reference) || '—'}</TD></tr>;
         })}</tbody>
       </table>
     );
@@ -237,18 +239,18 @@ const SimReportTab: React.FC<SimReportTabProps> = ({
       lines.push('');
     }
     if (reportSections.has('variables')) {
-      lines.push(`## ${t('sim.report.section.variables')}\n\n| ${t('sim.report.var.name')} | ${t('sim.report.var.meaning')} | ${t('sim.report.var.type')} | ${t('sim.report.var.init')} | ${t('sim.report.var.final')} | ${t('sim.report.var.unit')} |\n|--------|------|------|--------|--------|------|`);
+      lines.push(`## ${t('sim.report.section.variables')}\n\n| ${t('sim.report.var.name')} | ${t('sim.report.var.meaning')} | ${t('sim.report.var.type')} | ${t('sim.report.var.init')} | ${t('sim.report.var.final')} | ${t('sim.report.var.unit')} | ${t('sim.intro.col.reference')} |\n|--------|------|------|--------|--------|------|------|`);
       Object.entries(allV).forEach(([name, d]: [string, any]) => {
         const fv = latestStep?.[name] != null ? Number(latestStep[name]).toFixed(3) : '—';
-        lines.push(`| \`${name}\` | ${d.description || '—'}${citeStr(d.reference)} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} |`);
+        lines.push(`| \`${name}\` | ${d.description || '—'}${citeStr(d.reference)} | ${d.type || '—'} | ${d.value ?? '—'} | ${fv} | ${d.unit || '—'} | ${refStr(d.reference) || '—'} |`);
       });
       lines.push('');
     }
     if (reportSections.has('formulas')) {
-      lines.push(`## ${t('sim.report.section.formulas')}\n\n| ${t('sim.report.formula.name')} | ${t('sim.report.formula.meaning')} | ${t('sim.report.formula.condition')} | ${t('sim.report.formula.affect')} |\n|--------|------|------|----------|`);
+      lines.push(`## ${t('sim.report.section.formulas')}\n\n| ${t('sim.report.formula.name')} | ${t('sim.report.formula.meaning')} | ${t('sim.report.formula.condition')} | ${t('sim.report.formula.affect')} | ${t('sim.intro.col.reference')} |\n|--------|------|------|----------|------|`);
       Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
         const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : t('sim.report.formula.always');
-        lines.push(`| \`${name}\` | ${fd.description || '—'}${citeStr(fd.reference)} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} |`);
+        lines.push(`| \`${name}\` | ${fd.description || '—'}${citeStr(fd.reference)} | ${cond} | ${Object.keys(fd.dynamics || {}).join(', ') || '—'} | ${refStr(fd.reference) || '—'} |`);
       });
       lines.push('');
     }
