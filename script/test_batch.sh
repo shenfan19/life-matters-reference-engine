@@ -29,7 +29,7 @@
 # Examples:
 #   bash script/test_batch.sh
 #   RUN_OPT=false bash script/test_batch.sh
-#   MODEL_FOLDER=../b_lm_model/models/papers bash script/test_batch.sh
+#   MODEL_FOLDER=../b_lm_model/models/papers FILTER_BROKEN=false bash script/test_batch.sh
 #   FILTER_BROKEN=true RUN_OPT=false bash script/test_batch.sh
 #   LM_OUTPUT_DIR=/tmp/lm_out bash script/test_batch.sh
 
