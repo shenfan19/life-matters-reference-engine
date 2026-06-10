@@ -202,6 +202,34 @@ class SimulatorEngine(SessionManagerMixin):
             # 返回错误信息。
             return {"success": False, "error": str(e)}
 
+    def run_simulation_all_plans(self, model_name: str, time_hours: float, folder: Optional[str] = None,
+                                  output_path_fn: Optional[Callable[[str, int], str]] = None) -> Dict[str, Any]:
+        """
+        对 simulation.plans 中的每一个 plan 各跑一遍仿真（CLI 使用）。
+        每个 plan 在独立加载的模型副本上运行（互不影响初始状态）。
+        :param output_path_fn: 可选回调 (plan_id, plan_index) -> CSV 路径；
+            未提供时不写 CSV，仅返回结果。
+        :return: {"success": bool, "plans": [{"plan_id", "result"}], "error"?}
+        """
+        if not self.load_models([model_name], folder):
+            return {"success": False, "error": f"无法加载模型：{model_name}"}
+
+        # 模型未定义 simulation.plans 时，按单个 "default" plan 运行
+        # （即不应用任何 schedules，与不带 --all-plans 的普通仿真一致）。
+        plan_ids = list(self.current_model.plans.keys()) or ["default"]
+
+        results = []
+        for i, plan_id in enumerate(plan_ids):
+            output_path = output_path_fn(plan_id, i) if output_path_fn else None
+            self.current_model = self.loader.fetch(model_name, folder, use_cache=False)
+            self.current_model.schedules = self.current_model.plans.get(plan_id, {})
+            result = self.run_simulation(None, time_hours, output_path=output_path)
+            results.append({"plan_id": plan_id, "result": result})
+            if not result.get("success"):
+                return {"success": False, "error": result.get("error"), "plans": results}
+
+        return {"success": True, "plans": results}
+
     # GUI session methods (start_session / batch_steps / pause_session /
     # resume_session / reset_session / export_session_csv / get_session_info)
     # are provided by SessionManagerMixin — no duplication needed here.

@@ -1,49 +1,64 @@
 #!/usr/bin/env bash
 # Life Matters — batch model tester
-# Loops through all YAML files in MODEL_FOLDER, runs sim and (optionally) opt,
+# Loops through all YAML files in --folder, runs sim and (optionally) opt,
 # and saves a timestamped batch directory with CSVs, logs, and batch_report.md.
 #
 # Run from anywhere — the script always cd's to the project root (b_lm_sim_code/).
 #
-# Variables (all optional, set before the command):
+# Options (all optional):
 #
-#   LM_MODELS_PATH   Root of the model library.
-#                    Default: ../b_lm_model/models
+#   --folder PATH        Folder to scan for *.yaml models (absolute or relative path).
+#                         Default: ../b_lm_model/models/references
+#                         Examples:
+#                           --folder ../b_lm_model/models/papers
+#                           --folder ../b_lm_model/models/references/medical
 #
-#   MODEL_FOLDER     Specific subfolder to scan (absolute or relative path).
-#                    Default: $LM_MODELS_PATH/references
-#                    Examples:
-#                      MODEL_FOLDER=../b_lm_model/models/papers
-#                      MODEL_FOLDER=../b_lm_model/models/references/medical
+#   --output-dir PATH    Where timestamped batch results are saved.
+#                         Default: ../b_lm_model/output
 #
-#   LM_OUTPUT_DIR    Where timestamped batch results are saved.
-#                    Default: ../b_lm_model/output
+#   --no-opt             Skip the optimizer step (only run --sim).
 #
-#   RUN_OPT          Whether to run the optimizer after sim (true/false).
-#                    Default: true
+#   --no-skip            Test all *.yaml files in --folder.
+#                         Default: only files with _nosim or _noopt suffix
+#                         (repair-queue mode — skips already-passing models).
 #
-#   FILTER_BROKEN    If true, only test files with _nosim or _noopt suffix
-#                    (repair-queue mode — skips already-passing models).
-#                    Default: false
+#   --all-plans          Pass --all-plans to `lm-sim --sim` (one CSV per
+#                         simulation.plans entry).
 #
 # Examples:
 #   bash script/test_batch.sh
-#   RUN_OPT=false bash script/test_batch.sh
-#   MODEL_FOLDER=../b_lm_model/models/papers FILTER_BROKEN=false bash script/test_batch.sh
-#   FILTER_BROKEN=true RUN_OPT=false bash script/test_batch.sh
-#   LM_OUTPUT_DIR=/tmp/lm_out bash script/test_batch.sh
+#   bash script/test_batch.sh --no-opt
+#   bash script/test_batch.sh --folder ../b_lm_model/models/papers --no-skip --all-plans
+#   bash script/test_batch.sh --no-skip --no-opt
+#   bash script/test_batch.sh --output-dir /tmp/lm_out
 
 set -euo pipefail
 
 # ── Parameters ───────────────────────────────────────────────────────────────
-MODELS_ROOT="${LM_MODELS_PATH:-../b_lm_model/models}"
-MODEL_FOLDER="${MODEL_FOLDER:-$MODELS_ROOT/references}"
-RUN_OPT="${RUN_OPT:-true}"
-FILTER_BROKEN="${FILTER_BROKEN:-true}"
+MODEL_FOLDER="../b_lm_model/models/references"
+OUTPUT_DIR="../b_lm_model/output"
+RUN_OPT=true
+FILTER_BROKEN=true
+ALL_PLANS=false
 CLI="sim_cli/main.py"
-CLI_OUT_DIR="output"                               # hardcoded in sim_cli/output.py — do not change
-OUTPUT_DIR="${LM_OUTPUT_DIR:-../b_lm_model/output}"  # where batch results land
+CLI_OUT_DIR="output"   # hardcoded in sim_cli/output.py — do not change
 # ─────────────────────────────────────────────────────────────────────────────
+
+usage() {
+  sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --folder)      MODEL_FOLDER="$2"; shift 2 ;;
+    --output-dir)  OUTPUT_DIR="$2"; shift 2 ;;
+    --no-opt)      RUN_OPT=false; shift ;;
+    --no-skip)     FILTER_BROKEN=false; shift ;;
+    --all-plans)   ALL_PLANS=true; shift ;;
+    -h|--help)     usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
 
 cd "$(dirname "$0")/.."   # run from project root
 
@@ -64,6 +79,7 @@ echo "  Life Matters 批量模型测试"
 echo "  文件夹：$MODEL_FOLDER"
 echo "  模型数：$TOTAL"
 echo "  跑 Opt：$RUN_OPT"
+echo "  All plans：$ALL_PLANS"
   [[ "$FILTER_BROKEN" == "true" ]] && echo "  过滤：仅 _nosim/_noopt"
 echo "============================================================"
 echo ""
@@ -82,12 +98,25 @@ echo ""
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 # CLI writes to $CLI_OUT_DIR/ (project root staging); we move files to $BATCH_DIR/.
+# Accepts zero or more CSV filenames (a sim run with --all-plans produces one
+# CSV per plan, sharing a single <stem>.log).
 move_run_files() {
-  local mode="$1" csv="$2" model_name="$3"
-  if [[ -n "$csv" ]]; then
-    mv "$CLI_OUT_DIR/$csv"              "$BATCH_DIR/" 2>/dev/null || true
-    mv "$CLI_OUT_DIR/${csv%.csv}.log"   "$BATCH_DIR/" 2>/dev/null || true
-  else
+  local mode="$1"; shift
+  local model_name="$1"; shift
+  local csvs=("$@")
+  local moved_log=false
+
+  for csv in "${csvs[@]}"; do
+    [[ -z "$csv" ]] && continue
+    mv "$CLI_OUT_DIR/$csv" "$BATCH_DIR/" 2>/dev/null || true
+    if ! $moved_log; then
+      local stem="${csv%%__*}"
+      [[ "$stem" == "$csv" ]] && stem="${csv%.csv}"
+      mv "$CLI_OUT_DIR/${stem}.log" "$BATCH_DIR/" 2>/dev/null && moved_log=true || true
+    fi
+  done
+
+  if ! $moved_log; then
     local log
     log=$(ls -t "$CLI_OUT_DIR/${model_name}_"*"_${mode}.log" 2>/dev/null | head -1 || true)
     [[ -n "$log" ]] && mv "$log" "$BATCH_DIR/" 2>/dev/null || true
@@ -107,19 +136,25 @@ for YAML_PATH in "${YAMLS[@]}"; do
   echo "[$IDX/$TOTAL] $YAML_PATH"
 
   # Initialise per-model state
-  SIM_STATUS=""  SIM_ERR=""  SIM_CSV=""
+  SIM_STATUS=""  SIM_ERR=""  SIM_CSVS=()
   OPT_STATUS="⏭ SKIP"  OPT_ERR=""  OPT_CSV=""
 
   # ── Sim ────────────────────────────────────────────────────────────────────
   SIM_EXIT=0
-  SIM_OUT=$(python "$CLI" "$YAML_PATH" --sim 2>&1) || SIM_EXIT=$?
-  SIM_CSV=$(echo "$SIM_OUT" | grep -oP '(?<=→ )\S+\.csv' | head -1 || true)
-  move_run_files "sim" "$SIM_CSV" "$MODEL_NAME"
+  if $ALL_PLANS; then
+    SIM_OUT=$(python "$CLI" "$YAML_PATH" --sim --all-plans 2>&1) || SIM_EXIT=$?
+    mapfile -t SIM_CSVS < <(echo "$SIM_OUT" | grep -oP '^\s*\K\S+\.csv' || true)
+  else
+    SIM_OUT=$(python "$CLI" "$YAML_PATH" --sim 2>&1) || SIM_EXIT=$?
+    SIM_CSV=$(echo "$SIM_OUT" | grep -oP '(?<=→ )\S+\.csv' | head -1 || true)
+    [[ -n "$SIM_CSV" ]] && SIM_CSVS=("$SIM_CSV")
+  fi
+  move_run_files "sim" "$MODEL_NAME" "${SIM_CSVS[@]}"
 
-  if [[ $SIM_EXIT -eq 0 && -n "$SIM_CSV" ]]; then
+  if [[ $SIM_EXIT -eq 0 && ${#SIM_CSVS[@]} -gt 0 ]]; then
     SIM_STATUS="✓ PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
-    printf "    → sim      \033[0;32m✓\033[0m PASS → %s\n" "$SIM_CSV"
+    printf "    → sim      \033[0;32m✓\033[0m PASS → %s\n" "${SIM_CSVS[*]}"
   else
     SIM_STATUS="✗ FAIL"
     FAIL_COUNT=$((FAIL_COUNT + 1))
@@ -133,7 +168,7 @@ for YAML_PATH in "${YAMLS[@]}"; do
     OPT_EXIT=0
     OPT_OUT=$(python "$CLI" "$YAML_PATH" --opt 2>&1) || OPT_EXIT=$?
     OPT_CSV=$(echo "$OPT_OUT" | grep -oP '(?<=→ )\S+\.csv' | head -1 || true)
-    move_run_files "opt" "$OPT_CSV" "$MODEL_NAME"
+    move_run_files "opt" "$MODEL_NAME" "$OPT_CSV"
 
     if [[ $OPT_EXIT -eq 0 && -n "$OPT_CSV" ]]; then
       OPT_STATUS="✓ PASS"
@@ -147,8 +182,14 @@ for YAML_PATH in "${YAMLS[@]}"; do
   fi
 
   # ── Report row ─────────────────────────────────────────────────────────────
-  SIM_CELL="$SIM_STATUS"
-  [[ -n "$SIM_CSV" ]] && SIM_CELL="[$SIM_STATUS](./$SIM_CSV)"
+  if [[ ${#SIM_CSVS[@]} -gt 0 ]]; then
+    SIM_CELL="$SIM_STATUS"
+    for csv in "${SIM_CSVS[@]}"; do
+      SIM_CELL="$SIM_CELL<br>[$csv](./$csv)"
+    done
+  else
+    SIM_CELL="$SIM_STATUS"
+  fi
 
   OPT_CELL="$OPT_STATUS"
   [[ -n "$OPT_CSV" ]] && OPT_CELL="[$OPT_STATUS](./$OPT_CSV)"

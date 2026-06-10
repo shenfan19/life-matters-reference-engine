@@ -94,6 +94,44 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> bool:
     return False
 
 
+def run_sim_all_plans(model_path: Path, project_root: Path, csv_path: Path) -> Optional[List[str]]:
+    """Run one simulation per simulation.plans entry, writing `<stem>__<plan_id>.csv` each.
+
+    Returns the list of written CSV filenames, or None on failure.
+    """
+    _bootstrap(project_root)
+    engine = _make_engine(project_root)
+    name = _model_name(model_path, project_root)
+
+    if not engine.load_models([name]):
+        logger.error(f'Cannot load model: {name}')
+        return None
+
+    hours = _time_hours(engine)
+    plan_ids = list(engine.current_model.plans.keys()) or ['default']
+
+    logger.info(f'Simulation start (all plans): {name}  ({hours / 24:.1f} days)  plans={plan_ids}')
+    print(f'  Running simulation for {len(plan_ids)} plan(s) ({hours / 24:.1f} days each)...')
+
+    written: List[str] = []
+
+    def _path_for(plan_id: str, _i: int) -> str:
+        path = csv_path.with_name(f'{csv_path.stem}__{plan_id}{csv_path.suffix}')
+        written.append(path.name)
+        return str(path)
+
+    result = engine.run_simulation_all_plans(name, hours, output_path_fn=_path_for)
+    print()
+
+    if result.get('success'):
+        for p in result['plans']:
+            logger.info(f'  Plan {p["plan_id"]}: {p["result"]["steps"]} steps')
+        return written
+
+    logger.error(f'Simulation failed: {result.get("error")}')
+    return None
+
+
 def run_opt(model_path: Path, project_root: Path,
             warm_start: Union[bool, Path],
             opt_callback: Callable,
