@@ -207,18 +207,20 @@ class Simulation:
             except Exception as e:
                 logger.warning(f"Pre-step hook failed: {e}")
 
-        # 将 step_size（time_unit 单位）转换为秒，供内部时钟和 accumulator 使用
+        # step_size 入参已经是秒（调用方传入 simulator['step_size'] = raw_step * unit_sec）
         unit_sec = TIME_UNIT_SECONDS.get(getattr(self, 'time_unit', 'minute'), 60.0)
-        step_size_sec = step_size * unit_sec
+        step_size_sec = step_size
+        # 声明单位下的步长（作者直觉单位），如 1 day 模型 step=1，1 hour 模型 step=1
+        declared_step = step_size_sec / unit_sec if unit_sec else step_size_sec
 
         # 应用计划表（传入秒步长供 pulse 模式使用）
         self._apply_schedules(step_size_sec)
 
         # 公式中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
         # step 是规范符号；step_size/dt 保留为向后兼容别名
-        self.asteval.symtable['step'] = step_size
-        self.asteval.symtable['step_size'] = step_size
-        self.asteval.symtable['dt'] = step_size
+        self.asteval.symtable['step'] = declared_step
+        self.asteval.symtable['step_size'] = declared_step
+        self.asteval.symtable['dt'] = declared_step
         # 公式中 t/time = 当前时间（声明单位），修复 time 未定义 bug
         self.asteval.symtable['t'] = self.time / unit_sec
         self.asteval.symtable['time'] = self.time / unit_sec
@@ -233,7 +235,7 @@ class Simulation:
 
         # 每步注入的时间/步长值（供 _get_arg 查询）
         step_sym_vals = {
-            'step': step_size, 'step_size': step_size, 'dt': step_size,
+            'step': declared_step, 'step_size': declared_step, 'dt': declared_step,
             't': self.time / unit_sec, 'time': self.time / unit_sec,
             'MINUTE': 60.0, 'HOUR': 3600.0, 'DAY': 86400.0,
             'WEEK': 604800.0, 'MONTH': 2592000.0, 'YEAR': 31536000.0,

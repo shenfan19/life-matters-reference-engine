@@ -323,11 +323,17 @@ class Loader:
             time_unit_raw = 'minute'
         self.time_unit = time_unit_raw
 
-        # 应用计划表 (Schedules) — 从 simulation.schedules 读取
+        # 应用计划表 (Schedules)
         # 支持两种格式：
         #   新格式（list）：[{variable, time:"HH:MM", value, days:[...], date_range:["YYYY-MM-DD", "YYYY-MM-DD"]}]
         #   旧格式（dict）：{var_name: {interpolation, points:[{time:秒数, value}]}}
-        schedules_raw = simulator_data.get('schedules', {})
+        # 按 ADR 0087：若 simulation.plans 非空，第一个 plan 的 schedules 作为
+        # 仿真的实际调度来源，simulation.schedules 被丢弃（仅作 optimizer fallback）。
+        plans_raw = simulator_data.get('plans')
+        if isinstance(plans_raw, list) and len(plans_raw) > 0:
+            schedules_raw = plans_raw[0].get('schedules', [])
+        else:
+            schedules_raw = simulator_data.get('schedules', {})
 
         if isinstance(schedules_raw, list):
             from datetime import date as _sdate, timedelta as _std
