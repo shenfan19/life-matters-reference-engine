@@ -1411,7 +1411,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       if (tab.key === 'simulation') setMode('sim');
                       if (tab.key === 'optimization') setMode('opt');
                     }}
-                    style={{ padding: '6px 16px', border: 'none', cursor: locked ? 'not-allowed' : 'pointer', background: 'transparent', color, fontWeight: (!locked && isActive) ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: locked ? 0.4 : 1 }}
+                    style={{ padding: '6px 16px', border: 'none', cursor: locked ? 'not-allowed' : 'pointer', background: 'transparent', color, fontSize: 'var(--lm-font-size, 14px)', fontWeight: (!locked && isActive) ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: locked ? 0.4 : 1 }}
                   >
                     {tab.label}
                   </button>
@@ -1422,7 +1422,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             {builderOpen && (
               <div style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
                 <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px 6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.primary, fontWeight: 600, borderBottom: `2px solid ${c.primary}`, marginBottom: -1, outline: 'none' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px 6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.primary, fontSize: 'var(--lm-font-size, 14px)', fontWeight: 600, borderBottom: `2px solid ${c.primary}`, marginBottom: -1, outline: 'none' }}
                 >
                   <BuildOutlined style={{ fontSize: 12 }} />
                   {t('sim.builder.label')}
