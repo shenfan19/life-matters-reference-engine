@@ -34,6 +34,7 @@ class Variable:
     type: VariableType
     unit: Optional[str] = None
     bounds: Optional[List[float]] = None
+    reference: Optional[Any] = None
 
 # 定义公式的数据类，包括描述、条件、优先级、动态更新和可选公式。
 @dataclass
@@ -43,6 +44,10 @@ class Formula:
     priority: int = 0
     dynamics: Dict[str, Any] = None
     formula: Optional[str] = None
+    reference: Optional[Any] = None
+    # 公式来源模块的 step_size（秒），用于跨步长 import 时按公式来源
+    # scope `step` 符号。None 表示与当前运行模型相同。
+    step_size_sec: Optional[float] = None
 
     def __post_init__(self):
         if self.dynamics is None:

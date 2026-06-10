@@ -44,7 +44,8 @@ async def get_model(model_name: str, folder: Optional[str] = None):
         variables = {
             var_name: {
                 "description": var.description, "value": var.value, "unit": var.unit,
-                "type": var.type.value if hasattr(var.type, 'value') else str(var.type)
+                "type": var.type.value if hasattr(var.type, 'value') else str(var.type),
+                "reference": var.reference,
             }
             for var_name, var in model.variables.items()
         }
@@ -52,6 +53,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
             f_name: {
                 "description": f.description, "condition": f.condition,
                 "priority": f.priority, "dynamics": f.dynamics, "formula": f.formula,
+                "reference": f.reference,
             }
             for f_name, f in model.formulas.items()
         }

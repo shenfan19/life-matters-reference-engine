@@ -254,6 +254,19 @@ class Simulation:
             try:
                 cache = self._formula_cache[form_name]
 
+                # 跨步长 import：每条公式的 step 按其来源模块自身的
+                # step_size 换算（而非当前运行模型的 step_size），
+                # 例如 1 小时模型 import 了"每日衰减 1%"的公式，
+                # 该公式的 step = 1小时 / 1天 = 1/24。
+                formula_step_sec = getattr(formula, 'step_size_sec', None) or step_size_sec
+                formula_step = step_size_sec / formula_step_sec if formula_step_sec else declared_step
+                step_sym_vals['step'] = formula_step
+                step_sym_vals['step_size'] = formula_step
+                step_sym_vals['dt'] = formula_step
+                self.asteval.symtable['step'] = formula_step
+                self.asteval.symtable['step_size'] = formula_step
+                self.asteval.symtable['dt'] = formula_step
+
                 # ── 评估条件 ──────────────────────────────────────────────
                 raw_cond, cond_fn, cond_params = cache['cond']
                 if cond_fn is not None:
