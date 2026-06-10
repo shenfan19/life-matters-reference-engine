@@ -5,7 +5,12 @@ import {
   SunOutlined, MoonOutlined,
   LoadingOutlined,
   GithubOutlined, MailOutlined, InfoCircleOutlined, SettingOutlined,
+  LeftOutlined, RightOutlined,
 } from '@ant-design/icons';
+
+// ─── Font size ────────────────────────────────────────────────────────────────
+const FONT_SIZE_MIN = 12;
+const FONT_SIZE_MAX = 20;
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 // HeartPulseIcon: heart (left) + QRS trace (right) — sim identity
@@ -112,15 +117,32 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 160 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: c.textMute, fontSize: 12, width: 32 }}>{t('settings.font_size')}</span>
-                <div style={{ display: 'flex', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
-                  {([12, 14, 16] as const).map(size => (
-                    <button key={size} onClick={() => onFontSize(size)} style={{
-                      padding: '3px 8px', border: 'none', cursor: 'pointer',
-                      background: fontSize === size ? c.primary : 'transparent',
-                      color: fontSize === size ? '#fff' : c.textMute,
-                      fontSize: 12, fontWeight: 600, lineHeight: 1,
-                    }}>{size}</button>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+                  <button
+                    onClick={() => onFontSize(Math.max(FONT_SIZE_MIN, fontSize - 2))}
+                    disabled={fontSize <= FONT_SIZE_MIN}
+                    style={{
+                      padding: '3px 7px', border: 'none', cursor: fontSize <= FONT_SIZE_MIN ? 'default' : 'pointer',
+                      background: 'transparent', color: fontSize <= FONT_SIZE_MIN ? c.border : c.textMute,
+                      display: 'flex', alignItems: 'center', lineHeight: 1, fontSize: 11,
+                    }}
+                  >
+                    <LeftOutlined />
+                  </button>
+                  <span style={{ minWidth: '2.5ch', textAlign: 'center', color: c.text, fontSize: 12, fontWeight: 600, fontFamily: 'monospace' }}>
+                    {fontSize}
+                  </span>
+                  <button
+                    onClick={() => onFontSize(Math.min(FONT_SIZE_MAX, fontSize + 2))}
+                    disabled={fontSize >= FONT_SIZE_MAX}
+                    style={{
+                      padding: '3px 7px', border: 'none', cursor: fontSize >= FONT_SIZE_MAX ? 'default' : 'pointer',
+                      background: 'transparent', color: fontSize >= FONT_SIZE_MAX ? c.border : c.textMute,
+                      display: 'flex', alignItems: 'center', lineHeight: 1, fontSize: 11,
+                    }}
+                  >
+                    <RightOutlined />
+                  </button>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -259,7 +281,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => readPrefs().isDarkMode ?? true);
   const [aboutOpen,  setAboutOpen]  = useState(false);
   const [fontSize,   setFontSize]   = useState<number>(
-    () => Number(localStorage.getItem(LM_FONT_KEY)) || readPrefs().fontSize || 14
+    () => Number(localStorage.getItem(LM_FONT_KEY)) || readPrefs().fontSize || 16
   );
   const [selectedModel, setSelectedModel] = useState<ModelFile | null>(null);
   const [confirmedModel, setConfirmedModel] = useState<ModelFile | null>(null);
