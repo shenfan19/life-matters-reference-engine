@@ -40,7 +40,7 @@ interface UseSimulationParams {
   setMode: (mode: string) => void;
   switchCenterTab: (tab: string) => void;
   stopOptJobs: () => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 export function useSimulation({
@@ -198,7 +198,7 @@ export function useSimulation({
   const handleRunCompared = async (selectedRows: Array<{ x: number[]; f: number[]; rank: number }>) => {
     if (!selectedModel || selectedRows.length === 0) return;
     const optimizer = selectedModel.content?.optimizer;
-    if (!optimizer) { message.warning('无优化配置'); return; }
+    if (!optimizer) { message.warning(t('sim.msg.no_opt_config')); return; }
 
     const initPlans: PlanResult[] = selectedRows.map((row, i) => ({
       id: `pareto-${row.rank}`, label: `Pareto #${row.rank}`,
@@ -293,7 +293,7 @@ export function useSimulation({
 
     const sessions: Session[] = startResults.map((res, i) => {
       if (res.status === 'rejected') {
-        message.error(`方案 "${currentPlans[i].label}" 启动失败`);
+        message.error(t('sim.msg.plan_start_failed', { label: currentPlans[i].label }));
         setComparedPlans(prev => prev.map((r, idx) => idx !== i ? r : { ...r, running: false }));
         return { sid: '', total: 0, done: true, failed: true, planIdx: i };
       }
@@ -343,8 +343,8 @@ export function useSimulation({
     isRunningRef.current = false;
     setRunningModelKey(null);
     const failed = sessions.filter(s => s.failed).length;
-    if (failed === 0) message.success(`${currentPlans.length} 个方案仿真完成`);
-    else message.warning(`完成，${failed} 个方案失败`);
+    if (failed === 0) message.success(t('sim.msg.plans_done', { n: currentPlans.length }));
+    else message.warning(t('sim.msg.plans_partial_fail', { n: failed }));
   };
 
   // ── apply best opt solution to sim ────────────────────────────────────────────
@@ -353,7 +353,7 @@ export function useSimulation({
     const optimizer = selectedModel?.content?.optimizer;
     const bestX = optimizer?.results?.reference?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
-      message.warning('无推荐解可用'); return;
+      message.warning(t('sim.msg.no_best_solution')); return;
     }
     setInputEvents(prev => xToInputEvents(bestX, optimizer, prev));
     set('status', 'idle'); set('progress', 0); set('currentStep', 0);
@@ -394,7 +394,7 @@ export function useSimulation({
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
     a.click();
-    message.success(`已下载仿真时序（${simulationData.length} 个数据点，CSV）`);
+    message.success(t('sim.msg.dl_sim_done', { n: simulationData.length }));
   };
 
   // ── raw YAML download ─────────────────────────────────────────────────────────
@@ -408,7 +408,7 @@ export function useSimulation({
     a.href = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
     a.download = `${name}.yaml`;
     a.click();
-    message.success('已下载模型（无优化结果）');
+    message.success(t('sim.msg.dl_model_no_opt'));
   };
 
   return {

@@ -5,7 +5,7 @@ export type Language = 'en' | 'zh-CN' | 'zh-TW' | 'fr';
 interface I18nContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
-    t: (key: string) => any;
+    t: (key: string, params?: Record<string, string | number>) => any;
     isLoaded: boolean;
     version: number;
 }
@@ -85,13 +85,18 @@ export const I18nProvider = ({ children, section }: { children: ReactNode; secti
         return () => { isMounted = false; };
     }, [language, section]);
 
-    const t = (key: string) => {
-        const val = translations[key];
+    const t = (key: string, params?: Record<string, string | number>) => {
+        let val = translations[key];
         if (!val) {
             if (isLoaded) {
                 console.warn(`[i18n] Missing key: "${key}" in ${language}`);
             }
             return key;
+        }
+        if (params && typeof val === 'string') {
+            for (const [k, v] of Object.entries(params)) {
+                val = val.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+            }
         }
         return val;
     };

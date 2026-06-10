@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { getC } from '../../core/theme';
+import { useI18n } from '../../core/i18n';
 
 const OptProgressChart: React.FC<{
   history: any[];
@@ -9,6 +10,7 @@ const OptProgressChart: React.FC<{
   c: ReturnType<typeof getC>;
   fontSize: number;
 }> = ({ history, metric, label, isDarkMode, c, fontSize }) => {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const points = history
     .map((h: any) => ({ x: Number(h.iteration ?? 0), y: Number(h[metric] ?? 0) }))
@@ -79,7 +81,7 @@ const OptProgressChart: React.FC<{
           {label}
         </div>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-          待运行
+          {t('sim.opt.waiting')}
         </div>
       </div>
     );

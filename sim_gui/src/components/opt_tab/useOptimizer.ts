@@ -56,7 +56,7 @@ interface UseOptimizerParams {
   modelSessionsRef: React.MutableRefObject<Record<string, any>>;
   setRunningModelKey: (key: string | null) => void;
   setCenterTab: (tab: string) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 export function useOptimizer({
@@ -154,7 +154,7 @@ export function useOptimizer({
       const data = await resp.json();
 
       if (!resp.ok || !data.success || !data.job_id) {
-        message.error(data.detail || data.error || '优化启动失败');
+        message.error(data.detail || data.error || t('sim.msg.opt_start_failed'));
         setOptRunning(false); setRunningModelKey(null); return;
       }
 
@@ -185,11 +185,11 @@ export function useOptimizer({
               const all = readMS(); all[targetKey] = updated; writeMS(all);
             }
             setCenterTab('optimization');
-            message.success(`优化完成，${sd.result?.n_solutions ?? 0} 个 Pareto 解`);
+            message.success(t('sim.msg.opt_done', { n: sd.result?.n_solutions ?? 0 }));
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false); setRunningModelKey(null);
-            message.error(sd.error || '优化失败');
+            message.error(sd.error || t('sim.msg.opt_failed'));
           } else if (sd.status === 'cancelled') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false); setRunningModelKey(null);
@@ -268,13 +268,13 @@ export function useOptimizer({
       a.download = `${name}.yaml`;
       a.click();
       const n = results?.pareto_front?.length ?? 0;
-      message.success(n > 0 ? `已下载模型（含 ${n} 个 Pareto 解）` : '已下载模型（无优化结果）');
+      message.success(n > 0 ? t('sim.msg.dl_model_with_pareto', { n }) : t('sim.msg.dl_model_no_opt'));
     } catch {}
   };
 
   const exportOptCSV = () => {
     const front: Array<{ x: number[]; f: number[] }> = optResult?.pareto_front ?? [];
-    if (!front.length) { message.warning('无 Pareto 解可导出'); return; }
+    if (!front.length) { message.warning(t('sim.msg.no_pareto_to_export')); return; }
     const objNames = (objectives.length > 0 ? objectives : (optResult?.objectives ?? [])).map((o: any) => o.variable as string);
     const xLen = front[0].x.length;
     const xHeaders = Array.from({ length: xLen }, (_, i) => `x${i}`);
@@ -289,14 +289,14 @@ export function useOptimizer({
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = `${name}_opt.csv`;
     a.click();
-    message.success(`已下载优化结果（${front.length} 个 Pareto 解，CSV）`);
+    message.success(t('sim.msg.dl_opt_csv', { n: front.length }));
   };
 
   // ── import Pareto front from CSV text ────────────────────────────────────────
 
   const importParetoFromCSV = (csvText: string) => {
     const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length < 2) { message.warning('CSV 文件为空或格式错误'); return; }
+    if (lines.length < 2) { message.warning(t('sim.msg.csv_empty')); return; }
 
     const headers = lines[0].split(',').map(h => h.trim());
     const xIndices: number[] = [];
@@ -307,7 +307,7 @@ export function useOptimizer({
     });
 
     if (xIndices.length === 0) {
-      message.warning('CSV 中未找到 x0, x1... 列，请确认是 _opt.csv 格式');
+      message.warning(t('sim.msg.csv_no_x_cols'));
       return;
     }
 
@@ -321,7 +321,7 @@ export function useOptimizer({
       imported.push({ x, f });
     }
 
-    if (imported.length === 0) { message.warning('未能解析任何有效解，请检查 CSV 格式'); return; }
+    if (imported.length === 0) { message.warning(t('sim.msg.csv_no_valid')); return; }
 
     const existingFront: any[] = optResult?.pareto_front ?? storedOptResult?.pareto_front ?? [];
     const merged = [...existingFront, ...imported];
@@ -338,7 +338,7 @@ export function useOptimizer({
       best_f: merged[0]?.f,
     });
     setWarmStartEnabled(true);
-    message.success(`导入 ${imported.length} 个解，共 ${merged.length} 个（已开启热启动）`);
+    message.success(t('sim.msg.import_pareto_done', { n: imported.length, total: merged.length }));
   };
 
   const warmStartDirty = lastRunSignature !== null

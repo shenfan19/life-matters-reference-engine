@@ -35,7 +35,7 @@ interface SimControlBarProps {
   onStepUnitChange: (v: StepUnit) => void;
   onSimRunsChange: (v: number) => void;
   onMcSeedChange: (v: number | null) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   c: Record<string, string>;
 }
 
@@ -119,7 +119,7 @@ export function SimControlBar({
 
       {/* MC config */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Tooltip title={simRuns > 1 ? `Monte Carlo: ${simRuns} 条，seed ${sessionSeed || '-'}` : 'Monte Carlo 运行条数（1=单条）'}>
+        <Tooltip title={simRuns > 1 ? t('sim.ctrl.mc_tooltip_active', { n: simRuns, seed: sessionSeed || '-' }) : t('sim.ctrl.mc_tooltip')}>
           <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
         </Tooltip>
         <InputNumber size="small" min={1} max={50} value={simRuns}
@@ -142,12 +142,12 @@ export function SimControlBar({
       {/* File operations — order: 下载仿真 | 上传仿真 | 下载模型（Popover）| 重载 */}
       <div style={{ width: 1, height: 16, background: c.border }} />
 
-      <Tooltip title="下载仿真结果（时间序列，CSV 格式）">
+      <Tooltip title={t('sim.ctrl.dl_sim_tip')}>
         <Button size="small" icon={<DownloadOutlined />}
           onClick={onExportCSV}
           disabled={!selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >仿真</Button>
+        >{t('sim.ctrl.sim_label')}</Button>
       </Tooltip>
 
       <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
@@ -161,12 +161,12 @@ export function SimControlBar({
           };
           reader.readAsText(file);
         }} />
-      <Tooltip title="上传仿真结果（导入历史时序 CSV，叠加为对比曲线）">
+      <Tooltip title={t('sim.ctrl.ul_sim_tip')}>
         <Button size="small" icon={<UploadOutlined />}
           onClick={() => csvInputRef.current?.click()}
           disabled={!selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >仿真</Button>
+        >{t('sim.ctrl.sim_label')}</Button>
       </Tooltip>
 
       <Popover
@@ -177,15 +177,15 @@ export function SimControlBar({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
             <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
               onChange={e => setWithResults(e.target.checked)}>
-              带优化结果
+              {t('sim.ctrl.with_results')}
             </Checkbox>
             <Checkbox checked={flattenImports}
               onChange={e => setFlattenImports(e.target.checked)}>
-              展开 imports（单文件）
+              {t('sim.ctrl.flatten_imports')}
             </Checkbox>
             <Button size="small" type="primary" style={{ marginTop: 4 }}
               onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
-              下载
+              {t('sim.ctrl.dl_btn')}
             </Button>
           </div>
         }
@@ -193,19 +193,19 @@ export function SimControlBar({
         <Button size="small" icon={<DownloadOutlined />}
           disabled={!selectedModel || isOtherRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >模型</Button>
+        >{t('sim.ctrl.model_label')}</Button>
       </Popover>
 
       <Tooltip title={
-        (isRunning || isPaused) ? '仿真运行中，无法重载' :
-        optRunning ? '优化运行中，无法重载' :
-        '重载模型（清除 session，同时重置仿真和优化）'
+        (isRunning || isPaused) ? t('sim.ctrl.reload_tip_running') :
+        optRunning ? t('sim.ctrl.reload_tip_opt') :
+        t('sim.ctrl.reload_tip')
       }>
         <Button size="small" icon={<ReloadOutlined />}
           onClick={onReload}
           disabled={!selectedModel || isOtherRunning || isRunning || isPaused || optRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >重载</Button>
+        >{t('sim.ctrl.reload_label')}</Button>
       </Tooltip>
     </div>
   );

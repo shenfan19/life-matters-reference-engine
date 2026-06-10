@@ -40,7 +40,7 @@ interface OptControlBarProps {
   onReload: () => void;
   scsMode: boolean;
   setOptResult: (v: any) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   c: Record<string, string>;
 }
 
@@ -64,14 +64,14 @@ export function OptControlBar({
   const [flattenImports, setFlattenImports] = useState(true);
   const hasOptResult = !!optResult;
   const warmStartTooltip = warmStartDirty && warmStartEnabled
-    ? '⚠ 目标、约束或决策变量已修改，热启动将沿用上次前沿，可能匹配度下降'
+    ? t('sim.opt.warm_start_dirty_tooltip')
     : (warmStartEnabled && hasExistingResults)
-      ? `热启动：将基于 ${currentFrontCount} 个现有解继续搜索`
-      : `已有 ${currentFrontCount} 个解，勾选"继续计算"可热启动，否则冷启动`;
+      ? t('sim.opt.warm_start_active_tooltip', { n: currentFrontCount })
+      : t('sim.opt.warm_start_suggestion', { n: currentFrontCount });
   const runTooltip = isOtherRunning ? otherRunningTip
     : (warmStartEnabled && hasExistingResults) ? warmStartTooltip
-    : hasExistingResults ? `已有 ${currentFrontCount} 个解，勾选"继续计算"可热启动，否则点击运行将冷启动`
-    : '设置目标、约束和决策变量范围后运行优化';
+    : hasExistingResults ? t('sim.opt.cold_start_suggestion', { n: currentFrontCount })
+    : t('sim.opt.run_hint');
 
   return (
     <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
@@ -85,13 +85,13 @@ export function OptControlBar({
             disabled={!selectedModel || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {!isOtherRunning && optRunning ? '停止优化' : t('sim.control.run')}
+            {!isOtherRunning && optRunning ? t('sim.opt.stop_opt') : t('sim.control.run')}
           </Button>
         </span>
       </Tooltip>
 
       {/* Warm-start checkbox — always visible; disabled when no results exist */}
-      <Tooltip title={hasExistingResults ? warmStartTooltip : '无已有结果，无法热启动'}>
+      <Tooltip title={hasExistingResults ? warmStartTooltip : t('sim.opt.warm_start_disabled')}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: hasExistingResults ? 'pointer' : 'not-allowed', userSelect: 'none', flexShrink: 0, opacity: hasExistingResults ? 1 : 0.4 }}>
           <input type="checkbox" checked={warmStartEnabled}
             disabled={!hasExistingResults}
@@ -102,7 +102,7 @@ export function OptControlBar({
             }}
             style={{ accentColor: warmStartDirty && warmStartEnabled ? '#faad14' : c.primary }} />
           <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: !hasExistingResults ? c.textMute : (warmStartDirty && warmStartEnabled ? '#faad14' : warmStartEnabled ? c.primary : c.textSec) }}>
-            {warmStartDirty && warmStartEnabled ? '⚠ 继续计算' : '继续计算'}
+            {warmStartDirty && warmStartEnabled ? t('sim.opt.warm_start_dirty') : t('sim.opt.warm_start')}
           </span>
         </label>
       </Tooltip>
@@ -163,12 +163,12 @@ export function OptControlBar({
       {/* File operations — order: 下载优化 | 上传优化 | 下载模型（Popover）| 重载 */}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
-      <Tooltip title="下载优化结果（Pareto 前沿，CSV 格式）">
+      <Tooltip title={t('sim.opt.dl_opt_tip')}>
         <Button size="small" icon={<DownloadOutlined />}
           onClick={onExportCSV}
           disabled={!optResult || optRunning}
           style={{ whiteSpace: 'nowrap', color: optResult ? c.primary : c.textMute }}
-        >优化</Button>
+        >{t('sim.opt.opt_label')}</Button>
       </Tooltip>
 
       <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
@@ -182,12 +182,12 @@ export function OptControlBar({
           };
           reader.readAsText(file);
         }} />
-      <Tooltip title="上传优化结果（导入 Pareto 前沿 CSV，合并并开启热启动）">
+      <Tooltip title={t('sim.opt.ul_opt_tip')}>
         <Button size="small" icon={<UploadOutlined />}
           onClick={() => csvInputRef.current?.click()}
           disabled={optRunning || !selectedModel}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >优化</Button>
+        >{t('sim.opt.opt_label')}</Button>
       </Tooltip>
 
       <Popover
@@ -198,15 +198,15 @@ export function OptControlBar({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
             <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
               onChange={e => setWithResults(e.target.checked)}>
-              带优化结果
+              {t('sim.ctrl.with_results')}
             </Checkbox>
             <Checkbox checked={flattenImports}
               onChange={e => setFlattenImports(e.target.checked)}>
-              展开 imports（单文件）
+              {t('sim.ctrl.flatten_imports')}
             </Checkbox>
             <Button size="small" type="primary" style={{ marginTop: 4 }}
               onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
-              下载
+              {t('sim.ctrl.dl_btn')}
             </Button>
           </div>
         }
@@ -214,19 +214,19 @@ export function OptControlBar({
         <Button size="small" icon={<DownloadOutlined />}
           disabled={!selectedModel || optRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >模型</Button>
+        >{t('sim.ctrl.model_label')}</Button>
       </Popover>
 
       <Tooltip title={
-        optRunning ? '优化运行中，无法重载' :
-        simRunning ? '仿真运行中，无法重载' :
-        '重载模型（清除 session，同时重置仿真和优化）'
+        optRunning ? t('sim.ctrl.reload_tip_opt') :
+        simRunning ? t('sim.ctrl.reload_tip_running') :
+        t('sim.ctrl.reload_tip')
       }>
         <Button size="small" icon={<ReloadOutlined />}
           onClick={onReload}
           disabled={!selectedModel || optRunning || simRunning}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >重载</Button>
+        >{t('sim.ctrl.reload_label')}</Button>
       </Tooltip>
     </div>
   );

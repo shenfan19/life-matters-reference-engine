@@ -89,7 +89,14 @@ class Loader:
             imported_output_types: List[str] = []
             
             # 获取 models 根目录（用于解析新格式的导入路径）
-            models_root = self.models_directory if hasattr(self, 'models_directory') else None
+            # 若文件在配置的 models_directory 之外，从文件路径推断根目录，避免跨仓库 import 失败
+            configured_dir = self.models_directory if hasattr(self, 'models_directory') else None
+            models_root = None
+            if configured_dir:
+                configured_real = os.path.realpath(configured_dir)
+                file_real = os.path.realpath(file_path)
+                if file_real.startswith(configured_real + os.sep) or file_real == configured_real:
+                    models_root = configured_dir
             if not models_root:
                 # 尝试从文件路径推断 models 根目录
                 # 假设文件在 models/ 或 models/components/ 或 models/stories/ 下

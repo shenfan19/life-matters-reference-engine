@@ -18,7 +18,7 @@ interface SimOptTabProps {
   constraints: Array<{ variable: string; op: '≤' | '≥'; value: number }>;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   fontSize: number;
   onDownloadModel: (flattenImports: boolean) => void;
   hasExistingResults: boolean;
@@ -170,8 +170,8 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
 
   const copyLog = () => {
     navigator.clipboard.writeText(logText)
-      .then(() => message.success('已复制到剪贴板'))
-      .catch(() => message.error('复制失败'));
+      .then(() => message.success(t('sim.msg.copied')))
+      .catch(() => message.error(t('sim.msg.copy_failed')));
   };
 
   const exportLog = () => {
@@ -185,10 +185,10 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   const logPanel = (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 4 }}>
-        <Tooltip title="复制全部 Log">
+        <Tooltip title={t('sim.opt.copy_log')}>
           <Button size="small" icon={<CopyOutlined />} onClick={copyLog} disabled={activeLogs.length === 0} />
         </Tooltip>
-        <Tooltip title="导出为 .txt">
+        <Tooltip title={t('sim.opt.export_log')}>
           <Button size="small" icon={<DownloadOutlined />} onClick={exportLog} disabled={activeLogs.length === 0} />
         </Tooltip>
       </div>
@@ -213,7 +213,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         </span>
       ))}
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-        {(optResult?.n_solutions ?? latestHist?.pareto_count ?? 0)} 解 · {(optResult?.method || optMethod || 'nsga2')}
+        {t('sim.opt.badge.solutions', { n: optResult?.n_solutions ?? latestHist?.pareto_count ?? 0 })} · {(optResult?.method || optMethod || 'nsga2')}
         {displaySecs > 0 ? ` · ${formatHMS(displaySecs)}` : ''}
       </span>
     </div>
@@ -225,7 +225,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       <div style={{ padding: '6px 4px' }}>{optSummary}</div>
 
       {/* Front — Pareto chart, reduced height */}
-      <Section id="front" title="Front" badge={`${optResult?.n_solutions ?? latestHist?.pareto_count ?? 0} 解`}>
+      <Section id="front" title="Front" badge={t('sim.opt.badge.solutions', { n: optResult?.n_solutions ?? latestHist?.pareto_count ?? 0 })}>
         <div style={{ height: 240, overflow: 'hidden' }}>
           {liveResult?.pareto_front?.length
             ? <ParetoChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
@@ -234,7 +234,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       </Section>
 
       {/* Process — live metric cards + progress charts (merged from Live) */}
-      <Section id="process" title="Process" badge={activeCurGen > 0 ? `Gen ${activeCurGen}/${optTotalGen || '-'}` : `${activeHistory.length} 点`}>
+      <Section id="process" title="Process" badge={activeCurGen > 0 ? `Gen ${activeCurGen}/${optTotalGen || '-'}` : t('sim.opt.badge.points', { n: activeHistory.length })}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {metric('Gen', activeCurGen > 0 ? `${activeCurGen}/${optTotalGen || '-'}` : '-')}
           {metric('Eval', latestHist?.n_eval ?? '-')}
@@ -266,7 +266,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       </Section>
 
       {/* Solutions — action bar + Pareto table with reference row highlighted (merged from Best) */}
-      <Section id="solutions" title="Solutions" badge={hasPareto ? `${resultRows.length} 行` : undefined}>
+      <Section id="solutions" title="Solutions" badge={hasPareto ? t('sim.opt.badge.rows', { n: resultRows.length }) : undefined}>
         {/* Action bar — always visible when results exist */}
         {(hasPareto || optResult?.best_x != null) && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -357,7 +357,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
         ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={optResult?.best_x ? t('sim.opt.no_pareto_table') : t('sim.opt.show_after_complete')} />}
       </Section>
 
-      <Section id="log" title="Log" badge={`${activeLogs.length} 条`}>
+      <Section id="log" title="Log" badge={t('sim.opt.badge.logs', { n: activeLogs.length })}>
         {logPanel}
       </Section>
     </div>

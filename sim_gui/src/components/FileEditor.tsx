@@ -6,6 +6,7 @@ import { App, Button, Tooltip } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import * as jsyaml from 'js-yaml';
 import { validateModelFile } from '../core/validate';
+import { useI18n } from '../core/i18n';
 
 // ─── File type registry ───────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ export default function FileEditor({
   scsMode = false, preloadedMetas, onSessionModelUpdate, autoEditKey,
 }: Props) {
   const { message } = App.useApp();
+  const { t } = useI18n();
 
   const [metas,      setMetas]      = useState<Record<string, any>>({});
   const [drafts,     setDrafts]     = useState<Record<string, any>>({});
@@ -152,7 +154,7 @@ export default function FileEditor({
       setMetas(p => ({ ...p, [key]: clone(draft) }));
       cancelEdit(key);
       onSessionModelUpdate?.(key, draft);
-      message.success('已保存到 Session');
+      message.success(t('file.msg.saved_to_session'));
       return;
     }
     setSavingSet(p => new Set([...p, key]));
@@ -164,11 +166,11 @@ export default function FileEditor({
       if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 120)}`);
       const d = await r.json();
       if (d.success) {
-        message.success('已保存');
+        message.success(t('file.msg.saved'));
         setMetas(p => ({ ...p, [key]: clone(draft) }));
         cancelEdit(key);
         onReloadTree?.();
-      } else message.error('保存失败: ' + (d.detail || d.error || ''));
+      } else message.error(t('file.msg.save_failed') + ': ' + (d.detail || d.error || ''));
     } catch (e: any) { message.error(String(e)); }
     finally { setSavingSet(p => { const s = new Set(p); s.delete(key); return s; }); }
   }
@@ -215,7 +217,7 @@ export default function FileEditor({
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 10, color: mute }}>
           <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 2.2857)' }}>📂</div>
-          <div>在左侧目录树中勾选文件，或新建 / 上传模型</div>
+          <div>{t('file.editor.empty_hint')}</div>
         </div>
       ) : (
         <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden',
@@ -244,10 +246,10 @@ export default function FileEditor({
                 try {
                   const r = await fetch(`/api/file/${key.replace(/^models\//, '')}`, { method: 'DELETE' });
                   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                  message.success('文件已删除');
+                  message.success(t('file.msg.deleted'));
                   removeFile(key);
                   onReloadTree?.();
-                } catch (e: any) { message.error('删除失败: ' + String(e)); }
+                } catch (e: any) { message.error(t('file.msg.delete_failed') + ': ' + String(e)); }
               }}
               onSaveAs={() => {
                 const content = drafts[key] || metas[key];
@@ -260,7 +262,7 @@ export default function FileEditor({
                 a.click();
                 URL.revokeObjectURL(a.href);
               }}
-              c={c} isDarkMode={isDarkMode} scsMode={scsMode}
+              c={c} isDarkMode={isDarkMode} scsMode={scsMode} t={t}
             />
           ))}
         </div>
@@ -280,11 +282,12 @@ interface CardProps {
   onValidate(): void; onAutoFix(): void; onDelete(): void; onSaveAs(): void;
   c: any; isDarkMode: boolean;
   scsMode?: boolean;
+  t: (key: string, params?: Record<string, string | number>) => any;
 }
 
 function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
   validateSt, onEdit, onCancel, onSave, onClose, onPatch, onValidate, onAutoFix, onDelete, onSaveAs,
-  c, isDarkMode, scsMode = false }: CardProps) {
+  c, isDarkMode, scsMode = false, t }: CardProps) {
 
   const { border, panel, bg, text, textMute: mute, primary } = c;
   const data = editing ? draft : meta;
@@ -336,33 +339,33 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
 
         {!editing ? (
           <>
-            {!scsMode && <Btn onClick={onDelete} color={mute} outline danger>删除</Btn>}
-            <Btn onClick={onEdit} color={primary} outline>编辑</Btn>
+            {!scsMode && <Btn onClick={onDelete} color={mute} outline danger>{t('file.editor.delete')}</Btn>}
+            <Btn onClick={onEdit} color={primary} outline>{t('file.editor.edit')}</Btn>
             {!scsMode && validateSt?.valid === false && (
-              <Btn onClick={onAutoFix} color={primary} outline>自动修复</Btn>
+              <Btn onClick={onAutoFix} color={primary} outline>{t('file.editor.auto_fix')}</Btn>
             )}
             <Btn onClick={onValidate} color={mute} outline loading={validateSt?.loading ?? false}>
-              {validateSt?.loading ? <><LoadingOutlined style={{ marginRight: 4 }} />验证中</> : '验证'}
+              {validateSt?.loading ? <><LoadingOutlined style={{ marginRight: 4 }} />{t('file.editor.validating')}</> : t('file.editor.validate')}
             </Btn>
-            <Btn onClick={onSaveAs} color={mute} outline>下载</Btn>
+            <Btn onClick={onSaveAs} color={mute} outline>{t('file.editor.download')}</Btn>
           </>
         ) : (
           <>
             {(() => {
               const saveBlockedByScs = scsMode && !fileKey.startsWith('session/');
               return (
-                <Tooltip title={saveBlockedByScs ? '仅本地模式下可用' : ''}>
+                <Tooltip title={saveBlockedByScs ? t('file.editor.save_only_local') : ''}>
                   <span>
                     <Btn onClick={onSave} color={dirty && !saveBlockedByScs ? primary : mute}
                       disabled={!dirty || saveBlockedByScs} loading={saving}>
-                      {saving ? '保存中…' : dirty ? '● 保存' : '已保存'}
+                      {saving ? t('file.editor.saving') : dirty ? t('file.editor.save_dirty') : t('file.editor.saved')}
                     </Btn>
                   </span>
                 </Tooltip>
               );
             })()}
-            <Btn onClick={onCancel} color={mute} outline>取消</Btn>
-            <Btn onClick={onSaveAs} color={mute} outline>下载</Btn>
+            <Btn onClick={onCancel} color={mute} outline>{t('file.editor.cancel')}</Btn>
+            <Btn onClick={onSaveAs} color={mute} outline>{t('file.editor.download')}</Btn>
           </>
         )}
         <button onClick={onClose}
@@ -377,7 +380,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
           borderBottom: `1px solid ${validateSt.valid ? (isDarkMode ? 'rgba(82,196,26,0.3)' : '#b7eb8f') : (isDarkMode ? 'rgba(255,77,79,0.3)' : '#ffa39e')}`,
           display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <span style={{ fontWeight: 700, flexShrink: 0, color: validateSt.valid ? (isDarkMode ? '#52c41a' : '#237804') : '#cf1322' }}>
-            {validateSt.valid ? '✓ 验证通过' : '✗ 验证失败'}
+            {validateSt.valid ? t('file.editor.validate_ok') : t('file.editor.validate_fail')}
           </span>
           <div style={{ flex: 1, color: isDarkMode ? 'rgba(255,255,255,0.75)' : '#333' }}>
             {validateSt.errors.map((e, i) => <div key={i} style={{ marginBottom: 1 }}>· {e}</div>)}
@@ -386,14 +389,14 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
       )}
 
       {!meta ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mute }}>加载中…</div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mute }}>{t('file.editor.loading')}</div>
       ) : (
         <div style={{ flex: 1, overflowY: 'auto', background: isDarkMode ? '#1e2328' : '#fff' }}>
-          <Sect title="基本信息" c={c} isDarkMode={isDarkMode}>
-            <Row label="名称" c={c}>
+          <Sect title={t('file.editor.section.basic')} c={c} isDarkMode={isDarkMode}>
+            <Row label={t('file.editor.field.name')} c={c}>
               <FV editing={editing} value={mt.name || ''} onChange={v => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.name = v; })} c={c} />
             </Row>
-            <Row label="描述" c={c}>
+            <Row label={t('file.editor.field.description')} c={c}>
               {editing ? (
                 <textarea value={formatDescription(mt.description)} rows={4}
                   onChange={e => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.description = e.target.value; })}
@@ -406,13 +409,13 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
               )}
             </Row>
             {(mt.tags?.length > 0 || editing) && (
-              <Row label="标签" c={c}>
+              <Row label={t('file.editor.field.tags')} c={c}>
                 <TagsField tags={mt.tags || []} editing={editing}
-                  onChange={tags => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.tags = tags; })} c={c} />
+                  onChange={tags => onPatch(d => { const m = d.metadata ?? d.meta; if (m) m.tags = tags; })} c={c} t={t} />
               </Row>
             )}
             {(Array.isArray(mt.authors) ? mt.authors.length > 0 : !!mt.author) && (
-              <Row label="作者" c={c}>
+              <Row label={t('file.editor.field.author')} c={c}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {(Array.isArray(mt.authors) ? mt.authors : [{ name: mt.author }]).map((a: any, i: number) => (
                     <span key={i} style={{ color: mute, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -426,14 +429,14 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
           </Sect>
 
           {(Object.keys(vars).length > 0 || editing) && (
-            <Sect title="变量" isDarkMode={isDarkMode} action={editing ? (
+            <Sect title={t('file.editor.section.variables')} isDarkMode={isDarkMode} action={editing ? (
               <SmBtn onClick={() => onPatch(d => {
                 if (!d.variables) d.variables = {};
                 const k = `var_${Object.keys(d.variables).length + 1}`;
                 d.variables[k] = { type: 'state', unit: '', value: 0, bounds: [0, 100], description: '' };
-              })} c={c}>+ 添加</SmBtn>
+              })} c={c}>{t('file.editor.add_var')}</SmBtn>
             ) : null} c={c}>
-              <VarsTable vars={vars} editing={editing}
+              <VarsTable vars={vars} editing={editing} t={t}
                 onFieldChange={(varKey, field, value) => onPatch(d => {
                   if (!d.variables) return;
                   if (field === '_rename') {
@@ -448,14 +451,14 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
           )}
 
           {(Object.keys(fmls).length > 0 || editing) && (
-            <Sect title="公式" isDarkMode={isDarkMode} action={editing ? (
+            <Sect title={t('file.editor.section.formulas')} isDarkMode={isDarkMode} action={editing ? (
               <SmBtn onClick={() => onPatch(d => {
                 if (!d.formulas) d.formulas = {};
                 const k = `formula_${Object.keys(d.formulas).length + 1}`;
                 d.formulas[k] = { condition: true, priority: 5, dynamics: {} };
-              })} c={c}>+ 公式</SmBtn>
+              })} c={c}>{t('file.editor.add_formula')}</SmBtn>
             ) : null} c={c}>
-              <FormulasSection fmls={fmls} editing={editing}
+              <FormulasSection fmls={fmls} editing={editing} t={t}
                 onRename={(fn, nk) => onPatch(d => {
                   if (!d.formulas || fn === nk) return;
                   const rebuilt: any = {};
@@ -483,7 +486,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
           )}
 
           {Object.keys(sim).length > 0 && (
-            <Sect title="仿真参数" c={c} isDarkMode={isDarkMode}>
+            <Sect title={t('file.editor.section.sim_params')} c={c} isDarkMode={isDarkMode}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {Object.keys(sim).map(k => (
                   <Row key={k} label={k} c={c} inline>
@@ -507,11 +510,12 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
 
 // ─── VarsTable ────────────────────────────────────────────────────────────────
 
-function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
+function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode, t }: {
   vars: Record<string, any>; editing: boolean;
   onFieldChange(varKey: string, field: string, value: any): void;
   onDelete(varKey: string): void;
   c: any; isDarkMode: boolean;
+  t: (key: string) => any;
 }) {
   const { border, text, textMute: mute, bg, panel } = c;
   const entries = Object.entries(vars);
@@ -522,7 +526,7 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr>{['变量名','类型','单位','初始值','范围'].map(h => <th key={h} style={thSt}>{h}</th>)}{editing && <th style={thSt} />}</tr></thead>
+        <thead><tr>{[t('file.editor.var_table.name'),t('file.editor.var_table.type'),t('file.editor.var_table.unit'),t('file.editor.var_table.init'),t('file.editor.var_table.bounds')].map(h => <th key={h} style={thSt}>{h}</th>)}{editing && <th style={thSt} />}</tr></thead>
         <tbody>
           {entries.map(([vk, vv]: [string, any]) => {
             const tc = vv.type === 'state' ? '#007A33' : vv.type === 'input' ? '#1677ff' : '#8c8c8c';
@@ -556,11 +560,12 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode }: {
 
 // ─── FormulasSection ─────────────────────────────────────────────────────────
 
-function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynRename, onDynDelete, onDynAdd, onDelete, c }: {
+function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynRename, onDynDelete, onDynAdd, onDelete, c, t }: {
   fmls: Record<string, any>; editing: boolean;
   onRename(fn: string, nk: string): void; onField(fn: string, field: string, value: any): void;
   onDynChange(fn: string, varKey: string, expr: string): void; onDynRename(fn: string, oldK: string, newK: string): void;
   onDynDelete(fn: string, varKey: string): void; onDynAdd(fn: string): void; onDelete(fn: string): void; c: any;
+  t: (key: string) => any;
 }) {
   const { border, text, textMute: mute, bg, primary } = c;
   const entries = Object.entries(fmls);
@@ -602,7 +607,7 @@ function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynR
                   <button onClick={() => onDynDelete(fn, dk)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute, padding: '0 2px', lineHeight: 1 }}>×</button>
                 </div>
               ))}
-              <button onClick={() => onDynAdd(fn)} style={{ padding: '2px 8px', borderRadius: 3, marginTop: 2, background: 'transparent', color: primary, border: `1px dashed ${primary}`, cursor: 'pointer' }}>+ 动态项</button>
+              <button onClick={() => onDynAdd(fn)} style={{ padding: '2px 8px', borderRadius: 3, marginTop: 2, background: 'transparent', color: primary, border: `1px dashed ${primary}`, cursor: 'pointer' }}>{t('file.editor.add_dyn_item')}</button>
             </div>
           </div>
         );
@@ -619,17 +624,17 @@ function VarNameInput({ value, onCommit, c }: { value: string; onCommit(v: strin
   return <input value={local} onChange={e => setLocal(e.target.value)} onBlur={() => { if (local !== value) onCommit(local); }} style={{ width: 100, fontFamily: 'monospace', border: `1px solid ${c.border}`, borderRadius: 3, padding: '2px 5px', background: c.bg, color: c.text, outline: 'none' }} />;
 }
 
-function TagsField({ tags, editing, onChange, c }: { tags: string[]; editing: boolean; onChange(tags: string[]): void; c: any }) {
+function TagsField({ tags, editing, onChange, c, t }: { tags: string[]; editing: boolean; onChange(tags: string[]): void; c: any; t: (key: string) => any }) {
   const [input, setInput] = useState('');
   const { border, text, textMute: mute } = c;
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-      {tags.map((t, i) => (
+      {tags.map((tag, i) => (
         <span key={i} style={{ padding: '2px 8px', borderRadius: 10, border: `1px solid ${border}`, color: text, display: 'flex', alignItems: 'center', gap: 4 }}>
-          {t}{editing && <button onClick={() => onChange(tags.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute, padding: 0, lineHeight: 1 }}>×</button>}
+          {tag}{editing && <button onClick={() => onChange(tags.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: mute, padding: 0, lineHeight: 1 }}>×</button>}
         </span>
       ))}
-      {editing && <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ',') && input.trim()) { e.preventDefault(); onChange([...tags, input.trim()]); setInput(''); }}} placeholder="+ 标签" style={{ padding: '2px 8px', border: `1px dashed ${border}`, borderRadius: 10, background: 'transparent', color: text, outline: 'none', width: 70 }} />}
+      {editing && <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ',') && input.trim()) { e.preventDefault(); onChange([...tags, input.trim()]); setInput(''); }}} placeholder={t('file.editor.tag_placeholder')} style={{ padding: '2px 8px', border: `1px dashed ${border}`, borderRadius: 10, background: 'transparent', color: text, outline: 'none', width: 70 }} />}
     </div>
   );
 }

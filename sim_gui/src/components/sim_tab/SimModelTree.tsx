@@ -24,7 +24,7 @@ interface SimModelTreeProps {
   total: number;
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   loadFileContent: (path: string, opts?: { preserveTab?: boolean }) => Promise<ModelFile | null>;
   handleSelect: (keys: React.Key[]) => void;
   handleTreeNodeClick: (e: React.MouseEvent, node: DataNode) => void;
@@ -151,7 +151,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               {node.titleStr || node.title}
             </span>
             {hasSession && (
-              <span style={{ color: c.primary, fontSize: '0.75em', fontStyle: 'italic', lineHeight: 1, flexShrink: 0 }}>(edited)</span>
+              <span style={{ color: c.primary, fontSize: '0.75em', fontStyle: 'italic', lineHeight: 1, flexShrink: 0 }}>{t('sim.tree.edited')}</span>
             )}
           </span>
         </span>
@@ -244,7 +244,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
           <div style={{ marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 4px 4px', gap: 4 }}>
               <span style={{ flex: 1, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Session
+                {t('sim.tree.session_label')}
               </span>
               <Tooltip title={t('sim.tree.session_persist')}>
                 <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, cursor: 'default' }}>💾</span>
