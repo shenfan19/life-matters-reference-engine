@@ -29,6 +29,14 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
     Pulse semantics: all controlled variables are zeroed at the start of each
     step, then every firing event accumulates its value. This matches the
     _apply_schedules pulse mode exactly.
+
+    Sustained semantics (event['mode'] == 'sustained'): the event fires on
+    every step that matches its days/date_range filters, instead of only the
+    single step matching `time`. An optional `time_range: ["HH:MM", "HH:MM"]`
+    restricts firing to a time-of-day window within each matching day. This
+    lets sub-day-step models (step_size: hour/minute) represent a "sustained
+    intensity" input over a multi-step window without one schedule entry per
+    step.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
@@ -92,23 +100,40 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                 except ValueError:
                     pass
 
-            time_str = ev.get('time', '08:00')
-            try:
-                hh, mm = map(int, time_str.split(':'))
-            except Exception:
-                continue
-            ev_sec = hh * 3600 + mm * 60
+            if ev.get('mode') == 'sustained':
+                time_range = ev.get('time_range')
+                if time_range:
+                    try:
+                        t0h, t0m = map(int, time_range[0].split(':'))
+                        t1h, t1m = map(int, time_range[1].split(':'))
+                    except Exception:
+                        continue
+                    t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
+                    fires = (
+                        (next_sec_of_day > t0_sec or prev_sec_of_day < t1_sec)
+                        if day_boundary_crossed
+                        else (prev_sec_of_day < t1_sec and next_sec_of_day > t0_sec)
+                    )
+                else:
+                    fires = True
+            else:
+                time_str = ev.get('time', '08:00')
+                try:
+                    hh, mm = map(int, time_str.split(':'))
+                except Exception:
+                    continue
+                ev_sec = hh * 3600 + mm * 60
 
-            fires = (
-                (ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day)
-                if day_boundary_crossed
-                else (prev_sec_of_day <= ev_sec < next_sec_of_day)
-            )
+                fires = (
+                    (ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day)
+                    if day_boundary_crossed
+                    else (prev_sec_of_day <= ev_sec < next_sec_of_day)
+                )
 
             if fires:
                 current = model.variables[variable].value
                 model.set_variable_value(variable, current + float(ev.get('value', 0)))
                 logger.debug(
                     "Regimen fired: %s += %s @ t=%.0fs (%s)",
-                    variable, ev.get('value', 0), prev_time, time_str,
+                    variable, ev.get('value', 0), prev_time, ev.get('mode', ev.get('time', '')),
                 )

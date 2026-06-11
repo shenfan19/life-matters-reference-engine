@@ -63,11 +63,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     Uses apply_regimens() from regimen_runner (pulse reset + accumulate) — same
     kernel as the GUI sim path, eliminating the duplicate implementation.
     """
-    from .model_structure.base import TIME_UNIT_SECONDS
     from .regimen_runner import apply_regimens
-
-    unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'minute'), 60.0)
-    native_step = step_size_sec / unit_sec
 
     model.reset_simulation()
 
@@ -86,7 +82,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     for i in range(total_steps):
         prev_t = i * step_size_sec
         apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec, sim_start_date)
-        model.step(native_step)
+        model.step(step_size_sec)
         for n, v in model.variables.items():
             history[n].append(v.value)
 
@@ -282,6 +278,10 @@ def run_optimizer(simulator_engine, model_name: str,
         dr = e.get('date_range')
         if isinstance(dr, list) and len(dr) == 2:
             ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
+        if e.get('mode'):
+            ev_f['mode'] = e['mode']
+        if e.get('time_range'):
+            ev_f['time_range'] = e['time_range']
         fixed_events_map.setdefault(v, []).append(ev_f)
 
     def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
@@ -299,6 +299,8 @@ def run_optimizer(simulator_engine, model_name: str,
                     'value': float(e0.get('value', 0)),
                     'valid_start': None,
                     'valid_end': None,
+                    'mode': e0.get('mode'),
+                    'time_range': e0.get('time_range'),
                 }
                 dr = e0.get('date_range')
                 if isinstance(dr, list) and len(dr) == 2:
@@ -327,6 +329,10 @@ def run_optimizer(simulator_engine, model_name: str,
                 ev2['valid_start'] = d['valid_start']
             if d.get('valid_end'):
                 ev2['valid_end'] = d['valid_end']
+            if d.get('mode'):
+                ev2['mode'] = d['mode']
+            if d.get('time_range'):
+                ev2['time_range'] = d['time_range']
             events_map.setdefault(d['variable'], []).append(ev2)
         return events_map
 
