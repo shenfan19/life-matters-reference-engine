@@ -25,6 +25,11 @@ class RegimenEventData(BaseModel):
     # sub-day time-of-day window.
     mode: Optional[str] = None
     time_range: Optional[List[str]] = None  # ["HH:MM", "HH:MM"]
+    # Unified pulse/sustained interval (ADR 0100): [time_start, time_end).
+    # time_start == time_end => pulse; otherwise => sustained. Takes
+    # precedence over time/mode/time_range when both are set.
+    time_start: Optional[str] = None  # "HH:MM"
+    time_end: Optional[str] = None    # "HH:MM"
 
 
 class RegimenData(BaseModel):

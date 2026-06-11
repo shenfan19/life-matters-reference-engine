@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
-# regimen_runner.py — Pulse-mode regimen evaluation
+# regimen_runner.py — Pulse/sustained regimen evaluation
 #
 # Applies a list of regimen dicts to a model for one simulation step window.
 # Both the GUI path (boolean days mask, regimen-level valid_range) and the
 # optimizer path (event-level string days, event-level valid_start/end) are
 # handled here in one place so the logic is never duplicated.
+#
+# Each event's effective time-of-day is a `[time_start, time_end)` interval
+# (ADR 0100), resolved by `_normalize_time_interval`. `time_start == time_end`
+# is a pulse (fires once, N_steps=1); otherwise it's sustained (fires on every
+# step overlapping the interval, value split across N_steps per ADR 0099).
+# Pre-0100 fields (`time`, `mode: sustained` + `time_range`) are mapped onto
+# this interval for backward compatibility — see `_normalize_time_interval`.
 
 import logging
 import math
@@ -15,18 +22,43 @@ logger = logging.getLogger(__name__)
 _DAY_STR = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
 
 
-def _time_range_day_seconds(time_range) -> float:
-    """Seconds-per-day covered by a `time_range: ["HH:MM","HH:MM"]` window.
+def _normalize_time_interval(ev: dict):
+    """Resolve an event's `[time_start, time_end)` interval (ADR 0100).
 
-    No/invalid time_range = full day (86400s). A window where end <= start
-    wraps past midnight (or, if equal, covers the full day) — same convention
-    as the `fires` check in apply_regimens.
+    `time_start == time_end` => pulse (N_steps=1, fires at that instant).
+    `time_start != time_end` => sustained (incl. "00:00"~"24:00" = full day,
+    which is just the full-width value of the same interval, not a separate
+    state).
+
+    Backward-compatible mapping from pre-0100 fields (numeric results
+    unchanged):
+      - explicit `time_start`/`time_end` (new format)         -> as given
+      - `mode == 'sustained'` + `time_range: [a, b]` (ADR 0098) -> (a, b)
+      - `mode == 'sustained'`, no `time_range`                  -> ("00:00", "24:00")
+      - plain `time: "HH:MM"` (pulse, default)                  -> (time, time)
     """
-    if not time_range:
-        return 86400.0
+    ts, te = ev.get('time_start'), ev.get('time_end')
+    if ts is not None and te is not None:
+        return ts, te
+    if ev.get('mode') == 'sustained':
+        time_range = ev.get('time_range')
+        if time_range:
+            return time_range[0], time_range[1]
+        return '00:00', '24:00'
+    t = ev.get('time', '08:00')
+    return t, t
+
+
+def _time_range_day_seconds(time_start: str, time_end: str) -> float:
+    """Seconds-per-day covered by a `[time_start, time_end)` window.
+
+    Invalid input = full day (86400s). A window where end <= start wraps past
+    midnight (or, if equal, covers the full day) — same convention as the
+    `fires` check in apply_regimens.
+    """
     try:
-        t0h, t0m = map(int, time_range[0].split(':'))
-        t1h, t1m = map(int, time_range[1].split(':'))
+        t0h, t0m = map(int, time_start.split(':'))
+        t1h, t1m = map(int, time_end.split(':'))
     except Exception:
         return 86400.0
     t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
@@ -76,12 +108,17 @@ def _n_active_days(ev: dict, reg: dict, sim_start_date: str, total_steps: int,
 
 def precompute_sustained_divisors(regimens: list, step_size_sec: float, total_steps: int,
                                    sim_start_date: str = '') -> list:
-    """Annotate `mode: sustained` events with `_n_steps` (ADR 0099).
+    """Annotate sustained-interval events with `_n_steps` (ADR 0099/0100).
+
+    An event is "sustained" when its `[time_start, time_end)` interval
+    (resolved by `_normalize_time_interval`, ADR 0100) is non-empty
+    (`time_start != time_end`); pulse events (`time_start == time_end`) are
+    left untouched and default to `_n_steps == 1` in apply_regimens.
 
     `value` for sustained entries is the total over the entire active window;
     apply_regimens divides by `_n_steps` each firing step so the cumulative
-    contribution equals `value` regardless of step_size (pulse, with implicit
-    `_n_steps == 1`, is the special case of the same rule).
+    contribution equals `value` regardless of step_size (pulse is the
+    `_n_steps == 1` special case of the same rule).
 
     Returns a new list; does not mutate the input regimens/events.
     """
@@ -94,8 +131,9 @@ def precompute_sustained_divisors(regimens: list, step_size_sec: float, total_st
         new_events = []
         changed = False
         for ev in events:
-            if ev.get('mode') == 'sustained':
-                day_sec = _time_range_day_seconds(ev.get('time_range'))
+            time_start, time_end = _normalize_time_interval(ev)
+            if time_start != time_end:
+                day_sec = _time_range_day_seconds(time_start, time_end)
                 n_active_days = _n_active_days(ev, reg, sim_start_date, total_steps, step_size_sec)
                 window_sec = n_active_days * day_sec
                 ev = dict(ev)
@@ -122,13 +160,17 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
     step, then every firing event accumulates its value. This matches the
     _apply_schedules pulse mode exactly.
 
-    Sustained semantics (event['mode'] == 'sustained'): the event fires on
-    every step that matches its days/date_range filters, instead of only the
-    single step matching `time`. An optional `time_range: ["HH:MM", "HH:MM"]`
-    restricts firing to a time-of-day window within each matching day. This
-    lets sub-day-step models (step_size: hour/minute) represent a "sustained
-    intensity" input over a multi-step window without one schedule entry per
-    step.
+    Each event's `[time_start, time_end)` interval is resolved by
+    `_normalize_time_interval` (ADR 0100; also accepts pre-0100
+    `time`/`mode: sustained`+`time_range` fields):
+
+      - `time_start == time_end` (pulse): fires once, at the single step
+        whose `[prev_time, next_time)` covers that instant.
+      - `time_start != time_end` (sustained, incl. "00:00"~"24:00" = full
+        day): fires on every step overlapping the daily window, instead of
+        only a single instant. This lets sub-day-step models (step_size:
+        hour/minute) represent a "sustained intensity" input over a
+        multi-step window without one schedule entry per step.
 
     `value` for sustained events is the TOTAL over the active window, not a
     per-step amount (ADR 0099): each firing step adds `value / _n_steps`,
@@ -199,39 +241,38 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                 except ValueError:
                     pass
 
-            if ev.get('mode') == 'sustained':
-                time_range = ev.get('time_range')
-                if time_range:
-                    try:
-                        t0h, t0m = map(int, time_range[0].split(':'))
-                        t1h, t1m = map(int, time_range[1].split(':'))
-                    except Exception:
-                        continue
-                    t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
-                    # Split the step interval and the time_range window into
-                    # non-wrapping [start, end) ranges (each may wrap past
-                    # midnight independently of the other), then test overlap.
-                    step_ranges = (
-                        [(prev_sec_of_day, 86400), (0, next_sec_of_day)]
-                        if day_boundary_crossed
-                        else [(prev_sec_of_day, next_sec_of_day)]
-                    )
-                    win_ranges = (
-                        [(t0_sec, 86400), (0, t1_sec)]
-                        if t0_sec >= t1_sec
-                        else [(t0_sec, t1_sec)]
-                    )
-                    fires = any(
-                        a0 < b1 and b0 < a1
-                        for a0, a1 in step_ranges
-                        for b0, b1 in win_ranges
-                    )
-                else:
-                    fires = True
-            else:
-                time_str = ev.get('time', '08:00')
+            time_start, time_end = _normalize_time_interval(ev)
+            if time_start != time_end:
+                # Sustained: fires whenever the step interval overlaps the
+                # daily [time_start, time_end) window.
                 try:
-                    hh, mm = map(int, time_str.split(':'))
+                    t0h, t0m = map(int, time_start.split(':'))
+                    t1h, t1m = map(int, time_end.split(':'))
+                except Exception:
+                    continue
+                t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
+                # Split the step interval and the [time_start, time_end) window
+                # into non-wrapping [start, end) ranges (each may wrap past
+                # midnight independently of the other), then test overlap.
+                step_ranges = (
+                    [(prev_sec_of_day, 86400), (0, next_sec_of_day)]
+                    if day_boundary_crossed
+                    else [(prev_sec_of_day, next_sec_of_day)]
+                )
+                win_ranges = (
+                    [(t0_sec, 86400), (0, t1_sec)]
+                    if t0_sec >= t1_sec
+                    else [(t0_sec, t1_sec)]
+                )
+                fires = any(
+                    a0 < b1 and b0 < a1
+                    for a0, a1 in step_ranges
+                    for b0, b1 in win_ranges
+                )
+            else:
+                # Pulse: fires once, at the instant time_start.
+                try:
+                    hh, mm = map(int, time_start.split(':'))
                 except Exception:
                     continue
                 ev_sec = hh * 3600 + mm * 60
@@ -244,10 +285,10 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
 
             if fires:
                 current = model.variables[variable].value
-                n_steps = ev.get('_n_steps', 1) if ev.get('mode') == 'sustained' else 1
+                n_steps = ev.get('_n_steps', 1)
                 delta = float(ev.get('value', 0)) / n_steps
                 model.set_variable_value(variable, current + delta)
                 logger.debug(
-                    "Regimen fired: %s += %s @ t=%.0fs (%s)",
-                    variable, delta, prev_time, ev.get('mode', ev.get('time', '')),
+                    "Regimen fired: %s += %s @ t=%.0fs (%s~%s)",
+                    variable, delta, prev_time, time_start, time_end,
                 )
