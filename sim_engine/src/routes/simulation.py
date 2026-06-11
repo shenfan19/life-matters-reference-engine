@@ -13,23 +13,16 @@ class RegimenEventData(BaseModel):
     Optimizer path: days (string list) and valid_start/end live on the event itself
     so each T3/T4 event can have independent days and date-range constraints.
     """
-    time: str                              # "HH:MM"
     value: float
     # T3 (optimizer path): event-level day filter, e.g. ["Mon", "Wed"]
     days: Optional[List[str]] = None
     # T4 (optimizer path): event-level date-range filter
     valid_start: Optional[str] = None     # "YYYY-MM-DD"
     valid_end: Optional[str] = None       # "YYYY-MM-DD"
-    # Sustained mode (ADR 0098): event fires every step matching days/date_range
-    # filters instead of only at `time`; optional time_range restricts to a
-    # sub-day time-of-day window.
-    mode: Optional[str] = None
-    time_range: Optional[List[str]] = None  # ["HH:MM", "HH:MM"]
-    # Unified pulse/sustained interval (ADR 0100): [time_start, time_end).
-    # time_start == time_end => pulse; otherwise => sustained. Takes
-    # precedence over time/mode/time_range when both are set.
-    time_start: Optional[str] = None  # "HH:MM"
-    time_end: Optional[str] = None    # "HH:MM"
+    # Pulse/sustained interval [time_start, time_end) (ADR 0100).
+    # time_start == time_end => pulse; otherwise => sustained.
+    time_start: str  # "HH:MM"
+    time_end: str    # "HH:MM"
 
 
 class RegimenData(BaseModel):

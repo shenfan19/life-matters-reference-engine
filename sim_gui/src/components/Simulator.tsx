@@ -493,7 +493,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             const updated = prev.map(ev => ({ ...ev }));
             for (const inp of withOpt) {
               const opt = inp.optimize ?? {};
-              const matchTime = inp.time_start ?? inp.time;
+              const matchTime = inp.time_start;
               const idx = updated.findIndex(ev =>
                 ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
               );
@@ -501,9 +501,16 @@ const Simulator: React.FC<SimulatorProps> = ({
                 const patch: Partial<typeof updated[0]> = { optimizeValue: true };
                 if (Array.isArray(opt.value) && opt.value.length >= 2)
                   patch.valueBounds = [opt.value[0], opt.value[1]];
-                if (Array.isArray(opt.time) && opt.time.length === 2) {
-                  patch.optimizeTime = true; patch.timeWindowStart = opt.time[0]; patch.timeWindowEnd = opt.time[1];
+                // T2 (ADR 0100): optimize.time_start (1-dim) + optional optimize.time_end (2-dim)
+                const t2win = opt.time_start;
+                if (Array.isArray(t2win) && t2win.length === 2) {
+                  patch.optimizeTime = true; patch.timeWindowStart = t2win[0]; patch.timeWindowEnd = t2win[1];
                   if (opt.time_step) patch.timeStep = opt.time_step;
+                  if (Array.isArray(opt.time_end) && opt.time_end.length === 2) {
+                    patch.optimizeTimeEnd = true;
+                    patch.timeEndWindowStart = opt.time_end[0];
+                    patch.timeEndWindowEnd = opt.time_end[1];
+                  }
                 }
                 if (opt.days_pool) {
                   patch.optimizeDays = true; patch.daysPool = opt.days_pool;
@@ -701,7 +708,7 @@ const Simulator: React.FC<SimulatorProps> = ({
             const updated = prev.map(ev => ({ ...ev }));
             for (const inp of withOpt) {
               const opt = inp.optimize ?? {};
-              const matchTime = inp.time_start ?? inp.time;
+              const matchTime = inp.time_start;
               const idx = updated.findIndex(ev =>
                 ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
               );
@@ -709,24 +716,25 @@ const Simulator: React.FC<SimulatorProps> = ({
                 const patch: Partial<typeof updated[0]> = { optimizeValue: true };
                 if (Array.isArray(opt.value) && opt.value.length >= 2)
                   patch.valueBounds = [opt.value[0], opt.value[1]];
-                // Unified pulse/sustained interval (ADR 0100)
+                // Pulse/sustained interval (ADR 0100)
                 if (inp.time_start != null && inp.time_end != null) {
                   patch.timeStart = inp.time_start;
                   patch.timeEnd = inp.time_end;
-                } else if (inp.mode === 'sustained') {
-                  if (Array.isArray(inp.time_range)) {
-                    patch.timeStart = inp.time_range[0];
-                    patch.timeEnd = inp.time_range[1];
-                  } else {
-                    patch.timeStart = '00:00'; patch.timeEnd = '24:00';
-                  }
                 }
-                // T2
-                if (Array.isArray(opt.time) && opt.time.length === 2) {
-                  patch.optimizeTime = true;
-                  patch.timeWindowStart = opt.time[0];
-                  patch.timeWindowEnd = opt.time[1];
-                  if (opt.time_step) patch.timeStep = opt.time_step;
+                // T2 (ADR 0100): optimize.time_start (1-dim) + optional optimize.time_end (2-dim)
+                {
+                  const t2win = opt.time_start;
+                  if (Array.isArray(t2win) && t2win.length === 2) {
+                    patch.optimizeTime = true;
+                    patch.timeWindowStart = t2win[0];
+                    patch.timeWindowEnd = t2win[1];
+                    if (opt.time_step) patch.timeStep = opt.time_step;
+                    if (Array.isArray(opt.time_end) && opt.time_end.length === 2) {
+                      patch.optimizeTimeEnd = true;
+                      patch.timeEndWindowStart = opt.time_end[0];
+                      patch.timeEndWindowEnd = opt.time_end[1];
+                    }
+                  }
                 }
                 // T3
                 if (opt.days_pool) {

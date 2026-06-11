@@ -10,8 +10,6 @@
 # (ADR 0100), resolved by `_normalize_time_interval`. `time_start == time_end`
 # is a pulse (fires once, N_steps=1); otherwise it's sustained (fires on every
 # step overlapping the interval, value split across N_steps per ADR 0099).
-# Pre-0100 fields (`time`, `mode: sustained` + `time_range`) are mapped onto
-# this interval for backward compatibility — see `_normalize_time_interval`.
 
 import logging
 import math
@@ -29,24 +27,8 @@ def _normalize_time_interval(ev: dict):
     `time_start != time_end` => sustained (incl. "00:00"~"24:00" = full day,
     which is just the full-width value of the same interval, not a separate
     state).
-
-    Backward-compatible mapping from pre-0100 fields (numeric results
-    unchanged):
-      - explicit `time_start`/`time_end` (new format)         -> as given
-      - `mode == 'sustained'` + `time_range: [a, b]` (ADR 0098) -> (a, b)
-      - `mode == 'sustained'`, no `time_range`                  -> ("00:00", "24:00")
-      - plain `time: "HH:MM"` (pulse, default)                  -> (time, time)
     """
-    ts, te = ev.get('time_start'), ev.get('time_end')
-    if ts is not None and te is not None:
-        return ts, te
-    if ev.get('mode') == 'sustained':
-        time_range = ev.get('time_range')
-        if time_range:
-            return time_range[0], time_range[1]
-        return '00:00', '24:00'
-    t = ev.get('time', '08:00')
-    return t, t
+    return ev.get('time_start', '08:00'), ev.get('time_end', '08:00')
 
 
 def _time_range_day_seconds(time_start: str, time_end: str) -> float:
@@ -161,8 +143,7 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
     _apply_schedules pulse mode exactly.
 
     Each event's `[time_start, time_end)` interval is resolved by
-    `_normalize_time_interval` (ADR 0100; also accepts pre-0100
-    `time`/`mode: sustained`+`time_range` fields):
+    `_normalize_time_interval` (ADR 0100):
 
       - `time_start == time_end` (pulse): fires once, at the single step
         whose `[prev_time, next_time)` covers that instant.

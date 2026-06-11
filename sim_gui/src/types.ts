@@ -156,11 +156,16 @@ export interface InputEvent {
   // T1: optimize value
   optimizeValue?: boolean;
   valueBounds?: [number, number];
-  // T2: optimize time (window = [start, end] HH:MM strings)
+  // T2: optimize time_start (window = [start, end] HH:MM strings).
+  // 1-dim by default: time_end follows at a fixed offset (= timeEnd - timeStart).
   optimizeTime?: boolean;
   timeWindowStart?: string;
   timeWindowEnd?: string;
   timeStep?: string;
+  // T2 (2-dim, ADR 0100): also search time_end independently within its own window.
+  optimizeTimeEnd?: boolean;
+  timeEndWindowStart?: string;
+  timeEndWindowEnd?: string;
   // T3: optimize days (backend freely combines from pool)
   optimizeDays?: boolean;
   daysPool?: string[];
