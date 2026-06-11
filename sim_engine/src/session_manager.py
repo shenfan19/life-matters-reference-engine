@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .model_structure.base import TIME_UNIT_SECONDS
 from .regimen_runner import apply_regimens
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model
 
@@ -245,16 +244,12 @@ class SessionManagerMixin:
                 outputs = []
                 actual_steps = min(steps, session['total_steps'] - session['current_step'])
 
-                # step_size is in seconds; step() expects the model's native time unit
-                _unit_sec = TIME_UNIT_SECONDS.get(getattr(model, 'time_unit', 'minute'), 60.0)
-                _native_step = step_size / _unit_sec
-
                 for _ in range(actual_steps):
                     prev_time = session['time']
                     next_time = prev_time + step_size
                     apply_regimens(model, session['regimens'], prev_time, next_time,
                                    sim_start_date=sim_start_date)
-                    model.step(_native_step)
+                    model.step(step_size)
                     session['current_step'] += 1
                     session['time'] += step_size
 
@@ -348,15 +343,13 @@ class SessionManagerMixin:
                             run_model.set_variable_value(var_name, value)
 
                 actual_steps = min(steps, session['total_steps'] - run['current_step'])
-                _unit_sec = TIME_UNIT_SECONDS.get(getattr(run_model, 'time_unit', 'minute'), 60.0)
-                _native_step = step_size / _unit_sec
 
                 for _ in range(actual_steps):
                     prev_time = run['time']
                     next_time = prev_time + step_size
                     apply_regimens(run_model, session['regimens'], prev_time, next_time,
                                    sim_start_date=sim_start_date)
-                    run_model.step(_native_step)
+                    run_model.step(step_size)
                     run['current_step'] += 1
                     run['time'] += step_size
 
