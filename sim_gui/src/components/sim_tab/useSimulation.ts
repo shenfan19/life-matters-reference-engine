@@ -83,7 +83,13 @@ export function useSimulation({
       .filter(ev => inputVarNames.has(ev.variable))
       .map(ev => ({
         variable: ev.variable,
-        events: [{ id: ev.id, time: ev.time, value: ev.value }],
+        events: [{
+          id: ev.id, time: ev.time, value: ev.value,
+          ...(ev.sustained ? {
+            mode: 'sustained',
+            ...(ev.timeRangeStart && ev.timeRangeEnd ? { time_range: [ev.timeRangeStart, ev.timeRangeEnd] } : {}),
+          } : {}),
+        }],
         days_enabled: ev.daysEnabled,
         days: ev.days,
         valid_range_enabled: ev.validRangeEnabled,
@@ -278,7 +284,13 @@ export function useSimulation({
         .filter(ev => localInputVarNames.has(ev.variable))
         .map(ev => ({
           variable: ev.variable,
-          events: [{ id: ev.id, time: ev.time, value: ev.value }],
+          events: [{
+            id: ev.id, time: ev.time, value: ev.value,
+            ...(ev.sustained ? {
+              mode: 'sustained',
+              ...(ev.timeRangeStart && ev.timeRangeEnd ? { time_range: [ev.timeRangeStart, ev.timeRangeEnd] } : {}),
+            } : {}),
+          }],
           days_enabled: ev.daysEnabled, days: ev.days,
           valid_range_enabled: ev.validRangeEnabled,
           valid_start: ev.validStart, valid_end: ev.validEnd,

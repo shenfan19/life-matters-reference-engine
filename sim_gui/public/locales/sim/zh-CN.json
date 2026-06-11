@@ -163,6 +163,8 @@
   "sim.setup.tog.day_opt_tip": "勾选后优化执行日（需在 YAML days_options 中定义候选模式）",
   "sim.setup.tog.range": "范",
   "sim.setup.tog.range_tip": "指定有效期",
+  "sim.setup.tog.sustained": "续",
+  "sim.setup.tog.sustained_tip": "持续模式：每个匹配的 step 都生效（不限于单一时刻），可选指定每日时间窗",
   "sim.setup.daily": "每天",
   "sim.setup.opt.date_start_label": "起",
   "sim.setup.opt.date_end_label": "止",

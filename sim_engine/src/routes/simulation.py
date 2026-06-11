@@ -20,6 +20,11 @@ class RegimenEventData(BaseModel):
     # T4 (optimizer path): event-level date-range filter
     valid_start: Optional[str] = None     # "YYYY-MM-DD"
     valid_end: Optional[str] = None       # "YYYY-MM-DD"
+    # Sustained mode (ADR 0098): event fires every step matching days/date_range
+    # filters instead of only at `time`; optional time_range restricts to a
+    # sub-day time-of-day window.
+    mode: Optional[str] = None
+    time_range: Optional[List[str]] = None  # ["HH:MM", "HH:MM"]
 
 
 class RegimenData(BaseModel):

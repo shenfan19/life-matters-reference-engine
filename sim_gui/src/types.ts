@@ -148,6 +148,11 @@ export interface InputEvent {
   validRangeEnabled: boolean;
   validStart: string;
   validEnd: string;
+  // Sustained mode (ADR 0098): event fires every step matching days/date_range
+  // instead of only at `time`; optional time_range restricts to a sub-day window.
+  sustained?: boolean;
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
   // Opt fields — optional; default false/inactive
   // T1: optimize value
   optimizeValue?: boolean;

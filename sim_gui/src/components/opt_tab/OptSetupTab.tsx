@@ -93,6 +93,9 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
               <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled}
                 title={t('sim.setup.tog.time_tip')}
                 onToggle={() => updateInputEventOpt(ev.id, { timeEnabled: !ev.timeEnabled, ...(!ev.timeEnabled && { optimizeTime: false }) })} />
+              <Tog label={t('sim.setup.tog.sustained')} active={!!ev.sustained}
+                title={t('sim.setup.tog.sustained_tip')}
+                onToggle={() => updateInputEventOpt(ev.id, { sustained: !ev.sustained, ...(!ev.sustained && { optimizeTime: false }) })} />
               <Tog label={t('sim.setup.tog.day')} active={ev.daysEnabled}
                 title={t('sim.setup.tog.day_tip')}
                 onToggle={() => updateInputEventOpt(ev.id, { daysEnabled: !ev.daysEnabled, ...(!ev.daysEnabled && { optimizeDays: false }) })} />
@@ -136,8 +139,21 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
               {!ev.timeEnabled && !ev.daysEnabled && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>· {t('sim.setup.daily')}</span>}
             </div>
 
+            {/* Sustained mode: time_range row (mode: sustained, ADR 0098) */}
+            {ev.sustained && (
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
+                <Input size="small" value={ev.timeRangeStart ?? ''} placeholder="HH:MM"
+                  style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                  onChange={e => updateInputEventOpt(ev.id, { timeRangeStart: e.target.value })} />
+                <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>–</span>
+                <Input size="small" value={ev.timeRangeEnd ?? ''} placeholder="HH:MM"
+                  style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                  onChange={e => updateInputEventOpt(ev.id, { timeRangeEnd: e.target.value })} />
+              </div>
+            )}
+
             {/* T2: time row */}
-            {ev.timeEnabled && (
+            {ev.timeEnabled && !ev.sustained && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
                 <Tog label="opt" active={!!ev.optimizeTime}
                   onToggle={() => updateInputEventOpt(ev.id, {
