@@ -284,6 +284,11 @@ def run_optimizer(simulator_engine, model_name: str,
             ev_f['mode'] = e['mode']
         if e.get('time_range'):
             ev_f['time_range'] = e['time_range']
+        # Unified pulse/sustained interval (ADR 0100): pass through if present.
+        if e.get('time_start') is not None:
+            ev_f['time_start'] = e['time_start']
+        if e.get('time_end') is not None:
+            ev_f['time_end'] = e['time_end']
         fixed_events_map.setdefault(v, []).append(ev_f)
 
     def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
@@ -303,6 +308,8 @@ def run_optimizer(simulator_engine, model_name: str,
                     'valid_end': None,
                     'mode': e0.get('mode'),
                     'time_range': e0.get('time_range'),
+                    'time_start': e0.get('time_start'),
+                    'time_end': e0.get('time_end'),
                 }
                 dr = e0.get('date_range')
                 if isinstance(dr, list) and len(dr) == 2:
@@ -335,6 +342,10 @@ def run_optimizer(simulator_engine, model_name: str,
                 ev2['mode'] = d['mode']
             if d.get('time_range'):
                 ev2['time_range'] = d['time_range']
+            if d.get('time_start') is not None:
+                ev2['time_start'] = d['time_start']
+            if d.get('time_end') is not None:
+                ev2['time_end'] = d['time_end']
             events_map.setdefault(d['variable'], []).append(ev2)
         return events_map
 
