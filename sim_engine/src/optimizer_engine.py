@@ -32,6 +32,17 @@ def _expand_time_window(window: str, opt_step: str = '1h') -> List[str]:
     return slots
 
 
+def _hhmm_to_min(s: str) -> int:
+    h, m = map(int, s.split(':'))
+    return h * 60 + m
+
+
+def _shift_time(start: str, width_min: int) -> str:
+    """Add width_min minutes to an "HH:MM" time, wrapping past 24:00 to 00:00."""
+    t = (_hhmm_to_min(start) + width_min) % 1440
+    return f'{t // 60:02d}:{t % 60:02d}'
+
+
 def _parse_condition(cond: str) -> Tuple[str, float]:
     m = re.match(r'^([<>]=?)\s*(-?\d+(?:\.\d+)?)', cond.strip())
     if m:
@@ -197,7 +208,7 @@ def run_optimizer(simulator_engine, model_name: str,
     for e in opt_entries:
         opt = e.get('optimize', {})
         var = e.get('variable', '')
-        time_val = e.get('time', '08:00')
+        time_val = e.get('time_start', '08:00')
         label = e.get('label', f"{var} {time_val}")
 
         # T1: optimize.value = [lo, hi]
@@ -207,12 +218,22 @@ def run_optimizer(simulator_engine, model_name: str,
                               'label': label, 'entry': e})
             lo_list.append(float(val_bounds[0])); hi_list.append(float(val_bounds[1]))
 
-        # T2: optimize.time = ["HH:MM", "HH:MM"]
-        t2 = opt.get('time')
+        # T2: optimize.time_start = ["HH:MM", "HH:MM"].
+        # 1-dim: only time_start is searched, time_end follows at a fixed offset
+        # (= the entry's own time_end - time_start, ADR 0100).
+        # 2-dim: optional optimize.time_end = ["HH:MM", "HH:MM"] searches the
+        # interval end independently.
+        t2 = opt.get('time_start')
         if isinstance(t2, list) and len(t2) == 2:
             slots = _expand_time_window(f"{t2[0]}~{t2[1]}", opt.get('time_step', '1h'))
-            var_specs.append({'kind': 'time', 'variable': var, 'slots': slots, 'entry': e})
+            var_specs.append({'kind': 'time_start', 'variable': var, 'slots': slots, 'entry': e})
             lo_list.append(0.0); hi_list.append(float(len(slots) - 1))
+
+            t2e = opt.get('time_end')
+            if isinstance(t2e, list) and len(t2e) == 2:
+                slots_e = _expand_time_window(f"{t2e[0]}~{t2e[1]}", opt.get('time_step', '1h'))
+                var_specs.append({'kind': 'time_end', 'variable': var, 'slots': slots_e, 'entry': e})
+                lo_list.append(0.0); hi_list.append(float(len(slots_e) - 1))
 
         # T3: optimize.days_pool + optimize.days_n
         days_pool = opt.get('days_pool')
@@ -274,21 +295,17 @@ def run_optimizer(simulator_engine, model_name: str,
         v = e.get('variable', '')
         if not v:
             continue
-        ev_f: Dict[str, Any] = {'time': e.get('time', '08:00'), 'value': float(e.get('value', 0))}
+        time_start = e.get('time_start', '08:00')
+        ev_f: Dict[str, Any] = {
+            'value': float(e.get('value', 0)),
+            'time_start': time_start,
+            'time_end': e.get('time_end', time_start),
+        }
         if e.get('days'):
             ev_f['days'] = e['days']
         dr = e.get('date_range')
         if isinstance(dr, list) and len(dr) == 2:
             ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
-        if e.get('mode'):
-            ev_f['mode'] = e['mode']
-        if e.get('time_range'):
-            ev_f['time_range'] = e['time_range']
-        # Unified pulse/sustained interval (ADR 0100): pass through if present.
-        if e.get('time_start') is not None:
-            ev_f['time_start'] = e['time_start']
-        if e.get('time_end') is not None:
-            ev_f['time_end'] = e['time_end']
         fixed_events_map.setdefault(v, []).append(ev_f)
 
     def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
@@ -299,28 +316,37 @@ def run_optimizer(simulator_engine, model_name: str,
             eid = id(spec['entry'])
             if eid not in decoded:
                 e0 = spec['entry']
+                e0_time_start = e0.get('time_start', '08:00')
                 d0: Dict[str, Any] = {
                     'variable': spec['variable'],
-                    'time': e0.get('time', '08:00'),
+                    'time_start': e0_time_start,
+                    'time_end': e0.get('time_end', e0_time_start),
                     'days': e0.get('days'),
                     'value': float(e0.get('value', 0)),
                     'valid_start': None,
                     'valid_end': None,
-                    'mode': e0.get('mode'),
-                    'time_range': e0.get('time_range'),
-                    'time_start': e0.get('time_start'),
-                    'time_end': e0.get('time_end'),
                 }
                 dr = e0.get('date_range')
                 if isinstance(dr, list) and len(dr) == 2:
                     d0['valid_start'] = str(dr[0]); d0['valid_end'] = str(dr[1])
+                # T2 (ADR 0100): whether time_end is searched independently (2-dim)
+                # vs. following time_start at a fixed offset (1-dim).
+                opt0 = e0.get('optimize', {})
+                t2e0 = opt0.get('time_end')
+                d0['_time2dim'] = isinstance(t2e0, list) and len(t2e0) == 2
+                d0['_width_min'] = max(0, _hhmm_to_min(d0['time_end']) - _hhmm_to_min(d0['time_start']))
                 decoded[eid] = d0
             d = decoded[eid]
             if spec['kind'] == 'value':
                 d['value'] = float(x[i])
-            elif spec['kind'] == 'time':
+            elif spec['kind'] == 'time_start':
                 si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
-                d['time'] = spec['slots'][si]
+                d['time_start'] = spec['slots'][si]
+                if not d['_time2dim']:
+                    d['time_end'] = _shift_time(d['time_start'], d['_width_min'])
+            elif spec['kind'] == 'time_end':
+                si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
+                d['time_end'] = spec['slots'][si]
             elif spec['kind'] == 'days':
                 pi = max(0, min(len(spec['patterns']) - 1, int(round(float(x[i])))))
                 d['days'] = spec['patterns'][pi]
@@ -331,21 +357,16 @@ def run_optimizer(simulator_engine, model_name: str,
                 offset = max(0, min(spec['n_days'], int(round(float(x[i])))))
                 d['valid_end'] = str(_date.fromisoformat(spec['window_start']) + timedelta(days=offset))
         for d in decoded.values():
-            ev2: Dict = {'time': d['time'], 'value': float(d.get('value', 0))}
+            ev2: Dict = {
+                'value': float(d.get('value', 0)),
+                'time_start': d['time_start'], 'time_end': d['time_end'],
+            }
             if d.get('days') is not None:
                 ev2['days'] = d['days']
             if d.get('valid_start'):
                 ev2['valid_start'] = d['valid_start']
             if d.get('valid_end'):
                 ev2['valid_end'] = d['valid_end']
-            if d.get('mode'):
-                ev2['mode'] = d['mode']
-            if d.get('time_range'):
-                ev2['time_range'] = d['time_range']
-            if d.get('time_start') is not None:
-                ev2['time_start'] = d['time_start']
-            if d.get('time_end') is not None:
-                ev2['time_end'] = d['time_end']
             events_map.setdefault(d['variable'], []).append(ev2)
         return events_map
 

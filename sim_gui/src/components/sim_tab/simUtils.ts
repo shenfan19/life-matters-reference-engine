@@ -15,18 +15,23 @@ function expandTimeWindow(window: string, optStep = '1h'): string[] {
   return slots;
 }
 
+export function hhmmToMin(s: string): number {
+  const [h, m] = s.split(':').map(Number);
+  return h * 60 + m;
+}
+
+// Add widthMin minutes to an "HH:MM" time, wrapping past 24:00 to 00:00.
+// Mirrors optimizer_engine._shift_time (ADR 0100 T2 1-dim decode).
+export function shiftTime(start: string, widthMin: number): string {
+  const t = ((hhmmToMin(start) + widthMin) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
+
 // Resolve a raw YAML/regimen event's `[time_start, time_end)` interval (ADR 0100).
-// Mirrors regimen_runner._normalize_time_interval's equivalence table.
+// Mirrors regimen_runner._normalize_time_interval.
 export function normalizeTimeInterval(raw: any): { timeStart: string; timeEnd: string } {
-  if (raw?.time_start != null && raw?.time_end != null) {
-    return { timeStart: raw.time_start, timeEnd: raw.time_end };
-  }
-  if (raw?.mode === 'sustained') {
-    if (Array.isArray(raw.time_range)) return { timeStart: raw.time_range[0], timeEnd: raw.time_range[1] };
-    return { timeStart: '00:00', timeEnd: '24:00' };
-  }
-  const t = raw?.time ?? '08:00';
-  return { timeStart: t, timeEnd: t };
+  const timeStart = raw?.time_start ?? '08:00';
+  return { timeStart, timeEnd: raw?.time_end ?? timeStart };
 }
 
 // Migrate a persisted (localStorage) InputEvent from the pre-ADR-0100 field set
@@ -79,14 +84,14 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
     let xi = 0;
     for (const inp of scheduleOptEntries) {
       const opt = inp.optimize ?? {};
-      const matchTime = inp.time_start ?? inp.time;
+      const matchTime = inp.time_start;
       let idx = result.findIndex(ev =>
         ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
       );
       if (idx === -1) {
-        const t = inp.time_start ?? inp.time ?? '08:00';
+        const t = inp.time_start ?? '08:00';
         result.push({
-          id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
+          id: `opt-gen-${inp.variable}-${t}`,
           variable: inp.variable, label: inp.label || inp.variable,
           timeStart: t, timeEnd: inp.time_end ?? t,
           value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
@@ -99,12 +104,23 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
         if (xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
         xi++;
       }
-      // T2: time slot (pulse only)
-      if (Array.isArray(opt.time) && opt.time.length === 2) {
-        const slots = expandTimeWindow(`${opt.time[0]}~${opt.time[1]}`, opt.time_step ?? '1h');
+      // T2 (ADR 0100): optimize.time_start (1-dim, time_end follows at a fixed
+      // offset) + optional optimize.time_end (2-dim, searched independently).
+      const t2win = opt.time_start;
+      if (Array.isArray(t2win) && t2win.length === 2) {
+        const slots = expandTimeWindow(`${t2win[0]}~${t2win[1]}`, opt.time_step ?? '1h');
         const si = Math.max(0, Math.min(slots.length - 1, Math.round(x[xi] ?? 0)));
-        result[idx] = { ...result[idx], timeStart: slots[si], timeEnd: slots[si] };
+        const newStart = slots[si];
         xi++;
+        if (Array.isArray(opt.time_end) && opt.time_end.length === 2) {
+          const slotsEnd = expandTimeWindow(`${opt.time_end[0]}~${opt.time_end[1]}`, opt.time_step ?? '1h');
+          const sei = Math.max(0, Math.min(slotsEnd.length - 1, Math.round(x[xi] ?? 0)));
+          result[idx] = { ...result[idx], timeStart: newStart, timeEnd: slotsEnd[sei] };
+          xi++;
+        } else {
+          const widthMin = hhmmToMin(result[idx].timeEnd) - hhmmToMin(result[idx].timeStart);
+          result[idx] = { ...result[idx], timeStart: newStart, timeEnd: shiftTime(newStart, Math.max(0, widthMin)) };
+        }
       }
       // T3: days combo
       if (opt.days_pool) {

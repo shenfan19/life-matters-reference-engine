@@ -7,6 +7,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import type { InputEvent, SimPlan } from '../../types';
 import { getC } from '../../core/theme';
+import { hhmmToMin, shiftTime } from '../sim_tab/simUtils';
 
 interface OptSetupTabProps {
   inputEvents: InputEvent[];
@@ -132,28 +133,60 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
               {varDef?.unit && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>}
             </div>
 
-            {/* Unified time row (ADR 0100): timeStart -> timeEnd, or T2 window when pulse+optimizeTime */}
+            {/* Unified time row (ADR 0100): timeStart -> timeEnd, or 4-box T2 search window when optimizeTime.
+                T2 layout: [start_lo] ~ [start_hi] -> [end_lo] ~ [end_hi], all independently editable
+                bounds (the optimizer searches time_start within the first window and time_end within
+                the second). The step selector only sets the search increment within these bounds. */}
             {(() => {
               const isPulse = ev.timeStart === ev.timeEnd;
+              const winStart = ev.timeWindowStart ?? ev.timeStart;
+              const winEnd = ev.timeWindowEnd ?? ev.timeStart;
+              const endWinStart = ev.timeEndWindowStart ?? ev.timeEnd;
+              const endWinEnd = ev.timeEndWindowEnd ?? ev.timeEnd;
               return (
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                  {isPulse && (
-                    <Tog label="opt" active={!!ev.optimizeTime}
-                      title={ev.optimizeTime ? t('sim.opt.tog.opt_on_tip') : t('sim.opt.tog.opt_off_tip')}
-                      onToggle={() => updateInputEventOpt(ev.id, {
-                        optimizeTime: !ev.optimizeTime,
-                        ...(!ev.optimizeTime && { timeWindowStart: ev.timeWindowStart || ev.timeStart, timeWindowEnd: ev.timeWindowEnd || ev.timeStart }),
-                      })} />
-                  )}
-                  {isPulse && ev.optimizeTime ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 3 }}>
+                  <Tog label="opt" active={!!ev.optimizeTime}
+                    title={ev.optimizeTime ? t('sim.opt.tog.opt_on_tip') : t('sim.opt.tog.opt_off_tip')}
+                    onToggle={() => updateInputEventOpt(ev.id, {
+                      optimizeTime: !ev.optimizeTime,
+                      ...(!ev.optimizeTime && {
+                        timeWindowStart: ev.timeWindowStart || ev.timeStart,
+                        timeWindowEnd: ev.timeWindowEnd || ev.timeStart,
+                        timeEndWindowStart: ev.timeEndWindowStart || ev.timeEnd,
+                        timeEndWindowEnd: ev.timeEndWindowEnd || ev.timeEnd,
+                        optimizeTimeEnd: true,
+                      }),
+                    })} />
+                  {ev.optimizeTime ? (
                     <>
-                      <Input size="small" value={ev.timeWindowStart ?? ''} placeholder="HH:MM"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                        onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
+                      <Tooltip title={t('sim.opt.tog.time_start_window_tip')}>
+                        <Input size="small" value={winStart} placeholder="HH:MM"
+                          style={{ width: 58, fontFamily: 'monospace' }}
+                          onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
+                      </Tooltip>
                       <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small" value={ev.timeWindowEnd ?? ''} placeholder="HH:MM"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                        onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
+                      <Tooltip title={t('sim.opt.tog.time_start_window_tip')}>
+                        <Input size="small" value={winEnd} placeholder="HH:MM"
+                          style={{ width: 58, fontFamily: 'monospace' }}
+                          onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
+                      </Tooltip>
+                      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>→</span>
+                      <Tooltip title={t('sim.opt.tog.time_end_window_tip')}>
+                        <Input size="small" value={endWinStart} placeholder="HH:MM"
+                          style={{ width: 58, fontFamily: 'monospace' }}
+                          onChange={e => updateInputEventOpt(ev.id, { timeEndWindowStart: e.target.value })} />
+                      </Tooltip>
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Tooltip title={t('sim.opt.tog.time_end_window_tip')}>
+                        <Input size="small" value={endWinEnd} placeholder="HH:MM"
+                          style={{ width: 58, fontFamily: 'monospace' }}
+                          onChange={e => updateInputEventOpt(ev.id, { timeEndWindowEnd: e.target.value })} />
+                      </Tooltip>
+                      <Tooltip title={t('sim.opt.tog.time_step_tip')}>
+                        <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>
+                          {t('sim.opt.tog.time_step_label')}
+                        </span>
+                      </Tooltip>
                       <select value={ev.timeStep ?? '1h'} onChange={e => updateInputEventOpt(ev.id, { timeStep: e.target.value })}
                         style={{ width: 60, fontSize: 'inherit', padding: '1px 3px', borderRadius: 4 }}>
                         <option value="1h">1h</option>

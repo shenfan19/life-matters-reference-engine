@@ -84,7 +84,7 @@ export function useSimulation({
       .map(ev => ({
         variable: ev.variable,
         events: [{
-          id: ev.id, time: ev.timeStart, value: ev.value,
+          id: ev.id, value: ev.value,
           time_start: ev.timeStart, time_end: ev.timeEnd,
         }],
         days_enabled: ev.daysEnabled,
@@ -225,7 +225,7 @@ export function useSimulation({
           .filter(ev => localInputVars.includes(ev.variable))
           .map(ev => ({
             variable: ev.variable,
-            events: [{ id: ev.id, time: ev.timeStart, value: ev.value, time_start: ev.timeStart, time_end: ev.timeEnd }],
+            events: [{ id: ev.id, value: ev.value, time_start: ev.timeStart, time_end: ev.timeEnd }],
             days_enabled: ev.daysEnabled, days: ev.days,
             valid_range_enabled: ev.validRangeEnabled,
             valid_start: ev.validStart, valid_end: ev.validEnd,
@@ -282,7 +282,7 @@ export function useSimulation({
         .map(ev => ({
           variable: ev.variable,
           events: [{
-            id: ev.id, time: ev.timeStart, value: ev.value,
+            id: ev.id, value: ev.value,
             time_start: ev.timeStart, time_end: ev.timeEnd,
           }],
           days_enabled: ev.daysEnabled, days: ev.days,
