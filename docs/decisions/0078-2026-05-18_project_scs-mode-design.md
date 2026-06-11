@@ -147,6 +147,6 @@ SCS 模式下，当另一个模型正在运行时，当前模型的 Sim/Opt 运�
 
 ## 注意事项
 
-- **SCS_MODE 仅保护文件系统**。计算资源（并发仿真/优化数量）的限制尚未实现，见 task_sim.md → SCS 计算资源限制条目
-- **Session model 架构**：session key 前缀检测分散在多处，有改进空间。已记录为 task_sim.md → AA 条目
+- **SCS_MODE 仅保护文件系统**。计算资源（并发仿真/优化数量）的限制尚未实现，见 tasks/task_sim.md → SCS 计算资源限制条目
+- **Session model 架构**：session key 前缀检测分散在多处，有改进空间。已记录为 tasks/task_sim.md → AA 条目
 - **SaaS 路径**：未来引入用户账号体系时，鉴权层将替代 SCS_MODE；届时改动范围是整个 API 层

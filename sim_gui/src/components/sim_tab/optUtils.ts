@@ -37,23 +37,23 @@ export function buildOptSchedules(
     .map(ev => {
       const entry: Record<string, any> = {
         variable: ev.variable,
-        label: ev.label || `${ev.variable} ${ev.time}`,
+        label: ev.label || `${ev.variable} ${ev.timeStart}`,
       };
+      const isPulse = ev.timeStart === ev.timeEnd;
 
       if (hasAnyOpt(ev, activeInputVarNames)) {
         const optBlock: Record<string, any> = {};
         // T1: value bounds (only when value itself is being optimized)
         if (ev.optimizeValue && ev.valueBounds) optBlock.value = ev.valueBounds;
         else entry.value = ev.value;
-        // T2: time-window search
-        if (ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
+        // T2: time-window search (pulse only; doesn't set time_start/time_end —
+        // backend slot selection writes the resulting `time` field, ADR 0100)
+        if (isPulse && ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
           optBlock.time = [ev.timeWindowStart, ev.timeWindowEnd];
           if (ev.timeStep && ev.timeStep !== '1h') optBlock.time_step = ev.timeStep;
-        } else if (ev.sustained) {
-          entry.mode = 'sustained';
-          if (ev.timeRangeStart && ev.timeRangeEnd) entry.time_range = [ev.timeRangeStart, ev.timeRangeEnd];
-        } else if (ev.timeEnabled) {
-          entry.time = ev.time;
+        } else {
+          entry.time_start = ev.timeStart;
+          entry.time_end = ev.timeEnd;
         }
         // T3: days-pool search
         if (ev.optimizeDays && ev.daysPool?.length) {
@@ -74,12 +74,8 @@ export function buildOptSchedules(
       } else {
         // Fixed background input: pass through as-is
         entry.value = ev.value;
-        if (ev.sustained) {
-          entry.mode = 'sustained';
-          if (ev.timeRangeStart && ev.timeRangeEnd) entry.time_range = [ev.timeRangeStart, ev.timeRangeEnd];
-        } else if (ev.timeEnabled) {
-          entry.time = ev.time;
-        }
+        entry.time_start = ev.timeStart;
+        entry.time_end = ev.timeEnd;
         if (ev.daysEnabled) entry.days = ev.days.map((v, i) => v ? DAY_STRS[i] : null).filter(Boolean);
         if (ev.validRangeEnabled) entry.date_range = [ev.validStart, ev.validEnd];
       }

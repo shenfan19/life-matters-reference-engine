@@ -15,6 +15,41 @@ function expandTimeWindow(window: string, optStep = '1h'): string[] {
   return slots;
 }
 
+// Resolve a raw YAML/regimen event's `[time_start, time_end)` interval (ADR 0100).
+// Mirrors regimen_runner._normalize_time_interval's equivalence table.
+export function normalizeTimeInterval(raw: any): { timeStart: string; timeEnd: string } {
+  if (raw?.time_start != null && raw?.time_end != null) {
+    return { timeStart: raw.time_start, timeEnd: raw.time_end };
+  }
+  if (raw?.mode === 'sustained') {
+    if (Array.isArray(raw.time_range)) return { timeStart: raw.time_range[0], timeEnd: raw.time_range[1] };
+    return { timeStart: '00:00', timeEnd: '24:00' };
+  }
+  const t = raw?.time ?? '08:00';
+  return { timeStart: t, timeEnd: t };
+}
+
+// Migrate a persisted (localStorage) InputEvent from the pre-ADR-0100 field set
+// (time/timeEnabled/sustained/timeRangeStart/timeRangeEnd) to timeStart/timeEnd.
+// Already-migrated events are returned unchanged.
+export function migrateInputEvent(ev: any): InputEvent {
+  if (ev.timeStart !== undefined && ev.timeEnd !== undefined) return ev as InputEvent;
+  const { time, timeEnabled, sustained, timeRangeStart, timeRangeEnd, ...rest } = ev;
+  let timeStart: string, timeEnd: string;
+  if (sustained) {
+    timeStart = timeRangeStart ?? '00:00';
+    timeEnd = timeRangeEnd ?? '24:00';
+  } else {
+    const t = time ?? '08:00';
+    timeStart = t; timeEnd = t;
+  }
+  return { ...rest, timeStart, timeEnd } as InputEvent;
+}
+
+export function migrateInputEvents(events: any[]): InputEvent[] {
+  return (events ?? []).map(migrateInputEvent);
+}
+
 // Combinations helper for T3 days_pool
 function getCombinations<T>(arr: T[], n: number): T[][] {
   if (n === 0) return [[]];
@@ -44,14 +79,16 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
     let xi = 0;
     for (const inp of scheduleOptEntries) {
       const opt = inp.optimize ?? {};
+      const matchTime = inp.time_start ?? inp.time;
       let idx = result.findIndex(ev =>
-        ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
+        ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
       );
       if (idx === -1) {
+        const t = inp.time_start ?? inp.time ?? '08:00';
         result.push({
           id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
           variable: inp.variable, label: inp.label || inp.variable,
-          time: inp.time ?? '08:00', timeEnabled: !!inp.time,
+          timeStart: t, timeEnd: inp.time_end ?? t,
           value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
           validRangeEnabled: false, validStart: '', validEnd: '',
         });
@@ -62,11 +99,11 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
         if (xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
         xi++;
       }
-      // T2: time slot
+      // T2: time slot (pulse only)
       if (Array.isArray(opt.time) && opt.time.length === 2) {
         const slots = expandTimeWindow(`${opt.time[0]}~${opt.time[1]}`, opt.time_step ?? '1h');
         const si = Math.max(0, Math.min(slots.length - 1, Math.round(x[xi] ?? 0)));
-        result[idx] = { ...result[idx], time: slots[si] };
+        result[idx] = { ...result[idx], timeStart: slots[si], timeEnd: slots[si] };
         xi++;
       }
       // T3: days combo
@@ -107,14 +144,15 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
       if (!inp.optimize) continue;
       let idx = result.findIndex(ev =>
         ev.variable === inp.variable &&
-        (inp.time_window ? true : ev.time === (inp.time ?? ev.time))
+        (inp.time_window ? true : ev.timeStart === (inp.time ?? ev.timeStart))
       );
       // If no matching sim event exists, create one for this plan
       if (idx === -1) {
+        const t = inp.time ?? '08:00';
         result.push({
           id: `opt-gen-${inp.variable}-${inp.time ?? 'any'}`,
           variable: inp.variable, label: inp.label || inp.variable,
-          time: inp.time ?? '08:00', timeEnabled: !!inp.time,
+          timeStart: t, timeEnd: t,
           value: 0, daysEnabled: false, days: [true,true,true,true,true,true,true],
           validRangeEnabled: false, validStart: '', validEnd: '',
         });
@@ -125,11 +163,11 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
         if (idx >= 0 && xi < x.length) result[idx] = { ...result[idx], value: x[xi] };
         xi++;
       }
-      // T2: time slot
+      // T2: time slot (pulse only)
       if (inp.optimize.time && inp.time_window) {
         const slots = expandTimeWindow(inp.time_window, inp.opt_step ?? '1h');
         const si = Math.max(0, Math.min(slots.length - 1, Math.round(x[xi] ?? 0)));
-        if (idx >= 0) result[idx] = { ...result[idx], time: slots[si] };
+        if (idx >= 0) result[idx] = { ...result[idx], timeStart: slots[si], timeEnd: slots[si] };
         xi++;
       }
       // T3: day pattern
@@ -168,7 +206,7 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
     const varName = optimizerConfig.regimen.variable || '';
     (optimizerConfig.regimen.events || []).forEach((ev: any, i: number) => {
       if (i >= x.length) return;
-      const idx = result.findIndex(r => r.variable === varName && r.time === ev.time);
+      const idx = result.findIndex(r => r.variable === varName && r.timeStart === ev.time);
       if (idx >= 0) result[idx] = { ...result[idx], value: x[i] };
     });
   }
