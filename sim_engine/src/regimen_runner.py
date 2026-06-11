@@ -109,10 +109,23 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                     except Exception:
                         continue
                     t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
-                    fires = (
-                        (next_sec_of_day > t0_sec or prev_sec_of_day < t1_sec)
+                    # Split the step interval and the time_range window into
+                    # non-wrapping [start, end) ranges (each may wrap past
+                    # midnight independently of the other), then test overlap.
+                    step_ranges = (
+                        [(prev_sec_of_day, 86400), (0, next_sec_of_day)]
                         if day_boundary_crossed
-                        else (prev_sec_of_day < t1_sec and next_sec_of_day > t0_sec)
+                        else [(prev_sec_of_day, next_sec_of_day)]
+                    )
+                    win_ranges = (
+                        [(t0_sec, 86400), (0, t1_sec)]
+                        if t0_sec >= t1_sec
+                        else [(t0_sec, t1_sec)]
+                    )
+                    fires = any(
+                        a0 < b1 and b0 < a1
+                        for a0, a1 in step_ranges
+                        for b0, b1 in win_ranges
                     )
                 else:
                     fires = True

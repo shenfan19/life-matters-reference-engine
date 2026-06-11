@@ -61,7 +61,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
       )}
       {inputEvents.map(ev => {
         const varDef = inputVars.find(v => v.name === ev.variable);
-        const hasDetails = ev.timeEnabled || ev.daysEnabled || ev.validRangeEnabled;
+        const hasDetails = ev.timeEnabled || ev.daysEnabled || ev.validRangeEnabled || ev.sustained;
         return (
           <div key={ev.id} style={{ marginBottom: 5, border: `1px solid ${c.border}`, borderRadius: 5, padding: '4px 6px', background: c.panel }}>
             <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
@@ -71,6 +71,7 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
               </select>
               <Tog label={t('sim.setup.tog.value')} active title={t('sim.setup.tog.value_tip')} onToggle={() => {}} />
               <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled} title={t('sim.setup.tog.time_tip')} onToggle={() => updateInputEvent(ev.id, { timeEnabled: !ev.timeEnabled })} />
+              <Tog label={t('sim.setup.tog.sustained')} active={!!ev.sustained} title={t('sim.setup.tog.sustained_tip')} onToggle={() => updateInputEvent(ev.id, { sustained: !ev.sustained })} />
               <Tog label={t('sim.setup.tog.day')} active={ev.daysEnabled} title={t('sim.setup.tog.day_tip')} onToggle={() => updateInputEvent(ev.id, { daysEnabled: !ev.daysEnabled })} />
               <Tog label={t('sim.setup.tog.range')} active={ev.validRangeEnabled} title={t('sim.setup.tog.range_tip')} onToggle={() => updateInputEvent(ev.id, {
                 validRangeEnabled: !ev.validRangeEnabled,
@@ -88,10 +89,21 @@ const SimSetupTab: React.FC<SimSetupTabProps> = ({
             </div>
             {hasDetails && (
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
-                {ev.timeEnabled && (
+                {ev.timeEnabled && !ev.sustained && (
                   <Input size="small" value={ev.time} placeholder="HH:MM"
                     style={{ width: 58, fontFamily: 'monospace' }}
                     onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
+                )}
+                {ev.sustained && (
+                  <>
+                    <Input size="small" value={ev.timeRangeStart} placeholder="HH:MM"
+                      style={{ width: 58, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEvent(ev.id, { timeRangeStart: e.target.value })} />
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>–</span>
+                    <Input size="small" value={ev.timeRangeEnd} placeholder="HH:MM"
+                      style={{ width: 58, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEvent(ev.id, { timeRangeEnd: e.target.value })} />
+                  </>
                 )}
                 {ev.daysEnabled && (
                   <div style={{ display: 'flex', gap: 2 }}>

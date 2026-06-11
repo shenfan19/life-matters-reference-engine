@@ -550,13 +550,19 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
             validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
           }
+          const sustained = s.mode === 'sustained';
           newInputEvents.push({
             id: `${name}-sched${i}`, variable: name,
-            time: s.time ?? '08:00', timeEnabled: !!s.time,
+            time: s.time ?? '08:00', timeEnabled: !sustained && !!s.time,
             value: s.value ?? data.value ?? 0, label: s.label ?? '',
             daysEnabled: hasDays,
             days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
             validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
+            ...(sustained ? {
+              sustained: true,
+              timeRangeStart: Array.isArray(s.time_range) ? s.time_range[0] : undefined,
+              timeRangeEnd: Array.isArray(s.time_range) ? s.time_range[1] : undefined,
+            } : {}),
           });
         });
       } else if (schedDict[name]?.points?.length) {
@@ -603,13 +609,19 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (!vs && !ve && Array.isArray(s.date_range) && s.date_range.length === 2) {
                 vs = String(s.date_range[0]); ve = String(s.date_range[1]);
               }
+              const sustained = s.mode === 'sustained';
               planEvents.push({
                 id: `${plan.id ?? `plan${i}`}-${name}-${j}`, variable: name,
-                time: s.time ?? '08:00', timeEnabled: !!s.time,
+                time: s.time ?? '08:00', timeEnabled: !sustained && !!s.time,
                 value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
                 daysEnabled: hasDays,
                 days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
                 validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
+                ...(sustained ? {
+                  sustained: true,
+                  timeRangeStart: Array.isArray(s.time_range) ? s.time_range[0] : undefined,
+                  timeRangeEnd: Array.isArray(s.time_range) ? s.time_range[1] : undefined,
+                } : {}),
               });
             });
           } else {
@@ -705,6 +717,14 @@ const Simulator: React.FC<SimulatorProps> = ({
                 const patch: Partial<typeof updated[0]> = { optimizeValue: true };
                 if (Array.isArray(opt.value) && opt.value.length >= 2)
                   patch.valueBounds = [opt.value[0], opt.value[1]];
+                // Sustained mode (ADR 0098)
+                if (inp.mode === 'sustained') {
+                  patch.sustained = true;
+                  if (Array.isArray(inp.time_range)) {
+                    patch.timeRangeStart = inp.time_range[0];
+                    patch.timeRangeEnd = inp.time_range[1];
+                  }
+                }
                 // T2
                 if (Array.isArray(opt.time) && opt.time.length === 2) {
                   patch.optimizeTime = true;

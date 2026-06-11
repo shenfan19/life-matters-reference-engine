@@ -49,6 +49,9 @@ export function buildOptSchedules(
         if (ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
           optBlock.time = [ev.timeWindowStart, ev.timeWindowEnd];
           if (ev.timeStep && ev.timeStep !== '1h') optBlock.time_step = ev.timeStep;
+        } else if (ev.sustained) {
+          entry.mode = 'sustained';
+          if (ev.timeRangeStart && ev.timeRangeEnd) entry.time_range = [ev.timeRangeStart, ev.timeRangeEnd];
         } else if (ev.timeEnabled) {
           entry.time = ev.time;
         }
@@ -71,7 +74,12 @@ export function buildOptSchedules(
       } else {
         // Fixed background input: pass through as-is
         entry.value = ev.value;
-        if (ev.timeEnabled) entry.time = ev.time;
+        if (ev.sustained) {
+          entry.mode = 'sustained';
+          if (ev.timeRangeStart && ev.timeRangeEnd) entry.time_range = [ev.timeRangeStart, ev.timeRangeEnd];
+        } else if (ev.timeEnabled) {
+          entry.time = ev.time;
+        }
         if (ev.daysEnabled) entry.days = ev.days.map((v, i) => v ? DAY_STRS[i] : null).filter(Boolean);
         if (ev.validRangeEnabled) entry.date_range = [ev.validStart, ev.validEnd];
       }

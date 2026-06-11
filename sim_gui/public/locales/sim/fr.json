@@ -163,6 +163,8 @@
   "sim.setup.tog.day_opt_tip": "Optimiser les jours d'exécution (définir les motifs via YAML days_options)",
   "sim.setup.tog.range": "P",
   "sim.setup.tog.range_tip": "Définir la plage de validité",
+  "sim.setup.tog.sustained": "Sou",
+  "sim.setup.tog.sustained_tip": "Mode soutenu : déclenché à chaque pas correspondant (pas seulement à un instant unique), avec une fenêtre horaire quotidienne optionnelle",
   "sim.setup.daily": "quotidien",
   "sim.setup.opt.date_start_label": "de",
   "sim.setup.opt.date_end_label": "à",
