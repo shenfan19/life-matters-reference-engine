@@ -15,7 +15,7 @@ import SimIntroTab from './sim_tab/SimIntroTab';
 import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
 import SimReportTab from './sim_tab/SimReportTab';
-import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP } from './sim_tab/simUtils';
+import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, normalizeTimeInterval, migrateInputEvents } from './sim_tab/simUtils';
 import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
@@ -296,7 +296,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── inputEvents state ────────────────────────────────────────────────────────
   const [inputEvents, setInputEvents] = useState<InputEvent[]>(() => {
     const saved = readSP();
-    if (saved?.inputEvents) return saved.inputEvents;
+    if (saved?.inputEvents) return migrateInputEvents(saved.inputEvents);
     if (saved?.regimens) {
       const events: InputEvent[] = [];
       for (const r of (saved.regimens || [])) {
@@ -305,8 +305,8 @@ const Simulator: React.FC<SimulatorProps> = ({
           events.push({
             id: `${r.id}-${ev.id}`,
             variable: r.variable,
-            time: ev.time,
-            timeEnabled: true,
+            timeStart: ev.time,
+            timeEnd: ev.time,
             value: ev.value,
             label: ev.time,
             daysEnabled: r.daysEnabled ?? false,
@@ -439,9 +439,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       const labels: string[] = [];
       if (optBlock.inputs) {
         for (const conf of Object.values(optBlock.inputs as Record<string, any>))
-          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time || '');
+          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time_start || ev.time || '');
       } else if (optBlock.regimen?.events) {
-        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time || '');
+        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time_start || ev.time || '');
       }
       const parseDir2 = (d: string) => d === 'maximize' ? 'maximize' : 'minimize' as const;
       const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
@@ -467,8 +467,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     // ── 3. Session exists → restore user state, skip YAML defaults ──
     const session = modelSessionsRef.current[selectedModel.key];
     if (session) {
-      setInputEvents(session.inputEvents);
-      setPlans(session.plans);
+      setInputEvents(migrateInputEvents(session.inputEvents));
+      setPlans(session.plans.map(p => ({ ...p, inputEvents: migrateInputEvents(p.inputEvents) })));
       setActivePlanId(session.activePlanId);
       set('simStartDate', session.simStartDate);
       set('simEndDate', session.simEndDate);
@@ -493,8 +493,9 @@ const Simulator: React.FC<SimulatorProps> = ({
             const updated = prev.map(ev => ({ ...ev }));
             for (const inp of withOpt) {
               const opt = inp.optimize ?? {};
+              const matchTime = inp.time_start ?? inp.time;
               const idx = updated.findIndex(ev =>
-                ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
+                ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
               );
               if (idx >= 0 && updated[idx].optimizeValue === undefined) {
                 const patch: Partial<typeof updated[0]> = { optimizeValue: true };
@@ -550,19 +551,14 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
             validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
           }
-          const sustained = s.mode === 'sustained';
+          const { timeStart, timeEnd } = normalizeTimeInterval(s);
           newInputEvents.push({
             id: `${name}-sched${i}`, variable: name,
-            time: s.time ?? '08:00', timeEnabled: !sustained && !!s.time,
+            timeStart, timeEnd,
             value: s.value ?? data.value ?? 0, label: s.label ?? '',
             daysEnabled: hasDays,
             days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
             validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
-            ...(sustained ? {
-              sustained: true,
-              timeRangeStart: Array.isArray(s.time_range) ? s.time_range[0] : undefined,
-              timeRangeEnd: Array.isArray(s.time_range) ? s.time_range[1] : undefined,
-            } : {}),
           });
         });
       } else if (schedDict[name]?.points?.length) {
@@ -576,7 +572,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           if (seen.has(t2)) return;
           seen.add(t2);
           newInputEvents.push({
-            id: `${name}-ev${idx}`, variable: name, time: t2, timeEnabled: true,
+            id: `${name}-ev${idx}`, variable: name, timeStart: t2, timeEnd: t2,
             value: pt.value ?? 0, label: '',
             daysEnabled: false, days: [true,true,true,true,true,true,true],
             validRangeEnabled: false, validStart: '', validEnd: '',
@@ -584,7 +580,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         });
       } else {
         newInputEvents.push({
-          id: `${name}-ev0`, variable: name, time: '08:00', timeEnabled: false,
+          id: `${name}-ev0`, variable: name, timeStart: '08:00', timeEnd: '08:00',
           value: data.value ?? 0, label: '',
           daysEnabled: false, days: [true,true,true,true,true,true,true],
           validRangeEnabled: false, validStart: '', validEnd: '',
@@ -609,25 +605,20 @@ const Simulator: React.FC<SimulatorProps> = ({
               if (!vs && !ve && Array.isArray(s.date_range) && s.date_range.length === 2) {
                 vs = String(s.date_range[0]); ve = String(s.date_range[1]);
               }
-              const sustained = s.mode === 'sustained';
+              const { timeStart, timeEnd } = normalizeTimeInterval(s);
               planEvents.push({
                 id: `${plan.id ?? `plan${i}`}-${name}-${j}`, variable: name,
-                time: s.time ?? '08:00', timeEnabled: !sustained && !!s.time,
+                timeStart, timeEnd,
                 value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
                 daysEnabled: hasDays,
                 days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
                 validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
-                ...(sustained ? {
-                  sustained: true,
-                  timeRangeStart: Array.isArray(s.time_range) ? s.time_range[0] : undefined,
-                  timeRangeEnd: Array.isArray(s.time_range) ? s.time_range[1] : undefined,
-                } : {}),
               });
             });
           } else {
             planEvents.push({
               id: `${plan.id ?? `plan${i}`}-${name}-ev0`, variable: name,
-              time: '08:00', timeEnabled: false, value: vdata.value ?? 0, label: '',
+              timeStart: '08:00', timeEnd: '08:00', value: vdata.value ?? 0, label: '',
               daysEnabled: false, days: [true,true,true,true,true,true,true],
               validRangeEnabled: false, validStart: '', validEnd: '',
             });
@@ -710,19 +701,24 @@ const Simulator: React.FC<SimulatorProps> = ({
             const updated = prev.map(ev => ({ ...ev }));
             for (const inp of withOpt) {
               const opt = inp.optimize ?? {};
+              const matchTime = inp.time_start ?? inp.time;
               const idx = updated.findIndex(ev =>
-                ev.variable === inp.variable && (!inp.time || ev.time === inp.time)
+                ev.variable === inp.variable && (!matchTime || ev.timeStart === matchTime)
               );
               if (idx >= 0) {
                 const patch: Partial<typeof updated[0]> = { optimizeValue: true };
                 if (Array.isArray(opt.value) && opt.value.length >= 2)
                   patch.valueBounds = [opt.value[0], opt.value[1]];
-                // Sustained mode (ADR 0098)
-                if (inp.mode === 'sustained') {
-                  patch.sustained = true;
+                // Unified pulse/sustained interval (ADR 0100)
+                if (inp.time_start != null && inp.time_end != null) {
+                  patch.timeStart = inp.time_start;
+                  patch.timeEnd = inp.time_end;
+                } else if (inp.mode === 'sustained') {
                   if (Array.isArray(inp.time_range)) {
-                    patch.timeRangeStart = inp.time_range[0];
-                    patch.timeRangeEnd = inp.time_range[1];
+                    patch.timeStart = inp.time_range[0];
+                    patch.timeEnd = inp.time_range[1];
+                  } else {
+                    patch.timeStart = '00:00'; patch.timeEnd = '24:00';
                   }
                 }
                 // T2
@@ -1176,7 +1172,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     sessionEditedRef.current = true;
     invalidateSim();
     setInputEvents(prev => [...prev, {
-      id, variable: firstInputVar.name, time: '08:00', timeEnabled: false,
+      id, variable: firstInputVar.name, timeStart: '08:00', timeEnd: '08:00',
       value: firstInputVar.value ?? 0, label: '',
       daysEnabled: false, days: [true,true,true,true,true,true,true],
       validRangeEnabled: false, validStart: '', validEnd: '',

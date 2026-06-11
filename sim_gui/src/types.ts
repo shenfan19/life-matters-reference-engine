@@ -139,8 +139,12 @@ export interface SimulatorProps {
 export interface InputEvent {
   id: string;
   variable: string;
-  time: string;
-  timeEnabled: boolean;
+  // Unified pulse/sustained interval (ADR 0100): [timeStart, timeEnd).
+  // timeStart === timeEnd => pulse (fires once); otherwise => sustained
+  // (incl. "00:00"~"24:00" = full day, just the full-width value of the
+  // same interval, not a separate state).
+  timeStart: string;
+  timeEnd: string;
   value: number;
   label: string;
   daysEnabled: boolean;
@@ -148,11 +152,6 @@ export interface InputEvent {
   validRangeEnabled: boolean;
   validStart: string;
   validEnd: string;
-  // Sustained mode (ADR 0098): event fires every step matching days/date_range
-  // instead of only at `time`; optional time_range restricts to a sub-day window.
-  sustained?: boolean;
-  timeRangeStart?: string;
-  timeRangeEnd?: string;
   // Opt fields — optional; default false/inactive
   // T1: optimize value
   optimizeValue?: boolean;

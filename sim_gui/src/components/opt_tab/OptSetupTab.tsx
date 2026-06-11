@@ -90,12 +90,6 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
               <Select size="small" value={ev.variable} style={{ flex: 1, minWidth: 0 }}
                 options={inputVars.map(v => ({ label: v.name, value: v.name }))}
                 onChange={v => updateInputEvent(ev.id, { variable: v })} />
-              <Tog label={t('sim.setup.tog.time')} active={ev.timeEnabled}
-                title={t('sim.setup.tog.time_tip')}
-                onToggle={() => updateInputEventOpt(ev.id, { timeEnabled: !ev.timeEnabled, ...(!ev.timeEnabled && { optimizeTime: false }) })} />
-              <Tog label={t('sim.setup.tog.sustained')} active={!!ev.sustained}
-                title={t('sim.setup.tog.sustained_tip')}
-                onToggle={() => updateInputEventOpt(ev.id, { sustained: !ev.sustained, ...(!ev.sustained && { optimizeTime: false }) })} />
               <Tog label={t('sim.setup.tog.day')} active={ev.daysEnabled}
                 title={t('sim.setup.tog.day_tip')}
                 onToggle={() => updateInputEventOpt(ev.id, { daysEnabled: !ev.daysEnabled, ...(!ev.daysEnabled && { optimizeDays: false }) })} />
@@ -136,52 +130,67 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                   onChange={v => updateInputEvent(ev.id, { value: v ?? 0 })} />
               )}
               {varDef?.unit && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>{varDef.unit}</span>}
-              {!ev.timeEnabled && !ev.daysEnabled && <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>· {t('sim.setup.daily')}</span>}
             </div>
 
-            {/* Sustained mode: time_range row (mode: sustained, ADR 0098) */}
-            {ev.sustained && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                <Input size="small" value={ev.timeRangeStart ?? ''} placeholder="HH:MM"
-                  style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                  onChange={e => updateInputEventOpt(ev.id, { timeRangeStart: e.target.value })} />
-                <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>–</span>
-                <Input size="small" value={ev.timeRangeEnd ?? ''} placeholder="HH:MM"
-                  style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                  onChange={e => updateInputEventOpt(ev.id, { timeRangeEnd: e.target.value })} />
-              </div>
-            )}
-
-            {/* T2: time row */}
-            {ev.timeEnabled && !ev.sustained && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                <Tog label="opt" active={!!ev.optimizeTime}
-                  onToggle={() => updateInputEventOpt(ev.id, {
-                    optimizeTime: !ev.optimizeTime,
-                    ...(!ev.optimizeTime && { timeWindowStart: ev.timeWindowStart || ev.time, timeWindowEnd: ev.timeWindowEnd || ev.time }),
-                  })} />
-                {ev.optimizeTime ? (
-                  <>
-                    <Input size="small" value={ev.timeWindowStart ?? ''} placeholder="HH:MM"
-                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                      onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
-                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                    <Input size="small" value={ev.timeWindowEnd ?? ''} placeholder="HH:MM"
-                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
-                      onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
-                    <select value={ev.timeStep ?? '1h'} onChange={e => updateInputEventOpt(ev.id, { timeStep: e.target.value })}
-                      style={{ width: 60, fontSize: 'inherit', padding: '1px 3px', borderRadius: 4 }}>
-                      <option value="1h">1h</option>
-                      <option value="15min">15min</option>
-                    </select>
-                  </>
-                ) : (
-                  <Input size="small" value={ev.time} placeholder="HH:MM"
-                    style={{ width: 70, fontFamily: 'monospace' }}
-                    onChange={e => updateInputEvent(ev.id, { time: e.target.value })} />
-                )}
-              </div>
-            )}
+            {/* Unified time row (ADR 0100): timeStart -> timeEnd, or T2 window when pulse+optimizeTime */}
+            {(() => {
+              const isPulse = ev.timeStart === ev.timeEnd;
+              return (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
+                  {isPulse && (
+                    <Tog label="opt" active={!!ev.optimizeTime}
+                      title={ev.optimizeTime ? t('sim.opt.tog.opt_on_tip') : t('sim.opt.tog.opt_off_tip')}
+                      onToggle={() => updateInputEventOpt(ev.id, {
+                        optimizeTime: !ev.optimizeTime,
+                        ...(!ev.optimizeTime && { timeWindowStart: ev.timeWindowStart || ev.timeStart, timeWindowEnd: ev.timeWindowEnd || ev.timeStart }),
+                      })} />
+                  )}
+                  {isPulse && ev.optimizeTime ? (
+                    <>
+                      <Input size="small" value={ev.timeWindowStart ?? ''} placeholder="HH:MM"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                        onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
+                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                      <Input size="small" value={ev.timeWindowEnd ?? ''} placeholder="HH:MM"
+                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                        onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
+                      <select value={ev.timeStep ?? '1h'} onChange={e => updateInputEventOpt(ev.id, { timeStep: e.target.value })}
+                        style={{ width: 60, fontSize: 'inherit', padding: '1px 3px', borderRadius: 4 }}>
+                        <option value="1h">1h</option>
+                        <option value="15min">15min</option>
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <Tooltip title={t('sim.setup.time_start_tip')}>
+                        <Input size="small" value={ev.timeStart} placeholder="HH:MM"
+                          style={{ width: 58, fontFamily: 'monospace' }}
+                          onChange={e => updateInputEvent(ev.id, {
+                            timeStart: e.target.value,
+                            ...(isPulse ? { timeEnd: e.target.value } : {}),
+                          })} />
+                      </Tooltip>
+                      <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>→</span>
+                      <Tooltip title={t('sim.setup.time_end_tip')}>
+                        <Input size="small" value={ev.timeEnd} placeholder="HH:MM"
+                          style={{
+                            width: 58, fontFamily: 'monospace',
+                            color: isPulse ? c.textMute : c.text,
+                            borderStyle: isPulse ? 'dashed' : 'solid',
+                          }}
+                          onChange={e => updateInputEvent(ev.id, { timeEnd: e.target.value })} />
+                      </Tooltip>
+                      {!isPulse && (
+                        <Tooltip title={t('sim.setup.time_collapse_tip')}>
+                          <span onClick={() => updateInputEvent(ev.id, { timeEnd: ev.timeStart })}
+                            style={{ cursor: 'pointer', color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1, padding: '0 2px' }}>×</span>
+                        </Tooltip>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* T3: days row */}
             {ev.daysEnabled && (
