@@ -63,7 +63,7 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     Uses apply_regimens() from regimen_runner (pulse reset + accumulate) — same
     kernel as the GUI sim path, eliminating the duplicate implementation.
     """
-    from .regimen_runner import apply_regimens
+    from .regimen_runner import apply_regimens, precompute_sustained_divisors
 
     model.reset_simulation()
 
@@ -77,6 +77,8 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
         {'variable': var_name, 'events': evts}
         for var_name, evts in regimen_events_by_var.items()
     ]
+    # ADR 0099: precompute sustained-mode value/_n_steps divisors once per run
+    regimens_list = precompute_sustained_divisors(regimens_list, step_size_sec, total_steps, sim_start_date)
 
     history: Dict[str, List[float]] = {n: [] for n in model.variables}
     for i in range(total_steps):

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .regimen_runner import apply_regimens
+from .regimen_runner import apply_regimens, precompute_sustained_divisors
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,9 @@ class SessionManagerMixin:
             if n_runs > 1:
                 initial_logs.append(_make_log(f"MC: {n_runs} runs, seed {session_seed}"))
             # ──────────────────────────────────────────────────────────────────
+
+            # ADR 0099: precompute sustained-mode value/_n_steps divisors once
+            regimens = precompute_sustained_divisors(regimens or [], step_size, total_steps, start_date)
 
             self.sessions[session_id] = {
                 'model': runs[0]['model'],

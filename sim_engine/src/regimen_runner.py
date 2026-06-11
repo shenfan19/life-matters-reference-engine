@@ -7,11 +7,103 @@
 # handled here in one place so the logic is never duplicated.
 
 import logging
+import math
 from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
 
 _DAY_STR = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+
+
+def _time_range_day_seconds(time_range) -> float:
+    """Seconds-per-day covered by a `time_range: ["HH:MM","HH:MM"]` window.
+
+    No/invalid time_range = full day (86400s). A window where end <= start
+    wraps past midnight (or, if equal, covers the full day) — same convention
+    as the `fires` check in apply_regimens.
+    """
+    if not time_range:
+        return 86400.0
+    try:
+        t0h, t0m = map(int, time_range[0].split(':'))
+        t1h, t1m = map(int, time_range[1].split(':'))
+    except Exception:
+        return 86400.0
+    t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
+    if t1_sec > t0_sec:
+        return float(t1_sec - t0_sec)
+    return float(86400 - t0_sec + t1_sec)
+
+
+def _n_active_days(ev: dict, reg: dict, sim_start_date: str, total_steps: int,
+                    step_size_sec: float) -> int:
+    """Number of calendar days the sustained event is active on.
+
+    Date span = event/regimen valid_range if set, else the whole simulation
+    span (derived from total_steps * step_size_sec). Within that span, only
+    days matching the `days` filter (event-level string list, opt path, or
+    regimen-level boolean mask, GUI path) count.
+    """
+    try:
+        epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
+    except ValueError:
+        epoch = date(1900, 1, 1)
+
+    vs = ev.get('valid_start') or (reg.get('valid_start') if reg.get('valid_range_enabled') else None)
+    ve = ev.get('valid_end') or (reg.get('valid_end') if reg.get('valid_range_enabled') else None)
+    span_start = epoch
+    span_days = max(1, math.ceil(total_steps * step_size_sec / 86400.0))
+    if vs and ve:
+        try:
+            d0, d1 = date.fromisoformat(vs), date.fromisoformat(ve)
+            span_start, span_days = d0, max(1, (d1 - d0).days + 1)
+        except ValueError:
+            pass
+
+    days_mask = None
+    ev_days = ev.get('days')
+    if ev_days:
+        days_mask = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
+    elif reg.get('days_enabled'):
+        mask = reg.get('days', [True] * 7)
+        days_mask = {i for i in range(7) if i < len(mask) and mask[i]}
+
+    if not days_mask or len(days_mask) == 7:
+        return span_days
+    count = sum(1 for i in range(span_days) if (span_start + timedelta(days=i)).weekday() in days_mask)
+    return max(count, 1)
+
+
+def precompute_sustained_divisors(regimens: list, step_size_sec: float, total_steps: int,
+                                   sim_start_date: str = '') -> list:
+    """Annotate `mode: sustained` events with `_n_steps` (ADR 0099).
+
+    `value` for sustained entries is the total over the entire active window;
+    apply_regimens divides by `_n_steps` each firing step so the cumulative
+    contribution equals `value` regardless of step_size (pulse, with implicit
+    `_n_steps == 1`, is the special case of the same rule).
+
+    Returns a new list; does not mutate the input regimens/events.
+    """
+    out = []
+    for reg in regimens:
+        events = reg.get('events', [])
+        if not events:
+            out.append(reg)
+            continue
+        new_events = []
+        changed = False
+        for ev in events:
+            if ev.get('mode') == 'sustained':
+                day_sec = _time_range_day_seconds(ev.get('time_range'))
+                n_active_days = _n_active_days(ev, reg, sim_start_date, total_steps, step_size_sec)
+                window_sec = n_active_days * day_sec
+                ev = dict(ev)
+                ev['_n_steps'] = max(1, round(window_sec / step_size_sec))
+                changed = True
+            new_events.append(ev)
+        out.append({**reg, 'events': new_events} if changed else reg)
+    return out
 
 
 def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
@@ -37,6 +129,13 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
     lets sub-day-step models (step_size: hour/minute) represent a "sustained
     intensity" input over a multi-step window without one schedule entry per
     step.
+
+    `value` for sustained events is the TOTAL over the active window, not a
+    per-step amount (ADR 0099): each firing step adds `value / _n_steps`,
+    where `_n_steps` is precomputed by `precompute_sustained_divisors()` and
+    stashed on the event as `_n_steps`. This keeps the cumulative
+    contribution equal to `value` regardless of step_size — pulse events
+    (`_n_steps` absent, treated as 1) are the same rule's special case.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
@@ -145,8 +244,10 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
 
             if fires:
                 current = model.variables[variable].value
-                model.set_variable_value(variable, current + float(ev.get('value', 0)))
+                n_steps = ev.get('_n_steps', 1) if ev.get('mode') == 'sustained' else 1
+                delta = float(ev.get('value', 0)) / n_steps
+                model.set_variable_value(variable, current + delta)
                 logger.debug(
                     "Regimen fired: %s += %s @ t=%.0fs (%s)",
-                    variable, ev.get('value', 0), prev_time, ev.get('mode', ev.get('time', '')),
+                    variable, delta, prev_time, ev.get('mode', ev.get('time', '')),
                 )
