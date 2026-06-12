@@ -14,7 +14,6 @@ import OptSetupTab from './opt_tab/OptSetupTab';
 import SimIntroTab from './sim_tab/SimIntroTab';
 import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
-import SimReportTab from './sim_tab/SimReportTab';
 import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, normalizeTimeInterval, migrateInputEvents } from './sim_tab/simUtils';
 import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
@@ -23,7 +22,7 @@ import { OptControlBar } from './opt_tab/OptControlBar';
 import { useOptimizer } from './opt_tab/useOptimizer';
 import { useSimulation } from './sim_tab/useSimulation';
 
-type CenterTab = 'intro' | 'simulation' | 'optimization' | 'report' | 'builder';
+type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
@@ -256,13 +255,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     finally { setCreatingFile(false); }
   };
 
-  // ── report tab ───────────────────────────────────────────────────────────────
-  const [reportSections, setReportSections] = useState<Set<string>>(
-    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg', 'plots', 'refs'])
-  );
-  const [openReportPreviews, setOpenReportPreviews] = useState<Set<string>>(
-    new Set(['intro', 'overview', 'formulas', 'variables', 'simcfg'])
-  );
+  // ── report export (in Overview tab) ────────────────────────────────────────
   const [reportGenerating, setReportGenerating] = useState(false);
   const [runOutputVars, setRunOutputVars] = useState<string[]>([]);
   const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
@@ -286,8 +279,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       setCenterTab('simulation');
     } else if (tab === 'opt' || tab === 'optimization') {
       setCenterTab('optimization');
-    } else if (tab === 'report') {
-      setCenterTab('report');
     } else {
       setCenterTab('intro');
     }
@@ -1420,7 +1411,6 @@ const Simulator: React.FC<SimulatorProps> = ({
               { key: 'intro',        label: t('sim.tab.overview') },
               { key: 'simulation',   label: t('sim.tab.simulation') },
               { key: 'optimization', label: t('sim.tab.optimization') },
-              { key: 'report',       label: t('sim.tab.report') },
             ] as { key: CenterTab; label: string }[]).map(tab => {
               const isActive = centerTab === tab.key;
               const locked = builderOpen;
@@ -1469,7 +1459,15 @@ const Simulator: React.FC<SimulatorProps> = ({
                 selectedModel={selectedModel} outputVars={outputVars}
                 formulas={formulas} provenance={provenance}
                 introOpen={introOpen} setIntroOpen={setIntroOpen}
-                isDarkMode={isDarkMode} c={c} t={t}
+                simulationData={simulationData} dataPerRun={dataPerRun}
+                inputParams={inputParams}
+                simStartDate={simStartDate} simEndDate={simEndDate}
+                stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
+                objectives={objectives} constraints={constraints}
+                optAlgo={optAlgo} optPop={optPop} optGen={optGen}
+                optResult={optResult} optElapsed={optElapsed} optMethod={optMethod}
+                reportGenerating={reportGenerating} setReportGenerating={setReportGenerating}
+                isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
               />
             </div>
           )}
@@ -1565,24 +1563,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} isDarkMode={isDarkMode} />}
-            />
-          )}
-
-          {centerTab === 'report' && (
-            <SimReportTab
-              selectedModel={selectedModel}
-              simulationData={simulationData} dataPerRun={dataPerRun}
-              outputVars={outputVars} stateVars={stateVars} inputVars={inputVars}
-              formulas={formulas} inputParams={inputParams}
-              simStartDate={simStartDate} simEndDate={simEndDate}
-              stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
-              objectives={objectives} constraints={constraints}
-              optAlgo={optAlgo} optPop={optPop} optGen={optGen}
-              mode={mode}
-              reportSections={reportSections} setReportSections={setReportSections}
-              openReportPreviews={openReportPreviews} setOpenReportPreviews={setOpenReportPreviews}
-              reportGenerating={reportGenerating} setReportGenerating={setReportGenerating}
-              isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
             />
           )}
 
