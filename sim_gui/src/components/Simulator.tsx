@@ -19,6 +19,7 @@ import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
 import { OptControlBar } from './opt_tab/OptControlBar';
+import { GlobalModelToolbar } from './sim_tab/GlobalModelToolbar';
 import { useOptimizer } from './opt_tab/useOptimizer';
 import { useSimulation } from './sim_tab/useSimulation';
 
@@ -48,7 +49,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
     simRuns, mcSeed, sessionSeed,
   } = state;
-  const isSimulating = status === 'running';
 
   // ── SCS mode ─────────────────────────────────────────────────────────────────
   const [scsMode, setScsMode] = useState(false);
@@ -1263,13 +1263,26 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const isOtherRunning = scsMode && !!runningModelKey && runningModelKey !== selectedKey;
   const otherRunningTip = isOtherRunning ? t('sim.msg.other_running_tip', { name: runningModelTitle || '' }) : undefined;
+  const simRunningOrPaused = status === 'running' || status === 'paused';
+  const [introToolbarEl, setIntroToolbarEl] = useState<HTMLDivElement | null>(null);
 
-  const SimControls = (
+  const ModelToolbar = (rightContent?: React.ReactNode) => (
+    <GlobalModelToolbar
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning}
+      simRunning={simRunningOrPaused} optRunning={optRunning} hasOptResult={!!optResult}
+      onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
+      onReload={reloadFromYAML}
+      rightContent={rightContent}
+      t={t} c={c as any}
+    />
+  );
+
+  const SimControls = ModelToolbar(
     <SimControlBar
       status={status} sessionSeed={sessionSeed}
       plans={plans} simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
-      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''} optRunning={optRunning}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
       onStart={() => {
         // Snapshot current completed run before overwriting with new run
         if (simulationData.length > 0 && status === 'completed') {
@@ -1282,9 +1295,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         startSimulation();
       }} onPause={pauseSimulation} onResume={resumeSimulation}
       onReset={resetSimulation} onRunAllPlans={runAllPlans}
-      hasOptResult={!!optResult}
-      onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)} onExportCSV={exportSimCSV}
-      onImportCSV={importSimCSV} onReload={reloadFromYAML}
+      onExportCSV={exportSimCSV}
+      onImportCSV={importSimCSV}
       onSimStartDateChange={v => set('simStartDate', v)}
       onSimEndDateChange={v => set('simEndDate', v)}
       onStepValueChange={v => set('stepValue', v)}
@@ -1299,7 +1311,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     ?? selectedModel?.content?.optimizer?.results;
   const hasExistingResults = !!(existingResults?.pareto_front?.length) || !!(optResult?.pareto_front?.length);
   const currentFront = optResult?.pareto_front ?? existingResults?.pareto_front;
-  const OptControls = (
+  const OptControls = ModelToolbar(
     <OptControlBar
       optRunning={optRunning} optCurGen={optCurGen} optTotalGen={optTotalGen}
       warmStartEnabled={warmStartEnabled} warmStartDirty={warmStartDirty} hasExistingResults={hasExistingResults}
@@ -1307,7 +1319,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       optResult={optResult} storedOptResult={storedOptResult}
       simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
-      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''} simRunning={isSimulating}
+      selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
       onStart={() => { sessionEditedRef.current = true; startOptimization(); }} onCancel={cancelOptimization}
       onWarmStartChange={setWarmStartEnabled}
       onSimStartDateChange={v => set('simStartDate', v)}
@@ -1316,8 +1328,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       onStepUnitChange={v => set('stepUnit', v)}
       onSimRunsChange={v => set('simRuns', v)}
       onMcSeedChange={v => set('mcSeed', v)}
-      onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
-      onReload={reloadFromYAML}
       onExportCSV={exportOptCSV}
       onImportCSV={importParetoFromCSV}
       scsMode={scsMode}
@@ -1455,11 +1465,12 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'intro' && (
             <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {ModelToolbar(selectedModel ? <div ref={setIntroToolbarEl} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} /> : undefined)}
               <SimIntroTab
                 selectedModel={selectedModel} outputVars={outputVars}
                 formulas={formulas} provenance={provenance}
                 introOpen={introOpen} setIntroOpen={setIntroOpen}
-                simulationData={simulationData} dataPerRun={dataPerRun}
+                simulationData={simulationData}
                 inputParams={inputParams}
                 simStartDate={simStartDate} simEndDate={simEndDate}
                 stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
@@ -1468,6 +1479,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 optResult={optResult} optElapsed={optElapsed} optMethod={optMethod}
                 reportGenerating={reportGenerating} setReportGenerating={setReportGenerating}
                 isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
+                toolbarContainer={introToolbarEl}
               />
             </div>
           )}

@@ -1,8 +1,8 @@
 // SimControlBar.tsx — simulation tab toolbar (play / pause / step / reset + date/step/MC config)
 
-import React, { useRef, useState } from 'react';
-import { Button, Checkbox, Input, InputNumber, Popover, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
+import React, { useRef } from 'react';
+import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
+import { DownloadOutlined, PauseOutlined, PlayCircleOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimPlan, StepUnit } from '../../types';
 
 interface SimControlBarProps {
@@ -18,17 +18,13 @@ interface SimControlBarProps {
   selectedModel: ModelFile | null;
   isOtherRunning: boolean;
   otherRunningTip: string;
-  optRunning: boolean;
-  hasOptResult: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
   onReset: () => void;
   onRunAllPlans: () => void;
-  onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onExportCSV: () => void;
   onImportCSV: (csvText: string, fileName: string) => void;
-  onReload: () => void;
   onSimStartDateChange: (v: string) => void;
   onSimEndDateChange: (v: string) => void;
   onStepValueChange: (v: number) => void;
@@ -42,17 +38,14 @@ interface SimControlBarProps {
 export function SimControlBar({
   status, sessionSeed, plans,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip, optRunning, hasOptResult,
+  selectedModel, isOtherRunning, otherRunningTip,
   onStart, onPause, onResume, onReset, onRunAllPlans,
-  onDownload, onExportCSV, onImportCSV, onReload,
+  onExportCSV, onImportCSV,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
   t, c,
 }: SimControlBarProps) {
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const [downloadOpen, setDownloadOpen] = useState(false);
-  const [withResults, setWithResults] = useState(true);
-  const [flattenImports, setFlattenImports] = useState(true);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
   const multiPlan = plans.length > 1;
@@ -69,7 +62,7 @@ export function SimControlBar({
     : t('sim.control.run');
 
   return (
-    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+    <>
       {/* Run controls */}
       <Tooltip title={otherRunningTip}>
         <span>
@@ -139,7 +132,7 @@ export function SimControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载仿真 | 上传仿真 | 下载模型（Popover）| 重载 */}
+      {/* File operations — order: 下载仿真 | 上传仿真 */}
       <div style={{ width: 1, height: 16, background: c.border }} />
 
       <Tooltip title={t('sim.ctrl.dl_sim_tip')}>
@@ -168,45 +161,6 @@ export function SimControlBar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.ctrl.sim_label')}</Button>
       </Tooltip>
-
-      <Popover
-        open={downloadOpen}
-        onOpenChange={open => { if (selectedModel && !isOtherRunning) setDownloadOpen(open); }}
-        trigger="click"
-        content={
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
-            <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
-              onChange={e => setWithResults(e.target.checked)}>
-              {t('sim.ctrl.with_results')}
-            </Checkbox>
-            <Checkbox checked={flattenImports}
-              onChange={e => setFlattenImports(e.target.checked)}>
-              {t('sim.ctrl.flatten_imports')}
-            </Checkbox>
-            <Button size="small" type="primary" style={{ marginTop: 4 }}
-              onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
-              {t('sim.ctrl.dl_btn')}
-            </Button>
-          </div>
-        }
-      >
-        <Button size="small" icon={<DownloadOutlined />}
-          disabled={!selectedModel || isOtherRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >{t('sim.ctrl.model_label')}</Button>
-      </Popover>
-
-      <Tooltip title={
-        (isRunning || isPaused) ? t('sim.ctrl.reload_tip_running') :
-        optRunning ? t('sim.ctrl.reload_tip_opt') :
-        t('sim.ctrl.reload_tip')
-      }>
-        <Button size="small" icon={<ReloadOutlined />}
-          onClick={onReload}
-          disabled={!selectedModel || isOtherRunning || isRunning || isPaused || optRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >{t('sim.ctrl.reload_label')}</Button>
-      </Tooltip>
-    </div>
+    </>
   );
 }
