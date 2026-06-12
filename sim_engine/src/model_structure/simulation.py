@@ -181,17 +181,27 @@ class Simulation:
                 else:
                     dyn[var_name] = (None, None, expr)   # 数值字面量
 
-            # formula 字段
+            # formula 字段：单个字符串表达式 → 结果存入 formula_results[form_name]；
+            # {var_name: expr} 字典 → 语义同 dynamics，直接写回对应变量（无 step 累积）。
             raw_f = getattr(formula, 'formula', None)
+            formula_dyn = {}
             if isinstance(raw_f, str) and raw_f:
                 f_fn, f_params = _compile_expr_to_fn(raw_f, model_vars)
             else:
                 f_fn, f_params = None, None
+                if isinstance(raw_f, dict):
+                    for var_name, expr in raw_f.items():
+                        if isinstance(expr, str):
+                            fn, params = _compile_expr_to_fn(expr, model_vars)
+                            formula_dyn[var_name] = (fn, params, expr)
+                        else:
+                            formula_dyn[var_name] = (None, None, expr)
 
             compiled[form_name] = {
                 'cond':    (raw_cond, cond_fn, cond_params),
                 'dyn':     dyn,
                 'formula': (raw_f, f_fn, f_params),
+                'formula_dyn': formula_dyn,
             }
         self._formula_cache = compiled
 
@@ -316,6 +326,37 @@ class Simulation:
 
                     except Exception as dyn_err:
                         logger.error(f"Error evaluating dynamics for formula '{form_name}', variable '{var_name}': {raw_expr} -> {dyn_err}")
+                        continue
+
+                # ── 处理 formula 字段中的 {var_name: expr} 字典形式 ────────
+                # 语义同 dynamics（直接写回变量），但不参与 formula_results。
+                for var_name, (fn, params, raw_expr) in cache.get('formula_dyn', {}).items():
+                    try:
+                        if fn is not None:
+                            new_value = fn(*[_get_arg(n) for n in params])
+                        elif isinstance(raw_expr, str):
+                            new_value = self.asteval.eval(raw_expr, raise_errors=True)
+                        else:
+                            new_value = raw_expr  # 数值字面量
+
+                        if new_value is None:
+                            logger.warning(f"Formula '{form_name}' evaluated to None for variable '{var_name}'")
+                            continue
+
+                        if var_name in self.variables:
+                            var = self.variables[var_name]
+                            var.value = max(min(new_value,
+                                               var.bounds[1] if var.bounds else float('inf')),
+                                            var.bounds[0] if var.bounds else float('-inf'))
+                            self.asteval.symtable[var_name] = var.value
+                            if var_name not in self.variable_history:
+                                self.variable_history[var_name] = []
+                            self.variable_history[var_name].append(var.value)
+                        else:
+                            self.asteval.symtable[var_name] = new_value
+
+                    except Exception as form_dyn_err:
+                        logger.error(f"Error evaluating formula field for '{form_name}', variable '{var_name}': {raw_expr} -> {form_dyn_err}")
                         continue
 
                 # ── 处理 formula 字段 ─────────────────────────────────────

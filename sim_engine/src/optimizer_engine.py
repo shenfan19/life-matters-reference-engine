@@ -463,11 +463,11 @@ def run_optimizer(simulator_engine, model_name: str,
                             pop_size, n_gen, seed, objectives,
                             progress_callback=progress_callback, warm_x=warm_x)
     elif method_raw in ('l-bfgs-b', 'l_bfgs_b'):
-        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, method='L-BFGS-B',
-                            progress_callback=progress_callback)
+        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, objectives,
+                            method='L-BFGS-B', progress_callback=progress_callback)
     elif method_raw == 'nelder-mead':
-        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, method='Nelder-Mead',
-                            progress_callback=progress_callback)
+        result = _run_scipy(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi, objectives,
+                            method='Nelder-Mead', progress_callback=progress_callback)
     else:
         result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
                             pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
@@ -636,41 +636,62 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
 
 # ── Single-objective scipy ─────────────────────────────────────────────────────
 
-def _run_scipy(evaluate, n_var, n_obj, n_con, xl, xu, method='L-BFGS-B', progress_callback=None):
+def _restore_signs(f: List[float], objectives: List[Dict]) -> List[float]:
+    """Convert pymoo minimize-convention values back to display values."""
+    return [-f[j] if obj.get('direction', 'minimize') == 'maximize' else f[j]
+            for j, obj in enumerate(objectives)]
+
+
+# Penalty applied per unit of constraint violation (G[i] > 0) for solvers
+# (L-BFGS-B, Nelder-Mead) that don't support general constraints natively.
+_CONSTRAINT_PENALTY = 1e6
+
+
+def _run_scipy(evaluate, n_var, n_obj, n_con, xl, xu, objectives, method='L-BFGS-B', progress_callback=None):
     try:
         from scipy.optimize import minimize as sp_minimize
 
         _iters = [0]
 
         def _scalar(x):
-            f, _ = evaluate(np.array(x))
+            f, g = evaluate(np.array(x))
             val = float(f[0]) if f else float('inf')
+            if g:
+                val += _CONSTRAINT_PENALTY * sum(max(0.0, gi) for gi in g)
             _iters[0] += 1
             if progress_callback:
-                progress_callback({'iteration': _iters[0], 'fitness': val})
+                f_display = _restore_signs(f, objectives)
+                progress_callback({
+                    'iteration': _iters[0],
+                    'fitness': val,
+                    'n_eval': _iters[0],
+                    'feasible_ratio': 1.0 if not g or max(g) <= 1e-9 else 0.0,
+                    'pareto_front': [{'f': f_display}],
+                })
             return val
 
         x0 = (xl + xu) / 2.0
         bounds = list(zip(xl, xu))
 
         if method == 'Nelder-Mead':
-            res = sp_minimize(_scalar, x0, method='Nelder-Mead')
+            res = sp_minimize(_scalar, x0, method='Nelder-Mead', bounds=bounds)
         else:
             res = sp_minimize(_scalar, x0, method='L-BFGS-B', bounds=bounds)
 
         if not res.success and res.fun == float('inf'):
             return {"success": False, "error": f"scipy {method} failed: {res.message}"}
 
-        x_opt = res.x.tolist()
+        x_opt = np.clip(res.x, xl, xu).tolist()
         f_opt, _ = evaluate(np.array(x_opt))
+        f_display = _restore_signs(f_opt, objectives)
 
         return {
             "success": True,
             "method": method,
-            "pareto_front": [{"x": x_opt, "f": f_opt}],
+            "pareto_front": [{"x": x_opt, "f": f_display}],
             "n_solutions": 1,
             "best_x": x_opt,
-            "best_f": f_opt,
+            "best_f": f_display,
         }
     except Exception as e:
         logger.exception(f"scipy {method} failed")
