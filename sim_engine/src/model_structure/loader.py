@@ -264,7 +264,38 @@ class Loader:
                 reference=var_data.get('reference')
             )
             self.variable_history[var_name] = [self.variables[var_name].value]
-        
+
+        # 应用 evidence：Loader 在加载阶段自动换算为 `_effective` 参数变量，
+        # 换算逻辑见 docs/model.md「evidence 的 8 种子类型」。
+        for ev_name, ev_data in data.get('evidence', {}).items():
+            ev_type = ev_data.get('type')
+            value = float(ev_data.get('value', 0.0))
+            if ev_type in ('rr', 'ir', 'ard', 'beta', 'pk'):
+                effective = value
+            elif ev_type == 'or':
+                p0 = float(ev_data.get('baseline_prevalence', 0.0))
+                effective = value / ((1 - p0) + p0 * value)
+            elif ev_type == 'cohens_d':
+                sd = float(ev_data.get('population_sd', 1.0))
+                effective = value * sd
+            elif ev_type == 'hr':
+                baseline_ref = ev_data.get('baseline_ref', '')
+                baseline_val = float(data.get('evidence', {}).get(baseline_ref, {}).get('value', 0.0))
+                effective = baseline_val * value
+            else:
+                logger.warning(f"未知 evidence 类型 '{ev_type}'（变量 {ev_name}），跳过 _effective 换算")
+                continue
+
+            eff_name = f"{ev_name}_effective"
+            self.variables[eff_name] = Variable(
+                description=ev_data.get('description', ''),
+                value=effective,
+                type=VariableType.parameter,
+                unit=ev_data.get('unit'),
+                reference=ev_data.get('reference')
+            )
+            self.variable_history[eff_name] = [effective]
+
         # 应用公式
         for form_name, form_data in data.get('formulas', {}).items():
             if not clear_existing and form_name in self.formulas:

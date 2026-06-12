@@ -27,10 +27,8 @@
 #
 # Examples:
 #   bash script/test_batch.sh
-#   bash script/test_batch.sh --no-opt
 #   bash script/test_batch.sh --folder ../b_lm_model/models/papers --no-skip --all-plans
-#   bash script/test_batch.sh --no-skip --no-opt
-#   bash script/test_batch.sh --output-dir /tmp/lm_out
+#   bash script/test_batch.sh --no-opt --output-dir /tmp/lm_out
 
 set -euo pipefail
 
