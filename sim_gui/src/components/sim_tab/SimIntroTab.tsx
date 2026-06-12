@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Empty, Tooltip } from 'antd';
+import { Button, Dropdown, Empty, Tooltip } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
 import { getC } from '../../core/theme';
 import { getDescriptionSections, descriptionText } from '../../core/modelUtils';
@@ -240,31 +241,35 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {toolbarContainer && createPortal(
-        <>
-          <Button size="small" onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); } }}
-            style={{ whiteSpace: 'nowrap', color: c.textSec }}>
-            {t('sim.report.html_preview')}
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              { key: 'html', label: t('sim.report.html_preview') },
+              { key: 'md', label: reportGenerating ? t('sim.report.generating') : t('sim.report.export_md'), disabled: reportGenerating },
+              { key: 'docx', label: <Tooltip title={t('sim.report.docx_wip')}><span>{t('sim.report.export_docx')}</span></Tooltip>, disabled: true },
+              { key: 'pdf', label: <Tooltip title={t('sim.report.pdf_wip')}><span>{t('sim.report.export_pdf')}</span></Tooltip>, disabled: true },
+            ],
+            onClick: ({ key }) => {
+              if (key === 'html') {
+                const w = window.open('', '_blank');
+                if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); }
+              } else if (key === 'md') {
+                setReportGenerating(true);
+                const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.md`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                setTimeout(() => setReportGenerating(false), 500);
+              }
+            },
+          }}
+        >
+          <Button size="small" icon={<DownloadOutlined />} style={{ whiteSpace: 'nowrap', color: c.textSec }}>
+            {t('sim.report.export_label')}
           </Button>
-          <Button size="small"
-            onClick={() => {
-              setReportGenerating(true);
-              const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url; a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.md`;
-              document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-              setTimeout(() => setReportGenerating(false), 500);
-            }}
-            disabled={reportGenerating}
-            style={{ whiteSpace: 'nowrap', color: c.textSec }}>
-            {reportGenerating ? t('sim.report.generating') : t('sim.report.export_md')}
-          </Button>
-          <Tooltip title={t('sim.report.docx_wip')}>
-            <Button size="small" disabled style={{ whiteSpace: 'nowrap', color: c.textMute }}>
-              {t('sim.report.export_docx')}
-            </Button>
-          </Tooltip>
-        </>,
+        </Dropdown>,
         toolbarContainer
       )}
 
