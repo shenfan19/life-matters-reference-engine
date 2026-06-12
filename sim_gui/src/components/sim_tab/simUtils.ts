@@ -15,14 +15,14 @@ function expandTimeWindow(window: string, optStep = '1h'): string[] {
   return slots;
 }
 
-export function hhmmToMin(s: string): number {
+function hhmmToMin(s: string): number {
   const [h, m] = s.split(':').map(Number);
   return h * 60 + m;
 }
 
 // Add widthMin minutes to an "HH:MM" time, wrapping past 24:00 to 00:00.
 // Mirrors optimizer_engine._shift_time (ADR 0100 T2 1-dim decode).
-export function shiftTime(start: string, widthMin: number): string {
+function shiftTime(start: string, widthMin: number): string {
   const t = ((hhmmToMin(start) + widthMin) % 1440 + 1440) % 1440;
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }

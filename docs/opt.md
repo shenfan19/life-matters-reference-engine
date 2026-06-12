@@ -163,18 +163,22 @@ UI:
   !optRunning && !optResult  → 占位提示
 ```
 
-### 2.5 T2/T3/T4 调度粒度优化（ADR 0080）
+### 2.5 T2/T3/T4 调度粒度优化（ADR 0080/0088/0100）
 
-x 向量按 `inputs` 列表顺序展开，每个条目按 `[value, time?, days?, date_start?]` 顺序贡献维度：
+x 向量按 `optimizer.schedules` 列表顺序展开，每个条目按
+`[value?, time_start?, time_end?, days?, date_start?, date_end?]` 顺序贡献维度：
 
 | Tier | YAML 字段 | x 维度 | 类型（连续松弛） |
 |------|----------|-------|--------------|
 | T1 值 | `optimize.value: [lo, hi]` | 1 | float |
-| T2 时间窗 | `time_window`, `opt_step`, `optimize.time: true` | +1 | float → slot idx |
-| T3 星期模式 | `days_options`, `optimize.days: true` | +1 | float → pattern idx |
-| T4 起始日 | `date_start_window`, `optimize.date_start: true` | +1 | float → day offset |
+| T2 时间窗（1 维） | `optimize.time_start: [lo, hi]`，`time_step` | +1 | float → slot idx |
+| T2 时间窗（2 维） | 额外声明 `optimize.time_end: [lo, hi]` | +2 | float → slot idx ×2 |
+| T3 星期模式 | `optimize.days_pool` + `days_n` | +1 | float → pattern idx |
+| T4 起始日 | `optimize.date_range`（两组窗口） | +1~2 | float → day offset |
 
-`OptResult.pareto_front` 中的 `x` 向量维度随之增加；`reference.regimen` 叶值在有 T2/T3/T4 时从标量改为字典（见 `docs/model.md`）。
+`OptResult.pareto_front` 中的 `x` 向量维度随之增加。T2 1 维（仅 `time_start`）时区间宽度
+（`time_end - time_start`）固定不变，搜索后的 `time_end` 按固定宽度推算；同时声明
+`optimize.time_end` 时为 2 维，起止独立搜索（详见 `docs/model.md` x 向量编码规则）。
 
 ---
 

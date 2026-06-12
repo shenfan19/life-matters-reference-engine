@@ -7,7 +7,6 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import type { InputEvent, SimPlan } from '../../types';
 import { getC } from '../../core/theme';
-import { hhmmToMin, shiftTime } from '../sim_tab/simUtils';
 
 interface OptSetupTabProps {
   inputEvents: InputEvent[];
@@ -161,25 +160,25 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                     <>
                       <Tooltip title={t('sim.opt.tog.time_start_window_tip')}>
                         <Input size="small" value={winStart} placeholder="HH:MM"
-                          style={{ width: 58, fontFamily: 'monospace' }}
+                          style={{ width: 64, fontFamily: 'monospace' }}
                           onChange={e => updateInputEventOpt(ev.id, { timeWindowStart: e.target.value })} />
                       </Tooltip>
                       <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
                       <Tooltip title={t('sim.opt.tog.time_start_window_tip')}>
                         <Input size="small" value={winEnd} placeholder="HH:MM"
-                          style={{ width: 58, fontFamily: 'monospace' }}
+                          style={{ width: 64, fontFamily: 'monospace' }}
                           onChange={e => updateInputEventOpt(ev.id, { timeWindowEnd: e.target.value })} />
                       </Tooltip>
                       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>→</span>
                       <Tooltip title={t('sim.opt.tog.time_end_window_tip')}>
                         <Input size="small" value={endWinStart} placeholder="HH:MM"
-                          style={{ width: 58, fontFamily: 'monospace' }}
+                          style={{ width: 64, fontFamily: 'monospace' }}
                           onChange={e => updateInputEventOpt(ev.id, { timeEndWindowStart: e.target.value })} />
                       </Tooltip>
                       <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
                       <Tooltip title={t('sim.opt.tog.time_end_window_tip')}>
                         <Input size="small" value={endWinEnd} placeholder="HH:MM"
-                          style={{ width: 58, fontFamily: 'monospace' }}
+                          style={{ width: 64, fontFamily: 'monospace' }}
                           onChange={e => updateInputEventOpt(ev.id, { timeEndWindowEnd: e.target.value })} />
                       </Tooltip>
                       <Tooltip title={t('sim.opt.tog.time_step_tip')}>
@@ -197,7 +196,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                     <>
                       <Tooltip title={t('sim.setup.time_start_tip')}>
                         <Input size="small" value={ev.timeStart} placeholder="HH:MM"
-                          style={{ width: 58, fontFamily: 'monospace' }}
+                          style={{ width: 64, fontFamily: 'monospace' }}
                           onChange={e => updateInputEvent(ev.id, {
                             timeStart: e.target.value,
                             ...(isPulse ? { timeEnd: e.target.value } : {}),
@@ -207,7 +206,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                       <Tooltip title={t('sim.setup.time_end_tip')}>
                         <Input size="small" value={ev.timeEnd} placeholder="HH:MM"
                           style={{
-                            width: 58, fontFamily: 'monospace',
+                            width: 64, fontFamily: 'monospace',
                             color: isPulse ? c.textMute : c.text,
                             borderStyle: isPulse ? 'dashed' : 'solid',
                           }}
@@ -225,9 +224,9 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
               );
             })()}
 
-            {/* T3: days row */}
+            {/* T3: days-of-week row */}
             {ev.daysEnabled && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', marginTop: 3 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 3 }}>
                 <Tog label="opt" active={!!ev.optimizeDays}
                   onToggle={() => updateInputEventOpt(ev.id, {
                     optimizeDays: !ev.optimizeDays,
@@ -238,47 +237,41 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                     }),
                   })} />
                 {ev.optimizeDays ? (
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 2 }}>
-                      {DAY_LABELS.map((d, i) => {
-                        const dayStr = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i];
-                        const inPool = (ev.daysPool ?? []).includes(dayStr);
-                        return (
-                          <button key={i} onClick={() => {
-                            const pool = ev.daysPool ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-                            const next = inPool ? pool.filter(x => x !== dayStr) : [...pool, dayStr];
-                            updateInputEventOpt(ev.id, { daysPool: next });
-                          }} style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
-                            background: inPool ? c.primary : c.panel, color: inPool ? '#fff' : c.textMute,
-                            border: `1px solid ${c.border}` }}>{d}</button>
-                        );
-                      })}
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0 }}>n</span>
-                      <InputNumber size="small" min={1} max={7} value={ev.daysNMin ?? 1} style={{ width: 44 }}
-                        onChange={v => updateInputEventOpt(ev.id, { daysNMin: v ?? 1 })} />
-                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <InputNumber size="small" min={1} max={7} value={ev.daysNMax ?? 7} style={{ width: 44 }}
-                        onChange={v => updateInputEventOpt(ev.id, { daysNMax: v ?? 7 })} />
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 2 }}>
-                    {DAY_LABELS.map((d, i) => (
-                      <button key={i} onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
-                        style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
-                          background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute,
+                  <>
+                    {DAY_LABELS.map((d, i) => {
+                      const dayStr = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i];
+                      const inPool = (ev.daysPool ?? []).includes(dayStr);
+                      return (
+                        <button key={i} onClick={() => {
+                          const pool = ev.daysPool ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+                          const next = inPool ? pool.filter(x => x !== dayStr) : [...pool, dayStr];
+                          updateInputEventOpt(ev.id, { daysPool: next });
+                        }} style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
+                          background: inPool ? c.primary : c.panel, color: inPool ? '#fff' : c.textMute,
                           border: `1px solid ${c.border}` }}>{d}</button>
-                    ))}
-                  </div>
+                      );
+                    })}
+                    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0 }}>n</span>
+                    <InputNumber size="small" min={1} max={7} value={ev.daysNMin ?? 1} style={{ width: 44 }}
+                      onChange={v => updateInputEventOpt(ev.id, { daysNMin: v ?? 1 })} />
+                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                    <InputNumber size="small" min={1} max={7} value={ev.daysNMax ?? 7} style={{ width: 44 }}
+                      onChange={v => updateInputEventOpt(ev.id, { daysNMax: v ?? 7 })} />
+                  </>
+                ) : (
+                  DAY_LABELS.map((d, i) => (
+                    <button key={i} onClick={() => updateInputEvent(ev.id, { days: ev.days.map((v, j) => j === i ? !v : v) })}
+                      style={{ width: 20, height: 20, borderRadius: 3, fontSize: 'calc(var(--lm-font-size, 14px) * 0.6429)', cursor: 'pointer', padding: 0,
+                        background: ev.days[i] ? c.primary : c.panel, color: ev.days[i] ? '#fff' : c.textMute,
+                        border: `1px solid ${c.border}` }}>{d}</button>
+                  ))
                 )}
               </div>
             )}
 
             {/* T4: valid range / date range optimization row */}
             {ev.validRangeEnabled && (
-              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', marginTop: 3 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 3 }}>
                 <Tog label="opt" active={!!ev.optimizeDateRange}
                   onToggle={() => {
                     const newOpt = !ev.optimizeDateRange;
@@ -295,38 +288,33 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                     });
                   }} />
                 {ev.optimizeDateRange ? (
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2 }}>
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>sta</span>
-                      <Input size="small" value={ev.dateStartLo ?? ''} placeholder="YYYY-MM-DD"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEventOpt(ev.id, { dateStartLo: e.target.value })} />
-                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small" value={ev.dateStartHi ?? ''} placeholder="YYYY-MM-DD"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEventOpt(ev.id, { dateStartHi: e.target.value })} />
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.6786)', color: c.textMute, flexShrink: 0, width: 24 }}>end</span>
-                      <Input size="small" value={ev.dateEndLo ?? ''} placeholder="YYYY-MM-DD"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEventOpt(ev.id, { dateEndLo: e.target.value })} />
-                      <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
-                      <Input size="small" value={ev.dateEndHi ?? ''} placeholder="YYYY-MM-DD"
-                        style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
-                        onChange={e => updateInputEventOpt(ev.id, { dateEndHi: e.target.value })} />
-                    </div>
-                  </div>
+                  <>
+                    <Input size="small" value={ev.dateStartLo ?? ''} placeholder="YYYY-MM-DD"
+                      style={{ width: 100, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEventOpt(ev.id, { dateStartLo: e.target.value })} />
+                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                    <Input size="small" value={ev.dateStartHi ?? ''} placeholder="YYYY-MM-DD"
+                      style={{ width: 100, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEventOpt(ev.id, { dateStartHi: e.target.value })} />
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>→</span>
+                    <Input size="small" value={ev.dateEndLo ?? ''} placeholder="YYYY-MM-DD"
+                      style={{ width: 100, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEventOpt(ev.id, { dateEndLo: e.target.value })} />
+                    <span style={{ color: c.primary, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', flexShrink: 0 }}>~</span>
+                    <Input size="small" value={ev.dateEndHi ?? ''} placeholder="YYYY-MM-DD"
+                      style={{ width: 100, fontFamily: 'monospace' }}
+                      onChange={e => updateInputEventOpt(ev.id, { dateEndHi: e.target.value })} />
+                  </>
                 ) : (
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flex: 1 }}>
+                  <>
                     <Input size="small" value={ev.validStart} placeholder="YYYY-MM-DD"
-                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      style={{ width: 100, fontFamily: 'monospace' }}
                       onChange={e => updateInputEvent(ev.id, { validStart: e.target.value })} />
-                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>–</span>
+                    <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}>→</span>
                     <Input size="small" value={ev.validEnd} placeholder="YYYY-MM-DD"
-                      style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)' }}
+                      style={{ width: 100, fontFamily: 'monospace' }}
                       onChange={e => updateInputEvent(ev.id, { validEnd: e.target.value })} />
-                  </div>
+                  </>
                 )}
               </div>
             )}

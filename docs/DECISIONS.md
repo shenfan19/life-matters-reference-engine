@@ -19,6 +19,8 @@
 | [0054](decisions/0054-2026-05-04_sim_unified-apply-regimens.md) | **仿真/优化 Regimen 执行函数统一；删除 `_apply_regimen_events`** | ⭐⭐ | ✅ |
 | [0064](decisions/0064-2026-05-07_project-edit-refresh-run-snapshot.md) | **编辑态刷新源文件，运行态固定快照（两种不同的模型加载语义）** | ⭐⭐ | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | **Simulator 拆分；Sim/Opt 结果工作区分离** | ⭐⭐ | ✅（OPT/SIM 分离重构待续）|
+| [0099](decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | **sustained 模式 `value` 语义修正：窗口总量 / N_steps（step-size 不变性）** | ⭐⭐ | ✅ |
+| [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | **统一 pulse/sustained 为时间区间 `time_start`/`time_end`；GUI 取消 full day/time/sustained 三态** | ⭐⭐ | 🟡 部分实施（papers 术语已补充说明，未做全文改写）|
 
 ---
 
@@ -29,6 +31,7 @@
 | [0049](decisions/0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | **Optimizer 异步 Job 系统：API 立即返回 job_id，轮询进度** | ⭐⭐ | ✅ |
 | [0052](decisions/0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 扁平列表格式；optimizer.regimen 支持 | ⭐ | ✅ |
 | [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) | **三层验证框架：数值精度 / 文献对标 / 优化合理性** | ⭐⭐ | ✅（脚本待写）|
+| [0098](decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimizer.schedules 新增 `mode: sustained`（子日步长持续输入） | ⭐ | ✅（旧格式，由 0100 取代但仍受支持）|
 
 ---
 
