@@ -1,5 +1,6 @@
 import React from 'react';
-import { Empty, Tooltip } from 'antd';
+import { createPortal } from 'react-dom';
+import { Button, Empty, Tooltip } from 'antd';
 import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
 import { getC } from '../../core/theme';
 import { getDescriptionSections, descriptionText } from '../../core/modelUtils';
@@ -13,7 +14,6 @@ interface SimIntroTabProps {
   introOpen: Set<string>;
   setIntroOpen: React.Dispatch<React.SetStateAction<Set<string>>>;
   simulationData: SimulationDataPoint[];
-  dataPerRun: SimulationDataPoint[][];
   inputParams: Record<string, number>;
   simStartDate: string;
   simEndDate: string;
@@ -34,16 +34,17 @@ interface SimIntroTabProps {
   c: ReturnType<typeof getC>;
   t: (key: string, params?: Record<string, string | number>) => string;
   fontSize: number;
+  toolbarContainer: HTMLElement | null;
 }
 
 const SimIntroTab: React.FC<SimIntroTabProps> = ({
   selectedModel, outputVars, formulas, provenance, introOpen, setIntroOpen,
-  simulationData, dataPerRun, inputParams,
+  simulationData, inputParams,
   simStartDate, simEndDate, stepValue, stepUnit, batchSize,
   objectives, constraints, optAlgo, optPop, optGen,
   optResult, optElapsed, optMethod,
   reportGenerating, setReportGenerating,
-  isDarkMode, c, t, fontSize,
+  isDarkMode, c, t, fontSize, toolbarContainer,
 }) => {
   if (!selectedModel) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -236,61 +237,36 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
     return html + '</body>';
   }
 
-  const btnBase: React.CSSProperties = {
-    padding: '6px 16px', borderRadius: 5, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', fontWeight: 600,
-    cursor: 'pointer', transition: 'opacity 0.15s',
-  };
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, padding: '10px 16px', borderBottom: `1px solid ${c.border}`, background: c.panel, flexWrap: 'wrap' }}>
-        <button onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); } }}
-          style={{ ...btnBase, border: `1px solid ${c.primary}`, background: 'transparent', color: c.primary }}>
-          {t('sim.report.html_preview')}
-        </button>
-        <button
-          onClick={() => {
-            setReportGenerating(true);
-            const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.md`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-            setTimeout(() => setReportGenerating(false), 500);
-          }}
-          disabled={reportGenerating}
-          style={{ ...btnBase, border: 'none', background: c.primary, color: '#fff', opacity: reportGenerating ? 0.4 : 1 }}>
-          {reportGenerating ? t('sim.report.generating') : t('sim.report.export_md')}
-        </button>
-        <button
-          onClick={() => {
-            if (!hasData) return;
-            const hasMC = dataPerRun.length > 1;
-            const baseCols = Object.keys(simulationData[0]).filter(k => k !== 'step');
-            const varCols = baseCols.filter(k => k !== 'time');
-            const mcRunCols = hasMC ? varCols.flatMap(k => dataPerRun.map((_, i) => `${k}_run${i}`)) : [];
-            const header = [...baseCols.map(k => { const desc = allV[k]?.description; return desc ? `${k}(${desc})` : k; }), ...mcRunCols].join(',');
-            const rows = simulationData.map((row, idx) => {
-              const base = baseCols.map(k => row[k] != null ? String(row[k]) : '').join(',');
-              if (!hasMC) return base;
-              return `${base},${varCols.flatMap(k => dataPerRun.map(rd => (rd[idx]?.[k] as number) ?? '')).join(',')}`;
-            });
-            const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `trajectory_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.csv`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-          }}
-          disabled={!hasData}
-          style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: hasData ? c.text : c.textMute, opacity: hasData ? 1 : 0.4 }}>
-          {t('sim.report.export_csv')}
-        </button>
-        <Tooltip title={t('sim.report.docx_wip')}>
-          <button disabled style={{ ...btnBase, border: `1px solid ${c.border}`, background: 'transparent', color: c.textMute, cursor: 'not-allowed', opacity: 0.4 }}>
-            {t('sim.report.export_docx')}
-          </button>
-        </Tooltip>
-      </div>
+      {toolbarContainer && createPortal(
+        <>
+          <Button size="small" onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); } }}
+            style={{ whiteSpace: 'nowrap', color: c.textSec }}>
+            {t('sim.report.html_preview')}
+          </Button>
+          <Button size="small"
+            onClick={() => {
+              setReportGenerating(true);
+              const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.md`;
+              document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+              setTimeout(() => setReportGenerating(false), 500);
+            }}
+            disabled={reportGenerating}
+            style={{ whiteSpace: 'nowrap', color: c.textSec }}>
+            {reportGenerating ? t('sim.report.generating') : t('sim.report.export_md')}
+          </Button>
+          <Tooltip title={t('sim.report.docx_wip')}>
+            <Button size="small" disabled style={{ whiteSpace: 'nowrap', color: c.textMute }}>
+              {t('sim.report.export_docx')}
+            </Button>
+          </Tooltip>
+        </>,
+        toolbarContainer
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
 

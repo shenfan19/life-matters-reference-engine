@@ -1,8 +1,8 @@
 // OptControlBar.tsx — optimization tab toolbar (run / cancel / warm-start + date/step/MC config)
 
-import React, { useRef, useState } from 'react';
-import { Button, Checkbox, Input, InputNumber, Popover, Select, Tooltip } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
+import React, { useRef } from 'react';
+import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
+import { DownloadOutlined, PlayCircleOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ModelFile, StepUnit } from '../../types';
 
 interface OptControlBarProps {
@@ -24,7 +24,6 @@ interface OptControlBarProps {
   selectedModel: ModelFile | null;
   isOtherRunning: boolean;
   otherRunningTip: string;
-  simRunning: boolean;
   onStart: () => void;
   onCancel: () => void;
   onWarmStartChange: (enabled: boolean) => void;
@@ -34,10 +33,8 @@ interface OptControlBarProps {
   onStepUnitChange: (v: StepUnit) => void;
   onSimRunsChange: (v: number) => void;
   onMcSeedChange: (v: number | null) => void;
-  onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onExportCSV: () => void;
   onImportCSV: (csvText: string) => void;
-  onReload: () => void;
   scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
@@ -49,20 +46,15 @@ export function OptControlBar({
   warmStartEnabled, warmStartDirty, hasExistingResults, currentFrontCount,
   optResult, storedOptResult,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip, simRunning,
+  selectedModel, isOtherRunning, otherRunningTip,
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onDownload, onExportCSV, onImportCSV, onReload,
-  scsMode,
+  onExportCSV, onImportCSV,
   setOptResult,
   t, c,
 }: OptControlBarProps) {
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const [downloadOpen, setDownloadOpen] = useState(false);
-  const [withResults, setWithResults] = useState(true);
-  const [flattenImports, setFlattenImports] = useState(true);
-  const hasOptResult = !!optResult;
   const warmStartTooltip = warmStartDirty && warmStartEnabled
     ? t('sim.opt.warm_start_dirty_tooltip')
     : (warmStartEnabled && hasExistingResults)
@@ -74,7 +66,7 @@ export function OptControlBar({
     : t('sim.opt.run_hint');
 
   return (
-    <div style={{ width: '100%', flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+    <>
       {/* Run / cancel */}
       <Tooltip title={runTooltip}>
         <span>
@@ -160,7 +152,7 @@ export function OptControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载优化 | 上传优化 | 下载模型（Popover）| 重载 */}
+      {/* File operations — order: 下载优化 | 上传优化 */}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
       <Tooltip title={t('sim.opt.dl_opt_tip')}>
@@ -189,45 +181,6 @@ export function OptControlBar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.opt.opt_label')}</Button>
       </Tooltip>
-
-      <Popover
-        open={downloadOpen}
-        onOpenChange={open => { if (selectedModel && !optRunning) setDownloadOpen(open); }}
-        trigger="click"
-        content={
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
-            <Checkbox checked={withResults && hasOptResult} disabled={!hasOptResult}
-              onChange={e => setWithResults(e.target.checked)}>
-              {t('sim.ctrl.with_results')}
-            </Checkbox>
-            <Checkbox checked={flattenImports}
-              onChange={e => setFlattenImports(e.target.checked)}>
-              {t('sim.ctrl.flatten_imports')}
-            </Checkbox>
-            <Button size="small" type="primary" style={{ marginTop: 4 }}
-              onClick={() => { onDownload({ withResults: withResults && hasOptResult, flattenImports }); setDownloadOpen(false); }}>
-              {t('sim.ctrl.dl_btn')}
-            </Button>
-          </div>
-        }
-      >
-        <Button size="small" icon={<DownloadOutlined />}
-          disabled={!selectedModel || optRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >{t('sim.ctrl.model_label')}</Button>
-      </Popover>
-
-      <Tooltip title={
-        optRunning ? t('sim.ctrl.reload_tip_opt') :
-        simRunning ? t('sim.ctrl.reload_tip_running') :
-        t('sim.ctrl.reload_tip')
-      }>
-        <Button size="small" icon={<ReloadOutlined />}
-          onClick={onReload}
-          disabled={!selectedModel || optRunning || simRunning}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >{t('sim.ctrl.reload_label')}</Button>
-      </Tooltip>
-    </div>
+    </>
   );
 }
