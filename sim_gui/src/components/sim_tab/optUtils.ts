@@ -24,9 +24,9 @@ export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boo
  *
  * Tier mapping:
  *   T1 — optimize.value:      [lo, hi] value search bounds
- *   T2 — optimize.time_start: ["HH:MM", "HH:MM"] time-window search (1-dim;
- *        time_end follows at a fixed offset). Optional optimize.time_end
- *        searches the interval end independently (2-dim, ADR 0100).
+ *   T2 — optimize.time_start / optimize.time_end: ["HH:MM", "HH:MM"] search
+ *        windows for the start and end of the interval, searched independently
+ *        (ADR 0100).
  *   T3 — optimize.days_pool:  candidate day set + days_n count range
  *   T4 — optimize.date_range: [[start_lo, start_hi], [end_lo, end_hi]]
  */
@@ -41,7 +41,6 @@ export function buildOptSchedules(
         variable: ev.variable,
         label: ev.label || `${ev.variable} ${ev.timeStart}`,
       };
-      const isPulse = ev.timeStart === ev.timeEnd;
 
       if (hasAnyOpt(ev, activeInputVarNames)) {
         const optBlock: Record<string, any> = {};
@@ -56,8 +55,8 @@ export function buildOptSchedules(
         if (ev.optimizeTime && ev.timeWindowStart && ev.timeWindowEnd) {
           optBlock.time_start = [ev.timeWindowStart, ev.timeWindowEnd];
           if (ev.timeStep && ev.timeStep !== '1h') optBlock.time_step = ev.timeStep;
-          // 2-dim: also search time_end independently (sustained events only)
-          if (!isPulse && ev.optimizeTimeEnd && ev.timeEndWindowStart && ev.timeEndWindowEnd) {
+          // time_end is searched independently within its own window
+          if (ev.timeEndWindowStart && ev.timeEndWindowEnd) {
             optBlock.time_end = [ev.timeEndWindowStart, ev.timeEndWindowEnd];
           }
         }
