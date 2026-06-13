@@ -1,9 +1,23 @@
 # Life Matters CLI (`lm-sim`)
 
-`sim_cli/` 提供命令行批量运行接口，适合自动化仿真、脚本调度和开发调试。  
-正式用户界面仍为 GUI（`sim_gui/`）；CLI 不覆盖 GUI 的交互功能（图表、拖拽、历史存档等）。
+`sim_cli/` 提供命令行批量运行接口，适合自动化仿真、脚本调度、开发调试，
+以及 **AI agent**（如 Claude Code 等）直接运行模型并读取结构化结果。  
+面向人类研究者的正式用户界面仍为 GUI（`sim_gui/`）；CLI 不覆盖 GUI 的交互功能（图表、拖拽、历史存档等）。
 
 完整数据流见 [`data_flow.md`](data_flow.md)。
+
+---
+
+## 面向 AI / 自动化场景
+
+CLI 的输入输出均为文本/文件，适合被脚本或 AI agent 调用：
+
+- **输入**：模型 YAML 文件路径 + 模式标志（`--sim` / `--opt`），无需交互。
+- **输出**：结构化 CSV（仿真时间序列 / Pareto 前沿）+ 日志文件，路径在运行结束后打印到 stdout，可直接解析。
+- **退出码**：成功为 `0`，仿真/优化失败为 `1`。
+- **无需图形环境**：可在 headless 容器、CI、SSH 会话中运行。
+
+随代码 release 发布的压缩包中包含可直接运行的 `lm-sim`（PyInstaller 编译产物），无需安装 Python 即可使用（见下方"编译为独立可执行文件"）。
 
 ---
 
@@ -36,6 +50,7 @@ pyinstaller sim_cli/build.spec
 |------|------|
 | `<model.yaml>` | 模型文件路径（绝对路径或相对于项目根的路径） |
 | `--sim` | 运行仿真 |
+| `--all-plans` | 配合 `--sim`：对 `simulation.plans` 中每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`） |
 | `--opt` | 运行优化器（NSGA-II） |
 | `--continue` | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索 |
 | `--continue PATH` | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
