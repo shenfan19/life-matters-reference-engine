@@ -11,9 +11,16 @@ logger = logging.getLogger('lm_cli')
 _OUTPUT_DIR_NAME = 'output'
 
 
-def setup_output_dir(project_root: Path) -> Path:
-    out = project_root / _OUTPUT_DIR_NAME
-    out.mkdir(exist_ok=True)
+def setup_output_dir(project_root: Path, model_stem: str, output_dir: str = None) -> Path:
+    """Resolve and create <output_dir or 'output'>/<model_stem>/."""
+    if output_dir:
+        base = Path(output_dir)
+        if not base.is_absolute():
+            base = project_root / base
+    else:
+        base = project_root / _OUTPUT_DIR_NAME
+    out = base / model_stem
+    out.mkdir(parents=True, exist_ok=True)
     return out
 
 

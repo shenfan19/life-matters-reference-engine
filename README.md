@@ -32,8 +32,8 @@ YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/s
 ```
 sim_engine/   Python 仿真引擎 + FastAPI 后端（端口 18080）
 sim_gui/      仿真前端界面（React + Vite，端口 5173）
-sim_cli/      命令行接口（lm-sim），面向 AI/脚本场景，详见 docs/cli.md
-script/       开发工具脚本（批量测试等）
+sim_cli/      命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/cli.md
+script/       开发工具脚本（i18n、AI 辅助等）
 docs/         技术规范与架构决策（ADR）
 ```
 
@@ -81,14 +81,17 @@ cd sim_gui && npm install && npm run dev    # http://localhost:5173
 
 ### 命令行接口（CLI）
 
-面向脚本和 AI agent 的批量运行接口，无需启动后端/前端：
+面向脚本和 AI agent 的运行接口，无需启动后端/前端：
 
 ```bash
 python sim_cli/main.py <model.yaml> --sim
 python sim_cli/main.py <model.yaml> --opt
+
+# 批量运行一个文件夹下的所有模型，生成 batch_report.md
+python sim_cli/batch.py --folder <models_folder>
 ```
 
-输出为结构化 CSV + 日志，写入 `output/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/cli.md](docs/cli.md)。
+输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/cli.md](docs/cli.md)。
 
 ---
 

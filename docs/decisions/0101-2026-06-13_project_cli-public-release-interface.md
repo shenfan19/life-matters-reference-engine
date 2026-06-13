@@ -1,7 +1,7 @@
 # 0101 — CLI 升级为公开发布接口（面向 AI / 自动化场景）
 
 **日期**：2026-06-13
-**状态**：✅ 已实施（文档变更；不涉及代码/CI）
+**状态**：✅ 已实施（文档 + 代码：`--output-dir`、按模型分子目录、`batch.py`；不涉及 CI）
 **类别**：架构 / 接口设计
 **修订**：部分修订 ADR 0072、ADR 0091
 
@@ -31,6 +31,13 @@ ADR 0072 确立 GUI 是唯一正式用户接口；ADR 0091 在此基础上新增
 3. **Release 产物包含 CLI**：发布包（GitHub Release）中附带 `dist/lm-sim.exe`（或源码运行方式），
    而不仅是源码 + GUI。构建仍为手动 `pyinstaller sim_cli/build.spec`，本次不引入 CI 自动构建流程
    （工作量评估后决定暂缓，未来需要时另开 ADR）。
+4. **`--output-dir` + 按模型分子目录**：`lm-sim` 新增 `--output-dir PATH` 参数（默认 `output/`），
+   输出统一写入 `<output-dir>/<模型名>/`。单模型调试循环下，同一模型的历史运行自然聚合在一个目录里；
+   批量场景下，编排层把批次目录作为 `--output-dir` 传入即可，模型间不冲突。
+5. **`script/test_batch.sh` → `sim_cli/batch.py`**：原 bash 批量脚本依赖 Git Bash，
+   在纯 Windows（无 bash）环境下与"公开发布给 AI"的定位冲突；改写为 `sim_cli/batch.py`，
+   纯 Python、进程内直接调用 `runner.py`，不经 subprocess/stdout 解析。
+   行为、参数、报告格式与原脚本一致，详见 ADR 0091 的 2026-06-13 修订。
 
 不变的部分：
 

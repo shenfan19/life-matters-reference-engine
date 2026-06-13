@@ -6,7 +6,7 @@ Usage:
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
 
-Outputs go to output/ at the project root:
+Outputs go to output/<model>/ at the project root (override with --output-dir):
   <model>_<YYYY-MM-DD_HH-MM-SS>_sim.csv    (simulation time-series)
   <model>_<YYYY-MM-DD_HH-MM-SS>_opt.csv    (Pareto front table; also saved incrementally per gen)
   <model>_<YYYY-MM-DD_HH-MM-SS>_<mode>.log
@@ -44,6 +44,13 @@ def main() -> None:
             'PATH: path to a previous _opt.csv file (relative to project root or absolute).'
         ),
     )
+    parser.add_argument(
+        '--output-dir', metavar='PATH', default=None,
+        help=(
+            'Base output directory (relative to project root, or absolute). '
+            'Default: output/. Results are written to <output-dir>/<model-stem>/.'
+        ),
+    )
     args = parser.parse_args()
 
     if not args.sim and not args.opt:
@@ -58,7 +65,7 @@ def main() -> None:
     root = _project_root()
 
     from output import setup_output_dir, make_stem, setup_logging
-    out_dir = setup_output_dir(root)
+    out_dir = setup_output_dir(root, model_path.stem, args.output_dir)
     mode = 'sim' if args.sim else 'opt'
     stem = make_stem(model_path, mode)
     log_path = out_dir / f'{stem}.log'
