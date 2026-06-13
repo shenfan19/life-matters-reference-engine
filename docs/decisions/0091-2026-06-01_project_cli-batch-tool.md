@@ -123,12 +123,33 @@ ADR 0072 的核心约束保持不变：
 
 **公开性**：`batch_test.sh` 随代码公开发布（无敏感内容，合作者维护模型库时可用）；不进入 S1 论文（纯工程工具，非科学贡献）。
 
+**2026-06-13 修订：迁移为 `sim_cli/batch.py`（见下方）。**
+
+---
+
+## 2026-06-13 修订：`script/test_batch.sh` → `sim_cli/batch.py`
+
+ADR 0101 把 CLI 升级为面向 AI/发布的公开接口后，`test_batch.sh` 暴露出两个问题：
+
+1. **依赖 bash**：发布的 `lm-sim.exe` 在纯 Windows（无 Git Bash）环境下无法使用批量功能，与"公开接口"定位不符。
+2. **subprocess + stdout 解析**：脚本通过 `python sim_cli/main.py ... 2>&1` 拿到输出后用 `grep` 提取 CSV 文件名/错误信息，脆弱且与 `main.py` 的打印格式耦合。
+
+**决策**：删除 `script/test_batch.sh`，新增 `sim_cli/batch.py`：
+
+- 纯 Python，与 `main.py` 同目录，不依赖 bash，PyInstaller 编译的 `lm-sim` 同环境可用
+- 直接 `import runner.run_sim / run_sim_all_plans / run_opt` 在进程内调用，不经 subprocess，无需解析 stdout
+- 每个模型的运行包在 `try/except` 中，单个模型崩溃不中断整批（原 bash 版靠 subprocess 天然隔离，Python 版需显式处理）
+- 错误摘要通过临时挂载的 `logging.Handler` 捕获 ERROR 级别日志，而非 grep 文本
+- 参数、批次目录结构（`<output-dir>/<timestamp>/<模型名>/`）、`batch_report.md` 格式与原 bash 版保持一致
+
+CLI 本身（`main.py`）的"按模型分子目录 + `--output-dir`"规则（本次 ADR 0101 实施时引入）对两者通用，`batch.py` 只是给每个模型调用传入同一个批次目录作为 `output_dir`。
+
 ---
 
 ## 关联
 
 - `docs/cli.md` — 使用文档
-- `sim_cli/` — 实现目录
-- `script/test_batch.sh` — 批量测试脚本
+- `sim_cli/` — 实现目录（`main.py` 单模型，`batch.py` 批量）
 - ADR 0072 — GUI-only 决策（部分修订）
+- ADR 0101 — CLI 升级为公开发布接口；`--output-dir` + 按模型分子目录规则；`batch.py` 取代 `test_batch.sh`
 - `sim_engine/src/optimizer_engine.py` — `_StopOptimization` + `latest_front` 改动
