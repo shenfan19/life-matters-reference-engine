@@ -5,8 +5,8 @@ in-process (no subprocess/stdout parsing), and writes a batch_report.md
 summarizing PASS/FAIL.
 
 Usage (no-arg invocation prints --help instead of running with defaults):
-  python sim_cli/batch.py --folder models/papers --sim-only
-  python sim_cli/batch.py --no-skip --output-dir /tmp/lm_out
+  python sim_cli/batch.py --input-dir models/papers --sim-only
+  python sim_cli/batch.py --input-dir models/references --output-dir /tmp/lm_out
 
 Each model's results go to <output-dir>/<batch-timestamp>/<model-stem>/,
 following the same layout main.py uses for a single run.
@@ -62,7 +62,7 @@ def main() -> None:
         description='Run --sim and/or --opt for every model YAML in a folder, '
                      'writing a batch_report.md.',
     )
-    parser.add_argument('--folder', default='../b_lm_model/models/references',
+    parser.add_argument('--input-dir', default='../b_lm_model/models/references',
                          help='Folder to scan for *.yaml models (recursive). '
                               'Default: ../b_lm_model/models/references')
     parser.add_argument('--output-dir', default='../b_lm_model/output',
@@ -73,9 +73,6 @@ def main() -> None:
                              help='Only run --sim, skip the optimizer.')
     step_group.add_argument('--opt-only', action='store_true',
                              help='Only run --opt, skip the simulation.')
-    parser.add_argument('--no-skip', action='store_true',
-                         help='Test all *.yaml files. Default: only files with '
-                              '_nosim or _noopt in the name (repair-queue mode).')
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -84,14 +81,10 @@ def main() -> None:
     args = parser.parse_args()
 
     root = _project_root()
-    folder = _resolve(root, args.folder)
+    folder = _resolve(root, args.input_dir)
     output_dir = _resolve(root, args.output_dir)
 
-    if args.no_skip:
-        yamls = sorted(folder.rglob('*.yaml'))
-    else:
-        yamls = sorted(p for p in folder.rglob('*.yaml')
-                        if '_nosim' in p.stem or '_noopt' in p.stem)
+    yamls = sorted(folder.rglob('*.yaml'))
     total = len(yamls)
 
     run_sim_step = not args.opt_only
@@ -113,8 +106,6 @@ def main() -> None:
     print(f'  文件夹：{folder}')
     print(f'  模型数：{total}')
     print(f'  运行步骤：{" + ".join(steps)}')
-    if not args.no_skip:
-        print('  过滤：仅 _nosim/_noopt')
     print('=' * 60)
     print()
 

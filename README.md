@@ -88,7 +88,7 @@ python sim_cli/main.py <model.yaml> --sim
 python sim_cli/main.py <model.yaml> --opt
 
 # 批量运行一个文件夹下的所有模型，生成 batch_report.md
-python sim_cli/batch.py --folder <models_folder>
+python sim_cli/batch.py --input-dir <models_folder>
 ```
 
 输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/cli.md](docs/cli.md)。
