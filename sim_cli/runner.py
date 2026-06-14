@@ -70,31 +70,7 @@ def load_pareto_from_csv(csv_path: Path) -> List[Dict]:
 
 # ── public runners ────────────────────────────────────────────────────────────
 
-def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> bool:
-    _bootstrap(project_root)
-    engine = _make_engine(project_root)
-    name = _model_name(model_path, project_root)
-
-    if not engine.load_models([name]):
-        logger.error(f'Cannot load model: {name}')
-        return False
-
-    hours = _time_hours(engine)
-    logger.info(f'Simulation start: {name}  ({hours / 24:.1f} days)')
-    print(f'  Running simulation ({hours / 24:.1f} days)...')
-
-    result = engine.run_simulation(name, hours, output_path=str(csv_path))
-    print()
-
-    if result.get('success'):
-        logger.info(f'Simulation complete: {result["steps"]} steps → {csv_path.name}')
-        return True
-
-    logger.error(f'Simulation failed: {result.get("error")}')
-    return False
-
-
-def run_sim_all_plans(model_path: Path, project_root: Path, csv_path: Path) -> Optional[List[str]]:
+def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[List[str]]:
     """Run one simulation per simulation.plans entry, writing `<stem>__<plan_id>.csv` each.
 
     Returns the list of written CSV filenames, or None on failure.
@@ -109,6 +85,7 @@ def run_sim_all_plans(model_path: Path, project_root: Path, csv_path: Path) -> O
 
     hours = _time_hours(engine)
     plan_ids = list(engine.current_model.plans.keys()) or ['default']
+    single_unnamed_plan = plan_ids == ['default']
 
     logger.info(f'Simulation start (all plans): {name}  ({hours / 24:.1f} days)  plans={plan_ids}')
     print(f'  Running simulation for {len(plan_ids)} plan(s) ({hours / 24:.1f} days each)...')
@@ -116,7 +93,10 @@ def run_sim_all_plans(model_path: Path, project_root: Path, csv_path: Path) -> O
     written: List[str] = []
 
     def _path_for(plan_id: str, _i: int) -> str:
-        path = csv_path.with_name(f'{csv_path.stem}__{plan_id}{csv_path.suffix}')
+        if single_unnamed_plan:
+            path = csv_path
+        else:
+            path = csv_path.with_name(f'{csv_path.stem}__{plan_id}{csv_path.suffix}')
         written.append(path.name)
         return str(path)
 
