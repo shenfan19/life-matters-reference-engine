@@ -6,7 +6,7 @@ summarizing PASS/FAIL.
 
 Usage (no-arg invocation prints --help instead of running with defaults):
   python sim_cli/batch.py --folder models/papers --sim-only
-  python sim_cli/batch.py --no-skip --all-plans --output-dir /tmp/lm_out
+  python sim_cli/batch.py --no-skip --output-dir /tmp/lm_out
 
 Each model's results go to <output-dir>/<batch-timestamp>/<model-stem>/,
 following the same layout main.py uses for a single run.
@@ -76,8 +76,6 @@ def main() -> None:
     parser.add_argument('--no-skip', action='store_true',
                          help='Test all *.yaml files. Default: only files with '
                               '_nosim or _noopt in the name (repair-queue mode).')
-    parser.add_argument('--all-plans', action='store_true',
-                         help='Pass --all-plans for --sim (one CSV per simulation.plans entry).')
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -115,7 +113,6 @@ def main() -> None:
     print(f'  文件夹：{folder}')
     print(f'  模型数：{total}')
     print(f'  运行步骤：{" + ".join(steps)}')
-    print(f'  All plans：{args.all_plans}')
     if not args.no_skip:
         print('  过滤：仅 _nosim/_noopt')
     print('=' * 60)
@@ -133,7 +130,7 @@ def main() -> None:
     ]
 
     from output import setup_output_dir, make_stem, setup_logging, write_opt_csv
-    from runner import run_sim, run_sim_all_plans, run_opt
+    from runner import run_sim, run_opt
 
     def _opt_callback(entry: dict) -> bool:
         return False  # never stop early in batch mode
@@ -158,12 +155,8 @@ def main() -> None:
             csv_path = out_dir / f'{stem}.csv'
 
             try:
-                if args.all_plans:
-                    written = run_sim_all_plans(yaml_path, root, csv_path)
-                    ok, sim_csvs = bool(written), (written or [])
-                else:
-                    ok = run_sim(yaml_path, root, csv_path)
-                    sim_csvs = [csv_path.name] if ok else []
+                written = run_sim(yaml_path, root, csv_path)
+                ok, sim_csvs = bool(written), (written or [])
             except Exception as e:
                 logger.exception('Simulation crashed')
                 ok = False

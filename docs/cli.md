@@ -52,8 +52,7 @@ pyinstaller sim_cli/build.spec
 | 参数 | 说明 |
 |------|------|
 | `<model.yaml>` | 模型文件路径（绝对路径或相对于项目根的路径） |
-| `--sim` | 运行仿真 |
-| `--all-plans` | 配合 `--sim`：对 `simulation.plans` 中每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`） |
+| `--sim` | 运行仿真。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
 | `--opt` | 运行优化器（NSGA-II） |
 | `--continue` | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索 |
 | `--continue PATH` | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
@@ -69,7 +68,7 @@ pyinstaller sim_cli/build.spec
 
 | 文件 | 说明 |
 |------|------|
-| `*_sim.csv` | 仿真时间序列，每列一个输出变量 |
+| `*_sim.csv` | 仿真时间序列，每列一个输出变量；若模型定义了多个 `simulation.plans`，则为 `*_sim__<plan_id>.csv`（每个方案一个文件） |
 | `*_opt.csv` | Pareto 前沿表格，每行一个解（x 列 + f 列）；每代结束后实时覆盖，中断不丢 |
 | `*_{模式}.log` | 运行日志（含每代 feasible ratio） |
 
@@ -166,7 +165,6 @@ python sim_cli/batch.py --folder models/papers --sim-only
 | `--sim-only` | （跑 sim + opt） | 只运行 `--sim`，跳过优化器。与 `--opt-only` 互斥 |
 | `--opt-only` | （跑 sim + opt） | 只运行 `--opt`，跳过仿真。与 `--sim-only` 互斥 |
 | `--no-skip` | （仅测 `_nosim`/`_noopt`） | 默认只测试文件名含 `_nosim` 或 `_noopt` 的模型（修复队列）；加此参数则测试文件夹下所有 YAML |
-| `--all-plans` | （关闭） | 配合 sim 步骤：对 `simulation.plans` 中每个方案各出一个 CSV，而非只输出一个 |
 
 ### 报告
 

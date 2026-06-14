@@ -137,12 +137,21 @@ ADR 0101 把 CLI 升级为面向 AI/发布的公开接口后，`test_batch.sh` �
 **决策**：删除 `script/test_batch.sh`，新增 `sim_cli/batch.py`：
 
 - 纯 Python，与 `main.py` 同目录，不依赖 bash，PyInstaller 编译的 `lm-sim` 同环境可用
-- 直接 `import runner.run_sim / run_sim_all_plans / run_opt` 在进程内调用，不经 subprocess，无需解析 stdout
+- 直接 `import runner.run_sim / run_opt` 在进程内调用，不经 subprocess，无需解析 stdout
 - 每个模型的运行包在 `try/except` 中，单个模型崩溃不中断整批（原 bash 版靠 subprocess 天然隔离，Python 版需显式处理）
 - 错误摘要通过临时挂载的 `logging.Handler` 捕获 ERROR 级别日志，而非 grep 文本
 - 参数、批次目录结构（`<output-dir>/<timestamp>/<模型名>/`）、`batch_report.md` 格式与原 bash 版保持一致
 
 CLI 本身（`main.py`）的"按模型分子目录 + `--output-dir`"规则（本次 ADR 0101 实施时引入）对两者通用，`batch.py` 只是给每个模型调用传入同一个批次目录作为 `output_dir`。
+
+### `--all-plans` 移除：`--sim` 始终输出全部 plans
+
+`--all-plans` 是刚引入不久的可选开关，与 `--sim` 共存意义不大：`run_sim`/`run_sim_all_plans`
+两套代码路径几乎重复，且对 AI 调用者而言"是否要遍历 plans"不该是需要记住的额外参数。
+
+**决策**：合并为单一 `run_sim`——若模型定义了 `simulation.plans`，对每个方案各跑一次并输出
+`<stem>__<plan_id>.csv`；若未定义（隐式单一 plan），输出 `<stem>.csv`（与之前的命名兼容）。
+`main.py` 和 `batch.py` 均移除 `--all-plans` 参数。
 
 ---
 
