@@ -150,7 +150,7 @@ CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致
 
 ```bash
 # 不带参数运行等价于 --help（避免误跑默认文件夹）
-python sim_cli/batch.py --folder models/papers --sim-only
+python sim_cli/batch.py --input-dir models/papers --sim-only
 ```
 
 每次运行创建一个以秒级时间戳命名的批次目录（`<output-dir>/YYYY-MM-DD_HH-MM-SS/`），
@@ -160,11 +160,10 @@ python sim_cli/batch.py --folder models/papers --sim-only
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--folder PATH` | `../b_lm_model/models/references` | 要扫描的模型文件夹（递归查找 `*.yaml`，相对路径从项目根起算） |
+| `--input-dir PATH` | `../b_lm_model/models/references` | 要扫描的模型文件夹（递归查找 `*.yaml`，相对路径从项目根起算） |
 | `--output-dir PATH` | `../b_lm_model/output` | 批次目录的根路径；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
 | `--sim-only` | （跑 sim + opt） | 只运行 `--sim`，跳过优化器。与 `--opt-only` 互斥 |
 | `--opt-only` | （跑 sim + opt） | 只运行 `--opt`，跳过仿真。与 `--sim-only` 互斥 |
-| `--no-skip` | （仅测 `_nosim`/`_noopt`） | 默认只测试文件名含 `_nosim` 或 `_noopt` 的模型（修复队列）；加此参数则测试文件夹下所有 YAML |
 
 ### 报告
 
