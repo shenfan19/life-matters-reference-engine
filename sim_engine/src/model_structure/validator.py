@@ -321,36 +321,6 @@ class Validator:
                     elif isinstance(dyn_expr, (int, float)):
                         # 数字常量,无需检查
                         pass
-                
-                # 3. 验证 formula 字段 (如果有)
-                if hasattr(formula, 'formula') and formula.formula:
-                    if isinstance(formula.formula, str):
-                        vars_in_formula = extract_vars_from_expr(formula.formula)
-                        for var in vars_in_formula:
-                            if var not in self.variables and var not in self.formulas:
-                                missing_vars.append({
-                                    'variable': var,
-                                    'context': f"formula field of '{form_name}'"
-                                })
-                                is_valid = False
-                    elif isinstance(formula.formula, dict):
-                        # {var_name: expr} 字典形式，语义同 dynamics
-                        for f_key, f_expr in formula.formula.items():
-                            if f_key not in self.variables:
-                                missing_vars.append({
-                                    'variable': f_key,
-                                    'context': f"formula key of '{form_name}'"
-                                })
-                                is_valid = False
-                            if isinstance(f_expr, str):
-                                vars_in_formula = extract_vars_from_expr(f_expr)
-                                for var in vars_in_formula:
-                                    if var not in self.variables and var not in self.formulas:
-                                        missing_vars.append({
-                                            'variable': var,
-                                            'context': f"formula['{f_key}'] in formula '{form_name}'"
-                                        })
-                                        is_valid = False
             
             # 添加错误信息
             if missing_vars:

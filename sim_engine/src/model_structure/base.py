@@ -43,7 +43,6 @@ class Formula:
     condition: Any = True
     priority: int = 0
     dynamics: Dict[str, Any] = None
-    formula: Optional[str] = None
     reference: Optional[Any] = None
     # 公式显式声明的时间单位（minute | hour | day），用于跨步长 import 换算。
     step_unit: Optional[str] = None

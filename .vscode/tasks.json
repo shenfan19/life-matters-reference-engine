@@ -13,7 +13,7 @@
                 "cwd": "${workspaceFolder}/sim_engine",
                 "env": {
                     "SCS_MODE": "true",
-                    "LM_MODELS_PATH": "${workspaceFolder}/../b_lm_model/models"
+                    "LM_MODELS_PATH": "${workspaceFolder}/models"
                 }
             },
             "isBackground": true,

@@ -299,7 +299,6 @@ class Loader:
                 condition=condition,
                 priority=form_data.get('priority', 0),
                 dynamics=form_data.get('dynamics', {}),
-                formula=form_data.get('formula'),
                 reference=form_data.get('reference'),
                 step_unit=str(form_data.get('step_unit', '')).lower() or None,
             )
@@ -367,11 +366,14 @@ class Loader:
 
         # 应用计划表 (Schedules)
         # 唯一支持格式：simulation.plans[*].schedules（ADR 0076），每个 plan 是
-        # [{variable, time:"HH:MM", value, days:[...], date_range:["YYYY-MM-DD", "YYYY-MM-DD"]}]
+        # [{variable, time_start:"HH:MM", time_end:"HH:MM"(可选), value, days:[...],
+        #   date_range:["YYYY-MM-DD", "YYYY-MM-DD"](可选)}]
         # 不再支持旧版 simulation.schedules（扁平 list/dict）。
-        # 所有 plans 均解析并存入 self.plans[plan_id]；第一个 plan 作为
-        # self.schedules（当前激活方案，供 _apply_schedules 使用）。
+        # 所有 plans 解析为 regimen 兼容格式存入 self.plans[plan_id]（List[dict]）；
+        # 第一个 plan 同时设为 self.schedule_entries，供 run_simulation 的
+        # apply_regimens 路径使用（CLI/GUI 路径统一，支持 pulse 和 sustained）。
         self.plans = {}
+        self.schedule_entries = []
         plans_raw = simulator_data.get('plans')
         if isinstance(plans_raw, list):
             for i, plan in enumerate(plans_raw):
@@ -381,7 +383,7 @@ class Loader:
                 )
             if self.plans:
                 first_plan_id = plans_raw[0].get('id') or 'plan_0'
-                self.schedules = self.plans[first_plan_id]
+                self.schedule_entries = self.plans[first_plan_id]
 
         # 应用每日输入 (daily_inputs) — 转换为 schedules，day 从 1 开始
         daily_inputs_raw = data.get('daily_inputs', {})
@@ -444,68 +446,46 @@ class Loader:
         # 更新符号表
         self._initialize_asteval()
 
-    def _parse_schedule_entries(self, entries: list, simulator_data: Dict[str, Any]) -> Dict[str, InputSchedule]:
-        """将单个 plan 的 schedules 列表展开为 {var_name: InputSchedule}。"""
-        from datetime import date as _sdate, timedelta as _std
-        from collections import defaultdict as _dd
-        _DAY_MAP = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
+    def _parse_schedule_entries(self, entries: list, simulator_data: Dict[str, Any]) -> list:
+        """将单个 plan 的 schedules 列表解析为 apply_regimens 兼容的 regimen list。
 
-        result: Dict[str, InputSchedule] = {}
+        每个条目生成一个 regimen dict，格式与 optimizer path 一致：
+          {'variable': str, 'events': [{'time_start', 'time_end', 'value',
+                                         'days'(可选), 'valid_start'/'valid_end'(可选)}]}
+        time_start == time_end → pulse；不等 → sustained（由 apply_regimens 处理）。
+        """
         if not isinstance(entries, list) or not entries:
-            return result
+            return []
 
-        sd_str = str(simulator_data.get('start_date', '2000-01-01'))
-        ed_str = str(simulator_data.get('end_date', sd_str))
-        try:
-            sy, sm, sdd = [int(x) for x in sd_str.split('-')]
-            ey, em, edd = [int(x) for x in ed_str.split('-')]
-            sim_start = _sdate(sy, sm, sdd)
-            sim_end   = _sdate(ey, em, edd)
-        except Exception:
-            logger.warning("plan schedules 需要 start_date/end_date，跳过展开")
-            return result
-
-        var_points_map = _dd(list)
+        result = []
         for entry in entries:
             var_name = entry.get('variable')
             if not var_name:
                 continue
-            time_str = str(entry.get('time', '00:00'))
-            hh, mm = [int(x) for x in time_str.split(':')]
-            tod_sec = hh * 3600 + mm * 60
-            value = float(entry.get('value', 0.0))
+            time_start = str(entry.get('time_start', '00:00'))
+            time_end   = str(entry.get('time_end', time_start))
+            value      = float(entry.get('value', 0.0))
 
+            ev: Dict[str, Any] = {
+                'time_start': time_start,
+                'time_end':   time_end,
+                'value':      value,
+            }
             days_raw = entry.get('days')
-            valid_days = (
-                {_DAY_MAP[d] for d in days_raw if d in _DAY_MAP}
-                if days_raw else set(range(7))
-            )
+            if days_raw:
+                ev['days'] = list(days_raw)
 
             dr = entry.get('date_range')
-            if dr and isinstance(dr, list) and len(dr) == 2:
-                rs, re_ = str(dr[0]), str(dr[1])
-                ry, rm, rd = [int(x) for x in rs.split('-')]
-                ry2, rm2, rd2 = [int(x) for x in re_.split('-')]
-                range_start = max(sim_start, _sdate(ry, rm, rd))
-                range_end   = min(sim_end,   _sdate(ry2, rm2, rd2))
-            else:
-                range_start, range_end = sim_start, sim_end
+            if isinstance(dr, list) and len(dr) == 2:
+                ev['valid_start'] = str(dr[0])
+                ev['valid_end']   = str(dr[1])
 
-            cur = range_start
-            while cur <= range_end:
-                if cur.weekday() in valid_days:
-                    offset_sec = (cur - sim_start).days * 86400 + tod_sec
-                    var_points_map[var_name].append(
-                        SchedulePoint(time=float(offset_sec), value=value)
-                    )
-                cur += _std(days=1)
+            label = entry.get('label')
+            if label:
+                ev['label'] = str(label)
 
-        for var_name, pts in var_points_map.items():
-            result[var_name] = InputSchedule(
-                variable=var_name,
-                points=sorted(pts, key=lambda p: p.time),
-                interpolation='pulse'
-            )
+            result.append({'variable': var_name, 'events': [ev]})
+
         return result
 
     def load_model(self, file_path: str, module_name: str):
