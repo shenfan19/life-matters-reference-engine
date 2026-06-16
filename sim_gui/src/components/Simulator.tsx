@@ -20,6 +20,7 @@ import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
 import { OptControlBar } from './opt_tab/OptControlBar';
 import { GlobalModelToolbar } from './sim_tab/GlobalModelToolbar';
+import { zip as fflateZip } from 'fflate';
 import { useOptimizer } from './opt_tab/useOptimizer';
 import { useSimulation } from './sim_tab/useSimulation';
 
@@ -380,7 +381,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     startSimulation, runBatch,
     pauseSimulation, resumeSimulation, resetSimulation,
     handleRunCompared, runAllPlans,
-    exportSimCSV,
   } = useSimulation({
     state, setState,
     selectedModel, selectedKey,
@@ -399,6 +399,64 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // Combined stop (sim + opt)
   const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
+
+  // ── export all plans to CSV / zip ────────────────────────────────────────────
+  const handleExportSimCSV = () => {
+    const modelName = (selectedModel?.content?.metadata?.name || 'sim').replace(/\s+/g, '_');
+    const baseName = `${modelName}_${simStartDate}_${simEndDate}`;
+
+    // Build combined plan list (mirrors what SimPlotTab receives as comparedPlans)
+    const allPlans = [
+      ...(simulationData.length > 0 && importedSimRuns.length > 0
+        ? [{ id: 'current-sim', label: t('sim.tab.current'), data: simulationData as any[], runsData: dataPerRun }]
+        : []),
+      ...comparedPlans.map(p => ({ id: p.id, label: p.label, data: p.data as any[], runsData: p.runsData })),
+      ...importedSimRuns.map(r => ({ id: r.key, label: r.label, data: r.data, runsData: [] as any[][] })),
+    ];
+    const plansWithData = allPlans.filter(p => p.data.length > 0);
+
+    // Single sim (no overlays): wide-format CSV with all variable columns
+    if (plansWithData.length === 0) {
+      if (!simulationData.length) return;
+      const keys = Object.keys(simulationData[0]);
+      const rows = simulationData.map(row => keys.map(k => String((row as any)[k] ?? '')).join(','));
+      const csv = [keys.join(','), ...rows].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `${baseName}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      message.success(t('sim.msg.dl_sim_done', { n: simulationData.length }));
+      return;
+    }
+
+    // Multi-plan: zip with one CSV per variable, each CSV has all plan columns
+    const ref = plansWithData[0];
+    const varNames = Object.keys(ref.data[0] || {}).filter(k => k !== 'step' && k !== 'time');
+    if (!varNames.length) return;
+    const planLabels = plansWithData.map(p => p.label);
+    const encoder = new TextEncoder();
+    const zipFiles: Record<string, Uint8Array> = {};
+    for (const varName of varNames) {
+      const header = ['time_s', 'time_h', ...planLabels].join(',');
+      const rows = ref.data.map((d: any, idx: number) => {
+        const ts = d.time ?? 0;
+        const vals = plansWithData.map(p => String((p.data[idx]?.[varName] as number) ?? ''));
+        return [String(ts), (ts / 3600).toFixed(4), ...vals].join(',');
+      });
+      zipFiles[`${varName}.csv`] = encoder.encode([header, ...rows].join('\n'));
+    }
+    fflateZip(zipFiles, { level: 6 }, (err, data) => {
+      if (err) { message.error(t('sim.msg.export_failed')); return; }
+      const blob = new Blob([data], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${baseName}.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      message.success(t('sim.msg.dl_sim_done', { n: ref.data.length }));
+    });
+  };
 
   // ── init on model load ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -1295,7 +1353,8 @@ const Simulator: React.FC<SimulatorProps> = ({
         startSimulation();
       }} onPause={pauseSimulation} onResume={resumeSimulation}
       onReset={resetSimulation} onRunAllPlans={runAllPlans}
-      onExportCSV={exportSimCSV}
+      hasSimData={simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0}
+      onExportCSV={handleExportSimCSV}
       onImportCSV={importSimCSV}
       onSimStartDateChange={v => set('simStartDate', v)}
       onSimEndDateChange={v => set('simEndDate', v)}
@@ -1528,7 +1587,6 @@ const Simulator: React.FC<SimulatorProps> = ({
                       data: r.data, runsData: [] as any[][], running: false, inputEvents: [] as any[],
                     })),
                   ]}
-                  onExportCSV={exportSimCSV}
                   onRemovePlan={removeImportedRun}
                   simLogs={simLogs}
                 />
