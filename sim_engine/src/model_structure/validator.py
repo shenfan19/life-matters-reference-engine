@@ -267,14 +267,25 @@ class Validator:
             # 遍历所有公式
             for form_name, formula in self.formulas.items():
 
-                # 0. 验证 step_unit（必填）
+                # 0. 仅当 dynamics 使用步长变量时才验证 step_unit
+                dyn_uses_step = any(
+                    isinstance(expr, str) and bool(re.search(r'\b(step|dt|step_size)\b', expr))
+                    for expr in formula.dynamics.values()
+                )
                 step_unit = getattr(formula, 'step_unit', None)
-                if not step_unit:
-                    errors.append(f"formula '{form_name}' 缺少必填字段 step_unit（minute | hour | day）。")
-                    is_valid = False
-                elif step_unit not in valid_step_units:
-                    errors.append(f"formula '{form_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
-                    is_valid = False
+                if dyn_uses_step:
+                    if any(
+                        isinstance(expr, str) and bool(re.search(r'\b(dt|step_size)\b', expr))
+                        for expr in formula.dynamics.values()
+                    ):
+                        errors.append(f"formula '{form_name}' 的 dynamics 使用了废弃符号 dt/step_size，请改用 step。")
+                        is_valid = False
+                    if not step_unit:
+                        errors.append(f"formula '{form_name}' 的 dynamics 使用步长变量，缺少必填字段 step_unit（minute | hour | day）。")
+                        is_valid = False
+                    elif step_unit not in valid_step_units:
+                        errors.append(f"formula '{form_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
+                        is_valid = False
 
                 # 1. 验证 condition
                 if isinstance(formula.condition, str):
