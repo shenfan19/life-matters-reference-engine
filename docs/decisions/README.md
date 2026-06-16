@@ -2,6 +2,8 @@
 
 每个文件记录一个设计决策，格式参考 [ADR](https://adr.github.io/)。
 
+> **†** — 文件位于 `b_lm_model` 仓库（[`../../../b_lm_model/docs/decisions/`](../../../b_lm_model/docs/decisions/)）
+
 ## 索引
 
 | # | 标题 | 状态 | 日期 |
@@ -24,7 +26,7 @@
 | [0019](0019-disclaimer-placement-and-content.md) | 免责声明：位置、内容与呈现规范 | ✅ 已实施 | 2026-04-07 |
 | [0020](0020-app-naming-life-matters.md) | 应用命名：统一为 Life Matters，中文副名仅在 About 中显示 | ✅ 已实施 | 2026-04-07 |
 | [0021](0021-about-contact-info-github-only.md) | About 弹窗联系信息：仅保留 GitHub，去除邮件与主页 | ✅ 已实施 | 2026-04-09 |
-| [0022](0022-models-three-level-taxonomy.md) | Models 三层分类体系（medical/social → 学科 → 细分） | ✅ 已实施 | 2026-04-12 |
+| [0022 †](../../../b_lm_model/docs/decisions/0022-models-three-level-taxonomy.md) | Models 三层分类体系（medical/social → 学科 → 细分） | ✅ 已实施 | 2026-04-12 |
 | [0023](0023-models-runnable-from-gui.md) | Models 可在 GUI 文件树中直接运行 + standalone 约定 | ✅ 已实施 | 2026-04-12 |
 | [0024](0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ✅ 已实施 | 2026-04-12 |
 | [0025](0025-story-editor-four-tab-layout.md) | StoryEditor 转换器四标签平铺 + 多条件结局设计器 + 通用卡牌库 | ✅ 已实施 | 2026-04-13 |
@@ -39,25 +41,25 @@
 | [0036](0036-2026-04-19_game_动画与结算时序设计.md) | Game 动画与结算时序设计 | ✅ 已实施 | 2026-04-19 |
 | [0037](0037-2026-04-19_game_i18n多语言覆盖层设计.md) | Game i18n 多语言覆盖层设计 | ✅ 已实施 | 2026-04-19 |
 | [0038](0038-2026-04-20_sim_regimen-k4-input-scheduling.md) | Regimen K×4 输入调度：时刻/摄入量/执行日/有效期 | ✅ 已实施 | 2026-04-20 |
-| [0040](0040-2026-04-22_sim_医学证据类型与变量映射.md) | Sim 医学证据类型与变量映射（evidence 8 子类型） | ✅ 已实施 | 2026-04-22 |
-| [0041](0041-2026-04-22_project_命名规范下划线优先.md) | 项目命名规范：snake_case 下划线优先 | ✅ 已实施 | 2026-04-22 |
-| [0042](0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名；保留 sim_xxx 不改 | ✅ 已实施 | 2026-04-23 |
+| [0040 †](../../../b_lm_model/docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md) | Sim 医学证据类型与变量映射（evidence 8 子类型） | ✅ 已实施 | 2026-04-22 |
+| [0041 †](../../../b_lm_model/docs/decisions/0041-2026-04-22_project_命名规范下划线优先.md) | 项目命名规范：snake_case 下划线优先 | ✅ 已实施 | 2026-04-22 |
+| [0042 †](../../../b_lm_model/docs/decisions/0042-2026-04-23_project_mod-to-model-rename.md) | mod → model 全面重命名；保留 sim_xxx 不改 | ✅ 已实施 | 2026-04-23 |
 | [0043](0043-2026-04-25_game_battlefield-tension-framework.md) | 战场张力框架：battle_progress/danger_accumulation 归 Game-native；origin 字段；命运牌模式 | ✅ 已实施 | 2026-04-25 |
-| [0044](0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；pulse 模式；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
+| [0044 †](../../../b_lm_model/docs/decisions/0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；pulse 模式；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
 | [0045](0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | MC 概率仿真架构：parameter 分布表达式、多 run 引擎、半透明曲线渲染、Opt 内环均值评估、种子管理 | ✅ 已实施 | 2026-04-30 |
-| [0046](0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；公式用 `step`；simulation 去掉 step/step_unit | ✅ 已实施 | 2026-04-30 |
+| [0046 †](../../../b_lm_model/docs/decisions/0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；公式用 `step`；simulation 去掉 step/step_unit | ✅ 已实施 | 2026-04-30 |
 | [0049](0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | Optimizer 异步 Job 系统设计 | ✅ 已实施 | 2026-05-02 |
 | [0050](0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | InputEvent 扁平化与交互状态颜色规则 | ✅ 已实施 | 2026-05-04 |
 | [0052](0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 格式统一（扁平列表）& optimizer.regimen 支持 | ✅ 已实施 | 2026-05-04 |
-| [0053](0053-2026-05-03_sim_date_range调度字段与YAML-schedule优先级修复.md) | `date_range` 日期区间字段；YAML Schedule 优先于 GUI Regimen | ✅ 已实施 | 2026-05-03 |
+| [0053 †](../../../b_lm_model/docs/decisions/0053-2026-05-03_sim_date_range调度字段与YAML-schedule优先级修复.md) | `date_range` 日期区间字段；YAML Schedule 优先于 GUI Regimen | ✅ 已实施 | 2026-05-03 |
 | [0054](0054-2026-05-04_sim_unified-apply-regimens.md) | 仿真/优化 Regimen 执行函数统一：删除 `_apply_regimen_events` | ✅ 已实施 | 2026-05-04 |
 | [0055](0055-2026-05-04_project_docs-go-public-private-split.md) | `docs/` 公开发布 / `go/` 内部不发布 分界规则 | ✅ 已实施 | 2026-05-04 |
 | [0056](0056-2026-05-04_project_three-tier-validation-framework.md) | 三层验证框架：层1数值精度 / 层2文献对标 / 层3优化合理性 | ✅ 框架已实施，脚本待写 | 2026-05-04 |
-| [0057](0057-2026-05-04_project_models-paper-directory.md) | `models/published/paper1-3/` 论文专用场景目录 | ✅ 已实施 | 2026-05-04 |
-| [0062](0062-2026-05-06_project_models-directory-rename.md) | models 目录重命名规范（source/ → in_process/，scenarios/ → published/） | ✅ 已实施 | 2026-05-06 |
-| [0063](0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | Resolved imports 与仿真输出选择规则 | ✅ 已实施 | 2026-05-07 |
+| [0057 †](../../../b_lm_model/docs/decisions/0057-2026-05-04_project_models-paper-directory.md) | `models/published/paper1-3/` 论文专用场景目录 | ✅ 已实施 | 2026-05-04 |
+| [0062 †](../../../b_lm_model/docs/decisions/0062-2026-05-06_project_models-directory-rename.md) | models 目录重命名规范（source/ → in_process/，scenarios/ → published/） | ✅ 已实施 | 2026-05-06 |
+| [0063 †](../../../b_lm_model/docs/decisions/0063-2026-05-07_sim_resolved-imports-and-output-selection.md) | Resolved imports 与仿真输出选择规则 | ✅ 已实施 | 2026-05-07 |
 | [0064](0064-2026-05-07_project-edit-refresh-run-snapshot.md) | 编辑态刷新源文件，运行态固定快照 | ✅ 已实施 | 2026-05-07 |
-| [0065](0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |
+| [0065 †](../../../b_lm_model/docs/decisions/0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |
 | [0066](0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Simulator 拆分与 Sim/Opt 结果工作区 | ✅ 已实施；OPT/SIM 分离重构待续 | 2026-05-08 |
 | [0067](0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化算法参数预设（快速/标准/精细）与滑动条联动 UI | ✅ 已实施 | 2026-05-15 |
 | [0068](0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译：asteval 运行时解析 → 加载时生成 Python 函数 | ✅ 已实施 | 2026-05-15 |
@@ -68,7 +70,7 @@
 | [0073](0073-2026-05-16_sim_multi-plan-simulation.md) | 多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行 | 待实现 | 2026-05-16 |
 | [0074](0074-2026-05-16_sim_gui-working-state-priority.md) | GUI Working State 优先级高于 YAML Schedule（反转 ADR 0053 GUI 变量规则） | 待实现 | 2026-05-16 |
 | [0074](0074-2026-05-16_sim_single-tab-group-and-builder-tab.md) | 单层标签组导航：动态 Builder Tab + 统一目录树双模式 | ✅ 已实施 | 2026-05-16 |
-| [0075](0075-2026-05-17_model_remove-type-standalone-fields.md) | 移除 type/standalone 顶层字段 | ✅ 已实施 | 2026-05-17 |
+| [0075 †](../../../b_lm_model/docs/decisions/0075-2026-05-17_model_remove-type-standalone-fields.md) | 移除 type/standalone 顶层字段 | ✅ 已实施 | 2026-05-17 |
 | [0076](0076-2026-05-17_sim_yaml-simulation-plans.md) | YAML simulation.plans 预置多方案 | ✅ 已实施 | 2026-05-17 |
 | [0077](0077-2026-05-17_sim_session-model-import.md) | Session 模型导入：原子上传（UUID + 内联解析 + 即时删除）→ localStorage | ✅ 已实施（2026-05-18 重写） | 2026-05-17 |
 | [0078](0078-2026-05-18_project_scs-mode-design.md) | SCS_MODE：云端部署写操作保护 + 前端行为适配 + 合并→session model | ✅ 已实施 | 2026-05-18 |
@@ -79,14 +81,24 @@
 | [0083](0083-2026-05-22_sim_optimizer-evaluation-time-window.md) | Optimizer 评估时间窗独立配置（start_date / end_date / step_size） | ✅ 已实施 | 2026-05-22 |
 | [0084](0084-2026-05-23_sim_sim-opt-separation.md) | Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab 新组件 | ✅ 已实施 | 2026-05-23 |
 | [0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | 移除锁机制、自由切换模型、双箭头运行指示器、云端运行拦截 | ✅ 已实施 | 2026-05-25 |
-| [0086](0086-2026-05-26_project_lmml-rename-from-lmf.md) | 格式命名：LMF → LMML（Life Matters Model Language） | ✅ 已实施 | 2026-05-26 |
+| [0086 †](../../../b_lm_model/docs/decisions/0086-2026-05-26_project_lmml-rename-from-lmf.md) | 格式命名：LMF → LMML（Life Matters Model Language） | ✅ 已实施 | 2026-05-26 |
 | [0087](0087-2026-05-27_sim_schedules-plans-coexistence.md) | `simulation.schedules` 与 `plans` 共存语义：plans 优先，papers/ 禁止混用 | ✅ 已实施 | 2026-05-27 |
 | [0088](0088-2026-05-28_sim_optimizer-schedules-unified-format.md) | optimizer.schedules 统一格式：决策变量与固定背景量合并列表 | ✅ 已接受 | 2026-05-28 |
 | [0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | Session 精化：useSession 分离、userEdited 追踪、Warm-start Dirty 检测 | ✅ 已实施 | 2026-05-30 |
 | [0090](0090-2026-05-31_sim_remove-second-step-unit.md) | 移除 second 步长单位，统一 minute/hour/day | ✅ 已接受 | 2026-05-31 |
 | [0091](0091-2026-06-01_project_cli-batch-tool.md) | `sim_cli/`：批量仿真 CLI 工具 | ✅ 已实施 | 2026-06-01 |
-| [0092](0092-2026-06-05_model_input-variable-bare-unit-rule.md) | `type: input` 单位规范：裸单位（事件量），禁止速率单位（/day 等） | ✅ 已实施 | 2026-06-05 |
+| [0092 †](../../../b_lm_model/docs/decisions/0092-2026-06-05_model_input-variable-bare-unit-rule.md) | `type: input` 单位规范：裸单位（事件量），禁止速率单位（/day 等） | ✅ 已实施 | 2026-06-05 |
 | [0093](0093-2026-06-05_sim_runtime-log-panel.md) | Sim/Opt 运行时日志面板：内容分层（模型信息、NaN/bounds 警告、完成统计）与实现 | ✅ 已实施 | 2026-06-05 |
-| [0096](0096-2026-06-06_model_filename-quality-markers.md) | 模型文件名质量标记约定（_nosim / _noopt / _noref） | ✅ 已实施 | 2026-06-06 |
-| [0097](0097-2026-06-08_model_description-3-fields.md) | papers/ 模型 description 简化为三字段（brief / problem / method） | ✅ 已实施 | 2026-06-08 |
+| [0096 †](../../../b_lm_model/docs/decisions/0096-2026-06-06_model_filename-quality-markers.md) | 模型文件名质量标记约定（_nosim / _noopt / _noref） | ✅ 已实施 | 2026-06-06 |
+| [0096](0096-2026-06-11_sim_simulation-step-input-unit-convention.md) | `Simulation.step()` 入参单位约定：秒 | ✅ 已接受 | 2026-06-11 |
+| [0097 †](../../../b_lm_model/docs/decisions/0097-2026-06-08_model_description-3-fields.md) | papers/ 模型 description 简化为三字段（brief / problem / method） | ✅ 已实施 | 2026-06-08 |
+| [0098 †](../../../b_lm_model/docs/decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimizer.schedules 新增 mode: sustained（子日步长持续输入） | ✅ 已实施 | 2026-06-11 |
+| [0099 †](../../../b_lm_model/docs/decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | sustained 模式 value 语义修正：窗口总量 / N_steps（step-size 不变性） | ✅ 已实施（修订 0098） | 2026-06-11 |
+| [0100 †](../../../b_lm_model/docs/decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | 统一 pulse/sustained 为时间区间 [start,end)；GUI 取消 full day / time / sustained 三态 | ✅ 已完成 | 2026-06-11 |
 | [0101](0101-2026-06-13_project_cli-public-release-interface.md) | CLI 升级为公开发布接口（面向 AI / 自动化场景），部分修订 0072/0091 | ✅ 已实施 | 2026-06-13 |
+| [0101 †](../../../b_lm_model/docs/decisions/0101-2026-06-14_model_hold-suffix-todo-field.md) | 文件名质量标记统一为 `_HOLD` + `metadata.todo` 任务列表（替代 0096 model） | ✅ 已实施 | 2026-06-14 |
+| [0102 †](../../../b_lm_model/docs/decisions/0102-2026-06-14_model_formula-priority-execution-order.md) | 澄清 formula `priority` 执行顺序与同 step 内的更新可见性 | ✅ 已实施 | 2026-06-14 |
+| [0103 †](../../../b_lm_model/docs/decisions/0103-2026-06-14_model_metadata-log-field.md) | 新增 `metadata.log`：模型内改进历史记录 | ✅ 已实施 | 2026-06-14 |
+| [0104 †](../../../b_lm_model/docs/decisions/0104-2026-06-16_model_step-unit-per-formula-and-sim-step-size.md) | 步长设计重构：per-formula step_unit + simulation.step_size（替代 0046） | ✅ 已采纳 | 2026-06-16 |
+| [0105 †](../../../b_lm_model/docs/decisions/0105-2026-06-16_model_step-unit-conditional-and-deprecate-dt.md) | step_unit 条件必填 + 废弃 dt/step_size 动力学符号（修订 0104） | ✅ 已采纳 | 2026-06-16 |
+| [0106 †](../../../b_lm_model/docs/decisions/0106-2026-06-16_model_remove-formula-dict-unify-to-dynamics.md) | 移除 formula: 字典形式，统一变量更新为 dynamics:（补充 0105） | ✅ 已采纳 | 2026-06-16 |

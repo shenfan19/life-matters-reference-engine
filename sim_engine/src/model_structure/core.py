@@ -37,9 +37,12 @@ class ModelStructure(Loader, Validator, Simulation):
         # 初始化 simulator 和 optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
-        # 初始化计划表（self.schedules = 当前激活方案，self.plans = 全部命名方案）
+        # self.schedules: daily_inputs 专用（InputSchedule），供 _apply_schedules 使用
+        # self.plans: plan_id → List[dict] 原始 schedule 条目，供 apply_regimens 使用
+        # self.schedule_entries: 当前激活 plan 的条目列表（run_simulation 前设置）
         self.schedules: Dict[str, Any] = {}
-        self.plans: Dict[str, Dict[str, Any]] = {}
+        self.plans: Dict[str, Any] = {}
+        self.schedule_entries: list = []
         # 初始化累积器
         self.accumulators: Dict[str, Accumulator] = {}
         # 初始化手动覆盖
@@ -215,7 +218,6 @@ class ModelStructure(Loader, Validator, Simulation):
                     'condition': form.condition,
                     'priority': form.priority,
                     'dynamics': form.dynamics,
-                    'formula': form.formula
                 } for form_name, form in self.formulas.items()
             },
             'simulator': self.simulator,

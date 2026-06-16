@@ -15,6 +15,7 @@ from .model_structure.base import Variable, InputSchedule, SchedulePoint, Accumu
 from .loader_engine import LoaderEngine
 from .session_manager import SessionManagerMixin
 from .mc_utils import apply_parameter_sampling
+from .regimen_runner import apply_regimens, precompute_sustained_divisors
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -132,21 +133,33 @@ class SimulatorEngine(SessionManagerMixin):
         total_time = time_hours * 3600.0
         # 计算总步数。
         total_steps = int(total_time / step_size)
-        
+
         # 获取需要输出的变量列表
         output_variables, output_warnings = self._resolve_output_variables(self.current_model)
-        
+
         # 准备 CSV 数据存储
         csv_data = []
         csv_headers = ['step', 'time'] + output_variables
-        
+
         # 注册暂停回调（如果启用交互式暂停）。
         if interactive and pause_every > 0:
             self.pause_callback = self._interactive_pause
-        
+
+        # 从 schedule_entries 构建 regimen list（支持 time_start/time_end, pulse/sustained）
+        start_date = self.current_model.simulator.get('start_date', '')
+        raw_entries = getattr(self.current_model, 'schedule_entries', [])
+        schedule_regimens = precompute_sustained_divisors(
+            list(raw_entries), step_size, total_steps, start_date
+        ) if raw_entries else []
+
         try:
             # 逐步运行仿真，直到达到指定步数或停止。
             while self.current_step < total_steps and self.running:
+                prev_time = self.time
+                # 应用当前激活 plan 的 schedule 条目（pulse/sustained 均支持）
+                if schedule_regimens:
+                    apply_regimens(self.current_model, schedule_regimens,
+                                   prev_time, prev_time + step_size, start_date)
                 # 执行单步仿真。
                 self.current_model.step(step_size)
                 # 增加步数计数。
@@ -222,7 +235,7 @@ class SimulatorEngine(SessionManagerMixin):
         for i, plan_id in enumerate(plan_ids):
             output_path = output_path_fn(plan_id, i) if output_path_fn else None
             self.current_model = self.loader.fetch(model_name, folder, use_cache=False)
-            self.current_model.schedules = self.current_model.plans.get(plan_id, {})
+            self.current_model.schedule_entries = self.current_model.plans.get(plan_id, [])
             result = self.run_simulation(None, time_hours, output_path=output_path)
             results.append({"plan_id": plan_id, "result": result})
             if not result.get("success"):
