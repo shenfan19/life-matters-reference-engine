@@ -102,3 +102,5 @@
 | [0104 †](../../../b_lm_model/docs/decisions/0104-2026-06-16_model_step-unit-per-formula-and-sim-step-size.md) | 步长设计重构：per-formula step_unit + simulation.step_size（替代 0046） | ✅ 已采纳 | 2026-06-16 |
 | [0105 †](../../../b_lm_model/docs/decisions/0105-2026-06-16_model_step-unit-conditional-and-deprecate-dt.md) | step_unit 条件必填 + 废弃 dt/step_size 动力学符号（修订 0104） | ✅ 已采纳 | 2026-06-16 |
 | [0106 †](../../../b_lm_model/docs/decisions/0106-2026-06-16_model_remove-formula-dict-unify-to-dynamics.md) | 移除 formula: 字典形式，统一变量更新为 dynamics:（补充 0105） | ✅ 已采纳 | 2026-06-16 |
+| [0107 †](../../../b_lm_model/docs/decisions/0107-2026-06-16_model_output-variables-import-overwrite.md) | output_variables / output_types import 行为统一为覆盖（取代并集） | ✅ 已实施 | 2026-06-16 |
+| [0108](0108-2026-06-16_sim_sim-export-zip-per-variable.md) | Sim 导出重设计：多 plan 时输出按变量分 CSV 的 ZIP 包（修订 0094） | ✅ 已实施 | 2026-06-16 |

@@ -1,7 +1,7 @@
 # ADR 0094 — Result Exchange: CSV as Universal Format, YAML as Unified Model Download
 
 **Date:** 2026-06-05  
-**Status:** Accepted  
+**Status:** Accepted（Sim 导出行为由 ADR 0108 修订）  
 **Context:** sim_gui — Sim tab, Opt tab, CLI
 
 ---
