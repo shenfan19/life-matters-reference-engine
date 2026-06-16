@@ -45,8 +45,9 @@ class Formula:
     dynamics: Dict[str, Any] = None
     formula: Optional[str] = None
     reference: Optional[Any] = None
-    # 公式来源模块的 step_size（秒），用于跨步长 import 时按公式来源
-    # scope `step` 符号。None 表示与当前运行模型相同。
+    # 公式显式声明的时间单位（minute | hour | day），用于跨步长 import 换算。
+    step_unit: Optional[str] = None
+    # 运行时换算后的步长（秒），由 loader 根据 step_unit 计算。
     step_size_sec: Optional[float] = None
 
     def __post_init__(self):

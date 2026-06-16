@@ -84,7 +84,6 @@ class Loader:
                 'simulation': {},
                 'optimizer': {},
                 'imports': [],
-                'step_sizes': {},
             }
             imported_output_variables: List[str] = []
             imported_output_types: List[str] = []
@@ -184,13 +183,6 @@ class Loader:
                 merged_sources['variables'][var_name] = source_label
             for form_name in (data.get('formulas') or {}).keys():
                 merged_sources['formulas'][form_name] = source_label
-            local_step_size = data.get('metadata', {}).get('step_size')
-            if isinstance(local_step_size, dict) and 'unit' in local_step_size:
-                unit_raw = str(local_step_size.get('unit', 'minute')).lower()
-                if unit_raw in TIME_UNIT_SECONDS:
-                    merged_sources['step_sizes'][source_label] = (
-                        float(local_step_size.get('value', 1)) * TIME_UNIT_SECONDS[unit_raw]
-                    )
             if isinstance(local_sim, dict):
                 for key in local_sim.keys():
                     merged_sources['simulation'][key] = source_label
@@ -308,23 +300,24 @@ class Loader:
                 priority=form_data.get('priority', 0),
                 dynamics=form_data.get('dynamics', {}),
                 formula=form_data.get('formula'),
-                reference=form_data.get('reference')
+                reference=form_data.get('reference'),
+                step_unit=str(form_data.get('step_unit', '')).lower() or None,
             )
         
         # 合并 simulator 和 optimizer
         # 支持新的 'simulation' 字段（向后兼容 'simulator'）
         simulator_data = data.get('simulation', data.get('simulator', {}))
 
-        # ── 新格式：start_date / end_date，步长从 metadata.step_size 读取 ──
-        # 优先级：metadata.step_size > simulation.step_unit/step（向后兼容）
+        # ── simulation.step_size 必填，读取执行步长 ──
         if 'start_date' in simulator_data and 'end_date' in simulator_data:
-            meta_step = data.get('metadata', {}).get('step_size', {})
-            if isinstance(meta_step, dict) and 'unit' in meta_step:
-                step_unit_raw = str(meta_step.get('unit', 'minute')).lower()
-                raw_step = float(meta_step.get('value', 1))
+            sim_step = simulator_data.get('step_size', {})
+            if isinstance(sim_step, dict) and 'unit' in sim_step:
+                step_unit_raw = str(sim_step.get('unit', 'minute')).lower()
+                raw_step = float(sim_step.get('value', 1))
             else:
-                step_unit_raw = str(simulator_data.get('step_unit', 'minute')).lower()
-                raw_step = float(simulator_data.get('step', 1))
+                raise ValueError(
+                    f"simulation.step_size 必填，格式：step_size: {{value: 1, unit: day}}"
+                )
             if step_unit_raw not in TIME_UNIT_SECONDS:
                 step_unit_raw = 'minute'
             unit_sec = TIME_UNIT_SECONDS[step_unit_raw]
@@ -357,16 +350,13 @@ class Loader:
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 
-        # 跨步长 import：每条公式的 `step` 应按其来源模块自身的
-        # metadata.step_size 换算，而非当前运行模型的 step_size。
-        # 来源未知或未声明 step_size 的公式，回退为当前模型的 step_size。
-        own_step_size_sec = self.simulator.get('step_size')
-        sources = data.get('_sources', {})
-        formula_sources = sources.get('formulas', {})
-        step_sizes = sources.get('step_sizes', {})
-        for form_name in data.get('formulas', {}):
-            src = formula_sources.get(form_name)
-            self.formulas[form_name].step_size_sec = step_sizes.get(src, own_step_size_sec)
+        # 跨步长 import：每条公式的 `step` 按公式自身声明的 step_unit 换算。
+        # step_unit 是必填字段，validator 强制检查；此处直接读取。
+        for form_name, form_data in data.get('formulas', {}).items():
+            if form_name in self.formulas:
+                formula_step_unit = str(form_data.get('step_unit', '')).lower()
+                if formula_step_unit in TIME_UNIT_SECONDS:
+                    self.formulas[form_name].step_size_sec = TIME_UNIT_SECONDS[formula_step_unit]
 
         # 解析 time_unit（默认 minute）
         time_unit_raw = str(simulator_data.get('time_unit', 'minute')).lower()
