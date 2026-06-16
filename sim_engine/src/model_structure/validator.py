@@ -29,6 +29,9 @@ class Validator:
 
         # 验证 simulator
         if self.simulator:
+            sim_step = self.simulator.get('step_size')
+            if not isinstance(sim_step, (int, float)) or sim_step <= 0:
+                all_errors.append("simulation.step_size 必填且必须为正数（秒）。请在 simulation 块中声明 step_size: {value, unit}。")
             if 'dt' in self.simulator and (not isinstance(self.simulator['dt'], (int, float)) or self.simulator['dt'] <= 0):
                 all_errors.append("simulator.dt 必须为正数。")
             if 'dt_unit' in self.simulator and self.simulator['dt_unit'] not in ['minute', 'hour', 'day', 'week', 'month', 'year']:
@@ -259,9 +262,20 @@ class Validator:
                 
                 return vars_found - exclude
             
+            valid_step_units = {'minute', 'hour', 'day'}
+
             # 遍历所有公式
             for form_name, formula in self.formulas.items():
-                
+
+                # 0. 验证 step_unit（必填）
+                step_unit = getattr(formula, 'step_unit', None)
+                if not step_unit:
+                    errors.append(f"formula '{form_name}' 缺少必填字段 step_unit（minute | hour | day）。")
+                    is_valid = False
+                elif step_unit not in valid_step_units:
+                    errors.append(f"formula '{form_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
+                    is_valid = False
+
                 # 1. 验证 condition
                 if isinstance(formula.condition, str):
                     vars_in_condition = extract_vars_from_expr(formula.condition)
