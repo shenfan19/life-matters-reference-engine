@@ -26,6 +26,9 @@ _saved_/
 *.code-workspace
 messages.mo
 
+# Models folder (symlink to b_lm_model/models, not tracked)
+models/
+
 # CLI outputs (folder tracked, contents ignored)
 output/*
 !output/.gitkeep

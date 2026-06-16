@@ -15,7 +15,7 @@ CURRENT_FILE = Path(__file__).resolve()
 SRC_DIR = CURRENT_FILE.parent
 BACKEND_DIR = SRC_DIR.parent
 PROJECT_ROOT = BACKEND_DIR.parent
-MODELS_DIR = Path(os.getenv("LM_MODELS_PATH", str(PROJECT_ROOT.parent / "b_lm_model" / "models")))
+MODELS_DIR = Path(os.getenv("LM_MODELS_PATH", str(PROJECT_ROOT / "models")))
 
 SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
 
