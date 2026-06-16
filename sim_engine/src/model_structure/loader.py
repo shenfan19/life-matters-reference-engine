@@ -27,15 +27,6 @@ class Loader:
             rel = os.path.basename(file_path)
         return rel.rsplit('.', 1)[0] if rel.lower().endswith(('.yaml', '.yml')) else rel
 
-    @staticmethod
-    def _append_unique(items: List[str], values: Any) -> None:
-        if not isinstance(values, list):
-            return
-        for value in values:
-            value = str(value)
-            if value not in items:
-                items.append(value)
-
     def _merge_sources(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         merged = merge_dicts(base, override)
         base_imports = list(base.get('imports', [])) if isinstance(base.get('imports'), list) else []
@@ -85,9 +76,6 @@ class Loader:
                 'optimizer': {},
                 'imports': [],
             }
-            imported_output_variables: List[str] = []
-            imported_output_types: List[str] = []
-            
             # 获取 models 根目录（用于解析新格式的导入路径）
             # 若文件在配置的 models_directory 之外，从文件路径推断根目录，避免跨仓库 import 失败
             configured_dir = self.models_directory if hasattr(self, 'models_directory') else None
@@ -155,19 +143,8 @@ class Loader:
                 imp_label = self._source_label(imp_path)
                 if imp_label not in merged_sources['imports']:
                     merged_sources['imports'].append(imp_label)
-                imp_sim = imp_data.get('simulation') or imp_data.get('simulator') or {}
-                self._append_unique(imported_output_variables, imp_sim.get('output_variables'))
-                self._append_unique(imported_output_types, imp_sim.get('output_types'))
                 merged_data = merge_dicts(merged_data, imp_data)
 
-            if imported_output_variables or imported_output_types:
-                sim_key = 'simulation' if 'simulation' in merged_data or 'simulation' in data else 'simulator'
-                merged_data.setdefault(sim_key, {})
-                if imported_output_variables:
-                    merged_data[sim_key]['output_variables'] = imported_output_variables
-                if imported_output_types:
-                    merged_data[sim_key]['output_types'] = imported_output_types
-            
             # 根模型覆盖导入的内容
             merged_data = merge_dicts(merged_data, data)
             local_sim = data.get('simulation') or data.get('simulator') or {}
