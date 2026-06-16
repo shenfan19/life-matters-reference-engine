@@ -16,6 +16,7 @@ interface SimControlBarProps {
   simRuns: number;
   mcSeed: number | null;
   selectedModel: ModelFile | null;
+  hasSimData: boolean;
   isOtherRunning: boolean;
   otherRunningTip: string;
   onStart: () => void;
@@ -38,7 +39,7 @@ interface SimControlBarProps {
 export function SimControlBar({
   status, sessionSeed, plans,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
-  selectedModel, isOtherRunning, otherRunningTip,
+  selectedModel, hasSimData, isOtherRunning, otherRunningTip,
   onStart, onPause, onResume, onReset, onRunAllPlans,
   onExportCSV, onImportCSV,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
@@ -138,7 +139,7 @@ export function SimControlBar({
       <Tooltip title={t('sim.ctrl.dl_sim_tip')}>
         <Button size="small" icon={<DownloadOutlined />}
           onClick={onExportCSV}
-          disabled={!selectedModel}
+          disabled={!selectedModel || !hasSimData}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.ctrl.sim_label')}</Button>
       </Tooltip>

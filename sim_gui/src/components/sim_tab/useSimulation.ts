@@ -387,22 +387,6 @@ export function useSimulation({
     return newPlans;
   };
 
-  // ── CSV export ────────────────────────────────────────────────────────────────
-
-  const exportSimCSV = () => {
-    const { simulationData } = state;
-    if (!simulationData.length) return;
-    const keys = Object.keys(simulationData[0]);
-    const rows = simulationData.map(row => keys.map(k => (row as any)[k]).join(','));
-    const csv = [keys.join(','), ...rows].join('\n');
-    const modelName = selectedModel?.content?.metadata?.name || 'sim';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = `${modelName}_${simStartDate}_${simEndDate}.csv`;
-    a.click();
-    message.success(t('sim.msg.dl_sim_done', { n: simulationData.length }));
-  };
-
   // ── raw YAML download ─────────────────────────────────────────────────────────
 
   const downloadRawModel = () => {
@@ -430,7 +414,6 @@ export function useSimulation({
     runAllPlans,
     applyBestToSim,
     addPlansFromOpt,
-    exportSimCSV,
     downloadRawModel,
   };
 }

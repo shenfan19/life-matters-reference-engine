@@ -26,7 +26,6 @@ interface SimPlotTabProps {
   t: (key: string, params?: Record<string, string | number>) => string;
   fontSize: number;
   comparedPlans?: PlanResult[];
-  onExportCSV?: () => void;
   onRemovePlan?: (id: string) => void;
   simLogs?: Array<{ t: number; msg: string }>;
 }
@@ -35,7 +34,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
   simulationData, dataPerRun, outputVars, outputWarnings,
   inputVars, selectedModel, selectedKey, mode, status,
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, sessionSeed,
-  isDarkMode, c, t, fontSize, comparedPlans, onExportCSV, onRemovePlan, simLogs = [],
+  isDarkMode, c, t, fontSize, comparedPlans, onRemovePlan, simLogs = [],
 }) => {
   const hasSimData = simulationData.length > 0;
   const isMultiPlan = (comparedPlans ?? []).some(p => p.data.length > 0 || p.running);
@@ -117,13 +116,6 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
           <span style={{ color: c.text, fontFamily: label === 'Model' ? undefined : 'monospace' }}>{value}</span>
         </div>
       ))}
-      {onExportCSV && (
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={onExportCSV}
-          disabled={!hasSimData}
-          style={{ marginLeft: 'auto', color: c.textSec, flexShrink: 0 }}
-        >{t('sim.plot.export_csv')}</Button>
-      )}
     </div>
   );
 
