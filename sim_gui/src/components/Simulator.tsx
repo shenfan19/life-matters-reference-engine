@@ -48,7 +48,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const {
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
     inputParams, stateVariables, sessionId,
-    simStartDate, simEndDate, stepValue, stepUnit, batchSize, updateInterval,
+    simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, batchSize, updateInterval,
     simRuns, mcSeed, sessionSeed,
   } = state;
 
@@ -340,6 +340,20 @@ const Simulator: React.FC<SimulatorProps> = ({
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));
 
+  // Same as `set`, but also marks the session dirty — use for user-driven control
+  // changes (date/step/MC fields), not for YAML/session restore on load.
+  const setEdited = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) => {
+    sessionEditedRef.current = true;
+    set(key, val);
+  };
+
+  // Dirty-marking wrappers for opt config setters passed down to OptSetupTab.
+  const setObjectivesEdited: typeof setObjectives = v => { sessionEditedRef.current = true; setObjectives(v); };
+  const setConstraintsEdited: typeof setConstraints = v => { sessionEditedRef.current = true; setConstraints(v); };
+  const setOptAlgoEdited: typeof setOptAlgo = v => { sessionEditedRef.current = true; setOptAlgo(v); };
+  const setOptPopEdited: typeof setOptPop = v => { sessionEditedRef.current = true; setOptPop(v); };
+  const setOptGenEdited: typeof setOptGen = v => { sessionEditedRef.current = true; setOptGen(v); };
+
   // ── derived model state (must be above hook calls that consume inputVars) ────
   const inputVars = selectedModel?.content?.variables
     ? Object.entries(selectedModel.content.variables)
@@ -367,7 +381,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     inputEvents: optInputEvents, inputVars,
     objectives, constraints,
     optAlgo, optPop, optGen,
-    simStartDate, simEndDate, stepValue, stepUnit,
+    simStartDate, simEndDate, stepValue: optStepValue, stepUnit: optStepUnit,
     simRuns, mcSeed,
     modelSessionsRef,
     setRunningModelKey,
@@ -573,6 +587,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       set('simEndDate', session.simEndDate);
       set('stepValue', session.stepValue);
       set('stepUnit', session.stepUnit);
+      set('optStepValue', session.optStepValue ?? session.stepValue);
+      set('optStepUnit', session.optStepUnit ?? session.stepUnit);
       setObjectives(session.objectives);
       setConstraints(session.constraints);
       setOptAlgo(session.optAlgo as any);
@@ -697,24 +713,40 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (u === 'minute') return 'minute';
       return 'day';
     };
+    let resolvedStepValue = 1;
+    let resolvedStepUnit: StepUnit = 'hour';
     if (sim) {
       if (sim.start_date && sim.end_date) {
         set('simStartDate', String(sim.start_date));
         set('simEndDate',   String(sim.end_date));
-        const metaStep = selectedModel?.content?.metadata?.step_size;
-        if (metaStep?.unit) { set('stepValue', metaStep.value ?? 1); set('stepUnit', toStepUnit(String(metaStep.unit))); }
-        else { set('stepValue', sim.step ?? 1); set('stepUnit', toStepUnit(String(sim.step_unit || 'minute'))); }
+        // simulation.step_size: {value, unit} is the current YAML format (see model.md).
+        // Legacy flat sim.step / sim.step_unit kept as fallback for older files.
+        const stepSize = sim.step_size;
+        if (stepSize?.unit) { resolvedStepValue = stepSize.value ?? 1; resolvedStepUnit = toStepUnit(String(stepSize.unit)); }
+        else { resolvedStepValue = sim.step ?? 1; resolvedStepUnit = toStepUnit(String(sim.step_unit || 'hour')); }
+        set('stepValue', resolvedStepValue); set('stepUnit', resolvedStepUnit);
       } else {
         const UNIT_SEC: Record<string, number> = { minute:60, hour:3600, day:86400, week:604800, month:2592000, year:31536000 };
         const timeUnit = String(sim.time_unit || 'hour').toLowerCase();
         const rawStep  = sim.step_size ?? 1;
         const totalSec = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);
+        resolvedStepValue = rawStep; resolvedStepUnit = toStepUnit(timeUnit);
         set('stepValue', rawStep); set('stepUnit', toStepUnit(timeUnit));
         set('simStartDate', DEFAULT_START); set('simEndDate', totalSecondsToEndDate(DEFAULT_START, totalSec));
       }
     } else {
       set('stepValue', 1); set('stepUnit', 'hour');
       set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
+    }
+
+    // Opt step: optimizer.step_size, defaults to simulation's step_size when absent (model.md).
+    const optStepSize = optBlock?.step_size;
+    if (optStepSize?.unit) {
+      set('optStepValue', optStepSize.value ?? 1);
+      set('optStepUnit', toStepUnit(String(optStepSize.unit)));
+    } else {
+      set('optStepValue', resolvedStepValue);
+      set('optStepUnit', resolvedStepUnit);
     }
 
     // mcSeed 来自 simulation.mc.seed，无论是否有 optimizer 块都需要重置
@@ -855,13 +887,13 @@ const Simulator: React.FC<SimulatorProps> = ({
     if (!selectedKey || !sessionReadyRef.current) return;
     const session: ModelSession = {
       inputEvents, optInputEvents, plans, activePlanId,
-      simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
+      simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed,
       objectives, constraints, optAlgo, optPop, optGen,
       optResult,
       userEdited: sessionEditedRef.current,
     };
     persistSession(selectedKey, session);
-  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult]);
+  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
@@ -1015,6 +1047,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       color: PLAN_COLORS[plans.length % PLAN_COLORS.length],
       inputEvents: [...inputEvents], // copy current
     };
+    sessionEditedRef.current = true;
     setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlan));
     setActivePlanId(id);
   };
@@ -1022,6 +1055,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const removePlan = (id: string) => {
     if (plans.length <= 1) return;
     const remaining = plans.filter(p => p.id !== id);
+    sessionEditedRef.current = true;
     setPlans(remaining);
     if (activePlanId === id) {
       const next = remaining[0];
@@ -1051,6 +1085,7 @@ const Simulator: React.FC<SimulatorProps> = ({
         optimizeDateRange: false,
       })),
     }));
+    sessionEditedRef.current = true;
     setPlans(prev =>
       prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlans)
     );
@@ -1332,12 +1367,12 @@ const Simulator: React.FC<SimulatorProps> = ({
       hasSimData={simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0}
       onExportCSV={handleExportSimCSV}
       onImportCSV={importSimCSV}
-      onSimStartDateChange={v => set('simStartDate', v)}
-      onSimEndDateChange={v => set('simEndDate', v)}
-      onStepValueChange={v => set('stepValue', v)}
-      onStepUnitChange={v => set('stepUnit', v)}
-      onSimRunsChange={v => set('simRuns', v)}
-      onMcSeedChange={v => set('mcSeed', v)}
+      onSimStartDateChange={v => setEdited('simStartDate', v)}
+      onSimEndDateChange={v => setEdited('simEndDate', v)}
+      onStepValueChange={v => setEdited('stepValue', v)}
+      onStepUnitChange={v => setEdited('stepUnit', v)}
+      onSimRunsChange={v => setEdited('simRuns', v)}
+      onMcSeedChange={v => setEdited('mcSeed', v)}
       t={t} c={c as any}
     />
   );
@@ -1353,16 +1388,16 @@ const Simulator: React.FC<SimulatorProps> = ({
       currentFrontCount={currentFront?.length ?? 0}
       optResult={optResult} storedOptResult={storedOptResult}
       simStartDate={simStartDate} simEndDate={simEndDate}
-      stepValue={stepValue} stepUnit={stepUnit} simRuns={simRuns} mcSeed={mcSeed}
+      stepValue={optStepValue} stepUnit={optStepUnit} simRuns={simRuns} mcSeed={mcSeed}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
       onStart={() => { sessionEditedRef.current = true; startOptimization(); }} onCancel={cancelOptimization}
       onWarmStartChange={setWarmStartEnabled}
-      onSimStartDateChange={v => set('simStartDate', v)}
-      onSimEndDateChange={v => set('simEndDate', v)}
-      onStepValueChange={v => set('stepValue', v)}
-      onStepUnitChange={v => set('stepUnit', v)}
-      onSimRunsChange={v => set('simRuns', v)}
-      onMcSeedChange={v => set('mcSeed', v)}
+      onSimStartDateChange={v => setEdited('simStartDate', v)}
+      onSimEndDateChange={v => setEdited('simEndDate', v)}
+      onStepValueChange={v => setEdited('optStepValue', v)}
+      onStepUnitChange={v => setEdited('optStepUnit', v)}
+      onSimRunsChange={v => setEdited('simRuns', v)}
+      onMcSeedChange={v => setEdited('mcSeed', v)}
       onExportCSV={exportOptCSV}
       onImportCSV={importParetoFromCSV}
       scsMode={scsMode}
@@ -1580,26 +1615,29 @@ const Simulator: React.FC<SimulatorProps> = ({
                   addInputEvent={addOptInputEvent}
                   removeInputEvent={removeOptInputEvent}
                   plans={plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p)}
-                  onImportFromPlan={(events) => setOptInputEvents(
-                    events.map(ev => ({
-                      ...ev,
-                      optimizeValue: false,
-                      optimizeTime: false,
-                      optimizeDays: false,
-                      optimizeDateRange: false,
-                    }))
-                  )}
+                  onImportFromPlan={(events) => {
+                    sessionEditedRef.current = true;
+                    setOptInputEvents(
+                      events.map(ev => ({
+                        ...ev,
+                        optimizeValue: false,
+                        optimizeTime: false,
+                        optimizeDays: false,
+                        optimizeDateRange: false,
+                      }))
+                    );
+                  }}
                   updateInputEvent={updateOptInputEvent}
                   updateInputEventOpt={updateOptInputEvent}
                   inputVars={inputVars}
                   allVarNames={allVarNames}
                   openSections={openSections} setOpenSections={setOpenSections}
                   simStartDate={simStartDate} simEndDate={simEndDate}
-                  objectives={objectives} setObjectives={setObjectives}
-                  constraints={constraints} setConstraints={setConstraints}
-                  optAlgo={optAlgo} setOptAlgo={setOptAlgo}
-                  optPop={optPop} setOptPop={setOptPop}
-                  optGen={optGen} setOptGen={setOptGen}
+                  objectives={objectives} setObjectives={setObjectivesEdited}
+                  constraints={constraints} setConstraints={setConstraintsEdited}
+                  optAlgo={optAlgo} setOptAlgo={setOptAlgoEdited}
+                  optPop={optPop} setOptPop={setOptPopEdited}
+                  optGen={optGen} setOptGen={setOptGenEdited}
                   isDarkMode={isDarkMode} c={c} t={t}
                 />
               }

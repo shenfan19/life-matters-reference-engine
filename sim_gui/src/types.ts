@@ -105,6 +105,8 @@ export interface SimulationState {
     simEndDate: string;     // 'YYYY-MM-DD'
     stepValue: number;
     stepUnit: StepUnit;
+    optStepValue: number;
+    optStepUnit: StepUnit;
     batchSize: number;
     updateInterval: number;
     simRuns: number;        // Monte Carlo 运行条数 (1~50)
@@ -190,6 +192,8 @@ export interface ModelSession {
   simEndDate: string;
   stepValue: number;
   stepUnit: StepUnit;
+  optStepValue: number;
+  optStepUnit: StepUnit;
   simRuns: number;
   mcSeed: number | null;
   objectives: Array<{ variable: string; direction: 'minimize' | 'maximize' }>;
