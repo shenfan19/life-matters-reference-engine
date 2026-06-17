@@ -533,10 +533,10 @@ const Simulator: React.FC<SimulatorProps> = ({
       // simRuns / mcSeed 存在 session 中（用户可自定义），若 session 没有则回退 YAML 默认值
       set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
       set('mcSeed', 'mcSeed' in session ? session.mcSeed : (sim?.mc?.seed != null ? Number(sim.mc.seed) : null));
-      // Re-apply YAML optimizer.schedules opt fields to any session events that never had them set
+      // Re-apply YAML optimizer.startpoint.schedules opt fields to any session events that never had them set
       // (handles stale sessions created before the schedules bridge, or plan-switched events)
-      if (Array.isArray(optBlock?.schedules)) {
-        const withOpt = (optBlock.schedules as any[]).filter((e: any) => e.variable && e.optimize);
+      if (Array.isArray(optBlock?.startpoint?.schedules)) {
+        const withOpt = (optBlock.startpoint.schedules as any[]).filter((e: any) => e.variable && e.optimize);
         if (withOpt.length > 0) {
           setInputEvents(prev => {
             const updated = prev.map(ev => ({ ...ev }));
@@ -749,9 +749,9 @@ const Simulator: React.FC<SimulatorProps> = ({
       if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
 
-      // Apply optimizer.schedules decision entries to inputEvents
-      if (Array.isArray(optBlock.schedules)) {
-        const withOpt = (optBlock.schedules as any[]).filter((e: any) => e.variable && e.optimize);
+      // Apply optimizer.startpoint.schedules decision entries to inputEvents
+      if (Array.isArray(optBlock.startpoint?.schedules)) {
+        const withOpt = (optBlock.startpoint.schedules as any[]).filter((e: any) => e.variable && e.optimize);
         if (withOpt.length > 0) {
           setInputEvents(prev => {
             const updated = prev.map(ev => ({ ...ev }));

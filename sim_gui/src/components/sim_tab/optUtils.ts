@@ -16,7 +16,7 @@ export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boo
 }
 
 /**
- * Build the optimizer.schedules list from the current inputEvents.
+ * Build the optimizer.startpoint.schedules list from the current inputEvents.
  *
  * Events with any active optimization tier get an `optimize:` sub-block;
  * events without are included as fixed background inputs.

@@ -149,7 +149,7 @@ def run_optimizer(simulator_engine, model_name: str,
     pareto_front is a list of {x: [...], f: [...]} dicts (raw, not sign-flipped).
 
     optimizer_override: if provided, merges into the YAML optimizer: block (GUI overrides YAML).
-    Decision variables are defined in optimizer.schedules (entries with optimize: sub-block).
+    Decision variables are defined in optimizer.startpoint.schedules (entries with optimize: sub-block).
     """
     from .simulator_engine import SimulatorEngine
 
@@ -163,7 +163,7 @@ def run_optimizer(simulator_engine, model_name: str,
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
         for key in ('objectives', 'constraints', 'algorithm', 'method',
-                    'start_date', 'end_date', 'step_size', 'schedules'):
+                    'start_date', 'end_date', 'step_size', 'startpoint'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
 
@@ -191,15 +191,15 @@ def run_optimizer(simulator_engine, model_name: str,
     # ── parse constraints ─────────────────────────────────────────────────────
     constraints: List[Dict] = list(opt_block.get('constraints', []))
 
-    # ── parse decision variables from optimizer.schedules ─────────────────────
-    schedules_def = opt_block.get('schedules', [])
+    # ── parse decision variables from optimizer.startpoint.schedules ──────────
+    schedules_def = (opt_block.get('startpoint') or {}).get('schedules', [])
     if not schedules_def:
-        return {"success": False, "error": "No optimizer.schedules defined"}
+        return {"success": False, "error": "No optimizer.startpoint.schedules defined"}
 
     opt_entries = [e for e in schedules_def if 'optimize' in e]
     fixed_entries = [e for e in schedules_def if 'optimize' not in e]
     if not opt_entries:
-        return {"success": False, "error": "No entries with optimize: sub-block in optimizer.schedules"}
+        return {"success": False, "error": "No entries with optimize: sub-block in optimizer.startpoint.schedules"}
 
     var_specs: List[Dict] = []
     lo_list: List[float] = []

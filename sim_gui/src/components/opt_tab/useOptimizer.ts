@@ -125,7 +125,7 @@ export function useOptimizer({
 
     const optSchedules = buildOptSchedules(inputEvents, activeInputVarNames);
     const optimizerOverride: Record<string, any> = {
-      schedules: optSchedules,
+      startpoint: { schedules: optSchedules },
       objectives: objectives.map(o => ({ variable: o.variable, metric: 'final', direction: o.direction })),
       constraints: constraints.map(con => ({
         variable: con.variable,

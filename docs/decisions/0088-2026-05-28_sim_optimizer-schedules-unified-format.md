@@ -1,10 +1,12 @@
-# ADR 0088 — optimizer.schedules 统一格式
+# ADR 0088 — optimizer.schedules 统一格式（已被 ADR 0109 更新为 optimizer.startpoint.schedules）
 
 **日期**: 2026-05-28
 **状态**: 已接受
 **范围**: sim_engine · sim_gui · models/
 
 ---
+
+> **状态更新（2026-06-17）**：本 ADR 中的 `optimizer.schedules` 路径已被 **ADR 0109** 取代，迁移为 `optimizer.startpoint.schedules`。`startpoint` 包裹语义更明确：表示优化从该初始协议描述出发搜索。
 
 ## 背景
 

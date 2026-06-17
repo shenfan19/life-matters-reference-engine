@@ -1,4 +1,6 @@
-# 0087 · 2026-05-27 · Sim · `simulation.schedules` 与 `plans` 共存语义
+# 0087 · 2026-05-27 · Sim · `simulation.schedules` 与 `plans` 共存语义（已被 ADR 0109 取代）
+
+> **状态更新（2026-06-17）**：本 ADR 中的 D3（references 保持向后兼容 `simulation.schedules`）已被 **ADR 0109** 取消。所有模型的仿真输入唯一合法位置为 `simulation.plans[*].schedules`，不再允许顶层 `simulation.schedules`。optimizer.schedules fallback 链也已废弃，见 ADR 0109。
 
 ## 背景
 
