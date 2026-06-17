@@ -183,6 +183,7 @@ export interface InputEvent {
 // Covers everything the user edits after first load; NOT the YAML model structure itself.
 export interface ModelSession {
   inputEvents: InputEvent[];
+  optInputEvents: InputEvent[];
   plans: SimPlan[];
   activePlanId: string;
   simStartDate: string;
