@@ -75,9 +75,9 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
   const result = baseEvents.map(ev => ({ ...ev }));
   const DAY_MAP: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
-  // New schedules format: optimizer.schedules entries with optimize: sub-block
-  const scheduleOptEntries = Array.isArray(optimizerConfig?.schedules)
-    ? (optimizerConfig.schedules as any[]).filter((e: any) => e.optimize)
+  // New schedules format: optimizer.startpoint.schedules entries with optimize: sub-block
+  const scheduleOptEntries = Array.isArray(optimizerConfig?.startpoint?.schedules)
+    ? (optimizerConfig.startpoint.schedules as any[]).filter((e: any) => e.optimize)
     : [];
 
   if (scheduleOptEntries.length > 0) {
