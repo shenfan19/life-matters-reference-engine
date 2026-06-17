@@ -15,6 +15,7 @@ import SimIntroTab from './sim_tab/SimIntroTab';
 import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
 import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, normalizeTimeInterval, migrateInputEvents } from './sim_tab/simUtils';
+import { buildOptSchedules } from './sim_tab/optUtils';
 import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
@@ -1030,13 +1031,25 @@ const Simulator: React.FC<SimulatorProps> = ({
   };
 
   const addPlansFromOpt = (rows: Array<{ x: number[]; f: number[]; rank: number }>) => {
-    const optimizer = selectedModel?.content?.optimizer;
-    if (!optimizer || rows.length === 0) return;
+    if (rows.length === 0) return;
+    // Use the current GUI optimizer config (from optInputEvents) for decoding x,
+    // not the YAML optimizer block — they may differ if the user edited the startpoint in the GUI.
+    const activeInputVarNames = new Set(inputVars.map(v => v.name));
+    const schedules = buildOptSchedules(optInputEvents, activeInputVarNames);
+    const virtualOptimizer = { startpoint: { schedules } };
     const newPlans: SimPlan[] = rows.map((row, i) => ({
       id: `pareto-${row.rank}-${Date.now()}-${i}`,
       label: `Pareto #${row.rank}`,
       color: PLAN_COLORS[(plans.length + i) % PLAN_COLORS.length],
-      inputEvents: xToInputEvents(row.x, optimizer, inputEvents),
+      // Decode Pareto x using optInputEvents as base; strip opt flags so events
+      // are plain sim events suitable for the Simulation tab.
+      inputEvents: xToInputEvents(row.x, virtualOptimizer, optInputEvents).map(ev => ({
+        ...ev,
+        optimizeValue: false,
+        optimizeTime: false,
+        optimizeDays: false,
+        optimizeDateRange: false,
+      })),
     }));
     setPlans(prev =>
       prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlans)
@@ -1566,8 +1579,16 @@ const Simulator: React.FC<SimulatorProps> = ({
                   inputEvents={optInputEvents}
                   addInputEvent={addOptInputEvent}
                   removeInputEvent={removeOptInputEvent}
-                  plans={plans}
-                  onImportFromPlan={(events) => setOptInputEvents(events)}
+                  plans={plans.map(p => p.id === activePlanId ? { ...p, inputEvents } : p)}
+                  onImportFromPlan={(events) => setOptInputEvents(
+                    events.map(ev => ({
+                      ...ev,
+                      optimizeValue: false,
+                      optimizeTime: false,
+                      optimizeDays: false,
+                      optimizeDateRange: false,
+                    }))
+                  )}
                   updateInputEvent={updateOptInputEvent}
                   updateInputEventOpt={updateOptInputEvent}
                   inputVars={inputVars}
