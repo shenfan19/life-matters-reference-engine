@@ -140,6 +140,7 @@ python sim_cli/main.py <model.yaml> --opt --continue
 | CLI 结果导入 GUI | — | GUI opt tab "导入 CSV" |
 
 CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致，可互通。
+这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证（见 ADR 0111）。
 
 ---
 

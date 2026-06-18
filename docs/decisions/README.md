@@ -104,3 +104,6 @@
 | [0106 †](../../../b_lm_model/docs/decisions/0106-2026-06-16_model_remove-formula-dict-unify-to-dynamics.md) | 移除 formula: 字典形式，统一变量更新为 dynamics:（补充 0105） | ✅ 已采纳 | 2026-06-16 |
 | [0107 †](../../../b_lm_model/docs/decisions/0107-2026-06-16_model_output-variables-import-overwrite.md) | output_variables / output_types import 行为统一为覆盖（取代并集） | ✅ 已实施 | 2026-06-16 |
 | [0108](0108-2026-06-16_sim_sim-export-zip-per-variable.md) | Sim 导出重设计：多 plan 时输出按变量分 CSV 的 ZIP 包（修订 0094） | ✅ 已实施 | 2026-06-16 |
+| [0109](0109-2026-06-17_sim_schedules-structure-enforced.md) | schedules 位置强制规范：sim→plans，opt→startpoint | ✅ 已接受 | 2026-06-17 |
+| [0110](0110-2026-06-17_sim_unify-plan-schedule-parsing.md) | Plan/Schedule 解析单一来源：后端 `self.plans`，前端不再重新解析 YAML | ✅ 已接受 | 2026-06-17 |
+| [0111](0111-2026-06-18_sim_sim-cli-consistency-test-suite.md) | Sim/CLI 一致性回归测试套件：仓库首个自动化测试，钉住 MC 确定性 bug | ✅ 已接受 | 2026-06-18 |

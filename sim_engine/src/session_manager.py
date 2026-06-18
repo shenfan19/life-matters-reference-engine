@@ -108,11 +108,13 @@ class SessionManagerMixin:
             ]
             capture_variables = output_variables + [v for v in input_variables if v not in output_variables]
 
-            # Independent model copy + sampling for each run
+            # Independent model copy + sampling for each run.
+            # n_runs == 1: deterministic mode (ADR 0045) — leave distribution
+            # parameters at the loader-assigned mean, do not sample.
             runs = []
             for run_idx in range(n_runs):
                 run_model = base_model if run_idx == 0 else clone_model(base_model)
-                if param_distributions:
+                if param_distributions and n_runs > 1:
                     run_rng = np.random.default_rng(seed_list[run_idx])
                     apply_parameter_sampling(run_model, param_distributions, rng=run_rng)
                 runs.append({
