@@ -52,7 +52,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
         formulas = {
             f_name: {
                 "description": f.description, "condition": f.condition,
-                "priority": f.priority, "dynamics": f.dynamics, "formula": f.formula,
+                "priority": f.priority, "dynamics": f.dynamics,
                 "reference": f.reference,
             }
             for f_name, f in model.formulas.items()
@@ -62,6 +62,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
             "metadata": metadata, "variables": variables, "formulas": formulas,
             "simulation": model.simulator, "simulator": model.simulator,
             "optimizer": model.optimizer,
+            "plans": model.plans,
             "imports": provenance.get('imports', []),
             "provenance": provenance, "resolved": True,
         }

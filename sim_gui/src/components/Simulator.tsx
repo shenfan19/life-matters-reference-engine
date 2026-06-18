@@ -658,31 +658,35 @@ const Simulator: React.FC<SimulatorProps> = ({
       }
     });
 
+    // Plan id/label come from the raw YAML (display metadata only); the actual
+    // schedule semantics (days/date-range/pulse-vs-sustained) come from
+    // `selectedModel.content.plans`, which the backend already parsed via
+    // ModelStructure._parse_schedule_entries() — the same code path the CLI
+    // uses. The frontend must not re-derive that semantics independently, or
+    // GUI and CLI runs of the same YAML can silently diverge.
+    const backendPlans: Record<string, any[]> = selectedModel.content?.plans ?? {};
     const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
     if (yamlPlans.length > 0) {
       const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
-        const planSchedList: any[] = Array.isArray(plan.schedules) ? plan.schedules : [];
+        const regimens: any[] = backendPlans[plan.id ?? `plan_${i}`] ?? [];
         const planEvents: InputEvent[] = [];
         Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
           if (vdata.type !== 'input') return;
-          const entries = planSchedList.filter((s: any) => s.variable === name);
-          if (entries.length > 0) {
-            entries.forEach((s: any, j: number) => {
-              const dl: string[] = Array.isArray(s.days) ? s.days : [];
-              const hasDays = dl.length > 0 && dl.length < 7;
-              let vs = s.valid_start ?? '';
-              let ve = s.valid_end ?? '';
-              if (!vs && !ve && Array.isArray(s.date_range) && s.date_range.length === 2) {
-                vs = String(s.date_range[0]); ve = String(s.date_range[1]);
-              }
-              const { timeStart, timeEnd } = normalizeTimeInterval(s);
-              planEvents.push({
-                id: `${plan.id ?? `plan${i}`}-${name}-${j}`, variable: name,
-                timeStart, timeEnd,
-                value: s.value ?? vdata.value ?? 0, label: s.label ?? '',
-                daysEnabled: hasDays,
-                days: hasDays ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
-                validRangeEnabled: !!(vs || ve), validStart: vs, validEnd: ve,
+          const varRegimens = regimens.filter((r: any) => r.variable === name);
+          if (varRegimens.length > 0) {
+            let j = 0;
+            varRegimens.forEach((r: any) => {
+              (r.events ?? []).forEach((ev: any) => {
+                const dl: string[] = Array.isArray(ev.days) ? ev.days : [];
+                planEvents.push({
+                  id: `${plan.id ?? `plan${i}`}-${name}-${j++}`, variable: name,
+                  timeStart: ev.time_start ?? '08:00', timeEnd: ev.time_end ?? ev.time_start ?? '08:00',
+                  value: ev.value ?? vdata.value ?? 0, label: ev.label ?? '',
+                  daysEnabled: dl.length > 0 && dl.length < 7,
+                  days: dl.length > 0 ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
+                  validRangeEnabled: !!(ev.valid_start || ev.valid_end),
+                  validStart: ev.valid_start ?? '', validEnd: ev.valid_end ?? '',
+                });
               });
             });
           } else {

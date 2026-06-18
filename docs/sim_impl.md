@@ -1162,18 +1162,20 @@ GET /api/validate?model=stories/marie_curie
 
 ### 接口层约束（⭐⭐ 核心约束）
 
-**LM 的正式用户接口是 GUI（`sim_gui/`）。CLI 不是正式接口，不接受新功能，不修复 bug。**
+**GUI（`sim_gui/`）是面向人类研究者的主接口；CLI（`sim_cli/`）是面向 AI/自动化场景的正式公开接口
+（ADR 0101，修订 ADR 0072 的"CLI 不是正式接口"表述）。两者共用同一个引擎层，结果一致性由
+`tests/test_sim_cli_consistency.py` 自动回归验证（ADR 0111）。**
 
 ```
-用户 → sim_gui（React）→ HTTP API（api_server.py）→ 引擎层（Python）
+人类用户 → sim_gui（React）→ HTTP API（api_server.py）→ 引擎层（Python）
+AI/脚本  → sim_cli（lm-sim）─────────────────────────→ 引擎层（Python）
 ```
 
-- **不新增 CLI 功能**：所有功能只在 GUI 实现
-- **不把 CLI 作为测试入口**：测试直接 import 引擎层函数
-- **批量/自动化场景**：通过 HTTP API，不经 CLI 解析层
-- `optimizer_cli.py` 等文件暂留供内部调试，不随代码发布，不在文档中介绍
+- **GUI 才有的能力不下沉到 CLI**：图表、交互调参、历史存档等仍只在 GUI 实现（见 `cli.md`"与 GUI 的关系"表）
+- **不把 CLI 作为测试入口**：测试直接 import 引擎层函数，不经 CLI 解析层（ADR 0072）
+- `optimizer_cli.py` 等内部调试文件暂留，不随代码发布，不在文档中介绍
 
-背景与决策理由见 ADR 0072。
+背景与决策理由见 ADR 0072、ADR 0101。
 
 ### 中间结果暂存（models/temp/）
 
