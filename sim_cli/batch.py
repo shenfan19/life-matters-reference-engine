@@ -174,7 +174,8 @@ def main() -> None:
                 result = None
 
             if result is not None:
-                write_opt_csv(result.get('pareto_front', []), result.get('objectives', []), csv_path_opt)
+                write_opt_csv(result.get('pareto_front', []), result.get('objectives', []), csv_path_opt,
+                              x_labels=result.get('decision_var_labels'))
                 opt_status = '✓ PASS'
                 opt_csv = csv_path_opt.name
                 print(f'    -> opt      PASS -> {opt_csv}')

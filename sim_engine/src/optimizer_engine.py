@@ -472,9 +472,15 @@ def run_optimizer(simulator_engine, model_name: str,
         result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
                             pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
 
+    _kind_suffix = {'time_start': ' [time]', 'time_end': ' [time_end]', 'days': ' [days]',
+                     'date_start': ' [date]', 'date_end': ' [date_end]'}
+    decision_var_labels = [spec['entry'].get('label', spec['variable']) + _kind_suffix.get(spec['kind'], '')
+                            for spec in var_specs]
+
     result['objectives'] = objectives
     result['regimen_variable'] = reg_variable
     result['regimen_event_labels'] = [e.get('label', f'Event {i+1}') for i, e in enumerate(reg_events)]
+    result['decision_var_labels'] = decision_var_labels
     result['time_hours'] = time_hours
     return result
 

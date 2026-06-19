@@ -132,7 +132,8 @@ def main() -> None:
 
         from output import write_opt_csv
         objectives = result.get('objectives', [])
-        write_opt_csv(result.get('pareto_front', []), objectives, csv_path)
+        write_opt_csv(result.get('pareto_front', []), objectives, csv_path,
+                      x_labels=result.get('decision_var_labels'))
 
         stopped = result.get('stopped', False)
         tag = '  (stopped early — resume with --continue)' if stopped else ''
