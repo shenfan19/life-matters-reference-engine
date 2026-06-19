@@ -49,13 +49,19 @@ def setup_logging(log_path: Path) -> None:
     root.addHandler(fh)
 
 
-def write_opt_csv(pareto_front: List[Dict], objectives: List[Dict], out_path: Path) -> None:
-    """Write Pareto front as CSV: one row per solution, x cols then f cols."""
+def write_opt_csv(pareto_front: List[Dict], objectives: List[Dict], out_path: Path,
+                   x_labels: List[str] = None) -> None:
+    """Write Pareto front as CSV: one row per solution, x cols then f cols.
+
+    x_labels (if provided and length-matched) names each decision-variable column
+    after its optimizer.startpoint.schedules label instead of the generic x0,x1,...
+    """
     if not pareto_front:
         return
     n_x = len(pareto_front[0].get('x', []))
     obj_names = [o.get('variable', f'f{i}') for i, o in enumerate(objectives)]
-    headers = [f'x{i}' for i in range(n_x)] + obj_names
+    x_headers = x_labels if x_labels and len(x_labels) == n_x else [f'x{i}' for i in range(n_x)]
+    headers = x_headers + obj_names
 
     with open(out_path, 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)

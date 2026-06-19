@@ -47,24 +47,20 @@ def _time_hours(engine) -> float:
     return float(sim.get('total_time', 24))
 
 
-def load_pareto_from_csv(csv_path: Path) -> List[Dict]:
+def load_pareto_from_csv(csv_path: Path, n_obj: int) -> List[Dict]:
     """Parse _opt.csv into [{x: [...], f: [...]}] for warm-start.
 
-    x columns are named x0, x1, ...; all other columns are f values.
+    The last n_obj columns (by position) are objective values; all preceding
+    columns are decision variables. Position-based (not header-name-based) so
+    this works whether x columns are still 'x0,x1,...' or carry schedule labels.
     """
     solutions = []
     with open(csv_path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            x_items = sorted(
-                [(int(k[1:]), float(v)) for k, v in row.items()
-                 if k.startswith('x') and k[1:].isdigit()],
-                key=lambda t: t[0],
-            )
-            f_vals = [float(v) for k, v in row.items()
-                      if not (k.startswith('x') and k[1:].isdigit())]
-            if x_items:
-                solutions.append({'x': [v for _, v in x_items], 'f': f_vals})
+            vals = [float(v) for v in row.values()]
+            if len(vals) > n_obj:
+                solutions.append({'x': vals[:-n_obj], 'f': vals[-n_obj:]})
     return solutions
 
 
@@ -148,23 +144,23 @@ def run_opt(model_path: Path, project_root: Path,
 
     from sim_engine.src.optimizer_engine import run_optimizer
 
+    # Pre-load model to extract objectives — needed both to parse a warm-start
+    # CSV (split columns x vs. f by position) and for incremental CSV saves.
+    # run_optimizer will reload internally; the extra load is a small one-time cost.
+    engine.load_models([name])
+    objectives: List[Dict] = []
+    try:
+        objectives = list(engine.current_model.optimizer.get('objectives', []))
+    except Exception:
+        pass
+
     override: Dict = {}
     if warm_start is False:
         override['warm_start'] = []   # force cold start
     elif isinstance(warm_start, Path):
-        pareto = load_pareto_from_csv(warm_start)
+        pareto = load_pareto_from_csv(warm_start, len(objectives))
         override['warm_start'] = pareto
         logger.info(f'Warm-start CSV: {warm_start.name}  ({len(pareto)} solutions)')
-
-    # Pre-load model to extract objectives for incremental CSV saves.
-    # run_optimizer will reload internally; the extra load is a small one-time cost.
-    objectives: List[Dict] = []
-    if incremental_csv:
-        engine.load_models([name])
-        try:
-            objectives = list(engine.current_model.optimizer.get('objectives', []))
-        except Exception:
-            pass
 
     # Wrap callback: per-generation display + incremental save
     if incremental_csv and objectives:
