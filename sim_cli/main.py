@@ -2,6 +2,7 @@
 
 Usage:
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim --mc-runs 20 --seed 19
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue
   python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
@@ -34,6 +35,15 @@ def main() -> None:
                          help='Run simulation, once per simulation.plans entry '
                               '(writing one CSV per plan: <stem>__<plan_id>.csv)')
     parser.add_argument('--opt', action='store_true', help='Run optimizer (NSGA-II)')
+    parser.add_argument('--mc-runs', metavar='N', type=int, default=1,
+                         help='With --sim: run N Monte Carlo runs per plan, each '
+                              'independently sampling distribution parameters '
+                              '(writes <stem>__run{i}.csv per run). Default 1 '
+                              '(deterministic, ADR 0045).')
+    parser.add_argument('--seed', metavar='X', type=int, default=None,
+                         help='With --sim --mc-runs > 1: master seed for per-run '
+                              'sampling (omit for a random one each run, printed to '
+                              'the log either way).')
     parser.add_argument(
         '--continue', dest='warm', nargs='?', const=True, default=False,
         metavar='PATH',
@@ -82,7 +92,7 @@ def main() -> None:
 
     if args.sim:
         csv_path = out_dir / f'{stem}.csv'
-        written = run_sim(model_path, root, csv_path)
+        written = run_sim(model_path, root, csv_path, n_runs=args.mc_runs, seed=args.seed)
         if written:
             print('\n  Done →')
             for name_ in written:

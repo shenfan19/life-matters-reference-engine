@@ -68,6 +68,18 @@ def sample_value(value, rng: np.random.Generator) -> float:
         return 0.0
 
 
+# ── Seed derivation ─────────────────────────────────────────────────────────────
+
+def derive_seed_list(session_seed: int, n_runs: int) -> list:
+    """Derive one per-run seed from a master session seed.
+
+    Shared by the GUI's start_session and the CLI's --mc-runs so both can
+    reproduce the exact same per-run trajectories given the same master seed.
+    """
+    master_rng = np.random.default_rng(session_seed)
+    return [int(master_rng.integers(0, 2**31)) for _ in range(max(1, int(n_runs)))]
+
+
 # ── Model-level MC helpers ─────────────────────────────────────────────────────
 
 def collect_param_distributions(model) -> dict:

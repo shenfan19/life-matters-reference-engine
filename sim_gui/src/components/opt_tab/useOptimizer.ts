@@ -47,6 +47,7 @@ interface UseOptimizerParams {
   optAlgo: string;
   optPop: number;
   optGen: number;
+  optSeed: number;
   simStartDate: string;
   simEndDate: string;
   stepValue: number;
@@ -63,7 +64,7 @@ export function useOptimizer({
   selectedModel, selectedKey,
   inputEvents, inputVars,
   objectives, constraints,
-  optAlgo, optPop, optGen,
+  optAlgo, optPop, optGen, optSeed,
   simStartDate, simEndDate, stepValue, stepUnit,
   simRuns, mcSeed,
   modelSessionsRef,
@@ -131,7 +132,11 @@ export function useOptimizer({
         variable: con.variable,
         condition: `${con.op === '≤' ? '<=' : '>='} ${con.value}`,
       })),
-      algorithm: { population_size: optPop, n_generations: optGen, seed: 42 },
+      // ADR 0112: seed comes from the YAML's own algorithm.seed (read at load
+      // time into optSeed, default 42 matches optimizer_engine.py's own
+      // fallback) — never hardcoded, so an unedited GUI run reproduces the
+      // same NSGA-II seed the CLI uses when reading the YAML directly.
+      algorithm: { population_size: optPop, n_generations: optGen, seed: optSeed },
       start_date: simStartDate,
       end_date:   simEndDate,
       step_size:  { value: stepValue, unit: stepUnit },

@@ -8,14 +8,15 @@ import logging
 import numpy as np
 import csv
 import os
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable, Tuple
 from scipy.integrate import solve_ivp
 from .model_structure import ModelStructure
 from .model_structure.base import Variable, InputSchedule, SchedulePoint, Accumulator, TIME_UNIT_SECONDS
 from .loader_engine import LoaderEngine
 from .session_manager import SessionManagerMixin
-from .mc_utils import apply_parameter_sampling
-from .regimen_runner import apply_regimens, precompute_sustained_divisors
+from .mc_utils import apply_parameter_sampling, collect_param_distributions, clone_model, derive_seed_list
+from .regimen_runner import advance_steps, precompute_sustained_divisors
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -153,26 +154,19 @@ class SimulatorEngine(SessionManagerMixin):
         ) if raw_entries else []
 
         try:
-            # 逐步运行仿真，直到达到指定步数或停止。
+            # 逐步运行仿真，直到达到指定步数或停止。每个 chunk 调用共用核心
+            # advance_steps（CLI 与 GUI batch_steps 共用同一份循环体，见 ADR 0113），
+            # chunk 大小取 pause_every（不开交互暂停时一次跑到底）。
+            chunk_size = pause_every if pause_every > 0 else total_steps
             while self.current_step < total_steps and self.running:
-                prev_time = self.time
-                # 应用当前激活 plan 的 schedule 条目（pulse/sustained 均支持）
-                if schedule_regimens:
-                    apply_regimens(self.current_model, schedule_regimens,
-                                   prev_time, prev_time + step_size, start_date)
-                # 执行单步仿真。
-                self.current_model.step(step_size)
-                # 增加步数计数。
-                self.current_step += 1
-                # 更新仿真时间。
-                self.time += step_size
-                
-                # 收集当前步的数据
-                row = [self.current_step, self.time]
-                for var_name in output_variables:
-                    row.append(self.current_model.variables[var_name].value)
-                csv_data.append(row)
-                
+                n = min(chunk_size, total_steps - self.current_step)
+                rows, self.current_step, self.time = advance_steps(
+                    self.current_model, schedule_regimens, step_size, n,
+                    self.current_step, self.time, output_variables, start_date,
+                )
+                for row in rows:
+                    csv_data.append([row['step'], row['time']] + [row[v] for v in output_variables])
+
                 # 检查是否需要暂停。
                 if pause_every > 0 and self.current_step % pause_every == 0:
                     if self.pause_callback:
@@ -181,7 +175,7 @@ class SimulatorEngine(SessionManagerMixin):
                     if not self.running:
                         # 如果用户选择停止，跳出循环。
                         break
-            
+
             # 设置仿真运行状态为 False。
             self.running = False
             
@@ -215,13 +209,100 @@ class SimulatorEngine(SessionManagerMixin):
             # 返回错误信息。
             return {"success": False, "error": str(e)}
 
+    def run_simulation_mc(self, model_name: Optional[str], time_hours: float,
+                          folder: Optional[str] = None, n_runs: int = 1,
+                          seed: Optional[int] = None,
+                          output_path_fn: Optional[Callable[[int], Optional[str]]] = None) -> Dict[str, Any]:
+        """
+        运行 n_runs 次仿真（Monte Carlo，CLI 使用），对应 GUI 的 sim_runs>1 路径
+        （session_manager.py 的 batch_steps 多 run 分支）。每个 run 用同一个
+        master seed（derive_seed_list）派生的独立种子采样分布参数，n_runs==1
+        时不采样（ADR 0045 确定性模式），与 run_simulation 行为一致。
+        :param output_path_fn: 可选回调 (run_idx) -> CSV 路径；未提供时不写 CSV。
+        :return: {"success", "model_name", "session_seed", "runs": [...], "error"?}
+        """
+        if model_name and not self.load_models([model_name], folder):
+            return {"success": False, "error": f"无法加载模型：{model_name}"}
+        if not self.current_model:
+            return {"success": False, "error": "未加载模型"}
+
+        base_model = self.current_model
+        try:
+            param_distributions = collect_param_distributions(base_model)
+            base_model.param_distributions = param_distributions
+
+            step_size = base_model.simulator.get('step_size', 3600.0)
+            total_steps = int((time_hours * 3600.0) / step_size)
+            output_variables, output_warnings = self._resolve_output_variables(base_model)
+
+            start_date = base_model.simulator.get('start_date', '')
+            raw_entries = getattr(base_model, 'schedule_entries', [])
+            schedule_regimens = precompute_sustained_divisors(
+                list(raw_entries), step_size, total_steps, start_date
+            ) if raw_entries else []
+
+            n_runs = max(1, int(n_runs))
+            session_seed = int(seed) if seed is not None else int(np.random.randint(0, 2**31))
+            seed_list = derive_seed_list(session_seed, n_runs)
+
+            # Clone + sample every run model from the still-pristine base_model
+            # BEFORE advancing any of them (matches start_session's ordering) —
+            # advancing run 0 in-place first would mutate base_model and make
+            # later clones start from run 0's end state instead of the initial one.
+            run_models = []
+            for run_idx in range(n_runs):
+                run_model = base_model if run_idx == 0 else clone_model(base_model)
+                if param_distributions and n_runs > 1:
+                    run_rng = np.random.default_rng(seed_list[run_idx])
+                    apply_parameter_sampling(run_model, param_distributions, rng=run_rng)
+                run_models.append(run_model)
+
+            run_results = []
+            for run_idx, run_model in enumerate(run_models):
+                rows, end_step, end_time = advance_steps(
+                    run_model, schedule_regimens, step_size, total_steps,
+                    0, 0.0, output_variables, start_date,
+                )
+
+                csv_output_path = output_path_fn(run_idx) if output_path_fn else None
+                if csv_output_path:
+                    with open(csv_output_path, 'w', newline='', encoding='utf-8') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow(['step', 'time'] + output_variables)
+                        for row in rows:
+                            writer.writerow([row['step'], row['time']] + [row[v] for v in output_variables])
+
+                run_results.append({
+                    "run_idx": run_idx,
+                    "seed": seed_list[run_idx],
+                    "steps": end_step,
+                    "time": end_time,
+                    "csv_output": csv_output_path,
+                    "state": run_model.get_current_state(),
+                })
+
+            return {
+                "success": True,
+                "model_name": base_model.metadata.name,
+                "session_seed": session_seed,
+                "runs": run_results,
+                "output_variables": output_variables,
+                "warnings": output_warnings,
+            }
+        except Exception as e:
+            logger.error(f"MC 仿真执行失败: {e}")
+            return {"success": False, "error": str(e)}
+
     def run_simulation_all_plans(self, model_name: str, time_hours: float, folder: Optional[str] = None,
-                                  output_path_fn: Optional[Callable[[str, int], str]] = None) -> Dict[str, Any]:
+                                  output_path_fn: Optional[Callable[[str, int], str]] = None,
+                                  n_runs: int = 1, seed: Optional[int] = None) -> Dict[str, Any]:
         """
         对 simulation.plans 中的每一个 plan 各跑一遍仿真（CLI 使用）。
         每个 plan 在独立加载的模型副本上运行（互不影响初始状态）。
         :param output_path_fn: 可选回调 (plan_id, plan_index) -> CSV 路径；
             未提供时不写 CSV，仅返回结果。
+        :param n_runs: >1 时每个 plan 改为调用 run_simulation_mc（每个 run 一个
+            `__run{i}` 后缀的 CSV），= 1 时行为与之前完全一致。
         :return: {"success": bool, "plans": [{"plan_id", "result"}], "error"?}
         """
         if not self.load_models([model_name], folder):
@@ -231,12 +312,24 @@ class SimulatorEngine(SessionManagerMixin):
         # （即不应用任何 schedules，与不带 --all-plans 的普通仿真一致）。
         plan_ids = list(self.current_model.plans.keys()) or ["default"]
 
+        n_runs = max(1, int(n_runs))
         results = []
         for i, plan_id in enumerate(plan_ids):
             output_path = output_path_fn(plan_id, i) if output_path_fn else None
             self.current_model = self.loader.fetch(model_name, folder, use_cache=False)
             self.current_model.schedule_entries = self.current_model.plans.get(plan_id, [])
-            result = self.run_simulation(None, time_hours, output_path=output_path)
+
+            if n_runs == 1:
+                result = self.run_simulation(None, time_hours, output_path=output_path)
+            else:
+                def _run_path_fn(run_idx: int, _base=output_path) -> Optional[str]:
+                    if not _base:
+                        return None
+                    base = Path(_base)
+                    return str(base.with_name(f'{base.stem}__run{run_idx}{base.suffix}'))
+                result = self.run_simulation_mc(None, time_hours, n_runs=n_runs, seed=seed,
+                                                output_path_fn=_run_path_fn)
+
             results.append({"plan_id": plan_id, "result": result})
             if not result.get("success"):
                 return {"success": False, "error": result.get("error"), "plans": results}

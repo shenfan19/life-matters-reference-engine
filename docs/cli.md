@@ -53,6 +53,8 @@ pyinstaller sim_cli/build.spec
 |------|------|
 | `<model.yaml>` | 模型文件路径（绝对路径或相对于项目根的路径） |
 | `--sim` | 运行仿真。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
+| `--mc-runs N` | 配合 `--sim`：跑 N 次 Monte Carlo（每次独立采样分布参数），输出 `<stem>__run{i}.csv`（多方案时为 `<stem>__<plan_id>__run{i}.csv`）。默认 1（确定性模式，取分布均值） |
+| `--seed X` | 配合 `--mc-runs > 1`：master seed，用于派生各 run 的独立种子，可与 GUI 的 `sim_runs`/seed 直接对账（同一 seed 产生逐 run 完全相同的结果）。省略则每次随机 |
 | `--opt` | 运行优化器（NSGA-II） |
 | `--continue` | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索 |
 | `--continue PATH` | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
@@ -138,9 +140,12 @@ python sim_cli/main.py <model.yaml> --opt --continue
 | 结果文件输出 | 手动导出 | 自动（`output/<模型名>/`） |
 | 热启动 | ✅（界面勾选或导入 CSV） | `--continue` |
 | CLI 结果导入 GUI | — | GUI opt tab "导入 CSV" |
+| Monte Carlo 多 run | ✅（sim_runs + seed） | ✅（`--mc-runs` + `--seed`） |
 
-CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致，可互通。
-这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证（见 ADR 0111）。
+CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致，可互通——sim 的执行核心
+（`apply_regimens` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
+不是两份各自实现后凑巧一致。这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证
+（见 ADR 0111/0112/0113）。
 
 ---
 

@@ -48,8 +48,12 @@ ADR 判断标准不需要单独立项；但既然问题本身是"两个正式接
 
 ## 不在本次范围内
 
-- 不验证优化器（`--opt`）路径的一致性：CLI 和 GUI 的 opt 路由都直接调用同一个
-  `sim_engine.src.optimizer_engine.run_optimizer`，没有发现分叉，暂不需要专门测试。
+- ~~不验证优化器（`--opt`）路径的一致性：CLI 和 GUI 的 opt 路由都直接调用同一个
+  `sim_engine.src.optimizer_engine.run_optimizer`，没有发现分叉，暂不需要专门测试。~~
+  **更正（见 [ADR 0112](0112-2026-06-19_sim_opt-startpoint-faithfulness-fix.md)）**：当时只
+  确认了"两边调用同一个函数"，没有检查传入的 `optimizer_override` 是否等价——后续排查发现
+  GUI 一直把 `algorithm.seed` 硬编码成 `42`，且 T4（`optimize.date_range`）搜索维度在前端往返
+  中被静默丢弃，两者都已修复，并补上了 opt 一致性测试（见 ADR 0112/0113）。
 - 不验证前端 TypeScript 的 plan 映射逻辑（ADR 0110 处理的那部分）：那是纯字段映射，已通过浏览器
   实测验证，不在这个 Python 测试套件的范围内。
 
