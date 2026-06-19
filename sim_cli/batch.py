@@ -56,6 +56,97 @@ def _reset_logging(log_path: Path, setup_logging) -> _ErrorCapture:
     return capture
 
 
+def _opt_callback(entry: dict) -> bool:
+    return False  # never stop early in batch mode
+
+
+def _run_one_model(yaml_path: Path, root: Path, batch_dir: Path,
+                    run_sim_step: bool, run_opt_step: bool) -> dict:
+    """Run --sim and/or --opt for one model, capturing pass/fail + error summary.
+
+    Returns a dict with model_name, sim_status/sim_err/sim_csvs, opt_status/opt_err/opt_csv —
+    the raw per-model outcome, with no knowledge of report formatting or batch totals.
+    """
+    from output import setup_output_dir, make_stem, setup_logging, write_opt_csv
+    from runner import run_sim, run_opt
+
+    model_name = yaml_path.stem
+    sim_status, sim_err, sim_csvs = '⏭ SKIP', '', []
+    opt_status, opt_err, opt_csv = '⏭ SKIP', '', ''
+
+    out_dir = setup_output_dir(root, model_name, str(batch_dir))
+
+    # ── Sim ──────────────────────────────────────────────────────────────────
+    if run_sim_step:
+        stem = make_stem(yaml_path, 'sim')
+        capture = _reset_logging(out_dir / f'{stem}.log', setup_logging)
+        csv_path = out_dir / f'{stem}.csv'
+
+        try:
+            written = run_sim(yaml_path, root, csv_path)
+            ok, sim_csvs = bool(written), (written or [])
+        except Exception:
+            logger.exception('Simulation crashed')
+            ok = False
+
+        if ok:
+            sim_status = '✓ PASS'
+            print(f'    -> sim      PASS -> {" ".join(sim_csvs)}')
+        else:
+            sim_status = '✗ FAIL'
+            sim_err = capture.messages[-1] if capture.messages else ''
+            print(f'    -> sim      FAIL -- {sim_err}')
+
+    # ── Opt ──────────────────────────────────────────────────────────────────
+    if run_opt_step:
+        stem_opt = make_stem(yaml_path, 'opt')
+        capture = _reset_logging(out_dir / f'{stem_opt}.log', setup_logging)
+        csv_path_opt = out_dir / f'{stem_opt}.csv'
+
+        try:
+            result = run_opt(yaml_path, root, warm_start=False,
+                              opt_callback=_opt_callback, incremental_csv=csv_path_opt)
+        except Exception:
+            logger.exception('Optimizer crashed')
+            result = None
+
+        if result is not None:
+            write_opt_csv(result.get('pareto_front', []), result.get('objectives', []), csv_path_opt,
+                          x_labels=result.get('decision_var_labels'))
+            opt_status = '✓ PASS'
+            opt_csv = csv_path_opt.name
+            print(f'    -> opt      PASS -> {opt_csv}')
+        else:
+            opt_status = '✗ FAIL'
+            opt_err = capture.messages[-1] if capture.messages else ''
+            print(f'    -> opt      FAIL -- {opt_err}')
+
+    return {
+        'model_name': model_name,
+        'sim_status': sim_status, 'sim_err': sim_err, 'sim_csvs': sim_csvs,
+        'opt_status': opt_status, 'opt_err': opt_err, 'opt_csv': opt_csv,
+    }
+
+
+def _format_report_row(idx: int, run: dict) -> str:
+    """Render one _run_one_model() result as a batch_report.md table row."""
+    model_name = run['model_name']
+
+    sim_cell = run['sim_status']
+    for csv_name in run['sim_csvs']:
+        sim_cell += f'<br>[{csv_name}](./{model_name}/{csv_name})'
+
+    opt_cell = run['opt_status']
+    if run['opt_csv']:
+        opt_cell = f"[{run['opt_status']}](./{model_name}/{run['opt_csv']})"
+
+    err_cell = run['sim_err']
+    if run['opt_err']:
+        err_cell = f"{err_cell} / {run['opt_err']}" if err_cell else run['opt_err']
+
+    return f'| {idx} | `{model_name}` | {sim_cell} | {opt_cell} | {err_cell} |'
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog='lm-sim-batch',
@@ -120,93 +211,23 @@ def main() -> None:
         '|---|------|-----|-----|---------|',
     ]
 
-    from output import setup_output_dir, make_stem, setup_logging, write_opt_csv
-    from runner import run_sim, run_opt
-
-    def _opt_callback(entry: dict) -> bool:
-        return False  # never stop early in batch mode
-
     pass_count = 0
     fail_count = 0
     fail_rows = []
 
     for idx, yaml_path in enumerate(yamls, 1):
-        model_name = yaml_path.stem
         print(f'[{idx}/{total}] {yaml_path}')
+        run = _run_one_model(yaml_path, root, batch_dir, run_sim_step, run_opt_step)
 
-        sim_status, sim_err, sim_csvs = '⏭ SKIP', '', []
-        opt_status, opt_err, opt_csv = '⏭ SKIP', '', ''
-
-        out_dir = setup_output_dir(root, model_name, str(batch_dir))
-
-        # ── Sim ──────────────────────────────────────────────────────────────
-        if run_sim_step:
-            stem = make_stem(yaml_path, 'sim')
-            capture = _reset_logging(out_dir / f'{stem}.log', setup_logging)
-            csv_path = out_dir / f'{stem}.csv'
-
-            try:
-                written = run_sim(yaml_path, root, csv_path)
-                ok, sim_csvs = bool(written), (written or [])
-            except Exception as e:
-                logger.exception('Simulation crashed')
-                ok = False
-
-            if ok:
-                sim_status = '✓ PASS'
-                print(f'    -> sim      PASS -> {" ".join(sim_csvs)}')
-            else:
-                sim_status = '✗ FAIL'
-                sim_err = capture.messages[-1] if capture.messages else ''
-                print(f'    -> sim      FAIL -- {sim_err}')
-
-        # ── Opt ──────────────────────────────────────────────────────────────
-        if run_opt_step:
-            stem_opt = make_stem(yaml_path, 'opt')
-            capture = _reset_logging(out_dir / f'{stem_opt}.log', setup_logging)
-            csv_path_opt = out_dir / f'{stem_opt}.csv'
-
-            try:
-                result = run_opt(yaml_path, root, warm_start=False,
-                                  opt_callback=_opt_callback, incremental_csv=csv_path_opt)
-            except Exception as e:
-                logger.exception('Optimizer crashed')
-                result = None
-
-            if result is not None:
-                write_opt_csv(result.get('pareto_front', []), result.get('objectives', []), csv_path_opt,
-                              x_labels=result.get('decision_var_labels'))
-                opt_status = '✓ PASS'
-                opt_csv = csv_path_opt.name
-                print(f'    -> opt      PASS -> {opt_csv}')
-            else:
-                opt_status = '✗ FAIL'
-                opt_err = capture.messages[-1] if capture.messages else ''
-                print(f'    -> opt      FAIL -- {opt_err}')
-
-        if '✗ FAIL' in (sim_status, opt_status):
+        if run['sim_status'] == '✗ FAIL' or run['opt_status'] == '✗ FAIL':
             fail_count += 1
+            fail_rows.append(
+                f"{idx}. {run['model_name']}  sim={run['sim_status']} opt={run['opt_status']}"
+            )
         else:
             pass_count += 1
 
-        # ── Report row ───────────────────────────────────────────────────────
-        sim_cell = sim_status
-        for csv in sim_csvs:
-            sim_cell += f'<br>[{csv}](./{model_name}/{csv})'
-
-        opt_cell = opt_status
-        if opt_csv:
-            opt_cell = f'[{opt_status}](./{model_name}/{opt_csv})'
-
-        err_cell = sim_err
-        if opt_err:
-            err_cell = f'{err_cell} / {opt_err}' if err_cell else opt_err
-
-        report_lines.append(f'| {idx} | `{model_name}` | {sim_cell} | {opt_cell} | {err_cell} |')
-
-        if sim_status == '✗ FAIL' or opt_status == '✗ FAIL':
-            fail_rows.append(f'{idx}. {model_name}  sim={sim_status} opt={opt_status}')
-
+        report_lines.append(_format_report_row(idx, run))
         print()
 
     report_lines += [

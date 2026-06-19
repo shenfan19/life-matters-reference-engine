@@ -1,0 +1,96 @@
+"""Simulation execution + objective/constraint evaluation for the optimizer.
+
+_run_sim() drives one full simulation given a decoded {variable: events} map
+(built by optimizer_engine.run_optimizer()'s _build_regimen_events closure);
+_eval_F()/_eval_G() reduce the resulting per-variable history into the
+objective vector and constraint-violation vector the NSGA-II/scipy backends
+in optimizer_backends.py expect.
+"""
+
+from typing import Dict, List
+
+from .regimen_runner import apply_regimens, precompute_sustained_divisors
+from .optimizer_parsing import _parse_condition
+
+
+def _eval_metric(history: List[float], metric: str) -> float:
+    if not history:
+        return 0.0
+    if metric == 'final':
+        return history[-1]
+    elif metric == 'max':
+        return max(history)
+    elif metric == 'min':
+        return min(history)
+    elif metric == 'mean':
+        return sum(history) / len(history)
+    return history[-1]
+
+
+def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
+             step_size_sec: float, total_steps: int,
+             sim_start_date: str = '') -> Dict[str, List[float]]:
+    """Run a full simulation and return per-variable history lists.
+
+    Uses apply_regimens() from regimen_runner (pulse reset + accumulate) — same
+    kernel as the GUI sim path, eliminating the duplicate implementation.
+    """
+    model.reset_simulation()
+
+    if not hasattr(model, 'manual_overrides'):
+        model.manual_overrides = {}
+    for var_name in regimen_events_by_var:
+        model.manual_overrides[var_name] = True
+
+    # Convert dict format → list format expected by apply_regimens
+    regimens_list = [
+        {'variable': var_name, 'events': evts}
+        for var_name, evts in regimen_events_by_var.items()
+    ]
+    # ADR 0099: precompute sustained-mode value/_n_steps divisors once per run
+    regimens_list = precompute_sustained_divisors(regimens_list, step_size_sec, total_steps, sim_start_date)
+
+    history: Dict[str, List[float]] = {n: [] for n in model.variables}
+    for i in range(total_steps):
+        prev_t = i * step_size_sec
+        apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec, sim_start_date)
+        model.step(step_size_sec)
+        for n, v in model.variables.items():
+            history[n].append(v.value)
+
+    return history
+
+
+def _eval_F(history: Dict[str, List[float]], objectives: List[Dict]) -> List[float]:
+    """Objective vector (pymoo convention: all minimized)."""
+    F = []
+    for obj in objectives:
+        raw = _eval_metric(history.get(obj['variable'], [0.0]), obj.get('metric', 'final'))
+        F.append(-raw if obj.get('direction', 'minimize') == 'maximize' else raw)
+    return F
+
+
+def _eval_G(history: Dict[str, List[float]], constraints: List[Dict]) -> List[float]:
+    """Constraint violations (G[i] > 0 = violated).
+
+    Default (no `metric`): trajectory-wide max/min, i.e. the bound must hold at
+    every timestep. `metric: final` checks only the end-of-simulation value,
+    for constraints that represent a treatment endpoint/goal rather than an
+    always-on safety bound (e.g. variables that start outside the bound).
+    """
+    G = []
+    for con in constraints:
+        vals = history.get(con['variable'], [0.0])
+        op, threshold = _parse_condition(con.get('condition', '<= 0'))
+        metric = con.get('metric')
+        if metric == 'final':
+            val = vals[-1] if vals else 0.0
+            if op in ('<=', '<'):
+                G.append(val - threshold)
+            else:
+                G.append(threshold - val)
+        elif op in ('<=', '<'):
+            G.append(max(vals) - threshold)
+        else:
+            G.append(threshold - min(vals))
+    return G

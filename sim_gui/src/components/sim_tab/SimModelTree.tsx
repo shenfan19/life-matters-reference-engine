@@ -113,6 +113,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     if (!node.isLeaf) {
       return (
         <span
+          data-testid={`model-tree-folder-${node.key}`}
           style={{ display: 'flex', alignItems: 'center', gap: 4 }}
           onClick={() => setExpandedKeys(prev => {
             const next = new Set(prev);
@@ -131,7 +132,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     const isRunning = node.key === runningModelKey;
     const hasSession = sessionKeys.has(node.key);
     return (
-      <span style={{ display: 'flex', alignItems: 'center' }}>
+      <span data-testid={`model-tree-leaf-${node.key}`} style={{ display: 'flex', alignItems: 'center' }}>
         <span style={{ position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
           {isRunning && (
             <Tooltip title={t('sim.tree.running_tip')}>

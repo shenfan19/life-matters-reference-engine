@@ -348,7 +348,7 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
           <Select size="small" value={obj.variable} style={{ flex: 1 }}
             options={allVarNames.map(n => ({ label: n === 'lm_score' ? `⭐ ${n}` : n, value: n }))}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, variable: v } : o))} />
-          <Select size="small" value={obj.direction} style={{ width: 80 }}
+          <Select size="small" value={obj.direction} style={{ minWidth: 80, width: 'max-content' }}
             options={[{ label: t('sim.opt.minimize'), value: 'minimize' }, { label: t('sim.opt.maximize'), value: 'maximize' }]}
             onChange={v => setObjectives(p => p.map((o, j) => j === i ? { ...o, direction: v } : o))} />
           <Button size="small" danger icon={<MinusCircleOutlined />}

@@ -1471,6 +1471,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                       if (tab.key === 'simulation') setMode('sim');
                       if (tab.key === 'optimization') setMode('opt');
                     }}
+                    data-testid={`center-tab-${tab.key}`}
                     style={{ padding: '6px 16px', border: 'none', cursor: locked ? 'not-allowed' : 'pointer', background: 'transparent', color, fontSize: 'var(--lm-font-size, 14px)', fontWeight: (!locked && isActive) ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: locked ? 0.4 : 1 }}
                   >
                     {tab.label}
@@ -1568,7 +1569,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   simLogs={simLogs}
                 />
               }
-              progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} c={c} isDarkMode={isDarkMode} />}
+              progress={<ProgressStrip label="Simulation" percent={progress} detail={`step ${currentStep}/${totalSteps || '-'} · ${status}`} active={status === 'running'} c={c} />}
             />
           )}
 
@@ -1620,7 +1621,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                   isActiveModel={!runningModelKey || runningModelKey === selectedKey}
                 />
               }
-              progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} isDarkMode={isDarkMode} />}
+              progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} />}
             />
           )}
 

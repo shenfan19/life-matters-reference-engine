@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "preview": "vite preview",
     "generate-models": "node src/server.js"
   },
