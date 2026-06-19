@@ -273,3 +273,39 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                     "Regimen fired: %s += %s @ t=%.0fs (%s~%s)",
                     variable, delta, prev_time, time_start, time_end,
                 )
+
+
+def advance_steps(model, regimens: list, step_size: float, n_steps: int,
+                   start_step: int, start_time: float, output_variables: list,
+                   sim_start_date: str = '') -> tuple:
+    """Run `model` forward by `n_steps` (apply_regimens → model.step()).
+
+    The single step-execution core shared by the CLI (`run_simulation`, one
+    call covering the whole run) and the GUI (`batch_steps`, called once per
+    polling batch, and once per Monte Carlo run) — previously each kept its
+    own copy of this loop body, which only stayed in sync by coincidence.
+
+    `start_step`/`start_time` let the caller resume across multiple calls
+    (the GUI polls in batches); a single CLI run just passes 0/0.0 once.
+
+    Returns (rows, end_step, end_time) where each row is
+    {'step', 'time', **{var: value for var in output_variables}}.
+    """
+    rows = []
+    step = start_step
+    time = start_time
+    for _ in range(n_steps):
+        prev_time = time
+        next_time = prev_time + step_size
+        if regimens:
+            apply_regimens(model, regimens, prev_time, next_time, sim_start_date=sim_start_date)
+        model.step(step_size)
+        step += 1
+        time = next_time
+
+        row = {'step': step, 'time': time}
+        for var_name in output_variables:
+            row[var_name] = model.variables[var_name].value
+        rows.append(row)
+
+    return rows, step, time

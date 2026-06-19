@@ -201,6 +201,7 @@ export interface ModelSession {
   optAlgo: 'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead';
   optPop: number;
   optGen: number;
+  optSeed?: number;
   optResult: any;
   userEdited?: boolean;
 }

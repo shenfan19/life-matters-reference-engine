@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .regimen_runner import apply_regimens, precompute_sustained_divisors
-from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model
+from .regimen_runner import advance_steps, precompute_sustained_divisors
+from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model, derive_seed_list
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,8 @@ class SessionManagerMixin:
             import uuid
             session_id = str(uuid.uuid4())
             session_seed = int(seed) if seed is not None else int(np.random.randint(0, 2**31))
-            master_rng = np.random.default_rng(session_seed)
             n_runs = max(1, int(sim_runs))
-            seed_list = [int(master_rng.integers(0, 2**31)) for _ in range(n_runs)]
+            seed_list = derive_seed_list(session_seed, n_runs)
 
             if step_size is None:
                 step_size = base_model.simulator.get('step_size', 3600.0)
@@ -246,23 +245,13 @@ class SessionManagerMixin:
                         if var_name in model.variables:
                             model.set_variable_value(var_name, value)
 
-                outputs = []
                 actual_steps = min(steps, session['total_steps'] - session['current_step'])
 
-                for _ in range(actual_steps):
-                    prev_time = session['time']
-                    next_time = prev_time + step_size
-                    apply_regimens(model, session['regimens'], prev_time, next_time,
-                                   sim_start_date=sim_start_date)
-                    model.step(step_size)
-                    session['current_step'] += 1
-                    session['time'] += step_size
-
-                    output_data = {'step': session['current_step'], 'time': session['time']}
-                    for var_name in output_variables:
-                        output_data[var_name] = model.variables[var_name].value
-                    outputs.append(output_data)
-                    session['data'].append(output_data)
+                outputs, session['current_step'], session['time'] = advance_steps(
+                    model, session['regimens'], step_size, actual_steps,
+                    session['current_step'], session['time'], output_variables, sim_start_date,
+                )
+                session['data'].extend(outputs)
 
                 completed = session['current_step'] >= session['total_steps']
                 progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
@@ -340,7 +329,6 @@ class SessionManagerMixin:
                     continue
 
                 run_model = run['model']
-                run_outputs: List[Dict] = []
 
                 if input_changes:
                     for var_name, value in input_changes.items():
@@ -349,20 +337,11 @@ class SessionManagerMixin:
 
                 actual_steps = min(steps, session['total_steps'] - run['current_step'])
 
-                for _ in range(actual_steps):
-                    prev_time = run['time']
-                    next_time = prev_time + step_size
-                    apply_regimens(run_model, session['regimens'], prev_time, next_time,
-                                   sim_start_date=sim_start_date)
-                    run_model.step(step_size)
-                    run['current_step'] += 1
-                    run['time'] += step_size
-
-                    output_data = {'step': run['current_step'], 'time': run['time']}
-                    for var_name in output_variables:
-                        output_data[var_name] = run_model.variables[var_name].value
-                    run_outputs.append(output_data)
-                    run['data'].append(output_data)
+                run_outputs, run['current_step'], run['time'] = advance_steps(
+                    run_model, session['regimens'], step_size, actual_steps,
+                    run['current_step'], run['time'], output_variables, sim_start_date,
+                )
+                run['data'].extend(run_outputs)
 
                 if run['current_step'] >= session['total_steps']:
                     run['completed'] = True

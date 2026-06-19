@@ -1,11 +1,66 @@
 // optUtils.ts — Optimizer schedule building utilities (T1–T4)
 //
 // Pure functions that convert InputEvent arrays into the optimizer.schedules
-// format consumed by the backend. No React state; safe to unit-test in isolation.
+// format consumed by the backend, and back. No React state; safe to
+// unit-test in isolation (see optUtils.test.ts).
 
 import type { InputEvent } from '../../types';
+import { normalizeTimeInterval } from './simUtils';
 
 export const DAY_STRS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
+const DAY_STR_MAP: Record<string, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+
+export function parseDaysMask(days?: string[]): boolean[] {
+  if (!days?.length) return [true, true, true, true, true, true, true];
+  const m = [false, false, false, false, false, false, false];
+  days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0, 3)]; if (i !== undefined) m[i] = true; });
+  return m;
+}
+
+/**
+ * Build editable InputEvents from a YAML optimizer.startpoint.schedules list.
+ * Inverse of buildOptSchedules — round-tripping an unedited model through
+ * both functions should reproduce the original schedules (see optUtils.test.ts).
+ */
+export function buildOptInputEventsFromYAML(schedules: any[]): InputEvent[] {
+  return schedules.map((s: any, i: number) => {
+    const { timeStart, timeEnd } = normalizeTimeInterval(s);
+    const daysList: string[] = Array.isArray(s.days) ? s.days : [];
+    const hasDays = daysList.length > 0 && daysList.length < 7;
+    let validStart = s.valid_start ?? ''; let validEnd = s.valid_end ?? '';
+    if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
+      validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
+    }
+    // T4's own search range (optimize.date_range) also counts as "has a date
+    // range" — without this, validRangeEnabled stays false and buildOptSchedules
+    // silently drops the optimize.date_range block on the way back out.
+    const hasT4Range = Array.isArray(s.optimize?.date_range) && s.optimize.date_range.length === 2;
+    const ev: InputEvent = {
+      id: `opt-yaml-${i}-${s.variable || 'v'}`, variable: s.variable || '',
+      timeStart, timeEnd, value: s.value ?? 0, label: s.label || '',
+      daysEnabled: hasDays, days: parseDaysMask(hasDays ? daysList : undefined),
+      validRangeEnabled: !!(validStart || validEnd) || hasT4Range, validStart, validEnd,
+    };
+    const opt = s.optimize;
+    if (opt) {
+      if (Array.isArray(opt.value) && opt.value.length >= 2) { ev.optimizeValue = true; ev.valueBounds = [opt.value[0], opt.value[1]]; }
+      const t2win = opt.time_start;
+      if (Array.isArray(t2win) && t2win.length === 2) {
+        ev.optimizeTime = true; ev.timeWindowStart = t2win[0]; ev.timeWindowEnd = t2win[1];
+        if (opt.time_step) ev.timeStep = opt.time_step;
+        if (Array.isArray(opt.time_end) && opt.time_end.length === 2) { ev.optimizeTimeEnd = true; ev.timeEndWindowStart = opt.time_end[0]; ev.timeEndWindowEnd = opt.time_end[1]; }
+      }
+      if (opt.days_pool) { ev.optimizeDays = true; ev.daysPool = opt.days_pool; if (opt.days_n) { ev.daysNMin = opt.days_n[0]; ev.daysNMax = opt.days_n[1]; } }
+      if (hasT4Range) {
+        ev.optimizeDateRange = true;
+        ev.dateStartLo = opt.date_range[0][0]; ev.dateStartHi = opt.date_range[0][1];
+        ev.dateEndLo = opt.date_range[1][0]; ev.dateEndHi = opt.date_range[1][1];
+      }
+    }
+    return ev;
+  });
+}
 
 /** True if any optimizer tier (T1–T4) is active for this event. */
 export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boolean {

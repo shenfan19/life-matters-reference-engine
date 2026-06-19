@@ -70,8 +70,14 @@ def load_pareto_from_csv(csv_path: Path) -> List[Dict]:
 
 # ── public runners ────────────────────────────────────────────────────────────
 
-def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[List[str]]:
+def run_sim(model_path: Path, project_root: Path, csv_path: Path,
+            n_runs: int = 1, seed: Optional[int] = None) -> Optional[List[str]]:
     """Run one simulation per simulation.plans entry, writing `<stem>__<plan_id>.csv` each.
+
+    n_runs > 1 runs Monte Carlo (one independently-sampled run per `n_runs`,
+    same seed derivation as the GUI's sim_runs — see ADR 0113), writing
+    `<stem>__<plan_id>__run{i}.csv` (or `<stem>__run{i}.csv` for a single
+    unnamed plan) instead of the single per-plan CSV.
 
     Returns the list of written CSV filenames, or None on failure.
     """
@@ -87,8 +93,10 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[Li
     plan_ids = list(engine.current_model.plans.keys()) or ['default']
     single_unnamed_plan = plan_ids == ['default']
 
-    logger.info(f'Simulation start (all plans): {name}  ({hours / 24:.1f} days)  plans={plan_ids}')
-    print(f'  Running simulation for {len(plan_ids)} plan(s) ({hours / 24:.1f} days each)...')
+    mc_tag = f', mc_runs={n_runs}' if n_runs > 1 else ''
+    logger.info(f'Simulation start (all plans): {name}  ({hours / 24:.1f} days)  plans={plan_ids}{mc_tag}')
+    print(f'  Running simulation for {len(plan_ids)} plan(s) ({hours / 24:.1f} days each)'
+          f'{f", {n_runs} MC runs" if n_runs > 1 else ""}...')
 
     written: List[str] = []
 
@@ -97,15 +105,23 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[Li
             path = csv_path
         else:
             path = csv_path.with_name(f'{csv_path.stem}__{plan_id}{csv_path.suffix}')
-        written.append(path.name)
+        if n_runs == 1:
+            written.append(path.name)
         return str(path)
 
-    result = engine.run_simulation_all_plans(name, hours, output_path_fn=_path_for)
+    result = engine.run_simulation_all_plans(name, hours, output_path_fn=_path_for, n_runs=n_runs, seed=seed)
     print()
 
     if result.get('success'):
         for p in result['plans']:
-            logger.info(f'  Plan {p["plan_id"]}: {p["result"]["steps"]} steps')
+            r = p['result']
+            if n_runs == 1:
+                logger.info(f'  Plan {p["plan_id"]}: {r["steps"]} steps')
+            else:
+                logger.info(f'  Plan {p["plan_id"]}: {n_runs} runs, seed={r["session_seed"]}')
+                for run in r['runs']:
+                    if run.get('csv_output'):
+                        written.append(Path(run['csv_output']).name)
         return written
 
     logger.error(f'Simulation failed: {result.get("error")}')

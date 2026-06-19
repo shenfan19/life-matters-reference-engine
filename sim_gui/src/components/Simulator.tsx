@@ -15,7 +15,7 @@ import SimIntroTab from './sim_tab/SimIntroTab';
 import SimPlotTab from './sim_tab/SimPlotTab';
 import SimOptTab from './sim_tab/SimOptTab';
 import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, normalizeTimeInterval, migrateInputEvents } from './sim_tab/simUtils';
-import { buildOptSchedules } from './sim_tab/optUtils';
+import { buildOptSchedules, buildOptInputEventsFromYAML, parseDaysMask } from './sim_tab/optUtils';
 import { useSession, readMS } from './sim_tab/useSession';
 import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
 import { SimControlBar } from './sim_tab/SimControlBar';
@@ -275,6 +275,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead'>('NSGA-II');
   const [optPop, setOptPop] = useState(50);
   const [optGen, setOptGen] = useState(80);
+  const [optSeed, setOptSeed] = useState(42);
   const switchCenterTab = (tab: string) => {
     if (builderOpen) return; // locked while builder is open
     if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
@@ -380,7 +381,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     selectedModel, selectedKey,
     inputEvents: optInputEvents, inputVars,
     objectives, constraints,
-    optAlgo, optPop, optGen,
+    optAlgo, optPop, optGen, optSeed,
     simStartDate, simEndDate, stepValue: optStepValue, stepUnit: optStepUnit,
     simRuns, mcSeed,
     modelSessionsRef,
@@ -529,47 +530,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     // Needed in both session and no-session branches
     const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
 
-    const DAY_STR_MAP: Record<string, number> = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 };
-    const parseDaysMask = (days?: string[]): boolean[] => {
-      if (!days?.length) return [true,true,true,true,true,true,true];
-      const m = [false,false,false,false,false,false,false];
-      days.forEach(d => { const i = DAY_STR_MAP[d.toLowerCase().slice(0,3)]; if (i !== undefined) m[i] = true; });
-      return m;
-    };
-    const buildOptInputEventsFromYAML = (schedules: any[]): InputEvent[] =>
-      schedules.map((s: any, i: number) => {
-        const { timeStart, timeEnd } = normalizeTimeInterval(s);
-        const daysList: string[] = Array.isArray(s.days) ? s.days : [];
-        const hasDays = daysList.length > 0 && daysList.length < 7;
-        let validStart = s.valid_start ?? ''; let validEnd = s.valid_end ?? '';
-        if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
-          validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
-        }
-        const ev: InputEvent = {
-          id: `opt-yaml-${i}-${s.variable || 'v'}`, variable: s.variable || '',
-          timeStart, timeEnd, value: s.value ?? 0, label: s.label || '',
-          daysEnabled: hasDays, days: parseDaysMask(hasDays ? daysList : undefined),
-          validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
-        };
-        const opt = s.optimize;
-        if (opt) {
-          if (Array.isArray(opt.value) && opt.value.length >= 2) { ev.optimizeValue = true; ev.valueBounds = [opt.value[0], opt.value[1]]; }
-          const t2win = opt.time_start;
-          if (Array.isArray(t2win) && t2win.length === 2) {
-            ev.optimizeTime = true; ev.timeWindowStart = t2win[0]; ev.timeWindowEnd = t2win[1];
-            if (opt.time_step) ev.timeStep = opt.time_step;
-            if (Array.isArray(opt.time_end) && opt.time_end.length === 2) { ev.optimizeTimeEnd = true; ev.timeEndWindowStart = opt.time_end[0]; ev.timeEndWindowEnd = opt.time_end[1]; }
-          }
-          if (opt.days_pool) { ev.optimizeDays = true; ev.daysPool = opt.days_pool; if (opt.days_n) { ev.daysNMin = opt.days_n[0]; ev.daysNMax = opt.days_n[1]; } }
-          if (Array.isArray(opt.date_range) && opt.date_range.length === 2) {
-            ev.optimizeDateRange = true;
-            ev.dateStartLo = opt.date_range[0][0]; ev.dateStartHi = opt.date_range[0][1];
-            ev.dateEndLo = opt.date_range[1][0]; ev.dateEndHi = opt.date_range[1][1];
-          }
-        }
-        return ev;
-      });
-
     // ── 3. Session exists → restore user state, skip YAML defaults ──
     const session = modelSessionsRef.current[selectedModel.key];
     if (session) {
@@ -594,6 +554,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       setOptAlgo(session.optAlgo as any);
       setOptPop(session.optPop);
       setOptGen(session.optGen);
+      setOptSeed(session.optSeed ?? 42);
       setOptResult(session.optResult ?? yamlOptResult ?? null);
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
       set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
@@ -780,6 +741,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       const algoBlock = optBlock.algorithm || {};
       if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
+      setOptSeed(algoBlock.seed != null ? Number(algoBlock.seed) : 42);
       if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
       setOptInputEvents(
@@ -892,12 +854,12 @@ const Simulator: React.FC<SimulatorProps> = ({
     const session: ModelSession = {
       inputEvents, optInputEvents, plans, activePlanId,
       simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed,
-      objectives, constraints, optAlgo, optPop, optGen,
+      objectives, constraints, optAlgo, optPop, optGen, optSeed,
       optResult,
       userEdited: sessionEditedRef.current,
     };
     persistSession(selectedKey, session);
-  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optResult]);
+  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
