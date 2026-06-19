@@ -91,7 +91,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
     }}>
       {/* Logo wordmark */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
-        <HeartPulseIcon size={28} color={isDarkMode ? '#52c41a' : '#007A33'} />
+        <HeartPulseIcon size={28} color={c.primary} />
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
             fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, letterSpacing: '0.04em',
@@ -329,16 +329,16 @@ function App() {
       colorPrimary: antPrimary, colorLink: antPrimary, colorSuccess: '#52c41a',
       borderRadius: 6, fontSize,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
-      colorBgBase: isDarkMode ? '#111111' : '#f5f5f5',
+      colorBgBase: c.bg,
       colorBgContainer: isDarkMode ? '#111f16' : '#ffffff',
-      colorBorder: isDarkMode ? '#2a2a2a' : '#e0e0e0',
+      colorBorder: c.border,
       fontSizeSM: Math.max(11, fontSize - 3),
     },
     components: {
       Button: { borderRadius: 6, controlHeight: 32 },
       Card: { borderRadiusLG: 6 },
       Tabs: { itemActiveColor: antPrimary, itemSelectedColor: antPrimary, inkBarColor: antPrimary, horizontalItemPadding: '10px 14px' },
-      Divider: { colorSplit: isDarkMode ? '#2a2a2a' : '#e0e0e0' },
+      Divider: { colorSplit: c.border },
       Tag: { borderRadiusSM: 4 },
       Input: { colorBgContainer: isDarkMode ? '#222222' : '#ffffff' },
       InputNumber: { colorBgContainer: isDarkMode ? '#222222' : '#ffffff' },
@@ -346,18 +346,18 @@ function App() {
         colorBgContainer: isDarkMode ? '#222222' : '#ffffff',
         colorBgElevated: isDarkMode ? '#252525' : '#ffffff',
         optionSelectedBg: isDarkMode ? '#2a2a2a' : '#f0f0f0',
-        optionSelectedColor: isDarkMode ? 'rgba(255,255,255,0.92)' : '#1a2e22',
+        optionSelectedColor: c.text,
       },
       Table: { colorBgContainer: isDarkMode ? '#1a1a1a' : '#ffffff', headerBg: isDarkMode ? '#222222' : '#f5f5f5' },
       Tree: {
         colorBgContainer: 'transparent',
-        nodeSelectedBg: isDarkMode ? '#1a3a22' : '#e8f5e9',
+        nodeSelectedBg: c.activeBg,
         nodeHoverBg: isDarkMode ? 'rgba(82,196,26,0.08)' : 'rgba(0,122,51,0.06)',
         colorText: isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22',
       },
       Segmented: {
-        itemSelectedBg: isDarkMode ? '#1a3a22' : '#e8f5e9',
-        itemSelectedColor: isDarkMode ? '#52c41a' : '#007A33',
+        itemSelectedBg: c.activeBg,
+        itemSelectedColor: antPrimary,
         trackBg: isDarkMode ? '#1a1a1a' : '#f0f0f0',
       },
     },

@@ -73,6 +73,7 @@ export function SimControlBar({
             onClick={handleMainClick}
             disabled={!selectedModel || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
+            data-testid="sim-run-button"
           >
             {mainLabel}
           </Button>

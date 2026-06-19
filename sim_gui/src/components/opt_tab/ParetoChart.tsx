@@ -71,7 +71,7 @@ const ParetoChart: React.FC<{
     ctx.fillText(labelY, 0, 0); ctx.restore();
 
     const sorted = [...pts].sort((a, b) => a.x - b.x);
-    ctx.strokeStyle = isDarkMode ? '#52c41a' : '#007A33';
+    ctx.strokeStyle = c.primary;
     ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
     ctx.beginPath();
     sorted.forEach((p, i) => {
@@ -83,7 +83,7 @@ const ParetoChart: React.FC<{
     pts.forEach((p) => {
       const cx = toCanvasX(p.x), cy = toCanvasY(p.y);
       ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = isDarkMode ? '#52c41a' : '#007A33';
+      ctx.fillStyle = c.primary;
       ctx.fill();
       ctx.strokeStyle = isDarkMode ? '#111' : '#fff';
       ctx.lineWidth = 1.5; ctx.stroke();
@@ -122,7 +122,7 @@ const ParetoChart: React.FC<{
       {hover && (
         <div style={{
           position: 'absolute', left: hover.x + 10, top: Math.max(0, hover.y - 10),
-          background: isDarkMode ? '#1a1a1a' : '#fff',
+          background: c.panel,
           border: `1px solid ${c.border}`, borderRadius: 4, padding: '4px 8px',
           fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.text, pointerEvents: 'none', whiteSpace: 'pre',
           boxShadow: '0 2px 6px rgba(0,0,0,0.15)', zIndex: 10,

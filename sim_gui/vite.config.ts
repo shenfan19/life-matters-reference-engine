@@ -5,6 +5,7 @@
 // 3. 更新端口为 5173 (与架构文档一致)
 
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
@@ -111,5 +112,8 @@ export default defineConfig({
         }
       }
     }
-  }
+  },
+  test: {
+    exclude: [...configDefaults.exclude, 'e2e/**'],
+  },
 })

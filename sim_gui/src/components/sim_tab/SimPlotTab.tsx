@@ -113,7 +113,10 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
       {summaryItems.map(([label, value]) => (
         <div key={label} style={{ display: 'flex', gap: 5, alignItems: 'baseline', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
           <span style={{ color: c.textMute, fontWeight: 700, textTransform: 'uppercase' }}>{label}</span>
-          <span style={{ color: c.text, fontFamily: label === 'Model' ? undefined : 'monospace' }}>{value}</span>
+          <span
+            data-testid={label === 'Points' ? 'sim-points-value' : undefined}
+            style={{ color: c.text, fontFamily: label === 'Model' ? undefined : 'monospace' }}
+          >{value}</span>
         </div>
       ))}
     </div>

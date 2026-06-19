@@ -20,11 +20,11 @@ export function WorkspacePage({ controls, setup, result, progress }: {
   );
 }
 
-export function ProgressStrip({ label, percent, detail, active, c, isDarkMode }: { label: string; percent: number; detail: string; active: boolean; c: ReturnType<typeof getC>; isDarkMode: boolean }) {
+export function ProgressStrip({ label, percent, detail, active, c }: { label: string; percent: number; detail: string; active: boolean; c: ReturnType<typeof getC> }) {
   return (
     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${c.border}`, background: c.panel }}>
       <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, textTransform: 'uppercase', minWidth: 82 }}>{label}</span>
-      <div style={{ flex: 1, height: 5, background: isDarkMode ? '#2a2a2a' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 5, background: c.border, borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', background: active ? c.primary : c.textMute, transition: 'width 0.3s', borderRadius: 3 }} />
       </div>
       <span style={{ color: c.textMute, fontFamily: 'monospace', whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{detail}</span>
