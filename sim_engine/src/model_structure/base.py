@@ -35,6 +35,11 @@ class Variable:
     unit: Optional[str] = None
     bounds: Optional[List[float]] = None
     reference: Optional[Any] = None
+    # evidence 溯源：非 None 表示该 parameter 的 value 是 Loader 从 evidence 块的原始
+    # 文献效应量（OR/HR/RR/Cohen's d 等）自动换算而来，而非建模者直接填入的机制系数。
+    # 不新增独立 VariableType，复用 parameter，靠这两个字段做溯源标记。
+    evidence_type: Optional[str] = None
+    evidence_raw_value: Optional[float] = None
 
 # 定义公式的数据类，包括描述、条件、优先级、动态更新和可选公式。
 @dataclass

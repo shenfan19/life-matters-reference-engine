@@ -261,7 +261,9 @@ class Loader:
                 value=effective,
                 type=VariableType.parameter,
                 unit=ev_data.get('unit'),
-                reference=ev_data.get('reference')
+                reference=ev_data.get('reference'),
+                evidence_type=ev_type,
+                evidence_raw_value=value
             )
             self.variable_history[eff_name] = [effective]
 
