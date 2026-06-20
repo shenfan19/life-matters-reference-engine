@@ -1,29 +1,34 @@
-// sim_gui/src/components/Simulator.tsx
+// sim_gui/src/components/Simulator/index.tsx
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, message, Modal, Select, Tooltip } from 'antd';
+import { Button, Input, Modal, Select, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationState, StepUnit, DataNode, ModelFile, InputEvent, SimPlan, ModelSession } from '../types';
-import FileEditor from './FileEditor';
-import { useI18n } from '../core/i18n';
-import { getC } from '../core/theme';
-import SimModelTree from './sim_tab/SimModelTree';
-import SimSetupTab from './sim_tab/SimSetupTab';
-import OptSetupTab from './opt_tab/OptSetupTab';
-import SimIntroTab from './sim_tab/SimIntroTab';
-import SimPlotTab from './sim_tab/SimPlotTab';
-import SimOptTab from './sim_tab/SimOptTab';
-import { PLAN_COLORS, xToInputEvents, useResize, API_BASE, readSP, writeSP, normalizeTimeInterval, migrateInputEvents } from './sim_tab/simUtils';
-import { buildOptSchedules, buildOptInputEventsFromYAML, parseDaysMask } from './sim_tab/optUtils';
-import { useSession, readMS } from './sim_tab/useSession';
-import { WorkspacePage, ProgressStrip } from './sim_tab/WorkspacePage';
-import { SimControlBar } from './sim_tab/SimControlBar';
-import { OptControlBar } from './opt_tab/OptControlBar';
-import { GlobalModelToolbar } from './sim_tab/GlobalModelToolbar';
-import { zip as fflateZip } from 'fflate';
-import { useOptimizer } from './opt_tab/useOptimizer';
-import { useSimulation } from './sim_tab/useSimulation';
+import type { SimulatorProps, SimulationState, StepUnit, InputEvent, SimPlan } from '../../types';
+import FileEditor from '../FileEditor';
+import { useI18n } from '../../core/i18n';
+import { getC } from '../../core/theme';
+import SimModelTree from '../sim_tab/SimModelTree';
+import SimSetupTab from '../sim_tab/SimSetupTab';
+import OptSetupTab from '../opt_tab/OptSetupTab';
+import SimIntroTab from '../sim_tab/SimIntroTab';
+import SimPlotTab from '../sim_tab/SimPlotTab';
+import SimOptTab from '../sim_tab/SimOptTab';
+import { PLAN_COLORS, useResize, API_BASE, readSP, migrateInputEvents } from '../sim_tab/simUtils';
+import { useSession, readMS } from '../sim_tab/useSession';
+import { WorkspacePage, ProgressStrip } from '../sim_tab/WorkspacePage';
+import { SimControlBar } from '../sim_tab/SimControlBar';
+import { OptControlBar } from '../opt_tab/OptControlBar';
+import { GlobalModelToolbar } from '../sim_tab/GlobalModelToolbar';
+import { useOptimizer } from '../opt_tab/useOptimizer';
+import { useSimulation } from '../sim_tab/useSimulation';
+import { useExportImport } from './useExportImport';
+import { useInputEventsCRUD } from './useInputEventsCRUD';
+import { usePlans } from './usePlans';
+import { useFileTree } from './useFileTree';
+import { useBuilderState } from './useBuilderState';
+import { useModelInit } from './useModelInit';
+import { usePersistedUI } from './usePersistedUI';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
@@ -47,7 +52,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const {
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
-    inputParams, stateVariables, sessionId,
+    inputParams, stateVariables,
     simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, batchSize, updateInterval,
     simRuns, mcSeed, sessionSeed,
   } = state;
@@ -58,50 +63,19 @@ const Simulator: React.FC<SimulatorProps> = ({
     fetch(`${API_BASE}/config`).then(r => r.json()).then(d => setScsMode(!!d.scs_mode)).catch(() => {});
   }, []);
 
-  // ── imported/snapshotted sim runs for overlay comparison ────────────────────
-  type ImportedSimRun = { key: string; label: string; color: string; data: any[] };
-  const [importedSimRuns, setImportedSimRuns] = useState<ImportedSimRun[]>([]);
-  // Tracks total runs created so colors don't repeat within a session
-  const simRunCounterRef = useRef(0);
+  // ── center tab ───────────────────────────────────────────────────────────────
+  const [centerTab, setCenterTab] = useState<CenterTab>('intro');
+  const prevTabRef = useRef<CenterTab>('intro');
 
-  const importSimCSV = (csvText: string, fileName: string) => {
-    const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length < 2) { message.warning(t('sim.msg.csv_empty')); return; }
-    const headers = lines[0].split(',').map((h: string) => h.trim());
-    const data: any[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const row = lines[i].split(',').map((v: string) => v.trim());
-      if (row.length < headers.length) continue;
-      const point: any = {};
-      headers.forEach((h: string, idx: number) => { point[h] = parseFloat(row[idx]); });
-      data.push(point);
-    }
-    if (!data.length) { message.warning(t('sim.msg.csv_no_data')); return; }
-    const label = fileName.replace(/\.csv$/i, '') || t('sim.import.default_label', { n: simRunCounterRef.current + 1 });
-    const color = PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length];
-    simRunCounterRef.current += 1;
-    const key = `imported-${Date.now()}`;
-    setImportedSimRuns(prev => [...prev, { key, label, color, data }]);
-    message.success(t('sim.msg.sim_uploaded', { label, n: data.length }));
-  };
-
-  const removeImportedRun = (key: string) => {
-    setImportedSimRuns(prev => prev.filter(r => r.key !== key));
-  };
-
-  // ── session imports (localStorage-persisted) ─────────────────────────────────
-  const SESSION_KEY = 'lm_session_imports';
-  const [sessionModels, setSessionModels] = useState<ModelFile[]>(() => {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || '[]'); } catch { return []; }
+  // ── file tree (loading + selection) ──────────────────────────────────────────
+  const {
+    treeLoading, selectedKey, setSelectedKey, runningModelKey, setRunningModelKey,
+    loadFileTree, loadFileContent, handleSelect, handleTreeNodeClick,
+    total,
+  } = useFileTree({
+    storyTree, setStoryTree, setExpandedKeys, setLoadedModels,
+    setConfirmedModel, onModelSelect, setCenterTab, t,
   });
-  const saveSession = (models: ModelFile[]) => {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(models)); } catch {}
-  };
-
-  // ── loader state ─────────────────────────────────────────────────────────────
-  const [treeLoading, setTreeLoading] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
-  const [runningModelKey, setRunningModelKey] = useState<string | null>(null);
 
   // Clear comparison runs and stale sim data when switching models
   useEffect(() => {
@@ -110,152 +84,11 @@ const Simulator: React.FC<SimulatorProps> = ({
     setState(prev => ({ ...prev, simulationData: [], dataPerRun: [], status: 'idle', progress: 0, currentStep: 0, sessionId: '' }));
   }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<CenterTab>('intro');
-  const prevTabRef = useRef<CenterTab>('intro');
-
   // ── builder mode ─────────────────────────────────────────────────────────────
+  // builderOpen stays here (not in useBuilderState) because switchCenterTab below
+  // needs to read it before useSession()/useExportImport() are available, which
+  // useBuilderState's other functions (reloadFromYAML etc.) depend on.
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [builderCheckedFiles, setBuilderCheckedFiles] = useState<string[]>([]);
-  const [builderSessionMetas, setBuilderSessionMetas] = useState<Record<string, any>>({});
-  const [builderAutoEditKey, setBuilderAutoEditKey] = useState<string | undefined>();
-  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
-  const [mergeOutPath, setMergeOutPath] = useState('models/scenarios/merged.yaml');
-  const [newFileDialogOpen, setNewFileDialogOpen] = useState(false);
-  const [newFilePath, setNewFilePath] = useState('');
-  const [merging, setMerging] = useState(false);
-  const [creatingFile, setCreatingFile] = useState(false);
-
-  const openBuilder = () => {
-    prevTabRef.current = centerTab === 'builder' ? 'intro' : centerTab as CenterTab;
-    setBuilderOpen(true);
-    setCenterTab('builder');
-  };
-
-  const closeBuilder = () => {
-    setBuilderOpen(false);
-    setBuilderCheckedFiles([]);
-    setCenterTab(prevTabRef.current);
-    loadFileTree(); // reload tree after edits
-  };
-
-  const handleBuilderSessionUpdate = (key: string, content: any) => {
-    const filename = key.replace(/^session\//, '');
-    const modelName = content?.metadata?.name || filename.replace(/\.ya?ml$/i, '');
-    const model: ModelFile = {
-      key, title: modelName, path: key,
-      type: content.type, category: content.category,
-      content, rawContent: content,
-      metadata: content.metadata, variables: content.variables,
-      formulas: content.formulas, simulator: content.simulator,
-      optimizer: content.optimizer, imports: content.imports,
-      folder: 'session', validated: undefined, validationErrors: [],
-    };
-    setBuilderSessionMetas(p => ({ ...p, [key]: content }));
-    setBuilderCheckedFiles(prev => prev.includes(key) ? prev : [...prev, key]);
-    setBuilderAutoEditKey(key);
-    setSessionModels(prev => {
-      const next = [model, ...prev.filter(m => m.key !== key)].slice(0, 10);
-      saveSession(next);
-      return next;
-    });
-  };
-
-  const toggleBuilderFile = (key: string) => {
-    setBuilderCheckedFiles(prev => {
-      if (prev.includes(key)) return prev.filter(k => k !== key);
-      // For session keys, ensure content is in builderSessionMetas
-      if (key.startsWith('session/')) {
-        const sm = sessionModels.find(m => m.key === key);
-        if (sm) setBuilderSessionMetas(p => ({ ...p, [key]: sm.rawContent || sm.content }));
-      }
-      return [...prev, key];
-    });
-  };
-
-  const handleMerge = async () => {
-    setMerging(true);
-    try {
-      const r = await fetch('/api/merge', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: builderCheckedFiles, output_path: mergeOutPath }),
-      });
-      const d = await r.json();
-      if (!d.success) { message.error(`${t('sim.msg.merge_failed')}: ${d.detail || d.error || ''}`); return; }
-
-      if (d.scs_mode && d.raw) {
-        // SCS mode: load merged content as a session model
-        const raw = d.raw;
-        const baseName = (mergeOutPath.trim() || 'merged').replace(/\.ya?ml$/i, '').replace(/[^a-zA-Z0-9_\-.]/g, '_');
-        const filename = `${baseName}.yaml`;
-        const modelKey = `session/${filename}`;
-        const modelName = raw?.metadata?.name || filename.replace(/\.ya?ml$/i, '');
-        const model: ModelFile = {
-          key: modelKey, title: modelName, path: modelKey,
-          type: raw.type, category: raw.category,
-          content: raw, rawContent: raw,
-          metadata: raw.metadata, variables: raw.variables,
-          formulas: raw.formulas, simulator: raw.simulator,
-          optimizer: raw.optimizer, imports: raw.imports,
-          folder: 'session', validated: undefined, validationErrors: [],
-        };
-        setSelectedKey(modelKey);
-        setBuilderSessionMetas(p => ({ ...p, [modelKey]: d.raw }));
-        setBuilderCheckedFiles(prev => prev.includes(modelKey) ? prev : [...prev, modelKey]);
-        setBuilderAutoEditKey(modelKey);
-        openBuilder();
-        setSessionModels(prev => {
-          const next = [model, ...prev.filter(m => m.key !== modelKey)].slice(0, 10);
-          saveSession(next);
-          return next;
-        });
-        message.success(t('sim.msg.merge_done_editor'));
-      } else {
-        message.success(t('sim.msg.merge_done'));
-        loadFileTree();
-      }
-      setMergeDialogOpen(false);
-    } catch (e: any) { message.error(String(e)); }
-    finally { setMerging(false); }
-  };
-
-  const handleCreateFile = async () => {
-    if (!newFilePath.trim()) { message.warning(t('sim.msg.name_required')); return; }
-    const rawName = newFilePath.trim();
-    if (scsMode) {
-      const safeName = rawName.replace(/[^a-zA-Z0-9_\-.]/g, '_').replace(/\.ya?ml$/i, '');
-      const key = `session/${safeName}.yaml`;
-      const template = {
-        metadata: { name: safeName, version: '1.0', description: '', tags: [] },
-        variables: {}, formulas: {},
-        simulation: { start_date: '', end_date: '' },
-      };
-      handleBuilderSessionUpdate(key, template);
-      setBuilderAutoEditKey(key);
-      openBuilder();
-      setNewFileDialogOpen(false);
-      setNewFilePath('');
-      message.success(t('sim.msg.session_model_created'));
-      return;
-    }
-    let path = rawName;
-    if (!path.endsWith('.yaml') && !path.endsWith('.yml')) path += '.yaml';
-    setCreatingFile(true);
-    try {
-      const r = await fetch('/api/file-new', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, template: 'model' }),
-      });
-      const d = await r.json();
-      if (d.success) {
-        message.success(t('sim.msg.file_created'));
-        setNewFileDialogOpen(false);
-        setNewFilePath('');
-        loadFileTree();
-      } else message.error(`${t('sim.msg.create_failed')}: ${d.detail || ''}`);
-    } catch (e: any) { message.error(String(e)); }
-    finally { setCreatingFile(false); }
-  };
 
   // ── report export (in Overview tab) ────────────────────────────────────────
   const [reportGenerating, setReportGenerating] = useState(false);
@@ -269,7 +102,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
 
   // ── opt mode state ───────────────────────────────────────────────────────────
-  const [optRanges, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
+  const [, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
   const [objectives, setObjectives] = useState<Array<{ variable: string; direction: 'minimize' | 'maximize' }>>([]);
   const [constraints, setConstraints] = useState<Array<{ variable: string; op: '≤' | '≥'; value: number }>>([]);
   const [optAlgo, setOptAlgo] = useState<'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead'>('NSGA-II');
@@ -331,12 +164,6 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const dateToHours = (start: string, end: string) =>
     Math.max(0, (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 3_600_000);
-
-  const totalSecondsToEndDate = (startDate: string, totalSec: number): string => {
-    const d = new Date(startDate + 'T00:00:00');
-    d.setSeconds(d.getSeconds() + Math.round(totalSec));
-    return d.toISOString().slice(0, 10);
-  };
 
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));
@@ -417,817 +244,81 @@ const Simulator: React.FC<SimulatorProps> = ({
   // Combined stop (sim + opt)
   const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
 
-  // ── export all plans to CSV / zip ────────────────────────────────────────────
-  const handleExportSimCSV = () => {
-    const modelName = (selectedModel?.content?.metadata?.name || 'sim').replace(/\s+/g, '_');
-    const baseName = `${modelName}_${simStartDate}_${simEndDate}`;
+  // ── export/import hook (owns importedSimRuns, simRunCounterRef) ─────────────
+  const {
+    importedSimRuns, setImportedSimRuns, simRunCounterRef,
+    importSimCSV, removeImportedRun, handleExportSimCSV,
+  } = useExportImport({
+    selectedModel, simStartDate, simEndDate,
+    simulationData, dataPerRun, comparedPlans,
+    t,
+  });
 
-    // Build combined plan list (mirrors what SimPlotTab receives as comparedPlans)
-    const allPlans = [
-      ...(simulationData.length > 0 && importedSimRuns.length > 0
-        ? [{ id: 'current-sim', label: t('sim.tab.current'), data: simulationData as any[], runsData: dataPerRun }]
-        : []),
-      ...comparedPlans.map(p => ({ id: p.id, label: p.label, data: p.data as any[], runsData: p.runsData })),
-      ...importedSimRuns.map(r => ({ id: r.key, label: r.label, data: r.data, runsData: [] as any[][] })),
-    ];
-    const plansWithData = allPlans.filter(p => p.data.length > 0);
+  // ── model init (derive UI state from selectedModel; session restore vs YAML defaults) ──
+  useModelInit({
+    selectedModel, inputEvents, set, setOptRanges, setStoredOptResult, setOptResult, setWarmStartEnabled,
+    modelSessionsRef, setInputEvents, setOptInputEvents, setPlans, setActivePlanId,
+    setObjectives, setConstraints, setOptAlgo, setOptPop, setOptGen, setOptSeed,
+    sessionEditedRef, sessionReadyRef, setRunOutputVars, setOutputWarnings, setSimLogs, t,
+  });
 
-    // Single sim (no overlays): wide-format CSV with all variable columns
-    if (plansWithData.length === 0) {
-      if (!simulationData.length) return;
-      const keys = Object.keys(simulationData[0]);
-      const rows = simulationData.map(row => keys.map(k => String((row as any)[k] ?? '')).join(','));
-      const csv = [keys.join(','), ...rows].join('\n');
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-      const a = document.createElement('a');
-      a.href = url; a.download = `${baseName}.csv`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      message.success(t('sim.msg.dl_sim_done', { n: simulationData.length }));
-      return;
-    }
-
-    // Multi-plan: zip with one CSV per variable, each CSV has all plan columns
-    const ref = plansWithData[0];
-    const varNames = Object.keys(ref.data[0] || {}).filter(k => k !== 'step' && k !== 'time');
-    if (!varNames.length) return;
-    const planLabels = plansWithData.map(p => p.label);
-    const encoder = new TextEncoder();
-    const zipFiles: Record<string, Uint8Array> = {};
-    for (const varName of varNames) {
-      const header = ['time_s', 'time_h', ...planLabels].join(',');
-      const rows = ref.data.map((d: any, idx: number) => {
-        const ts = d.time ?? 0;
-        const vals = plansWithData.map(p => String((p.data[idx]?.[varName] as number) ?? ''));
-        return [String(ts), (ts / 3600).toFixed(4), ...vals].join(',');
-      });
-      zipFiles[`${varName}.csv`] = encoder.encode([header, ...rows].join('\n'));
-    }
-    fflateZip(zipFiles, { level: 6 }, (err, data) => {
-      if (err) { message.error(t('sim.msg.export_failed')); return; }
-      const blob = new Blob([data], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${baseName}.zip`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      message.success(t('sim.msg.dl_sim_done', { n: ref.data.length }));
-    });
-  };
-
-  // ── init on model load ───────────────────────────────────────────────────────
-  useEffect(() => {
-    setRunOutputVars([]);
-    setOutputWarnings([]);
-    setSimLogs([]);
-    if (!selectedModel?.content?.variables) return;
-
-    // ── 1. Always: derive structural state (inputParams, stateVariables, optRanges) ──
-    const inputs: Record<string, number> = {};
-    const states: Record<string, number> = {};
-    Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
-      if (data.type === 'input') inputs[name] = data.value;
-      else if (data.type === 'state') states[name] = data.value;
-    });
-    set('inputParams', inputs);
-    set('stateVariables', states);
-    const ranges: typeof optRanges = {};
-    Object.entries(inputs).forEach(([name, val]) => {
-      ranges[name] = { min: 0, max: (val as number) * 2 || 1, locked: true };
-    });
-    setOptRanges(ranges);
-
-    // ── 2. Always: pre-load opt results from YAML for Pareto chart display ──
-    const optBlock: any = selectedModel?.content?.optimizer;
-    const rawResults = optBlock?.results ?? selectedModel?.rawContent?.optimizer?.results;
-    let yamlOptResult: any = null;
-    if (rawResults?.pareto_front?.length > 0) {
-      const labels: string[] = [];
-      if (optBlock.inputs) {
-        for (const conf of Object.values(optBlock.inputs as Record<string, any>))
-          for (const ev of ((conf as any).events || [])) labels.push(ev.label || ev.time_start || ev.time || '');
-      } else if (optBlock.regimen?.events) {
-        for (const ev of optBlock.regimen.events) labels.push(ev.label || ev.time_start || ev.time || '');
-      }
-      const parseDir2 = (d: string) => d === 'maximize' ? 'maximize' : 'minimize' as const;
-      const preloadObjs: Array<{variable: string; direction: 'minimize' | 'maximize'}> = [];
-      if (optBlock.objective) preloadObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir2(optBlock.objective.direction || '') });
-      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
-      yamlOptResult = {
-        pareto_front: rawResults.pareto_front,
-        best_x: rawResults.reference?.x ?? [],
-        best_f: rawResults.reference?.f ?? [],
-        objectives: preloadObjs,
-        n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
-        method: rawResults.method ?? 'nsga2',
-        regimen_event_labels: labels.length > 0 ? labels : undefined,
-      };
-      setStoredOptResult(yamlOptResult);
-    } else {
-      setStoredOptResult(null);
-    }
-
-    // Needed in both session and no-session branches
-    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
-
-    // ── 3. Session exists → restore user state, skip YAML defaults ──
-    const session = modelSessionsRef.current[selectedModel.key];
-    if (session) {
-      setInputEvents(migrateInputEvents(session.inputEvents));
-      setOptInputEvents(
-        Array.isArray(session.optInputEvents) && session.optInputEvents.length > 0
-          ? migrateInputEvents(session.optInputEvents)
-          : Array.isArray(optBlock?.startpoint?.schedules)
-            ? buildOptInputEventsFromYAML(optBlock.startpoint.schedules)
-            : []
-      );
-      setPlans(session.plans.map(p => ({ ...p, inputEvents: migrateInputEvents(p.inputEvents) })));
-      setActivePlanId(session.activePlanId);
-      set('simStartDate', session.simStartDate);
-      set('simEndDate', session.simEndDate);
-      set('stepValue', session.stepValue);
-      set('stepUnit', session.stepUnit);
-      set('optStepValue', session.optStepValue ?? session.stepValue);
-      set('optStepUnit', session.optStepUnit ?? session.stepUnit);
-      setObjectives(session.objectives);
-      setConstraints(session.constraints);
-      setOptAlgo(session.optAlgo as any);
-      setOptPop(session.optPop);
-      setOptGen(session.optGen);
-      setOptSeed(session.optSeed ?? 42);
-      setOptResult(session.optResult ?? yamlOptResult ?? null);
-      setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
-      set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
-      set('mcSeed', 'mcSeed' in session ? session.mcSeed : (sim?.mc?.seed != null ? Number(sim.mc.seed) : null));
-      sessionEditedRef.current = !!(session as any).userEdited;
-      sessionReadyRef.current = true;
-      return;
-    }
-
-    // ── 4. No session: initialize from YAML (first-ever load of this model) ──
-    const rawSchedules = selectedModel.content?.simulation?.schedules;
-    const schedList: any[] = Array.isArray(rawSchedules) ? rawSchedules : [];
-    const schedDict: Record<string, any> = (!Array.isArray(rawSchedules) && rawSchedules) ? rawSchedules : {};
-
-    const newInputEvents: InputEvent[] = [];
-    Object.entries(selectedModel.content.variables).forEach(([name, data]: [string, any]) => {
-      if (data.type !== 'input') return;
-      const flatEntries = schedList.filter(s => s.variable === name);
-      if (flatEntries.length > 0) {
-        flatEntries.forEach((s, i) => {
-          const daysList: string[] = Array.isArray(s.days) ? s.days : [];
-          const hasDays = daysList.length > 0 && daysList.length < 7;
-          let validStart: string = s.valid_start ?? '';
-          let validEnd: string   = s.valid_end   ?? '';
-          if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
-            validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
-          }
-          const { timeStart, timeEnd } = normalizeTimeInterval(s);
-          newInputEvents.push({
-            id: `${name}-sched${i}`, variable: name,
-            timeStart, timeEnd,
-            value: s.value ?? data.value ?? 0, label: s.label ?? '',
-            daysEnabled: hasDays,
-            days: hasDays ? parseDaysMask(daysList) : [true,true,true,true,true,true,true],
-            validRangeEnabled: !!(validStart || validEnd), validStart, validEnd,
-          });
-        });
-      } else if (schedDict[name]?.points?.length) {
-        const seen = new Set<string>();
-        const secsToHHMM = (sec: number) => {
-          const s2 = sec % 86400;
-          return `${String(Math.floor(s2/3600)).padStart(2,'0')}:${String(Math.floor((s2%3600)/60)).padStart(2,'0')}`;
-        };
-        (schedDict[name].points as any[]).forEach((pt: any, idx: number) => {
-          const t2 = secsToHHMM(pt.time ?? 0);
-          if (seen.has(t2)) return;
-          seen.add(t2);
-          newInputEvents.push({
-            id: `${name}-ev${idx}`, variable: name, timeStart: t2, timeEnd: t2,
-            value: pt.value ?? 0, label: '',
-            daysEnabled: false, days: [true,true,true,true,true,true,true],
-            validRangeEnabled: false, validStart: '', validEnd: '',
-          });
-        });
-      } else {
-        newInputEvents.push({
-          id: `${name}-ev0`, variable: name, timeStart: '08:00', timeEnd: '08:00',
-          value: data.value ?? 0, label: '',
-          daysEnabled: false, days: [true,true,true,true,true,true,true],
-          validRangeEnabled: false, validStart: '', validEnd: '',
-        });
-      }
-    });
-
-    // Plan id/label come from the raw YAML (display metadata only); the actual
-    // schedule semantics (days/date-range/pulse-vs-sustained) come from
-    // `selectedModel.content.plans`, which the backend already parsed via
-    // ModelStructure._parse_schedule_entries() — the same code path the CLI
-    // uses. The frontend must not re-derive that semantics independently, or
-    // GUI and CLI runs of the same YAML can silently diverge.
-    const backendPlans: Record<string, any[]> = selectedModel.content?.plans ?? {};
-    const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
-    if (yamlPlans.length > 0) {
-      const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
-        const regimens: any[] = backendPlans[plan.id ?? `plan_${i}`] ?? [];
-        const planEvents: InputEvent[] = [];
-        Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
-          if (vdata.type !== 'input') return;
-          const varRegimens = regimens.filter((r: any) => r.variable === name);
-          if (varRegimens.length > 0) {
-            let j = 0;
-            varRegimens.forEach((r: any) => {
-              (r.events ?? []).forEach((ev: any) => {
-                const dl: string[] = Array.isArray(ev.days) ? ev.days : [];
-                planEvents.push({
-                  id: `${plan.id ?? `plan${i}`}-${name}-${j++}`, variable: name,
-                  timeStart: ev.time_start ?? '08:00', timeEnd: ev.time_end ?? ev.time_start ?? '08:00',
-                  value: ev.value ?? vdata.value ?? 0, label: ev.label ?? '',
-                  daysEnabled: dl.length > 0 && dl.length < 7,
-                  days: dl.length > 0 ? parseDaysMask(dl) : [true,true,true,true,true,true,true],
-                  validRangeEnabled: !!(ev.valid_start || ev.valid_end),
-                  validStart: ev.valid_start ?? '', validEnd: ev.valid_end ?? '',
-                });
-              });
-            });
-          } else {
-            planEvents.push({
-              id: `${plan.id ?? `plan${i}`}-${name}-ev0`, variable: name,
-              timeStart: '08:00', timeEnd: '08:00', value: vdata.value ?? 0, label: '',
-              daysEnabled: false, days: [true,true,true,true,true,true,true],
-              validRangeEnabled: false, validStart: '', validEnd: '',
-            });
-          }
-        });
-        return { id: plan.id ?? `plan-${i + 1}`, label: plan.label ?? `${t('sim.plan.label_prefix')} ${i + 1}`, color: PLAN_COLORS[i % PLAN_COLORS.length], inputEvents: planEvents };
-      });
-      setPlans(loadedPlans);
-      setActivePlanId(loadedPlans[0].id);
-      setInputEvents(loadedPlans[0].inputEvents);
-    } else {
-      setInputEvents(newInputEvents);
-      setPlans([{ id: 'plan-1', label: t('sim.plan.default_label'), color: PLAN_COLORS[0], inputEvents: newInputEvents }]);
-      setActivePlanId('plan-1');
-    }
-
-    // Dates and step from YAML
-    const DEFAULT_START = '2026-01-01';
-    const DEFAULT_END   = '2026-12-31';
-    const toStepUnit = (u: string): StepUnit => {
-      if (u === 'day') return 'day'; if (u === 'hour') return 'hour';
-      if (u === 'minute') return 'minute';
-      return 'day';
-    };
-    let resolvedStepValue = 1;
-    let resolvedStepUnit: StepUnit = 'hour';
-    if (sim) {
-      if (sim.start_date && sim.end_date) {
-        set('simStartDate', String(sim.start_date));
-        set('simEndDate',   String(sim.end_date));
-        // simulation.step_size: {value, unit} is the current YAML format (see model.md).
-        // Legacy flat sim.step / sim.step_unit kept as fallback for older files.
-        const stepSize = sim.step_size;
-        if (stepSize?.unit) { resolvedStepValue = stepSize.value ?? 1; resolvedStepUnit = toStepUnit(String(stepSize.unit)); }
-        else { resolvedStepValue = sim.step ?? 1; resolvedStepUnit = toStepUnit(String(sim.step_unit || 'hour')); }
-        set('stepValue', resolvedStepValue); set('stepUnit', resolvedStepUnit);
-      } else {
-        const UNIT_SEC: Record<string, number> = { minute:60, hour:3600, day:86400, week:604800, month:2592000, year:31536000 };
-        const timeUnit = String(sim.time_unit || 'hour').toLowerCase();
-        const rawStep  = sim.step_size ?? 1;
-        const totalSec = (sim.total_time ?? 365) * rawStep * (UNIT_SEC[timeUnit] ?? 3600);
-        resolvedStepValue = rawStep; resolvedStepUnit = toStepUnit(timeUnit);
-        set('stepValue', rawStep); set('stepUnit', toStepUnit(timeUnit));
-        set('simStartDate', DEFAULT_START); set('simEndDate', totalSecondsToEndDate(DEFAULT_START, totalSec));
-      }
-    } else {
-      set('stepValue', 1); set('stepUnit', 'hour');
-      set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
-    }
-
-    // Opt step: optimizer.step_size, defaults to simulation's step_size when absent (model.md).
-    const optStepSize = optBlock?.step_size;
-    if (optStepSize?.unit) {
-      set('optStepValue', optStepSize.value ?? 1);
-      set('optStepUnit', toStepUnit(String(optStepSize.unit)));
-    } else {
-      set('optStepValue', resolvedStepValue);
-      set('optStepUnit', resolvedStepUnit);
-    }
-
-    // mcSeed 来自 simulation.mc.seed，无论是否有 optimizer 块都需要重置
-    set('mcSeed', sim?.mc?.seed != null ? Number(sim.mc.seed) : null);
-
-    // Opt config from YAML
-    if (optBlock && optBlock.enabled !== false) {
-      const parseDir = (d: string): 'minimize' | 'maximize' => d === 'maximize' ? 'maximize' : 'minimize';
-      const rawObjs: Array<{ variable: string; direction: 'minimize' | 'maximize' }> = [];
-      if (optBlock.objective) rawObjs.push({ variable: optBlock.objective.variable || '', direction: parseDir(optBlock.objective.direction || 'minimize') });
-      if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => rawObjs.push({ variable: o.variable || '', direction: parseDir(o.direction || 'minimize') }));
-      setObjectives(rawObjs);
-
-      const parseCondition = (cond: string): { op: '≤' | '≥'; value: number } | null => {
-        const m = cond.trim().match(/^([<>]=?)\s*(-?\d+(?:\.\d+)?)/);
-        if (!m) return null;
-        return { op: m[1] === '>=' || m[1] === '>' ? '≥' : '≤', value: parseFloat(m[2]) };
-      };
-      const parsedCons: Array<{ variable: string; op: '≤' | '≥'; value: number }> = [];
-      if (Array.isArray(optBlock.constraints)) {
-        optBlock.constraints.forEach((con: any) => { const p = parseCondition(String(con.condition || '')); if (p && con.variable) parsedCons.push({ variable: con.variable, ...p }); });
-      }
-      setConstraints(parsedCons);
-      const methodMap: Record<string, string> = { 'nsga2':'NSGA-II','nsga-2':'NSGA-II','nsga_2':'NSGA-II','moead':'MOEA/D','moea/d':'MOEA/D','l-bfgs-b':'l-bfgs-b','lbfgsb':'l-bfgs-b','nelder-mead':'nelder-mead','nelder_mead':'nelder-mead' };
-      const mappedMethod = methodMap[String(optBlock.method || '').toLowerCase()];
-      if (mappedMethod) setOptAlgo(mappedMethod as any);
-      const algoBlock = optBlock.algorithm || {};
-      if (algoBlock.population_size) setOptPop(Number(algoBlock.population_size));
-      if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
-      setOptSeed(algoBlock.seed != null ? Number(algoBlock.seed) : 42);
-      if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
-      setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
-      setOptInputEvents(
-        Array.isArray(optBlock.startpoint?.schedules)
-          ? buildOptInputEventsFromYAML(optBlock.startpoint.schedules)
-          : []
-      );
-    } else {
-      setObjectives([]);
-      setConstraints([]);
-      setOptInputEvents([]);
-    }
-
-    setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
-    setOptResult(yamlOptResult);
-    sessionReadyRef.current = true;
-
-    // Warm-start modal: only on first-ever load (no session existed)
-    if (rawResults?.reference?.x?.length > 0) {
-      const bestX: number[] = rawResults.reference.x;
-      Modal.confirm({
-        title: t('sim.opt.ref_detected_title'),
-        content: t('sim.opt.ref_detected_content', { n: bestX.length }),
-        okText: t('sim.opt.load_reference'), cancelText: t('sim.opt.use_default_schedule'),
-        onOk: () => setOptInputEvents(prev => xToInputEvents(bestX, optBlock ?? selectedModel?.rawContent?.optimizer, prev)),
-      });
-    }
-  }, [selectedModel]);
-
-  // ── sync inputEvents → inputParams ──────────────────────────────────────────
-  useEffect(() => {
-    const params: Record<string, number> = {};
-    inputEvents.forEach(ev => {
-      params[ev.variable] = (params[ev.variable] ?? 0) + ev.value;
-    });
-    set('inputParams', params);
-  }, [inputEvents]);
-
-  // ── load tree on mount + restore selected model ──────────────────────────────
-  useEffect(() => {
-    if (storyTree.length === 0) loadFileTree();
-  }, []);
-
-  const initialSelectedKey = useRef<string | null>(readSP()?.selectedKey ?? null);
-  useEffect(() => {
-    if (storyTree.length === 0) return;
-    // Restore previously selected model
-    const key = initialSelectedKey.current;
-    if (key) { initialSelectedKey.current = null; loadFileContent(key, { preserveTab: true }); }
-    // Remove stale expandedKeys that no longer exist in the current tree
-    const collectFolderKeys = (nodes: DataNode[], acc: Set<React.Key>) => {
-      nodes.forEach(n => { if (!n.isLeaf) { acc.add(n.key); if (n.children) collectFolderKeys(n.children, acc); } });
-    };
-    const validKeys = new Set<React.Key>();
-    collectFolderKeys(storyTree, validKeys);
-    setExpandedKeys(prev => prev.filter(k => validKeys.has(k)));
-  }, [storyTree]);
-
-  // ── restore SimulationState from localStorage on mount ───────────────────────
-  useEffect(() => {
-    const saved = readSP();
-    if (!saved) return;
-    setState(prev => ({
-      ...prev,
-      simulationData: saved.simulationData || [],
-      dataPerRun: saved.dataPerRun || [],
-      sessionId: saved.sessionId || '',
-      status: saved.status === 'running' ? 'paused' : (saved.status || 'idle'),
-      currentStep: saved.currentStep ?? 0,
-      progress: saved.progress ?? 0,
-      totalSteps: saved.totalSteps ?? prev.totalSteps,
-      sessionSeed: saved.sessionSeed ?? 0,
-    }));
-    // Lock state is intentionally not restored: model must be re-validated each session.
-    if (saved.sessionId) {
-      fetch(`${API_BASE}/simulation/session/${encodeURIComponent(saved.sessionId)}`)
-        .then(r => r.json())
-        .then(result => {
-          if (!result?.success || !result.data) return;
-          const data = result.data;
-          setState(prev => ({
-            ...prev,
-            sessionId: data.session_id,
-            simulationData: data.outputs || [],
-            dataPerRun: data.outputs_per_run || [],
-            status: data.completed ? 'completed' : (data.running ? 'paused' : 'paused'),
-            currentStep: data.current_step ?? 0,
-            totalSteps: data.total_steps ?? prev.totalSteps,
-            progress: data.progress ?? 0,
-            sessionSeed: data.session_seed ?? prev.sessionSeed,
-          }));
-          if (Array.isArray(data.output_variables)) setRunOutputVars(data.output_variables);
-          if (Array.isArray(data.warnings)) setOutputWarnings(data.warnings);
-        })
-        .catch(() => {});
-    }
-  }, []);
-
-  // ── reset session-ready flag on selection change ─────────────────────────────
-  useEffect(() => {
-    sessionReadyRef.current = false;
-    sessionEditedRef.current = false;
-  }, [selectedKey]);
-
-  // ── persist per-model session (inputEvents, dates, opt config) ───────────────
-  // sessionReadyRef guards against overwriting the persisted session with stale
-  // initial state values before the model has loaded and restored its session.
-  useEffect(() => {
-    if (!selectedKey || !sessionReadyRef.current) return;
-    const session: ModelSession = {
-      inputEvents, optInputEvents, plans, activePlanId,
-      simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed,
-      objectives, constraints, optAlgo, optPop, optGen, optSeed,
-      optResult,
-      userEdited: sessionEditedRef.current,
-    };
-    persistSession(selectedKey, session);
-  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult]);
-
-  // ── persist global UI state (selection, mode, layout) ────────────────────────
-  useEffect(() => {
-    const current = readSP() || {};
-    writeSP({ ...current, selectedKey, mode, openSections: [...openSections], sectionWeights, expandedKeys });
-  }, [selectedKey, mode, openSections, sectionWeights, expandedKeys]);
-
-  // ── persist simulation results on status settle ───────────────────────────────
-  useEffect(() => {
-    const current = readSP() || {};
-    if (status === 'running') {
-      writeSP({ ...current, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
-      return;
-    }
-    writeSP({ ...current, simulationData, dataPerRun, status, currentStep, progress, totalSteps, sessionId, sessionSeed });
-  }, [status, sessionId]);
-
-  // ── auto-switch center tab to simulation when sim is running/completed ───────
-  useEffect(() => {
-    if (status === 'running' || status === 'completed') setCenterTab('simulation');
-  }, [status]);
+  // ── persisted UI: localStorage restore on mount + per-model/global persistence ──
+  usePersistedUI({
+    state, setState, storyTree, setExpandedKeys, expandedKeys, loadFileTree, loadFileContent,
+    selectedKey, sessionReadyRef, sessionEditedRef, persistSession,
+    inputEvents, optInputEvents, plans, activePlanId,
+    objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult,
+    mode, openSections, sectionWeights,
+    setRunOutputVars, setOutputWarnings, setCenterTab,
+  });
 
   // opt poll cleanup on unmount → handled by useOptimizer hook
-
-  // ── loader helpers ────────────────────────────────────────────────────────────
-  const loadFileTree = async () => {
-    setTreeLoading(true);
-    try {
-      const result = await fetch(`${API_BASE}/files`).then(r => r.json());
-      if (result.success) {
-        const convert = (items: any[]): DataNode[] => items.map(item => {
-          const titleStr = item.type === 'file' ? item.title.replace(/\.ya?ml$/, '') : item.title;
-          if (item.type === 'folder' && item.children?.length === 1) {
-            const child = item.children[0];
-            if (child.type === 'file' && (child.title === 'model.yaml' || child.title === 'model.yml')) {
-              return {
-                key: child.key, isLeaf: true, ...child,
-                icon: <React.Fragment />,
-                title: item.title, titleStr: item.title,
-              };
-            }
-          }
-          return {
-            title: item.type === 'file' ? titleStr : item.title,
-            key: item.key,
-            icon: undefined,
-            isLeaf: item.type === 'file',
-            children: item.children ? convert(item.children) : undefined,
-            titleStr,
-          };
-        });
-        const modelsNode = result.data.find((n: any) => n.key === 'models');
-        if (modelsNode?.children) {
-          setStoryTree(convert(modelsNode.children));
-        }
-      }
-    } catch (e: any) {
-      message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
-    } finally {
-      setTreeLoading(false);
-    }
-  };
-
-  const loadFileContent = async (filePath: string, opts: { preserveTab?: boolean } = {}): Promise<ModelFile | null> => {
-    setTreeLoading(true);
-    try {
-      const cleanPath = filePath.replace(/^models\//, '');
-      const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
-      if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return null; }
-      const { content, path } = fileResult.data;
-      const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined;
-      const modelName = path.split('/').pop()?.replace(/\.ya?ml$/i, '') || content.metadata?.name || 'unknown';
-      let resolvedContent = content;
-      try {
-        const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
-        const res = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`);
-        const resolved = await res.json();
-        if (resolved?.success && resolved.data) {
-          resolvedContent = {
-            ...content,
-            ...resolved.data,
-            metadata: { ...content.metadata, ...resolved.data.metadata },
-          };
-        } else if (!res.ok) {
-          console.warn('Model resolution failed:', resolved?.detail || 'unknown error');
-        }
-      } catch (e) {
-        console.warn('Resolved model load failed, using raw YAML', e);
-      }
-      const model: ModelFile = {
-        key: filePath, title: resolvedContent.metadata?.name || modelName,
-        path: filePath, type: resolvedContent.type, category: resolvedContent.category,
-        content: resolvedContent, rawContent: content, metadata: resolvedContent.metadata, variables: resolvedContent.variables,
-        formulas: resolvedContent.formulas, simulator: resolvedContent.simulator,
-        optimizer: resolvedContent.optimizer, imports: resolvedContent.imports,
-        provenance: resolvedContent.provenance,
-        folder,
-        validated: undefined, validationErrors: [],
-      };
-      setLoadedModels(prev => ({ ...prev, [filePath]: model }));
-      setConfirmedModel(model);
-      onModelSelect(model);
-      if (!opts.preserveTab) setCenterTab('intro');
-      return model;
-    } catch (e: any) {
-      message.error(`${t('sim.msg.load_failed')}: ${e.message}`);
-      return null;
-    } finally {
-      setTreeLoading(false);
-    }
-  };
-
-  const handleSelect = (keys: React.Key[]) => {
-    if (!keys.length) return;
-    const key = keys[0] as string;
-    if (!key.endsWith('.yaml') && !key.endsWith('.yml')) return;
-    if (key === selectedKey) return;
-    setSelectedKey(key);
-    loadFileContent(key, { preserveTab: true });
-  };
-
-  const toggleTreeNode = (key: React.Key) => {
-    setExpandedKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return [...next];
-    });
-  };
-
-  const handleTreeNodeClick = (_event: React.MouseEvent, node: DataNode) => {
-    if (!node.isLeaf) toggleTreeNode(node.key);
-  };
 
   // sim execution (startSimulation, runBatch, runSingleStep, pause/resume/reset,
   // runAllPlans, handleRunCompared, exportSimCSV, downloadRawModel) → useSimulation hook
 
-  // ── plan management ───────────────────────────────────────────────────────────
-  const selectPlan = (id: string) => {
-    // Save current inputEvents snapshot into current plan before switching
-    setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p));
-    setActivePlanId(id);
-    const target = plans.find(p => p.id === id);
-    if (target) setInputEvents(target.inputEvents);
-  };
-
-  const addPlan = () => {
-    const id = `plan-${Date.now()}`;
-    const newPlan: SimPlan = {
-      id, label: `${t('sim.plan.label_prefix')} ${plans.length + 1}`,
-      color: PLAN_COLORS[plans.length % PLAN_COLORS.length],
-      inputEvents: [...inputEvents], // copy current
-    };
-    sessionEditedRef.current = true;
-    setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlan));
-    setActivePlanId(id);
-  };
-
-  const removePlan = (id: string) => {
-    if (plans.length <= 1) return;
-    const remaining = plans.filter(p => p.id !== id);
-    sessionEditedRef.current = true;
-    setPlans(remaining);
-    if (activePlanId === id) {
-      const next = remaining[0];
-      setActivePlanId(next.id);
-      setInputEvents(next.inputEvents);
-    }
-  };
-
-  const addPlansFromOpt = (rows: Array<{ x: number[]; f: number[]; rank: number }>) => {
-    if (rows.length === 0) return;
-    // Use the current GUI optimizer config (from optInputEvents) for decoding x,
-    // not the YAML optimizer block — they may differ if the user edited the startpoint in the GUI.
-    const activeInputVarNames = new Set(inputVars.map(v => v.name));
-    const schedules = buildOptSchedules(optInputEvents, activeInputVarNames);
-    const virtualOptimizer = { startpoint: { schedules } };
-    const newPlans: SimPlan[] = rows.map((row, i) => ({
-      id: `pareto-${row.rank}-${Date.now()}-${i}`,
-      label: `Pareto #${row.rank}`,
-      color: PLAN_COLORS[(plans.length + i) % PLAN_COLORS.length],
-      // Decode Pareto x using optInputEvents as base; strip opt flags so events
-      // are plain sim events suitable for the Simulation tab.
-      inputEvents: xToInputEvents(row.x, virtualOptimizer, optInputEvents).map(ev => ({
-        ...ev,
-        optimizeValue: false,
-        optimizeTime: false,
-        optimizeDays: false,
-        optimizeDateRange: false,
-      })),
-    }));
-    sessionEditedRef.current = true;
-    setPlans(prev =>
-      prev.map(p => p.id === activePlanId ? { ...p, inputEvents } : p).concat(newPlans)
-    );
-    // Reset sim status so Run button is enabled; switch mode to sim
-    set('status', 'idle');
-    set('progress', 0);
-    set('currentStep', 0);
-    setMode('sim');
-    setComparedPlans([]);
-    switchCenterTab('simulation');
-  };
-
-  // ── apply opt best solution to sim ───────────────────────────────────────────
-  // (stays here: needs setInputEvents + setComparedPlans from useSimulation)
-  const applyBestToSim = () => {
-    const optimizer = selectedModel?.content?.optimizer;
-    const bestX = optimizer?.results?.reference?.x;
-    if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
-      message.warning(t('sim.msg.no_best_solution')); return;
-    }
-    setInputEvents(prev => xToInputEvents(bestX, optimizer, prev));
-    set('status', 'idle'); set('progress', 0); set('currentStep', 0);
-    setComparedPlans([]);
-    setMode('sim');
-    switchCenterTab('simulation');
-  };
+  // ── plan management (CRUD + opt-result bridging) ─────────────────────────────
+  const { selectPlan, addPlan, removePlan, addPlansFromOpt, applyBestToSim } = usePlans({
+    plans, setPlans, activePlanId, setActivePlanId,
+    inputEvents, setInputEvents, optInputEvents, inputVars, selectedModel,
+    sessionEditedRef, set, setMode, setComparedPlans, switchCenterTab, t,
+  });
 
   // exportSimCSV / downloadRawModel / pauseSimulation / resumeSimulation /
   // resetSimulation → useSimulation hook (see above)
   // downloadModelYAML / exportOptCSV / importParetoFromCSV → useOptimizer hook (see above)
   // startOptimization / cancelOptimization → useOptimizer hook (see above)
 
-  const reloadFromYAML = () => {
-    if (!selectedKey) return;
-    clearSession(selectedKey);
-    sessionReadyRef.current = false;
-    sessionEditedRef.current = false;
-    setImportedSimRuns([]);
-    simRunCounterRef.current = 0;
-    if (selectedKey.startsWith('session/')) {
-      const sessModel = sessionModels.find(m => m.key === selectedKey);
-      if (sessModel) { setConfirmedModel({ ...sessModel }); onModelSelect({ ...sessModel }); }
-    } else {
-      loadFileContent(selectedKey, { preserveTab: true });
-    }
-  };
-
   // ── import local YAML file ────────────────────────────────────────────────────
   const importFileRef = useRef<HTMLInputElement>(null);
   const builderUploadRef = useRef<HTMLInputElement>(null);
 
-  const handleBuilderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!builderUploadRef.current) return;
-    builderUploadRef.current.value = '';
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const resp = await fetch(`${API_BASE}/model/upload-temp`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, filename: file.name }),
-      });
-      const data = await resp.json();
-      if (!data.success) { message.error(data.error || t('sim.msg.upload_failed')); return; }
-      const content = { ...data.raw, ...data.resolved };
-      const key = `session/${data.filename}`;
-      handleBuilderSessionUpdate(key, content);
-      setBuilderAutoEditKey(key);
-      openBuilder();
-      message.success(t('sim.msg.uploaded_to_session', { name: data.filename }));
-    } catch (err: any) { message.error(err.message || t('sim.msg.read_file_failed')); }
-  };
+  // ── builder state (dialogs, session models, reload/navigate-to-running) ─────
+  const {
+    sessionModels,
+    builderCheckedFiles, builderSessionMetas, builderAutoEditKey,
+    mergeDialogOpen, setMergeDialogOpen, mergeOutPath, setMergeOutPath,
+    newFileDialogOpen, setNewFileDialogOpen, newFilePath, setNewFilePath,
+    merging, creatingFile,
+    openBuilder, closeBuilder, handleBuilderSessionUpdate, toggleBuilderFile, uncheckBuilderFile,
+    handleMerge, handleCreateFile, handleBuilderUpload, handleImportFile,
+    reloadFromYAML, navigateToRunning, blockIfRunning, runningModelTitle,
+    selectSessionModel, clearSessionModel,
+  } = useBuilderState({
+    scsMode, centerTab, setCenterTab, prevTabRef, builderOpen, setBuilderOpen,
+    selectedKey, setSelectedKey, runningModelKey, loadedModels,
+    setConfirmedModel, onModelSelect, loadFileTree, loadFileContent,
+    clearSession, sessionReadyRef, sessionEditedRef,
+    setImportedSimRuns, simRunCounterRef, importFileRef, builderUploadRef, t,
+  });
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!importFileRef.current) return;
-    importFileRef.current.value = '';
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const resp = await fetch(`${API_BASE}/model/upload-temp`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, filename: file.name }),
-      });
-      const data = await resp.json();
-      if (!data.success) { message.error(data.error || t('sim.msg.import_failed')); return; }
-
-      // Backend resolved imports inline and deleted the temp file.
-      // Build ModelFile directly from response — no second server call needed.
-      const raw = data.raw || {};
-      const resolved = data.resolved || {};
-      const content = { ...raw, ...resolved };
-      const modelKey = `session/${data.filename}`;
-      const modelName = content.metadata?.name || data.filename.replace(/\.ya?ml$/i, '');
-
-      const model: ModelFile = {
-        key: modelKey, title: modelName, path: modelKey,
-        type: content.type, category: content.category,
-        content, rawContent: raw,
-        metadata: content.metadata, variables: content.variables,
-        formulas: content.formulas, simulator: content.simulator,
-        optimizer: content.optimizer, imports: content.imports,
-        provenance: content.provenance,
-        folder: 'session',
-        validated: undefined, validationErrors: [],
-      };
-
-      const rawImports = raw?.imports;
-      if (!resolved?.resolved && Array.isArray(rawImports) && rawImports.length > 0) {
-        message.warning(t('sim.msg.import_unresolved'));
-      }
-
-      setSelectedKey(modelKey);
-      setConfirmedModel(model);
-      onModelSelect(model);
-      setCenterTab('intro');
-      setSessionModels(prev => {
-        const next = [model, ...prev.filter(m => m.key !== modelKey)].slice(0, 10);
-        saveSession(next);
-        return next;
-      });
-      message.success(t('sim.msg.imported_file', { name: data.filename }));
-    } catch (err: any) { message.error(err.message || t('sim.msg.read_file_failed')); }
-  };
-
-  // ── input event CRUD ──────────────────────────────────────────────────────────
-  const addInputEvent = () => {
-    const firstInputVar = inputVars[0];
-    if (!firstInputVar) return;
-    const id = `ev-${Date.now()}`;
-    sessionEditedRef.current = true;
-    invalidateSim();
-    setInputEvents(prev => [...prev, {
-      id, variable: firstInputVar.name, timeStart: '08:00', timeEnd: '08:00',
-      value: firstInputVar.value ?? 0, label: '',
-      daysEnabled: false, days: [true,true,true,true,true,true,true],
-      validRangeEnabled: false, validStart: '', validEnd: '',
-    }]);
-  };
-
-  const updateInputEvent = (id: string, patch: Partial<InputEvent>) => {
-    sessionEditedRef.current = true;
-    invalidateSim();
-    setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
-  };
-
-  const removeInputEvent = (id: string) => {
-    sessionEditedRef.current = true;
-    invalidateSim();
-    setInputEvents(prev => prev.filter(ev => ev.id !== id));
-  };
-
-  // ── update opt-only fields (no sim invalidation) ─────────────────────────────
-  const updateInputEventOpt = (id: string, patch: Partial<InputEvent>) =>
-    setInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
-
-  // ── opt input event CRUD (separate from sim inputEvents) ─────────────────────
-  const addOptInputEvent = () => {
-    const firstInputVar = inputVars[0];
-    if (!firstInputVar) return;
-    sessionEditedRef.current = true;
-    setOptInputEvents(prev => [...prev, {
-      id: `opt-ev-${Date.now()}`, variable: firstInputVar.name,
-      timeStart: '08:00', timeEnd: '08:00', value: 0, label: '',
-      daysEnabled: false, days: [true,true,true,true,true,true,true],
-      validRangeEnabled: false, validStart: '', validEnd: '',
-    }]);
-  };
-  const removeOptInputEvent = (id: string) => {
-    sessionEditedRef.current = true;
-    setOptInputEvents(prev => prev.filter(ev => ev.id !== id));
-  };
-  const updateOptInputEvent = (id: string, patch: Partial<InputEvent>) => {
-    sessionEditedRef.current = true;
-    setOptInputEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...patch } : ev));
-  };
+  // ── input event CRUD (sim + opt) ─────────────────────────────────────────────
+  const {
+    addInputEvent, updateInputEvent, removeInputEvent, updateInputEventOpt,
+    addOptInputEvent, removeOptInputEvent, updateOptInputEvent,
+  } = useInputEventsCRUD({
+    inputVars, sessionEditedRef, invalidateSim, setInputEvents, setOptInputEvents,
+  });
 
   // ── derived data ──────────────────────────────────────────────────────────────
   // inputVars / stateVars declared above (before hook calls)
@@ -1251,50 +342,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   const outputVars: string[] = runOutputVars.length > 0 ? runOutputVars : resolveOutputVars();
   const allVarNames = [...inputVars.map(v => v.name), ...stateVars.map(v => v.name)];
 
-  const countLeaves = (nodes: DataNode[]): number => {
-    let n = 0;
-    nodes.forEach(node => { if (node.isLeaf) n++; else if (node.children) n += countLeaves(node.children); });
-    return n;
-  };
-  const total = countLeaves(storyTree);
-
-  const runningModelTitle = runningModelKey
-    ? (sessionModels.find(m => m.key === runningModelKey)?.title
-      || loadedModels[runningModelKey]?.title
-      || runningModelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || runningModelKey)
-    : null;
-
   const sessionKeys = new Set(
     Object.entries(readMS())
       .filter(([, s]) => !!(s as any)?.userEdited)
       .map(([k]) => k)
   );
-
-  const navigateToRunning = () => {
-    if (!runningModelKey) return;
-    const sessModel = sessionModels.find(m => m.key === runningModelKey);
-    if (sessModel) {
-      setSelectedKey(sessModel.key);
-      setConfirmedModel(sessModel);
-      onModelSelect(sessModel);
-      setCenterTab('intro');
-    } else {
-      setSelectedKey(runningModelKey);
-      loadFileContent(runningModelKey, { preserveTab: true });
-    }
-  };
-
-  const blockIfRunning = (): boolean => {
-    if (!scsMode || !runningModelKey || runningModelKey === selectedKey) return false;
-    Modal.confirm({
-      title: t('sim.run.blocked_title'),
-      content: t('sim.run.blocked_content'),
-      okText: t('sim.run.goto_running'),
-      cancelText: t('sim.control.cancel') || '取消',
-      onOk: navigateToRunning,
-    });
-    return true;
-  };
 
   const isOtherRunning = scsMode && !!runningModelKey && runningModelKey !== selectedKey;
   const otherRunningTip = isOtherRunning ? t('sim.msg.other_running_tip', { name: runningModelTitle || '' }) : undefined;
@@ -1408,27 +460,8 @@ const Simulator: React.FC<SimulatorProps> = ({
           sessionKeys={sessionKeys}
           onReloadModel={reloadFromYAML}
           sessionModels={sessionModels}
-          onSelectSessionModel={model => {
-            if (builderOpen) {
-              const content = model.rawContent || model.content;
-              setBuilderSessionMetas(p => ({ ...p, [model.key]: content }));
-              setBuilderCheckedFiles(prev => prev.includes(model.key) ? prev : [...prev, model.key]);
-              setBuilderAutoEditKey(model.key);
-            } else {
-              setSelectedKey(model.key);
-              setConfirmedModel(model);
-              onModelSelect(model);
-              setCenterTab('intro');
-            }
-          }}
-          onClearSessionModel={key => {
-            setSessionModels(prev => {
-              const next = prev.filter(m => m.key !== key);
-              saveSession(next);
-              return next;
-            });
-            if (selectedKey === key) { setSelectedKey(null); setConfirmedModel(null); onModelSelect(null); }
-          }}
+          onSelectSessionModel={selectSessionModel}
+          onClearSessionModel={clearSessionModel}
         />}
 
         {!leftCollapsed && (
@@ -1632,7 +665,7 @@ const Simulator: React.FC<SimulatorProps> = ({
                 scsMode={scsMode}
                 controlledFiles={builderCheckedFiles}
                 onReloadTree={loadFileTree}
-                onUncheckedFile={(key: string) => setBuilderCheckedFiles(prev => prev.filter(k => k !== key))}
+                onUncheckedFile={uncheckBuilderFile}
                 preloadedMetas={builderSessionMetas}
                 onSessionModelUpdate={handleBuilderSessionUpdate}
                 autoEditKey={builderAutoEditKey}
