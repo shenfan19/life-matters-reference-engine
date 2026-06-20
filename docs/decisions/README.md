@@ -109,3 +109,4 @@
 | [0111](0111-2026-06-18_sim_sim-cli-consistency-test-suite.md) | Sim/CLI 一致性回归测试套件：仓库首个自动化测试，钉住 MC 确定性 bug | ✅ 已接受 | 2026-06-18 |
 | [0112](0112-2026-06-19_sim_opt-startpoint-faithfulness-fix.md) | Opt startpoint 解析忠诚性修复：seed 硬编码 + T4 date_range 静默丢失，新增 vitest 忠诚性测试 | ✅ 已接受 | 2026-06-19 |
 | [0113](0113-2026-06-19_sim_execution-core-merge-and-cli-mc.md) | Sim 执行核心合并（CLI/GUI 共用 advance_steps）+ CLI 新增 MC 能力（--mc-runs/--seed） | ✅ 已接受 | 2026-06-19 |
+| [0114](0114-2026-06-20_sim_remove-cli-mc-flags-yaml-only.md) | 移除 CLI `--mc-runs`/`--seed`：MC 配置改为只读 YAML `simulation.mc`，与 optimizer.mc 模式统一（修订 0113） | ✅ 已接受 | 2026-06-20 |

@@ -66,14 +66,16 @@ def load_pareto_from_csv(csv_path: Path, n_obj: int) -> List[Dict]:
 
 # ── public runners ────────────────────────────────────────────────────────────
 
-def run_sim(model_path: Path, project_root: Path, csv_path: Path,
-            n_runs: int = 1, seed: Optional[int] = None) -> Optional[List[str]]:
+def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[List[str]]:
     """Run one simulation per simulation.plans entry, writing `<stem>__<plan_id>.csv` each.
 
-    n_runs > 1 runs Monte Carlo (one independently-sampled run per `n_runs`,
-    same seed derivation as the GUI's sim_runs — see ADR 0113), writing
+    Monte Carlo run count/seed come from the model's own `simulation.mc.runs`/
+    `simulation.mc.seed` (model.md spec) — same source the GUI falls back to,
+    and the same pattern optimizer_engine.py uses for `optimizer.mc.*`. There is
+    no CLI override: a model declaring `mc.runs: 30` always runs 30 here.
+    `mc.runs` absent or 1 means deterministic mode (ADR 0045), writing
     `<stem>__<plan_id>__run{i}.csv` (or `<stem>__run{i}.csv` for a single
-    unnamed plan) instead of the single per-plan CSV.
+    unnamed plan) instead of the single per-plan CSV when runs > 1.
 
     Returns the list of written CSV filenames, or None on failure.
     """
@@ -84,6 +86,11 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path,
     if not engine.load_models([name]):
         logger.error(f'Cannot load model: {name}')
         return None
+
+    mc_cfg = engine.current_model.simulator.get('mc', {})
+    n_runs = max(1, int(mc_cfg.get('runs', 1)))
+    seed = mc_cfg.get('seed')
+    seed = int(seed) if seed is not None else None
 
     hours = _time_hours(engine)
     plan_ids = list(engine.current_model.plans.keys()) or ['default']

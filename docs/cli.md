@@ -12,7 +12,7 @@
 
 CLI 的输入输出均为文本/文件，适合被脚本或 AI agent 调用：
 
-- **输入**：模型 YAML 文件路径 + 模式标志（`--sim` / `--opt`），无需交互。
+- **输入**：模型 YAML 文件路径 + 可选的步骤标志（`--sim-only` / `--opt-only`，默认两者都跑），无需交互。
 - **输出**：结构化 CSV（仿真时间序列 / Pareto 前沿）+ 日志文件，路径在运行结束后打印到 stdout，可直接解析。
 - **退出码**：成功为 `0`，仿真/优化失败为 `1`。
 - **无需图形环境**：可在 headless 容器、CI、SSH 会话中运行。
@@ -28,10 +28,15 @@ CLI 的输入输出均为文本/文件，适合被脚本或 AI agent 调用：
 从项目根目录执行：
 
 ```bash
-python sim_cli/main.py <model.yaml> --sim
-python sim_cli/main.py <model.yaml> --opt
-python sim_cli/main.py <model.yaml> --opt --continue
-python sim_cli/main.py <model.yaml> --opt --continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
+# 单模型（main.py）
+python sim_cli/main.py <model.yaml>                # 同时跑 sim + opt
+python sim_cli/main.py <model.yaml> --sim-only
+python sim_cli/main.py <model.yaml> --opt-only
+python sim_cli/main.py <model.yaml> --opt-only --opt-continue
+python sim_cli/main.py <model.yaml> --opt-only --opt-continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
+
+# 批量（batch.py，遍历文件夹，汇总报告，详见下方"批量运行"一节）
+python sim_cli/batch.py --input-dir models/papers --sim-only
 ```
 
 ### 编译为独立可执行文件
@@ -49,16 +54,34 @@ pyinstaller sim_cli/build.spec
 
 ## 命令参数
 
-| 参数 | 说明 |
-|------|------|
-| `<model.yaml>` | 模型文件路径（绝对路径或相对于项目根的路径） |
-| `--sim` | 运行仿真。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
-| `--mc-runs N` | 配合 `--sim`：跑 N 次 Monte Carlo（每次独立采样分布参数），输出 `<stem>__run{i}.csv`（多方案时为 `<stem>__<plan_id>__run{i}.csv`）。默认 1（确定性模式，取分布均值） |
-| `--seed X` | 配合 `--mc-runs > 1`：master seed，用于派生各 run 的独立种子，可与 GUI 的 `sim_runs`/seed 直接对账（同一 seed 产生逐 run 完全相同的结果）。省略则每次随机 |
-| `--opt` | 运行优化器（NSGA-II） |
-| `--continue` | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索 |
-| `--continue PATH` | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
-| `--output-dir PATH` | 指定输出根目录（相对项目根或绝对路径），默认为 `output/`。结果写入 `<PATH>/<模型名>/` |
+两个入口的"跑哪些步骤"参数完全一致：`--sim-only`/`--opt-only` 互斥，都不传则默认两者都跑。
+
+### `main.py`（单模型）
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `<model.yaml>` | （必填） | 模型文件路径（绝对路径或相对于项目根的路径） |
+| `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
+| `--opt-only` | （跑 sim + opt） | 只运行优化器（NSGA-II），跳过仿真。与 `--sim-only` 互斥 |
+| `--opt-continue` | （不热启动） | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索。要求优化器步骤会运行（不能与 `--sim-only` 同传） |
+| `--opt-continue PATH` | — | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
+| `--output-dir PATH` | `output/` | 指定输出根目录（相对项目根或绝对路径）。结果写入 `<PATH>/<模型名>/` |
+
+> 仿真步骤和优化步骤各写各自的日志文件（`*_sim.log` / `*_opt.log`），不会混在一起；两步骤都跑时按"先 sim 再 opt"顺序执行，sim 失败则不再跑 opt。
+
+> **Monte Carlo 跑几次不是 CLI 参数**：跑 N 次仿真的次数和种子来自模型自己的 `simulation.mc.runs`/`simulation.mc.seed`（见 `model.md`），CLI 只是照着 YAML 跑，不提供 `--mc-runs`/`--seed` 这样的覆盖开关——和 `optimizer.mc.*`（优化器的 MC 配置，也只在 YAML 里，从无对应 CLI flag）保持同一套规则：要改运行次数，编辑模型文件，不是命令行。`mc.runs` 缺省或为 1 即确定性模式（取分布均值，ADR 0045）；大于 1 时输出 `<stem>__run{i}.csv`（多方案为 `<stem>__<plan_id>__run{i}.csv`）。
+
+### `batch.py`（批量，遍历文件夹）
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--input-dir PATH` | `../b_lm_model/models/references` | 要扫描的模型文件夹（递归查找 `*.yaml`，相对路径从项目根起算） |
+| `--output-dir PATH` | `../b_lm_model/output` | 批次目录的根路径；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
+| `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥 |
+| `--opt-only` | （跑 sim + opt） | 只运行优化器，跳过仿真。与 `--sim-only` 互斥 |
+
+> `batch.py` 不带参数运行等价于 `--help`（避免误跑默认文件夹）。
+> 与 `main.py` 的区别仅在于输入是文件夹（`--input-dir`）而非单个模型文件，且无 `--opt-continue`（批量场景不支持热启动，多个模型也不可能共享一份热启动 CSV）。Monte Carlo 同样按各自模型 YAML 里的 `mc.runs` 跑，不是 batch 的参数——这意味着如果某个模型声明了较大的 `mc.runs`，批量测试会按该模型的真实配置变慢。
 
 ---
 
@@ -111,10 +134,10 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
 
 ```bash
 # 1. 从指定 _opt.csv 文件热启动（推荐：路径明确，不依赖模型文件是否已更新）
-python sim_cli/main.py <model.yaml> --opt --continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
+python sim_cli/main.py <model.yaml> --opt-only --opt-continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
 
 # 2. 从模型 YAML 内嵌的 optimizer.results 热启动（需先在 GUI 保存结果到模型）
-python sim_cli/main.py <model.yaml> --opt --continue
+python sim_cli/main.py <model.yaml> --opt-only --opt-continue
 ```
 
 ---
@@ -138,9 +161,9 @@ python sim_cli/main.py <model.yaml> --opt --continue
 | Pareto 前沿可视化 | ✅ | ❌ |
 | 批量/自动化运行 | ❌ | ✅ |
 | 结果文件输出 | 手动导出 | 自动（`output/<模型名>/`） |
-| 热启动 | ✅（界面勾选或导入 CSV） | `--continue` |
+| 热启动 | ✅（界面勾选或导入 CSV） | `--opt-continue` |
 | CLI 结果导入 GUI | — | GUI opt tab "导入 CSV" |
-| Monte Carlo 多 run | ✅（sim_runs + seed） | ✅（`--mc-runs` + `--seed`） |
+| Monte Carlo 多 run | ✅（界面可临时改 sim_runs/seed，覆盖 YAML，不回写） | 严格按模型 YAML 的 `mc.runs`/`mc.seed` 跑，无覆盖开关 |
 
 CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致，可互通——sim 的执行核心
 （`apply_regimens` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
@@ -151,25 +174,12 @@ CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致
 
 ## 批量运行 (`sim_cli/batch.py`)
 
-`sim_cli/batch.py` 遍历一个文件夹下的所有 YAML，对每个模型依次运行 `--sim`（和可选的 `--opt`），汇总结果到 Markdown 报告。
+`sim_cli/batch.py` 遍历一个文件夹下的所有 YAML，对每个模型依次运行仿真和优化器（默认两者都跑，可用 `--sim-only`/`--opt-only` 收窄），汇总结果到 Markdown 报告。
 与 `main.py` 同属 `sim_cli/`，纯 Python 实现，不依赖 bash，可在 PyInstaller 编译的 `lm-sim` 同一环境下运行。
-
-```bash
-# 不带参数运行等价于 --help（避免误跑默认文件夹）
-python sim_cli/batch.py --input-dir models/papers --sim-only
-```
+运行示例与参数见上方"命令参数"一节。
 
 每次运行创建一个以秒级时间戳命名的批次目录（`<output-dir>/YYYY-MM-DD_HH-MM-SS/`），
 内部按 `lm-sim` 的统一规则再分模型子目录（`<模型名>/`），所有 CSV、log 和 `batch_report.md` 都放入该批次目录。并发运行多个进程不会冲突。
-
-### 参数
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--input-dir PATH` | `../b_lm_model/models/references` | 要扫描的模型文件夹（递归查找 `*.yaml`，相对路径从项目根起算） |
-| `--output-dir PATH` | `../b_lm_model/output` | 批次目录的根路径；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
-| `--sim-only` | （跑 sim + opt） | 只运行 `--sim`，跳过优化器。与 `--opt-only` 互斥 |
-| `--opt-only` | （跑 sim + opt） | 只运行 `--opt`，跳过仿真。与 `--sim-only` 互斥 |
 
 ### 报告
 

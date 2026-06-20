@@ -20,10 +20,10 @@ GUI 的运行状态存在浏览器 localStorage（session），不写磁盘，�
 ```
 models/**/*.yaml
     │
-    ├─ CLI --sim ──────────────────────► output/*_sim_YYYYMMDD_HHMM.csv
+    ├─ CLI --sim-only ─────────────────► output/*_sim_YYYYMMDD_HHMM.csv
     │                                        （时间序列，每列一个输出变量）
     │
-    ├─ CLI --opt ──────────────────────► output/*_opt_YYYYMMDD_HHMM.csv
+    ├─ CLI --opt-only ─────────────────► output/*_opt_YYYYMMDD_HHMM.csv
     │   （每代覆盖写入，中断不丢）               （Pareto 前沿，x 列 + f 列）
     │
     ├─ GUI sim tab ────────────────────► 内存 session（图表）
@@ -51,11 +51,11 @@ models/**/*.yaml
 
 ```
 1. 编写 / 调整 models/xxx.yaml
-2. python sim_cli/main.py models/xxx.yaml --opt
+2. python sim_cli/main.py models/xxx.yaml --opt-only
    → output/xxx_opt_20260606_1130.csv（每代实时更新）
 3. 需要继续搜索：
-   --continue              从 YAML 内嵌结果热启动
-   --continue 20260606_1130  从指定 CSV 热启动
+   --opt-continue              从 YAML 内嵌结果热启动
+   --opt-continue 20260606_1130  从指定 CSV 热启动
 4. 对结果满意 → 在 GUI opt tab 导入 CSV → "保存结果到模型"
 5. git commit → 发布
 ```

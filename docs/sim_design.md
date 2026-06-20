@@ -615,8 +615,8 @@ Log 面板出现在曲线区底部（可折叠）。仅在有 log 内容时显�
 |--------|---------|---------------------|
 | **Sim** | 见下方"Sim CSV 导出格式" | 新增一条带标签的对比曲线 |
 | **Opt** | Pareto 前沿（x0…xN, obj1…objN） | 合并入当前前沿，自动开启热启动 |
-| CLI --sim | 自动输出 `_sim.csv` | — |
-| CLI --opt | 自动输出 `_opt.csv` | `--continue [TIMESTAMP]` |
+| CLI --sim-only | 自动输出 `_sim.csv` | — |
+| CLI --opt-only | 自动输出 `_opt.csv` | `--opt-continue [TIMESTAMP]` |
 
 "多曲线对比"和"热启动"不是独立功能——它们是导入 CSV 在各自上下文中的直接结果，无需单独学习。
 
