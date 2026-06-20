@@ -46,6 +46,8 @@ async def get_model(model_name: str, folder: Optional[str] = None):
                 "description": var.description, "value": var.value, "unit": var.unit,
                 "type": var.type.value if hasattr(var.type, 'value') else str(var.type),
                 "reference": var.reference,
+                "evidence_type": var.evidence_type,
+                "evidence_raw_value": var.evidence_raw_value,
             }
             for var_name, var in model.variables.items()
         }
