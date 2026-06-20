@@ -84,8 +84,9 @@ cd sim_gui && npm install && npm run dev    # http://localhost:5173
 面向脚本和 AI agent 的运行接口，无需启动后端/前端：
 
 ```bash
-python sim_cli/main.py <model.yaml> --sim
-python sim_cli/main.py <model.yaml> --opt
+python sim_cli/main.py <model.yaml>              # 同时跑 sim + opt
+python sim_cli/main.py <model.yaml> --sim-only
+python sim_cli/main.py <model.yaml> --opt-only
 
 # 批量运行一个文件夹下的所有模型，生成 batch_report.md
 python sim_cli/batch.py --input-dir <models_folder>

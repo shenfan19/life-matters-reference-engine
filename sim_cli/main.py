@@ -1,11 +1,15 @@
-"""Life Matters CLI — batch simulation and optimization.
+"""Life Matters CLI — simulation and optimization for a single model.
 
 Usage:
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim --mc-runs 20 --seed 19
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue
-  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt --continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml             # sim + opt
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --sim-only
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt-only
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt-only --opt-continue
+  python sim_cli/main.py models/papers/s2/masld_insulin_a7_s2.yaml --opt-only --opt-continue output/2026-06-06_13-00-34/masld_insulin_a7_s2_2026-06-06_13-00-34_opt.csv
+
+Monte Carlo run count/seed are not CLI flags — they come from the model's own
+`simulation.mc.runs`/`simulation.mc.seed` (model.md spec), same as how
+optimizer.mc.* already works. Edit the YAML to change them.
 
 Outputs go to output/<model>/ at the project root (override with --output-dir):
   <model>_<YYYY-MM-DD_HH-MM-SS>_sim.csv    (simulation time-series)
@@ -28,27 +32,21 @@ def _project_root() -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog='lm-sim',
-        description='Life Matters CLI — run simulation or optimization from a model YAML.',
+        description='Life Matters CLI — run simulation and/or optimization from a model YAML.',
     )
     parser.add_argument('model', help='Path to model YAML file')
-    parser.add_argument('--sim', action='store_true',
-                         help='Run simulation, once per simulation.plans entry '
-                              '(writing one CSV per plan: <stem>__<plan_id>.csv)')
-    parser.add_argument('--opt', action='store_true', help='Run optimizer (NSGA-II)')
-    parser.add_argument('--mc-runs', metavar='N', type=int, default=1,
-                         help='With --sim: run N Monte Carlo runs per plan, each '
-                              'independently sampling distribution parameters '
-                              '(writes <stem>__run{i}.csv per run). Default 1 '
-                              '(deterministic, ADR 0045).')
-    parser.add_argument('--seed', metavar='X', type=int, default=None,
-                         help='With --sim --mc-runs > 1: master seed for per-run '
-                              'sampling (omit for a random one each run, printed to '
-                              'the log either way).')
+    step_group = parser.add_mutually_exclusive_group()
+    step_group.add_argument('--sim-only', action='store_true',
+                             help='Only run simulation, skip the optimizer. '
+                                  'Writes one CSV per simulation.plans entry '
+                                  '(<stem>__<plan_id>.csv).')
+    step_group.add_argument('--opt-only', action='store_true',
+                             help='Only run the optimizer (NSGA-II), skip simulation.')
     parser.add_argument(
-        '--continue', dest='warm', nargs='?', const=True, default=False,
+        '--opt-continue', dest='warm', nargs='?', const=True, default=False,
         metavar='PATH',
         help=(
-            'Warm-start optimizer. '
+            'Warm-start the optimizer (requires the opt step to run, i.e. not --sim-only). '
             'No argument: use stored results in model YAML. '
             'PATH: path to a previous _opt.csv file (relative to project root or absolute).'
         ),
@@ -62,9 +60,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not args.sim and not args.opt:
-        parser.print_help()
-        sys.exit(0)
+    run_sim_step = not args.opt_only
+    run_opt_step = not args.sim_only
+
+    if args.warm is not False and not run_opt_step:
+        print('Error: --opt-continue requires the optimizer step (remove --sim-only).')
+        sys.exit(1)
 
     model_path = Path(args.model).resolve()
     if not model_path.exists():
@@ -73,26 +74,31 @@ def main() -> None:
 
     root = _project_root()
 
+    import logging
     from output import setup_output_dir, make_stem, setup_logging
     out_dir = setup_output_dir(root, model_path.stem, args.output_dir)
-    mode = 'sim' if args.sim else 'opt'
-    stem = make_stem(model_path, mode)
-    log_path = out_dir / f'{stem}.log'
-    setup_logging(log_path)
 
-    import logging
-    logger = logging.getLogger('lm_cli')
-    logger.info(f'lm-sim  model={model_path.name}  mode={mode}')
-    print(f'\n  Life Matters CLI')
-    print(f'  Model : {model_path.name}')
-    print(f'  Mode  : {mode}')
-    print(f'  Log   : {log_path.name}\n')
+    def start_step(mode: str) -> Path:
+        """Point logging at a fresh per-step log file, print the run header, return the CSV path."""
+        for h in list(logging.getLogger().handlers):
+            logging.getLogger().removeHandler(h)
+            if isinstance(h, logging.FileHandler):
+                h.close()
+        stem = make_stem(model_path, mode)
+        log_path = out_dir / f'{stem}.log'
+        setup_logging(log_path)
+        logging.getLogger('lm_cli').info(f'lm-sim  model={model_path.name}  mode={mode}')
+        print(f'\n  Life Matters CLI')
+        print(f'  Model : {model_path.name}')
+        print(f'  Mode  : {mode}')
+        print(f'  Log   : {log_path.name}\n')
+        return out_dir / f'{stem}.csv'
 
     from runner import run_sim, run_opt
 
-    if args.sim:
-        csv_path = out_dir / f'{stem}.csv'
-        written = run_sim(model_path, root, csv_path, n_runs=args.mc_runs, seed=args.seed)
+    if run_sim_step:
+        csv_path = start_step('sim')
+        written = run_sim(model_path, root, csv_path)
         if written:
             print('\n  Done →')
             for name_ in written:
@@ -101,7 +107,9 @@ def main() -> None:
             print('\n  Simulation failed. Check log for details.')
             sys.exit(1)
 
-    elif args.opt:
+    if run_opt_step:
+        csv_path = start_step('opt')
+
         from progress import ProgressTracker
         tracker = ProgressTracker()
         tracker.start()
@@ -121,7 +129,6 @@ def main() -> None:
             warm_start = warm_csv
             print(f'  Warm CSV : {warm_csv.name}\n')
 
-        csv_path  = out_dir / f'{stem}.csv'
         result = run_opt(model_path, root, warm_start=warm_start,
                          opt_callback=tracker.make_opt_callback(),
                          incremental_csv=csv_path)
@@ -136,7 +143,7 @@ def main() -> None:
                       x_labels=result.get('decision_var_labels'))
 
         stopped = result.get('stopped', False)
-        tag = '  (stopped early — resume with --continue)' if stopped else ''
+        tag = '  (stopped early — resume with --opt-continue)' if stopped else ''
         print(f'\n  Done{tag}')
         print(f'  → {csv_path.name}')
 
