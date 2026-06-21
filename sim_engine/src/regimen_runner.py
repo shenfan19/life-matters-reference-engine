@@ -139,8 +139,7 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
       - valid_range is checked against sim_start_date + day offset.
 
     Pulse semantics: all controlled variables are zeroed at the start of each
-    step, then every firing event accumulates its value. This matches the
-    _apply_schedules pulse mode exactly.
+    step, then every firing event accumulates its value.
 
     Each event's `[time_start, time_end)` interval is resolved by
     `_normalize_time_interval` (ADR 0100):

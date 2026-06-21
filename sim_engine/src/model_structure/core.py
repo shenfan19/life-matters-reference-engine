@@ -37,16 +37,12 @@ class ModelStructure(Loader, Validator, Simulation):
         # 初始化 simulator 和 optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
-        # self.schedules: daily_inputs 专用（InputSchedule），供 _apply_schedules 使用
         # self.plans: plan_id → List[dict] 原始 schedule 条目，供 apply_regimens 使用
         # self.schedule_entries: 当前激活 plan 的条目列表（run_simulation 前设置）
-        self.schedules: Dict[str, Any] = {}
         self.plans: Dict[str, Any] = {}
         self.schedule_entries: list = []
         # 初始化累积器
         self.accumulators: Dict[str, Accumulator] = {}
-        # 初始化手动覆盖
-        self.manual_overrides: Dict[str, Any] = {}
         # 时间单位（来自 YAML simulator.time_unit，默认分钟）
         self.time_unit: str = 'minute'
         # 跟踪已访问模型，防止循环依赖

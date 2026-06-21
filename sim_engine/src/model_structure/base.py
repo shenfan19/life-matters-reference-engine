@@ -58,19 +58,6 @@ class Formula:
         if self.dynamics is None:
             self.dynamics = {}
 
-# 定义时刻点的数据类
-@dataclass
-class SchedulePoint:
-    time: float  # 时间点（按 asteval 符号表单位计算，通常是秒）
-    value: float # 对应的值
-
-# 定义输入变量的计划表
-@dataclass
-class InputSchedule:
-    variable: str
-    points: List[SchedulePoint]
-    interpolation: str = 'step' # 'step' (阶梯) or 'linear' (线性插值)
-
 # 窗口类型 → 秒数映射
 WINDOW_SECONDS: Dict[str, float] = {
     'day':   86400.0,
