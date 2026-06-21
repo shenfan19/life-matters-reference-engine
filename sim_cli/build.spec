@@ -25,7 +25,7 @@ a = Analysis(
         'loader_engine',
         'app_state',
         'session_manager',
-        'regimen_runner',
+        'schedule_runner',
         'mc_utils',
         'model_structure',
         'model_structure.base',

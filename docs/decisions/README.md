@@ -111,3 +111,4 @@
 | [0113](0113-2026-06-19_sim_execution-core-merge-and-cli-mc.md) | Sim 执行核心合并（CLI/GUI 共用 advance_steps）+ CLI 新增 MC 能力（--mc-runs/--seed） | ✅ 已接受 | 2026-06-19 |
 | [0114](0114-2026-06-20_sim_remove-cli-mc-flags-yaml-only.md) | 移除 CLI `--mc-runs`/`--seed`：MC 配置改为只读 YAML `simulation.mc`，与 optimizer.mc 模式统一（修订 0113） | ✅ 已接受 | 2026-06-20 |
 | [0115](0115-2026-06-21_sim_remove-daily-inputs-and-gui-working-state.md) | 移除 `daily_inputs`/`_apply_schedules`/`manual_overrides`：plans 强制后的废稿清理（修订 0074） | ✅ 已接受 | 2026-06-21 |
+| [0116](0116-2026-06-21_sim_rename-regimen-runner-to-schedule-runner.md) | 内部命名统一：`regimen_runner.py` → `schedule_runner.py`，API 契约字段名不变（修订 0115） | ✅ 已接受 | 2026-06-21 |

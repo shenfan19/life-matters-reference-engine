@@ -75,9 +75,9 @@ export function useSimulation({
     }
   };
 
-  // ── build regimen payload from inputEvents ────────────────────────────────────
+  // ── build schedule payload from inputEvents ────────────────────────────────────
 
-  const buildRegimenPayload = (events: InputEvent[]) => {
+  const buildSchedulePayload = (events: InputEvent[]) => {
     const inputVarNames = new Set(inputVars.map(v => v.name));
     return events
       .filter(ev => inputVarNames.has(ev.variable))
@@ -116,7 +116,7 @@ export function useSimulation({
           time_hours: dateToHours(simStartDate, simEndDate),
           step_size: stepValue * STEP_UNITS[stepUnit],
           input_params: inputParams,
-          regimens: buildRegimenPayload(inputEvents),
+          regimens: buildSchedulePayload(inputEvents),
           sim_runs: simRuns,
           ...(mcSeed != null ? { seed: mcSeed } : {}),
         }),

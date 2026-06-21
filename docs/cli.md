@@ -166,7 +166,7 @@ python sim_cli/main.py <model.yaml> --opt-only --opt-continue
 | Monte Carlo 多 run | ✅（界面可临时改 sim_runs/seed，覆盖 YAML，不回写） | 严格按模型 YAML 的 `mc.runs`/`mc.seed` 跑，无覆盖开关 |
 
 CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致，可互通——sim 的执行核心
-（`apply_regimens` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
+（`apply_schedules` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
 不是两份各自实现后凑巧一致。这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证
 （见 ADR 0111/0112/0113）。
 

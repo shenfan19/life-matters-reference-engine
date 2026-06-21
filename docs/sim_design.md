@@ -218,46 +218,38 @@ model.yaml ─────────────────→ story.yaml ─
 
 ## GUI Working State Layer（GUI 工作状态层）
 
-> 对应需求 F-1；架构决策见 ADR 0074。
+> 对应需求 F-1；架构决策见 ADR 0074、ADR 0109/0110（plans 强制规范）、ADR 0115（移除 daily_inputs 后简化）。
 
 ### 概念
 
-GUI Working State Layer 是 Sim 面板中 `inputEvents[]` 的集合——它是用户可见、可编辑的输入配置，代表"本次仿真实际使用什么值"。**它的优先级永远高于 YAML schedule。**
+GUI Working State Layer 是 Sim 面板中 `inputEvents[]` 的集合——它是用户可见、可编辑的输入配置，代表"本次仿真实际使用什么值"。
 
 ```
 加载流程：
-  YAML 文件 → Loader 解析 → inputEvents（GUI 工作状态）← 用户编辑 / Opt 结果注入
+  YAML 文件 → Loader 解析 self.plans → 前端按 plan 还原 inputEvents ← 用户编辑 / Opt 结果注入
                                      ↓
-                              引擎 session 启动
+                  session 启动：inputEvents 作为 regimens 字段发给后端
                                      ↓
-              manual_overrides ← GUI 受控变量列表（禁止 YAML schedule 覆盖）
-                                     ↓
-                              每步：_apply_regimens（GUI 值）
-                              每步：model.step() → _apply_schedules（跳过 manual_overrides 里的变量）
+                              每步：apply_schedules(session['regimens'])
 ```
 
-### 优先级规则
-
-| 来源 | 优先级 | 适用范围 |
-|------|--------|---------|
-| GUI inputEvents（`_apply_regimens`） | **高** | 有 GUI regimen 的 input 变量 |
-| YAML schedule（`_apply_schedules`） | 低（被跳过） | GUI 受控变量自动跳过 |
-| YAML schedule（`_apply_schedules`） | **高**（正常应用） | 没有 GUI regimen 的变量 |
-
-关键：`_apply_schedules` 内已有 `manual_overrides` 跳过机制（[simulation.py:74](../sim_engine/src/model_structure/simulation.py#L74)）。引擎改动只需在 session 启动时，将有 GUI regimen 的变量写入 `model.manual_overrides`。
+ADR 0074 当时要解决的问题（旧版 `daily_inputs`/`_apply_schedules` 在每步末尾用 YAML 值覆盖 GUI 编辑）已经
+不存在：`daily_inputs` 整套机制已在 ADR 0115 删除，`simulation.plans[*].schedules` 是仅剩的输入声明位置
+（ADR 0109），而 GUI 的 `inputEvents` 本身就是该 plan 内容的可编辑实例，两者不再是会冲突的两条路径——
+GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`，不存在"谁覆盖谁"的优先级问题。
 
 ### 初始化规则
 
 | 事件 | inputEvents（GUI 层）的变化 |
 |------|--------------------------|
-| 加载新模型 | 从 `simulation.schedules` 解析，填充 inputEvents |
+| 加载新模型 | 从 `simulation.plans[*].schedules` 解析（`self.plans[plan_id]`），按 plan 填充 inputEvents |
 | 加载含 `optimizer.results.reference.regimen` 的模型 | 询问用户是否预填推荐解，选"是"则覆盖对应 inputEvents |
-| Opt 完成，用户点击"以此解运行仿真" | 按 `optimizer.schedules` 决策变量映射将解的 `x` 写入 inputEvents |
+| Opt 完成，用户点击"以此解运行仿真" | 按 `optimizer.startpoint.schedules` 决策变量映射将解的 `x` 写入 inputEvents |
 | 用户手动编辑 | 直接修改 inputEvents |
 
 ### F-MPLAN 扩展
 
-多方案时，每个 Plan 有独立的 `inputEvents[]`，对应独立的 session。每个 session 各自有 `manual_overrides`，方案间隔离，互不影响。
+多方案时，每个 Plan 有独立的 `inputEvents[]`，对应独立的 session，方案间隔离，互不影响。
 
 ---
 

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .regimen_runner import advance_steps, precompute_sustained_divisors
+from .schedule_runner import advance_steps, precompute_sustained_divisors
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model, derive_seed_list
 
 logger = logging.getLogger(__name__)

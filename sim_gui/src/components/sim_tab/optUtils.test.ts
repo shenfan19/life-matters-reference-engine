@@ -36,10 +36,10 @@ function roundTrip(schedules: any[]): any[] {
  * optimizer_engine.py to be semantically inert (not bugs, but not guaranteed
  * either — see ADR 0112):
  *  - missing time_start/time_end defaults to "08:00" on both the frontend
- *    (normalizeTimeInterval) and the backend (_build_regimen_events), so
+ *    (normalizeTimeInterval) and the backend (_build_schedule_events), so
  *    omitted vs. explicit "08:00" decode identically.
  *  - a `days` list covering all 7 days is equivalent to omitting `days`
- *    entirely (apply_regimens treats both as "no day filter").
+ *    entirely (apply_schedules treats both as "no day filter").
  * Anything else (e.g. optimize.date_range) is left untouched — a real
  * divergence there must still fail the test.
  */

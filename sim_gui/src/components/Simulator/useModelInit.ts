@@ -213,14 +213,14 @@ export function useModelInit({
     const yamlPlans: any[] = selectedModel.content?.simulation?.plans ?? [];
     if (yamlPlans.length > 0) {
       const loadedPlans: SimPlan[] = yamlPlans.map((plan: any, i: number) => {
-        const regimens: any[] = backendPlans[plan.id ?? `plan_${i}`] ?? [];
+        const schedules: any[] = backendPlans[plan.id ?? `plan_${i}`] ?? [];
         const planEvents: InputEvent[] = [];
         Object.entries(selectedModel.content.variables).forEach(([name, vdata]: [string, any]) => {
           if (vdata.type !== 'input') return;
-          const varRegimens = regimens.filter((r: any) => r.variable === name);
-          if (varRegimens.length > 0) {
+          const varSchedules = schedules.filter((r: any) => r.variable === name);
+          if (varSchedules.length > 0) {
             let j = 0;
-            varRegimens.forEach((r: any) => {
+            varSchedules.forEach((r: any) => {
               (r.events ?? []).forEach((ev: any) => {
                 const dl: string[] = Array.isArray(ev.days) ? ev.days : [];
                 planEvents.push({

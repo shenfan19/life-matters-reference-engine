@@ -348,9 +348,9 @@ class Loader:
         # [{variable, time_start:"HH:MM", time_end:"HH:MM"(可选), value, days:[...],
         #   date_range:["YYYY-MM-DD", "YYYY-MM-DD"](可选)}]
         # 不再支持旧版 simulation.schedules（扁平 list/dict）。
-        # 所有 plans 解析为 regimen 兼容格式存入 self.plans[plan_id]（List[dict]）；
+        # 所有 plans 解析为 schedule 兼容格式存入 self.plans[plan_id]（List[dict]）；
         # 第一个 plan 同时设为 self.schedule_entries，供 run_simulation 的
-        # apply_regimens 路径使用（CLI/GUI 路径统一，支持 pulse 和 sustained）。
+        # apply_schedules 路径使用（CLI/GUI 路径统一，支持 pulse 和 sustained）。
         self.plans = {}
         self.schedule_entries = []
         plans_raw = simulator_data.get('plans')
@@ -412,12 +412,12 @@ class Loader:
         self._initialize_asteval()
 
     def _parse_schedule_entries(self, entries: list, simulator_data: Dict[str, Any]) -> list:
-        """将单个 plan 的 schedules 列表解析为 apply_regimens 兼容的 regimen list。
+        """将单个 plan 的 schedules 列表解析为 apply_schedules 兼容的 schedule list。
 
-        每个条目生成一个 regimen dict，格式与 optimizer path 一致：
+        每个条目生成一个 schedule dict，格式与 optimizer path 一致：
           {'variable': str, 'events': [{'time_start', 'time_end', 'value',
                                          'days'(可选), 'valid_start'/'valid_end'(可选)}]}
-        time_start == time_end → pulse；不等 → sustained（由 apply_regimens 处理）。
+        time_start == time_end → pulse；不等 → sustained（由 apply_schedules 处理）。
         """
         if not isinstance(entries, list) or not entries:
             return []
