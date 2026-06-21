@@ -37,7 +37,7 @@ class ModelStructure(Loader, Validator, Simulation):
         # 初始化 simulator 和 optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
-        # self.plans: plan_id → List[dict] 原始 schedule 条目，供 apply_regimens 使用
+        # self.plans: plan_id → List[dict] 原始 schedule 条目，供 apply_schedules 使用
         # self.schedule_entries: 当前激活 plan 的条目列表（run_simulation 前设置）
         self.plans: Dict[str, Any] = {}
         self.schedule_entries: list = []

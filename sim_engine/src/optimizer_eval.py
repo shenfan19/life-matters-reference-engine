@@ -1,7 +1,7 @@
 """Simulation execution + objective/constraint evaluation for the optimizer.
 
 _run_sim() drives one full simulation given a decoded {variable: events} map
-(built by optimizer_engine.run_optimizer()'s _build_regimen_events closure);
+(built by optimizer_engine.run_optimizer()'s _build_schedule_events closure);
 _eval_F()/_eval_G() reduce the resulting per-variable history into the
 objective vector and constraint-violation vector the NSGA-II/scipy backends
 in optimizer_backends.py expect.
@@ -9,7 +9,7 @@ in optimizer_backends.py expect.
 
 from typing import Dict, List
 
-from .regimen_runner import apply_regimens, precompute_sustained_divisors
+from .schedule_runner import apply_schedules, precompute_sustained_divisors
 from .optimizer_parsing import _parse_condition
 
 
@@ -27,28 +27,28 @@ def _eval_metric(history: List[float], metric: str) -> float:
     return history[-1]
 
 
-def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
+def _run_sim(model, schedule_events_by_var: Dict[str, List[Dict]],
              step_size_sec: float, total_steps: int,
              sim_start_date: str = '') -> Dict[str, List[float]]:
     """Run a full simulation and return per-variable history lists.
 
-    Uses apply_regimens() from regimen_runner (pulse reset + accumulate) — same
+    Uses apply_schedules() from schedule_runner (pulse reset + accumulate) — same
     kernel as the GUI sim path, eliminating the duplicate implementation.
     """
     model.reset_simulation()
 
-    # Convert dict format → list format expected by apply_regimens
-    regimens_list = [
+    # Convert dict format → list format expected by apply_schedules
+    schedules_list = [
         {'variable': var_name, 'events': evts}
-        for var_name, evts in regimen_events_by_var.items()
+        for var_name, evts in schedule_events_by_var.items()
     ]
     # ADR 0099: precompute sustained-mode value/_n_steps divisors once per run
-    regimens_list = precompute_sustained_divisors(regimens_list, step_size_sec, total_steps, sim_start_date)
+    schedules_list = precompute_sustained_divisors(schedules_list, step_size_sec, total_steps, sim_start_date)
 
     history: Dict[str, List[float]] = {n: [] for n in model.variables}
     for i in range(total_steps):
         prev_t = i * step_size_sec
-        apply_regimens(model, regimens_list, prev_t, prev_t + step_size_sec, sim_start_date)
+        apply_schedules(model, schedules_list, prev_t, prev_t + step_size_sec, sim_start_date)
         model.step(step_size_sec)
         for n, v in model.variables.items():
             history[n].append(v.value)

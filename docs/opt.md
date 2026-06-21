@@ -348,8 +348,8 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 - `_expand_time_window(window, opt_step)` → slot 列表
 - `run_optimizer` inputs 解析段：逐条目按 T1/T2/T3/T4 追加 `var_specs` 条目和 bounds
-- `_build_regimen_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
-- `simulator_engine._apply_regimens` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
+- `_build_schedule_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
+- `schedule_runner.apply_schedules` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
 
 **前端（`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`）**
 

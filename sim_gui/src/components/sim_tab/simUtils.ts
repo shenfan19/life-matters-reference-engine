@@ -27,8 +27,8 @@ function shiftTime(start: string, widthMin: number): string {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
 
-// Resolve a raw YAML/regimen event's `[time_start, time_end)` interval (ADR 0100).
-// Mirrors regimen_runner._normalize_time_interval.
+// Resolve a raw YAML/schedule event's `[time_start, time_end)` interval (ADR 0100).
+// Mirrors schedule_runner._normalize_time_interval.
 export function normalizeTimeInterval(raw: any): { timeStart: string; timeEnd: string } {
   const timeStart = raw?.time_start ?? '08:00';
   return { timeStart, timeEnd: raw?.time_end ?? timeStart };

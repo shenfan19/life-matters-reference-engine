@@ -2,7 +2,7 @@
 LifeMatters Optimizer Engine.
 
 YAML-driven optimizer: reads model.optimizer block and runs NSGA-II or scipy.
-All optimization parameters (objectives, constraints, regimen, algorithm) come
+All optimization parameters (objectives, constraints, schedule, algorithm) come
 from the YAML file — no hardcoded targets or search spaces.
 
 Replaces the former optimizer_engine.py (hardcoded grid/GA approach, deleted
@@ -14,7 +14,7 @@ task7) — this file keeps only the main flow:
   optimizer_eval.py       — simulation execution + objective/constraint evaluation
   optimizer_backends.py   — the two algorithm backends (NSGA-II, scipy)
   optimizer_engine.py     — run_optimizer() itself, with its three closures
-                            (_build_regimen_events / _clone / evaluate)
+                            (_build_schedule_events / _clone / evaluate)
 """
 
 import numpy as np
@@ -196,7 +196,7 @@ def run_optimizer(simulator_engine, model_name: str,
             ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
         fixed_events_map.setdefault(v, []).append(ev_f)
 
-    def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
+    def _build_schedule_events(x: np.ndarray) -> Dict[str, List[Dict]]:
         from datetime import date as _date, timedelta
         events_map: Dict[str, List[Dict]] = {k: list(v) for k, v in fixed_events_map.items()}
         decoded: Dict[int, Dict] = {}
@@ -316,7 +316,7 @@ def run_optimizer(simulator_engine, model_name: str,
 
     def evaluate(x: np.ndarray) -> Tuple[List[float], List[float]]:
         """Return (F_mean, G_mean) averaged over mc_runs."""
-        events_map = _build_regimen_events(x)
+        events_map = _build_schedule_events(x)
         F_accum = np.zeros(n_obj)
         G_accum = np.zeros(max(n_con, 1))
 

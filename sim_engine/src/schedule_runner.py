@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# regimen_runner.py — Pulse/sustained regimen evaluation
+# schedule_runner.py — Pulse/sustained schedule evaluation
 #
-# Applies a list of regimen dicts to a model for one simulation step window.
-# Both the GUI path (boolean days mask, regimen-level valid_range) and the
+# Applies a list of schedule dicts to a model for one simulation step window.
+# Both the GUI path (boolean days mask, schedule-level valid_range) and the
 # optimizer path (event-level string days, event-level valid_start/end) are
 # handled here in one place so the logic is never duplicated.
 #
@@ -36,7 +36,7 @@ def _time_range_day_seconds(time_start: str, time_end: str) -> float:
 
     Invalid input = full day (86400s). A window where end <= start wraps past
     midnight (or, if equal, covers the full day) — same convention as the
-    `fires` check in apply_regimens.
+    `fires` check in apply_schedules.
     """
     try:
         t0h, t0m = map(int, time_start.split(':'))
@@ -49,22 +49,22 @@ def _time_range_day_seconds(time_start: str, time_end: str) -> float:
     return float(86400 - t0_sec + t1_sec)
 
 
-def _n_active_days(ev: dict, reg: dict, sim_start_date: str, total_steps: int,
+def _n_active_days(ev: dict, sched: dict, sim_start_date: str, total_steps: int,
                     step_size_sec: float) -> int:
     """Number of calendar days the sustained event is active on.
 
-    Date span = event/regimen valid_range if set, else the whole simulation
+    Date span = event/schedule valid_range if set, else the whole simulation
     span (derived from total_steps * step_size_sec). Within that span, only
     days matching the `days` filter (event-level string list, opt path, or
-    regimen-level boolean mask, GUI path) count.
+    schedule-level boolean mask, GUI path) count.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
     except ValueError:
         epoch = date(1900, 1, 1)
 
-    vs = ev.get('valid_start') or (reg.get('valid_start') if reg.get('valid_range_enabled') else None)
-    ve = ev.get('valid_end') or (reg.get('valid_end') if reg.get('valid_range_enabled') else None)
+    vs = ev.get('valid_start') or (sched.get('valid_start') if sched.get('valid_range_enabled') else None)
+    ve = ev.get('valid_end') or (sched.get('valid_end') if sched.get('valid_range_enabled') else None)
     span_start = epoch
     span_days = max(1, math.ceil(total_steps * step_size_sec / 86400.0))
     if vs and ve:
@@ -78,8 +78,8 @@ def _n_active_days(ev: dict, reg: dict, sim_start_date: str, total_steps: int,
     ev_days = ev.get('days')
     if ev_days:
         days_mask = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
-    elif reg.get('days_enabled'):
-        mask = reg.get('days', [True] * 7)
+    elif sched.get('days_enabled'):
+        mask = sched.get('days', [True] * 7)
         days_mask = {i for i in range(7) if i < len(mask) and mask[i]}
 
     if not days_mask or len(days_mask) == 7:
@@ -88,27 +88,27 @@ def _n_active_days(ev: dict, reg: dict, sim_start_date: str, total_steps: int,
     return max(count, 1)
 
 
-def precompute_sustained_divisors(regimens: list, step_size_sec: float, total_steps: int,
+def precompute_sustained_divisors(schedules: list, step_size_sec: float, total_steps: int,
                                    sim_start_date: str = '') -> list:
     """Annotate sustained-interval events with `_n_steps` (ADR 0099/0100).
 
     An event is "sustained" when its `[time_start, time_end)` interval
     (resolved by `_normalize_time_interval`, ADR 0100) is non-empty
     (`time_start != time_end`); pulse events (`time_start == time_end`) are
-    left untouched and default to `_n_steps == 1` in apply_regimens.
+    left untouched and default to `_n_steps == 1` in apply_schedules.
 
     `value` for sustained entries is the total over the entire active window;
-    apply_regimens divides by `_n_steps` each firing step so the cumulative
+    apply_schedules divides by `_n_steps` each firing step so the cumulative
     contribution equals `value` regardless of step_size (pulse is the
     `_n_steps == 1` special case of the same rule).
 
-    Returns a new list; does not mutate the input regimens/events.
+    Returns a new list; does not mutate the input schedules/events.
     """
     out = []
-    for reg in regimens:
-        events = reg.get('events', [])
+    for sched in schedules:
+        events = sched.get('events', [])
         if not events:
-            out.append(reg)
+            out.append(sched)
             continue
         new_events = []
         changed = False
@@ -116,25 +116,25 @@ def precompute_sustained_divisors(regimens: list, step_size_sec: float, total_st
             time_start, time_end = _normalize_time_interval(ev)
             if time_start != time_end:
                 day_sec = _time_range_day_seconds(time_start, time_end)
-                n_active_days = _n_active_days(ev, reg, sim_start_date, total_steps, step_size_sec)
+                n_active_days = _n_active_days(ev, sched, sim_start_date, total_steps, step_size_sec)
                 window_sec = n_active_days * day_sec
                 ev = dict(ev)
                 ev['_n_steps'] = max(1, round(window_sec / step_size_sec))
                 changed = True
             new_events.append(ev)
-        out.append({**reg, 'events': new_events} if changed else reg)
+        out.append({**sched, 'events': new_events} if changed else sched)
     return out
 
 
-def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
-                   sim_start_date: str = '') -> None:
-    """Apply regimen events that fall in [prev_time, next_time) to the model.
+def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
+                     sim_start_date: str = '') -> None:
+    """Apply schedule events that fall in [prev_time, next_time) to the model.
 
     Time convention:
       - prev_time / next_time are seconds of elapsed simulation time.
       - Event times ("HH:MM") are evaluated modulo 86400 (daily cycle).
       - days filter accepts two formats:
-          GUI path  — regimen-level boolean mask [Mon…Sun]
+          GUI path  — schedule-level boolean mask [Mon…Sun]
           Opt path  — event-level string list like ["Mon", "Wed"]
       - valid_range is checked against sim_start_date + day offset.
 
@@ -171,21 +171,21 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
     dow = prev_day_idx % 7  # 0=Mon … 6=Sun
 
     # ── Pulse reset: zero all controlled variables for this step ──────────────
-    for reg in regimens:
-        var = reg.get('variable', '')
+    for sched in schedules:
+        var = sched.get('variable', '')
         if var in model.variables:
             model.set_variable_value(var, 0.0)
 
     # ── Accumulate firing events ───────────────────────────────────────────────
-    for reg in regimens:
-        variable = reg.get('variable', '')
+    for sched in schedules:
+        variable = sched.get('variable', '')
         if variable not in model.variables:
             continue
 
-        # Regimen-level valid_range check (GUI path)
-        if reg.get('valid_range_enabled'):
+        # Schedule-level valid_range check (GUI path)
+        if sched.get('valid_range_enabled'):
             sim_date = epoch + timedelta(days=prev_day_idx)
-            vs, ve = reg.get('valid_start', ''), reg.get('valid_end', '')
+            vs, ve = sched.get('valid_start', ''), sched.get('valid_end', '')
             try:
                 if vs and sim_date < date.fromisoformat(vs):
                     continue
@@ -194,13 +194,13 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
             except ValueError:
                 pass
 
-        # Regimen-level day filter — boolean mask (GUI path)
-        if reg.get('days_enabled'):
-            days_mask = reg.get('days', [True] * 7)
+        # Schedule-level day filter — boolean mask (GUI path)
+        if sched.get('days_enabled'):
+            days_mask = sched.get('days', [True] * 7)
             if not (days_mask[dow] if dow < len(days_mask) else True):
                 continue
 
-        for ev in reg.get('events', []):
+        for ev in sched.get('events', []):
             # Event-level day filter — string list (optimizer path: T3)
             ev_days = ev.get('days', [])
             if ev_days:
@@ -269,15 +269,15 @@ def apply_regimens(model, regimens: list, prev_time: float, next_time: float,
                 delta = float(ev.get('value', 0)) / n_steps
                 model.set_variable_value(variable, current + delta)
                 logger.debug(
-                    "Regimen fired: %s += %s @ t=%.0fs (%s~%s)",
+                    "Schedule fired: %s += %s @ t=%.0fs (%s~%s)",
                     variable, delta, prev_time, time_start, time_end,
                 )
 
 
-def advance_steps(model, regimens: list, step_size: float, n_steps: int,
+def advance_steps(model, schedules: list, step_size: float, n_steps: int,
                    start_step: int, start_time: float, output_variables: list,
                    sim_start_date: str = '') -> tuple:
-    """Run `model` forward by `n_steps` (apply_regimens → model.step()).
+    """Run `model` forward by `n_steps` (apply_schedules → model.step()).
 
     The single step-execution core shared by the CLI (`run_simulation`, one
     call covering the whole run) and the GUI (`batch_steps`, called once per
@@ -296,8 +296,8 @@ def advance_steps(model, regimens: list, step_size: float, n_steps: int,
     for _ in range(n_steps):
         prev_time = time
         next_time = prev_time + step_size
-        if regimens:
-            apply_regimens(model, regimens, prev_time, next_time, sim_start_date=sim_start_date)
+        if schedules:
+            apply_schedules(model, schedules, prev_time, next_time, sim_start_date=sim_start_date)
         model.step(step_size)
         step += 1
         time = next_time

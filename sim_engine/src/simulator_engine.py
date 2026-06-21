@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # simulator_engine.py — model loading, CLI simulation (single/MC/all-plans).
 # GUI session management → session_manager.py (SessionManagerMixin)
-# Pulse regimen execution → regimen_runner.py
+# Pulse schedule execution → schedule_runner.py
 # MC distribution utilities + model cloning → mc_utils.py
 
 import logging
@@ -14,7 +14,7 @@ from .model_structure import ModelStructure
 from .loader_engine import LoaderEngine
 from .session_manager import SessionManagerMixin
 from .mc_utils import apply_parameter_sampling, collect_param_distributions, clone_model, derive_seed_list
-from .regimen_runner import advance_steps, precompute_sustained_divisors
+from .schedule_runner import advance_steps, precompute_sustained_divisors
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -140,10 +140,10 @@ class SimulatorEngine(SessionManagerMixin):
         if interactive and pause_every > 0:
             self.pause_callback = self._interactive_pause
 
-        # 从 schedule_entries 构建 regimen list（支持 time_start/time_end, pulse/sustained）
+        # 从 schedule_entries 构建 schedule list（支持 time_start/time_end, pulse/sustained）
         start_date = self.current_model.simulator.get('start_date', '')
         raw_entries = getattr(self.current_model, 'schedule_entries', [])
-        schedule_regimens = precompute_sustained_divisors(
+        schedules = precompute_sustained_divisors(
             list(raw_entries), step_size, total_steps, start_date
         ) if raw_entries else []
 
@@ -155,7 +155,7 @@ class SimulatorEngine(SessionManagerMixin):
             while self.current_step < total_steps and self.running:
                 n = min(chunk_size, total_steps - self.current_step)
                 rows, self.current_step, self.time = advance_steps(
-                    self.current_model, schedule_regimens, step_size, n,
+                    self.current_model, schedules, step_size, n,
                     self.current_step, self.time, output_variables, start_date,
                 )
                 for row in rows:
@@ -231,7 +231,7 @@ class SimulatorEngine(SessionManagerMixin):
 
             start_date = base_model.simulator.get('start_date', '')
             raw_entries = getattr(base_model, 'schedule_entries', [])
-            schedule_regimens = precompute_sustained_divisors(
+            schedules = precompute_sustained_divisors(
                 list(raw_entries), step_size, total_steps, start_date
             ) if raw_entries else []
 
@@ -254,7 +254,7 @@ class SimulatorEngine(SessionManagerMixin):
             run_results = []
             for run_idx, run_model in enumerate(run_models):
                 rows, end_step, end_time = advance_steps(
-                    run_model, schedule_regimens, step_size, total_steps,
+                    run_model, schedules, step_size, total_steps,
                     0, 0.0, output_variables, start_date,
                 )
 
