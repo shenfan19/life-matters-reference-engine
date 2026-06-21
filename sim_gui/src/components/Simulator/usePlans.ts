@@ -10,7 +10,7 @@ import { message } from 'antd';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { InputEvent, ModelFile, PlanResult, SimPlan, SimulationState } from '../../types';
 import { PLAN_COLORS, xToInputEvents } from '../sim_tab/simUtils';
-import { buildOptSchedules } from '../sim_tab/optUtils';
+import { buildOptRegimens } from '../sim_tab/optUtils';
 
 interface UsePlansParams {
   plans: SimPlan[];
@@ -72,8 +72,8 @@ export function usePlans({
     // Use the current GUI optimizer config (from optInputEvents) for decoding x,
     // not the YAML optimizer block — they may differ if the user edited the startpoint in the GUI.
     const activeInputVarNames = new Set(inputVars.map(v => v.name));
-    const schedules = buildOptSchedules(optInputEvents, activeInputVarNames);
-    const virtualOptimizer = { startpoint: { schedules } };
+    const regimens = buildOptRegimens(optInputEvents, activeInputVarNames);
+    const virtualOptimizer = { startpoint: { regimens } };
     const newPlans: SimPlan[] = rows.map((row, i) => ({
       id: `pareto-${row.rank}-${Date.now()}-${i}`,
       label: `Pareto #${row.rank}`,
@@ -105,7 +105,7 @@ export function usePlans({
   // (stays here: needs setInputEvents + setComparedPlans)
   const applyBestToSim = () => {
     const optimizer = selectedModel?.content?.optimizer;
-    const bestX = optimizer?.results?.reference?.x;
+    const bestX = optimizer?.results?.recommended?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
       message.warning(t('sim.msg.no_best_solution')); return;
     }

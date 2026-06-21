@@ -99,8 +99,8 @@ export function useModelInit({
       if (Array.isArray(optBlock.objectives)) optBlock.objectives.forEach((o: any) => preloadObjs.push({ variable: o.variable || '', direction: parseDir2(o.direction || '') }));
       yamlOptResult = {
         pareto_front: rawResults.pareto_front,
-        best_x: rawResults.reference?.x ?? [],
-        best_f: rawResults.reference?.f ?? [],
+        best_x: rawResults.recommended?.x ?? [],
+        best_f: rawResults.recommended?.f ?? [],
         objectives: preloadObjs,
         n_solutions: rawResults.n_solutions ?? rawResults.pareto_front.length,
         method: rawResults.method ?? 'nsga2',
@@ -121,8 +121,8 @@ export function useModelInit({
       setOptInputEvents(
         Array.isArray(session.optInputEvents) && session.optInputEvents.length > 0
           ? migrateInputEvents(session.optInputEvents)
-          : Array.isArray(optBlock?.startpoint?.schedules)
-            ? buildOptInputEventsFromYAML(optBlock.startpoint.schedules)
+          : Array.isArray(optBlock?.startpoint?.regimens)
+            ? buildOptInputEventsFromYAML(optBlock.startpoint.regimens)
             : []
       );
       setPlans(session.plans.map(p => ({ ...p, inputEvents: migrateInputEvents(p.inputEvents) })));
@@ -329,8 +329,8 @@ export function useModelInit({
       if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
       setOptInputEvents(
-        Array.isArray(optBlock.startpoint?.schedules)
-          ? buildOptInputEventsFromYAML(optBlock.startpoint.schedules)
+        Array.isArray(optBlock.startpoint?.regimens)
+          ? buildOptInputEventsFromYAML(optBlock.startpoint.regimens)
           : []
       );
     } else {
@@ -344,8 +344,8 @@ export function useModelInit({
     sessionReadyRef.current = true;
 
     // Warm-start modal: only on first-ever load (no session existed)
-    if (rawResults?.reference?.x?.length > 0) {
-      const bestX: number[] = rawResults.reference.x;
+    if (rawResults?.recommended?.x?.length > 0) {
+      const bestX: number[] = rawResults.recommended.x;
       Modal.confirm({
         title: t('sim.opt.ref_detected_title'),
         content: t('sim.opt.ref_detected_content', { n: bestX.length }),

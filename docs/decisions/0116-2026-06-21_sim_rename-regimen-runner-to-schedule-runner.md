@@ -78,3 +78,6 @@ docs/sim_design.md   "GUI Working State Layer" 小节按 ADR 0115 后的现状�
 
 - ADR 0115 — 本次改名的直接前提（移除了会撞名的 `_apply_schedules`）
 - ADR 0109/0110 — `schedule` 一词在 YAML 规范里的来源
+- ADR 0117 — 确认本 ADR"不在本次范围内"列出的 API/YAML 契约层维持原状（`regimens`/`RegimenData`
+  不变）；同时 `optimizer.results.reference.regimen` 已改名 `recommended` 并删除解码字典，
+  本文档第 44 行的提法已过期，以 ADR 0117 为准

@@ -13,7 +13,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { message } from 'antd';
 import type { InputEvent, ModelFile } from '../../types';
-import { hasAnyOpt, buildOptSchedules } from '../sim_tab/optUtils';
+import { hasAnyOpt, buildOptRegimens } from '../sim_tab/optUtils';
 import { API_BASE } from '../sim_tab/simUtils';
 import { readMS, writeMS } from '../sim_tab/useSession';
 
@@ -124,9 +124,9 @@ export function useOptimizer({
     setRunningModelKey(selectedKey);
     optTargetKeyRef.current = selectedKey;
 
-    const optSchedules = buildOptSchedules(inputEvents, activeInputVarNames);
+    const optRegimens = buildOptRegimens(inputEvents, activeInputVarNames);
     const optimizerOverride: Record<string, any> = {
-      startpoint: { schedules: optSchedules },
+      startpoint: { regimens: optRegimens },
       objectives: objectives.map(o => ({ variable: o.variable, metric: 'final', direction: o.direction })),
       constraints: constraints.map(con => ({
         variable: con.variable,
@@ -249,7 +249,7 @@ export function useOptimizer({
     n_solutions: optResult?.n_solutions || 0,
     elapsed_seconds: Math.round(elapsed * 10) / 10,
     pareto_front: optResult?.pareto_front || [],
-    reference: {
+    recommended: {
       x: optResult?.best_x,
       f: optResult?.best_f,
     },

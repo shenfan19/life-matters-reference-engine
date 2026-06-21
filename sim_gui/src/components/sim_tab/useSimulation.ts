@@ -75,9 +75,9 @@ export function useSimulation({
     }
   };
 
-  // ── build schedule payload from inputEvents ────────────────────────────────────
+  // ── build regimen payload from inputEvents ────────────────────────────────────
 
-  const buildSchedulePayload = (events: InputEvent[]) => {
+  const buildRegimenPayload = (events: InputEvent[]) => {
     const inputVarNames = new Set(inputVars.map(v => v.name));
     return events
       .filter(ev => inputVarNames.has(ev.variable))
@@ -116,7 +116,7 @@ export function useSimulation({
           time_hours: dateToHours(simStartDate, simEndDate),
           step_size: stepValue * STEP_UNITS[stepUnit],
           input_params: inputParams,
-          regimens: buildSchedulePayload(inputEvents),
+          regimens: buildRegimenPayload(inputEvents),
           sim_runs: simRuns,
           ...(mcSeed != null ? { seed: mcSeed } : {}),
         }),
@@ -357,7 +357,7 @@ export function useSimulation({
 
   const applyBestToSim = (optResult: any) => {
     const optimizer = selectedModel?.content?.optimizer;
-    const bestX = optimizer?.results?.reference?.x;
+    const bestX = optimizer?.results?.recommended?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
       message.warning(t('sim.msg.no_best_solution')); return;
     }

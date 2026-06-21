@@ -26,7 +26,7 @@ class RegimenEventData(BaseModel):
 
 
 class RegimenData(BaseModel):
-    """One variable's full schedule as sent from the GUI or optimizer.
+    """One variable's full regimen as sent from the GUI or optimizer.
 
     GUI path (days_enabled / valid_range_enabled):
       - days: 7-element boolean mask [Mon…Sun]
