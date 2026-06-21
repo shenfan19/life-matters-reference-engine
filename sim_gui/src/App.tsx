@@ -13,17 +13,16 @@ const FONT_SIZE_MIN = 12;
 const FONT_SIZE_MAX = 20;
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-// HeartPulseIcon: heart (left) + QRS trace (right) — sim identity
+// HeartPulseIcon: heart split green/white left vs right — sim identity
 // CardPulseIcon:  card outline + heart suit + QRS trace — game identity
 
-const HeartPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | string, color?: string }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-    {/* Heart outline — tip at bottom, two lobes at top, QRS passes through middle */}
-    <path d="M12,21 C6,16 2,12 2,8 A6,6,0,0,1,12,5 A6,6,0,0,1,22,8 C22,12 18,16 12,21 Z"
-          strokeWidth="1.8" />
-    {/* QRS trace through the heart's equator */}
-    <path d="M2.5,10 L5.5,10 L6,12 L7,4 L8,14 L9,10 L11,10 L11.5,8 L12.5,10 L21.5,10"
-          strokeWidth="1.6" />
+const HeartPulseIcon = ({ size = 16 }: { size?: number | string }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} style={{ verticalAlign: 'middle' }}>
+    {/* Heart split down the centerline, fore/background colors inverted left vs right */}
+    <rect x="0" y="0" width="12" height="24" fill="#007A33" />
+    <rect x="12" y="0" width="12" height="24" fill="#ffffff" />
+    <path d="M12,19.51 C6.9,15.26 3.5,11.86 3.5,8.46 A5.1,5.1,0,0,1,12,5.91 Z" fill="#ffffff" />
+    <path d="M12,5.91 A5.1,5.1,0,0,1,20.5,8.46 C20.5,11.86 17.1,15.26 12,19.51 Z" fill="#007A33" />
   </svg>
 );
 
@@ -92,7 +91,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
     }}>
       {/* Logo wordmark */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
-        <HeartPulseIcon size={28} color={c.primary} />
+        <HeartPulseIcon size={28} />
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
             fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, letterSpacing: '0.04em',
