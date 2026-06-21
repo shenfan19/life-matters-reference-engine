@@ -1,6 +1,6 @@
 {
   "app.title": "Life Matters",
-  "about.name": "Life Matters (立民)",
+  "about.name": "Life Matters",
   "app.subtitle": "Plateforme de simulation et d'optimisation de trajectoires de signes vitaux",
   "menu.calculator": "Calculateur",
   "menu.loader": "Chargeur de modèle",
@@ -118,8 +118,8 @@
   "sim.msg.read_failed": "Lecture échouée",
   "sim.msg.start_failed": "Démarrage échoué",
   "sim.msg.component_model_hint": "Ce fichier est un composant de bibliothèque — les résultats peuvent être incomplets sans ses modèles couplés",
-  "about.subtitle": "Simulateur médical et social",
-  "about.subtitle2": "Plateforme d'optimisation de paramètres",
+  "about.subtitle": "Moteur de référence",
+  "about.subtitle2": "pour la simulation et l'optimisation médicale et sociale",
   "about.affiliation": "Université Sun Yat-Sen",
   "about.homepage": "Page d'accueil",
   "about.close": "Fermer",

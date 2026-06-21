@@ -1,6 +1,6 @@
 {
   "app.title": "Life Matters",
-  "about.name": "Life Matters (立民)",
+  "about.name": "Life Matters",
   "app.subtitle": "生命體徵軌跡仿真與優化平台",
   "menu.calculator": "計算工具",
   "menu.loader": "模型加載",
@@ -118,8 +118,8 @@
   "sim.msg.read_failed": "讀取失敗",
   "sim.msg.start_failed": "啟動失敗",
   "sim.msg.component_model_hint": "此檔案為庫組件——不依賴關聯模型時仿真結果可能不完整",
-  "about.subtitle": "醫學與社會學模擬器",
-  "about.subtitle2": "參數優化平台",
+  "about.subtitle": "參考實現引擎",
+  "about.subtitle2": "醫學與社會學模擬與優化平台",
   "about.affiliation": "中山大學",
   "about.homepage": "主頁",
   "about.close": "關閉",
