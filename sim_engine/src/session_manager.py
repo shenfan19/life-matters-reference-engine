@@ -113,7 +113,7 @@ class SessionManagerMixin:
         """Start a new simulation session (GUI path).
 
         Creates an independent model copy for each MC run, applies parameter
-        sampling, wires up GUI regimen overrides, and returns the session ID.
+        sampling, and returns the session ID.
         """
         try:
             if not self.load_models([model_name], folder):
@@ -130,14 +130,6 @@ class SessionManagerMixin:
                 for var_name, value in input_params.items():
                     if var_name in base_model.variables:
                         base_model.set_variable_value(var_name, value)
-
-            # GUI Working State Layer (ADR 0074): variables with a GUI regimen
-            # skip YAML schedule in _apply_schedules so GUI value takes priority.
-            if regimens:
-                for reg in regimens:
-                    var = reg.get('variable', '')
-                    if var in base_model.variables:
-                        base_model.manual_overrides[var] = 'gui'
 
             # Session ID and per-run seed list
             import uuid

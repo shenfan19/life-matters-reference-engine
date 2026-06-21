@@ -1,5 +1,5 @@
 # src/models/loader.py
-from .base import ModelMetadata, Variable, Formula, VariableType, InputSchedule, SchedulePoint, Accumulator, WINDOW_SECONDS, TIME_UNIT_SECONDS
+from .base import ModelMetadata, Variable, Formula, VariableType, Accumulator, WINDOW_SECONDS, TIME_UNIT_SECONDS
 from .utils import merge_dicts
 from typing import Dict, Set, Any, List
 from asteval import Interpreter
@@ -363,20 +363,6 @@ class Loader:
             if self.plans:
                 first_plan_id = plans_raw[0].get('id') or 'plan_0'
                 self.schedule_entries = self.plans[first_plan_id]
-
-        # 应用每日输入 (daily_inputs) — 转换为 schedules，day 从 1 开始
-        daily_inputs_raw = data.get('daily_inputs', {})
-        for var_name, di_data in daily_inputs_raw.items():
-            points = []
-            for pt in di_data.get('values', []):
-                time_sec = (float(pt['day']) - 1.0) * 86400.0
-                points.append(SchedulePoint(time=time_sec, value=float(pt['value'])))
-            if points:
-                self.schedules[var_name] = InputSchedule(
-                    variable=var_name,
-                    points=sorted(points, key=lambda p: p.time),
-                    interpolation=di_data.get('interpolation', 'step')
-                )
 
         # 应用累积器 (accumulators)
         accumulators_raw = data.get('accumulators', {})

@@ -37,11 +37,6 @@ def _run_sim(model, regimen_events_by_var: Dict[str, List[Dict]],
     """
     model.reset_simulation()
 
-    if not hasattr(model, 'manual_overrides'):
-        model.manual_overrides = {}
-    for var_name in regimen_events_by_var:
-        model.manual_overrides[var_name] = True
-
     # Convert dict format → list format expected by apply_regimens
     regimens_list = [
         {'variable': var_name, 'events': evts}

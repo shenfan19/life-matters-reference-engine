@@ -135,7 +135,7 @@ def clone_model(base):
     metadata and formulas are shared by reference.
     """
     from .model_structure import ModelStructure
-    from .model_structure.base import Variable, InputSchedule, Accumulator
+    from .model_structure.base import Variable, Accumulator
 
     fresh = ModelStructure(
         models_directory=base.models_directory,
@@ -163,16 +163,6 @@ def clone_model(base):
         for name, var in base.variables.items()
     }
 
-    # Schedule points are read-only during simulation — safe to share
-    fresh.schedules = {
-        name: InputSchedule(
-            variable=sched.variable,
-            points=sched.points,
-            interpolation=sched.interpolation,
-        )
-        for name, sched in base.schedules.items()
-    }
-
     # Accumulators have mutable runtime state — must be independent and reset
     fresh.accumulators = {
         name: Accumulator(
@@ -188,9 +178,8 @@ def clone_model(base):
         for name, acc in base.accumulators.items()
     }
 
-    # Reset runtime state; inherit manual_overrides from base (GUI Working State)
+    # Reset runtime state
     fresh.variable_history = {n: [v.value] for n, v in fresh.variables.items()}
-    fresh.manual_overrides = dict(getattr(base, 'manual_overrides', {}))
     fresh.current_step     = 0
     fresh.time             = 0.0
 

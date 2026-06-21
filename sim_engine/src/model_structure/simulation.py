@@ -63,48 +63,6 @@ def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
 
 class Simulation:
     # Simulation
-    def _apply_schedules(self, step_size_sec: float = 0.0):
-        """
-        应用计划表，根据当前仿真时间 self.time 更新变量值。
-        step_size_sec: 当前步长（秒），供 pulse 模式使用。
-        """
-        manual_overrides = getattr(self, 'manual_overrides', {})
-
-        for var_name, schedule in getattr(self, 'schedules', {}).items():
-            if var_name in manual_overrides:
-                continue
-
-            if not schedule.points:
-                continue
-
-            points = schedule.points
-
-            if schedule.interpolation == 'pulse':
-                # pulse 模式：累加本步窗口 [self.time, self.time+step_size_sec) 内所有事件值
-                target_value = 0.0
-                for pt in points:
-                    if self.time <= pt.time < self.time + step_size_sec:
-                        target_value += pt.value
-            else:
-                # step / linear 模式（保持向后兼容）
-                # 首点之前和末点之后均返回 0，不做 hold
-                if self.time < points[0].time or self.time >= points[-1].time:
-                    target_value = 0.0
-                else:
-                    target_value = 0.0
-                    for i in range(len(points) - 1):
-                        p1 = points[i]
-                        p2 = points[i + 1]
-                        if p1.time <= self.time < p2.time:
-                            if schedule.interpolation == 'linear':
-                                t_ratio = (self.time - p1.time) / (p2.time - p1.time)
-                                target_value = p1.value + t_ratio * (p2.value - p1.value)
-                            else:
-                                target_value = p1.value
-                            break
-
-            self.set_variable_value(var_name, target_value)
-
     def _update_accumulators(self, step_size: float):
         """
         更新所有累积器：每步累积来源变量值，在窗口边界处输出结果并重置。
@@ -204,9 +162,6 @@ class Simulation:
         step_size_sec = step_size
         # 声明单位下的步长（作者直觉单位），如 1 day 模型 step=1，1 hour 模型 step=1
         declared_step = step_size_sec / unit_sec if unit_sec else step_size_sec
-
-        # 应用计划表（传入秒步长供 pulse 模式使用）
-        self._apply_schedules(step_size_sec)
 
         # 公式中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
         # step 是规范符号；step_size/dt 保留为向后兼容别名
