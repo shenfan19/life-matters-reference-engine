@@ -79,6 +79,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
   onAbout: () => void;
 }) {
   const subtitle = t(simMode === 'opt' ? 'menu.sub.simulator.opt' : 'menu.sub.simulator.sim');
+  const engineLabel = t('about.subtitle');
 
   return (
     <div style={{
@@ -101,7 +102,7 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
             {t('app.title')}
           </span>
           <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
-            · {subtitle}
+            · {engineLabel} · {subtitle}
           </span>
         </div>
       </div>
