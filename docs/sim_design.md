@@ -234,7 +234,7 @@ GUI Working State Layer 是 Sim 面板中 `inputEvents[]` 的集合——它是�
 ```
 
 ADR 0074 当时要解决的问题（旧版 `daily_inputs`/`_apply_schedules` 在每步末尾用 YAML 值覆盖 GUI 编辑）已经
-不存在：`daily_inputs` 整套机制已在 ADR 0115 删除，`simulation.plans[*].schedules` 是仅剩的输入声明位置
+不存在：`daily_inputs` 整套机制已在 ADR 0115 删除，`simulation.plans[*].regimens` 是仅剩的输入声明位置
 （ADR 0109），而 GUI 的 `inputEvents` 本身就是该 plan 内容的可编辑实例，两者不再是会冲突的两条路径——
 GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`，不存在"谁覆盖谁"的优先级问题。
 
@@ -242,9 +242,9 @@ GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`�
 
 | 事件 | inputEvents（GUI 层）的变化 |
 |------|--------------------------|
-| 加载新模型 | 从 `simulation.plans[*].schedules` 解析（`self.plans[plan_id]`），按 plan 填充 inputEvents |
-| 加载含 `optimizer.results.reference.regimen` 的模型 | 询问用户是否预填推荐解，选"是"则覆盖对应 inputEvents |
-| Opt 完成，用户点击"以此解运行仿真" | 按 `optimizer.startpoint.schedules` 决策变量映射将解的 `x` 写入 inputEvents |
+| 加载新模型 | 从 `simulation.plans[*].regimens` 解析（`self.plans[plan_id]`），按 plan 填充 inputEvents |
+| 加载含 `optimizer.results.recommended.x` 的模型 | 询问用户是否预填推荐解，选"是"则覆盖对应 inputEvents |
+| Opt 完成，用户点击"以此解运行仿真" | 按 `optimizer.startpoint.regimens` 决策变量映射将解的 `x` 写入 inputEvents |
 | 用户手动编辑 | 直接修改 inputEvents |
 
 ### F-MPLAN 扩展
@@ -262,7 +262,7 @@ GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`�
 Opt 产出 N 组输入组合（Pareto 前沿）；Sim 是下游，必须能接住 N 组。软件层负责重组，Opt 结果保持原始格式（`{x, f}` 向量）。
 
 ```
-YAML: optimizer.schedules       pareto_front[i].x
+YAML: optimizer.startpoint.regimens   pareto_front[i].x
 （含 optimize: 的决策变量）              ↓
            ↓           xToInputEvents(x, optimizerSchedules, baseInputEvents)
                                         ↓
@@ -275,13 +275,13 @@ YAML: optimizer.schedules       pareto_front[i].x
 
 **输入**：
 - `x: number[]` — 某个 Pareto 解的决策变量值
-- `optimizerSchedules: object[]` — 当前 YAML 中 `optimizer.schedules` 中含 `optimize:` 块的条目列表
+- `optimizerRegimens: object[]` — 当前 YAML 中 `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目列表
 - `baseInputEvents: InputEvent[]` — 当前 Sim 的基础 inputEvents（提供 `days`、`valid_range_enabled` 等非优化字段）
 
 **映射规则**（与 Python 后端构建 x 向量的顺序完全一致）：
 
 ```
-对 optimizer.schedules 中有 optimize: 块的条目（按列表顺序）:
+对 optimizer.startpoint.regimens 中有 optimize: 块的条目（按列表顺序）:
   按启用的 Tier 依次贡献维度：T1(value) + T2(time_slot) + T3(days_combo) + T4(date_offsets)
   x[idx++] → 匹配 variable=varName AND time=event.time 的 baseInputEvent，更新对应字段
 ```
@@ -292,7 +292,7 @@ YAML: optimizer.schedules       pareto_front[i].x
 
 | 场景 | 调用方式 |
 |------|---------|
-| 加载模型，预填推荐解 | `xToInputEvents(reference.x, yaml.optimizer.schedules, current)` |
+| 加载模型，预填推荐解 | `xToInputEvents(recommended.x, yaml.optimizer.startpoint.regimens, current)` |
 | "以此解运行仿真" | 同上，结果设为当前 Sim Plan 的 inputEvents |
 | Run Compared（N 个 Pareto 解） | 对每个勾选的解调用，得到 N 个 Plan |
 

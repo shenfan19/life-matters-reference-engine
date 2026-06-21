@@ -69,20 +69,20 @@ function getCombinations<T>(arr: T[], n: number): T[][] {
 }
 
 // Converts a Pareto solution x-vector back to inputEvents.
-// Handles new schedules-format (T1–T4) and legacy inputs/regimen formats.
+// Handles new regimens-format (T1–T4) and legacy inputs/regimen formats.
 // x vector layout per entry: [value?, time_slot_idx?, pattern_idx?, day_offset?]
 export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: InputEvent[]): InputEvent[] {
   const result = baseEvents.map(ev => ({ ...ev }));
   const DAY_MAP: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
-  // New schedules format: optimizer.startpoint.schedules entries with optimize: sub-block
-  const scheduleOptEntries = Array.isArray(optimizerConfig?.startpoint?.schedules)
-    ? (optimizerConfig.startpoint.schedules as any[]).filter((e: any) => e.optimize)
+  // New regimens format: optimizer.startpoint.regimens entries with optimize: sub-block
+  const regimenOptEntries = Array.isArray(optimizerConfig?.startpoint?.regimens)
+    ? (optimizerConfig.startpoint.regimens as any[]).filter((e: any) => e.optimize)
     : [];
 
-  if (scheduleOptEntries.length > 0) {
+  if (regimenOptEntries.length > 0) {
     let xi = 0;
-    for (const inp of scheduleOptEntries) {
+    for (const inp of regimenOptEntries) {
       const opt = inp.optimize ?? {};
       const matchTime = inp.time_start;
       let idx = result.findIndex(ev =>

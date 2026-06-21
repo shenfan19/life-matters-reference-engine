@@ -1,7 +1,7 @@
 """Simulation execution + objective/constraint evaluation for the optimizer.
 
 _run_sim() drives one full simulation given a decoded {variable: events} map
-(built by optimizer_engine.run_optimizer()'s _build_schedule_events closure);
+(built by optimizer_engine.run_optimizer()'s _build_regimen_events closure);
 _eval_F()/_eval_G() reduce the resulting per-variable history into the
 objective vector and constraint-violation vector the NSGA-II/scipy backends
 in optimizer_backends.py expect.

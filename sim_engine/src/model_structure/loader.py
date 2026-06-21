@@ -343,8 +343,8 @@ class Loader:
             time_unit_raw = 'minute'
         self.time_unit = time_unit_raw
 
-        # 应用计划表 (Schedules)
-        # 唯一支持格式：simulation.plans[*].schedules（ADR 0076），每个 plan 是
+        # 应用计划表 (Regimens)
+        # 唯一支持格式：simulation.plans[*].regimens（ADR 0076，字段名见 ADR 0117），每个 plan 是
         # [{variable, time_start:"HH:MM", time_end:"HH:MM"(可选), value, days:[...],
         #   date_range:["YYYY-MM-DD", "YYYY-MM-DD"](可选)}]
         # 不再支持旧版 simulation.schedules（扁平 list/dict）。
@@ -358,7 +358,7 @@ class Loader:
             for i, plan in enumerate(plans_raw):
                 plan_id = plan.get('id') or f'plan_{i}'
                 self.plans[plan_id] = self._parse_schedule_entries(
-                    plan.get('schedules', []), simulator_data
+                    plan.get('regimens', []), simulator_data
                 )
             if self.plans:
                 first_plan_id = plans_raw[0].get('id') or 'plan_0'
@@ -412,7 +412,7 @@ class Loader:
         self._initialize_asteval()
 
     def _parse_schedule_entries(self, entries: list, simulator_data: Dict[str, Any]) -> list:
-        """将单个 plan 的 schedules 列表解析为 apply_schedules 兼容的 schedule list。
+        """将单个 plan 的 regimens 列表解析为 apply_schedules 兼容的 schedule list。
 
         每个条目生成一个 schedule dict，格式与 optimizer path 一致：
           {'variable': str, 'events': [{'time_start', 'time_end', 'value',

@@ -2,7 +2,7 @@
 
 Both take a model-agnostic `evaluate(x) -> (F, G)` callback built by
 optimizer_engine.run_optimizer() — these backends only know about the
-search/optimization loop, not regimens, simulation, or YAML parsing.
+search/optimization loop, not schedules, simulation, or YAML parsing.
 """
 
 import logging

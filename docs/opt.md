@@ -15,7 +15,7 @@
 | --- | ------------------------------------------------ |
 | R1  | 优化目标、决策变量、约束完全由 YAML `optimizer:` 块驱动，不硬编码任何目标函数 |
 | R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead）     |
-| R3  | 决策变量与固定背景输入统一在 `optimizer.schedules` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
+| R3  | 决策变量与固定背景输入统一在 `optimizer.startpoint.regimens` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
 | R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程                |
 | R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
 | R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
@@ -29,7 +29,7 @@
 | R14 | `optimizer` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
 | R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
 | R16 | Sim 和 Opt 的输入列表完全分离：`InputEvent[]`（sim）不含任何优化字段；`OptInput[]`（opt 决策变量）独立管理（ADR 0084） |
-| R17 | `optimizer.schedules` 作为 opt 评估的固定背景输入；缺省时继承 `simulation.schedules` |
+| R17 | `optimizer.startpoint.regimens` 作为 opt 评估的固定背景输入；缺省时继承 `simulation.plans[*].regimens` |
 | R18 | GUI 提供"← 从 Sim 导入"按钮：将当前 sim inputEvents 转换为 opt 决策变量并自动填充 bounds |
 
 ### 1.2 依赖
@@ -64,7 +64,7 @@ from pymoo.termination import get_termination
 | 端点 | `POST /api/optimizer/run_yaml` |
 | 核心模块 | `sim_engine/src/yaml_optimizer.py` |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
-| 优化对象 | YAML `optimizer.schedules` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
+| 优化对象 | YAML `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
 | 目标函数来源 | YAML `optimizer.objectives` |
 | 进度回调 | pymoo `Callback` 每代调用一次 |
 | 进度展示 | 前端 1.5s 轮询 `/api/optimizer/status/{job_id}` |
@@ -78,7 +78,7 @@ Body: {
   model_name: str,
   folder: null,
   optimizer_override: null | {
-    schedules?: [...],
+    startpoint?: { regimens: [...] },
     objectives?: [...],
     constraints?: [...],
     algorithm?: {...},
@@ -134,7 +134,7 @@ DELETE /api/optimizer/job/{job_id}
 }
 ```
 
-> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimizer.results.reference`（含 `x`、`f`、`regimen`、`objectives`），由 GUI "保存结果到模型"写回。
+> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimizer.results.recommended`（只含 `x`、`f`；不再存解码后的人类可读字典，解码现场用 `xToInputEvents` 完成），由 GUI "保存结果到模型"写回。
 
 ### 2.4 前端状态机
 
@@ -165,7 +165,7 @@ UI:
 
 ### 2.5 T2/T3/T4 调度粒度优化（ADR 0080/0088/0100）
 
-x 向量按 `optimizer.schedules` 列表顺序展开，每个条目按
+x 向量按 `optimizer.startpoint.regimens` 列表顺序展开，每个条目按
 `[value?, time_start?, time_end?, days?, date_start?, date_end?]` 顺序贡献维度：
 
 | Tier | YAML 字段 | x 维度 | 类型（连续松弛） |
@@ -348,7 +348,7 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 - `_expand_time_window(window, opt_step)` → slot 列表
 - `run_optimizer` inputs 解析段：逐条目按 T1/T2/T3/T4 追加 `var_specs` 条目和 bounds
-- `_build_schedule_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
+- `_build_regimen_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
 - `schedule_runner.apply_schedules` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
 
 **前端（`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`）**

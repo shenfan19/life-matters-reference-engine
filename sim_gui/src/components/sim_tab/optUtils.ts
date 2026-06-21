@@ -1,6 +1,6 @@
-// optUtils.ts — Optimizer schedule building utilities (T1–T4)
+// optUtils.ts — Optimizer regimen building utilities (T1–T4)
 //
-// Pure functions that convert InputEvent arrays into the optimizer.schedules
+// Pure functions that convert InputEvent arrays into the optimizer.regimens
 // format consumed by the backend, and back. No React state; safe to
 // unit-test in isolation (see optUtils.test.ts).
 
@@ -19,12 +19,12 @@ export function parseDaysMask(days?: string[]): boolean[] {
 }
 
 /**
- * Build editable InputEvents from a YAML optimizer.startpoint.schedules list.
- * Inverse of buildOptSchedules — round-tripping an unedited model through
- * both functions should reproduce the original schedules (see optUtils.test.ts).
+ * Build editable InputEvents from a YAML optimizer.startpoint.regimens list.
+ * Inverse of buildOptRegimens — round-tripping an unedited model through
+ * both functions should reproduce the original regimens (see optUtils.test.ts).
  */
-export function buildOptInputEventsFromYAML(schedules: any[]): InputEvent[] {
-  return schedules.map((s: any, i: number) => {
+export function buildOptInputEventsFromYAML(regimens: any[]): InputEvent[] {
+  return regimens.map((s: any, i: number) => {
     const { timeStart, timeEnd } = normalizeTimeInterval(s);
     const daysList: string[] = Array.isArray(s.days) ? s.days : [];
     const hasDays = daysList.length > 0 && daysList.length < 7;
@@ -33,7 +33,7 @@ export function buildOptInputEventsFromYAML(schedules: any[]): InputEvent[] {
       validStart = String(s.date_range[0]); validEnd = String(s.date_range[1]);
     }
     // T4's own search range (optimize.date_range) also counts as "has a date
-    // range" — without this, validRangeEnabled stays false and buildOptSchedules
+    // range" — without this, validRangeEnabled stays false and buildOptRegimens
     // silently drops the optimize.date_range block on the way back out.
     const hasT4Range = Array.isArray(s.optimize?.date_range) && s.optimize.date_range.length === 2;
     const ev: InputEvent = {
@@ -71,7 +71,7 @@ export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boo
 }
 
 /**
- * Build the optimizer.startpoint.schedules list from the current inputEvents.
+ * Build the optimizer.startpoint.regimens list from the current inputEvents.
  *
  * Events with any active optimization tier get an `optimize:` sub-block;
  * events without are included as fixed background inputs.
@@ -85,7 +85,7 @@ export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boo
  *   T3 — optimize.days_pool:  candidate day set + days_n count range
  *   T4 — optimize.date_range: [[start_lo, start_hi], [end_lo, end_hi]]
  */
-export function buildOptSchedules(
+export function buildOptRegimens(
   inputEvents: InputEvent[],
   activeInputVarNames: Set<string>,
 ): Record<string, any>[] {

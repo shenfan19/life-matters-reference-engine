@@ -3,7 +3,7 @@
 按 ADR 0072 的约束，测试直接 import 引擎层 Python 函数，不经 CLI argparse 层、不起 HTTP
 server。验证：
 
-1. 给定同一份已解析的 plan/regimen 数据，CLI 路径（`run_simulation`，逐步写 CSV）和 GUI 路径
+1. 给定同一份已解析的 plan/schedule 数据，CLI 路径（`run_simulation`，逐步写 CSV）和 GUI 路径
    （`start_session` + `batch_steps`，逐步内存返回）跑出来的轨迹完全一致。
 2. 含分布参数（`parameter: normal(...)` 等）的模型，GUI 在 `sim_runs=1`（未显式要求 MC）时
    必须是确定性结果（取均值），与 CLI 一致 —— 这条用例在 session_manager.py 的 MC 采样修复
@@ -59,7 +59,7 @@ def _cli_rows(model_name: str, plan_id: str, hours: float, csv_path: Path):
 
 def _gui_rows(model_name: str, plan_id: str, hours: float, sim_runs: int = 1):
     """Replicates exactly what routes/simulation.py (start_session + batch_steps) does,
-    using the same backend-parsed regimen list the CLI uses (current_model.plans[plan_id])."""
+    using the same backend-parsed schedule list the CLI uses (current_model.plans[plan_id])."""
     loader_engine = _make_engine()
     assert loader_engine.load_models([model_name]), f'failed to load {model_name}'
     regimens = loader_engine.current_model.plans.get(plan_id, [])
