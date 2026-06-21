@@ -1,3 +1,5 @@
+<img src="sim_gui/public/favicon.svg" width="48" height="48" alt="Life Matters icon" />
+
 # Life Matters · 仿真引擎
 
 > 跨尺度多模型动力学仿真框架，对个体行为（Regimen）进行多目标优化决策。
