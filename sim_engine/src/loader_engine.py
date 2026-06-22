@@ -25,14 +25,12 @@ class LoaderEngine:
     模型加载引擎，负责处理模型文件的查找、加载、合并、拆分等核心操作。
     它管理模型缓存，并处理模型间的导入关系。
     """
-    def __init__(self, models_directory: str = "models", language: str = "en"):
+    def __init__(self, models_directory: str = "models"):
         """
         初始化 LoaderEngine 实例。
         :param models_directory: 存放模型文件的根目录。
-        :param language: 语言设置，尽管此模块主要处理文件操作，但保留此参数以备将来扩展。
         """
         self.models_directory = models_directory
-        self.language = language
         # 模型缓存，用于存储已加载的模型，避免重复加载。
         self.models_cache: Dict[tuple, ModelStructure] = {}
     
@@ -205,7 +203,7 @@ class LoaderEngine:
             return self.models_cache[cache_key]
 
         try:
-            model = ModelStructure(self.models_directory, self.language)
+            model = ModelStructure(self.models_directory)
             # 加载主模型（会自动处理 imports）。
             model.load_model(file_path, model_name)
 
@@ -245,7 +243,7 @@ class LoaderEngine:
                     "formulas": 0
                 }
             
-            merged_model = ModelStructure(self.models_directory, self.language)
+            merged_model = ModelStructure(self.models_directory)
             merged_model.visited.clear()  # 清空访问记录
             output_model_name = merged_name
             first_item_processed = False
@@ -380,7 +378,7 @@ class LoaderEngine:
         :return: 包含拆分结果的字典。
         """
         try:
-            model = ModelStructure(models_directory=self.models_directory, language=self.language)
+            model = ModelStructure(models_directory=self.models_directory)
             
             if folder:
                 # 处理 --folder：加载文件夹所有文件，以同名文件为根

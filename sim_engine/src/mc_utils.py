@@ -6,7 +6,7 @@
 #   - Sampling / mean-value evaluation
 #   - Collecting parameter distributions from a loaded model
 #   - Cloning a ModelStructure for independent MC runs (avoids deepcopy of
-#     BabelLanguageManager which contains file handles)
+#     the asteval Interpreter, which cannot be pickled)
 
 import re
 import logging
@@ -130,17 +130,14 @@ def apply_parameter_sampling(model, param_distributions: dict, rng=None) -> None
 def clone_model(base):
     """Create an independent copy of a ModelStructure for one MC run.
 
-    Does not use deepcopy because BabelLanguageManager contains file handles
+    Does not use deepcopy because ModelStructure holds an asteval Interpreter
     that cannot be pickled. Only mutable runtime state is duplicated; read-only
     metadata and formulas are shared by reference.
     """
     from .model_structure import ModelStructure
     from .model_structure.base import Variable, Accumulator
 
-    fresh = ModelStructure(
-        models_directory=base.models_directory,
-        language='en',
-    )
+    fresh = ModelStructure(models_directory=base.models_directory)
 
     # Read-only metadata — shared references are safe
     fresh.metadata         = base.metadata

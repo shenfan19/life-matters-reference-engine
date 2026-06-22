@@ -108,7 +108,7 @@ async def export_model_with_results(request: ExportModelRequest):
         if request.flatten_imports:
             try:
                 from src.model_structure import ModelStructure
-                ms = ModelStructure(str(models_root), 'zh')
+                ms = ModelStructure(str(models_root))
                 data = ms._load_model_data(str(target), request.model_key)
                 data.pop('_sources', None)
                 data['imports'] = []
