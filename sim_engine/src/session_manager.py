@@ -7,7 +7,6 @@
 
 import csv
 import logging
-import math
 import os
 from time import time as _time
 from typing import Any, Dict, List, Optional
@@ -17,6 +16,7 @@ import numpy as np
 from .schedule_runner import advance_steps, precompute_sustained_divisors
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model, derive_seed_list
 from .validation import validate_simulator_dates, validate_schedule_list
+from . import run_logging
 
 logger = logging.getLogger(__name__)
 
@@ -25,66 +25,24 @@ def _make_log(msg: str) -> Dict[str, Any]:
     return {'t': _time(), 'msg': msg}
 
 
-def _fmt_step(step_sec: float) -> str:
-    """Convert step size in seconds to a human-readable string."""
-    if step_sec >= 86400 and step_sec % 86400 == 0:
-        n = int(step_sec / 86400)
-        return f"{n} day{'s' if n != 1 else ''}"
-    if step_sec >= 3600 and step_sec % 3600 == 0:
-        n = int(step_sec / 3600)
-        return f"{n} hour{'s' if n != 1 else ''}"
-    return f"{int(step_sec / 60)} min"
-
-
 def _check_value_warnings(session: Dict[str, Any], model, outputs: List[Dict],
                            output_variables: List[str]) -> None:
-    """Append NaN/Inf and out-of-bounds warnings (once per variable) to session['logs'].
-
-    Shared by batch_steps()'s single-run and Monte Carlo paths, which otherwise
-    each kept their own copy of this check against the same `model`/`outputs` shape.
-    """
-    warned = session['warned_vars']
-    for out_row in outputs:
-        for var_name in output_variables:
-            if var_name in warned:
-                continue
-            val = out_row.get(var_name)
-            if val is None:
-                continue
-            var_obj = model.variables.get(var_name)
-            if var_obj is None:
-                continue
-            if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
-                session['logs'].append(_make_log(
-                    f"⚠ NaN/Inf in '{var_name}' at step {out_row['step']}"
-                ))
-                warned.add(var_name)
-            elif var_obj.bounds and len(var_obj.bounds) == 2:
-                lo, hi = var_obj.bounds
-                if val < lo or val > hi:
-                    session['logs'].append(_make_log(
-                        f"⚠ Bounds: '{var_name}'={val:.4g} ∉ [{lo}, {hi}] at step {out_row['step']}"
-                    ))
-                    warned.add(var_name)
+    """Append NaN/Inf and out-of-bounds warnings to session['logs'] (GUI sink for run_logging)."""
+    run_logging.check_value_warnings(
+        model, outputs, output_variables, session['warned_vars'],
+        log_cb=lambda msg: session['logs'].append(_make_log(msg)),
+    )
 
 
 def _log_completion(session: Dict[str, Any], model, current_step: int,
                      output_variables: List[str], run_suffix: str = '') -> None:
-    """Append the 'Done in Xs — N steps[ × M runs]' + schedule-hits log lines.
-
-    Shared by batch_steps()'s single-run and Monte Carlo paths.
-    """
+    """Append the 'Done in Xs — N steps[ × M runs]' + schedule-hits log lines (GUI sink)."""
     elapsed = _time() - session.get('start_time', _time())
-    session['logs'].append(_make_log(f"Done in {elapsed:.1f}s — {current_step} steps{run_suffix}"))
-    input_var_names = [
-        v for v in output_variables
-        if model.variables.get(v) and model.variables[v].type.value == 'input'
-    ]
-    if input_var_names:
-        hits = {v: sum(1 for d in session['data'] if d.get(v, 0) != 0) for v in input_var_names}
-        hit_parts = [f"{v}={n}" for v, n in hits.items() if n > 0]
-        if hit_parts:
-            session['logs'].append(_make_log(f"Schedule hits: {', '.join(hit_parts)}"))
+    hits = run_logging.input_variable_hits(model, output_variables, session['data'])
+    run_logging.log_completion(
+        elapsed, current_step, hits, run_suffix=run_suffix,
+        log_cb=lambda msg: session['logs'].append(_make_log(msg)),
+    )
 
 
 class SessionManagerMixin:
@@ -176,32 +134,15 @@ class SessionManagerMixin:
                     'completed': False,
                 })
 
-            # ── build initial log ──────────────────────────────────────────────
+            # ── build initial log (shared content, GUI sink — run_logging.py) ──
             initial_logs: List[Dict] = []
-            n_vars = len(base_model.variables)
-            n_formulas = len(base_model.formulas) if hasattr(base_model, 'formulas') else 0
-            initial_logs.append(_make_log(
-                f"Model: {model_name} ({n_vars} vars, {n_formulas} formulas)"
-            ))
-            prov_imports = (base_model.provenance or {}).get('imports', [])
-            if prov_imports:
-                initial_logs.append(_make_log(f"Imports: {', '.join(prov_imports)}"))
             start_date = str(base_model.simulator.get('start_date', ''))
-            step_label = _fmt_step(step_size)
-            initial_logs.append(_make_log(
-                f"Sim: start={start_date}, step={step_label}, {total_steps} steps"
-            ))
-            out_labels = output_variables[:8]
-            suffix = f" (+{len(output_variables) - 8} more)" if len(output_variables) > 8 else ""
-            initial_logs.append(_make_log(f"Outputs ({len(output_variables)}): {', '.join(out_labels)}{suffix}"))
-            if output_warnings:
-                for w in output_warnings:
-                    initial_logs.append(_make_log(f"⚠ {w}"))
-            regimen_vars = [r.get('variable', '') for r in (regimens or []) if r.get('variable')]
-            if regimen_vars:
-                initial_logs.append(_make_log(f"Regimens: {', '.join(regimen_vars)}"))
-            if n_runs > 1:
-                initial_logs.append(_make_log(f"MC: {n_runs} runs, seed {session_seed}"))
+            schedule_vars = [r.get('variable', '') for r in (regimens or []) if r.get('variable')]
+            run_logging.build_initial_logs(
+                base_model, model_name, total_steps, step_size,
+                output_variables, output_warnings, schedule_vars, n_runs, session_seed,
+                log_cb=lambda msg: initial_logs.append(_make_log(msg)),
+            )
             # ──────────────────────────────────────────────────────────────────
 
             # ADR 0099: precompute sustained-mode value/_n_steps divisors once
