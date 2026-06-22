@@ -55,8 +55,8 @@ class Loader:
                 data = yaml.safe_load(f) or {}
             
             if not isinstance(data, dict):
-                logger.error(self.lang_manager.get_translation("invalid_yaml_format", file_path=file_path))
-                raise ValueError(self.lang_manager.get_translation("invalid_yaml_file", file_path=file_path))
+                logger.error(f"Invalid YAML format: {file_path}")
+                raise ValueError(f"Invalid YAML file: {file_path}")
             
             # 处理 imports
             merged_data = {}
@@ -485,10 +485,10 @@ class Loader:
             self._apply_model_data(data, module_name, clear_existing=False)
             
             if log_as_loaded:
-                log_message = self.lang_manager.get_translation("load_model_from", file_path=file_path)
+                log_message = f"Load model from: {file_path}"
             else:
-                log_message = self.lang_manager.get_translation("append_model_from", file_path=file_path)
-            
+                log_message = f"Append model from: {file_path}"
+
             logger.info(log_message)
             
         except Exception as e:

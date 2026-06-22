@@ -26,14 +26,13 @@ class SimulatorEngine(SessionManagerMixin):
     """仿真引擎，负责运行和管理仿真流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
     VALID_OUTPUT_TYPES = {'input', 'parameter', 'state'}
     
-    def __init__(self, models_directory: str = "models", language: str = "en"):
+    def __init__(self, models_directory: str = "models"):
         """
         初始化仿真引擎。
         :param models_directory: 模型目录路径。
-        :param language: 语言设置（如 "en", "zhhans"）。
         """
-        # 初始化 LoaderEngine 以加载模型，指定模型目录和语言。
-        self.loader = LoaderEngine(models_directory, language)
+        # 初始化 LoaderEngine 以加载模型，指定模型目录。
+        self.loader = LoaderEngine(models_directory)
         # 初始化当前模型为 None。
         self.current_model: Optional[ModelStructure] = None
         # 初始化当前仿真步数。

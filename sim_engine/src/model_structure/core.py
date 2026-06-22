@@ -4,7 +4,6 @@ from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
 from .base import ModelMetadata, Variable, Formula, Accumulator, TIME_UNIT_SECONDS
-from ..babel_manager import BabelLanguageManager
 from typing import Dict, Any, Set
 from asteval import Interpreter
 import logging
@@ -15,7 +14,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 class ModelStructure(Loader, Validator, Simulation):
-    def __init__(self, models_directory: str = "models", language: str = "en"):
+    def __init__(self, models_directory: str = "models"):
         # 初始化元数据
         self.metadata = None
         # 初始化变量字典
@@ -50,7 +49,6 @@ class ModelStructure(Loader, Validator, Simulation):
         self.models_directory = models_directory
         # 当前文件名（无扩展名），由 loader.py 设置
         self.current_filename: str = None
-        self.lang_manager = BabelLanguageManager(default_language=language) # + 初始化 LanguageManager，用于国际化消息
     def _initialize_asteval(self):
         # 重建 Interpreter，让 asteval 自己注册所有内置函数，不破坏其内部状态
         self.asteval = Interpreter()
