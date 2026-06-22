@@ -161,11 +161,15 @@ Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected
 
 ## 日志设计
 
-日志文件仅记录：
-- CLI 进度消息（每代 `Gen N | eval | feasible | best_f`）
+日志文件记录：
+- CLI 自身的进度消息（每代 `Gen N | eval | feasible | best_f`、各 plan 完成的步数）
+- 仿真/优化运行信息——模型规模（变量/公式数）、imports、起止日期与步长、output 变量列表、
+  schedule/regimen 变量名、NaN/越界告警、完成耗时与 schedule 命中次数（sim）；目标/约束/决策变量/
+  算法配置（opt）。这部分内容由 `sim_engine/src/run_logging.py`（sim）和 `optimizer_engine.py` 的
+  `log_cb` 机制（opt）生成，与 GUI 运行时日志面板显示的内容是同一份代码产出，只是落地渠道不同
+  （CLI 写日志文件，GUI 存进内存会话） —— 见 ADR 0119。
 - 引擎级别 WARNING / ERROR
 
-引擎内部 INFO 消息（模型加载、语言初始化等）不写入日志，避免干扰分析。  
 日志与 CSV 使用相同时间戳命名，便于对应。
 
 ---
@@ -186,6 +190,27 @@ CLI 与 GUI 共用同一个引擎层（`sim_engine/src/`），结果格式一致
 （`apply_schedules` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
 不是两份各自实现后凑巧一致。这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证
 （见 ADR 0111/0112/0113）。
+
+### 按数据流拆分：哪些共用，哪些独立
+
+把整条流水线（输入 → 校验 → 执行 → 日志/报错 → 结果输出）拆开看，更精确的边界是：
+
+| 步骤 | GUI 独有 | CLI 独有 | 共用 |
+|---|---|---|---|
+| 入口/触发 | HTTP API，异步、session/job 轮询 | argparse，同步阻塞 | 都落到 `SimulatorEngine` 的方法上 |
+| 参数来源 | 请求体可运行时覆盖 regimens/MC runs，不回写 YAML | 严格只读 YAML | 解析后落到同一套 `ModelStructure` 字段 |
+| 模型加载/校验 | — | — | `LoaderEngine.fetch()`；`validation.py`（ADR 0118） |
+| MC 采样 | — | — | `mc_utils.py` |
+| Sim 执行核心 | 分批跑（`batch_steps`），支持暂停/恢复 | 一次跑到底 | `schedule_runner.advance_steps`（ADR 0113） |
+| Opt 执行核心 | 异步 Job，可取消 | 同步阻塞，`q`+Enter 提前停止 | `optimizer_engine.run_optimizer()` 整个函数 |
+| 进度/日志内容 | — | — | `run_logging.py`（sim）+ `log_cb`（opt），见 ADR 0119 |
+| 进度/日志落地 | 内存 `session['logs']`/`job['logs']`，前端面板展示 | 写入 `<stem>.log` 文件 | 内容来自同一份代码，只是出口不同 |
+| 报错 | `HTTPException` → 前端 `message.error()` | `logger.error()` + 退出码 1 | 同一个 `{"success": False, "error": str(e)}` |
+| 结果输出 | 手动导出 | 自动写入 `output/<模型名>/` | CSV 字段格式一致 |
+
+暂停/恢复控制是唯一一处"合理且预期独立"的部分——CLI 同步阻塞执行，GUI 异步轮询，两种执行模型
+本身不共享同一种暂停机制。其余差异都是"批处理工具 vs 交互式服务"该有的 IO/触发方式不同，逻辑内核
+（校验、执行核心、日志内容、报错格式）都已经统一。
 
 ---
 

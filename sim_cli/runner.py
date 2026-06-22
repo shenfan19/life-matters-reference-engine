@@ -115,7 +115,8 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[Li
             written.append(path.name)
         return str(path)
 
-    result = engine.run_simulation_all_plans(name, hours, output_path_fn=_path_for, n_runs=n_runs, seed=seed)
+    result = engine.run_simulation_all_plans(name, hours, output_path_fn=_path_for, n_runs=n_runs, seed=seed,
+                                              log_cb=logger.info)
     print()
 
     if result.get('success'):
@@ -189,6 +190,7 @@ def run_opt(model_path: Path, project_root: Path,
         engine, name,
         progress_callback=_callback,
         optimizer_override=override or None,
+        log_cb=logger.info,
     )
     print()   # newline after last \r progress line
 
