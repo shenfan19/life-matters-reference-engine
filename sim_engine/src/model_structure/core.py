@@ -3,7 +3,7 @@
 from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
-from .base import ModelMetadata, Variable, Formula, Accumulator, TIME_UNIT_SECONDS
+from .base import ModelMetadata, Variable, Formula, TIME_UNIT_SECONDS
 from typing import Dict, Any, Set
 from asteval import Interpreter
 import logging
@@ -40,8 +40,6 @@ class ModelStructure(Loader, Validator, Simulation):
         # self.schedule_entries: 当前激活 plan 的条目列表（run_simulation 前设置）
         self.plans: Dict[str, Any] = {}
         self.schedule_entries: list = []
-        # 初始化累积器
-        self.accumulators: Dict[str, Accumulator] = {}
         # 时间单位（来自 YAML simulator.time_unit，默认分钟）
         self.time_unit: str = 'minute'
         # 跟踪已访问模型，防止循环依赖
