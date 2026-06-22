@@ -37,13 +37,12 @@ def _model_name(model_path: Path, project_root: Path) -> str:
 
 
 def _time_hours(engine) -> float:
+    from sim_engine.src.validation import validate_simulator_dates
     sim = engine.current_model.simulator
     start, end = str(sim.get('start_date', '')), str(sim.get('end_date', ''))
     if start and end:
-        try:
-            return max(1.0, (date.fromisoformat(end) - date.fromisoformat(start)).days * 24.0)
-        except ValueError:
-            pass
+        validate_simulator_dates(start, end)
+        return max(1.0, (date.fromisoformat(end) - date.fromisoformat(start)).days * 24.0)
     return float(sim.get('total_time', 24))
 
 
@@ -92,7 +91,11 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[Li
     seed = mc_cfg.get('seed')
     seed = int(seed) if seed is not None else None
 
-    hours = _time_hours(engine)
+    try:
+        hours = _time_hours(engine)
+    except ValueError as e:
+        logger.error(f'Simulation failed: {e}')
+        return None
     plan_ids = list(engine.current_model.plans.keys()) or ['default']
     single_unnamed_plan = plan_ids == ['default']
 

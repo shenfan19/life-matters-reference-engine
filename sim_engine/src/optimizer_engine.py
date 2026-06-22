@@ -23,6 +23,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from .optimizer_parsing import _expand_time_window, _hhmm_to_min, _shift_time
 from .optimizer_eval import _run_sim, _eval_F, _eval_G
 from .optimizer_backends import _run_nsga2, _run_scipy
+from .validation import validate_simulator_dates, validate_optimizer_regimens
 
 
 # ── main entry ─────────────────────────────────────────────────────────────────
@@ -88,6 +89,11 @@ def run_optimizer(simulator_engine, model_name: str,
     fixed_entries = [e for e in regimens_def if 'optimize' not in e]
     if not opt_entries:
         return {"success": False, "error": "No entries with optimize: sub-block in optimizer.startpoint.regimens"}
+
+    try:
+        validate_optimizer_regimens(regimens_def)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
 
     var_specs: List[Dict] = []
     lo_list: List[float] = []
@@ -269,10 +275,15 @@ def run_optimizer(simulator_engine, model_name: str,
     else:
         step_size = float(base_model.simulator.get('step_size', 86400.0))
     sim_start_date: str = str(opt_block.get('start_date') or sim_data.get('start_date', ''))
+    end_date_raw: str = str(opt_block.get('end_date') or sim_data.get('end_date', ''))
+    try:
+        validate_simulator_dates(sim_start_date or None, end_date_raw or None, context='optimizer')
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     try:
         from datetime import date as _date
         sd = sim_start_date
-        ed = str(opt_block.get('end_date') or sim_data.get('end_date', ''))
+        ed = end_date_raw
         if not sd or not ed:
             raise ValueError("no start/end date")
         sy, sm, sdd_ = [int(x) for x in sd.split('-')]
