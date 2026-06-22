@@ -135,7 +135,7 @@ def clone_model(base):
     metadata and formulas are shared by reference.
     """
     from .model_structure import ModelStructure
-    from .model_structure.base import Variable, Accumulator
+    from .model_structure.base import Variable
 
     fresh = ModelStructure(models_directory=base.models_directory)
 
@@ -158,21 +158,6 @@ def clone_model(base):
             bounds=list(var.bounds) if var.bounds else None,
         )
         for name, var in base.variables.items()
-    }
-
-    # Accumulators have mutable runtime state — must be independent and reset
-    fresh.accumulators = {
-        name: Accumulator(
-            variable=acc.variable,
-            source=acc.source,
-            window=acc.window,
-            operation=acc.operation,
-            unit=acc.unit,
-            description=acc.description,
-            running_sum=0.0,
-            window_start_time=0.0,
-        )
-        for name, acc in base.accumulators.items()
     }
 
     # Reset runtime state

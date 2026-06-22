@@ -1,5 +1,5 @@
 # src/models/loader.py
-from .base import ModelMetadata, Variable, Formula, VariableType, Accumulator, WINDOW_SECONDS, TIME_UNIT_SECONDS
+from .base import ModelMetadata, Variable, Formula, VariableType, TIME_UNIT_SECONDS
 from .utils import merge_dicts
 from typing import Dict, Set, Any, List
 from asteval import Interpreter
@@ -189,7 +189,6 @@ class Loader:
             self.variable_history.clear()
             self.simulator.clear()
             self.optimizer.clear()
-            self.accumulators.clear()
             self.provenance = {}
             self.current_step = 0
             self.time = 0.0
@@ -234,9 +233,14 @@ class Loader:
             )
             self.variable_history[var_name] = [self.variables[var_name].value]
 
-        # 应用 evidence：Loader 在加载阶段自动换算为 `_effective` 参数变量，
+        # 应用 evidence：Loader 在加载阶段自动把原始文献效应量换算为可进公式的系数，
+        # 换算后的变量与 evidence 同名（不加后缀），dynamics/formulas 直接引用该名字即可。
         # 换算逻辑见 docs/model.md「evidence 的 8 种子类型」。
         for ev_name, ev_data in data.get('evidence', {}).items():
+            if ev_name in self.variables:
+                raise ValueError(
+                    f"evidence 名称 '{ev_name}' 与 variables 中已声明的变量重名，请改名以避免冲突"
+                )
             ev_type = ev_data.get('type')
             value = float(ev_data.get('value', 0.0))
             if ev_type in ('rr', 'ir', 'ard', 'beta', 'pk'):
@@ -252,11 +256,10 @@ class Loader:
                 baseline_val = float(data.get('evidence', {}).get(baseline_ref, {}).get('value', 0.0))
                 effective = baseline_val * value
             else:
-                logger.warning(f"未知 evidence 类型 '{ev_type}'（变量 {ev_name}），跳过 _effective 换算")
+                logger.warning(f"未知 evidence 类型 '{ev_type}'（变量 {ev_name}），跳过换算")
                 continue
 
-            eff_name = f"{ev_name}_effective"
-            self.variables[eff_name] = Variable(
+            self.variables[ev_name] = Variable(
                 description=ev_data.get('description', ''),
                 value=effective,
                 type=VariableType.parameter,
@@ -265,7 +268,7 @@ class Loader:
                 evidence_type=ev_type,
                 evidence_raw_value=value
             )
-            self.variable_history[eff_name] = [effective]
+            self.variable_history[ev_name] = [effective]
 
         # 应用公式
         for form_name, form_data in data.get('formulas', {}).items():
@@ -363,39 +366,6 @@ class Loader:
             if self.plans:
                 first_plan_id = plans_raw[0].get('id') or 'plan_0'
                 self.schedule_entries = self.plans[first_plan_id]
-
-        # 应用累积器 (accumulators)
-        accumulators_raw = data.get('accumulators', {})
-        for acc_name, acc_data in accumulators_raw.items():
-            window_str = acc_data.get('window', 'day').lower()
-            if window_str not in WINDOW_SECONDS:
-                logger.warning(f"未知累积窗口 '{window_str}'，跳过累积器 '{acc_name}'")
-                continue
-            operation = acc_data.get('operation', 'sum').lower()
-            if operation not in ('sum', 'mean'):
-                logger.warning(f"未知累积操作 '{operation}'，跳过累积器 '{acc_name}'")
-                continue
-            self.accumulators[acc_name] = Accumulator(
-                variable=acc_name,
-                source=acc_data['source'],
-                window=window_str,
-                operation=operation,
-                unit=acc_data.get('unit'),
-                description=acc_data.get('description', ''),
-                running_sum=0.0,
-                window_start_time=0.0
-            )
-            # 如果输出变量不存在，自动创建为 state 类型
-            if acc_name not in self.variables:
-                self.variables[acc_name] = Variable(
-                    description=acc_data.get('description',
-                        f"Accumulated {acc_data['source']} per {window_str}"),
-                    value=0.0,
-                    type=VariableType.state,
-                    unit=acc_data.get('unit'),
-                    bounds=None
-                )
-                self.variable_history[acc_name] = [0.0]
 
         # 更新元数据（如果是清空模式）
         if clear_existing:
