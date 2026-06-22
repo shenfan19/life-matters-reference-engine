@@ -142,6 +142,23 @@ python sim_cli/main.py <model.yaml> --opt-only --opt-continue
 
 ---
 
+## 输入校验
+
+CLI 与 GUI 在仿真/优化真正开始执行前，会校验模型里所有日期（`start_date`/`end_date`/
+`valid_start`/`valid_end`/`date_range`）和时间（`time_start`/`time_end`）字段的格式
+（`sim_engine/src/validation.py`，ADR 0118）。格式不合法时直接报错并停止，不会用默认值
+静默继续：
+
+```
+Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected YYYY-MM-DD)
+```
+
+这条校验和 sim/opt 执行核心共用同一份引擎层代码（见下"与 GUI 的关系"），所以 CLI 报错信息
+和 GUI 报错信息（出现在界面的提示框里）对同一个错误输入完全一致。CLI 端这条信息同时写入
+`运行时输出`一节描述的日志文件和标准输出。
+
+---
+
 ## 日志设计
 
 日志文件仅记录：

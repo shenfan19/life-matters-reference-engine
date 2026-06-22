@@ -113,3 +113,4 @@
 | [0115](0115-2026-06-21_sim_remove-daily-inputs-and-gui-working-state.md) | 移除 `daily_inputs`/`_apply_schedules`/`manual_overrides`：plans 强制后的废稿清理（修订 0074） | ✅ 已接受 | 2026-06-21 |
 | [0116](0116-2026-06-21_sim_rename-regimen-runner-to-schedule-runner.md) | 内部命名统一：`regimen_runner.py` → `schedule_runner.py`，API 契约字段名不变（修订 0115） | ✅ 已接受 | 2026-06-21 |
 | [0117](0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md) | API/YAML 概念层命名维持 `regimen`（与 0116 一致）；`optimizer.results.reference` → `recommended` 并删除解码字典 | ✅ 已接受 | 2026-06-21 |
+| [0118](0118-2026-06-22_sim_upfront-datetime-validation.md) | 日期/时间字段前置校验：消除 CLI/GUI 共用的静默回退（schedule_runner/optimizer_engine 多处 except: pass） | ✅ 已接受 | 2026-06-22 |

@@ -15,6 +15,7 @@ from .loader_engine import LoaderEngine
 from .session_manager import SessionManagerMixin
 from .mc_utils import apply_parameter_sampling, collect_param_distributions, clone_model, derive_seed_list
 from .schedule_runner import advance_steps, precompute_sustained_divisors
+from .validation import validate_simulator_dates, validate_schedule_list
 
 # 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
 logger = logging.getLogger(__name__)
@@ -115,7 +116,19 @@ class SimulatorEngine(SessionManagerMixin):
         # 如果当前未加载模型，返回错误信息。
         if not self.current_model:
             return {"success": False, "error": "未加载模型"}
-        
+
+        # 前置校验日期/时间字段格式，避免格式错误被深层逻辑悄悄回退为默认值
+        # （CLI 与 GUI 共用 validation.py，报错信息一致）。
+        try:
+            validate_simulator_dates(
+                self.current_model.simulator.get('start_date'),
+                self.current_model.simulator.get('end_date'),
+            )
+            validate_schedule_list(getattr(self.current_model, 'schedule_entries', []))
+        except ValueError as e:
+            logger.error(f"输入校验失败: {e}")
+            return {"success": False, "error": str(e)}
+
         # 设置仿真运行状态为 True。
         self.running = True
         # 重置仿真步数和时间。
@@ -222,6 +235,12 @@ class SimulatorEngine(SessionManagerMixin):
 
         base_model = self.current_model
         try:
+            validate_simulator_dates(
+                base_model.simulator.get('start_date'),
+                base_model.simulator.get('end_date'),
+            )
+            validate_schedule_list(getattr(base_model, 'schedule_entries', []))
+
             param_distributions = collect_param_distributions(base_model)
             base_model.param_distributions = param_distributions
 

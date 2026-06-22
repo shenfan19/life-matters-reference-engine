@@ -16,6 +16,7 @@ import numpy as np
 
 from .schedule_runner import advance_steps, precompute_sustained_divisors
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model, derive_seed_list
+from .validation import validate_simulator_dates, validate_schedule_list
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,12 @@ class SessionManagerMixin:
                 return {"success": False, "error": f"无法加载模型：{model_name}"}
 
             base_model = self.current_model
+
+            validate_simulator_dates(
+                base_model.simulator.get('start_date'),
+                base_model.simulator.get('end_date'),
+            )
+            validate_schedule_list(regimens or [])
 
             # Collect distribution parameters and set values to means
             param_distributions = collect_param_distributions(base_model)
