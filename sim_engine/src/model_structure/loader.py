@@ -270,6 +270,81 @@ class Loader:
             )
             self.variable_history[ev_name] = [effective]
 
+        # applies_to：可选，把 ir/ard/hr/rr/or 的换算结果自动接入某个状态变量的 dynamics。
+        # cohens_d/beta/pk 不支持（应用方式不唯一，必须手写）。设计依据见
+        # docs/model.md「自动接入 dynamics」一节及 home/decisions/2026-06-22_evidence-to-dynamics讨论纪要.md。
+        # 单独成一个循环（不并入上面的换算循环），确保 baseline_ref 无论声明顺序如何都已存在于 self.variables。
+        #
+        # 速率的"自然时间单位"（rate_unit，如年发病率的 year）和公式的 step_unit
+        # （validator 只接受 minute|hour|day）是两个独立的量，二者比值算成一个数值系数
+        # 直接写进生成的 dynamics 表达式里，不依赖 Formula.step_unit 表达年/周/月。
+        evidence_dict = data.get('evidence', {})
+        applies_to_targets: Dict[str, str] = {}
+        valid_formula_step_units = {'minute', 'hour', 'day'}
+        for ev_name, ev_data in evidence_dict.items():
+            applies_to = ev_data.get('applies_to')
+            if not applies_to:
+                continue
+            ev_type = ev_data.get('type')
+            if ev_type in ('cohens_d', 'beta', 'pk'):
+                raise ValueError(
+                    f"evidence '{ev_name}'（type: {ev_type}）不支持 applies_to 自动接入 dynamics，"
+                    "该子类型的应用方式不唯一（过渡形式/回归结构/PK 模型结构不唯一），"
+                    "请去掉 applies_to 并手写 dynamics"
+                )
+            if applies_to not in self.variables:
+                raise ValueError(
+                    f"evidence '{ev_name}' 的 applies_to 目标 '{applies_to}' 未在 variables 中声明"
+                )
+            if applies_to in applies_to_targets:
+                raise ValueError(
+                    f"目标状态 '{applies_to}' 被多个 evidence（'{applies_to_targets[applies_to]}' 和 "
+                    f"'{ev_name}'）同时声明 applies_to，多因子组合方式（相乘/相加）需要建模判断，"
+                    "请去掉 applies_to 并手写 dynamics"
+                )
+            step_unit = str(ev_data.get('step_unit', '')).lower()
+            if step_unit not in valid_formula_step_units:
+                raise ValueError(
+                    f"evidence '{ev_name}' 使用 applies_to 时必须声明合法的 step_unit"
+                    f"（{'/'.join(sorted(valid_formula_step_units))} 之一，与 formulas.step_unit 规则一致）"
+                )
+
+            if ev_type in ('rr', 'or'):
+                baseline_ref = ev_data.get('baseline_ref')
+                baseline_entry = evidence_dict.get(baseline_ref) if baseline_ref else None
+                if not baseline_ref or baseline_ref not in self.variables or baseline_entry is None:
+                    raise ValueError(
+                        f"evidence '{ev_name}'（type: {ev_type}）使用 applies_to 时必须声明 "
+                        "baseline_ref，且必须指向同一文件内一个 ir/ard 类型的 evidence 条目"
+                    )
+                rate_unit = str(baseline_entry.get('rate_unit', '')).lower()
+                expr_template = f"{applies_to} + {baseline_ref} * {ev_name} * {{factor}} * step"
+            elif ev_type == 'hr':
+                baseline_ref = ev_data.get('baseline_ref', '')
+                baseline_entry = evidence_dict.get(baseline_ref, {})
+                rate_unit = str(baseline_entry.get('rate_unit', '')).lower()
+                expr_template = f"{applies_to} + {ev_name} * {{factor}} * step"
+            else:  # ir / ard：自身就是基线速率
+                rate_unit = str(ev_data.get('rate_unit', '')).lower()
+                expr_template = f"{applies_to} + {ev_name} * {{factor}} * step"
+
+            if rate_unit not in TIME_UNIT_SECONDS:
+                raise ValueError(
+                    f"evidence '{ev_name}' 使用 applies_to 时必须能确定 rate_unit"
+                    f"（{'/'.join(TIME_UNIT_SECONDS.keys())} 之一）——ir/ard 在自身条目声明，"
+                    "hr/rr/or 在其 baseline_ref 指向的 ir/ard 条目声明"
+                )
+            factor = TIME_UNIT_SECONDS[step_unit] / TIME_UNIT_SECONDS[rate_unit]
+            expr = expr_template.format(factor=repr(factor))
+
+            applies_to_targets[applies_to] = ev_name
+            self.formulas[f"_auto_evidence_{ev_name}"] = Formula(
+                description=f"自动生成：evidence '{ev_name}' 接入 '{applies_to}'（applies_to）",
+                dynamics={applies_to: expr},
+                step_unit=step_unit,
+                step_size_sec=TIME_UNIT_SECONDS[step_unit],
+            )
+
         # 应用公式
         for form_name, form_data in data.get('formulas', {}).items():
             if not clear_existing and form_name in self.formulas:
