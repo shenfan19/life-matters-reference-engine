@@ -96,7 +96,7 @@
 | [0099 †](../../../b_lm_model/docs/decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | sustained 模式 value 语义修正：窗口总量 / N_steps（step-size 不变性） | ✅ 已实施（修订 0098） | 2026-06-11 |
 | [0100 †](../../../b_lm_model/docs/decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | 统一 pulse/sustained 为时间区间 [start,end)；GUI 取消 full day / time / sustained 三态 | ✅ 已完成 | 2026-06-11 |
 | [0101](0101-2026-06-13_project_cli-public-release-interface.md) | CLI 升级为公开发布接口（面向 AI / 自动化场景），部分修订 0072/0091 | ✅ 已实施 | 2026-06-13 |
-| [0101 †](../../../b_lm_model/docs/decisions/0101-2026-06-14_model_hold-suffix-todo-field.md) | 文件名质量标记统一为 `_HOLD` + `metadata.todo` 任务列表（替代 0096 model） | ✅ 已实施 | 2026-06-14 |
+| [0101 †](../../../b_lm_model/docs/decisions/0101-2026-06-14_model_hold-suffix-todo-field.md) | 文件名质量标记统一为 `_HOLD` + `metadata.todo` 任务列表（替代 0096 model） | ⚪ 文件名部分被 0120 取代 | 2026-06-14 |
 | [0102 †](../../../b_lm_model/docs/decisions/0102-2026-06-14_model_formula-priority-execution-order.md) | 澄清 formula `priority` 执行顺序与同 step 内的更新可见性 | ✅ 已实施 | 2026-06-14 |
 | [0103 †](../../../b_lm_model/docs/decisions/0103-2026-06-14_model_metadata-log-field.md) | 新增 `metadata.log`：模型内改进历史记录 | ✅ 已实施 | 2026-06-14 |
 | [0104 †](../../../b_lm_model/docs/decisions/0104-2026-06-16_model_step-unit-per-formula-and-sim-step-size.md) | 步长设计重构：per-formula step_unit + simulation.step_size（替代 0046） | ✅ 已采纳 | 2026-06-16 |
@@ -115,3 +115,4 @@
 | [0117](0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md) | API/YAML 概念层命名维持 `regimen`（与 0116 一致）；`optimizer.results.reference` → `recommended` 并删除解码字典 | ✅ 已接受 | 2026-06-21 |
 | [0118](0118-2026-06-22_sim_upfront-datetime-validation.md) | 日期/时间字段前置校验：消除 CLI/GUI 共用的静默回退（schedule_runner/optimizer_engine 多处 except: pass） | ✅ 已接受 | 2026-06-22 |
 | [0119](0119-2026-06-22_sim_unify-sim-run-logging-core.md) | Sim 运行日志核心合并：新增 run_logging.py，CLI/GUI 共用内容生成，IO 出口各自实现（修订 0118 的追问） | ✅ 已接受 | 2026-06-22 |
+| [0120 †](../../../b_lm_model/docs/decisions/0120-2026-06-23_model_drop-hold-filename-suffix.md) | 废除 `_HOLD` 文件名后缀，状态判定仅看 `metadata.todo`（部分取代 0101） | 🟢 已实施 | 2026-06-23 |
