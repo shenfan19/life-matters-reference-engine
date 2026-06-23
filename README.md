@@ -35,7 +35,7 @@ YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/s
 sim_engine/   Python 仿真引擎 + FastAPI 后端（端口 18080）
 sim_gui/      仿真前端界面（React + Vite，端口 5173）
 sim_cli/      命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/cli.md
-script/       开发工具脚本（i18n、AI 辅助等）
+scripts/      开发工具脚本（i18n、AI 辅助、代码检查等）
 docs/         技术规范与架构决策（ADR）
 ```
 
