@@ -45,7 +45,7 @@ interface UseSimulationParams {
 }
 
 // Fire-and-forget: ask the backend to write the session's full output to local
-// output/<model>/ (ref_engine/src/session_manager.py:export_session_csv), mirroring
+// output/<model>/ (reference_engine/src/session_manager.py:export_session_csv), mirroring
 // what `cli/main.py --sim-only` writes for the same model. Silent on success;
 // the run's own completion message already told the user the run is done.
 function saveSessionLocally(sessionId: string, t: (key: string) => string) {

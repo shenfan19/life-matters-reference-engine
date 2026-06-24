@@ -75,7 +75,7 @@
 | [0072](decisions/0072-2026-05-15_project_gui-only-no-cli.md) | **GUI-only：CLI 不是正式接口，不新增功能，批量场景用 HTTP API**（部分修订见 0101） | ⭐⭐ | ✅ |
 | [0091](decisions/0091-2026-06-01_project_cli-batch-tool.md) | `cli/`：批量仿真 CLI 工具 | ⭐ | ✅ |
 | [0101](decisions/0101-2026-06-13_project_cli-public-release-interface.md) | **CLI 升级为公开发布接口：面向 AI/自动化场景，随 release 发布** | ⭐⭐ | ✅ |
-| [0121](decisions/0121-2026-06-24_project_top-level-rename-cli-gui-ref_engine.md) | **顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`ref_engine`/`gui`；消除 sim/opt 不对称命名** | ⭐⭐ | ✅ |
+| [0121](decisions/0121-2026-06-24_project_top-level-rename-cli-gui-reference_engine.md) | **顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`；消除 sim/opt 不对称命名** | ⭐⭐ | ✅ |
 
 ---
 

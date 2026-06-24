@@ -11,7 +11,7 @@ def setup_output_dir(project_root: Path, model_stem: str, output_dir: str = None
                       default_output_dir: Path = None) -> Path:
     """Resolve and create <output_dir or default_output_dir>/<model_stem>/.
 
-    default_output_dir is the shared OUTPUT_DIR from ref_engine/src/paths.py
+    default_output_dir is the shared OUTPUT_DIR from reference_engine/src/paths.py
     (falls back to <project_root>/output if the caller doesn't pass one, e.g. tests).
     """
     if output_dir:
@@ -52,10 +52,10 @@ def setup_logging(log_path: Path) -> None:
 
 def write_opt_csv(pareto_front: List[Dict], objectives: List[Dict], out_path: Path,
                    x_labels: List[str] = None) -> None:
-    """Write the Pareto front CSV (ref_engine/src/csv_export.py — shared with the
+    """Write the Pareto front CSV (reference_engine/src/csv_export.py — shared with the
     GUI backend) and log it to the CLI's own log file.
     """
-    from ref_engine.src.csv_export import write_opt_csv as _write_opt_csv
+    from reference_engine.src.csv_export import write_opt_csv as _write_opt_csv
     _write_opt_csv(pareto_front, objectives, out_path, x_labels=x_labels)
     if pareto_front:
         logger.info(f'Pareto CSV: {out_path.name}  ({len(pareto_front)} solutions)')

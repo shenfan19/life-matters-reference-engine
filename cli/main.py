@@ -30,11 +30,11 @@ def _project_root() -> Path:
 
 
 def _shared_paths(root: Path):
-    """Import the GUI/CLI-shared path config (ref_engine/src/paths.py)."""
+    """Import the GUI/CLI-shared path config (reference_engine/src/paths.py)."""
     s = str(root)
     if s not in sys.path:
         sys.path.insert(0, s)
-    from ref_engine.src import paths
+    from reference_engine.src import paths
     return paths
 
 

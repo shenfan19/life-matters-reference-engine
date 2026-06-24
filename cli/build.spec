@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(SPECPATH).parent          # b_lm_sim_code/
-SRC  = str(ROOT / 'ref_engine' / 'src')
-ENG  = str(ROOT / 'ref_engine')
+SRC  = str(ROOT / 'reference_engine' / 'src')
+ENG  = str(ROOT / 'reference_engine')
 
 block_cipher = None
 

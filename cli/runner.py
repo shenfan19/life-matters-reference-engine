@@ -13,14 +13,14 @@ logger = logging.getLogger('lm_cli')
 # ── engine bootstrap ──────────────────────────────────────────────────────────
 
 def _bootstrap(project_root: Path) -> None:
-    """Add project root to sys.path so ref_engine is importable as a package."""
+    """Add project root to sys.path so reference_engine is importable as a package."""
     s = str(project_root)
     if s not in sys.path:
         sys.path.insert(0, s)
 
 
 def _make_engine(project_root: Path):
-    from ref_engine.src.reference_engine import ReferenceEngine
+    from reference_engine.src.reference_engine import ReferenceEngine
     models_dir = project_root / 'models'
     return ReferenceEngine(models_directory=str(models_dir))
 
@@ -37,7 +37,7 @@ def _model_name(model_path: Path, project_root: Path) -> str:
 
 
 def _time_hours(engine) -> float:
-    from ref_engine.src.validation import validate_simulator_dates
+    from reference_engine.src.validation import validate_simulator_dates
     sim = engine.current_model.simulator
     start, end = str(sim.get('start_date', '')), str(sim.get('end_date', ''))
     if start and end:
@@ -153,7 +153,7 @@ def run_opt(model_path: Path, project_root: Path,
     engine = _make_engine(project_root)
     name = _model_name(model_path, project_root)
 
-    from ref_engine.src.optimizer_engine import run_optimizer
+    from reference_engine.src.optimizer_engine import run_optimizer
 
     # Pre-load model to extract objectives — needed both to parse a warm-start
     # CSV (split columns x vs. f by position) and for incremental CSV saves.

@@ -32,11 +32,11 @@ YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/s
 ## 仓库结构
 
 ```
-ref_engine/   Python LM Reference Engine + FastAPI 后端（端口 18080）
+reference_engine/   Python LM Reference Engine + FastAPI 后端（端口 18080）
 gui/          仿真前端界面（React + Vite，端口 5173）
-cli/          命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/engine/cli.md
+cli/          命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/reference_engine/cli.md
 scripts/      开发工具脚本（i18n、AI 辅助、代码检查等）
-docs/engine/  技术规范与架构决策（ADR）
+docs/reference_engine/  技术规范与架构决策（ADR）
 ```
 
 YAML 模型生态见 → [life-matters-model](https://github.com/shenfan19/life-matters-model)
@@ -70,8 +70,8 @@ YAML 模型生态见 → [life-matters-model](https://github.com/shenfan19/life-
 
 ```bash
 # 后端
-pip install -r ref_engine/requirements.txt
-cd ref_engine && python src/api_server.py   # http://localhost:18080
+pip install -r reference_engine/requirements.txt
+cd reference_engine && python src/api_server.py   # http://localhost:18080
 
 # 仿真前端
 cd gui && npm install && npm run dev        # http://localhost:5173
@@ -94,13 +94,13 @@ python cli/main.py <model.yaml> --opt-only
 python cli/batch.py --input-dir <models_folder>
 ```
 
-输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/engine/cli.md](docs/engine/cli.md)。
+输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/reference_engine/cli.md](docs/reference_engine/cli.md)。
 
 ---
 
 ## 常见问题
 
-**后端端口占用？** 默认 18080。修改 `ref_engine/src/api_server.py`，同步更新 `gui/vite.config.ts` 的 proxy 目标。
+**后端端口占用？** 默认 18080。修改 `reference_engine/src/api_server.py`，同步更新 `gui/vite.config.ts` 的 proxy 目标。
 
 **前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
 
@@ -112,15 +112,15 @@ python cli/batch.py --input-dir <models_folder>
 
 | 文档 | 内容 |
 |------|------|
-| [docs/engine/design.md](docs/engine/design.md) | Reference Engine 软件设计（Regimen K×4、会话管理） |
-| [docs/engine/impl.md](docs/engine/impl.md) | Reference Engine 实现细节 |
-| [docs/engine/requirements.md](docs/engine/requirements.md) | 软件需求文档 |
-| [docs/engine/opt.md](docs/engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
-| [docs/engine/cli.md](docs/engine/cli.md) | CLI 批量运行接口说明 |
-| [docs/engine/validation.md](docs/engine/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
-| [docs/engine/ui_guidelines.md](docs/engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
-| [docs/engine/data_flow.md](docs/engine/data_flow.md) | 数据流设计 |
-| [docs/engine/decisions/README.md](docs/engine/decisions/README.md) | 架构决策记录索引（ADR） |
+| [docs/reference_engine/design.md](docs/reference_engine/design.md) | Reference Engine 软件设计（Regimen K×4、会话管理） |
+| [docs/reference_engine/impl.md](docs/reference_engine/impl.md) | Reference Engine 实现细节 |
+| [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
+| [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
+| [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
+| [docs/reference_engine/validation.md](docs/reference_engine/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
+| [docs/reference_engine/ui_guidelines.md](docs/reference_engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
+| [docs/reference_engine/data_flow.md](docs/reference_engine/data_flow.md) | 数据流设计 |
+| [docs/reference_engine/decisions/README.md](docs/reference_engine/decisions/README.md) | 架构决策记录索引（ADR） |
 
 ---
 

@@ -28,7 +28,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from ref_engine.src.reference_engine import ReferenceEngine  # noqa: E402
+from reference_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
 TOL = 1e-9
@@ -169,7 +169,7 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
     optUtils.test.ts). CLI's cold start only overrides warm_start. Both must produce the
     identical optimizer result — regression guard for ADR 0112 (algorithm.seed hardcoding +
     T4 validRangeEnabled bug, both previously caused this to diverge silently)."""
-    from ref_engine.src.optimizer_engine import run_optimizer
+    from reference_engine.src.optimizer_engine import run_optimizer
 
     model_name = 'test/test_opt_t1_single'
 
