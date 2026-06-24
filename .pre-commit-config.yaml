@@ -5,4 +5,4 @@ repos:
         name: 检查业务常量是否硬编码
         entry: python scripts/check_hardcoded_constants.py
         language: system
-        files: ^(sim_cli|sim_engine)/.*\.py$
+        files: ^(cli|ref_engine)/.*\.py$
