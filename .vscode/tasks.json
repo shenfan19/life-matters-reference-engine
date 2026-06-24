@@ -6,11 +6,11 @@
         // ========================================
         // 任务1: 启动 FastAPI Backend
         {
-            "label": "Sim Server",
+            "label": "Engine Server",
             "type": "shell",
             "command": "python src/api_server.py",
             "options": {
-                "cwd": "${workspaceFolder}/sim_engine",
+                "cwd": "${workspaceFolder}/ref_engine",
                 "env": {
                     "SCS_MODE": "true",
                     "LM_MODELS_PATH": "${workspaceFolder}/models"
@@ -45,11 +45,11 @@
         // ========================================
         // 任务2: 启动 Frontend Dev Server
         {
-            "label": "Sim GUI",
+            "label": "GUI",
             "type": "shell",
             "command": "npm run dev",
             "options": {
-                "cwd": "${workspaceFolder}/sim_gui"
+                "cwd": "${workspaceFolder}/gui"
             },
             "isBackground": true,
             "presentation": {
@@ -129,8 +129,8 @@
         {
             "label": "🚀 Run Full Stack",
             "dependsOn": [
-                "Sim Server",
-                "Sim GUI",
+                "Engine Server",
+                "GUI",
                 "Game GUI+Server",
                 "Open Browser"
             ],
@@ -164,7 +164,7 @@
             "type": "shell",
             "command": "npm install",
             "options": {
-                "cwd": "${workspaceFolder}/sim_gui"
+                "cwd": "${workspaceFolder}/gui"
             },
             "presentation": {
                 "reveal": "always",
@@ -178,7 +178,7 @@
             "type": "shell",
             "command": "pip install -r requirements.txt",
             "options": {
-                "cwd": "${workspaceFolder}/sim_engine"
+                "cwd": "${workspaceFolder}/ref_engine"
             },
             "presentation": {
                 "reveal": "always",

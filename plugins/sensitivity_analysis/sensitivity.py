@@ -5,7 +5,7 @@ For each numeric state variable, computes Pearson correlation with the
 target variable across the simulated time series. Returns a ranked list
 (tornado chart data) sorted by absolute correlation.
 
-Dependencies: numpy (already required by sim_engine)
+Dependencies: numpy (already required by ref_engine)
 """
 import json
 from typing import Any, Dict, List

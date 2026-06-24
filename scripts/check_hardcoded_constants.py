@@ -1,4 +1,4 @@
-"""扫描 sim_cli/、sim_engine/ 下是否有业务参数被硬编码成字面量常量。
+"""扫描 cli/、ref_engine/ 下是否有业务参数被硬编码成字面量常量。
 
 背景：MC seed 等业务参数曾被直接写成字面量（如 seed=42）而不是读取 yaml/session 配置，
 导致 CLI 和 GUI 跑出不一致的结果（见 ADR 0113）。本脚本把这类字段名维护成一份黑名单，
@@ -31,7 +31,7 @@ FIELD_PATTERN = re.compile(
     r'\b(' + '|'.join(BUSINESS_CONST_FIELDS) + r')\s*=\s*-?\d+(\.\d+)?\b'
 )
 
-DEFAULT_SCAN_DIRS = ['sim_cli', 'sim_engine']
+DEFAULT_SCAN_DIRS = ['cli', 'ref_engine']
 EXCLUDE_DIR_PARTS = {'tests', '__pycache__', 'test', 'node_modules'}
 SUPPRESS_COMMENT = '# allow-const'
 

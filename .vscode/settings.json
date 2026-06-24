@@ -36,11 +36,11 @@
             "color": "foldercolorizer.color_cc6600"
         },
         {
-            "folderPath": "b_matter_code\\sim_gui\\",
+            "folderPath": "b_matter_code\\gui\\",
             "color": "foldercolorizer.color_00cc00"
         },
         {
-            "folderPath": "b_matter_code\\sim_engine\\",
+            "folderPath": "b_matter_code\\ref_engine\\",
             "color": "foldercolorizer.color_00cc00"
         }
     ]

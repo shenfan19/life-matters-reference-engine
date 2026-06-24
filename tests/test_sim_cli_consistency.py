@@ -13,7 +13,7 @@ server。验证：
    采样参数和轨迹（ADR 0113：两边共用 `advance_steps` 执行核心 + `derive_seed_list` 种子派生）。
 4. Opt：GUI 路径未编辑时发给后端的 `optimizer_override`（这里直接取 YAML 的
    `optimizer.startpoint/objectives/constraints/algorithm` 本身，代表一次忠实的前端往返——
-   已用 `sim_gui/src/components/sim_tab/optUtils.test.ts` 验证过该往返对 T1-T4 fixture 无损）
+   已用 `gui/src/components/sim_tab/optUtils.test.ts` 验证过该往返对 T1-T4 fixture 无损）
    跑出的结果，必须与 CLI 冷启动（只覆盖 warm_start）完全一致（ADR 0112：seed 硬编码 + T4
    `validRangeEnabled` 丢字段的回归锁定）。
 """
@@ -28,7 +28,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sim_engine.src.simulator_engine import SimulatorEngine  # noqa: E402
+from ref_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
 TOL = 1e-9
@@ -38,8 +38,8 @@ def _hours(start_date: str, end_date: str) -> float:
     return max(1.0, (date.fromisoformat(end_date) - date.fromisoformat(start_date)).days * 24.0)
 
 
-def _make_engine() -> SimulatorEngine:
-    return SimulatorEngine(models_directory=str(MODELS_DIR))
+def _make_engine() -> ReferenceEngine:
+    return ReferenceEngine(models_directory=str(MODELS_DIR))
 
 
 def _read_csv(path: Path):
@@ -48,7 +48,7 @@ def _read_csv(path: Path):
 
 
 def _cli_rows(model_name: str, plan_id: str, hours: float, csv_path: Path):
-    """Replicates exactly what sim_cli/runner.py::run_sim does for one plan."""
+    """Replicates exactly what cli/runner.py::run_sim does for one plan."""
     engine = _make_engine()
     assert engine.load_models([model_name]), f'failed to load {model_name}'
     engine.current_model.schedule_entries = engine.current_model.plans.get(plan_id, [])
@@ -169,7 +169,7 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
     optUtils.test.ts). CLI's cold start only overrides warm_start. Both must produce the
     identical optimizer result — regression guard for ADR 0112 (algorithm.seed hardcoding +
     T4 validRangeEnabled bug, both previously caused this to diverge silently)."""
-    from sim_engine.src.optimizer_engine import run_optimizer
+    from ref_engine.src.optimizer_engine import run_optimizer
 
     model_name = 'test/test_opt_t1_single'
 
