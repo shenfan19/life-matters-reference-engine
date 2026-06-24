@@ -81,13 +81,24 @@ def _run_one_model(yaml_path: Path, root: Path, batch_dir: Path,
     the raw per-model outcome, with no knowledge of report formatting or batch totals.
     """
     from output import setup_output_dir, make_stem, setup_logging, write_opt_csv
-    from runner import run_sim, run_opt
+    from runner import run_sim, run_opt, model_declares_step
 
     model_name = yaml_path.stem
     sim_status, sim_err, sim_csvs = '⏭ SKIP', '', []
     opt_status, opt_err, opt_csv = '⏭ SKIP', '', ''
 
     out_dir = setup_output_dir(root, model_name, str(batch_dir))
+
+    # A model not declaring simulation:/simulator: or optimizer: at all is by
+    # design (sim-only/opt-only model), not a failure — skip without attempting
+    # the step so batch runs over the full model library don't drown in false
+    # FAILs for models that never had an optimizer block to begin with.
+    if run_sim_step and not model_declares_step(yaml_path, 'sim'):
+        print('    -> sim      SKIP (no simulation:/simulator: block)')
+        run_sim_step = False
+    if run_opt_step and not model_declares_step(yaml_path, 'opt'):
+        print('    -> opt      SKIP (no optimizer: block)')
+        run_opt_step = False
 
     # ── Sim ──────────────────────────────────────────────────────────────────
     if run_sim_step:

@@ -36,6 +36,22 @@ def _model_name(model_path: Path, project_root: Path) -> str:
         return str(model_path)
 
 
+def model_declares_step(model_path: Path, step: str) -> bool:
+    """Cheap raw-YAML check for whether a model declares a `simulation:`/`simulator:`
+    (step='sim') or `optimizer:` (step='opt') block at all.
+
+    Used to tell "model doesn't declare this step" (expected, skip) apart from
+    "step declared but failed to run" (real error) — many papers/references
+    models are sim-only or opt-only by design (model.md doesn't require both).
+    """
+    import yaml
+    with open(model_path, encoding='utf-8') as f:
+        data = yaml.safe_load(f) or {}
+    if step == 'sim':
+        return bool(data.get('simulation') or data.get('simulator'))
+    return bool(data.get('optimizer'))
+
+
 def _time_hours(engine) -> float:
     from reference_engine.src.validation import validate_simulator_dates
     sim = engine.current_model.simulator
