@@ -112,6 +112,7 @@
   "sim.msg.validation_ok": "✅ Validation passed, scenario locked",
   "sim.msg.validation_fail": "Validation failed",
   "sim.msg.sim_complete": "Simulation complete",
+  "sim.msg.auto_save_local_failed": "Auto-save to local failed",
   "sim.msg.exported": "Exported",
   "sim.msg.load_failed": "Load failed",
   "sim.msg.read_failed": "Read failed",
@@ -403,6 +404,8 @@
   "sim.ctrl.reload_tip_running": "Simulation running — cannot reload",
   "sim.ctrl.reload_tip_opt": "Optimization running — cannot reload",
   "sim.ctrl.reload_tip": "Reload model (clears session, resets sim and opt)",
+  "sim.ctrl.auto_save_local": "Auto-save to local",
+  "sim.ctrl.auto_save_local_tip": "When checked, every completed sim/opt run is written to the server's local output/ directory automatically, matching CLI behavior (local development only)",
 
   "sim.opt.stop_opt": "Stop Optimization",
   "sim.opt.warm_start_dirty_tooltip": "⚠ Objectives, constraints, or decision vars modified — warm start will use the previous front, match may degrade",

@@ -20,6 +20,8 @@ a = Analysis(
     binaries=[],
     datas=[],          # models/ kept external alongside exe
     hiddenimports=[
+        'paths',
+        'csv_export',
         'simulator_engine',
         'optimizer_engine',
         'loader_engine',

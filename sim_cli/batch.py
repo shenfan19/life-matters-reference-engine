@@ -5,8 +5,12 @@ in-process (no subprocess/stdout parsing), and writes a batch_report.md
 summarizing PASS/FAIL.
 
 Usage (no-arg invocation prints --help instead of running with defaults):
-  python sim_cli/batch.py --input-dir models/papers --sim-only
-  python sim_cli/batch.py --input-dir models/references --output-dir /tmp/lm_out
+  python sim_cli/batch.py --input-dir papers --sim-only        # models/papers
+  python sim_cli/batch.py --input-dir test                     # models/test
+  python sim_cli/batch.py --output-dir /tmp/lm_out             # whole models/, custom output root
+
+--input-dir is relative to models/ (not the project root) — same convention the
+GUI's file tree and model_key use. Omit it to scan the whole model library.
 
 Each model's results go to <output-dir>/<batch-timestamp>/<model-stem>/,
 following the same layout main.py uses for a single run.
@@ -27,9 +31,18 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def _resolve(root: Path, path_str: str) -> Path:
+def _shared_paths(root: Path):
+    """Import the GUI/CLI-shared path config (sim_engine/src/paths.py)."""
+    s = str(root)
+    if s not in sys.path:
+        sys.path.insert(0, s)
+    from sim_engine.src import paths
+    return paths
+
+
+def _resolve(base: Path, path_str: str) -> Path:
     p = Path(path_str)
-    return p if p.is_absolute() else root / p
+    return p if p.is_absolute() else base / p
 
 
 class _ErrorCapture(logging.Handler):
@@ -153,12 +166,13 @@ def main() -> None:
         description='Run --sim and/or --opt for every model YAML in a folder, '
                      'writing a batch_report.md.',
     )
-    parser.add_argument('--input-dir', default='../b_lm_model/models/references',
-                         help='Folder to scan for *.yaml models (recursive). '
-                              'Default: ../b_lm_model/models/references')
-    parser.add_argument('--output-dir', default='../b_lm_model/output',
-                         help='Where the timestamped batch directory is created. '
-                              'Default: ../b_lm_model/output')
+    parser.add_argument('--input-dir', default=None,
+                         help='Folder to scan for *.yaml models (recursive), relative to '
+                              'models/ (or absolute). Default: models/ (the whole model library). '
+                              "E.g. --input-dir test means models/test.")
+    parser.add_argument('--output-dir', default=None,
+                         help='Where the timestamped batch directory is created, relative to '
+                              'the project root (or absolute). Default: output/')
     step_group = parser.add_mutually_exclusive_group()
     step_group.add_argument('--sim-only', action='store_true',
                              help='Only run --sim, skip the optimizer.')
@@ -172,8 +186,9 @@ def main() -> None:
     args = parser.parse_args()
 
     root = _project_root()
-    folder = _resolve(root, args.input_dir)
-    output_dir = _resolve(root, args.output_dir)
+    shared_paths = _shared_paths(root)
+    folder = _resolve(shared_paths.MODELS_DIR, args.input_dir) if args.input_dir else shared_paths.MODELS_DIR
+    output_dir = _resolve(root, args.output_dir) if args.output_dir else shared_paths.OUTPUT_DIR
 
     yamls = sorted(folder.rglob('*.yaml'))
     total = len(yamls)

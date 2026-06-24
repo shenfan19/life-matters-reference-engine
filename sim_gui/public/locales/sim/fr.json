@@ -113,6 +113,7 @@
   "sim.msg.validation_ok": "✅ Validation réussie, scénario verrouillé",
   "sim.msg.validation_fail": "Validation échouée",
   "sim.msg.sim_complete": "Simulation terminée",
+  "sim.msg.auto_save_local_failed": "Échec de la sauvegarde locale automatique",
   "sim.msg.exported": "Exporté",
   "sim.msg.load_failed": "Chargement échoué",
   "sim.msg.read_failed": "Lecture échouée",
@@ -403,6 +404,8 @@
   "sim.ctrl.reload_tip_running": "Simulation en cours — rechargement impossible",
   "sim.ctrl.reload_tip_opt": "Optimisation en cours — rechargement impossible",
   "sim.ctrl.reload_tip": "Recharger le modèle (vide la session, réinitialise sim et opt)",
+  "sim.ctrl.auto_save_local": "Sauvegarde locale auto",
+  "sim.ctrl.auto_save_local_tip": "Si activé, chaque run sim/opt terminé est automatiquement écrit dans le dossier output/ local du serveur, comme le CLI (développement local uniquement)",
 
   "sim.opt.stop_opt": "Arrêter l'optimisation",
   "sim.opt.warm_start_dirty_tooltip": "⚠ Objectifs, contraintes ou variables modifiés — le démarrage chaud utilisera le front précédent, la correspondance peut se dégrader",

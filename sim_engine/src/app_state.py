@@ -4,20 +4,11 @@ api_server.py initializes the engine instances during startup;
 route files reference these module-level variables directly.
 """
 
-from pathlib import Path
-import os
 import asyncio
 from time import time as _time
 from typing import Dict, Any
 from fastapi import HTTPException
-
-CURRENT_FILE = Path(__file__).resolve()
-SRC_DIR = CURRENT_FILE.parent
-BACKEND_DIR = SRC_DIR.parent
-PROJECT_ROOT = BACKEND_DIR.parent
-MODELS_DIR = Path(os.getenv("LM_MODELS_PATH", str(PROJECT_ROOT.parent / "b_lm_model" / "models")))
-
-SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
+from paths import PROJECT_ROOT, SRC_DIR, BACKEND_DIR, MODELS_DIR, OUTPUT_DIR, SCS_MODE
 
 plugin_manager = None
 loader_engine = None

@@ -52,6 +52,22 @@ pyinstaller sim_cli/build.spec
 
 ---
 
+## 路径配置
+
+模型库根目录、输出根目录、SCS 模式由 `sim_engine/src/paths.py` 统一解析，GUI 后端（`api_server.py`）
+和 CLI（本文档）共用同一份逻辑，不各自维护一套默认值：
+
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| `LM_MODELS_PATH` | `<项目根>/models` | 模型库根目录 |
+| `LM_OUTPUT_PATH` | `<项目根>/output` | CLI 输出根目录（GUI 暂不写盘，见"与 GUI 的关系"） |
+| `SCS_MODE` | `false` | 云端多用户部署的写保护开关，见 [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md) |
+
+复制项目根目录下的 `.env.example` 为 `.env` 并修改即可（`.env` 已在 `.gitignore`，不会被提交）；
+不设置时使用上表默认值，本地开发通常无需创建 `.env`。
+
+---
+
 ## 命令参数
 
 两个入口的"跑哪些步骤"参数完全一致：`--sim-only`/`--opt-only` 互斥，都不传则默认两者都跑。
@@ -75,8 +91,8 @@ pyinstaller sim_cli/build.spec
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--input-dir PATH` | `../b_lm_model/models/references` | 要扫描的模型文件夹（递归查找 `*.yaml`，相对路径从项目根起算） |
-| `--output-dir PATH` | `../b_lm_model/output` | 批次目录的根路径；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
+| `--input-dir PATH` | `models/`（整个模型库） | 要扫描的模型文件夹（递归查找 `*.yaml`）。**相对路径从 `models/` 起算**（与 GUI 的文件树/`model_key` 同一套根目录约定，见下方"路径配置"），例如 `--input-dir test` 等价于 `models/test`；绝对路径不受影响 |
+| `--output-dir PATH` | `output/`（项目根） | 批次目录的根路径（相对项目根，或绝对路径）；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
 | `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥 |
 | `--opt-only` | （跑 sim + opt） | 只运行优化器，跳过仿真。与 `--sim-only` 互斥 |
 

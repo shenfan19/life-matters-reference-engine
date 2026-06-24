@@ -113,6 +113,7 @@
   "sim.msg.validation_ok": "✅ 驗證通過，場景已鎖定",
   "sim.msg.validation_fail": "驗證失敗",
   "sim.msg.sim_complete": "仿真完成",
+  "sim.msg.auto_save_local_failed": "自動保存到本地失敗",
   "sim.msg.exported": "已導出",
   "sim.msg.load_failed": "加載失敗",
   "sim.msg.read_failed": "讀取失敗",
@@ -403,6 +404,8 @@
   "sim.ctrl.reload_tip_running": "仿真運行中，無法重載",
   "sim.ctrl.reload_tip_opt": "優化運行中，無法重載",
   "sim.ctrl.reload_tip": "重載模型（清除 session，同時重置仿真和優化）",
+  "sim.ctrl.auto_save_local": "預設輸出到本地",
+  "sim.ctrl.auto_save_local_tip": "勾選後，每次仿真/優化運行完成自動寫入伺服器本地 output/ 目錄，與 CLI 行為一致（本地開發模式可用）",
 
   "sim.opt.stop_opt": "停止優化",
   "sim.opt.warm_start_dirty_tooltip": "⚠ 目標、約束或決策變量已修改，熱啟動將沿用上次前沿，可能匹配度下降",

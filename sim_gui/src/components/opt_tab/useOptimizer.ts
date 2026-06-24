@@ -57,6 +57,7 @@ interface UseOptimizerParams {
   modelSessionsRef: React.MutableRefObject<Record<string, any>>;
   setRunningModelKey: (key: string | null) => void;
   setCenterTab: (tab: string) => void;
+  autoSaveLocal?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -69,6 +70,7 @@ export function useOptimizer({
   simRuns, mcSeed,
   modelSessionsRef,
   setRunningModelKey, setCenterTab,
+  autoSaveLocal,
   t,
 }: UseOptimizerParams) {
   const [optRunning,      setOptRunning]      = useState(false);
@@ -191,6 +193,14 @@ export function useOptimizer({
             }
             setCenterTab('optimization');
             message.success(t('sim.msg.opt_done', { n: sd.result?.n_solutions ?? 0 }));
+            if (autoSaveLocal) {
+              fetch(`${API_BASE}/optimizer/export-csv`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job_id: jobId, model_key: modelKey }),
+              }).then(r => r.json()).then(r => {
+                if (!r.success) message.error(t('sim.msg.auto_save_local_failed'));
+              }).catch(() => message.error(t('sim.msg.auto_save_local_failed')));
+            }
           } else if (sd.status === 'failed') {
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false); setRunningModelKey(null);

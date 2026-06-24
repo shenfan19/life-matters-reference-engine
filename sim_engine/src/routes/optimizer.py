@@ -23,6 +23,11 @@ class ExportModelRequest(BaseModel):
     flatten_imports: bool = False  # if True, resolve all imports into a single flat YAML
 
 
+class ExportOptCsvRequest(BaseModel):
+    job_id: str
+    model_key: str  # used only to name the output subfolder, e.g. "papers/paper2/foo"
+
+
 @router.post("/api/optimizer/run_yaml")
 async def run_yaml_optimization(request: YamlOptRequest):
     """Run optimizer using YAML optimizer: block (NSGA-II / L-BFGS-B / Nelder-Mead).
@@ -131,6 +136,34 @@ async def export_model_with_results(request: ExportModelRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/optimizer/export-csv")
+async def export_optimizer_csv(request: ExportOptCsvRequest):
+    """Write the job's Pareto front to <OUTPUT_DIR>/<model>/ as a CSV, same format/
+    naming convention as the CLI's _opt.csv (sim_engine/src/csv_export.py, shared
+    with sim_cli/output.py — neither entry point depends on the other).
+    Local-disk mirror of "保存结果到模型" — never touches the model YAML.
+    """
+    if request.job_id not in app_state.optimizer_jobs:
+        raise HTTPException(status_code=404, detail=f"Job not found: {request.job_id}")
+    job = app_state.optimizer_jobs[request.job_id]
+    result = job.get('result')
+    if not result or not result.get('pareto_front'):
+        raise HTTPException(status_code=400, detail="No Pareto front to export for this job")
+
+    import os
+    from datetime import datetime
+    from csv_export import write_opt_csv
+
+    model_stem = os.path.splitext(os.path.basename(request.model_key))[0]
+    out_dir = app_state.OUTPUT_DIR / model_stem
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    csv_path = out_dir / f'{model_stem}_{ts}_opt.csv'
+    write_opt_csv(result.get('pareto_front', []), result.get('objectives', []), csv_path,
+                  x_labels=result.get('decision_var_labels'))
+    return {'success': True, 'csv_path': str(csv_path)}
 
 
 @router.delete("/api/optimizer/job/{job_id}")

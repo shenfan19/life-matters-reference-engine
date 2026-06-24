@@ -407,9 +407,13 @@ class SessionManagerMixin:
             if not data:
                 return {"success": False, "error": "没有数据可导出"}
             if not output_path:
-                output_dir = os.path.join(self.loader.models_directory, "output")
+                from datetime import datetime
+                from .paths import OUTPUT_DIR
+                model_stem = os.path.basename(session['model_name'])
+                output_dir = os.path.join(str(OUTPUT_DIR), model_stem)
                 os.makedirs(output_dir, exist_ok=True)
-                output_path = os.path.join(output_dir, f"{session['model_name']}_session_{session_id[:8]}.csv")
+                ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+                output_path = os.path.join(output_dir, f"{model_stem}_{ts}_sim.csv")
             headers = list(data[0].keys())
             with open(output_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=headers)

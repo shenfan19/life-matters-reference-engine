@@ -29,6 +29,15 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _shared_paths(root: Path):
+    """Import the GUI/CLI-shared path config (sim_engine/src/paths.py)."""
+    s = str(root)
+    if s not in sys.path:
+        sys.path.insert(0, s)
+    from sim_engine.src import paths
+    return paths
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog='lm-sim',
@@ -73,10 +82,12 @@ def main() -> None:
         sys.exit(1)
 
     root = _project_root()
+    shared_paths = _shared_paths(root)
 
     import logging
     from output import setup_output_dir, make_stem, setup_logging
-    out_dir = setup_output_dir(root, model_path.stem, args.output_dir)
+    out_dir = setup_output_dir(root, model_path.stem, args.output_dir,
+                                default_output_dir=shared_paths.OUTPUT_DIR)
 
     def start_step(mode: str) -> Path:
         """Point logging at a fresh per-step log file, print the run header, return the CSV path."""
