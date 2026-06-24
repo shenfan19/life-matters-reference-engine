@@ -63,6 +63,15 @@ const Simulator: React.FC<SimulatorProps> = ({
     fetch(`${API_BASE}/config`).then(r => r.json()).then(d => setScsMode(!!d.scs_mode)).catch(() => {});
   }, []);
 
+  // ── auto-save results to local output/ (non-SCS only; mirrors CLI default behavior) ──
+  const AUTO_SAVE_LOCAL_KEY = 'lm_sim_auto_save_local';
+  const [autoSaveLocal, setAutoSaveLocal] = useState(
+    () => localStorage.getItem(AUTO_SAVE_LOCAL_KEY) === 'true'
+  );
+  useEffect(() => {
+    localStorage.setItem(AUTO_SAVE_LOCAL_KEY, String(autoSaveLocal));
+  }, [autoSaveLocal]);
+
   // ── center tab ───────────────────────────────────────────────────────────────
   const [centerTab, setCenterTab] = useState<CenterTab>('intro');
   const prevTabRef = useRef<CenterTab>('intro');
@@ -214,6 +223,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     modelSessionsRef,
     setRunningModelKey,
     setCenterTab,
+    autoSaveLocal: autoSaveLocal && !scsMode,
     t,
   });
 
@@ -234,6 +244,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     setRunOutputVars, setOutputWarnings, setRunningModelKey, setSimLogs,
     setInputEvents, setMode, switchCenterTab,
     stopOptJobs,
+    autoSaveLocal: autoSaveLocal && !scsMode,
     t,
   });
 
@@ -360,6 +371,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
       onReload={reloadFromYAML}
       rightContent={rightContent}
+      scsMode={scsMode} autoSaveLocal={autoSaveLocal} onAutoSaveLocalChange={setAutoSaveLocal}
       t={t} c={c as any}
     />
   );

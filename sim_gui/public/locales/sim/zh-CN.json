@@ -113,6 +113,7 @@
   "sim.msg.validation_ok": "✅ 验证通过，场景已锁定",
   "sim.msg.validation_fail": "验证失败",
   "sim.msg.sim_complete": "仿真完成",
+  "sim.msg.auto_save_local_failed": "自动保存到本地失败",
   "sim.msg.exported": "已导出",
   "sim.msg.load_failed": "加载失败",
   "sim.msg.read_failed": "读取失败",
@@ -403,6 +404,8 @@
   "sim.ctrl.reload_tip_running": "仿真运行中，无法重载",
   "sim.ctrl.reload_tip_opt": "优化运行中，无法重载",
   "sim.ctrl.reload_tip": "重载模型（清除 session，同时重置仿真和优化）",
+  "sim.ctrl.auto_save_local": "默认输出到本地",
+  "sim.ctrl.auto_save_local_tip": "勾选后，每次仿真/优化运行完成自动写入服务器本地 output/ 目录，与 CLI 行为一致（本地开发模式可用）",
 
   "sim.opt.stop_opt": "停止优化",
   "sim.opt.warm_start_dirty_tooltip": "⚠ 目标、约束或决策变量已修改，热启动将沿用上次前沿，可能匹配度下降",

@@ -15,13 +15,18 @@ interface GlobalModelToolbarProps {
   onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onReload: () => void;
   rightContent?: React.ReactNode;
+  scsMode?: boolean;
+  autoSaveLocal?: boolean;
+  onAutoSaveLocalChange?: (v: boolean) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
   c: Record<string, string>;
 }
 
 export function GlobalModelToolbar({
   selectedModel, isOtherRunning, simRunning, optRunning, hasOptResult,
-  onDownload, onReload, rightContent, t, c,
+  onDownload, onReload, rightContent,
+  scsMode, autoSaveLocal, onAutoSaveLocalChange,
+  t, c,
 }: GlobalModelToolbarProps) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [withResults, setWithResults] = useState(true);
@@ -73,6 +78,15 @@ export function GlobalModelToolbar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.ctrl.reload_label')}</Button>
       </Tooltip>
+
+      {!scsMode && onAutoSaveLocalChange && (
+        <Tooltip title={t('sim.ctrl.auto_save_local_tip')}>
+          <Checkbox checked={!!autoSaveLocal}
+            onChange={e => onAutoSaveLocalChange(e.target.checked)}
+            style={{ color: c.textSec, whiteSpace: 'nowrap' }}
+          >{t('sim.ctrl.auto_save_local')}</Checkbox>
+        </Tooltip>
+      )}
     </div>
   );
 }

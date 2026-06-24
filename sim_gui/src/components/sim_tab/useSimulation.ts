@@ -40,7 +40,21 @@ interface UseSimulationParams {
   setMode: (mode: string) => void;
   switchCenterTab: (tab: string) => void;
   stopOptJobs: () => void;
+  autoSaveLocal?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
+}
+
+// Fire-and-forget: ask the backend to write the session's full output to local
+// output/<model>/ (sim_engine/src/session_manager.py:export_session_csv), mirroring
+// what `sim_cli/main.py --sim-only` writes for the same model. Silent on success;
+// the run's own completion message already told the user the run is done.
+function saveSessionLocally(sessionId: string, t: (key: string) => string) {
+  fetch(`${API_BASE}/simulation/export`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId }),
+  }).then(r => r.json()).then(r => {
+    if (!r.success) message.error(t('sim.msg.auto_save_local_failed'));
+  }).catch(() => message.error(t('sim.msg.auto_save_local_failed')));
 }
 
 export function useSimulation({
@@ -51,6 +65,7 @@ export function useSimulation({
   simRuns, mcSeed,
   setRunOutputVars, setOutputWarnings, setRunningModelKey, setSimLogs,
   setInputEvents, setMode, switchCenterTab, stopOptJobs,
+  autoSaveLocal,
   t,
 }: UseSimulationParams) {
   const [comparedPlans, setComparedPlans] = useState<PlanResult[]>([]);
@@ -168,6 +183,7 @@ export function useSimulation({
           if (res.data.completed) {
             set('status', 'completed'); isRunningRef.current = false; setRunningModelKey(null);
             message.success(t('sim.msg.sim_complete'));
+            if (autoSaveLocal) saveSessionLocally(sid, t);
           } else {
             setTimeout(loop, updateInterval);
           }
@@ -351,6 +367,7 @@ export function useSimulation({
     const failed = sessions.filter(s => s.failed).length;
     if (failed === 0) message.success(t('sim.msg.plans_done', { n: currentPlans.length }));
     else message.warning(t('sim.msg.plans_partial_fail', { n: failed }));
+    if (autoSaveLocal) sessions.filter(s => !s.failed && s.sid).forEach(s => saveSessionLocally(s.sid, t));
   };
 
   // ── apply best opt solution to sim ────────────────────────────────────────────
