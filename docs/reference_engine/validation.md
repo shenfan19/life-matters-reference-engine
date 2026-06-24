@@ -81,7 +81,7 @@ $$\text{error}(t) = \frac{|\hat{p}(t) - p(t)|}{p(t)} \times 100\%$$
 ### 运行方式
 
 ```bash
-cd ref_engine
+cd reference_engine
 python scripts/validate_banister.py
 ```
 

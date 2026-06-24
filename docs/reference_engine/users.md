@@ -9,7 +9,7 @@ Life Matters Simulator 支持两种部署模式，由环境变量 `SCS_MODE` 控
 | **本地模式**（默认） | `uvicorn ...`（不设 SCS_MODE） | 完整权限 | ✅ 可用 |
 | **SCS 模式**（云端演示） | `SCS_MODE=true uvicorn ...` | 禁止写服务器文件 | ❌ 不适用 |
 
-两种模式共用同一个 `ref_engine/` 和 `gui/`，差别仅在写操作保护。  
+两种模式共用同一个 `reference_engine/` 和 `gui/`，差别仅在写操作保护。  
 详见 [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md)。
 
 ---

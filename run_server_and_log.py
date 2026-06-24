@@ -2,7 +2,7 @@ import subprocess
 import time
 
 with open("server_runner.log", "w") as log:
-    proc = subprocess.Popen(["python", "ref_engine/src/api_server.py"],
+    proc = subprocess.Popen(["python", "reference_engine/src/api_server.py"],
                             stdout=log, stderr=log, text=True)
     time.sleep(5)
     if proc.poll() is not None:

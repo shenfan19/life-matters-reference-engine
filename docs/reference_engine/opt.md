@@ -62,7 +62,7 @@ from pymoo.termination import get_termination
 |------|------|
 | 前端入口 | `Simulator.tsx` `startOptimization()` |
 | 端点 | `POST /api/optimizer/run_yaml` |
-| 核心模块 | `ref_engine/src/yaml_optimizer.py` |
+| 核心模块 | `reference_engine/src/yaml_optimizer.py` |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
 | 优化对象 | YAML `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
 | 目标函数来源 | YAML `optimizer.objectives` |

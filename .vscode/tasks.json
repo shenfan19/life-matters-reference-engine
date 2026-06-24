@@ -10,7 +10,7 @@
             "type": "shell",
             "command": "python src/api_server.py",
             "options": {
-                "cwd": "${workspaceFolder}/ref_engine",
+                "cwd": "${workspaceFolder}/reference_engine",
                 "env": {
                     "SCS_MODE": "true",
                     "LM_MODELS_PATH": "${workspaceFolder}/models"
@@ -178,7 +178,7 @@
             "type": "shell",
             "command": "pip install -r requirements.txt",
             "options": {
-                "cwd": "${workspaceFolder}/ref_engine"
+                "cwd": "${workspaceFolder}/reference_engine"
             },
             "presentation": {
                 "reveal": "always",

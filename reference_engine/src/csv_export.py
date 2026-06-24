@@ -1,7 +1,7 @@
 """Pareto-front CSV writer shared by the CLI (cli/output.py) and the GUI
 backend (routes/optimizer.py:export_optimizer_csv).
 
-Lives in ref_engine/src rather than cli/ so the GUI backend never has to
+Lives in reference_engine/src rather than cli/ so the GUI backend never has to
 import from cli/ — the two ship as separate artifacts (CLI as a
 PyInstaller exe, GUI backend as a plain Python server) and only share this
 engine layer, not each other's entry-point code.

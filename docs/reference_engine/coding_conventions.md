@@ -1,6 +1,6 @@
 # 模块拆分规范
 
-> 适用范围：`cli/`、`ref_engine/`、`gui/` 的 Python 与 TypeScript/JSX 源码。
+> 适用范围：`cli/`、`reference_engine/`、`gui/` 的 Python 与 TypeScript/JSX 源码。
 > 判断一个文件/函数是否需要拆分，以及如何拆，统一按本文件执行。
 
 ## 1. 核心原则：职责，不是行数

@@ -54,7 +54,7 @@ pyinstaller cli/build.spec
 
 ## 路径配置
 
-模型库根目录、输出根目录、SCS 模式由 `ref_engine/src/paths.py` 统一解析，GUI 后端（`api_server.py`）
+模型库根目录、输出根目录、SCS 模式由 `reference_engine/src/paths.py` 统一解析，GUI 后端（`api_server.py`）
 和 CLI（本文档）共用同一份逻辑，不各自维护一套默认值：
 
 | 环境变量 | 默认值 | 说明 |
@@ -162,7 +162,7 @@ python cli/main.py <model.yaml> --opt-only --opt-continue
 
 CLI 与 GUI 在仿真/优化真正开始执行前，会校验模型里所有日期（`start_date`/`end_date`/
 `valid_start`/`valid_end`/`date_range`）和时间（`time_start`/`time_end`）字段的格式
-（`ref_engine/src/validation.py`，ADR 0118）。格式不合法时直接报错并停止，不会用默认值
+（`reference_engine/src/validation.py`，ADR 0118）。格式不合法时直接报错并停止，不会用默认值
 静默继续：
 
 ```
@@ -181,7 +181,7 @@ Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected
 - CLI 自身的进度消息（每代 `Gen N | eval | feasible | best_f`、各 plan 完成的步数）
 - 仿真/优化运行信息——模型规模（变量/公式数）、imports、起止日期与步长、output 变量列表、
   schedule/regimen 变量名、NaN/越界告警、完成耗时与 schedule 命中次数（sim）；目标/约束/决策变量/
-  算法配置（opt）。这部分内容由 `ref_engine/src/run_logging.py`（sim）和 `optimizer_engine.py` 的
+  算法配置（opt）。这部分内容由 `reference_engine/src/run_logging.py`（sim）和 `optimizer_engine.py` 的
   `log_cb` 机制（opt）生成，与 GUI 运行时日志面板显示的内容是同一份代码产出，只是落地渠道不同
   （CLI 写日志文件，GUI 存进内存会话） —— 见 ADR 0119。
 - 引擎级别 WARNING / ERROR
@@ -202,7 +202,7 @@ Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected
 | CLI 结果导入 GUI | — | GUI opt tab "导入 CSV" |
 | Monte Carlo 多 run | ✅（界面可临时改 sim_runs/seed，覆盖 YAML，不回写） | 严格按模型 YAML 的 `mc.runs`/`mc.seed` 跑，无覆盖开关 |
 
-CLI 与 GUI 共用同一个引擎层（`ref_engine/src/`），结果格式一致，可互通——sim 的执行核心
+CLI 与 GUI 共用同一个引擎层（`reference_engine/src/`），结果格式一致，可互通——sim 的执行核心
 （`apply_schedules` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
 不是两份各自实现后凑巧一致。这个一致性由 `tests/test_sim_cli_consistency.py` 自动回归验证
 （见 ADR 0111/0112/0113）。

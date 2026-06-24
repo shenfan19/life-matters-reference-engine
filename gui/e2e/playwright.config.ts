@@ -1,6 +1,6 @@
 // gui/e2e/playwright.config.ts
 // GUI end-to-end test skeleton (task 3 of 2026-06-19 code-trust-verification-infra).
-// Starts both the FastAPI backend (ref_engine) and the Vite dev server, then
+// Starts both the FastAPI backend (reference_engine) and the Vite dev server, then
 // drives the real browser through: open page -> select model -> run simulation
 // -> assert the results panel shows numeric output.
 //
@@ -30,7 +30,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'python src/api_server.py',
-      cwd: path.resolve(REPO_ROOT, 'ref_engine'),
+      cwd: path.resolve(REPO_ROOT, 'reference_engine'),
       env: {
         SCS_MODE: 'true',
         LM_MODELS_PATH: path.resolve(REPO_ROOT, 'models'),

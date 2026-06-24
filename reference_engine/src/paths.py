@@ -16,7 +16,7 @@ BACKEND_DIR = SRC_DIR.parent
 
 def _detect_project_root() -> Path:
     """__file__-based resolution breaks once the CLI ships as a PyInstaller exe
-    (cli/build.spec): ref_engine/src is bundled inside the exe, so
+    (cli/build.spec): reference_engine/src is bundled inside the exe, so
     BACKEND_DIR.parent no longer points at the directory the user actually
     deployed (docs/cli.md: ship models/ — and now .env — alongside the exe).
     Mirrors the same sys.frozen check cli/main.py and batch.py already do.

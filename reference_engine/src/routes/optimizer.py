@@ -141,7 +141,7 @@ async def export_model_with_results(request: ExportModelRequest):
 @router.post("/api/optimizer/export-csv")
 async def export_optimizer_csv(request: ExportOptCsvRequest):
     """Write the job's Pareto front to <OUTPUT_DIR>/<model>/ as a CSV, same format/
-    naming convention as the CLI's _opt.csv (ref_engine/src/csv_export.py, shared
+    naming convention as the CLI's _opt.csv (reference_engine/src/csv_export.py, shared
     with cli/output.py — neither entry point depends on the other).
     Local-disk mirror of "保存结果到模型" — never touches the model YAML.
     """

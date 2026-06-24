@@ -116,4 +116,4 @@
 | [0118](0118-2026-06-22_sim_upfront-datetime-validation.md) | 日期/时间字段前置校验：消除 CLI/GUI 共用的静默回退（schedule_runner/optimizer_engine 多处 except: pass） | ✅ 已接受 | 2026-06-22 |
 | [0119](0119-2026-06-22_sim_unify-sim-run-logging-core.md) | Sim 运行日志核心合并：新增 run_logging.py，CLI/GUI 共用内容生成，IO 出口各自实现（修订 0118 的追问） | ✅ 已接受 | 2026-06-22 |
 | [0120 †](../../../../b_lm_model/docs/decisions/0120-2026-06-23_model_drop-hold-filename-suffix.md) | 废除 `_HOLD` 文件名后缀，状态判定仅看 `metadata.todo`（部分取代 0101） | 🟢 已实施 | 2026-06-23 |
-| [0121](0121-2026-06-24_project_top-level-rename-cli-gui-ref_engine.md) | 顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`ref_engine`/`gui`；`docs/` 重组为 `docs/engine/`；`SimulatorEngine` → `ReferenceEngine` | ✅ 已接受 | 2026-06-24 |
+| [0121](0121-2026-06-24_project_top-level-rename-cli-gui-reference_engine.md) | 顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`；`docs/` 重组为 `docs/reference_engine/`；`SimulatorEngine` → `ReferenceEngine` | ✅ 已接受 | 2026-06-24 |
