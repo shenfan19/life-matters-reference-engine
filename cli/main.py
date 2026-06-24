@@ -81,6 +81,24 @@ def main() -> None:
         print(f'Error: model not found: {model_path}')
         sys.exit(1)
 
+    from runner import model_declares_step
+
+    # Default invocation (neither --sim-only nor --opt-only): a model not
+    # declaring a step is by design (sim-only/opt-only model), not a failure —
+    # skip it quietly instead of attempting and failing. An explicit
+    # --sim-only/--opt-only/--opt-continue still fails loudly if the step is
+    # missing (the user asked for it specifically).
+    if run_sim_step and run_opt_step:
+        if not model_declares_step(model_path, 'sim'):
+            run_sim_step = False
+            print('  (model has no simulation:/simulator: block — skipping sim step)')
+        if not model_declares_step(model_path, 'opt') and args.warm is False:
+            run_opt_step = False
+            print('  (model has no optimizer: block — skipping opt step)')
+        if not run_sim_step and not run_opt_step:
+            print('Error: model declares neither simulation:/simulator: nor optimizer: — nothing to run.')
+            sys.exit(1)
+
     root = _project_root()
     shared_paths = _shared_paths(root)
 
