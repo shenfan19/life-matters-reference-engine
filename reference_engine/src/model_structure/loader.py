@@ -229,7 +229,8 @@ class Loader:
                 type=VariableType(var_data.get('type', 'state')),
                 unit=var_data.get('unit'),
                 bounds=var_data.get('bounds'),
-                reference=var_data.get('reference')
+                reference=var_data.get('reference'),
+                locator=var_data.get('locator')
             )
             self.variable_history[var_name] = [self.variables[var_name].value]
 
@@ -265,6 +266,7 @@ class Loader:
                 type=VariableType.parameter,
                 unit=ev_data.get('unit'),
                 reference=ev_data.get('reference'),
+                locator=ev_data.get('locator'),
                 evidence_type=ev_type,
                 evidence_raw_value=value
             )
@@ -357,6 +359,7 @@ class Loader:
                 priority=form_data.get('priority', 0),
                 dynamics=form_data.get('dynamics', {}),
                 reference=form_data.get('reference'),
+                locator=form_data.get('locator'),
                 step_unit=str(form_data.get('step_unit', '')).lower() or None,
             )
         

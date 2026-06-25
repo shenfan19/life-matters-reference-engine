@@ -35,6 +35,8 @@ class Variable:
     unit: Optional[str] = None
     bounds: Optional[List[float]] = None
     reference: Optional[Any] = None
+    # reference 在文献内的精确定位（页码/图/表/公式/章节），与 reference 配对使用，可选
+    locator: Optional[Any] = None
     # evidence 溯源：非 None 表示该 parameter 的 value 是 Loader 从 evidence 块的原始
     # 文献效应量（OR/HR/RR/Cohen's d 等）自动换算而来，而非建模者直接填入的机制系数。
     # 不新增独立 VariableType，复用 parameter，靠这两个字段做溯源标记。
@@ -49,6 +51,8 @@ class Formula:
     priority: int = 0
     dynamics: Dict[str, Any] = None
     reference: Optional[Any] = None
+    # reference 在文献内的精确定位（页码/图/表/公式/章节），与 reference 配对使用，可选
+    locator: Optional[Any] = None
     # 公式显式声明的时间单位（minute | hour | day），用于跨步长 import 换算。
     step_unit: Optional[str] = None
     # 运行时换算后的步长（秒），由 loader 根据 step_unit 计算。
