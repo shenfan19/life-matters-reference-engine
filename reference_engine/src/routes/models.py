@@ -46,6 +46,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
                 "description": var.description, "value": var.value, "unit": var.unit,
                 "type": var.type.value if hasattr(var.type, 'value') else str(var.type),
                 "reference": var.reference,
+                "locator": var.locator,
                 "evidence_type": var.evidence_type,
                 "evidence_raw_value": var.evidence_raw_value,
             }
@@ -55,7 +56,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
             f_name: {
                 "description": f.description, "condition": f.condition,
                 "priority": f.priority, "dynamics": f.dynamics,
-                "reference": f.reference,
+                "reference": f.reference, "locator": f.locator,
             }
             for f_name, f in model.formulas.items()
         }

@@ -71,7 +71,11 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
       from {source}
     </span>
   ) : null;
-  const refStr = (ref: unknown): string => !ref ? '' : Array.isArray(ref) ? ref.filter(Boolean).join('; ') : String(ref);
+  const refStr = (ref: unknown, locator?: unknown): string => {
+    const base = !ref ? '' : Array.isArray(ref) ? ref.filter(Boolean).join('; ') : String(ref);
+    const loc = !locator ? '' : Array.isArray(locator) ? locator.filter(Boolean).join('; ') : String(locator);
+    return base && loc ? `${base} (${loc})` : base;
+  };
 
   const toggleIntro = (key: string) => setIntroOpen(prev => {
     const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n;
@@ -127,7 +131,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
     lines.push(`## ${t('sim.tabs.variables')}\n`);
     lines.push(`| ${t('sim.intro.col.name')} | ${t('sim.intro.col.description')} | ${t('sim.intro.type')} | ${t('sim.intro.init_value')} | ${t('sim.intro.unit')} | ${t('sim.intro.col.reference')} |\n|------|------|------|------|------|------|`);
     Object.entries(allV).forEach(([name, d]: [string, any]) => {
-      lines.push(`| \`${name}\` | ${d.description || '—'} | ${varTypeBadge(d.type)} | ${d.value ?? '—'} | ${d.unit || '—'} | ${refStr(d.reference) || '—'} |`);
+      lines.push(`| \`${name}\` | ${d.description || '—'} | ${varTypeBadge(d.type)} | ${d.value ?? '—'} | ${d.unit || '—'} | ${refStr(d.reference, d.locator) || '—'} |`);
     });
     lines.push('');
 
@@ -140,7 +144,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         const expr = typeof fd.dynamics === 'object' && fd.dynamics
           ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
           : String(fd.dynamics ?? '');
-        lines.push(`| \`${name}\` | ${fd.description || '—'} | ${expr || '—'} | ${cond} | ${refStr(fd.reference) || '—'} |`);
+        lines.push(`| \`${name}\` | ${fd.description || '—'} | ${expr || '—'} | ${cond} | ${refStr(fd.reference, fd.locator) || '—'} |`);
       });
       lines.push('');
     }
@@ -356,7 +360,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
               </tr></thead>
               <tbody>
                 {Object.entries(allV).map(([name, d]: [string, any]) => {
-                  const ref = refStr(d.reference);
+                  const ref = refStr(d.reference, d.locator);
                   return (
                     <tr key={name}>
                       <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
@@ -391,7 +395,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                 const expr = typeof fd.dynamics === 'object' && fd.dynamics
                   ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
                   : String(fd.dynamics ?? '');
-                const ref = refStr(fd.reference);
+                const ref = refStr(fd.reference, fd.locator);
                 return (
                   <tr key={name}>
                     <td style={{ ...tdS, color: c.text, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</td>
