@@ -168,7 +168,7 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
     prev_sec_of_day = prev_time % 86400
     next_sec_of_day = next_time % 86400
     day_boundary_crossed = int(next_time / 86400) > prev_day_idx
-    dow = prev_day_idx % 7  # 0=Mon … 6=Sun
+    dow = (epoch + timedelta(days=prev_day_idx)).weekday()  # 0=Mon … 6=Sun, aligned to sim_start_date's real calendar weekday
 
     # ── Pulse reset: zero all controlled variables for this step ──────────────
     for sched in schedules:
