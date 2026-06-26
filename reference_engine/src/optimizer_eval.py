@@ -69,17 +69,19 @@ def _eval_G(history: Dict[str, List[float]], constraints: List[Dict]) -> List[fl
     """Constraint violations (G[i] > 0 = violated).
 
     Default (no `metric`): trajectory-wide max/min, i.e. the bound must hold at
-    every timestep. `metric: final` checks only the end-of-simulation value,
-    for constraints that represent a treatment endpoint/goal rather than an
-    always-on safety bound (e.g. variables that start outside the bound).
+    every timestep. Any explicit `metric` (`final`/`mean`/`max`/`min`) reduces
+    the trajectory via `_eval_metric` first and checks the bound against that
+    single value instead — e.g. `metric: mean` for a constraint meant to read
+    as an overall/average floor rather than an always-on per-timestep bound
+    (a deliberate dip, such as a scheduled full-rest day, shouldn't violate it).
     """
     G = []
     for con in constraints:
         vals = history.get(con['variable'], [0.0])
         op, threshold = _parse_condition(con.get('condition', '<= 0'))
         metric = con.get('metric')
-        if metric == 'final':
-            val = vals[-1] if vals else 0.0
+        if metric:
+            val = _eval_metric(vals, metric)
             if op in ('<=', '<'):
                 G.append(val - threshold)
             else:
