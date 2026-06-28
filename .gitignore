@@ -5,6 +5,7 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+release/
 *.egg-info/
 *.so
 
