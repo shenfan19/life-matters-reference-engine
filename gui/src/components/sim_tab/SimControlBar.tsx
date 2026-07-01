@@ -25,7 +25,6 @@ interface SimControlBarProps {
   onReset: () => void;
   onRunAllPlans: () => void;
   onExportCSV: () => void;
-  onDownloadCharts: () => void;
   onImportCSV: (csvText: string, fileName: string) => void;
   reportButton?: React.ReactNode;
   onSimStartDateChange: (v: string) => void;
@@ -43,7 +42,7 @@ export function SimControlBar({
   simStartDate, simEndDate, stepValue, stepUnit, simRuns, mcSeed,
   selectedModel, hasSimData, isOtherRunning, otherRunningTip,
   onStart, onPause, onResume, onReset, onRunAllPlans,
-  onExportCSV, onDownloadCharts, onImportCSV, reportButton,
+  onExportCSV, onImportCSV, reportButton,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
   t, c,
@@ -145,14 +144,6 @@ export function SimControlBar({
           disabled={!selectedModel || !hasSimData}
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.ctrl.sim_label')}</Button>
-      </Tooltip>
-
-      <Tooltip title={t('sim.ctrl.dl_charts_tip')}>
-        <Button size="small" icon={<DownloadOutlined />}
-          onClick={onDownloadCharts}
-          disabled={!selectedModel || !hasSimData}
-          style={{ whiteSpace: 'nowrap', color: c.textSec }}
-        >{t('sim.ctrl.charts_label')}</Button>
       </Tooltip>
 
       <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
