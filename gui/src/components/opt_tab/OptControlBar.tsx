@@ -35,6 +35,7 @@ interface OptControlBarProps {
   onMcSeedChange: (v: number | null) => void;
   onExportCSV: () => void;
   onImportCSV: (csvText: string) => void;
+  reportButton?: React.ReactNode;
   scsMode: boolean;
   setOptResult: (v: any) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
@@ -50,7 +51,7 @@ export function OptControlBar({
   onStart, onCancel, onWarmStartChange,
   onSimStartDateChange, onSimEndDateChange, onStepValueChange, onStepUnitChange,
   onSimRunsChange, onMcSeedChange,
-  onExportCSV, onImportCSV,
+  onExportCSV, onImportCSV, reportButton,
   setOptResult,
   t, c,
 }: OptControlBarProps) {
@@ -181,6 +182,8 @@ export function OptControlBar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.opt.opt_label')}</Button>
       </Tooltip>
+
+      {reportButton && <><div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />{reportButton}</>}
     </>
   );
 }

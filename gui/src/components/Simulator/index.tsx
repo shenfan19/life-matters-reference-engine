@@ -29,6 +29,7 @@ import { useFileTree } from './useFileTree';
 import { useBuilderState } from './useBuilderState';
 import { useModelInit } from './useModelInit';
 import { usePersistedUI } from './usePersistedUI';
+import { ReportButton } from '../sim_tab/ReportButton';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
@@ -99,8 +100,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   // useBuilderState's other functions (reloadFromYAML etc.) depend on.
   const [builderOpen, setBuilderOpen] = useState(false);
 
-  // ── report export (in Overview tab) ────────────────────────────────────────
-  const [reportGenerating, setReportGenerating] = useState(false);
   const [runOutputVars, setRunOutputVars] = useState<string[]>([]);
   const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
   const [simLogs, setSimLogs] = useState<Array<{ t: number; msg: string }>>([]);
@@ -362,7 +361,25 @@ const Simulator: React.FC<SimulatorProps> = ({
   const isOtherRunning = scsMode && !!runningModelKey && runningModelKey !== selectedKey;
   const otherRunningTip = isOtherRunning ? t('sim.msg.other_running_tip', { name: runningModelTitle || '' }) : undefined;
   const simRunningOrPaused = status === 'running' || status === 'paused';
-  const [introToolbarEl, setIntroToolbarEl] = useState<HTMLDivElement | null>(null);
+
+  // Prefer current run; fall back to last archived run; then first Pareto/compared plan
+  const effectiveSimData = simulationData.length > 0
+    ? simulationData
+    : importedSimRuns.length > 0 ? importedSimRuns[importedSimRuns.length - 1].data
+    : comparedPlans.find(p => p.data.length > 0)?.data ?? [];
+
+  const reportButton = selectedModel ? (
+    <ReportButton
+      selectedModel={selectedModel} outputVars={outputVars} formulas={formulas}
+      simulationData={effectiveSimData} inputParams={inputParams}
+      simStartDate={simStartDate} simEndDate={simEndDate}
+      stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
+      objectives={objectives} constraints={constraints}
+      optAlgo={optAlgo} optPop={optPop} optGen={optGen}
+      optResult={optResult} optElapsed={optElapsed} optMethod={optMethod}
+      fontSize={fontSize} t={t} c={c as any}
+    />
+  ) : undefined;
 
   const ModelToolbar = (rightContent?: React.ReactNode) => (
     <GlobalModelToolbar
@@ -403,6 +420,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onStepUnitChange={v => setEdited('stepUnit', v)}
       onSimRunsChange={v => setEdited('simRuns', v)}
       onMcSeedChange={v => setEdited('mcSeed', v)}
+      reportButton={reportButton}
       t={t} c={c as any}
     />
   );
@@ -432,6 +450,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onImportCSV={importParetoFromCSV}
       scsMode={scsMode}
       setOptResult={setOptResult}
+      reportButton={reportButton}
       t={t} c={c as any}
     />
   );
@@ -547,21 +566,19 @@ const Simulator: React.FC<SimulatorProps> = ({
 
           {centerTab === 'intro' && (
             <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {ModelToolbar(selectedModel ? <div ref={setIntroToolbarEl} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} /> : undefined)}
+              {ModelToolbar()}
               <SimIntroTab
                 selectedModel={selectedModel} outputVars={outputVars}
                 formulas={formulas} provenance={provenance}
                 introOpen={introOpen} setIntroOpen={setIntroOpen}
-                simulationData={simulationData}
+                simulationData={effectiveSimData}
                 inputParams={inputParams}
                 simStartDate={simStartDate} simEndDate={simEndDate}
                 stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
                 objectives={objectives} constraints={constraints}
                 optAlgo={optAlgo} optPop={optPop} optGen={optGen}
                 optResult={optResult} optElapsed={optElapsed} optMethod={optMethod}
-                reportGenerating={reportGenerating} setReportGenerating={setReportGenerating}
                 isDarkMode={isDarkMode} c={c} t={t} fontSize={fontSize}
-                toolbarContainer={introToolbarEl}
               />
             </div>
           )}
