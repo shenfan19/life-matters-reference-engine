@@ -30,8 +30,6 @@ import { useBuilderState } from './useBuilderState';
 import { useModelInit } from './useModelInit';
 import { usePersistedUI } from './usePersistedUI';
 import { ReportButton } from '../sim_tab/ReportButton';
-import JSZip from 'jszip';
-import { varToDataUrl } from '../sim_tab/SimChart';
 import type { PlanResult, SimulationDataPoint } from '../../types';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
@@ -389,23 +387,6 @@ const Simulator: React.FC<SimulatorProps> = ({
   const reportActivePlans = reportPlanDatasets.filter(p => p.data.length > 0);
   const reportIsMultiPlan = reportActivePlans.length > 1;
 
-  const handleDownloadCharts = async () => {
-    const zip = new JSZip();
-    for (let idx = 0; idx < outputVars.length; idx++) {
-      const varName = outputVars[idx];
-      const dataUrl = varToDataUrl(varName, idx, effectiveSimData, fontSize,
-        reportIsMultiPlan ? reportActivePlans : undefined);
-      if (dataUrl) zip.file(`${varName}.png`, dataUrl.split(',')[1], { base64: true });
-    }
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    const modelName = ((selectedModel?.content?.metadata as any)?.name || 'sim').replace(/\s+/g, '_');
-    a.href = URL.createObjectURL(blob);
-    a.download = `charts_${modelName}_${new Date().toISOString().slice(0, 10)}.zip`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  };
-
   const reportButton = selectedModel ? (
     <ReportButton
       selectedModel={selectedModel} outputVars={outputVars} formulas={formulas}
@@ -452,7 +433,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       onReset={resetSimulation} onRunAllPlans={runAllPlans}
       hasSimData={simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0}
       onExportCSV={handleExportSimCSV}
-      onDownloadCharts={handleDownloadCharts}
       onImportCSV={importSimCSV}
       onSimStartDateChange={v => setEdited('simStartDate', v)}
       onSimEndDateChange={v => setEdited('simEndDate', v)}

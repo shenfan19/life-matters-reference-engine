@@ -70,17 +70,28 @@ export function ReportButton({
   const activePlans = (planDatasets ?? []).filter(p => p.data.length > 0);
   const isMultiPlan = activePlans.length > 1;
 
-  function buildChartUrls(): Map<string, string> {
-    const map = new Map<string, string>();
+  type ChartSource = { varName: string; planLabel: string; src: string };
+
+  function buildChartImages(): Array<{ varName: string; planLabel: string; safeName: string; dataUrl: string }> {
+    const result: Array<{ varName: string; planLabel: string; safeName: string; dataUrl: string }> = [];
     outputVars.forEach((varName, idx) => {
-      const dataUrl = varToDataUrl(varName, idx, simulationData, fontSize,
-        isMultiPlan ? activePlans : undefined);
-      if (dataUrl) map.set(varName, dataUrl);
+      if (isMultiPlan && activePlans.length > 0) {
+        for (const plan of activePlans) {
+          const dataUrl = varToDataUrl(varName, idx, plan.data, fontSize, [plan]);
+          if (dataUrl) {
+            const safePlan = plan.label.replace(/[^a-zA-Z0-9_.-]/g, '_');
+            result.push({ varName, planLabel: plan.label, safeName: `${varName}_${safePlan}`, dataUrl });
+          }
+        }
+      } else {
+        const dataUrl = varToDataUrl(varName, idx, simulationData, fontSize);
+        if (dataUrl) result.push({ varName, planLabel: '', safeName: varName, dataUrl });
+      }
     });
-    return map;
+    return result;
   }
 
-  function buildMd(imgSources: Map<string, string>): string {
+  function buildMd(chartSources: ChartSource[]): string {
     const lines: string[] = [];
     const ts = new Date().toISOString().slice(0, 10);
     lines.push(`# ${t('sim.report.md.title')}\n\n> ${t('sim.report.md.generated_at')}: ${ts}\n`);
@@ -131,8 +142,11 @@ export function ReportButton({
         const d = allV[varName] || {};
         const caption = [varName, d.description, d.unit ? `(${d.unit})` : ''].filter(Boolean).join('  ');
         lines.push(`\n**${caption}**\n`);
-        const src = imgSources.get(varName);
-        if (src) lines.push(`![${varName}](${src})\n`);
+        const varSources = chartSources.filter(cs => cs.varName === varName);
+        for (const cs of varSources) {
+          if (cs.planLabel) lines.push(`**— ${cs.planLabel} —**\n`);
+          lines.push(`![${varName}${cs.planLabel ? ' ' + cs.planLabel : ''}](${cs.src})\n`);
+        }
       });
       lines.push('');
     }
@@ -209,20 +223,20 @@ export function ReportButton({
         ],
         onClick: async ({ key }) => {
           if (key === 'html') {
-            const chartUrls = buildChartUrls();
+            const imgs = buildChartImages();
+            const sources: ChartSource[] = imgs.map(img => ({ varName: img.varName, planLabel: img.planLabel, src: img.dataUrl }));
             const w = window.open('', '_blank');
-            if (w) { w.document.write(buildHtml(buildMd(chartUrls))); w.document.close(); }
+            if (w) { w.document.write(buildHtml(buildMd(sources))); w.document.close(); }
           } else if (key === 'md') {
             setGenerating(true);
             try {
-              const chartUrls = buildChartUrls();
-              const imgPaths = new Map(outputVars.map(v => [v, `./images/${v}.png`]));
-              const md = buildMd(imgPaths);
+              const imgs = buildChartImages();
+              const sources: ChartSource[] = imgs.map(img => ({ varName: img.varName, planLabel: img.planLabel, src: `./images/${img.safeName}.png` }));
               const zip = new JSZip();
-              zip.file('report.md', md);
+              zip.file('report.md', buildMd(sources));
               const imgFolder = zip.folder('images')!;
-              for (const [varName, dataUrl] of chartUrls) {
-                imgFolder.file(`${varName}.png`, dataUrl.split(',')[1], { base64: true });
+              for (const img of imgs) {
+                imgFolder.file(`${img.safeName}.png`, img.dataUrl.split(',')[1], { base64: true });
               }
               const blob = await zip.generateAsync({ type: 'blob' });
               const a = document.createElement('a');

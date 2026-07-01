@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
+import JSZip from 'jszip';
 import type { SimulationDataPoint, PlanResult } from '../../types';
 import { getC } from '../../core/theme';
 
@@ -226,6 +227,34 @@ const SimChart: React.FC<{
     URL.revokeObjectURL(url);
   };
 
+  const exportPNG = async () => {
+    const plansToDraw = activePlans && activePlans.length > 0 ? activePlans
+      : [{ id: 'single', label: varName, color: lineColor, data, runsData: runsData ?? [] }];
+
+    if (plansToDraw.length === 1) {
+      const dataUrl = varToDataUrl(varName, colorIndex, plansToDraw[0].data, fontSize, plansToDraw as PlanResult[]);
+      if (!dataUrl) return;
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = `${varName}.png`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } else {
+      const zip = new JSZip();
+      for (const plan of plansToDraw) {
+        const dataUrl = varToDataUrl(varName, colorIndex, plan.data, fontSize, [plan] as PlanResult[]);
+        if (dataUrl) {
+          const safeName = plan.label.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          zip.file(`${varName}_${safeName}.png`, dataUrl.split(',')[1], { base64: true });
+        }
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${varName}_charts.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -259,13 +288,18 @@ const SimChart: React.FC<{
               {unit && <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>({unit})</span>}
             </div>
           )}
-          <Button
-            size="small" type="text" icon={<DownloadOutlined />}
-            onClick={exportCSV}
-            style={{ color: c.textMute, padding: '0 4px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}
-          >
-            CSV
-          </Button>
+          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+            <Button
+              size="small" type="text" icon={<DownloadOutlined />}
+              onClick={exportPNG}
+              style={{ color: c.textMute, padding: '0 4px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}
+            >PNG</Button>
+            <Button
+              size="small" type="text" icon={<DownloadOutlined />}
+              onClick={exportCSV}
+              style={{ color: c.textMute, padding: '0 4px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}
+            >CSV</Button>
+          </div>
         </div>
       )}
       <canvas ref={canvasRef} style={{ width: '100%', height: CANVAS_H, display: 'block' }} />
@@ -291,8 +325,8 @@ export function varToDataUrl(
   W = 680, H = 160
 ): string {
   const activePlans = planDatasets?.filter(p => p.data.length > 0) ?? [];
-  const isMultiPlan = activePlans.length > 1;
-  if (!isMultiPlan && simulationData.length === 0) return '';
+  // Exit early only when there is genuinely no data at all
+  if (activePlans.length === 0 && simulationData.length === 0) return '';
 
   const canvas = document.createElement('canvas');
   canvas.width = W * 2; canvas.height = H * 2;
@@ -301,12 +335,13 @@ export function varToDataUrl(
   ctx.scale(2, 2);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
+  // Pass activePlans even when there is only 1, so plan.color is used
   drawChartOnCtx(ctx, W, H, varName, simulationData, false,
     VAR_COLORS[colorIndex % VAR_COLORS.length], undefined, fontSize,
-    isMultiPlan ? activePlans : undefined);
+    activePlans.length > 0 ? activePlans : undefined);
 
-  // Legend for multi-plan exports
-  if (isMultiPlan) {
+  // Legend only when there are 2+ plans in the image
+  if (activePlans.length > 1) {
     const lgFont = Math.max(9, fontSize * 9 / 14);
     ctx.font = `${lgFont}px system-ui`;
     const sq = 8; const igap = 4; const ibetween = 10;

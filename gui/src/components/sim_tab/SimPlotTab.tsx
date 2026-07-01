@@ -3,7 +3,8 @@ import { Button, Collapse, Empty, Tooltip, message } from 'antd';
 import { CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimulationDataPoint, PlanResult } from '../../types';
 import { getC } from '../../core/theme';
-import SimChart, { VAR_COLORS } from './SimChart';
+import JSZip from 'jszip';
+import SimChart, { VAR_COLORS, varToDataUrl } from './SimChart';
 
 interface SimPlotTabProps {
   simulationData: SimulationDataPoint[];
@@ -195,6 +196,32 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const exportVarPNG = async (varName: string, colorIndex: number) => {
+    const plansWithData = isMultiPlan ? (visiblePlans ?? []).filter(p => p.data.length > 0) : [];
+    if (plansWithData.length > 0) {
+      const zip = new JSZip();
+      for (const plan of plansWithData) {
+        const dataUrl = varToDataUrl(varName, colorIndex, plan.data, fontSize, [plan]);
+        if (dataUrl) {
+          const safeName = plan.label.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          zip.file(`${varName}_${safeName}.png`, dataUrl.split(',')[1], { base64: true });
+        }
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${varName}_charts.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } else {
+      const dataUrl = varToDataUrl(varName, colorIndex, simulationData, fontSize);
+      if (!dataUrl) return;
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = `${varName}.png`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+  };
+
   if (!hasSimData && !isMultiPlan) {
     return (
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
@@ -275,9 +302,14 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
               </span>
             ),
             extra: (
-              <Button size="small" type="text" icon={<DownloadOutlined />}
-                onClick={e => { e.stopPropagation(); exportVarCSV(varName); }}
-                style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
+              <div style={{ display: 'flex', gap: 0 }} onClick={e => e.stopPropagation()}>
+                <Button size="small" type="text" icon={<DownloadOutlined />}
+                  onClick={() => exportVarPNG(varName, idx)}
+                  style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}>PNG</Button>
+                <Button size="small" type="text" icon={<DownloadOutlined />}
+                  onClick={() => exportVarCSV(varName)}
+                  style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}>CSV</Button>
+              </div>
             ),
             children: (
               <SimChart varName={varName} unit={varInfo?.unit}
@@ -311,9 +343,14 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
                   </span>
                 ),
                 extra: (
-                  <Button size="small" type="text" icon={<DownloadOutlined />}
-                    onClick={e => { e.stopPropagation(); exportVarCSV(v.name); }}
-                    style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }} />
+                  <div style={{ display: 'flex', gap: 0 }} onClick={e => e.stopPropagation()}>
+                    <Button size="small" type="text" icon={<DownloadOutlined />}
+                      onClick={() => exportVarPNG(v.name, outputVars.length + idx)}
+                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}>PNG</Button>
+                    <Button size="small" type="text" icon={<DownloadOutlined />}
+                      onClick={() => exportVarCSV(v.name)}
+                      style={{ color: c.textMute, padding: '0 2px', height: 'auto', lineHeight: 1 }}>CSV</Button>
+                  </div>
                 ),
                 children: (
                   <SimChart varName={v.name} unit={v.unit}
