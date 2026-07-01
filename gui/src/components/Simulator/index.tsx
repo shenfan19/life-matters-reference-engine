@@ -30,6 +30,9 @@ import { useBuilderState } from './useBuilderState';
 import { useModelInit } from './useModelInit';
 import { usePersistedUI } from './usePersistedUI';
 import { ReportButton } from '../sim_tab/ReportButton';
+import JSZip from 'jszip';
+import { varToDataUrl } from '../sim_tab/SimChart';
+import type { PlanResult, SimulationDataPoint } from '../../types';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
@@ -368,6 +371,41 @@ const Simulator: React.FC<SimulatorProps> = ({
     : importedSimRuns.length > 0 ? importedSimRuns[importedSimRuns.length - 1].data
     : comparedPlans.find(p => p.data.length > 0)?.data ?? [];
 
+  // All plan datasets for multi-plan chart exports (mirrors SimPlotTab comparedPlans assembly)
+  const reportPlanDatasets: PlanResult[] = [
+    ...(simulationData.length > 0 && importedSimRuns.length > 0 ? [{
+      id: 'current-sim',
+      label: t('sim.tab.current'),
+      color: PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length],
+      data: simulationData as SimulationDataPoint[],
+      runsData: dataPerRun,
+    }] : []),
+    ...comparedPlans,
+    ...importedSimRuns.map(r => ({
+      id: r.key, label: r.label, color: r.color,
+      data: r.data as SimulationDataPoint[], runsData: [] as SimulationDataPoint[][],
+    })),
+  ];
+  const reportActivePlans = reportPlanDatasets.filter(p => p.data.length > 0);
+  const reportIsMultiPlan = reportActivePlans.length > 1;
+
+  const handleDownloadCharts = async () => {
+    const zip = new JSZip();
+    for (let idx = 0; idx < outputVars.length; idx++) {
+      const varName = outputVars[idx];
+      const dataUrl = varToDataUrl(varName, idx, effectiveSimData, fontSize,
+        reportIsMultiPlan ? reportActivePlans : undefined);
+      if (dataUrl) zip.file(`${varName}.png`, dataUrl.split(',')[1], { base64: true });
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    const modelName = ((selectedModel?.content?.metadata as any)?.name || 'sim').replace(/\s+/g, '_');
+    a.href = URL.createObjectURL(blob);
+    a.download = `charts_${modelName}_${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  };
+
   const reportButton = selectedModel ? (
     <ReportButton
       selectedModel={selectedModel} outputVars={outputVars} formulas={formulas}
@@ -377,6 +415,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       objectives={objectives} constraints={constraints}
       optAlgo={optAlgo} optPop={optPop} optGen={optGen}
       optResult={optResult} optElapsed={optElapsed} optMethod={optMethod}
+      planDatasets={reportIsMultiPlan ? reportActivePlans : undefined}
       fontSize={fontSize} t={t} c={c as any}
     />
   ) : undefined;
@@ -413,6 +452,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       onReset={resetSimulation} onRunAllPlans={runAllPlans}
       hasSimData={simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0}
       onExportCSV={handleExportSimCSV}
+      onDownloadCharts={handleDownloadCharts}
       onImportCSV={importSimCSV}
       onSimStartDateChange={v => setEdited('simStartDate', v)}
       onSimEndDateChange={v => setEdited('simEndDate', v)}

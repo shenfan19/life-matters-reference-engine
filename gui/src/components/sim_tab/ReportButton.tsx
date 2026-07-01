@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Dropdown, Tooltip } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
+import JSZip from 'jszip';
+import type { ModelFile, PlanResult, SimulationDataPoint, StepUnit } from '../../types';
 import { descriptionText } from '../../core/modelUtils';
 import { varToDataUrl } from './SimChart';
 
@@ -24,6 +25,7 @@ interface ReportButtonProps {
   optResult: any;
   optElapsed: number;
   optMethod: string;
+  planDatasets?: PlanResult[];
   fontSize: number;
   t: (key: string, params?: Record<string, string | number>) => string;
   c: Record<string, string>;
@@ -33,7 +35,7 @@ export function ReportButton({
   selectedModel, outputVars, formulas, simulationData, inputParams,
   simStartDate, simEndDate, stepValue, stepUnit, batchSize,
   objectives, constraints, optAlgo, optPop, optGen,
-  optResult, optElapsed, optMethod,
+  optResult, optElapsed, optMethod, planDatasets,
   fontSize, t, c,
 }: ReportButtonProps) {
   const [generating, setGenerating] = useState(false);
@@ -65,7 +67,20 @@ export function ReportButton({
     return `${m}:${ss}`;
   };
 
-  function buildMd(): string {
+  const activePlans = (planDatasets ?? []).filter(p => p.data.length > 0);
+  const isMultiPlan = activePlans.length > 1;
+
+  function buildChartUrls(): Map<string, string> {
+    const map = new Map<string, string>();
+    outputVars.forEach((varName, idx) => {
+      const dataUrl = varToDataUrl(varName, idx, simulationData, fontSize,
+        isMultiPlan ? activePlans : undefined);
+      if (dataUrl) map.set(varName, dataUrl);
+    });
+    return map;
+  }
+
+  function buildMd(imgSources: Map<string, string>): string {
     const lines: string[] = [];
     const ts = new Date().toISOString().slice(0, 10);
     lines.push(`# ${t('sim.report.md.title')}\n\n> ${t('sim.report.md.generated_at')}: ${ts}\n`);
@@ -112,12 +127,12 @@ export function ReportButton({
     if (!hasData) {
       lines.push(`${t('sim.report.no_data')}\n`);
     } else {
-      outputVars.forEach((varName, idx) => {
+      outputVars.forEach((varName) => {
         const d = allV[varName] || {};
         const caption = [varName, d.description, d.unit ? `(${d.unit})` : ''].filter(Boolean).join('  ');
         lines.push(`\n**${caption}**\n`);
-        const dataUrl = varToDataUrl(varName, idx, simulationData, fontSize);
-        if (dataUrl) lines.push(`![${varName}](${dataUrl})\n`);
+        const src = imgSources.get(varName);
+        if (src) lines.push(`![${varName}](${src})\n`);
       });
       lines.push('');
     }
@@ -192,18 +207,32 @@ export function ReportButton({
           { key: 'docx', label: <Tooltip title={t('sim.report.docx_wip')}><span>{t('sim.report.export_docx')}</span></Tooltip>, disabled: true },
           { key: 'pdf', label: <Tooltip title={t('sim.report.pdf_wip')}><span>{t('sim.report.export_pdf')}</span></Tooltip>, disabled: true },
         ],
-        onClick: ({ key }) => {
+        onClick: async ({ key }) => {
           if (key === 'html') {
+            const chartUrls = buildChartUrls();
             const w = window.open('', '_blank');
-            if (w) { w.document.write(buildHtml(buildMd())); w.document.close(); }
+            if (w) { w.document.write(buildHtml(buildMd(chartUrls))); w.document.close(); }
           } else if (key === 'md') {
             setGenerating(true);
-            const blob = new Blob([buildMd()], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${Date.now()}.md`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-            setTimeout(() => setGenerating(false), 500);
+            try {
+              const chartUrls = buildChartUrls();
+              const imgPaths = new Map(outputVars.map(v => [v, `./images/${v}.png`]));
+              const md = buildMd(imgPaths);
+              const zip = new JSZip();
+              zip.file('report.md', md);
+              const imgFolder = zip.folder('images')!;
+              for (const [varName, dataUrl] of chartUrls) {
+                imgFolder.file(`${varName}.png`, dataUrl.split(',')[1], { base64: true });
+              }
+              const blob = await zip.generateAsync({ type: 'blob' });
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = `report_${(meta.name || 'sim').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.zip`;
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              URL.revokeObjectURL(a.href);
+            } finally {
+              setGenerating(false);
+            }
           }
         },
       }}
