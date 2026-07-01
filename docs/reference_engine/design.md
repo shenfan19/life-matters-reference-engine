@@ -647,6 +647,23 @@ YAML 下载**永远不覆盖源文件**（另存为语义），Sim 和 Opt 标�
 - **有 opt 结果** → 自动将 `optimizer.results` 块写入副本并下载，通过 `message.success` 告知包含的解数量
 - **无 opt 结果** → 下载纯模型定义，同样通过 `message.success` 告知
 
+### 报告与图片导出（ADR 0122）
+
+报告导出按钮（`ReportButton.tsx`）是独立共用组件，同时挂载在 SimControlBar 和 OptControlBar 的工具栏 slot 中。导出格式：
+
+| 格式 | 触发 | 行为 |
+|------|------|------|
+| **HTML 预览** | 菜单选项 | 新标签页打开，图片以 base64 内嵌，自包含无需联网 |
+| **MD 导出** | 菜单选项 | 下载 `.zip`，内含 `report.md`（相对路径引用图片）+ `images/` 目录（PNG 文件） |
+
+MD 导出使用 ZIP 而非单文件，原因是 Markdown 标准不支持 base64 data URL——GitHub、Obsidian、VS Code 等所有主流查看器均无法渲染内嵌 base64 图片；ZIP + 相对路径是唯一通用方案。
+
+**图片生成规则**：每变量 × 每 plan 各生成一张 PNG，不叠加多条曲线。文件名格式为 `{varName}_{planLabel}.png`。多 plan 时 MD 正文中每图前插入 `**— Plan 名 —**` 分隔标注。
+
+**数据来源三级 fallback**（`effectiveSimData`）：`simulationData`（当前仿真）→ `importedSimRuns` 最后一条（历史归档）→ `comparedPlans` 第一条有数据的 plan（Pareto 解仿真）。第三级保证 opt 工作流结束后 Overview 和报告不显示"No data"。
+
+**逐变量 PNG 下载**：SimPlotTab 每个变量的 Collapse 标题行 `extra` slot 中提供 PNG 和 CSV 两个并排下载按钮。单 plan 时直接下载单张 PNG；多 plan 时下载包含每 plan 独立图片的 ZIP。
+
 ### 已移除
 
 `saveResultsToFile()`（直接覆盖源文件写入结果）已永久移除。结果通过 CSV（交换）或 YAML 另存为（归档/发布）流转。
