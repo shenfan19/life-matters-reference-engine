@@ -223,7 +223,7 @@
   "sim.report.export_label": "报告",
   "sim.report.html_preview": "⬡ HTML 预览",
   "sim.report.generating": "生成中…",
-  "sim.report.export_md": "↓ 导出 .md",
+  "sim.report.export_md": "↓ 导出 .zip（MD + 图片）",
   "sim.report.export_csv": "↓ 轨迹 .csv",
   "sim.report.export_docx": "↓ 导出 .docx",
   "sim.report.export_pdf": "↓ 导出 .pdf",
@@ -393,6 +393,8 @@
 
   "sim.ctrl.sim_label": "仿真",
   "sim.ctrl.dl_sim_tip": "下载仿真结果（时间序列，CSV 格式）",
+  "sim.ctrl.charts_label": "图片",
+  "sim.ctrl.dl_charts_tip": "下载所有输出变量的曲线图（PNG，ZIP 压缩包）",
   "sim.ctrl.ul_sim_tip": "上传仿真结果（导入历史时序 CSV，叠加为对比曲线）",
   "sim.ctrl.mc_tooltip": "Monte Carlo 运行条数（1=单条）",
   "sim.ctrl.mc_tooltip_active": "Monte Carlo: {n} 条，seed {seed}",

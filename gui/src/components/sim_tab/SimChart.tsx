@@ -287,9 +287,13 @@ export default SimChart;
 export function varToDataUrl(
   varName: string, colorIndex: number,
   simulationData: SimulationDataPoint[], fontSize: number,
+  planDatasets?: PlanResult[],
   W = 680, H = 160
 ): string {
-  if (simulationData.length === 0) return '';
+  const activePlans = planDatasets?.filter(p => p.data.length > 0) ?? [];
+  const isMultiPlan = activePlans.length > 1;
+  if (!isMultiPlan && simulationData.length === 0) return '';
+
   const canvas = document.createElement('canvas');
   canvas.width = W * 2; canvas.height = H * 2;
   const ctx = canvas.getContext('2d');
@@ -297,6 +301,30 @@ export function varToDataUrl(
   ctx.scale(2, 2);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
-  drawChartOnCtx(ctx, W, H, varName, simulationData, false, VAR_COLORS[colorIndex % VAR_COLORS.length], undefined, fontSize);
+  drawChartOnCtx(ctx, W, H, varName, simulationData, false,
+    VAR_COLORS[colorIndex % VAR_COLORS.length], undefined, fontSize,
+    isMultiPlan ? activePlans : undefined);
+
+  // Legend for multi-plan exports
+  if (isMultiPlan) {
+    const lgFont = Math.max(9, fontSize * 9 / 14);
+    ctx.font = `${lgFont}px system-ui`;
+    const sq = 8; const igap = 4; const ibetween = 10;
+    const metrics = activePlans.map(p => ctx.measureText(p.label).width);
+    const totalW = activePlans.reduce((s, _, i) => s + sq + igap + metrics[i] + ibetween, 0) - ibetween + 12;
+    const lx = W - 14 - totalW + 8; const ly = 18;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillRect(lx - 6, ly - lgFont - 1, totalW, lgFont + 8);
+    let curX = lx;
+    for (let i = 0; i < activePlans.length; i++) {
+      ctx.fillStyle = activePlans[i].color;
+      ctx.fillRect(curX, ly - lgFont + 2, sq, sq);
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.textAlign = 'left';
+      ctx.fillText(activePlans[i].label, curX + sq + igap, ly);
+      curX += sq + igap + metrics[i] + ibetween;
+    }
+  }
+
   return canvas.toDataURL('image/png');
 }

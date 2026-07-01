@@ -223,7 +223,7 @@
   "sim.report.export_label": "Report",
   "sim.report.html_preview": "⬡ HTML Preview",
   "sim.report.generating": "Generating…",
-  "sim.report.export_md": "↓ Export .md",
+  "sim.report.export_md": "↓ Export .zip (MD + images)",
   "sim.report.export_csv": "↓ Trajectory .csv",
   "sim.report.export_docx": "↓ Export .docx",
   "sim.report.export_pdf": "↓ Export .pdf",
@@ -393,6 +393,8 @@
 
   "sim.ctrl.sim_label": "Sim",
   "sim.ctrl.dl_sim_tip": "Download simulation results (time series, CSV)",
+  "sim.ctrl.charts_label": "Charts",
+  "sim.ctrl.dl_charts_tip": "Download all output variable charts (PNG, ZIP archive)",
   "sim.ctrl.ul_sim_tip": "Upload simulation results (import CSV as comparison curve)",
   "sim.ctrl.mc_tooltip": "Monte Carlo runs (1 = single run)",
   "sim.ctrl.mc_tooltip_active": "Monte Carlo: {n} runs, seed {seed}",
