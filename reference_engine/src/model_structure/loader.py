@@ -38,17 +38,29 @@ class Loader:
             merged['imports'] = base_imports
         return merged
 
-    def _load_model_data(self, file_path: str, module_name: str) -> Dict[str, Any]:
+    def _load_model_data(self, file_path: str, module_name: str, _loading_chain: tuple = ()) -> Dict[str, Any]:
         """
         纯数据加载函数：递归加载 YAML 文件及其 imports，返回合并后的数据字典。
         支持新的导入路径格式（如 models/interventions/diet/banana）。
         不修改 self 状态。
+
+        _loading_chain 记录本次递归调用栈上"正在加载"的文件路径序列，
+        用于区分真正的循环 import（file_path 出现在当前调用栈上）与
+        菱形依赖（file_path 之前已完整加载过，但不在当前调用栈上）——
+        二者都会命中 self.visited，但只有前者应该报错。
         """
-        # 避免循环依赖
+        if file_path in _loading_chain:
+            chain_desc = ' → '.join(
+                self._source_label(p) for p in (*_loading_chain, file_path)
+            )
+            raise ValueError(f"检测到循环 import：{chain_desc}")
+
+        # 菱形依赖：之前已完整加载过（不在当前调用栈上），跳过重复合并
         if file_path in self.visited:
             logger.debug(f"跳过已加载的模型: {file_path}")
             return {}
         self.visited.add(file_path)
+        _loading_chain = (*_loading_chain, file_path)
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -136,7 +148,7 @@ class Loader:
                         f"尝试路径: {imp_path}"
                     )
 
-                imp_data = self._load_model_data(imp_path, imp_name)  # 递归加载
+                imp_data = self._load_model_data(imp_path, imp_name, _loading_chain)  # 递归加载
                 imp_sources = imp_data.get('_sources', {})
                 if isinstance(imp_sources, dict):
                     merged_sources = self._merge_sources(merged_sources, imp_sources)
