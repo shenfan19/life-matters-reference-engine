@@ -110,7 +110,7 @@ class ReferenceEngine(SessionManagerMixin):
         """
         # 如果指定了模型名称但加载失败，返回错误信息。
         if model_name and not self.load_models([model_name], folder):
-            return {"success": False, "error": f"无法加载模型：{model_name}"}
+            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
         # 如果当前未加载模型，返回错误信息。
         if not self.current_model:
             return {"success": False, "error": "未加载模型"}
@@ -225,7 +225,7 @@ class ReferenceEngine(SessionManagerMixin):
         :return: {"success", "model_name", "session_seed", "runs": [...], "error"?}
         """
         if model_name and not self.load_models([model_name], folder):
-            return {"success": False, "error": f"无法加载模型：{model_name}"}
+            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
         if not self.current_model:
             return {"success": False, "error": "未加载模型"}
 
@@ -332,7 +332,7 @@ class ReferenceEngine(SessionManagerMixin):
         :return: {"success": bool, "plans": [{"plan_id", "result"}], "error"?}
         """
         if not self.load_models([model_name], folder):
-            return {"success": False, "error": f"无法加载模型：{model_name}"}
+            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
 
         # 模型未定义 simulation.plans 时，按单个 "default" plan 运行
         # （即不应用任何 schedules，与不带 --all-plans 的普通仿真一致）。

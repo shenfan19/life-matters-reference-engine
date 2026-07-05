@@ -76,7 +76,7 @@ class SessionManagerMixin:
         """
         try:
             if not self.load_models([model_name], folder):
-                return {"success": False, "error": f"无法加载模型：{model_name}"}
+                return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
 
             base_model = self.current_model
 

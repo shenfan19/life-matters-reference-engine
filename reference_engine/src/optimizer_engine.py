@@ -42,7 +42,7 @@ def run_optimizer(engine, model_name: str,
     """
     # ── load model ────────────────────────────────────────────────────────────
     if not engine.load_models([model_name], folder):
-        return {"success": False, "error": f"Cannot load model: {model_name}"}
+        return {"success": False, "error": engine.loader.last_error or f"Cannot load model: {model_name}"}
 
     base_model = engine.current_model
     opt_block: Dict = dict(base_model.optimizer)

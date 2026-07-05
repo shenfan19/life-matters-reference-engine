@@ -171,7 +171,7 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
     T4 validRangeEnabled bug, both previously caused this to diverge silently)."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test/test_opt_t1_single'
+    model_name = 'test/valid/test_opt_t1_single'
 
     cli_engine = _make_engine()
     cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
