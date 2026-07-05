@@ -33,6 +33,8 @@ class LoaderEngine:
         self.models_directory = models_directory
         # 模型缓存，用于存储已加载的模型，避免重复加载。
         self.models_cache: Dict[tuple, ModelStructure] = {}
+        # fetch() 失败时的详细原因（Loader/Validator 抛出的原始信息），供调用方展示。
+        self.last_error: Optional[str] = None
     
     def find_model_file(self, model_name: str, folder: Optional[str] = None) -> Optional[str]:
         """
@@ -181,9 +183,11 @@ class LoaderEngine:
         :return: 加载并合并后的 ModelStructure 实例，或在失败时返回 None。
         """
         # 初始化已加载模型集合，用于检测循环依赖。
+        self.last_error = None
         loaded_models = loaded_models or set()
         if model_name in loaded_models:
-            logger.error(f"检测到循环依赖: {model_name}")
+            self.last_error = f"检测到循环依赖: {model_name}"
+            logger.error(self.last_error)
             return None
         loaded_models.add(model_name)
 
@@ -195,7 +199,8 @@ class LoaderEngine:
         # 查找模型文件路径。
         file_path = self.find_model_file(model_name, folder)
         if not file_path:
-            logger.error(f"模型 {model_name} 在 {self.models_directory} 中未找到")
+            self.last_error = f"模型 {model_name} 在 {self.models_directory} 中未找到"
+            logger.error(self.last_error)
             return None
         # 使用绝对路径作为缓存键
         cache_key = os.path.abspath(file_path)
@@ -216,8 +221,9 @@ class LoaderEngine:
                 self.models_cache[cache_key] = model
                 self.models_cache[(model_name, folder or "")] = model
             return model
-            
+
         except Exception as e:
+            self.last_error = str(e)
             logger.error(f"加载模型 {model_name} 错误: {e}")
             return None
 

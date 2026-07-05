@@ -5,8 +5,10 @@ in-process (no subprocess/stdout parsing), and writes a batch_report.md
 summarizing PASS/FAIL.
 
 Usage (no-arg invocation prints --help instead of running with defaults):
-  python cli/batch.py --input-dir papers --sim-only        # models/papers
-  python cli/batch.py --input-dir test                     # models/test
+  python cli/batch.py --input-dir papers --sim-only         # models/papers
+  python cli/batch.py --input-dir test/valid               # models/test/valid (models/test/invalid
+                                                             # is intentionally-broken fixtures — every
+                                                             # model there is expected to FAIL)
   python cli/batch.py --output-dir /tmp/lm_out             # whole models/, custom output root
 
 --input-dir is relative to models/ (not the project root) — same convention the
@@ -180,7 +182,9 @@ def main() -> None:
     parser.add_argument('--input-dir', default=None,
                          help='Folder to scan for *.yaml models (recursive), relative to '
                               'models/ (or absolute). Default: models/ (the whole model library). '
-                              "E.g. --input-dir test means models/test.")
+                              "E.g. --input-dir test/valid means models/test/valid. Note: "
+                              'models/test/invalid holds intentionally-broken fixtures — every '
+                              'model there is expected to FAIL, by design.')
     parser.add_argument('--output-dir', default=None,
                          help='Where the timestamped batch directory is created, relative to '
                               'the project root (or absolute). Default: output/')
