@@ -171,10 +171,15 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
     dow = (epoch + timedelta(days=prev_day_idx)).weekday()  # 0=Mon … 6=Sun, aligned to sim_start_date's real calendar weekday
 
     # ── Pulse reset: zero all controlled variables for this step ──────────────
+    # Bypasses set_variable_value's bounds clamp: the reset-to-zero "off" state
+    # is a transient bookkeeping value, not a physical reading, so it must not
+    # be pulled up to bounds[0] when bounds[0] > 0 (e.g. an input variable
+    # whose valid range is [0.3, 2.0]) — doing so silently inflates every
+    # firing event's effective value by bounds[0].
     for sched in schedules:
         var = sched.get('variable', '')
         if var in model.variables:
-            model.set_variable_value(var, 0.0)
+            model.variables[var].value = 0.0
 
     # ── Accumulate firing events ───────────────────────────────────────────────
     for sched in schedules:
