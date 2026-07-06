@@ -171,8 +171,13 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
 
-  const dateToHours = (start: string, end: string) =>
-    Math.max(0, (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 3_600_000);
+  // max(days, 1) * 24 not max(hours, 0): a same-day model (start === end)
+  // represents one full calendar day, not zero duration — the old floor ran
+  // zero steps and left any regimen event scheduled later in the day unreachable.
+  const dateToHours = (start: string, end: string) => {
+    const days = (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 86_400_000;
+    return Math.max(days, 1) * 24;
+  };
 
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));

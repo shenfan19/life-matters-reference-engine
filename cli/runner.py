@@ -58,7 +58,12 @@ def _time_hours(engine) -> float:
     start, end = str(sim.get('start_date', '')), str(sim.get('end_date', ''))
     if start and end:
         validate_simulator_dates(start, end)
-        return max(1.0, (date.fromisoformat(end) - date.fromisoformat(start)).days * 24.0)
+        # max(days, 1) not max(days*24, 1.0): a same-day model (start_date ==
+        # end_date) represents one full calendar day, not a token 1-hour stub
+        # — the old floor left any regimen event scheduled after 01:00
+        # unreachable for the whole run.
+        days = (date.fromisoformat(end) - date.fromisoformat(start)).days
+        return max(days, 1) * 24.0
     return float(sim.get('total_time', 24))
 
 

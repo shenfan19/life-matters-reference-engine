@@ -290,7 +290,12 @@ def run_optimizer(engine, model_name: str,
             total_days = (_date(ey, em, edd_) - _date(sy, sm, sdd_)).days
         else:
             total_days = (ey - sy) * 365 + (em - sm) * 30 + (edd_ - sdd_)
-        time_hours = max(1.0, total_days * 24.0)
+        # max(total_days, 1) not max(total_days*24, 1.0): a same-day model
+        # (start_date == end_date, total_days == 0) represents one full
+        # calendar day, not a token 1-hour stub — the old floor left any
+        # regimen event scheduled after 01:00 unreachable (ADR: single-day
+        # sub-day-step models never fired their schedule).
+        time_hours = max(total_days, 1) * 24.0
     except Exception:
         time_hours = float(base_model.simulator.get('total_time', 1)) * step_size / 3600.0
     total_steps = max(1, int(time_hours * 3600.0 / step_size))
