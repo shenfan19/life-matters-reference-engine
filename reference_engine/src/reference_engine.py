@@ -157,7 +157,7 @@ class ReferenceEngine(SessionManagerMixin):
             run_logging.build_initial_logs(
                 self.current_model, model_name or self.current_model.metadata.name,
                 total_steps, step_size, output_variables, output_warnings,
-                schedule_vars, n_runs=1, session_seed=0, log_cb=log_cb,
+                schedule_vars, n_runs=1, session_seed=0, log_cb=log_cb,  # allow-const: 确定性单次仿真，无 MC 概念，n_runs/session_seed 恒为 1/0
             )
         input_var_names = run_logging.input_variable_names(self.current_model, output_variables)
         hits: Dict[str, int] = {}
