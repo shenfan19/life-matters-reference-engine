@@ -45,3 +45,47 @@ def test_pulse_value_not_inflated_by_nonzero_bounds_floor(tmp_path):
             f"step {row['step']}: dose={dose}, expected 0.8 "
             f"(1.1 would indicate the bounds[0]=0.3 reset-clamp bug has regressed)"
         )
+
+
+def test_apply_schedules_dow_aligned_to_sim_start_date():
+    """days filter must use the real calendar weekday, not prev_day_idx % 7.
+
+    2026-01-01 is a Thursday. A schedule with days=[Thu] must fire on day 0
+    (Thu) and day 7 (next Thu), and must not fire on day 1 (Fri).
+    The old bug hardcoded day-0=Mon via prev_day_idx % 7, which would have
+    fired on day 3 (the index it mistakenly mapped to Thu) instead.
+    """
+    from reference_engine.src.schedule_runner import apply_schedules
+
+    class _Var:
+        def __init__(self):
+            self.value = 0.0
+
+    class _Model:
+        def __init__(self):
+            self.variables = {'dose': _Var()}
+
+        def set_variable_value(self, name, val):
+            self.variables[name].value = val
+
+    schedules = [{
+        'variable': 'dose',
+        'events': [{'days': ['Thu'], 'value': 1.0, 'time_start': '08:00', 'time_end': '08:00'}],
+    }]
+    sim_start = '2026-01-01'  # Thursday
+    step = 86400.0
+
+    model = _Model()
+    apply_schedules(model, schedules, 0.0, step, sim_start_date=sim_start)
+    assert model.variables['dose'].value == pytest.approx(1.0), \
+        'day 0 (Thu): event should have fired'
+
+    model = _Model()
+    apply_schedules(model, schedules, step, 2 * step, sim_start_date=sim_start)
+    assert model.variables['dose'].value == pytest.approx(0.0), \
+        'day 1 (Fri): event must not fire (days=[Thu] only)'
+
+    model = _Model()
+    apply_schedules(model, schedules, 7 * step, 8 * step, sim_start_date=sim_start)
+    assert model.variables['dose'].value == pytest.approx(1.0), \
+        'day 7 (next Thu): event should fire again'
