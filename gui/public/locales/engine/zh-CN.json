@@ -128,7 +128,6 @@
   "statusBar.backend": "后台",
   "statusBar.offline": "离线",
   "statusBar.connecting": "连接中...",
-  "statusBar.license": "MIT 协议",
   "statusBar.noModel": "— 未选择模型 —",
   "disclaimer.title": "免责声明",
   "disclaimer.intro": "本工具中的历史场景及人物模拟，基于公开学术文献与历史记录，仅用于健康决策教育目的。",

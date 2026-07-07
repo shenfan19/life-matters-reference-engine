@@ -128,7 +128,6 @@
   "statusBar.backend": "Serveur",
   "statusBar.offline": "Hors ligne",
   "statusBar.connecting": "Connexion...",
-  "statusBar.license": "Licence MIT",
   "statusBar.noModel": "— aucun modèle sélectionné —",
   "disclaimer.title": "Avertissement",
   "disclaimer.intro": "Les scénarios historiques et simulations de personnages dans cet outil sont basés sur la littérature académique publique et des archives historiques, uniquement à des fins éducatives en prise de décision de santé.",

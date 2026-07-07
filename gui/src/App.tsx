@@ -202,7 +202,7 @@ const AUTHOR = {
   name: 'Fan Shen',
   email: 'shenfan@mail.sysu.edu.cn',
   repo: 'https://github.com/shenfan19/life-matters',
-  version: 'v0.4.0',
+  version: 'v1.0',
 };
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
@@ -259,10 +259,8 @@ function StatusBar({ backendStatus, model, isSimulating, simProgress, c, t }: {
         {t('statusBar.disclaimer')}
       </span>
 
-      {/* Right: license + version */}
+      {/* Right: version */}
       <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ color: c.textMute }}>{t('statusBar.license')}</span>
-        <span style={{ opacity: 0.2 }}>│</span>
         <span style={{ color: c.textMute }}>{AUTHOR.version}</span>
       </span>
     </div>
@@ -443,9 +441,9 @@ function App() {
               {t('about.subtitle2')}
             </div>
 
-            {/* Version + license + repo */}
+            {/* Version + repo */}
             <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginTop: 8, marginBottom: 12 }}>
-              {AUTHOR.version} · MIT License
+              {AUTHOR.version}
             </div>
             <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 24 }}>
               <GithubOutlined /> github.com/shenfan19/life-matters

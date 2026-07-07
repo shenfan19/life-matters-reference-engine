@@ -128,7 +128,6 @@
   "statusBar.backend": "Backend",
   "statusBar.offline": "Offline",
   "statusBar.connecting": "Connecting...",
-  "statusBar.license": "MIT License",
   "statusBar.noModel": "— no model selected —",
   "disclaimer.title": "Disclaimer",
   "disclaimer.intro": "The historical scenarios and character simulations in this tool are based on public academic literature and historical records, intended solely for health decision-making education.",
