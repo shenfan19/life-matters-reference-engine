@@ -117,7 +117,7 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
 | [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
 | [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
-| [docs/reference_engine/validation.md](docs/reference_engine/validation.md) | 三层验证协议（数值精度 / 文献对标 / 优化合理性） |
+| [models/test/test_plan.md](models/test/test_plan.md) | 测试大纲（引擎正确性 / 数值精度 / 文献对标 / 优化合理性 / API-IO / 模型科学内容），执行记录见 [test_report.md](models/test/test_report.md) |
 | [docs/reference_engine/ui_guidelines.md](docs/reference_engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
 | [docs/reference_engine/data_flow.md](docs/reference_engine/data_flow.md) | 数据流设计 |
 | [docs/reference_engine/decisions/README.md](docs/reference_engine/decisions/README.md) | 架构决策记录索引（ADR） |
