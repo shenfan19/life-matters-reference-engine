@@ -118,3 +118,5 @@
 | [0120 †](../../../../b_lm_model/docs/decisions/0120-2026-06-23_model_drop-hold-filename-suffix.md) | 废除 `_HOLD` 文件名后缀，状态判定仅看 `metadata.todo`（部分取代 0101） | 🟢 已实施 | 2026-06-23 |
 | [0121](0121-2026-06-24_project_top-level-rename-cli-gui-reference_engine.md) | 顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`；`docs/` 重组为 `docs/reference_engine/`；`SimulatorEngine` → `ReferenceEngine` | ✅ 已接受 | 2026-06-24 |
 | [0123](0123-2026-07-06_project_test-plan-and-report-consolidation.md) | 测试文档合并为大纲+报告两件套（`models/test/test_plan.md` + `test_report.md`），取代零散的 `validation.md`/模型核对表/任务清单 | ✅ 已接受 | 2026-07-06 |
+| [0124](0124-2026-07-05_sim_loader-engine-last-error-propagation.md) | `LoaderEngine.fetch()` 新增 `last_error`：`Loader`/`Validator` 的具体报错不再被吞成裸 `None`/`False` | ✅ 已接受 | 2026-07-05 |
+| [0125 †](../../../../b_lm_model/docs/decisions/0125-2026-07-05_model_test-valid-invalid-split.md) | `models/test/` 拆分为 `valid/`+`invalid/`：新增 11 个错误检测 fixture（回归锁定见 `tests/errors/`） | ✅ 已接受 | 2026-07-05 |
