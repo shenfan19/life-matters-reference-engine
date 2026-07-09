@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
-# schedule_runner.py — Pulse/sustained schedule evaluation
+# schedule_runner.py — Sustained schedule evaluation (pulse is its N_steps=1 case)
 #
 # Applies a list of schedule dicts to a model for one simulation step window.
 # Both the GUI path (boolean days mask, schedule-level valid_range) and the
 # optimizer path (event-level string days, event-level valid_start/end) are
 # handled here in one place so the logic is never duplicated.
 #
-# Each event's effective time-of-day is a `[time_start, time_end)` interval
-# (ADR 0100), resolved by `_normalize_time_interval`. `time_start == time_end`
-# is a pulse (fires once, N_steps=1); otherwise it's sustained (fires on every
-# step overlapping the interval, value split across N_steps per ADR 0099).
+# Every event is a `[time_start, time_end)` interval (ADR 0100), resolved by
+# `resolve_time_interval` (ADR 0127 default rule): both omitted → full day
+# (a day-rate input, no natural instant); `time_start` given, `time_end`
+# omitted → single-step pulse (`time_end = time_start`, N_steps=1); both
+# given → the explicit window as written. There is no separately-named
+# "pulse mode" — a single step is just a narrow sustained window.
 
 import logging
 import math
@@ -20,15 +22,27 @@ logger = logging.getLogger(__name__)
 _DAY_STR = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
 
 
-def _normalize_time_interval(ev: dict):
-    """Resolve an event's `[time_start, time_end)` interval (ADR 0100).
+def resolve_time_interval(entry: dict):
+    """Resolve an entry's `[time_start, time_end)` interval, filling in the
+    default an author left unwritten (ADR 0127 — input variables are all
+    sustained; there is no separate pulse mode, only window width):
 
-    `time_start == time_end` => pulse (N_steps=1, fires at that instant).
-    `time_start != time_end` => sustained (incl. "00:00"~"24:00" = full day,
-    which is just the full-width value of the same interval, not a separate
-    state).
+    - Neither `time_start` nor `time_end` given: full day, `("00:00", "24:00")`
+      — a day-rate input (e.g. a daily total) has no natural instant to pick,
+      so the default is "spread across the whole day", not an arbitrary
+      convention time.
+    - `time_start` given, `time_end` omitted: `time_end = time_start`
+      (single-step window, `N_steps=1` — numerically identical to the old
+      "pulse" behavior, ADR 0099's special case).
+    - Both given: used as written (explicit sustained window).
     """
-    return ev.get('time_start', '08:00'), ev.get('time_end', '08:00')
+    raw_start = entry.get('time_start')
+    raw_end = entry.get('time_end')
+    if raw_start is None and raw_end is None:
+        return '00:00', '24:00'
+    if raw_start is None:
+        raw_start = '00:00'
+    return str(raw_start), str(raw_end) if raw_end is not None else str(raw_start)
 
 
 def _time_range_day_seconds(time_start: str, time_end: str) -> float:
@@ -92,10 +106,10 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float, total_s
                                    sim_start_date: str = '') -> list:
     """Annotate sustained-interval events with `_n_steps` (ADR 0099/0100).
 
-    An event is "sustained" when its `[time_start, time_end)` interval
-    (resolved by `_normalize_time_interval`, ADR 0100) is non-empty
-    (`time_start != time_end`); pulse events (`time_start == time_end`) are
-    left untouched and default to `_n_steps == 1` in apply_schedules.
+    An event is a multi-step window when its `[time_start, time_end)` interval
+    (resolved by `resolve_time_interval`, ADR 0100/0127) is non-empty
+    (`time_start != time_end`); single-step events (`time_start == time_end`)
+    are left untouched and default to `_n_steps == 1` in apply_schedules.
 
     `value` for sustained entries is the total over the entire active window;
     apply_schedules divides by `_n_steps` each firing step so the cumulative
@@ -113,7 +127,7 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float, total_s
         new_events = []
         changed = False
         for ev in events:
-            time_start, time_end = _normalize_time_interval(ev)
+            time_start, time_end = resolve_time_interval(ev)
             if time_start != time_end:
                 day_sec = _time_range_day_seconds(time_start, time_end)
                 n_active_days = _n_active_days(ev, sched, sim_start_date, total_steps, step_size_sec)
@@ -138,26 +152,26 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
           Opt path  — event-level string list like ["Mon", "Wed"]
       - valid_range is checked against sim_start_date + day offset.
 
-    Pulse semantics: all controlled variables are zeroed at the start of each
-    step, then every firing event accumulates its value.
+    Reset-then-accumulate semantics: all controlled variables are zeroed at
+    the start of each step, then every firing event accumulates its value.
 
     Each event's `[time_start, time_end)` interval is resolved by
-    `_normalize_time_interval` (ADR 0100):
+    `resolve_time_interval` (ADR 0100/0127):
 
-      - `time_start == time_end` (pulse): fires once, at the single step
-        whose `[prev_time, next_time)` covers that instant.
-      - `time_start != time_end` (sustained, incl. "00:00"~"24:00" = full
-        day): fires on every step overlapping the daily window, instead of
+      - `time_start == time_end` (single-step window): fires once, at the
+        single step whose `[prev_time, next_time)` covers that instant.
+      - `time_start != time_end` (multi-step window, incl. "00:00"~"24:00" =
+        full day): fires on every step overlapping the window, instead of
         only a single instant. This lets sub-day-step models (step_size:
         hour/minute) represent a "sustained intensity" input over a
         multi-step window without one schedule entry per step.
 
-    `value` for sustained events is the TOTAL over the active window, not a
-    per-step amount (ADR 0099): each firing step adds `value / _n_steps`,
-    where `_n_steps` is precomputed by `precompute_sustained_divisors()` and
-    stashed on the event as `_n_steps`. This keeps the cumulative
-    contribution equal to `value` regardless of step_size — pulse events
-    (`_n_steps` absent, treated as 1) are the same rule's special case.
+    `value` is the TOTAL over the active window, not a per-step amount
+    (ADR 0099): each firing step adds `value / _n_steps`, where `_n_steps`
+    is precomputed by `precompute_sustained_divisors()` and stashed on the
+    event as `_n_steps`. This keeps the cumulative contribution equal to
+    `value` regardless of step_size — a single-step window (`_n_steps`
+    absent, treated as 1) is the same rule's special case.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
@@ -226,7 +240,7 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
                 except ValueError:
                     pass
 
-            time_start, time_end = _normalize_time_interval(ev)
+            time_start, time_end = resolve_time_interval(ev)
             if time_start != time_end:
                 # Sustained: fires whenever the step interval overlaps the
                 # daily [time_start, time_end) window.
