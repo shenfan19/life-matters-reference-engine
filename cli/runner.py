@@ -46,7 +46,11 @@ def model_declares_step(model_path: Path, step: str) -> bool:
     """
     import yaml
     with open(model_path, encoding='utf-8') as f:
-        data = yaml.safe_load(f) or {}
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        # Malformed YAML (e.g. top-level list) — don't skip, let the real
+        # loader in run_sim/run_opt hit it and report a proper FAIL.
+        return True
     if step == 'sim':
         return bool(data.get('simulation') or data.get('simulator'))
     return bool(data.get('optimizer'))
