@@ -24,6 +24,7 @@ from .optimizer_parsing import _expand_time_window, _hhmm_to_min, _shift_time
 from .optimizer_eval import _run_sim, _eval_F, _eval_G
 from .optimizer_backends import _run_nsga2, _run_scipy
 from .validation import validate_simulator_dates, validate_optimizer_regimens
+from .schedule_runner import resolve_time_interval
 
 
 # ── main entry ─────────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ def run_optimizer(engine, model_name: str,
     for e in opt_entries:
         opt = e.get('optimize', {})
         var = e.get('variable', '')
-        time_val = e.get('time_start', '08:00')
+        time_val = resolve_time_interval(e)[0]
         label = e.get('label', f"{var} {time_val}")
 
         # T1: optimize.value = [lo, hi]
@@ -187,11 +188,11 @@ def run_optimizer(engine, model_name: str,
         v = e.get('variable', '')
         if not v:
             continue
-        time_start = e.get('time_start', '08:00')
+        time_start, time_end = resolve_time_interval(e)
         ev_f: Dict[str, Any] = {
             'value': float(e.get('value', 0)),
             'time_start': time_start,
-            'time_end': e.get('time_end', time_start),
+            'time_end': time_end,
         }
         if e.get('days'):
             ev_f['days'] = e['days']
@@ -208,11 +209,11 @@ def run_optimizer(engine, model_name: str,
             eid = id(spec['entry'])
             if eid not in decoded:
                 e0 = spec['entry']
-                e0_time_start = e0.get('time_start', '08:00')
+                e0_time_start, e0_time_end = resolve_time_interval(e0)
                 d0: Dict[str, Any] = {
                     'variable': spec['variable'],
                     'time_start': e0_time_start,
-                    'time_end': e0.get('time_end', e0_time_start),
+                    'time_end': e0_time_end,
                     'days': e0.get('days'),
                     'value': float(e0.get('value', 0)),
                     'valid_start': None,

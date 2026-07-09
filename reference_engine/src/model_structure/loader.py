@@ -1,6 +1,7 @@
 # src/models/loader.py
 from .base import ModelMetadata, Variable, Formula, VariableType, TIME_UNIT_SECONDS
 from .utils import merge_dicts
+from ..schedule_runner import resolve_time_interval
 from typing import Dict, Set, Any, List
 from asteval import Interpreter
 import os
@@ -477,7 +478,9 @@ class Loader:
         每个条目生成一个 schedule dict，格式与 optimizer path 一致：
           {'variable': str, 'events': [{'time_start', 'time_end', 'value',
                                          'days'(可选), 'valid_start'/'valid_end'(可选)}]}
-        time_start == time_end → pulse；不等 → sustained（由 apply_schedules 处理）。
+        time_start == time_end → 单 step 窗口；不等 → 多 step 窗口（由 apply_schedules 处理）。
+        两者数值语义相同（ADR 0099 的同一条规则），窗宽由 resolve_time_interval 按 ADR 0127
+        默认规则解析：都不写 → 全天铺开；只写 time_start → 单 step；都写 → 显式区间。
         """
         if not isinstance(entries, list) or not entries:
             return []
@@ -487,9 +490,8 @@ class Loader:
             var_name = entry.get('variable')
             if not var_name:
                 continue
-            time_start = str(entry.get('time_start', '00:00'))
-            time_end   = str(entry.get('time_end', time_start))
-            value      = float(entry.get('value', 0.0))
+            time_start, time_end = resolve_time_interval(entry)
+            value = float(entry.get('value', 0.0))
 
             ev: Dict[str, Any] = {
                 'time_start': time_start,
