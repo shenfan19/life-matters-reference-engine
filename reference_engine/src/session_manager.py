@@ -20,6 +20,11 @@ from . import run_logging
 
 logger = logging.getLogger(__name__)
 
+# P0 公网部署前置条件：无活动 session 超过该时长即视为僵尸 session，见
+# 2026-06-25_task_prelaunch-publish-verification-checklist.md §4。优化 job 独立计时
+# （app_state.optimizer_jobs），不受此超时影响。
+SESSION_IDLE_TIMEOUT_SECONDS = 1800.0
+
 
 def _make_log(msg: str) -> Dict[str, Any]:
     return {'t': _time(), 'msg': msg}
@@ -172,6 +177,7 @@ class SessionManagerMixin:
                 'logs': initial_logs,
                 'warned_vars': set(),
                 'start_time': _time(),
+                'last_active': _time(),
             }
 
             logger.info(
@@ -219,6 +225,7 @@ class SessionManagerMixin:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
 
             session = self.sessions[session_id]
+            session['last_active'] = _time()
             if not session['running']:
                 return {"success": False, "error": "会话已暂停"}
 
@@ -365,6 +372,7 @@ class SessionManagerMixin:
             if session_id not in self.sessions:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
             self.sessions[session_id]['running'] = False
+            self.sessions[session_id]['last_active'] = _time()
             logger.info("会话已暂停: %s", session_id)
             return {"success": True, "message": "会话已暂停"}
         except Exception as e:
@@ -376,6 +384,7 @@ class SessionManagerMixin:
             if session_id not in self.sessions:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
             self.sessions[session_id]['running'] = True
+            self.sessions[session_id]['last_active'] = _time()
             logger.info("会话已继续: %s", session_id)
             return {"success": True, "message": "会话已继续"}
         except Exception as e:
@@ -389,7 +398,7 @@ class SessionManagerMixin:
             session = self.sessions[session_id]
             model = session['model']
             model.reset_simulation()
-            session.update({'current_step': 0, 'time': 0.0, 'running': True, 'data': []})
+            session.update({'current_step': 0, 'time': 0.0, 'running': True, 'data': [], 'last_active': _time()})
             logger.info("会话已重置: %s", session_id)
             return {"success": True, "message": "会话已重置", "initial_state": model.get_current_state()}
         except Exception as e:
@@ -403,6 +412,7 @@ class SessionManagerMixin:
             if session_id not in self.sessions:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
             session = self.sessions[session_id]
+            session['last_active'] = _time()
             data = session['data']
             if not data:
                 return {"success": False, "error": "没有数据可导出"}
@@ -425,6 +435,27 @@ class SessionManagerMixin:
             logger.error("导出 CSV 失败: %s", e)
             return {"success": False, "error": str(e)}
 
+    # ── idle session cleanup (P0, public deployment) ───────────────────────────
+
+    def cleanup_stale_sessions(self, idle_seconds: float = SESSION_IDLE_TIMEOUT_SECONDS) -> List[str]:
+        """Destroy sessions with no activity for `idle_seconds`. Returns removed session IDs.
+
+        Called periodically from the API server's background task, not on every
+        request — a session with no activity for 30 min is a zombie regardless of
+        its 'running' flag (e.g. browser tab closed mid-playback). Independent of
+        app_state.optimizer_jobs, which times out separately.
+        """
+        now = _time()
+        stale_ids = [
+            sid for sid, session in self.sessions.items()
+            if now - session.get('last_active', session.get('start_time', now)) > idle_seconds
+        ]
+        for sid in stale_ids:
+            del self.sessions[sid]
+        if stale_ids:
+            logger.info("清理僵尸会话（超过 %.0fs 无活动）：%s", idle_seconds, stale_ids)
+        return stale_ids
+
     # ── session info ───────────────────────────────────────────────────────────
 
     def get_session_info(self, session_id: str) -> Dict[str, Any]:
@@ -432,6 +463,7 @@ class SessionManagerMixin:
             if session_id not in self.sessions:
                 return {"success": False, "error": f"会话不存在: {session_id}"}
             session = self.sessions[session_id]
+            session['last_active'] = _time()
             total = session['total_steps']
             current = session['current_step']
             return {
