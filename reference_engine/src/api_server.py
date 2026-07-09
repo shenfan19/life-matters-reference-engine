@@ -5,6 +5,7 @@ LifeMatters Backend - FastAPI
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 import logging
 import sys
 
@@ -22,6 +23,21 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
+
+
+# ── Idle session cleanup (P0, public deployment) ────────────────────────────────
+# Sweep interval shorter than the 30-min idle timeout so a zombie session isn't
+# left alive much past its deadline; independent of app_state.optimizer_jobs.
+SESSION_CLEANUP_INTERVAL_SECONDS = 300
+
+async def _session_cleanup_loop():
+    while True:
+        await asyncio.sleep(SESSION_CLEANUP_INTERVAL_SECONDS)
+        if app_state.engine is not None:
+            try:
+                app_state.engine.cleanup_stale_sessions()
+            except Exception as e:
+                logger.error(f"清理僵尸会话失败: {e}")
 
 
 # ── Lifespan: initialize engines ────────────────────────────────────────────────
@@ -79,7 +95,10 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("Backend initialization complete")
     logger.info("=" * 60)
+
+    cleanup_task = asyncio.create_task(_session_cleanup_loop())
     yield
+    cleanup_task.cancel()
     logger.info("Shutting down LifeMatters Backend...")
 
 
