@@ -27,6 +27,10 @@ export function buildOptInputEventsFromYAML(regimens: any[]): InputEvent[] {
   return regimens.map((s: any, i: number) => {
     const { timeStart, timeEnd } = normalizeTimeInterval(s);
     const daysList: string[] = Array.isArray(s.days) ? s.days : [];
+    // A `days` list covering all 7 days is intentionally treated as "no day
+    // filter" (matches apply_schedules) — round-tripping such an entry drops
+    // the explicit `days:` field on the way back out, which is a no-op, not
+    // data loss (confirmed via optUtils.test.ts normalizeForComparison).
     const hasDays = daysList.length > 0 && daysList.length < 7;
     let validStart = s.valid_start ?? ''; let validEnd = s.valid_end ?? '';
     if (!validStart && !validEnd && Array.isArray(s.date_range) && s.date_range.length === 2) {
