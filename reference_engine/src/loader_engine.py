@@ -407,13 +407,16 @@ class LoaderEngine:
             
             # 调用 ModelStructure 的 split_model 方法，传入输出目录
             model.split_model(output_dir)
-            
+
+            generated_files = sorted(os.listdir(output_dir)) if os.path.isdir(output_dir) else []
+
             return {
                 "success": True,
                 "data": {
                     "output_dir": output_dir,
                     "variables": len(model.variables),
-                    "formulas": len(model.formulas)
+                    "formulas": len(model.formulas),
+                    "files": generated_files
                 }
             }
         except Exception as e:

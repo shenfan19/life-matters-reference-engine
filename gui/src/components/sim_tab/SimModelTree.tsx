@@ -4,7 +4,7 @@ import {
   CaretRightFilled, ClusterOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, ReloadOutlined,
   UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
-  CloseOutlined,
+  CloseOutlined, ScissorOutlined,
 } from '@ant-design/icons';
 import type { DataNode, ModelFile, SimulationState } from '../../types';
 import { getC } from '../../core/theme';
@@ -39,6 +39,8 @@ interface SimModelTreeProps {
   onOpenBuilder?: () => void;
   onNewFile?: () => void;
   onMergeFiles?: () => void;
+  onSplitFile?: () => void;
+  splitting?: boolean;
   onImportFile?: () => void;
   onBuilderUpload?: () => void;
   sessionModels?: ModelFile[];
@@ -62,6 +64,8 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onOpenBuilder,
   onNewFile,
   onMergeFiles,
+  onSplitFile,
+  splitting = false,
   onImportFile,
   onBuilderUpload,
   sessionModels = [],
@@ -208,6 +212,16 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 onClick={onMergeFiles}
                 disabled={builderCheckedFiles.length < 2}
                 style={{ color: builderCheckedFiles.length >= 2 ? c.primary : c.textMute, padding: '0 4px' }}
+              />
+            </Tooltip>
+            <Tooltip title={
+              scsMode ? t('sim.tree.split_scs_disabled')
+                : builderCheckedFiles.length === 1 ? t('sim.tree.split_file') : t('sim.tree.select_one_file')
+            }>
+              <Button size="small" type="text" icon={<ScissorOutlined />} loading={splitting}
+                onClick={onSplitFile}
+                disabled={scsMode || builderCheckedFiles.length !== 1}
+                style={{ color: (!scsMode && builderCheckedFiles.length === 1) ? c.primary : c.textMute, padding: '0 4px' }}
               />
             </Tooltip>
           </>

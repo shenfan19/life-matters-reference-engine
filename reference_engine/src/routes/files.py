@@ -528,8 +528,9 @@ async def split_model(request: SplitRequest):
         full_output_dir = str(app_state.MODELS_DIR / "components" / f"splitted_{clean_name}")
         result = app_state.loader_engine.split_model(model_name, full_output_dir, folder)
         if result['success']:
-            return {'success': True, 'data': {'output_dir': result.get('output_dir'),
-                                               'files': result.get('files', [])}}
+            data = result.get('data', {})
+            return {'success': True, 'data': {'output_dir': data.get('output_dir'),
+                                               'files': data.get('files', [])}}
         raise HTTPException(status_code=500, detail=result.get('error', 'Split failed'))
     except HTTPException:
         raise
