@@ -192,3 +192,37 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
 
     assert cli_result['best_x'] == pytest.approx(gui_result['best_x'], abs=TOL, rel=TOL)
     assert cli_result['best_f'] == pytest.approx(gui_result['best_f'], abs=TOL, rel=TOL)
+
+
+def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
+    """Same GUI-override-vs-CLI-cold-start comparison as the T1 test above, but for a
+    model with `optimizer.mc.runs > 1` (inner robust-optimization Monte Carlo, each
+    candidate evaluated across multiple `parameter` distribution samples and aggregated).
+    This path was previously untested — `test_opt_inner_mc.yaml` (models/test/valid) was
+    added for it but never wired into a pytest, leaving `optimizer.mc` unverified for
+    GUI/CLI parity even though `simulation.mc` (sim-level MC, ADR 0113) already had
+    coverage above. Regression guard: an MC-seeded objective aggregation must be exactly
+    reproducible from both entry points, not just from a single deterministic sample."""
+    from reference_engine.src.optimizer_engine import run_optimizer
+
+    model_name = 'test/valid/test_opt_inner_mc'
+
+    cli_engine = _make_engine()
+    cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
+    assert cli_result['success'], cli_result.get('error')
+
+    gui_engine = _make_engine()
+    assert gui_engine.load_models([model_name])
+    opt_block = gui_engine.current_model.optimizer
+    gui_override = {
+        'startpoint': opt_block['startpoint'],
+        'objectives': opt_block['objectives'],
+        'constraints': opt_block.get('constraints', []),
+        'algorithm': opt_block['algorithm'],
+        'warm_start': [],
+    }
+    gui_result = run_optimizer(gui_engine, model_name, optimizer_override=gui_override)
+    assert gui_result['success'], gui_result.get('error')
+
+    assert cli_result['best_x'] == pytest.approx(gui_result['best_x'], abs=TOL, rel=TOL)
+    assert cli_result['best_f'] == pytest.approx(gui_result['best_f'], abs=TOL, rel=TOL)
