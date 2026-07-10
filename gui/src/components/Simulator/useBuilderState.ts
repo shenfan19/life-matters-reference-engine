@@ -68,6 +68,7 @@ export function useBuilderState({
   const [newFilePath, setNewFilePath] = useState('');
   const [merging, setMerging] = useState(false);
   const [creatingFile, setCreatingFile] = useState(false);
+  const [splitting, setSplitting] = useState(false);
 
   const openBuilder = () => {
     prevTabRef.current = centerTab === 'builder' ? 'intro' : centerTab;
@@ -164,6 +165,28 @@ export function useBuilderState({
       setMergeDialogOpen(false);
     } catch (e: any) { message.error(String(e)); }
     finally { setMerging(false); }
+  };
+
+  // Split a single selected file into its component YAML files
+  // (backend /api/split, models/components/splitted_<name>/). Disabled in SCS
+  // mode at the call site — the backend endpoint unconditionally 403s under
+  // SCS_MODE (app_state.check_write()), unlike merge there is no "return raw
+  // content for a session model" fallback because split fans out into N files,
+  // not one, so there is nothing sensible to hand back to the browser.
+  const handleSplit = async () => {
+    if (builderCheckedFiles.length !== 1) return;
+    setSplitting(true);
+    try {
+      const r = await fetch('/api/split', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: builderCheckedFiles[0] }),
+      });
+      const d = await r.json();
+      if (!d.success) { message.error(`${t('sim.msg.split_failed')}: ${d.detail || d.error || ''}`); return; }
+      message.success(t('sim.msg.split_done', { n: d.data?.files?.length ?? 0 }));
+      loadFileTree();
+    } catch (e: any) { message.error(String(e)); }
+    finally { setSplitting(false); }
   };
 
   const handleCreateFile = async () => {
@@ -353,9 +376,9 @@ export function useBuilderState({
     builderCheckedFiles, builderSessionMetas, builderAutoEditKey,
     mergeDialogOpen, setMergeDialogOpen, mergeOutPath, setMergeOutPath,
     newFileDialogOpen, setNewFileDialogOpen, newFilePath, setNewFilePath,
-    merging, creatingFile,
+    merging, creatingFile, splitting,
     openBuilder, closeBuilder, handleBuilderSessionUpdate, toggleBuilderFile, uncheckBuilderFile,
-    handleMerge, handleCreateFile, handleBuilderUpload, handleImportFile,
+    handleMerge, handleSplit, handleCreateFile, handleBuilderUpload, handleImportFile,
     reloadFromYAML, navigateToRunning, blockIfRunning, runningModelTitle,
     selectSessionModel, clearSessionModel,
   };

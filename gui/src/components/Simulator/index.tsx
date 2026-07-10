@@ -315,9 +315,9 @@ const Simulator: React.FC<SimulatorProps> = ({
     builderCheckedFiles, builderSessionMetas, builderAutoEditKey,
     mergeDialogOpen, setMergeDialogOpen, mergeOutPath, setMergeOutPath,
     newFileDialogOpen, setNewFileDialogOpen, newFilePath, setNewFilePath,
-    merging, creatingFile,
+    merging, creatingFile, splitting,
     openBuilder, closeBuilder, handleBuilderSessionUpdate, toggleBuilderFile, uncheckBuilderFile,
-    handleMerge, handleCreateFile, handleBuilderUpload, handleImportFile,
+    handleMerge, handleSplit, handleCreateFile, handleBuilderUpload, handleImportFile,
     reloadFromYAML, navigateToRunning, blockIfRunning, runningModelTitle,
     selectSessionModel, clearSessionModel,
   } = useBuilderState({
@@ -510,6 +510,8 @@ const Simulator: React.FC<SimulatorProps> = ({
           onOpenBuilder={openBuilder}
           onNewFile={() => setNewFileDialogOpen(true)}
           onMergeFiles={() => setMergeDialogOpen(true)}
+          onSplitFile={handleSplit}
+          splitting={splitting}
           onImportFile={() => importFileRef.current?.click()}
           onBuilderUpload={() => builderUploadRef.current?.click()}
           scsMode={scsMode}
