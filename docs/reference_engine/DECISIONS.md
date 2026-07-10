@@ -72,6 +72,7 @@
 | [0060](decisions/0060-2026-05-05_project_game-repo-separation.md) | **Game repo 独立（sim 和 game 分离为独立 repo）** | ⭐⭐ | ✅ |
 | [0061](decisions/0061-2026-05-06_project_temp-storage-no-user-accounts.md) | 临时存储方案，不做用户账号系统（upload-temp 并发问题见 ADR 0077 修订） | ⭐ | ✅ |
 | [0078](decisions/0078-2026-05-18_project_scs-mode-design.md) | **SCS_MODE：云端部署写操作保护、前端行为适配、合并→session model** | ⭐ | ✅ |
+| [0128](decisions/0128-2026-07-10_sim_gui-session-idle-timeout.md) | **GUI session 30 分钟无活动自动销毁**（公网部署 P0，防僵尸 session 堆积） | ⭐ | ✅ |
 | [0072](decisions/0072-2026-05-15_project_gui-only-no-cli.md) | **GUI-only：CLI 不是正式接口，不新增功能，批量场景用 HTTP API**（部分修订见 0101） | ⭐⭐ | ✅ |
 | [0091](decisions/0091-2026-06-01_project_cli-batch-tool.md) | `cli/`：批量仿真 CLI 工具 | ⭐ | ✅ |
 | [0101](decisions/0101-2026-06-13_project_cli-public-release-interface.md) | **CLI 升级为公开发布接口：面向 AI/自动化场景，随 release 发布** | ⭐⭐ | ✅ |

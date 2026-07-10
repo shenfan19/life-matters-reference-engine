@@ -120,3 +120,4 @@
 | [0123](0123-2026-07-06_project_test-plan-and-report-consolidation.md) | 测试文档合并为大纲+报告两件套（`models/test/test_plan.md` + `test_report.md`），取代零散的 `validation.md`/模型核对表/任务清单 | ✅ 已接受 | 2026-07-06 |
 | [0124](0124-2026-07-05_sim_loader-engine-last-error-propagation.md) | `LoaderEngine.fetch()` 新增 `last_error`：`Loader`/`Validator` 的具体报错不再被吞成裸 `None`/`False` | ✅ 已接受 | 2026-07-05 |
 | [0125 †](../../../../b_lm_model/docs/decisions/0125-2026-07-05_model_test-valid-invalid-split.md) | `models/test/` 拆分为 `valid/`+`invalid/`：新增 11 个错误检测 fixture（回归锁定见 `tests/errors/`） | ✅ 已接受 | 2026-07-05 |
+| [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
