@@ -28,6 +28,16 @@ output/          ← CLI 运行结果（gitignore，本地私有）
 
 ---
 
+## GUI 仿真 session 生命周期
+
+GUI 仿真 session（`ReferenceEngine.sessions`，`session_manager.py`）30 分钟无活动自动销毁，
+与其 `running`（是否正在自动播放）状态无关——浏览器标签页关闭、用户中途放弃都会在最长约
+35 分钟内（30 分钟超时 + 最多 5 分钟等下一次后台扫描）被回收，避免公网多用户场景下僵尸
+session 堆积耗尽服务器内存。优化任务（`app_state.optimizer_jobs`）独立计时，不受此影响。  
+详见 [ADR 0128](decisions/0128-2026-07-10_sim_gui-session-idle-timeout.md)。
+
+---
+
 ## 用户账号体系
 
 当前版本不引入用户账号。SCS 模式通过无账号的写保护实现多人安全共享。  
