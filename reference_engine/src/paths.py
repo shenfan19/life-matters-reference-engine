@@ -37,3 +37,9 @@ except ImportError:
 MODELS_DIR = Path(os.getenv("LM_MODELS_PATH", str(PROJECT_ROOT / "models")))
 OUTPUT_DIR = Path(os.getenv("LM_OUTPUT_PATH", str(PROJECT_ROOT / "output")))
 SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
+
+# P1/P2 公网部署资源保护（2026-06-25_task_prelaunch-publish-verification-checklist.md §4）：
+# 全局并发上限，防止多用户同时跑大规模优化/仿真耗尽服务器资源。第 N+1 个请求返回 503，
+# 前端可提示"服务繁忙，请稍后重试"，而不是悄悄排队或让机器过载。
+MAX_CONCURRENT_OPTS = int(os.getenv("LM_MAX_CONCURRENT_OPTS", "2"))
+MAX_CONCURRENT_SIMS = int(os.getenv("LM_MAX_CONCURRENT_SIMS", "5"))

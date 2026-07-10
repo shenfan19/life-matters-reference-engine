@@ -124,3 +124,4 @@
 | [0126 †](../../../../b_lm_model/docs/decisions/0126-2026-07-09_model_regimen-semantics-scope-decision.md) | regimen 语义完备性讨论三处范围拍板（不改引擎，划清模型/文档/未来改进边界） | ✅ 已接受 | 2026-07-09 |
 | [0127 †](../../../../b_lm_model/docs/decisions/0127-2026-07-09_model_input-unified-sustained-window-defaults.md) | input 变量统一为 sustained（不再有独立 pulse 模式），窗宽按显式规则默认；`schedule_runner.py` 新增 `resolve_time_interval` 共享函数 | 🟢 已实施 | 2026-07-09 |
 | [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
+| [0129](0129-2026-07-10_sim_concurrency-limits-opt-jobs-and-sim-sessions.md) | 并发资源保护（P1/P2）：优化 job/仿真 session 全局上限，超限路由层直接返回 503（P3/P4 按需暂不实现） | ✅ 已接受 | 2026-07-10 |
