@@ -63,6 +63,10 @@
 
 ## 未决
 
-- `reference_engine/scripts/validate_banister.py` 仍未实现，层1数值精度验证仍依赖人工计算
-  （见 `test_plan.md` 第2节现状说明）。
-- `tests/models/` 数值回归覆盖率低，仅 1 个模型变量。
+- ~~`reference_engine/scripts/validate_banister.py` 仍未实现，层1数值精度验证仍依赖人工计算~~
+  **2026-07-10 已实现并执行 V1**（真实结果 FAIL，误差放大机制分析见 `test_report.md` 第2节；
+  `test_plan.md` 第0节汇总表同步更新）。V2/V3 仍未实现，依赖另一条 C 类未决问题（训练负荷
+  数字对齐方向）。
+- `tests/models/` 数值回归覆盖率**2026-07-10 起从 1 个模型变量扩展到 2 个**（新增
+  `test_plans/caloric_deficit` 关系型回归），仍偏低，持续追踪见
+  `b_lm_home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` §8。
