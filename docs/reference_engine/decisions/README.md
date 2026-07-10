@@ -117,7 +117,10 @@
 | [0119](0119-2026-06-22_sim_unify-sim-run-logging-core.md) | Sim 运行日志核心合并：新增 run_logging.py，CLI/GUI 共用内容生成，IO 出口各自实现（修订 0118 的追问） | ✅ 已接受 | 2026-06-22 |
 | [0120 †](../../../../b_lm_model/docs/decisions/0120-2026-06-23_model_drop-hold-filename-suffix.md) | 废除 `_HOLD` 文件名后缀，状态判定仅看 `metadata.todo`（部分取代 0101） | 🟢 已实施 | 2026-06-23 |
 | [0121](0121-2026-06-24_project_top-level-rename-cli-gui-reference_engine.md) | 顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`；`docs/` 重组为 `docs/reference_engine/`；`SimulatorEngine` → `ReferenceEngine` | ✅ 已接受 | 2026-06-24 |
+| [0122](0122-2026-07-02_sim_report-export-and-per-plan-png.md) | 报告导出重构：Sim/Opt 报告数据整合 + 逐 Plan PNG 独立下载（此前只能导出整页截图） | ✅ 已接受 | 2026-07-02 |
 | [0123](0123-2026-07-06_project_test-plan-and-report-consolidation.md) | 测试文档合并为大纲+报告两件套（`models/test/test_plan.md` + `test_report.md`），取代零散的 `validation.md`/模型核对表/任务清单 | ✅ 已接受 | 2026-07-06 |
 | [0124](0124-2026-07-05_sim_loader-engine-last-error-propagation.md) | `LoaderEngine.fetch()` 新增 `last_error`：`Loader`/`Validator` 的具体报错不再被吞成裸 `None`/`False` | ✅ 已接受 | 2026-07-05 |
 | [0125 †](../../../../b_lm_model/docs/decisions/0125-2026-07-05_model_test-valid-invalid-split.md) | `models/test/` 拆分为 `valid/`+`invalid/`：新增 11 个错误检测 fixture（回归锁定见 `tests/errors/`） | ✅ 已接受 | 2026-07-05 |
+| [0126 †](../../../../b_lm_model/docs/decisions/0126-2026-07-09_model_regimen-semantics-scope-decision.md) | regimen 语义完备性讨论三处范围拍板（不改引擎，划清模型/文档/未来改进边界） | ✅ 已接受 | 2026-07-09 |
+| [0127 †](../../../../b_lm_model/docs/decisions/0127-2026-07-09_model_input-unified-sustained-window-defaults.md) | input 变量统一为 sustained（不再有独立 pulse 模式），窗宽按显式规则默认；`schedule_runner.py` 新增 `resolve_time_interval` 共享函数 | 🟢 已实施 | 2026-07-09 |
 | [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
