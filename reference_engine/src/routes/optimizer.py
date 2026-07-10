@@ -35,6 +35,7 @@ async def run_yaml_optimization(request: YamlOptRequest):
     """
     if app_state.engine is None:
         raise HTTPException(status_code=503, detail="Reference engine not initialized")
+    app_state.check_optimizer_capacity()
     try:
         from src.optimizer_engine import run_optimizer
         job_id = str(uuid.uuid4())

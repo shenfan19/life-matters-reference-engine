@@ -69,6 +69,7 @@ class SessionRequest(BaseModel):
 async def start_simulation(request: SimulationStartRequest):
     if app_state.engine is None:
         raise HTTPException(status_code=503, detail="Reference engine not initialized")
+    app_state.check_sim_capacity()
     try:
         regimens_raw = [r.dict() for r in request.regimens] if request.regimens else None
         result = app_state.engine.start_session(
