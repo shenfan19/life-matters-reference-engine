@@ -27,11 +27,16 @@ function shiftTime(start: string, widthMin: number): string {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
 
-// Resolve a raw YAML/schedule event's `[time_start, time_end)` interval (ADR 0100).
-// Mirrors schedule_runner._normalize_time_interval.
+// Resolve a raw YAML/schedule event's `[time_start, time_end)` interval.
+// Mirrors schedule_runner.resolve_time_interval (ADR 0127): neither field given
+// defaults to the full day ("00:00"/"24:00", sustained), not a fixed clock time —
+// only `time_start` given collapses to a single-step window (time_end = time_start).
 export function normalizeTimeInterval(raw: any): { timeStart: string; timeEnd: string } {
-  const timeStart = raw?.time_start ?? '08:00';
-  return { timeStart, timeEnd: raw?.time_end ?? timeStart };
+  const rawStart = raw?.time_start;
+  const rawEnd = raw?.time_end;
+  if (rawStart == null && rawEnd == null) return { timeStart: '00:00', timeEnd: '24:00' };
+  const timeStart = String(rawStart ?? '00:00');
+  return { timeStart, timeEnd: rawEnd != null ? String(rawEnd) : timeStart };
 }
 
 // Migrate a persisted (localStorage) InputEvent from the pre-ADR-0100 field set

@@ -35,9 +35,10 @@ function roundTrip(regimens: any[]): any[] {
  * Normalizes two known-harmless gaps before comparing, both confirmed via
  * optimizer_engine.py to be semantically inert (not bugs, but not guaranteed
  * either — see ADR 0112):
- *  - missing time_start/time_end defaults to "08:00" on both the frontend
- *    (normalizeTimeInterval) and the backend (_build_regimen_events), so
- *    omitted vs. explicit "08:00" decode identically.
+ *  - missing time_start/time_end resolves identically on the frontend
+ *    (normalizeTimeInterval) and the backend (resolve_time_interval, ADR
+ *    0127): both missing -> "00:00"/"24:00" (full day); only time_start
+ *    given -> time_end = time_start.
  *  - a `days` list covering all 7 days is equivalent to omitting `days`
  *    entirely (apply_schedules treats both as "no day filter").
  * Anything else (e.g. optimize.date_range) is left untouched — a real
@@ -46,8 +47,12 @@ function roundTrip(regimens: any[]): any[] {
 function normalizeForComparison(regimens: any[]): any[] {
   return regimens.map(({ days, ...rest }: any) => {
     const out: any = { ...rest };
-    out.time_start = out.time_start ?? '08:00';
-    out.time_end = out.time_end ?? out.time_start;
+    if (out.time_start == null && out.time_end == null) {
+      out.time_start = '00:00'; out.time_end = '24:00';
+    } else {
+      out.time_start = out.time_start ?? '00:00';
+      out.time_end = out.time_end ?? out.time_start;
+    }
     const isFullWeek = Array.isArray(days) && new Set(days).size === 7;
     if (days !== undefined && !isFullWeek) out.days = days;
     return out;
