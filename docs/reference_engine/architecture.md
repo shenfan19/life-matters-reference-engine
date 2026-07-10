@@ -86,19 +86,19 @@ if all_errors:
 - [`plugin_context.py`](../../reference_engine/src/plugin_context.py) 的 `PluginContext` 给插件提供了统一的日志/缓存/（可选）重新触发仿真的接口。
 - 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于"Paper 2 第二层验证"）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
 
-**前端完全没有接入**——用户在界面上找不到任何插件入口。具体是三处代码从未被使用：
+**前端完全没有接入**——用户在界面上找不到任何插件入口：
 
 1. [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx)：唯一会调用 `/api/plugins/{id}/run` 的通用表单组件，在 `gui/src` 全树里零 import，没有任何页面渲染它。
-2. `reference_engine/src/PluginLoader.tsx`：一个 React 组件，却放在 Python 后端目录里；零引用，文件首行自带注释 `// if delete? duplicated name with file in GUI`，说明这个疑问本来就悬而未决。
-3. `gui/src/plugin_ui_server.py`：一个独立的 `FastAPI()` app（本意是给插件的自定义 UI 提供 iframe 独立页面），却放在前端目录里；全仓库零引用，从未被启动过。
 
-（以上现状 2026-06-24 首次记录于 [`b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md`](../../../b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md)，2026-07-07 复核仍然成立。）
+（以上现状 2026-06-24 首次记录于 [`b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md`](../../../b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md)，2026-07-07 复核仍然成立；2026-07-10 已执行方向 A 的确定性第一步，见下。）
 
 ### 2.3 后续可能的两个方向
 
-这是一个产品范围问题，不只是清理代码，目前尚未决定：
+**2026-07-10 已执行**：`reference_engine/src/PluginLoader.tsx`（放错目录的孤儿 React 组件，零引用，文件首行自带 `// if delete?` 注释）和 `gui/src/plugin_ui_server.py`（从未启动过的孤儿 `FastAPI()` app，零引用）已删除——这一步无论后续走方向 A 还是方向 B 都该做，不预判方向选择。
 
-- **方向 A（补前端入口）**：删除 `PluginLoader.tsx` 和 `plugin_ui_server.py`（零引用、位置放错，无论后续方向如何都该删），保留插件系统整体架构，把 `DynamicForm.tsx` 接到某个实际页面上（例如模型工具栏、或独立的"插件"标签页），让现有的两个插件（敏感性分析、因果推断）变得可用。
-- **方向 B（整体移除）**：判定插件功能属于从未真正落地的半成品，把 `plugins/` 子系统（`PluginManager`、`routes/plugins.py`、`plugin_context.py`、两个示例插件、`DynamicForm.tsx`、`PluginLoader.tsx`、`plugin_ui_server.py`）一并移除，等真正需要插件化的二次分析能力时重新设计。
+剩下这是一个产品范围问题，不只是清理代码，目前仍未决定：
+
+- **方向 A（补前端入口）**：保留插件系统整体架构，把 `DynamicForm.tsx` 接到某个实际页面上（例如模型工具栏、或独立的"插件"标签页），让现有的两个插件（敏感性分析、因果推断）变得可用。
+- **方向 B（整体移除）**：判定插件功能属于从未真正落地的半成品，把 `plugins/` 子系统（`PluginManager`、`routes/plugins.py`、`plugin_context.py`、两个示例插件、`DynamicForm.tsx`）一并移除，等真正需要插件化的二次分析能力时重新设计。
 
 选择哪个方向取决于"敏感性分析/因果推断这类仿真后二次分析"在产品路线图里的优先级，不是纯技术判断。
