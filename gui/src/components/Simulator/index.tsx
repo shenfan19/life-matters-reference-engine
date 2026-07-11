@@ -56,7 +56,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
     inputParams, stateVariables,
     simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, batchSize, updateInterval,
-    simRuns, mcSeed, sessionSeed,
+    simRuns, mcSeed, sessionSeed, optMcRuns, optMcSeed,
   } = state;
 
   // ── SCS mode ─────────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     objectives, constraints,
     optAlgo, optPop, optGen, optSeed,
     simStartDate, simEndDate, stepValue: optStepValue, stepUnit: optStepUnit,
-    simRuns, mcSeed,
+    optMcRuns, optMcSeed,
     modelSessionsRef,
     setRunningModelKey,
     setCenterTab,
@@ -461,7 +461,7 @@ const Simulator: React.FC<SimulatorProps> = ({
       currentFrontCount={currentFront?.length ?? 0}
       optResult={optResult} storedOptResult={storedOptResult}
       simStartDate={simStartDate} simEndDate={simEndDate}
-      stepValue={optStepValue} stepUnit={optStepUnit} simRuns={simRuns} mcSeed={mcSeed}
+      stepValue={optStepValue} stepUnit={optStepUnit} simRuns={optMcRuns} mcSeed={optMcSeed}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning} otherRunningTip={otherRunningTip ?? ''}
       onStart={() => { sessionEditedRef.current = true; startOptimization(); }} onCancel={cancelOptimization}
       onWarmStartChange={setWarmStartEnabled}
@@ -469,8 +469,8 @@ const Simulator: React.FC<SimulatorProps> = ({
       onSimEndDateChange={v => setEdited('simEndDate', v)}
       onStepValueChange={v => setEdited('optStepValue', v)}
       onStepUnitChange={v => setEdited('optStepUnit', v)}
-      onSimRunsChange={v => setEdited('simRuns', v)}
-      onMcSeedChange={v => setEdited('mcSeed', v)}
+      onSimRunsChange={v => setEdited('optMcRuns', v)}
+      onMcSeedChange={v => setEdited('optMcSeed', v)}
       onExportCSV={exportOptCSV}
       onImportCSV={importParetoFromCSV}
       scsMode={scsMode}

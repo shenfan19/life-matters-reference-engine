@@ -48,6 +48,8 @@
   "sim.plan.run_all_pre": "运行全部",
   "sim.plan.run_all_suf": "方案",
   "sim.mc.runs_per_plan": "条评估/方案",
+  "sim.opt.mc_tooltip": "内层鲁棒优化：每个候选方案独立仿真评估这么多次后取平均（应对模型参数分布的不确定性），与 Sim tab 的 MC 设置相互独立",
+  "sim.opt.mc_seed_tooltip": "随机种子：填整数后每次优化搜索的参数采样可复现；留空则每次随机，两种方式均可",
   "sim.mc.seed_label": "种子",
   "sim.mc.seed_placeholder": "随机",
   "sim.mc.seed_tooltip": "随机种子：填整数后每次运行产生完全相同的曲线（可复现）；留空则每次随机，两种方式均可",

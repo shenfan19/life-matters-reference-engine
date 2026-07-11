@@ -133,15 +133,16 @@ export function OptControlBar({
           ]} />
       </div>
 
-      {/* MC config */}
+      {/* Inner robust-optimization MC config (optimizer.mc.runs/seed) — distinct
+          from the Sim tab's simulation.mc, see useOptimizer.ts */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Tooltip title={`Monte Carlo: ${simRuns} ${t('sim.mc.runs_per_plan')}`}>
+        <Tooltip title={`${t('sim.opt.mc_tooltip')} (${simRuns})`}>
           <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>MC×</span>
         </Tooltip>
         <InputNumber size="small" min={1} max={50} value={simRuns}
           onChange={v => onSimRunsChange(Math.max(1, Math.min(50, v || 1)))}
           style={{ width: 52 }} disabled={optRunning} />
-        <Tooltip title={t('sim.mc.seed_tooltip')}>
+        <Tooltip title={t('sim.opt.mc_seed_tooltip')}>
           <span style={{ color: c.textSec, whiteSpace: 'nowrap', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>{t('sim.mc.seed_label')}</span>
         </Tooltip>
         <InputNumber

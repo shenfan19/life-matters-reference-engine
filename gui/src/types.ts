@@ -112,6 +112,12 @@ export interface SimulationState {
     simRuns: number;        // Monte Carlo 运行条数 (1~50)
     mcSeed: number | null;  // 用户设定的 MC seed（null=每次随机，整数=固定可复现）
     sessionSeed: number;    // 本次 session 实际使用的 seed（由 API 返回）
+    // Opt 内层鲁棒优化 MC（optimizer.mc.runs/seed）——与上面 simRuns/mcSeed（simulation.mc）
+    // 是两个独立概念，不共用同一份状态：simRuns/mcSeed 控制 Sim tab 结果里画几条轨迹，
+    // optMcRuns/optMcSeed 控制 Opt 每个候选解在优化搜索时要采样几次取平均。参照
+    // optStepValue/optStepUnit 与 stepValue/stepUnit 分离的既有模式。
+    optMcRuns: number;
+    optMcSeed: number | null;
 }
 
 
@@ -196,6 +202,8 @@ export interface ModelSession {
   optStepUnit: StepUnit;
   simRuns: number;
   mcSeed: number | null;
+  optMcRuns: number;
+  optMcSeed: number | null;
   objectives: Array<{ variable: string; direction: 'minimize' | 'maximize' }>;
   constraints: Array<{ variable: string; op: '≤' | '≥'; value: number }>;
   optAlgo: 'NSGA-II' | 'MOEA/D' | 'l-bfgs-b' | 'nelder-mead';

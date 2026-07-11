@@ -48,6 +48,8 @@
   "sim.plan.run_all_pre": "執行全部",
   "sim.plan.run_all_suf": "方案",
   "sim.mc.runs_per_plan": "條評估/方案",
+  "sim.opt.mc_tooltip": "內層魯棒優化：每個候選方案獨立仿真評估這麼多次後取平均（應對模型參數分布的不確定性），與 Sim tab 的 MC 設置相互獨立",
+  "sim.opt.mc_seed_tooltip": "隨機種子：填整數後每次優化搜索的參數採樣可複現；留空則每次隨機，兩種方式均可",
   "sim.mc.seed_label": "種子",
   "sim.mc.seed_placeholder": "隨機",
   "sim.mc.seed_tooltip": "隨機種子：填整數後每次執行產生完全相同的曲線（可複現）；留空則每次隨機，兩種方式均可",

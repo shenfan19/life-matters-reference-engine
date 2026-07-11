@@ -48,6 +48,8 @@
   "sim.plan.run_all_pre": "Exécuter tous les",
   "sim.plan.run_all_suf": "plans",
   "sim.mc.runs_per_plan": "runs/plan",
+  "sim.opt.mc_tooltip": "Optimisation robuste interne : chaque solution candidate est simulée indépendamment et moyennée ce nombre de fois (pour gérer l'incertitude des distributions de paramètres du modèle) — indépendant du réglage MC de l'onglet Sim",
+  "sim.opt.mc_seed_tooltip": "Graine aléatoire : entrez un entier pour rendre reproductible l'échantillonnage des paramètres à chaque exécution d'optimisation ; laissez vide pour aléatoire",
   "sim.mc.seed_label": "graine",
   "sim.mc.seed_placeholder": "aléat.",
   "sim.mc.seed_tooltip": "Graine aléatoire : entrez un entier pour des courbes identiques à chaque exécution (reproductible) ; laissez vide pour aléatoire",

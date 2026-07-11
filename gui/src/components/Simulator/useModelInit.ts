@@ -143,6 +143,8 @@ export function useModelInit({
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
       set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
       set('mcSeed', 'mcSeed' in session ? session.mcSeed : (sim?.mc?.seed != null ? Number(sim.mc.seed) : null));
+      set('optMcRuns', session.optMcRuns ?? (optBlock?.mc?.runs != null ? Math.max(1, Math.min(50, Number(optBlock.mc.runs))) : 1));
+      set('optMcSeed', 'optMcSeed' in session ? session.optMcSeed : (optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null));
       sessionEditedRef.current = !!(session as any).userEdited;
       sessionReadyRef.current = true;
       return;
@@ -300,6 +302,10 @@ export function useModelInit({
 
     // mcSeed 来自 simulation.mc.seed，无论是否有 optimizer 块都需要重置
     set('mcSeed', sim?.mc?.seed != null ? Number(sim.mc.seed) : null);
+    // optMcSeed 来自 optimizer.mc.seed——与上面 mcSeed 是两个独立字段，不要混用
+    // （optimizer.mc 控制 opt 内层鲁棒优化每个候选解采样几次，simulation.mc 控制 Sim tab
+    // 展示几条轨迹）。无论是否有 optimizer 块都需要重置，避免残留上一个模型的值。
+    set('optMcSeed', optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null);
 
     // Opt config from YAML
     if (optBlock && optBlock.enabled !== false) {
@@ -327,6 +333,7 @@ export function useModelInit({
       if (algoBlock.n_generations)   setOptGen(Number(algoBlock.n_generations));
       setOptSeed(algoBlock.seed != null ? Number(algoBlock.seed) : 42);
       if (sim?.mc?.runs != null && Number(sim.mc.runs) > 1) set('simRuns', Math.max(1, Math.min(50, Number(sim.mc.runs))));
+      set('optMcRuns', optBlock.mc?.runs != null ? Math.max(1, Math.min(50, Number(optBlock.mc.runs))) : 1);
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
       setOptInputEvents(
         Array.isArray(optBlock.startpoint?.regimens)
@@ -337,6 +344,7 @@ export function useModelInit({
       setObjectives([]);
       setConstraints([]);
       setOptInputEvents([]);
+      set('optMcRuns', 1);
     }
 
     setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));

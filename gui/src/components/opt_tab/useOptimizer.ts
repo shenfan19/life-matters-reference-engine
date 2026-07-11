@@ -52,8 +52,8 @@ interface UseOptimizerParams {
   simEndDate: string;
   stepValue: number;
   stepUnit: string;
-  simRuns: number;
-  mcSeed: number | null;
+  optMcRuns: number;
+  optMcSeed: number | null;
   modelSessionsRef: React.MutableRefObject<Record<string, any>>;
   setRunningModelKey: (key: string | null) => void;
   setCenterTab: (tab: string) => void;
@@ -67,7 +67,7 @@ export function useOptimizer({
   objectives, constraints,
   optAlgo, optPop, optGen, optSeed,
   simStartDate, simEndDate, stepValue, stepUnit,
-  simRuns, mcSeed,
+  optMcRuns, optMcSeed,
   modelSessionsRef,
   setRunningModelKey, setCenterTab,
   autoSaveLocal,
@@ -142,6 +142,13 @@ export function useOptimizer({
       start_date: simStartDate,
       end_date:   simEndDate,
       step_size:  { value: stepValue, unit: stepUnit },
+      // Inner robust-optimization MC (optimizer.mc.runs/seed) — mirrors the
+      // algorithm.seed reasoning above: optMcRuns/optMcSeed are read from the
+      // YAML's own optimizer.mc at load time (useModelInit.ts), so an unedited
+      // GUI run reproduces the same MC config the CLI uses reading the YAML
+      // directly. This is a distinct config from Sim tab's simRuns/mcSeed
+      // (simulation.mc) — do not conflate the two.
+      mc: { runs: optMcRuns, ...(optMcSeed != null ? { seed: optMcSeed } : {}) },
     };
 
     // F-5-3: always send warm_start to override backend's YAML read

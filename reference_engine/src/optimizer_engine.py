@@ -51,7 +51,7 @@ def run_optimizer(engine, model_name: str,
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
         for key in ('objectives', 'constraints', 'algorithm', 'method',
-                    'start_date', 'end_date', 'step_size', 'startpoint'):
+                    'start_date', 'end_date', 'step_size', 'startpoint', 'mc'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
 
