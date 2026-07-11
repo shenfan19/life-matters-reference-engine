@@ -125,3 +125,4 @@
 | [0127 †](../../../../b_lm_model/docs/decisions/0127-2026-07-09_model_input-unified-sustained-window-defaults.md) | input 变量统一为 sustained（不再有独立 pulse 模式），窗宽按显式规则默认；`schedule_runner.py` 新增 `resolve_time_interval` 共享函数 | 🟢 已实施 | 2026-07-09 |
 | [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
 | [0129](0129-2026-07-10_sim_concurrency-limits-opt-jobs-and-sim-sessions.md) | 并发资源保护（P1/P2）：优化 job/仿真 session 全局上限，超限路由层直接返回 503（P3/P4 按需暂不实现） | ✅ 已接受 | 2026-07-10 |
+| [0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | 修复 `optimizer.mc.runs>1` 被 `reset_simulation()` 静默清零的 bug（影响19个论文模型）+ Opt tab MC 控件与 Sim tab 解耦（部分撤销 ADR 0045 决策二） | ✅ 已接受 | 2026-07-10 |
