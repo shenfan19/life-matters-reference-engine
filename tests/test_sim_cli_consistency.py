@@ -202,7 +202,16 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     added for it but never wired into a pytest, leaving `optimizer.mc` unverified for
     GUI/CLI parity even though `simulation.mc` (sim-level MC, ADR 0113) already had
     coverage above. Regression guard: an MC-seeded objective aggregation must be exactly
-    reproducible from both entry points, not just from a single deterministic sample."""
+    reproducible from both entry points, not just from a single deterministic sample.
+
+    `gui_override` includes `mc` (read from the YAML's own `optimizer.mc`, mirroring how
+    the real GUI's optMcRuns/optMcSeed are loaded at model-open time) — an "unedited" run
+    sends back exactly what was already there, same reasoning as `algorithm.seed` above.
+    Before the GUI wiring fix (useOptimizer.ts + optMcRuns/optMcSeed state), the frontend
+    captured a MC×N/seed control's values but never forwarded them into the override, and
+    the backend's override merge whitelist didn't even accept an `mc` key — both silently
+    dropped whatever the GUI showed, see test_opt_inner_mc_override_actually_takes_effect
+    below for the regression guard on that specific bug."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
     model_name = 'test/valid/test_opt_inner_mc'
@@ -219,6 +228,7 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
         'objectives': opt_block['objectives'],
         'constraints': opt_block.get('constraints', []),
         'algorithm': opt_block['algorithm'],
+        'mc': opt_block['mc'],
         'warm_start': [],
     }
     gui_result = run_optimizer(gui_engine, model_name, optimizer_override=gui_override)
@@ -226,3 +236,44 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
 
     assert cli_result['best_x'] == pytest.approx(gui_result['best_x'], abs=TOL, rel=TOL)
     assert cli_result['best_f'] == pytest.approx(gui_result['best_f'], abs=TOL, rel=TOL)
+
+
+def test_opt_inner_mc_override_actually_takes_effect():
+    """Regression guard for the real bug found 2026-07-10: the GUI had a genuine MC×N/seed
+    input control in the Opt tab toolbar (OptControlBar.tsx), its state was threaded all the
+    way down into useOptimizer's params, but the hook never used it to build
+    optimizer_override, and run_optimizer()'s override merge whitelist didn't even accept an
+    `mc` key — so changing the control in the GUI silently had zero effect on the actual
+    optimization run, always falling back to the YAML's own `optimizer.mc`, no matter what
+    the user set.
+
+    This test proves the fix by overriding `mc.seed` to a value that DIFFERS from the
+    YAML's own `optimizer.mc.seed` (19) and checking the result actually changes — if the
+    override were silently dropped (the bug), this would incorrectly reproduce the
+    YAML-seed result regardless of what override was passed."""
+    from reference_engine.src.optimizer_engine import run_optimizer
+
+    model_name = 'test/valid/test_opt_inner_mc'
+
+    baseline_engine = _make_engine()
+    baseline_result = run_optimizer(baseline_engine, model_name, optimizer_override={'warm_start': []})
+    assert baseline_result['success'], baseline_result.get('error')
+
+    overridden_engine = _make_engine()
+    assert overridden_engine.load_models([model_name])
+    opt_block = overridden_engine.current_model.optimizer
+    overridden_override = {
+        'startpoint': opt_block['startpoint'],
+        'objectives': opt_block['objectives'],
+        'constraints': opt_block.get('constraints', []),
+        'algorithm': opt_block['algorithm'],
+        'mc': {'runs': opt_block['mc']['runs'], 'seed': 999},  # differs from YAML's seed: 19
+        'warm_start': [],
+    }
+    overridden_result = run_optimizer(overridden_engine, model_name, optimizer_override=overridden_override)
+    assert overridden_result['success'], overridden_result.get('error')
+
+    assert overridden_result['best_f'] != pytest.approx(baseline_result['best_f'], abs=TOL, rel=TOL), (
+        "overriding optimizer.mc.seed produced the same result as the YAML default — "
+        "the mc override is being silently ignored again"
+    )
