@@ -47,6 +47,8 @@
   "sim.plan.run_all_pre": "Run all",
   "sim.plan.run_all_suf": "plans",
   "sim.mc.runs_per_plan": "runs/plan",
+  "sim.opt.mc_tooltip": "Inner robust optimization: each candidate solution is independently simulated and averaged this many times (to handle model parameter distribution uncertainty) — independent of the Sim tab's MC setting",
+  "sim.opt.mc_seed_tooltip": "Random seed: enter an integer to make each optimization run's parameter sampling reproducible; leave empty for random — both are fine",
   "sim.mc.seed_label": "seed",
   "sim.mc.seed_placeholder": "rand",
   "sim.mc.seed_tooltip": "Random seed: enter an integer to get identical curves every run (reproducible); leave empty for random — both are fine",

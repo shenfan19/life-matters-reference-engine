@@ -66,6 +66,7 @@ const initialSimulationState: SimulationState = {
   simStartDate: '2026-01-01', simEndDate: '2026-12-31', stepValue: 1, stepUnit: 'hour',
   optStepValue: 1, optStepUnit: 'hour',
   batchSize: 10, updateInterval: 50, simRuns: 1, mcSeed: null, sessionSeed: 0,
+  optMcRuns: 1, optMcSeed: null,
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────

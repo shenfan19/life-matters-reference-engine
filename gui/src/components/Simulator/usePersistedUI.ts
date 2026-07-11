@@ -56,7 +56,8 @@ export function usePersistedUI({
   setRunOutputVars, setOutputWarnings, setCenterTab,
 }: UsePersistedUIParams) {
   const { status, currentStep, progress, totalSteps, sessionId, sessionSeed, simulationData, dataPerRun,
-    simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed } = state;
+    simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed,
+    optMcRuns, optMcSeed } = state;
 
   // ── load tree on mount + restore selected model ──────────────────────────────
   useEffect(() => {
@@ -132,12 +133,13 @@ export function usePersistedUI({
     const session: ModelSession = {
       inputEvents, optInputEvents, plans, activePlanId,
       simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed,
+      optMcRuns, optMcSeed,
       objectives, constraints, optAlgo, optPop, optGen, optSeed,
       optResult,
       userEdited: sessionEditedRef.current,
     };
     persistSession(selectedKey, session);
-  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult]);
+  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, optMcRuns, optMcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {
