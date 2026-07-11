@@ -125,6 +125,17 @@ def apply_parameter_sampling(model, param_distributions: dict, rng=None) -> None
         )
         model.variables[var_name].value = val
         model.asteval.symtable[var_name] = val
+        # Keep the variable_history[0] "initial value" snapshot in sync with the
+        # sample just applied. Without this, a model.reset_simulation() call made
+        # after sampling (e.g. optimizer_eval._run_sim()'s unconditional reset at
+        # the top of every evaluation) silently reverts the variable back to
+        # whatever value clone_model() snapshotted BEFORE sampling ran — wiping
+        # out the sampled draw before the simulation it was meant to drive even
+        # starts. This is not a hypothetical: it made every optimizer.mc.runs>1
+        # model evaluate all MC runs against the same deterministic mean,
+        # silently defeating the entire inner robust-optimization feature.
+        if var_name in model.variable_history and model.variable_history[var_name]:
+            model.variable_history[var_name][0] = val
 
 
 def clone_model(base):
