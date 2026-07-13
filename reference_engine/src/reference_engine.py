@@ -149,7 +149,7 @@ class ReferenceEngine(SessionManagerMixin):
         start_date = self.current_model.simulator.get('start_date', '')
         raw_entries = getattr(self.current_model, 'schedule_entries', [])
         schedules = precompute_sustained_divisors(
-            list(raw_entries), step_size, total_steps, start_date
+            list(raw_entries), step_size
         ) if raw_entries else []
 
         if log_cb:
@@ -247,7 +247,7 @@ class ReferenceEngine(SessionManagerMixin):
             start_date = base_model.simulator.get('start_date', '')
             raw_entries = getattr(base_model, 'schedule_entries', [])
             schedules = precompute_sustained_divisors(
-                list(raw_entries), step_size, total_steps, start_date
+                list(raw_entries), step_size
             ) if raw_entries else []
 
             n_runs = max(1, int(n_runs))

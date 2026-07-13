@@ -150,8 +150,8 @@ class SessionManagerMixin:
             )
             # ──────────────────────────────────────────────────────────────────
 
-            # ADR 0099: precompute sustained-mode value/_n_steps divisors once
-            regimens = precompute_sustained_divisors(regimens or [], step_size, total_steps, start_date)
+            # ADR 0128: precompute sustained-mode value/_n_steps divisors once
+            regimens = precompute_sustained_divisors(regimens or [], step_size)
 
             self.sessions[session_id] = {
                 'model': runs[0]['model'],

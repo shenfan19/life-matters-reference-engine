@@ -14,7 +14,6 @@
 # "pulse mode" — a single step is just a narrow sustained window.
 
 import logging
-import math
 from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
@@ -63,57 +62,22 @@ def _time_range_day_seconds(time_start: str, time_end: str) -> float:
     return float(86400 - t0_sec + t1_sec)
 
 
-def _n_active_days(ev: dict, sched: dict, sim_start_date: str, total_steps: int,
-                    step_size_sec: float) -> int:
-    """Number of calendar days the sustained event is active on.
-
-    Date span = event/schedule valid_range if set, else the whole simulation
-    span (derived from total_steps * step_size_sec). Within that span, only
-    days matching the `days` filter (event-level string list, opt path, or
-    schedule-level boolean mask, GUI path) count.
-    """
-    try:
-        epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
-    except ValueError:
-        epoch = date(1900, 1, 1)
-
-    vs = ev.get('valid_start') or (sched.get('valid_start') if sched.get('valid_range_enabled') else None)
-    ve = ev.get('valid_end') or (sched.get('valid_end') if sched.get('valid_range_enabled') else None)
-    span_start = epoch
-    span_days = max(1, math.ceil(total_steps * step_size_sec / 86400.0))
-    if vs and ve:
-        try:
-            d0, d1 = date.fromisoformat(vs), date.fromisoformat(ve)
-            span_start, span_days = d0, max(1, (d1 - d0).days + 1)
-        except ValueError:
-            pass
-
-    days_mask = None
-    ev_days = ev.get('days')
-    if ev_days:
-        days_mask = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
-    elif sched.get('days_enabled'):
-        mask = sched.get('days', [True] * 7)
-        days_mask = {i for i in range(7) if i < len(mask) and mask[i]}
-
-    if not days_mask or len(days_mask) == 7:
-        return span_days
-    count = sum(1 for i in range(span_days) if (span_start + timedelta(days=i)).weekday() in days_mask)
-    return max(count, 1)
-
-
-def precompute_sustained_divisors(schedules: list, step_size_sec: float, total_steps: int,
-                                   sim_start_date: str = '') -> list:
-    """Annotate sustained-interval events with `_n_steps` (ADR 0099/0100).
+def precompute_sustained_divisors(schedules: list, step_size_sec: float) -> list:
+    """Annotate sustained-interval events with `_n_steps` (ADR 0128, supersedes 0099/0126§3).
 
     An event is a multi-step window when its `[time_start, time_end)` interval
     (resolved by `resolve_time_interval`, ADR 0100/0127) is non-empty
     (`time_start != time_end`); single-step events (`time_start == time_end`)
     are left untouched and default to `_n_steps == 1` in apply_schedules.
 
-    `value` for sustained entries is the total over the entire active window;
-    apply_schedules divides by `_n_steps` each firing step so the cumulative
-    contribution equals `value` regardless of step_size (pulse is the
+    `value` for sustained entries is the total over ONE occurrence of the
+    window (a single matching day), not over the whole `date_range`/`days`
+    recurrence span: `_n_steps` is just the window's own duration divided by
+    step_size, independent of how many calendar days the event recurs on.
+    `days`/`date_range`/`valid_start`/`valid_end` are pure firing filters
+    (ADR 0128) — they no longer feed into this divisor. apply_schedules
+    divides by `_n_steps` each firing step so every matching day independently
+    delivers the full `value`, regardless of step_size (pulse is the
     `_n_steps == 1` special case of the same rule).
 
     Returns a new list; does not mutate the input schedules/events.
@@ -130,10 +94,8 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float, total_s
             time_start, time_end = resolve_time_interval(ev)
             if time_start != time_end:
                 day_sec = _time_range_day_seconds(time_start, time_end)
-                n_active_days = _n_active_days(ev, sched, sim_start_date, total_steps, step_size_sec)
-                window_sec = n_active_days * day_sec
                 ev = dict(ev)
-                ev['_n_steps'] = max(1, round(window_sec / step_size_sec))
+                ev['_n_steps'] = max(1, round(day_sec / step_size_sec))
                 changed = True
             new_events.append(ev)
         out.append({**sched, 'events': new_events} if changed else sched)
@@ -166,12 +128,16 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
         hour/minute) represent a "sustained intensity" input over a
         multi-step window without one schedule entry per step.
 
-    `value` is the TOTAL over the active window, not a per-step amount
-    (ADR 0099): each firing step adds `value / _n_steps`, where `_n_steps`
-    is precomputed by `precompute_sustained_divisors()` and stashed on the
-    event as `_n_steps`. This keeps the cumulative contribution equal to
-    `value` regardless of step_size — a single-step window (`_n_steps`
-    absent, treated as 1) is the same rule's special case.
+    `value` is the TOTAL over ONE occurrence of the window (a single matching
+    day), not a per-step amount and not a total across every day the event
+    recurs on (ADR 0128, supersedes 0099/0126§3): each firing step adds
+    `value / _n_steps`, where `_n_steps` is precomputed by
+    `precompute_sustained_divisors()` and stashed on the event as `_n_steps`.
+    This keeps each matching day's cumulative contribution equal to `value`
+    regardless of step_size — a single-step window (`_n_steps` absent,
+    treated as 1) is the same rule's special case. `days`/`valid_start`/
+    `valid_end` only gate *which* days fire; they do not change how much a
+    firing day delivers.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
