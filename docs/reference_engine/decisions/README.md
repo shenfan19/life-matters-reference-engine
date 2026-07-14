@@ -3,6 +3,11 @@
 每个文件记录一个设计决策，格式参考 [ADR](https://adr.github.io/)。
 
 > **†** — 文件位于 `b_lm_model` 仓库（[`../../../../b_lm_model/docs/decisions/`](../../../../b_lm_model/docs/decisions/)）
+>
+> **编号规则**：本索引与两仓库一直共用同一个全局编号序列（0001–0127 交替出现 † 与非 †
+> 条目）。2026-07-10~07-14 期间两边一度各自独立计数，产生 0128/0129/0130 撞号（本仓库
+> 原生 0128/0129/0130 与 `b_lm_model` 原 0128/0129 内容不同）——后者已改名为 0131/0132，
+> 前者维持不变、未追溯改动。此后新建 ADR 前须先看两仓库各自最新编号，取最大值 + 1。
 
 ## 索引
 
@@ -126,3 +131,6 @@
 | [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
 | [0129](0129-2026-07-10_sim_concurrency-limits-opt-jobs-and-sim-sessions.md) | 并发资源保护（P1/P2）：优化 job/仿真 session 全局上限，超限路由层直接返回 503（P3/P4 按需暂不实现） | ✅ 已接受 | 2026-07-10 |
 | [0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | 修复 `optimizer.mc.runs>1` 被 `reset_simulation()` 静默清零的 bug（影响19个论文模型）+ Opt tab MC 控件与 Sim tab 解耦（部分撤销 ADR 0045 决策二） | ✅ 已接受 | 2026-07-10 |
+| _（0128-0130 与 b_lm_model 同期各自独立编号撞号，0131/0132 起两仓库恢复共用同一序列，见下方说明）_ | | | |
+| [0131 †](../../../../b_lm_model/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) | sustained value 语义修正：每个匹配日独立满额，取代 0099 的"整跨度总量"（同批取代 0126 第3条） | ✅ 已实施 | 2026-07-13 |
+| [0132 †](../../../../b_lm_model/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md) | sustained regimen 新增 `delivery: total\|level`，区分"总量摊分"（训练负荷类）与"恒定水平"（睡眠时长类） | ✅ 已实施 | 2026-07-14 |
