@@ -199,6 +199,8 @@ def run_optimizer(engine, model_name: str,
         dr = e.get('date_range')
         if isinstance(dr, list) and len(dr) == 2:
             ev_f['valid_start'] = str(dr[0]); ev_f['valid_end'] = str(dr[1])
+        if e.get('delivery') == 'level':
+            ev_f['delivery'] = 'level'
         fixed_events_map.setdefault(v, []).append(ev_f)
 
     def _build_regimen_events(x: np.ndarray) -> Dict[str, List[Dict]]:
@@ -218,6 +220,7 @@ def run_optimizer(engine, model_name: str,
                     'value': float(e0.get('value', 0)),
                     'valid_start': None,
                     'valid_end': None,
+                    'delivery': e0.get('delivery'),
                 }
                 dr = e0.get('date_range')
                 if isinstance(dr, list) and len(dr) == 2:
@@ -260,6 +263,8 @@ def run_optimizer(engine, model_name: str,
                 ev2['valid_start'] = d['valid_start']
             if d.get('valid_end'):
                 ev2['valid_end'] = d['valid_end']
+            if d.get('delivery') == 'level':
+                ev2['delivery'] = 'level'
             events_map.setdefault(d['variable'], []).append(ev2)
         return events_map
 

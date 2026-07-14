@@ -128,16 +128,25 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
         hour/minute) represent a "sustained intensity" input over a
         multi-step window without one schedule entry per step.
 
-    `value` is the TOTAL over ONE occurrence of the window (a single matching
-    day), not a per-step amount and not a total across every day the event
-    recurs on (ADR 0128, supersedes 0099/0126§3): each firing step adds
-    `value / _n_steps`, where `_n_steps` is precomputed by
-    `precompute_sustained_divisors()` and stashed on the event as `_n_steps`.
-    This keeps each matching day's cumulative contribution equal to `value`
-    regardless of step_size — a single-step window (`_n_steps` absent,
-    treated as 1) is the same rule's special case. `days`/`valid_start`/
-    `valid_end` only gate *which* days fire; they do not change how much a
-    firing day delivers.
+    `value`'s meaning depends on `delivery` (ADR 0129, default `'total'`):
+
+      - `'total'` (default): `value` is the total over ONE occurrence of the
+        window (a single matching day), not a per-step amount and not a total
+        across every day the event recurs on (ADR 0128, supersedes 0099/0126§3):
+        each firing step adds `value / _n_steps`, where `_n_steps` is
+        precomputed by `precompute_sustained_divisors()`. This keeps each
+        matching day's cumulative contribution equal to `value` regardless of
+        step_size — a single-step window (`_n_steps` absent, treated as 1) is
+        the same rule's special case.
+      - `'level'`: `value` is a constant level held during the window (e.g. a
+        sleep-hours setting, a training-intensity dial) — each firing step
+        adds `value` directly, un-divided. Use this when the input is read
+        downstream as an instantaneous reading (compared to a baseline,
+        multiplied as a modifier) rather than accumulated as a dose; `'total'`
+        would make that reading scale inversely with step_size (ADR 0129).
+
+    `days`/`valid_start`/`valid_end` only gate *which* days fire under either
+    `delivery` mode; they do not change how much a firing day delivers.
     """
     try:
         epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
@@ -250,8 +259,11 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
 
             if fires:
                 current = model.variables[variable].value
-                n_steps = ev.get('_n_steps', 1)
-                delta = float(ev.get('value', 0)) / n_steps
+                raw_value = float(ev.get('value', 0))
+                if ev.get('delivery') == 'level':
+                    delta = raw_value
+                else:
+                    delta = raw_value / ev.get('_n_steps', 1)
                 model.set_variable_value(variable, current + delta)
                 logger.debug(
                     "Schedule fired: %s += %s @ t=%.0fs (%s~%s)",
