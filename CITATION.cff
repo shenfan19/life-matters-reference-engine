@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite the associated paper once it is
+  published. Until then, please cite this repository directly using the
+  metadata below.
+title: "LM Reference Engine"
+type: software
+authors:
+  - family-names: Shen
+    given-names: Fan
+license-url: "https://polyformproject.org/licenses/noncommercial/1.0.0/"
+# TODO: once the paper has a final title/venue/DOI, add a `preferred-citation:`
+# block here (type: article) so citing tools point readers to the paper
+# instead of this repository. See reasoning in
+# internal design rationale notes.
