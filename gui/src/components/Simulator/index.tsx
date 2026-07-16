@@ -88,11 +88,61 @@ const Simulator: React.FC<SimulatorProps> = ({
     setConfirmedModel, onModelSelect, setCenterTab, t,
   });
 
-  // Clear comparison runs and stale sim data when switching models
+  // In-memory cache of each model's last Sim-tab results (curves), keyed by
+  // model key. Not persisted to localStorage like ModelSession — curve data
+  // can be large and doesn't need to survive a page reload — but restored
+  // when switching back to a previously-run model within the same browser
+  // session. Before this, results were unconditionally wiped on every model
+  // switch with no way to get them back short of re-running (2026-07-15).
+  const simResultsRef = useRef<Record<string, {
+    simulationData: SimulationDataPoint[];
+    dataPerRun: SimulationDataPoint[][];
+    status: SimulationState['status'];
+    currentStep: number;
+    progress: number;
+    totalSteps: number;
+    sessionId: string;
+    sessionSeed: number;
+    comparedPlans: PlanResult[];
+    runOutputVars: string[];
+    outputWarnings: string[];
+    simLogs: Array<{ t: number; msg: string }>;
+  }>>({});
+  const prevSelectedKeyRef = useRef<string | null>(null);
+
+  // Snapshot the outgoing model's Sim results, then restore the incoming
+  // model's cached results (if any) or reset to empty (first-ever visit).
   useEffect(() => {
+    const prevKey = prevSelectedKeyRef.current;
+    if (prevKey && prevKey !== selectedKey) {
+      simResultsRef.current[prevKey] = {
+        simulationData: state.simulationData, dataPerRun: state.dataPerRun,
+        status: state.status, currentStep: state.currentStep, progress: state.progress,
+        totalSteps: state.totalSteps, sessionId: state.sessionId, sessionSeed: state.sessionSeed,
+        comparedPlans, runOutputVars, outputWarnings, simLogs,
+      };
+    }
+    prevSelectedKeyRef.current = selectedKey;
+
     setImportedSimRuns([]);
     simRunCounterRef.current = 0;
-    setState(prev => ({ ...prev, simulationData: [], dataPerRun: [], status: 'idle', progress: 0, currentStep: 0, sessionId: '' }));
+
+    const cached = selectedKey ? simResultsRef.current[selectedKey] : undefined;
+    if (cached) {
+      setState(prev => ({
+        ...prev,
+        simulationData: cached.simulationData, dataPerRun: cached.dataPerRun,
+        status: cached.status, currentStep: cached.currentStep, progress: cached.progress,
+        totalSteps: cached.totalSteps, sessionId: cached.sessionId, sessionSeed: cached.sessionSeed,
+      }));
+      setComparedPlans(cached.comparedPlans);
+      setRunOutputVars(cached.runOutputVars);
+      setOutputWarnings(cached.outputWarnings);
+      setSimLogs(cached.simLogs);
+    } else {
+      setState(prev => ({ ...prev, simulationData: [], dataPerRun: [], status: 'idle', progress: 0, currentStep: 0, sessionId: '' }));
+      setComparedPlans([]);
+    }
   }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── builder mode ─────────────────────────────────────────────────────────────
@@ -252,10 +302,6 @@ const Simulator: React.FC<SimulatorProps> = ({
     autoSaveLocal: autoSaveLocal && !scsMode,
     t,
   });
-
-  // Clear compared plans when switching models (needs setComparedPlans from useSimulation)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setComparedPlans([]); }, [selectedKey]);
 
   // Combined stop (sim + opt)
   const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
