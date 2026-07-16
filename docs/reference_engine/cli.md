@@ -91,7 +91,7 @@ pyinstaller cli/build.spec
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--input-dir PATH` | `models/`（整个模型库） | 要扫描的模型文件夹（递归查找 `*.yaml`）。**相对路径从 `models/` 起算**（与 GUI 的文件树/`model_key` 同一套根目录约定，见下方"路径配置"），例如 `--input-dir test/valid` 等价于 `models/test/valid`；绝对路径不受影响。**注意**：`models/test/invalid` 下是故意写错的错误检测 fixture，每个文件都预期 FAIL——扫描整个模型库（不传 `--input-dir`）或 `--input-dir test` 时，报告里出现这些 FAIL 是设计如此，不是回归 |
+| `--input-dir PATH` | `models/`（整个模型库） | 要扫描的模型文件夹（递归查找 `*.yaml`）。**相对路径从 `models/` 起算**（与 GUI 的文件树/`model_key` 同一套根目录约定，见下方"路径配置"），例如 `--input-dir test_validation/valid` 等价于 `models/test_validation/valid`；绝对路径不受影响。**注意**：`models/test_validation/invalid` 下是故意写错的错误检测 fixture，每个文件都预期 FAIL——扫描整个模型库（不传 `--input-dir`）或 `--input-dir test_validation` 时，报告里出现这些 FAIL 是设计如此，不是回归 |
 | `--output-dir PATH` | `output/`（项目根） | 批次目录的根路径（相对项目根，或绝对路径）；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
 | `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥 |
 | `--opt-only` | （跑 sim + opt） | 只运行优化器，跳过仿真。与 `--sim-only` 互斥 |

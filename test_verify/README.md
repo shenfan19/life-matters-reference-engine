@@ -1,6 +1,6 @@
 # test_verify — 引擎代码的 pytest 验证套件
 
-`test_verify/` 是仓库的 Python 单元/回归测试套件，用 `pytest` 驱动，验证的对象是**`cli/`、`reference_engine/` 里的代码本身有没有按预期实现**——不涉及某个具体模型 YAML 的数值是否符合文献/临床常识（那属于 `models/test/`，见下方"和 models/test/ 的关系"）。
+`test_verify/` 是仓库的 Python 单元/回归测试套件，用 `pytest` 驱动，验证的对象是**`cli/`、`reference_engine/` 里的代码本身有没有按预期实现**——不涉及某个具体模型 YAML 的数值是否符合文献/临床常识（那属于 `models/test_validation/`，见下方"和 models/test_validation/ 的关系"）。
 
 ## 这个目录做什么 / 不做什么
 
@@ -18,7 +18,7 @@
 
 ## 输入 / 输出
 
-- **输入**：每个测试文件是自包含的 Python 代码，直接 `import` 引擎层模块（如 `reference_engine.src.reference_engine.ReferenceEngine`），不经过 CLI 的 `argparse` 层、不起 HTTP server（ADR 0072 的约束）。部分测试会加载 `models/test/valid/` 或 `models/test/invalid/` 下的 fixture YAML 作为输入数据。
+- **输入**：每个测试文件是自包含的 Python 代码，直接 `import` 引擎层模块（如 `reference_engine.src.reference_engine.ReferenceEngine`），不经过 CLI 的 `argparse` 层、不起 HTTP server（ADR 0072 的约束）。部分测试会加载 `models/test_validation/valid/` 或 `models/test_validation/invalid/` 下的 fixture YAML 作为输入数据。
 - **输出**：标准 pytest 结果——每个 `test_*` 函数 PASS/FAIL，失败时打印 assertion 的具体差异（不是像 `cli/batch.py` 那样生成一份 Markdown 报告）。
 
 ## 运行
@@ -54,8 +54,8 @@ test_verify/
 
 一句话区分：**冒烟测试问"系统还活着吗"，本目录问"这行代码做对了吗"。**
 
-## 和 `models/test/` 的关系
+## 和 `models/test_validation/` 的关系
 
-`models/test/`（YAML fixture + `cli/batch.py --input-dir test/valid` 之类的批量跑法）验证的是端到端跑通某个模型、且该模型的输出是否符合预期/科学合理，用户视角更接近"validate"（这批 fixture 未来计划改名为强调这层含义，本次改动不涉及，改名前照常使用现有的 `models/test/` 路径）。
+`models/test_validation/`（YAML fixture + `cli/batch.py --input-dir test_validation/valid` 之类的批量跑法）验证的是端到端跑通某个模型、且该模型的输出是否符合预期/科学合理，用户视角更接近"validate"。
 
-两者的关系：`models/test/valid/`、`models/test/invalid/` 下的 fixture 是"数据"，本目录（`test_verify/`）里的 pytest 用例是"断言"——不少测试直接读取 `models/test/valid/*.yaml` 作为输入（如 `test_same_day_duration.py` 读取 `test_same_day_duration.yaml`），但断言的是引擎代码行为，不是模型科学内容。
+两者的关系：`models/test_validation/valid/`、`models/test_validation/invalid/` 下的 fixture 是"数据"，本目录（`test_verify/`）里的 pytest 用例是"断言"——不少测试直接读取 `models/test_validation/valid/*.yaml` 作为输入（如 `test_same_day_duration.py` 读取 `test_valid_same_day_duration.yaml`），但断言的是引擎代码行为，不是模型科学内容。

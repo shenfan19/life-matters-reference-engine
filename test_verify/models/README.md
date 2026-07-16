@@ -23,12 +23,12 @@ test_verify/models/<model_name>/<variable_name>/test_*.py
   `simulation.plans`，每个 plan 代表该变量的一组取值）。
 - 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在公式
   微调后会大量误报，且新人看 diff 时分不清是真回归还是数值漂移。需要精确值比对的场景，
-  参照 `models/test/test_plan.md` 的层1/层2协议，单独走数值精度/文献对标验证，不放在这里。
-- 示例：`test_mc_distributions/daily_dose/test_dose_scaling.py` ——
-  `test_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
+  参照 `models/test_validation/test_plan.md` 的层1/层2协议，单独走数值精度/文献对标验证，不放在这里。
+- 示例：`test_valid_mc_distributions/daily_dose/test_dose_scaling.py` ——
+  `test_valid_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
   三个 plan 里取 100/200/350 mg，断言 `plasma_conc`、`peak_plasma` 的确定性稳态值随剂量
   严格线性缩放（该模型的吸收/清除公式对 `daily_dose` 是线性的，无饱和项）。
-- 示例（2026-07-10 新增）：`test_plans/caloric_deficit/test_weight_loss_ordering.py` ——
+- 示例（2026-07-10 新增）：`test_valid_plans/caloric_deficit/test_weight_loss_ordering.py` ——
   三个命名 plan（conservative/balanced/aggressive）在 `caloric_deficit`/`exercise_minutes`
   两个维度上依次加码，断言最终 `body_weight` 严格单调递减，并附带 `max(50.0, ...)` 地板夹紧
   的余量检查，避免"恰好触底"导致假通过。

@@ -1,6 +1,6 @@
 """Multi-value test template for `caloric_deficit` (test_verify/models/README.md).
 
-test_plans.yaml's weight_dynamics is monotone in caloric_deficit and exercise_minutes
+test_valid_plans.yaml's weight_dynamics is monotone in caloric_deficit and exercise_minutes
 (both strictly reduce body_weight, no interaction term, no offsetting effect) — so the
 three named plans (conservative < balanced < aggressive, both by deficit and by
 exercise load) must produce a strict final-body_weight ordering:
@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT))
 from reference_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
-MODEL_NAME = 'test_plans'
+MODEL_NAME = 'test_valid_plans'
 HOURS = 180 * 24  # model's simulation window: 2026-01-01..2026-06-30
 BODY_WEIGHT_FLOOR = 50.0
 INITIAL_WEIGHT = 90.0

@@ -8,7 +8,7 @@ in the GUI's `dateToHours`). For a same-day model this is 0 days, so the floor
 kicked in and the whole run covered only 1 hour (CLI) or 0 hours (GUI) starting
 at midnight — any regimen event scheduled later in the day (e.g. 18:00) fell
 outside that window and never fired for the entire run. See
-models/test/valid/test_same_day_duration.yaml.
+models/test_validation/valid/test_valid_same_day_duration.yaml.
 """
 
 import csv
@@ -24,7 +24,7 @@ from cli.runner import _time_hours  # noqa: E402
 from reference_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
-MODEL_NAME = 'test/valid/test_same_day_duration'
+MODEL_NAME = 'test_validation/valid/test_valid_same_day_duration'
 
 
 def test_time_hours_same_day_is_full_day():

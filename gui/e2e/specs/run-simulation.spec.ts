@@ -4,7 +4,7 @@
 // test_verify/test_sim_cli_consistency.py does not cover — it imports engine
 // functions directly and never exercises the GUI button -> API call wiring.
 //
-// Uses models/test/valid/test_formula_condition.yaml: a small deterministic
+// Uses models/test_validation/valid/test_valid_formula_condition.yaml: a small deterministic
 // bang-bang thermostat model kept specifically for engine/GUI validation
 // (see its metadata.description in the YAML).
 
@@ -13,15 +13,15 @@ import { test, expect } from '@playwright/test';
 test('select model, run simulation, see numeric results', async ({ page }) => {
   await page.goto('/');
 
-  const testFolder = page.getByTestId('model-tree-folder-test');
+  const testFolder = page.getByTestId('model-tree-folder-test_validation');
   await expect(testFolder).toBeVisible({ timeout: 15_000 });
   await testFolder.click();
 
-  const validFolder = page.getByTestId('model-tree-folder-test/valid');
+  const validFolder = page.getByTestId('model-tree-folder-test_validation/valid');
   await expect(validFolder).toBeVisible();
   await validFolder.click();
 
-  const modelLeaf = page.getByTestId('model-tree-leaf-test/valid/test_formula_condition.yaml');
+  const modelLeaf = page.getByTestId('model-tree-leaf-test_validation/valid/test_valid_formula_condition.yaml');
   await expect(modelLeaf).toBeVisible();
   await modelLeaf.click();
 

@@ -1,6 +1,6 @@
 """Multi-value test template for `daily_dose` (test_verify/models/README.md).
 
-test_mc_distributions.yaml's drug_absorption/elimination formulas are linear in
+test_valid_mc_distributions.yaml's drug_absorption/elimination formulas are linear in
 daily_dose (no saturation term), so doubling/3.5x the dose must scale the
 deterministic steady-state plasma_conc and peak_plasma by the same ratio, for
 every value daily_dose takes across the model's plans (low/moderate/high
@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 from reference_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
-MODEL_NAME = 'test_mc_distributions'
+MODEL_NAME = 'test_valid_mc_distributions'
 HOURS = (58) * 24  # model's simulation window: 2026-01-01..2026-02-28
 
 DAILY_DOSE_MG = {
