@@ -36,11 +36,14 @@ def check_optimizer_capacity():
 
 def check_sim_capacity():
     """P2 公网部署资源保护：全局仿真 session 上限，见 paths.MAX_CONCURRENT_SIMS。
-    过期 session 由 cleanup_stale_sessions()（ADR 0128）每 5 分钟回收，两者共同防止
-    僵尸/并发 session 无限堆积。"""
+    只数未完成（completed=False）的 session——已跑完的 session 仍留在 engine.sessions
+    里供前端轮询/导出结果，不占并发名额（对齐 check_optimizer_capacity() 只数
+    status=='running' 的 job）。过期 session 由 cleanup_stale_sessions()（ADR 0128）
+    每 5 分钟回收，两者共同防止僵尸/并发 session 无限堆积。"""
     if engine is None:
         return
-    if len(engine.sessions) >= MAX_CONCURRENT_SIMS:
+    running = sum(1 for session in engine.sessions.values() if not session.get('completed', False))
+    if running >= MAX_CONCURRENT_SIMS:
         raise HTTPException(
             status_code=503,
             detail=f"Too many concurrent simulation sessions (max {MAX_CONCURRENT_SIMS}); please retry later",

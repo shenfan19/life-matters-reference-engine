@@ -76,6 +76,19 @@ def test_check_sim_capacity_blocks_at_limit(clean_app_state):
     assert exc_info.value.status_code == 503
 
 
+def test_check_sim_capacity_ignores_completed_sessions(clean_app_state):
+    """A finished session stays in engine.sessions (the frontend still polls/
+    exports its result) but must not count against the concurrency limit —
+    otherwise switching between models with multi-plan runs quickly starves
+    out later plans with silent 503s (2026-07-15 GUI bug report)."""
+    app_state.engine = ReferenceEngine(models_directory=str(MODELS_DIR))
+    for _ in range(MAX_CONCURRENT_SIMS * 3):
+        result = app_state.engine.start_session(MODEL_NAME, time_hours=24)
+        assert result['success'], result.get('error')
+        app_state.engine.sessions[result['data']['session_id']]['completed'] = True
+    app_state.check_sim_capacity()  # must not raise
+
+
 def test_check_sim_capacity_noop_before_engine_initialized(clean_app_state):
     app_state.engine = None
     app_state.check_sim_capacity()  # must not raise — nothing to protect yet
