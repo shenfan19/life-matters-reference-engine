@@ -6,7 +6,7 @@ value (model.md pulse semantics). Before this fix, the reset went through the
 bounds-clamped setter, so an input variable with `bounds[0] > 0` had its "off"
 state pulled up to bounds[0] instead of true 0 — silently inflating every
 firing step's effective value by bounds[0] (e.g. bounds=[0.3, 2.0], regimen
-value=0.8 produced 1.1, not 0.8). See models/test/valid/test_pulse_reset_bounds_floor.yaml.
+value=0.8 produced 1.1, not 0.8). See models/test_validation/valid/test_valid_pulse_reset_bounds_floor.yaml.
 """
 
 import csv
@@ -26,7 +26,7 @@ MODELS_DIR = ROOT / 'models'
 
 def test_pulse_value_not_inflated_by_nonzero_bounds_floor(tmp_path):
     engine = ReferenceEngine(models_directory=str(MODELS_DIR))
-    model_name = 'test/valid/test_pulse_reset_bounds_floor'
+    model_name = 'test_validation/valid/test_valid_pulse_reset_bounds_floor'
     assert engine.load_models([model_name]), 'failed to load fixture model'
     engine.current_model.schedule_entries = engine.current_model.plans['default']
 

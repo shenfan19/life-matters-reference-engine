@@ -1,11 +1,11 @@
-"""models/test/test_plan.md §2 Protocol V1: compare the LM engine's Euler
+"""models/test_validation/test_plan.md §2 Protocol V1: compare the LM engine's Euler
 integration against the Banister two-compartment model's closed-form
 analytical solution under constant load, and report the max relative error.
 
 Usage (from repo root or reference_engine/):
     python reference_engine/scripts/validate_banister.py
 
-Uses models/test/valid/test_banister_v1_analytical.yaml — standalone from
+Uses models/test_validation/valid/test_valid_banister_v1_analytical.yaml — standalone from
 banister_validation.yaml (the paper's model), whose training_load values are
 mid-dispute (see its metadata.todo) and which runs at hour granularity. This
 fixture uses the protocol's own day-granularity step_size and the standard
@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from cli.runner import run_sim  # noqa: E402
 
-MODEL_PATH = ROOT / 'models' / 'test' / 'valid' / 'test_banister_v1_analytical.yaml'
+MODEL_PATH = ROOT / 'models' / 'test_validation' / 'valid' / 'test_valid_banister_v1_analytical.yaml'
 OUT_DIR = ROOT / 'output' / 'validate_banister'
 
 # Morton 1990 Table 1 standard parameters (see test_plan.md §2).

@@ -82,12 +82,12 @@
 
 ---
 
-## 六、验证框架（→ models/test/test_plan.md）
+## 六、验证框架（→ models/test_validation/test_plan.md）
 
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
 | [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) | **三层验证框架**：层1数值精度（解析解）/ 层2文献对标（效应量范围）/ 层3优化合理性 | ⭐⭐ | ✅（验证脚本待写）|
-| [0123](decisions/0123-2026-07-06_project_test-plan-and-report-consolidation.md) | **测试文档合并**：验证协议 + 引擎数值检查 + 模型逐项核对表 → `models/test/test_plan.md`（大纲）+ `test_report.md`（报告） | ⭐⭐ | ✅ |
+| [0123](decisions/0123-2026-07-06_project_test-plan-and-report-consolidation.md) | **测试文档合并**：验证协议 + 引擎数值检查 + 模型逐项核对表 → `models/test_validation/test_plan.md`（大纲）+ `test_report.md`（报告） | ⭐⭐ | ✅ |
 | [0023](decisions/0023-models-runnable-from-gui.md) | Models 可在 GUI 文件树中直接运行；standalone 约定 | ⭐ | ✅ |
 
 ---

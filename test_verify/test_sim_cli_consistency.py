@@ -94,27 +94,27 @@ def _assert_rows_match(cli_rows, gui_rows, variables):
 
 @pytest.mark.parametrize('plan_id', ['conservative', 'balanced', 'aggressive'])
 def test_plans_no_distribution(tmp_path, plan_id):
-    """test_plans.yaml has no distribution parameters — CLI and GUI session execution
+    """test_valid_plans.yaml has no distribution parameters — CLI and GUI session execution
     must produce byte-identical trajectories given the same backend-parsed regimens."""
     hours = _hours('2026-01-01', '2026-06-30')
     csv_path = tmp_path / f'test_plans_{plan_id}.csv'
 
-    cli_rows = _cli_rows('test_plans', plan_id, hours, csv_path)
-    gui_rows = _gui_rows('test_plans', plan_id, hours)
+    cli_rows = _cli_rows('test_valid_plans', plan_id, hours, csv_path)
+    gui_rows = _gui_rows('test_valid_plans', plan_id, hours)
 
     _assert_rows_match(cli_rows, gui_rows, ['body_weight', 'caloric_deficit', 'exercise_minutes'])
 
 
 def test_mc_distribution_sim_runs_1_is_deterministic(tmp_path):
-    """test_mc_distributions.yaml has normal/uniform/lognormal parameters. With sim_runs=1
+    """test_valid_mc_distributions.yaml has normal/uniform/lognormal parameters. With sim_runs=1
     (no explicit MC request), GUI must use the distribution mean — same as CLI, which never
     samples. This is the regression guard for the session_manager.py MC determinism fix
     (ADR 0045: 'MC=1 deterministic mode uses the mean')."""
     hours = _hours('2026-01-01', '2026-02-28')
     csv_path = tmp_path / 'test_mc_moderate.csv'
 
-    cli_rows = _cli_rows('test_mc_distributions', 'moderate_dose', hours, csv_path)
-    gui_rows = _gui_rows('test_mc_distributions', 'moderate_dose', hours, sim_runs=1)
+    cli_rows = _cli_rows('test_valid_mc_distributions', 'moderate_dose', hours, csv_path)
+    gui_rows = _gui_rows('test_valid_mc_distributions', 'moderate_dose', hours, sim_runs=1)
 
     _assert_rows_match(cli_rows, gui_rows, ['plasma_conc', 'peak_plasma', 'daily_dose'])
 
@@ -124,7 +124,7 @@ def test_mc_runs_match_with_same_seed():
     start_session(sim_runs=3, seed=19) must derive the identical per-run seeds and produce
     bit-identical sampled parameters + trajectories (ADR 0113: shared advance_steps core +
     derive_seed_list). Regression guard for the sim execution-core merge."""
-    model_name = 'test_mc_distributions'
+    model_name = 'test_valid_mc_distributions'
     plan_id = 'low_dose'
     hours = _hours('2026-01-01', '2026-02-28')
     n_runs, seed = 3, 19
@@ -171,7 +171,7 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
     T4 validRangeEnabled bug, both previously caused this to diverge silently)."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test/valid/test_opt_t1_single'
+    model_name = 'test_validation/valid/test_valid_opt_t1_single'
 
     cli_engine = _make_engine()
     cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
@@ -198,7 +198,7 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     """Same GUI-override-vs-CLI-cold-start comparison as the T1 test above, but for a
     model with `optimizer.mc.runs > 1` (inner robust-optimization Monte Carlo, each
     candidate evaluated across multiple `parameter` distribution samples and aggregated).
-    This path was previously untested — `test_opt_inner_mc.yaml` (models/test/valid) was
+    This path was previously untested — `test_valid_opt_inner_mc.yaml` (models/test_validation/valid) was
     added for it but never wired into a pytest, leaving `optimizer.mc` unverified for
     GUI/CLI parity even though `simulation.mc` (sim-level MC, ADR 0113) already had
     coverage above. Regression guard: an MC-seeded objective aggregation must be exactly
@@ -214,7 +214,7 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     below for the regression guard on that specific bug."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test/valid/test_opt_inner_mc'
+    model_name = 'test_validation/valid/test_valid_opt_inner_mc'
 
     cli_engine = _make_engine()
     cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
@@ -253,7 +253,7 @@ def test_opt_inner_mc_override_actually_takes_effect():
     YAML-seed result regardless of what override was passed."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test/valid/test_opt_inner_mc'
+    model_name = 'test_validation/valid/test_valid_opt_inner_mc'
 
     baseline_engine = _make_engine()
     baseline_result = run_optimizer(baseline_engine, model_name, optimizer_override={'warm_start': []})

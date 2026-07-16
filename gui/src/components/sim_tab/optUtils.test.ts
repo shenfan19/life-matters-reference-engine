@@ -17,7 +17,7 @@ import { resolve } from 'path';
 import { load as yamlLoad } from 'js-yaml';
 import { buildOptInputEventsFromYAML, buildOptRegimens } from './optUtils';
 
-const FIXTURES_DIR = resolve(__dirname, '../../../../models/test/valid');
+const FIXTURES_DIR = resolve(__dirname, '../../../../models/test_validation/valid');
 
 function loadStartpointRegimens(fileName: string): any[] {
   const text = readFileSync(resolve(FIXTURES_DIR, fileName), 'utf8');
@@ -61,10 +61,10 @@ function normalizeForComparison(regimens: any[]): any[] {
 
 describe('opt startpoint.regimens round-trip faithfulness (T1-T4)', () => {
   it.each([
-    ['T1 — value bounds', 'test_opt_t1_single.yaml'],
-    ['T2 — time window', 'test_opt_t2.yaml'],
-    ['T3 — days pool', 'test_opt_t3.yaml'],
-    ['T4 — date range', 'test_opt_t4.yaml'],
+    ['T1 — value bounds', 'test_valid_opt_t1_single.yaml'],
+    ['T2 — time window', 'test_valid_opt_t2.yaml'],
+    ['T3 — days pool', 'test_valid_opt_t3.yaml'],
+    ['T4 — date range', 'test_valid_opt_t4.yaml'],
   ])('%s (%s) round-trips losslessly', (_label, fileName) => {
     const original = loadStartpointRegimens(fileName);
     const reconstructed = roundTrip(original);
