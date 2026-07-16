@@ -163,6 +163,7 @@ class SessionManagerMixin:
                 'current_step': 0,
                 'time': 0.0,
                 'running': True,
+                'completed': False,
                 'output_variables': capture_variables,
                 'output_warnings': output_warnings,
                 'data': [],
@@ -253,6 +254,7 @@ class SessionManagerMixin:
 
                 completed = session['current_step'] >= session['total_steps']
                 progress = (session['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+                session['completed'] = completed
 
                 _check_value_warnings(session, model, outputs, output_variables)
                 if completed:
@@ -332,6 +334,7 @@ class SessionManagerMixin:
 
             completed = all(r['completed'] for r in runs)
             progress = (run0['current_step'] / session['total_steps']) * 100 if session['total_steps'] > 0 else 0
+            session['completed'] = completed
 
             run0_outputs = all_run_outputs[0] if all_run_outputs else []
             run0_model = runs[0]['model']
@@ -398,7 +401,7 @@ class SessionManagerMixin:
             session = self.sessions[session_id]
             model = session['model']
             model.reset_simulation()
-            session.update({'current_step': 0, 'time': 0.0, 'running': True, 'data': [], 'last_active': _time()})
+            session.update({'current_step': 0, 'time': 0.0, 'running': True, 'completed': False, 'data': [], 'last_active': _time()})
             logger.info("会话已重置: %s", session_id)
             return {"success": True, "message": "会话已重置", "initial_state": model.get_current_state()}
         except Exception as e:
