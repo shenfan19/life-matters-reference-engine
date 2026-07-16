@@ -1,14 +1,14 @@
 # 数值多值测试目录规范
 
 > 任务来源：`2026-06-19_task_code-trust-verification-infra` 任务4。
-> 与 `tests/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
+> 与 `test_verify/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
 > 针对**单个模型变量在多组取值下的数值行为**，用于在改动公式/参数后快速发现"某个变量的
 > 输出不再符合预期"的回归。
 
 ## 目录结构
 
 ```
-tests/models/<model_name>/<variable_name>/test_*.py
+test_verify/models/<model_name>/<variable_name>/test_*.py
 ```
 
 - `<model_name>`：`models/` 下某个 `.yaml` 文件的 `metadata.name`（不含路径前缀）。
@@ -43,5 +43,5 @@ tests/models/<model_name>/<variable_name>/test_*.py
 ## 运行
 
 ```bash
-pytest tests/models/
+pytest test_verify/models/
 ```

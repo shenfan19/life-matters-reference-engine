@@ -1,6 +1,6 @@
 """Error-detection regression test: upfront date-range validation (validation.py).
 
-Unlike the other tests/errors/ fixtures, this one loads fine — end_date <
+Unlike the other test_verify/errors/ fixtures, this one loads fine — end_date <
 start_date is not a structural error checked by Validator.validate_model(),
 only by validate_simulator_dates(), which run_simulation()/run_simulation_mc()/
 start_session() call upfront (ADR 0118). So the failure only surfaces when

@@ -1,4 +1,4 @@
-"""Multi-value test template for `carb_intake_per_meal` (tests/models/README.md).
+"""Multi-value test template for `carb_intake_per_meal` (test_verify/models/README.md).
 
 bergman_glucose_sim.yaml's insulin_sensitivity_dynamics/fasting_glucose_dynamics/
 hba1c_dynamics combine three intervention inputs (carb_intake_per_meal, exercise_met_min,

@@ -1,4 +1,4 @@
-"""Multi-value test template for `daily_dose` (tests/models/README.md).
+"""Multi-value test template for `daily_dose` (test_verify/models/README.md).
 
 test_mc_distributions.yaml's drug_absorption/elimination formulas are linear in
 daily_dose (no saturation term), so doubling/3.5x the dose must scale the
