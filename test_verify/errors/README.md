@@ -1,7 +1,7 @@
 # 错误检测回归测试
 
-> 任务来源：错误检测机制审查（2026-07-05）。与 `tests/test_sim_cli_consistency.py`
-> （CLI/GUI 路径一致性）、`tests/models/`（单变量数值回归）不同，本目录验证的是
+> 任务来源：错误检测机制审查（2026-07-05）。与 `test_verify/test_sim_cli_consistency.py`
+> （CLI/GUI 路径一致性）、`test_verify/models/`（单变量数值回归）不同，本目录验证的是
 > **引擎对结构错误/配置错误的检测和报错能力**：不只是能正确加载 `models/test/valid/`
 > 下结构合法的模型，还要能在遇到 `models/test/invalid/` 下故意写错的模型时可靠地失败，
 > 并把具体原因暴露给调用方。
@@ -32,7 +32,7 @@
 ## 运行
 
 ```bash
-pytest tests/errors/
+pytest test_verify/errors/
 ```
 
 ## 新增一个错误检测用例
