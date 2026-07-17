@@ -1,7 +1,7 @@
 # 软件设计
 
 > **决议导航**：本文件中的关键决议已汇总至 [DECISIONS.md](DECISIONS.md)（⭐⭐ 为核心约束）。  
-> 关键 ADR：K×4 → [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md)；MC 仿真 → [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md)；Simulator 拆分 → [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md)；
+> 关键 ADR：K×4 → [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md)；MC 仿真 → [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md)（实现细节见 [mc.md](mc.md)）；Simulator 拆分 → [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md)；
 > 子日时间区间统一 → [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md)
 
 ## 仿真/优化: 数学结构
@@ -80,91 +80,9 @@ $$\tau_i = \sum_{k=1}^{i} \text{softmax}(\alpha)_k \cdot T_{\text{day}}, \quad \
 
 ### Evidence 变量：文献直接来源的值
 
-随机事件（战死、手术风险、疾病发作）和其他文献统计量，以 **`evidence`** 类型纳入模型。Loader 在加载时自动完成换算，Simulator 只见换算后的有效值。**不进入任何优化搜索空间。**
+随机事件（战死、手术风险、疾病发作）和其他文献统计量，以 **`evidence`** 顶层节纳入模型（8 种子类型：`rr`/`or`/`hr`/`ard`/`cohens_d`/`ir`/`beta`/`pk`）。Loader 在加载时自动完成换算，Simulator 只见换算后的有效值。**不进入任何优化搜索空间。**
 
-```yaml
-evidence:
-  # ── 发病率 / 死亡率（直接用作概率，无需换算）──
-  combat_death_rate:
-    type: ir                    # incidence rate
-    value: 0.008
-    unit: prob/day
-    description: "参战时日死亡概率（索姆河战役）"
-    reference: "Prior 1992, Historical Journal"
-
-  surgery_mortality:
-    type: ir
-    value: 0.03
-    unit: prob/event
-    reference: "相关外科文献"
-
-  disease_incidence:
-    type: ir
-    value: 0.05
-    unit: prob/year
-
-  # ── 相对风险（直接用作乘数，无需换算）──
-  smoking_lung_cancer_rr:
-    type: rr
-    value: 14.0
-    reference: "Doll & Hill (1950)"
-
-  # ── 比值比（患病率 > 10% 时 Loader 自动换算为有效 RR）──
-  obesity_diabetes_or:
-    type: or
-    value: 1.65
-    baseline_prevalence: 0.23   # 必填；Loader: RR = OR/((1-p₀)+p₀×OR)
-    reference: "..."
-
-  # ── 风险比（Loader 自动 × 基线风险）──
-  chemo_mortality_hr:
-    type: hr
-    value: 0.82
-    baseline_ref: chemotherapy_baseline_ir   # 必填；引用同一 evidence 节中的 ir 变量
-    reference: "..."
-
-  # ── 效应量 Cohen's d（Loader 自动 × population_sd）──
-  exercise_fev1_effect:
-    type: cohens_d
-    value: 0.68
-    population_sd: 0.5          # 必填；单位与 target 变量一致
-    unit: L
-    reference: "..."
-
-  # ── 绝对风险差（直接用，无需换算）──
-  statin_cvd_ard:
-    type: ard
-    value: 0.012
-    unit: prob/year
-    reference: "..."
-
-  # ── 回归系数（直接用作斜率）──
-  age_bp_beta:
-    type: beta
-    value: 0.45
-    unit: mmHg/year
-    reference: "..."
-
-  # ── PK/PD 参数（直接测量值，无需换算）──
-  aspirin_elimination:
-    type: pk
-    value: 0.198                # ke = 0.693 / t½ = 0.693 / 3.5h
-    unit: 1/hour
-    reference: "..."
-```
-
-**Loader 换算规则汇总：**
-
-| `type` | 换算 | 必填辅助字段 |
-|--------|------|------------|
-| `rr` | `effective = value` | — |
-| `or` | `effective = OR / ((1−p₀) + p₀×OR)` | `baseline_prevalence` |
-| `hr` | `effective = baseline_ir × HR` | `baseline_ref` |
-| `ard` | `effective = value` | — |
-| `cohens_d` | `effective = d × population_sd` | `population_sd` |
-| `ir` | `effective = value` | — |
-| `beta` | `effective = value` | — |
-| `pk` | `effective = value` | — |
+换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）见 [evidence/conversion.md](evidence/conversion.md)（权威实现描述，含已知实现细节）；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制见 [evidence/applies_to.md](evidence/applies_to.md)；YAML 字段声明方式见 `b_lm_model` 仓库 `docs/model.md`。
 
 **仿真中的确定性处理**（不做随机采样）：
 
@@ -172,7 +90,7 @@ evidence:
 生存率(t) = ∏(1 − ir_effective × step_size)
 ```
 
-直接得到期望存活率确定性轨迹，可重现，足够用于 Pareto 优化。
+直接得到期望存活率确定性轨迹，可重现，足够用于 Pareto 优化。分布形式的采样（MC）只应用于 `parameter` 变量，与 evidence 换算是两回事，见 [mc.md](mc.md)。
 
 
 ## 双环优化架构

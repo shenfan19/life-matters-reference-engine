@@ -117,6 +117,9 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
 | [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
 | [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
+| [docs/reference_engine/evidence/conversion.md](docs/reference_engine/evidence/conversion.md) | Evidence 8 种子类型换算公式、溯源字段（权威实现描述） |
+| [docs/reference_engine/evidence/applies_to.md](docs/reference_engine/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
+| [docs/reference_engine/mc.md](docs/reference_engine/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
 | [test_verify/verification_report.md](test_verify/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
 | [models/test_validation/validation_report.md](models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
 | [models/test_validation/validation_catalog.md](models/test_validation/validation_catalog.md) | test_validation fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |

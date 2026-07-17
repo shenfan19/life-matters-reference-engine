@@ -298,7 +298,7 @@ graph LR
 | --------------- | ------ | ---------------- | ----------------- |
 | `step(dt)`      | 时间步长   | 新State           | 单步仿真              |
 | `run(duration)` | 仿真时长   | Trajectory       | 完整运行              |
-| `batch_run()`   | 多个初始状态 | List[Trajectory] | 批量仿真(Monte Carlo) |
+| `batch_run()`   | 多个初始状态 | List[Trajectory] | 批量仿真(Monte Carlo)，实际实现见 [mc.md](mc.md) |
 
 #### 输出接口
 
@@ -487,15 +487,13 @@ tunable_params:
 
 > **注意**：`probability_constant` / `probability_params:` 已退役。发病率、死亡率及所有文献效应量统一用 `evidence:` 节下的对应 `type` 表示。
 
-**概念**：从文献直接读入的效应量，由 Loader 自动换算为 `_effective` 值，Simulator 只见换算结果，永不进入优化。
+**概念**：从文献直接读入的效应量，由 Loader 自动换算，换算结果与 evidence 同名写入 `parameter` 类型变量（不是独立的第 4 种类型，不加 `_effective` 后缀），Simulator 只见换算结果，永不进入优化。换算公式、溯源字段、`applies_to` 自动接入 dynamics 的机制见 [evidence/conversion.md](evidence/conversion.md)、[evidence/applies_to.md](evidence/applies_to.md)。
 
 仿真引擎的处理方式：不随机采样，直接以期望值计算确定性轨迹：
 
 ```
 生存率(t) = ∏(1 − ir_effective × step_size)
 ```
-
-`ir_effective` 由 Loader 从 YAML `evidence` 节读取后填入运行时命名空间，公式中直接用变量名引用。详见 `design.md § 变量类型（4 种）`。
 
 ### Trajectory（轨迹）
 
@@ -1072,28 +1070,7 @@ YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提�
 
 ### Evidence 换算（加载期自动完成）
 
-Loader 遍历 YAML `evidence:` 节，按 `type` 字段执行换算，将结果写入 `_effective`，并注入运行时命名空间，使公式可以直接用变量名引用：
-
-```python
-def resolve_evidence(model):
-    for name, ep in model.get('evidence', {}).items():
-        raw = ep['value']
-        match ep['type']:
-            case 'or':
-                p0 = ep['baseline_prevalence']
-                effective = raw / ((1 - p0) + p0 * raw)
-            case 'hr':
-                baseline = model['evidence'][ep['baseline_ref']]['_effective']
-                effective = baseline * raw
-            case 'cohens_d':
-                effective = raw * ep['population_sd']
-            case _:  # rr, ard, ir, beta, pk
-                effective = raw
-        ep['_effective'] = effective
-        model.runtime_vars[name] = effective
-```
-
-`baseline_ref` 引用的 `ir` 变量必须在同一 `evidence:` 节中先行解析（Loader 按依赖顺序执行，若存在循环引用则报错）。
+Loader 遍历 YAML `evidence:` 节，按 `type` 字段执行换算，换算结果与 evidence 同名写入 `self.variables`（`parameter` 类型，不加 `_effective` 后缀），`formulas`/`dynamics` 直接用该名字引用。8 种子类型的具体换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
 
 ### Metadata description
 
