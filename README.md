@@ -117,7 +117,9 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
 | [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
 | [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
-| [models/test_validation/test_plan.md](models/test_validation/test_plan.md) | 测试大纲（引擎正确性 / 数值精度 / 文献对标 / 优化合理性 / API-IO / 模型科学内容），执行记录见 [test_report.md](models/test_validation/test_report.md) |
+| [test_verify/verification_report.md](test_verify/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
+| [models/test_validation/validation_report.md](models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
+| [models/test_validation/validation_catalog.md](models/test_validation/validation_catalog.md) | test_validation fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
 | [docs/reference_engine/ui_guidelines.md](docs/reference_engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
 | [docs/reference_engine/data_flow.md](docs/reference_engine/data_flow.md) | 数据流设计 |
 | [docs/reference_engine/decisions/README.md](docs/reference_engine/decisions/README.md) | 架构决策记录索引（ADR） |

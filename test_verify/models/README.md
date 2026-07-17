@@ -23,7 +23,7 @@ test_verify/models/<model_name>/<variable_name>/test_*.py
   `simulation.plans`，每个 plan 代表该变量的一组取值）。
 - 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在公式
   微调后会大量误报，且新人看 diff 时分不清是真回归还是数值漂移。需要精确值比对的场景，
-  参照 `models/test_validation/test_plan.md` 的层1/层2协议，单独走数值精度/文献对标验证，不放在这里。
+  数值精度参照 `test_verify/verification_report.md` 第2节协议，文献对标参照 `models/test_validation/validation_report.md` 第1节协议，单独走验证，不放在这里。
 - 示例：`test_valid_mc_distributions/daily_dose/test_dose_scaling.py` ——
   `test_valid_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
   三个 plan 里取 100/200/350 mg，断言 `plasma_conc`、`peak_plasma` 的确定性稳态值随剂量

@@ -1,4 +1,4 @@
-"""models/test_validation/test_plan.md §2 Protocol V1: compare the LM engine's Euler
+"""test_verify/verification_report.md §2 Protocol V1: compare the LM engine's Euler
 integration against the Banister two-compartment model's closed-form
 analytical solution under constant load, and report the max relative error.
 
@@ -25,7 +25,7 @@ from cli.runner import run_sim  # noqa: E402
 MODEL_PATH = ROOT / 'models' / 'test_validation' / 'valid' / 'test_valid_banister_v1_analytical.yaml'
 OUT_DIR = ROOT / 'output' / 'validate_banister'
 
-# Morton 1990 Table 1 standard parameters (see test_plan.md §2).
+# Morton 1990 Table 1 standard parameters (see verification_report.md §2).
 G, H = 1.0, 2.0
 K1 = 1 / 45  # fitness decay, per day
 K2 = 1 / 15  # fatigue decay, per day
