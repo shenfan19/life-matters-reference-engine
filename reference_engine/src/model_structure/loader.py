@@ -440,7 +440,7 @@ class Loader:
         # 应用计划表 (Regimens)
         # 唯一支持格式：simulation.plans[*].regimens（ADR 0076，字段名见 ADR 0117），每个 plan 是
         # [{variable, time_start:"HH:MM", time_end:"HH:MM"(可选), value, days:[...],
-        #   date_range:["YYYY-MM-DD", "YYYY-MM-DD"](可选), delivery:"level"(可选，ADR 0129)}]
+        #   date_range:["YYYY-MM-DD", "YYYY-MM-DD"](可选), delivery:"level"(可选，ADR 0132)}]
         # 不再支持旧版 simulation.schedules（扁平 list/dict）。
         # 所有 plans 解析为 schedule 兼容格式存入 self.plans[plan_id]（List[dict]）；
         # 第一个 plan 同时设为 self.schedule_entries，供 run_simulation 的
@@ -482,7 +482,7 @@ class Loader:
         time_start == time_end → 单 step 窗口；不等 → 多 step 窗口（由 apply_schedules 处理）。
         两者数值语义相同（ADR 0099 的同一条规则），窗宽由 resolve_time_interval 按 ADR 0127
         默认规则解析：都不写 → 全天铺开；只写 time_start → 单 step；都写 → 显式区间。
-        `delivery: level`（ADR 0129）时 value 是恒定水平，每个命中 step 直接交付、不除以
+        `delivery: level`（ADR 0132）时 value 是恒定水平，每个命中 step 直接交付、不除以
         N_steps；缺省（'total'）是现状——窗口/匹配日总量按 N_steps 摊分。
         """
         if not isinstance(entries, list) or not entries:

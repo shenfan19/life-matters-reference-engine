@@ -42,7 +42,7 @@ def _run_sim(model, schedule_events_by_var: Dict[str, List[Dict]],
         {'variable': var_name, 'events': evts}
         for var_name, evts in schedule_events_by_var.items()
     ]
-    # ADR 0128: precompute sustained-mode value/_n_steps divisors once per run
+    # ADR 0131: precompute sustained-mode value/_n_steps divisors once per run
     schedules_list = precompute_sustained_divisors(schedules_list, step_size_sec)
 
     history: Dict[str, List[float]] = {n: [] for n in model.variables}

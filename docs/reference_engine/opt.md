@@ -25,11 +25,11 @@
 | R10 | **T4**：支持在建模者指定日期窗口（`date_start_window`）内优化干预起始日 |
 | R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
 | R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
-| R13 | 搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告 |
+| R13 | **⚠️ 待实现**（2026-07-17 复核，代码无对应逻辑）：搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告。当前 `optimizer_engine.py:369-381` 的算法选择只看 `method_raw`/`n_obj>=2`，不检查 `var_specs` 维度种类，也没有任何上限校验——`method: l-bfgs-b` 配大范围 T2/T3/T4 会直接用 scipy 连续松弛跑，不报错不切换 |
 | R14 | `optimizer` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
 | R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
 | R16 | Sim 和 Opt 的输入列表完全分离：`InputEvent[]`（sim）不含任何优化字段；`OptInput[]`（opt 决策变量）独立管理（ADR 0084） |
-| R17 | `optimizer.startpoint.regimens` 作为 opt 评估的固定背景输入；缺省时继承 `simulation.plans[*].regimens` |
+| R17 | `optimizer.startpoint.regimens` 作为 opt 评估的固定背景输入（无 `optimize:` 块的条目）；该字段是独立声明，缺省时**不**继承 `simulation.plans[*].regimens`，直接报错（`optimizer_engine.py:83-85`） |
 | R18 | GUI 提供"← 从 Sim 导入"按钮：将当前 sim inputEvents 转换为 opt 决策变量并自动填充 bounds |
 
 ### 1.2 依赖
@@ -62,7 +62,7 @@ from pymoo.termination import get_termination
 |------|------|
 | 前端入口 | `Simulator.tsx` `startOptimization()` |
 | 端点 | `POST /api/optimizer/run_yaml` |
-| 核心模块 | `reference_engine/src/yaml_optimizer.py` |
+| 核心模块 | `reference_engine/src/optimizer_engine.py`（主流程）+ `optimizer_parsing.py`/`optimizer_eval.py`/`optimizer_backends.py`（按职责拆分，见 3.1） |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
 | 优化对象 | YAML `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
 | 目标函数来源 | YAML `optimizer.objectives` |
@@ -211,58 +211,49 @@ _run_optimizer_job(job_id, fn)
 
 ### 3.2 YAML optimizer 块规范
 
-**inputs: 格式（新，推荐）**
+决策变量与固定背景输入统一写在 `optimizer.startpoint.regimens` 一个扁平列表里（R3/R17）：条目结构与 `simulation.plans[*].regimens` 相同（`variable`/`time_start`/`time_end`/`value`/`days`/`date_range`/`delivery`，见 [design.md](design.md) K×4），额外可加 `optimize:` 子块——有则该条目的对应维度成为决策变量，无则整条作为固定背景输入参与仿真。
 
 ```yaml
 optimizer:
   method: nsga2
   objectives:
     - variable: output_var_name
-      metric: final           # 'final' | 'max' | 'min' | 'mean'
+      metric: final            # 'final' | 'max' | 'min' | 'mean'
       direction: maximize
-  inputs:
-    - variable: input_var_name
-      time: "08:00"
-      value: 10.0
-      label: "Morning dose"
-      optimize:
-        value: [0.0, 50.0]   # 有 optimize: → 决策变量
-    - variable: another_var
-      time: "20:00"
-      value: 5.0             # 无 optimize: → 固定输入
+  constraints:
+    - variable: constraint_var
+      condition: "<= 250"    # 缺省不写 metric：整条轨迹逐步校验（trajectory-wide max/min）
+    - variable: another_constraint_var
+      condition: ">= 10"
+      metric: mean            # 'final' | 'mean' | 'max' | 'min'；显式写 metric 时先按该口径把
+                               # 轨迹压成单值再比较（如 mean 表示"整体/平均达标"而非"每步都不能低于阈值"，
+                               # 允许有计划内的短暂低谷，如安排的完全休息日）
+  startpoint:
+    regimens:
+      - variable: input_var_name
+        time_start: "08:00"
+        time_end: "08:00"
+        days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        label: "Morning dose"
+        optimize:
+          value: [0.0, 50.0]   # T1：value 区间 → 决策变量
+      - variable: another_var
+        time_start: "20:00"
+        time_end: "20:00"
+        value: 5.0              # 无 optimize: → 固定输入，不参与搜索
   algorithm:
     population_size: 10
     n_generations: 15
-    seed: 19                 # NSGA-II 遗传算法 seed，与 MC 无关
-  constraints:
-    - variable: constraint_var
-      condition: "<= 250"
-  mc:                        # 可选；缺席或 runs=1 = 单次评估（默认）
-    runs: 5                  # 每次候选评估的内层 MC run 数
+    seed: 19                    # NSGA-II 遗传算法 seed，与 MC 无关
+  mc:                           # 可选；缺席或 runs=1 = 单次评估（默认）
+    runs: 5                     # 每次候选评估的内层 MC run 数
 ```
 
-**regimen: 格式（旧，向后兼容）**
+`optimize:` 子块除 T1（`value: [lo, hi]`）外还支持 T2（`time_start`/`time_end` 区间搜索）、T3（`days_pool`+`days_n` 候选星期模式）、T4（`date_range` 起止日窗口），四类可在同一条目上任意组合，详见 3.6。
 
-```yaml
-optimizer:
-  method: nsga2
-  objectives: [...]
-  regimen:
-    variable: input_var_name
-    events:
-      - time: "08:00"
-        dose_bounds: [0.0, 10.0]
-        label: "Morning dose"
-  algorithm:
-    population_size: 20
-    n_generations: 40
-```
+未提供 `optimizer.startpoint.regimens` 时不回退到 `simulation.plans`——两者是彼此独立的字段，`optimizer.startpoint` 缺失直接报错（见 3.5）。
 
-优先读取 `inputs:`，不存在时回退到 `regimen:`。
-
-参考实现：
-- `inputs:` 格式：`models/source/medical/test/l1_drug_single_obj.yaml`
-- `regimen:` 格式：`models/source/medical/disease/chronic/ckd_protein_muscle.yaml`
+参考实现：`b_lm_model` 仓库 `models/papers/s1/banister/banister_opt.yaml`。
 
 ### 3.3 评估时间窗配置（ADR 0083）
 
@@ -303,7 +294,9 @@ if sd and ed:
         total_days = (date(ey, em, edd_) - date(sy, sm, sdd_)).days  # 精确
     else:
         total_days = (ey-sy)*365 + (em-sm)*30 + (edd_-sdd_)          # 古代日期近似
-    time_hours = max(1.0, total_days * 24.0)
+    time_hours = max(total_days, 1) * 24.0   # 先 clamp 天数下限再乘 24，修复单日/子日步长模型的
+                                              # unreachable-schedule bug（旧写法 max(1.0, total_days*24.0)
+                                              # 在 total_days<1 时会得到非 24 的倍数，错过命中窗口）
 else:
     time_hours = float(base_model.simulator.get('total_time', 1)) * step_size / 3600.0
 
@@ -326,9 +319,9 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 **症状：点击运行后 log 只有 "Loading model..."，没有 "Gen X"**
 1. 模型文件未找到 → 后端日志查 `ERROR:src.loader_engine:模型...未找到`
-2. `optimizer:` 块缺失 → 返回 `"No optimizer: block in YAML"`
-3. `regimen.variable` 或 `regimen.events` 缺失 → 返回 `"No regimen variable/events defined"`
-4. `regimen.variable` 不是 `type: input` → `_apply_regimen_events` 跳过
+2. `optimizer.objectives` 缺失 → 返回 `"No objectives configured (add optimizer: block in YAML or set targets in UI)"`
+3. `optimizer.startpoint.regimens` 缺失 → 返回 `"No optimizer.startpoint.regimens defined"`
+4. `optimizer.startpoint.regimens` 里没有任何条目带 `optimize:` 子块 → 返回 `"No entries with optimize: sub-block in optimizer.startpoint.regimens"`
 
 **症状：log 有 "Starting optimizer..." 但没有 "Gen X"**
 1. pymoo 未安装 → `pip install pymoo`
@@ -350,6 +343,8 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 - `run_optimizer` inputs 解析段：逐条目按 T1/T2/T3/T4 追加 `var_specs` 条目和 bounds
 - `_build_regimen_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
 - `schedule_runner.apply_schedules` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
+
+> **R13（搜索空间上限 + 单目标自动切换 NSGA-II）未实现**，见 1.1 表格标注；本节描述的 T1–T4 解码本身已实现，缺的只是可行性护栏。
 
 **前端（`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`）**
 

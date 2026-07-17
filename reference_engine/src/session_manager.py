@@ -150,7 +150,7 @@ class SessionManagerMixin:
             )
             # ──────────────────────────────────────────────────────────────────
 
-            # ADR 0128: precompute sustained-mode value/_n_steps divisors once
+            # ADR 0131: precompute sustained-mode value/_n_steps divisors once
             regimens = precompute_sustained_divisors(regimens or [], step_size)
 
             self.sessions[session_id] = {

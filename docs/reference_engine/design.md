@@ -2,7 +2,9 @@
 
 > **决议导航**：本文件中的关键决议已汇总至 [DECISIONS.md](DECISIONS.md)（⭐⭐ 为核心约束）。  
 > 关键 ADR：K×4 → [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md)；MC 仿真 → [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md)（实现细节见 [mc.md](mc.md)）；Simulator 拆分 → [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md)；
-> 子日时间区间统一 → [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md)
+> 子日时间区间统一 → [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md)；
+> sustained `value` 每匹配日独立满额（取代 0099）→ [b_lm_model 0131](../../../b_lm_model/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md)；
+> `delivery: total | level` → [b_lm_model 0132](../../../b_lm_model/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md)
 
 ## 仿真/优化: 数学结构
 ### Regimen 的 K×4 参数空间
@@ -15,11 +17,11 @@
 | `days` 执行日 | 每周哪几天执行 | 否（全选=每天） |
 | `valid_range` 有效期 | 此计划在哪段日期内有效 | **可关闭** → 整个仿真期永久有效 |
 
-**关键：`value` 是区间内的总量**（如 0.5 kg、10 IU、45 min），不是速率（不是 kg/h）。`time_start == time_end` 时退化为脉冲：在该时刻瞬时摄入固定量；区间非零宽度时（sustained），总量按区间内的仿真步数均摊（[ADR 0099](decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md)），累计贡献仍等于 `value`，与 `step_size` 无关。
+**关键：`value` 是单次命中窗口内的总量**（如 0.5 kg、10 IU、45 min），不是速率（不是 kg/h）。`time_start == time_end` 时退化为脉冲：在该时刻瞬时摄入固定量；区间非零宽度时（sustained），`N_steps` = 该窗口自身时长 / `step_size`（与 `date_range`/`days` 命中了多少天无关），每个命中日各自独立按 `value / N_steps` 摊到每个 step（[ADR 0131](../../../b_lm_model/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md)，取代 ADR 0099 曾经的"总量按整个生效窗口摊分"规则），单日累计贡献仍等于 `value`，与 `step_size` 无关，也与匹配了多少天无关。若语义上 `value` 表达的是应保持恒定的水平（睡眠时长、救治强度等，而非随时间累积的总量），regimen 条目可设 `delivery: level` 让每个命中 step 直接交付 `value` 本身，不做 `N_steps` 除法（[ADR 0132](../../../b_lm_model/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md)）；不设时默认 `delivery: total`，即上述摊分规则。
 
 **`valid_range` 关闭的语义**：日常习惯（吃饭、喝水、睡觉）不需要起止日期，关闭即等于"从第0天到仿真结束"。阶段性行为（手术康复期用药、参战期间）才需要开启。
 
-#### 四个典型例子
+#### 典型例子
 
 ```
 早餐进食（脉冲，time_start == time_end）:
@@ -40,10 +42,17 @@
   摄入量:    45 min
   执行日:    周一 周三 周五
 
-白天救治强度（sustained，区间总量按 N_steps 均摊）:
+白天救治强度（sustained，delivery: level，直接交付水平）:
   有效期:    1945-08-06 ~ 1945-08-11
   时间区间:  08:00 ~ 20:00
-  摄入量:    288.0   ← 6天×12h / step=1h → N_steps=72，每 step 写入 4.0
+  摄入量:    4.0     ← delivery: level 时每个命中 step 直接交付 value 本身，不做 N_steps 除法
+  执行日:    每天
+
+训练负荷（sustained，delivery: total 默认，窗口总量按窗口自身时长摊分）:
+  有效期:    关闭
+  时间区间:  08:00 ~ 20:00
+  摄入量:    288.0   ← 窗口自身 12h / step=1h → N_steps=12，每 step 写入 24.0；
+                       每个命中日各自独立累计 288.0，与匹配了多少天无关
   执行日:    每天
 ```
 
@@ -486,32 +495,9 @@ Log 面板出现在曲线区底部（可折叠）。仅在有 log 内容时显�
 
 ## 优化目标与方法
 
-### 可选优化目标
+优化目标格式（`optimizer.objectives`）与算法选择/参数展开的完整规范见 [opt.md](opt.md)，本节不重复维护。
 
-在 `story.yaml` 的 `optimizer.targets` 中定义：
-
-| 目标名 | 含义 | 典型场景 |
-|--------|------|---------|
-| `max_longevity` | 寿命最长 | 慢性病健康仿真 |
-| `max_wealth` | 财富最大 | 职业路径经济仿真 |
-| `max_qol` | 生活品质最高 | 交互式人生模拟 |
-| `max_career` | 事业最成功 | 职业影响力仿真 |
-| `max_social_impact` | 社会影响力最大 | 传染病/政策仿真 |
-| `max_sustainability` | 环境可持续性最高 | 碳足迹/生态仿真 |
-
-多目标组合通过 Pareto 前沿输出权衡解集。
-
-### 优化方法对比
-
-| 方法 | 优点 | 缺点 | 推荐场景 |
-|------|------|------|---------|
-| **加权和法** | 最简单，计算快 | 权重需人工设定，遗漏非凸区域 | 入门，快速验证 |
-| **NSGA-II** | 完整 Pareto 解集，处理非凸 | 计算密集，收敛慢 | 多目标平衡，科研分析 |
-| **ε-约束法** | 约束控制精确，解均匀 | 需多次求解，对 ε 敏感 | 约束明确的单指标优化 |
-| **MOPSO** | 全局搜索强，收敛快 | 易陷局部最优 | 并行计算场景 |
-| **MORL** | 适应动态环境 | 训练不稳定，样本效率低 | 长期动态决策 |
-
-推荐顺序：加权和法跑通流程 → NSGA-II（`pymoo` 库）→ MORL（动态交互时）。
+要点：目标不是预设名字符串，而是 `objectives: [{variable, metric, direction}]` 列表；算法后端只有两类——`NSGA-II`（多目标或显式指定时，`pymoo` 库，输出 Pareto 前沿）与 `scipy`（`L-BFGS-B`/`Nelder-Mead`，单目标连续优化）。
 
 ---
 

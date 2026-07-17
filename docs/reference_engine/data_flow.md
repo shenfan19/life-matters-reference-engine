@@ -101,7 +101,7 @@ x0,x1,...,xN,obj_var1,obj_var2,...
 ...
 ```
 
-`x*` 列为决策变量原始值（与 `optimizer.schedules` 中决策条目顺序对应），其余列为目标变量名。可直接导入 GUI opt tab 进行热启动或 Pareto 分析。
+`x*` 列为决策变量原始值（与 `optimizer.startpoint.regimens` 中带 `optimize:` 子块的条目顺序对应，有 `label` 时列名用 label 代替 `x0,x1,...`），其余列为目标变量名。可直接导入 GUI opt tab 进行热启动或 Pareto 分析。
 
 ---
 
