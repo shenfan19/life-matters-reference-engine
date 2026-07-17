@@ -34,6 +34,7 @@ pytest test_verify/test_schedule_runner.py::test_pulse_value_not_inflated_by_non
 
 ```
 test_verify/
+├── verification_report.md       # 引擎实现正确性 + 数值精度验证的方法论与当前结果（verify 侧）
 ├── test_capacity_limits.py       # 并发限流（P1/P2 公网部署防护）
 ├── test_same_day_duration.py     # 同日模型（start_date == end_date）仿真时长回归
 ├── test_schedule_runner.py       # apply_schedules() pulse reset 回归
