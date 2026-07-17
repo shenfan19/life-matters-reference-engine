@@ -63,7 +63,7 @@ def _time_range_day_seconds(time_start: str, time_end: str) -> float:
 
 
 def precompute_sustained_divisors(schedules: list, step_size_sec: float) -> list:
-    """Annotate sustained-interval events with `_n_steps` (ADR 0128, supersedes 0099/0126§3).
+    """Annotate sustained-interval events with `_n_steps` (ADR 0131, supersedes 0099/0126§3).
 
     An event is a multi-step window when its `[time_start, time_end)` interval
     (resolved by `resolve_time_interval`, ADR 0100/0127) is non-empty
@@ -75,7 +75,7 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float) -> list
     recurrence span: `_n_steps` is just the window's own duration divided by
     step_size, independent of how many calendar days the event recurs on.
     `days`/`date_range`/`valid_start`/`valid_end` are pure firing filters
-    (ADR 0128) — they no longer feed into this divisor. apply_schedules
+    (ADR 0131) — they no longer feed into this divisor. apply_schedules
     divides by `_n_steps` each firing step so every matching day independently
     delivers the full `value`, regardless of step_size (pulse is the
     `_n_steps == 1` special case of the same rule).
@@ -128,11 +128,11 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
         hour/minute) represent a "sustained intensity" input over a
         multi-step window without one schedule entry per step.
 
-    `value`'s meaning depends on `delivery` (ADR 0129, default `'total'`):
+    `value`'s meaning depends on `delivery` (ADR 0132, default `'total'`):
 
       - `'total'` (default): `value` is the total over ONE occurrence of the
         window (a single matching day), not a per-step amount and not a total
-        across every day the event recurs on (ADR 0128, supersedes 0099/0126§3):
+        across every day the event recurs on (ADR 0131, supersedes 0099/0126§3):
         each firing step adds `value / _n_steps`, where `_n_steps` is
         precomputed by `precompute_sustained_divisors()`. This keeps each
         matching day's cumulative contribution equal to `value` regardless of
@@ -143,7 +143,7 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
         adds `value` directly, un-divided. Use this when the input is read
         downstream as an instantaneous reading (compared to a baseline,
         multiplied as a modifier) rather than accumulated as a dose; `'total'`
-        would make that reading scale inversely with step_size (ADR 0129).
+        would make that reading scale inversely with step_size (ADR 0132).
 
     `days`/`valid_start`/`valid_end` only gate *which* days fire under either
     `delivery` mode; they do not change how much a firing day delivers.

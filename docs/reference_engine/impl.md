@@ -224,6 +224,11 @@
 
 
 # 实现优化
+
+> **⚠️ 本节（至"## 未来扩展性"结束，约 226-1025 行）是早于当前实现的历史设计草稿，未随代码演进更新，不代表当前架构。** 除"插件2：参数校准"已单独标注"当前未实现"外，其余内容（`OptimizationPlugin` 抽象基类 + Registry 动态注册、`InterventionOptimizer`/`ParameterCalibrator`/`MultiObjectiveOptimizer`/`SyntheticCohortCalibrator`/`CPTIntegrationPlugin` 等具体插件、SIM 侧 `State`/`Trajectory`/`Parameters`/`TunableParams` 数据结构与 `set_interventions()`/`update_tunable_params()`/`batch_run()`/`step(dt)` 接口）均未实现，仅供历史参考，不要按当前架构理解。
+>
+> **当前实际实现**：优化器是单一函数管线 `reference_engine/src/optimizer_engine.py::run_optimizer()`（规范见 [opt.md](opt.md)），无插件基类、无 Registry；仿真模型是 `reference_engine/src/model_structure/core.py` 的 `ModelStructure(Loader, Validator, Simulation)`，方法为 `step(step_size)`/`run_steps()`/`reset_simulation()`，无 `State`/`Trajectory` 对象（规范见 [design.md](design.md)）。
+
 ## 系统概览
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1126,16 +1131,16 @@ def run_simulation(params, progress_cb):
 
 ### 模型校验（入仿真前）
 
-进入仿真前系统先校验模型合法性：
-1. 前向仿真统计发病率（一段时间）
-2. 分组对比统计（与文献对比）
-3. 对照原始论文 KM 曲线或 RCT 结果
+> 以下是历史设计草稿描述的统计校验构想（前向仿真统计发病率、与文献分组对比、对照 KM/RCT 结果），未实现，也不在当前路线图上。
+
+当前实际实现是纯结构校验（`metadata`/`variables`/`formulas` 字段是否存在、类型是否正确、`dynamics` 引用的变量是否已定义等），不涉及任何统计计算：
 
 ```bash
-GET /api/validate?model=stories/marie_curie
+GET /api/validate/{file_path}
+POST /api/validate
 ```
 
-校验未通过时显示报告并阻止进入仿真，避免产生误导性结果。
+（`reference_engine/src/routes/files.py::_simple_yaml_validate`）校验未通过时返回错误列表，前端据此阻止进入仿真。
 
 ### 接口层约束（⭐⭐ 核心约束）
 
