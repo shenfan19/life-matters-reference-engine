@@ -279,6 +279,7 @@ def main() -> None:
         print('  失败列表：')
         for row in fail_rows:
             print(f'    {row}')
+        sys.exit(1)
 
 
 if __name__ == '__main__':
