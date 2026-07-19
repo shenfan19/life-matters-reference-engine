@@ -14,7 +14,7 @@ CLI 的输入输出均为文本/文件，适合被脚本或 AI agent 调用：
 
 - **输入**：模型 YAML 文件路径 + 可选的步骤标志（`--sim-only` / `--opt-only`，默认两者都跑），无需交互。
 - **输出**：结构化 CSV（仿真时间序列 / Pareto 前沿）+ 日志文件，路径在运行结束后打印到 stdout，可直接解析。
-- **退出码**：成功为 `0`，仿真/优化失败为 `1`。
+- **退出码**：成功为 `0`，仿真/优化失败为 `1`（`batch.py` 按整批是否存在任意模型的任意步骤 FAIL 判定，不是单模型粒度）。
 - **无需图形环境**：可在 headless 容器、CI、SSH 会话中运行。
 
 随代码 release 发布的压缩包中包含可直接运行的 `lm-sim`（PyInstaller 编译产物），无需安装 Python 即可使用（见下方"编译为独立可执行文件"）。
@@ -85,6 +85,15 @@ pyinstaller cli/build.spec
 
 > 仿真步骤和优化步骤各写各自的日志文件（`*_sim.log` / `*_opt.log`），不会混在一起；两步骤都跑时按"先 sim 再 opt"顺序执行，sim 失败则不再跑 opt。
 
+> **模型未声明步骤时的静默跳过**：默认调用（不传 `--sim-only`/`--opt-only`）下，模型没有
+> `simulation:`/`simulator:` 块则跳过 sim，没有 `optimizer:` 块则跳过 opt——打印一行提示，
+> 不算错误、退出码仍为 `0`（`main.py`/`batch.py` 都有这条 `model_declares_step()` 门控）。
+> 两步骤都被跳过时视为错误（退出码 `1`）。显式传 `--sim-only`/`--opt-only` 则不走这条门控，
+> 缺失对应步骤直接按失败处理。
+
+> **`--opt-continue` 与 `--sim-only` 同传**：报错 `Error: --opt-continue requires the optimizer step (remove --sim-only).`，退出码 `1`。
+> **模型没有 `optimizer:` 块但显式传了 `--opt-continue`**（未传 `--opt-only`/`--sim-only`）：静默跳过门控被绕过，会照常尝试跑优化器，大概率因缺少 `optimizer:` 配置而报错——这是预期行为（用户已明确要求优化器步骤），不是 bug。
+
 > **Monte Carlo 跑几次不是 CLI 参数**：跑 N 次仿真的次数和种子来自模型自己的 `simulation.mc.runs`/`simulation.mc.seed`（见 `model.md`），CLI 只是照着 YAML 跑，不提供 `--mc-runs`/`--seed` 这样的覆盖开关——和 `optimizer.mc.*`（优化器的 MC 配置，也只在 YAML 里，从无对应 CLI flag）保持同一套规则：要改运行次数，编辑模型文件，不是命令行。`mc.runs` 缺省或为 1 即确定性模式（取分布均值，ADR 0045）；大于 1 时输出 `<stem>__run{i}.csv`（多方案为 `<stem>__<plan_id>__run{i}.csv`）。
 
 ### `batch.py`（批量，遍历文件夹）
@@ -97,7 +106,9 @@ pyinstaller cli/build.spec
 | `--opt-only` | （跑 sim + opt） | 只运行优化器，跳过仿真。与 `--sim-only` 互斥 |
 
 > `batch.py` 不带参数运行等价于 `--help`（避免误跑默认文件夹）。
-> 与 `main.py` 的区别仅在于输入是文件夹（`--input-dir`）而非单个模型文件，且无 `--opt-continue`（批量场景不支持热启动，多个模型也不可能共享一份热启动 CSV）。Monte Carlo 同样按各自模型 YAML 里的 `mc.runs` 跑，不是 batch 的参数——这意味着如果某个模型声明了较大的 `mc.runs`，批量测试会按该模型的真实配置变慢。
+> 与 `main.py` 的区别：输入是文件夹（`--input-dir`）而非单个模型文件，且无 `--opt-continue`（批量场景不支持热启动，多个模型也不可能共享一份热启动 CSV）；
+> **单模型内 sim 失败不会阻止该模型继续跑 opt**（sim/opt 各自独立 `try/except`，两步骤结果互不影响，与 `main.py`"sim 失败则不再跑 opt"的顺序执行语义不同）——批量场景下想看到两步骤各自的真实结果，即使 sim 已知失败也照常跑 opt。
+> Monte Carlo 同样按各自模型 YAML 里的 `mc.runs` 跑，不是 batch 的参数——这意味着如果某个模型声明了较大的 `mc.runs`，批量测试会按该模型的真实配置变慢。
 
 ---
 
@@ -142,7 +153,8 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
 
 1. 当前代跑完后停止
 2. 已搜索到的 Pareto 前沿写入 `_opt.csv`
-3. 日志末尾标注 `stopped_early: true`
+3. 日志末尾记录一行 `Optimizer complete (stopped early): N solutions`（`main.py` 的 stdout
+   同时打印 `(stopped early — resume with --opt-continue)`；`batch.py` 不监听 `q`，不会触发此提前停止）
 
 > **每代自动保存**：`_opt.csv` 在每代结束后实时覆盖写入，即使终端意外关闭也不会丢失进度。
 
@@ -244,7 +256,8 @@ CLI 与 GUI 共用同一个引擎层（`reference_engine/src/`），结果格式
 `batch_report.md` 中每个模型一行，包含 Sim / Opt 两列：
 - 实际运行且成功：`[✓ PASS](./<模型名>/xxx.csv)`（链接到结果 CSV）
 - 实际运行但失败：`✗ FAIL`，错误摘要列附带引擎日志中的最后一条 ERROR 消息
-- 因 `--sim-only`/`--opt-only` 而未运行的步骤：`⏭ SKIP`
+- 未运行的步骤：`⏭ SKIP`——原因可能是传了 `--sim-only`/`--opt-only`，也可能是模型本身没有声明
+  对应的 `simulation:`/`simulator:` 或 `optimizer:` 块（见上方"模型未声明步骤时的静默跳过"）
 
 单个模型崩溃不会中断整批运行；汇总区给出整体 PASS/FAIL 计数（按模型计，只要该模型实际运行的步骤全部成功即为 PASS）。
 
