@@ -205,13 +205,38 @@ export function useSimulation({
 
   // ── pause / resume / reset ────────────────────────────────────────────────────
 
-  const pauseSimulation  = () => { isRunningRef.current = false; set('status', 'paused'); };
-  const resumeSimulation = () => {
+  // Best-effort: tell the backend session to stop advancing. Fire-and-forget —
+  // the frontend has already stopped polling via isRunningRef, this just keeps
+  // session_manager.py's 'running' flag in sync so a stray batch call fails fast
+  // instead of silently continuing.
+  const pauseBackendSession = (sid: string) => {
+    fetch(`${API_BASE}/simulation/pause`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sid }),
+    }).catch(() => {});
+  };
+
+  const pauseSimulation = () => {
+    isRunningRef.current = false;
+    set('status', 'paused');
+    setRunningModelKey(null);
+    if (sessionId) pauseBackendSession(sessionId);
+  };
+  const resumeSimulation = async () => {
     if (!sessionId) return;
-    isRunningRef.current = true; set('status', 'running'); runBatch(sessionId);
+    isRunningRef.current = true; set('status', 'running'); setRunningModelKey(selectedKey);
+    try {
+      await fetch(`${API_BASE}/simulation/resume`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+    } catch { /* best-effort: batch call below will surface any real failure */ }
+    runBatch(sessionId);
   };
   const resetSimulation  = () => {
     isRunningRef.current = false;
+    setRunningModelKey(null);
+    if (sessionId) pauseBackendSession(sessionId);
     set('status', 'idle'); set('progress', 0); set('currentStep', 0); setSimData([]);
     setState(prev => ({ ...prev, dataPerRun: [], sessionSeed: 0, sessionId: '' }));
     setSimLogs([]);
