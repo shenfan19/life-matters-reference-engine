@@ -171,7 +171,7 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
     T4 validRangeEnabled bug, both previously caused this to diverge silently)."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test_validation/valid/test_valid_opt_t1_single'
+    model_name = 'test_fixtures/valid/test_valid_opt_t1_single'
 
     cli_engine = _make_engine()
     cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
@@ -198,7 +198,7 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     """Same GUI-override-vs-CLI-cold-start comparison as the T1 test above, but for a
     model with `optimizer.mc.runs > 1` (inner robust-optimization Monte Carlo, each
     candidate evaluated across multiple `parameter` distribution samples and aggregated).
-    This path was previously untested — `test_valid_opt_inner_mc.yaml` (models/test_validation/valid) was
+    This path was previously untested — `test_valid_opt_inner_mc.yaml` (models/test_fixtures/valid) was
     added for it but never wired into a pytest, leaving `optimizer.mc` unverified for
     GUI/CLI parity even though `simulation.mc` (sim-level MC, ADR 0113) already had
     coverage above. Regression guard: an MC-seeded objective aggregation must be exactly
@@ -214,7 +214,7 @@ def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     below for the regression guard on that specific bug."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test_validation/valid/test_valid_opt_inner_mc'
+    model_name = 'test_fixtures/valid/test_valid_opt_inner_mc'
 
     cli_engine = _make_engine()
     cli_result = run_optimizer(cli_engine, model_name, optimizer_override={'warm_start': []})
@@ -253,7 +253,7 @@ def test_opt_inner_mc_override_actually_takes_effect():
     YAML-seed result regardless of what override was passed."""
     from reference_engine.src.optimizer_engine import run_optimizer
 
-    model_name = 'test_validation/valid/test_valid_opt_inner_mc'
+    model_name = 'test_fixtures/valid/test_valid_opt_inner_mc'
 
     baseline_engine = _make_engine()
     baseline_result = run_optimizer(baseline_engine, model_name, optimizer_override={'warm_start': []})

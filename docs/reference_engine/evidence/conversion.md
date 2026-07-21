@@ -333,7 +333,7 @@ $$
 
 ## 可运行示例与验证覆盖
 
-`b_lm_model` 仓库 `models/test_validation/valid/` 下有 8 个最小 fixture，一种子类型一个文件，各自只含"一个 evidence + 一两个展示/累积变量"，可以直接加载/仿真跑一遍看效果，比在文档里贴一份不会跑的 YAML 更可靠（不会因为换算逻辑改了而没人发现文档示例已经算不出那个数）。上面「逐一详解」里的所有计算示例都取自这些 fixture 的真实数值。
+`b_lm_model` 仓库 `models/test_fixtures/valid/` 下有 8 个最小 fixture，一种子类型一个文件，各自只含"一个 evidence + 一两个展示/累积变量"，可以直接加载/仿真跑一遍看效果，比在文档里贴一份不会跑的 YAML 更可靠（不会因为换算逻辑改了而没人发现文档示例已经算不出那个数）。上面「逐一详解」里的所有计算示例都取自这些 fixture 的真实数值。
 
 
 | 子类型     | fixture                             | 验证的点                                                                                                       |
@@ -347,7 +347,7 @@ $$
 | `beta`     | `test_valid_evidence_beta.yaml`     | 年化系数折算为日速率（÷365）驱动连续状态变量                                                                  |
 | `pk`       | `test_valid_evidence_pk.yaml`       | 验证换出的速率常数能在小时级步长公式里直接用，不需要额外单位转换                                               |
 
-每个文件的 `metadata.description.result` 字段都写了具体应该算出的数字（比如"30 天后累计约 0.000658"），可以直接改 `simulation.end_date` 跑更长/更短的区间验证。8 种子类型同时共存的综合场景见 `test_valid_evidence_types.yaml`；每个文件的设计意图（为什么要单独测、和相邻文件的关系）见 `models/test_validation/validation_catalog.md` §1。
+每个文件的 `metadata.description.result` 字段都写了具体应该算出的数字（比如"30 天后累计约 0.000658"），可以直接改 `simulation.end_date` 跑更长/更短的区间验证。8 种子类型同时共存的综合场景见 `test_valid_evidence_types.yaml`；每个文件的设计意图（为什么要单独测、和相邻文件的关系）见 `models/test_fixtures/fixture_catalog.md` §1。
 
 **这些 fixture 目前只被验证"能否正确加载/被合法拒绝"**（`test_verify/errors/test_evidence_errors.py` 覆盖的是反例——即声明错误的 fixture 会被可靠拒绝），**没有任何 pytest 真正跑一遍仿真去断言 `description.result` 里写的具体数字**。这意味着如果以后 Loader 的换算逻辑改了，这些写在注释里的"期望结果"可能悄悄过期而不会被任何测试发现——这是本仓库另一处值得补的验证缺口，尚未处理。
 

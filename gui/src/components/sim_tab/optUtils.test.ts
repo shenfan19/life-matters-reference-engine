@@ -17,7 +17,7 @@ import { resolve } from 'path';
 import { load as yamlLoad } from 'js-yaml';
 import { buildOptInputEventsFromYAML, buildOptRegimens } from './optUtils';
 
-const FIXTURES_DIR = resolve(__dirname, '../../../../models/test_validation/valid');
+const FIXTURES_DIR = resolve(__dirname, '../../../../models/test_fixtures/valid');
 
 function loadStartpointRegimens(fileName: string): any[] {
   const text = readFileSync(resolve(FIXTURES_DIR, fileName), 'utf8');

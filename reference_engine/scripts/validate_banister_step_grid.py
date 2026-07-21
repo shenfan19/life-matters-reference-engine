@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 from cli.runner import run_sim  # noqa: E402
 from validate_banister import analytical  # noqa: E402
 
-MODEL_DIR = ROOT / 'models' / 'test_validation' / 'valid'
+MODEL_DIR = ROOT / 'models' / 'test_fixtures' / 'valid'
 OUT_DIR = ROOT / 'output' / 'validate_banister_step_grid'
 
 # step label -> fixture filename; all six share the same 60-day date_range and

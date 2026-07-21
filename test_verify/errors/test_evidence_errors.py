@@ -21,12 +21,12 @@ def _make_engine() -> ReferenceEngine:
 
 def test_evidence_name_colliding_with_variable_is_rejected():
     engine = _make_engine()
-    assert not engine.load_models(['test_validation/invalid/test_invalid_evidence_name_collision'])
+    assert not engine.load_models(['test_fixtures/invalid/test_invalid_evidence_name_collision'])
     assert 'baseline_rate' in engine.loader.last_error
     assert '重名' in engine.loader.last_error
 
 
 def test_evidence_applies_to_missing_baseline_ref_is_rejected():
     engine = _make_engine()
-    assert not engine.load_models(['test_validation/invalid/test_invalid_evidence_missing_baseline_ref'])
+    assert not engine.load_models(['test_fixtures/invalid/test_invalid_evidence_missing_baseline_ref'])
     assert 'baseline_ref' in engine.loader.last_error
