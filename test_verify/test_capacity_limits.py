@@ -23,7 +23,7 @@ import app_state  # noqa: E402
 from paths import MAX_CONCURRENT_OPTS, MAX_CONCURRENT_SIMS  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
-MODEL_NAME = 'test_validation/valid/test_valid_formula_condition'
+MODEL_NAME = 'test_fixtures/valid/test_valid_formula_condition'
 
 
 @pytest.fixture

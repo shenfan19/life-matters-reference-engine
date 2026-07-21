@@ -2,13 +2,13 @@
 
 > 任务来源：错误检测机制审查（2026-07-05）。与 `test_verify/test_sim_cli_consistency.py`
 > （CLI/GUI 路径一致性）、`test_verify/models/`（单变量数值回归）不同，本目录验证的是
-> **引擎对结构错误/配置错误的检测和报错能力**：不只是能正确加载 `models/test_validation/valid/`
-> 下结构合法的模型，还要能在遇到 `models/test_validation/invalid/` 下故意写错的模型时可靠地失败，
+> **引擎对结构错误/配置错误的检测和报错能力**：不只是能正确加载 `models/test_fixtures/valid/`
+> 下结构合法的模型，还要能在遇到 `models/test_fixtures/invalid/` 下故意写错的模型时可靠地失败，
 > 并把具体原因暴露给调用方。
 
 ## 测得住的两个前提
 
-1. **fixture 本身可信**：每个 `models/test_validation/invalid/*.yaml` 只故意写错一处，其余部分结构
+1. **fixture 本身可信**：每个 `models/test_fixtures/invalid/*.yaml` 只故意写错一处，其余部分结构
    合法（见该目录 README 的文件清单），所以一个测试失败能直接定位到具体哪个校验分支坏了。
 2. **走真实调用路径，不走底层内部函数**：所有测试通过 `ReferenceEngine.load_models()` /
    `run_simulation()` 断言——这与 CLI（`cli/runner.py`）、GUI（`session_manager.py`）实际
@@ -37,5 +37,5 @@ pytest test_verify/errors/
 
 ## 新增一个错误检测用例
 
-先在 `models/test_validation/invalid/README.md` 里确认（或新增）对应 fixture，再在这里对应的文件里加一个
+先在 `models/test_fixtures/invalid/README.md` 里确认（或新增）对应 fixture，再在这里对应的文件里加一个
 `assert not engine.load_models([...])` + `engine.loader.last_error` 包含关键子串的断言。

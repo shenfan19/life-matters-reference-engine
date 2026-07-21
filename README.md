@@ -121,8 +121,8 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/reference_engine/evidence/applies_to.md](docs/reference_engine/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
 | [docs/reference_engine/mc.md](docs/reference_engine/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
 | [test_verify/verification_report.md](test_verify/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
-| [models/test_validation/validation_report.md](models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
-| [models/test_validation/validation_catalog.md](models/test_validation/validation_catalog.md) | test_validation fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
+| [models/validation/validation_report.md](models/validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
+| [models/test_fixtures/fixture_catalog.md](models/test_fixtures/fixture_catalog.md) | test_fixtures fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
 | [docs/reference_engine/ui_guidelines.md](docs/reference_engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
 | [docs/reference_engine/data_flow.md](docs/reference_engine/data_flow.md) | 数据流设计 |
 | [docs/reference_engine/decisions/README.md](docs/reference_engine/decisions/README.md) | 架构决策记录索引（ADR） |

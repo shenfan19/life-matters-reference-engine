@@ -5,9 +5,9 @@
 
 # 引擎实现正确性与数值精度验证报告（Verification）
 
-> 本文件回答的是 **verify** 侧的问题——"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理/训练适应机制（那是 **validate** 侧的问题，见 `models/test_validation/validation_report.md`）。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性（pytest 套件）和数值精度（解析解对比 + 步长收敛性检验），姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
+> 本文件回答的是 **verify** 侧的问题——"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理/训练适应机制（那是 **validate** 侧的问题，见 `models/validation/validation_report.md`）。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性（pytest 套件）和数值精度（解析解对比 + 步长收敛性检验），姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
 >
-> `test_verify/` 这个目录本身的定位、和 `models/test_validation/` 的关系，见同目录 [`README.md`](README.md)。
+> `test_verify/` 这个目录本身的定位、和 `models/test_fixtures/` 的关系，见同目录 [`README.md`](README.md)。
 
 ---
 
@@ -20,7 +20,7 @@
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `test_verify/test_sim_cli_consistency.py`                                      | CLI 与 GUI 走同一份 sim/opt 核心代码路径，结果一致；MC 确定性（`runs=1` 时可复现，同 seed 结果一致）                                                                                                                                  |
 | `test_verify/test_schedule_runner.py`、`test_verify/test_same_day_duration.py` | schedule/plan 时间窗口解析边界情况                                                                                                                                                                                                    |
-| `test_verify/errors/`                                                          | 引擎对结构错误/配置错误的检测能力：不仅能加载`models/test_validation/valid/`，还要在 `models/test_validation/invalid/` 上可靠失败并暴露具体原因（各文件用途见 `models/test_validation/validation_catalog.md` 第10节及各 `README.md`） |
+| `test_verify/errors/`                                                          | 引擎对结构错误/配置错误的检测能力：不仅能加载`models/test_fixtures/valid/`，还要在 `models/test_fixtures/invalid/` 上可靠失败并暴露具体原因（各文件用途见 `models/test_fixtures/fixture_catalog.md` 第10节及各 `README.md`） |
 | `test_verify/models/`                                                          | 单个模型变量在多组取值下的数值行为回归（断言比例/单调性/符号，不硬编码浮点数），见该目录`README.md`                                                                                                                                   |
 
 运行：
@@ -101,7 +101,7 @@ $$
 
 ### 2.5 当前执行结果
 
-固化的步长网格 fixture：`models/test_validation/valid/test_valid_banister_v1_analytical.yaml`（1天步长）与 `test_valid_banister_v1_step_{12h,6h,3h,1h,30min}.yaml`，彼此只有 `simulation.step_size` 不同，其余物理量、参数、`date_range`（固定为最大的 60 天区间）完全一致，切换文件即可对比不同步长下的引擎输出。
+固化的步长网格 fixture：`models/test_fixtures/valid/test_valid_banister_v1_analytical.yaml`（1天步长）与 `test_valid_banister_v1_step_{12h,6h,3h,1h,30min}.yaml`，彼此只有 `simulation.step_size` 不同，其余物理量、参数、`date_range`（固定为最大的 60 天区间）完全一致，切换文件即可对比不同步长下的引擎输出。
 
 `training_load` 按全天持续窗口（而非单点脉冲）建模，`value: 50.0` 即"每天 50 AU"，动力学中状态自身的衰减项（$k_1 \cdot \text{fitness}$、$k_2 \cdot \text{fatigue}$）乘 `step`，负荷输入项不乘 `step`。
 
@@ -122,15 +122,11 @@ $$
 **结论**：
 
 - **协议 V2（收敛性）**：全部 24 格上 `fitness`/`fatigue` 均单调收敛，通过。
-- **协议 V1（对 `performance`，阈值 <2%）**：`step_size ≤ 6h` 时对 7–60 天全部测试区间通过；原生 `step_size = 1天` 仅在 ≥30 天区间通过，7/14 天区间因差值型指标的局部放大效应不通过。
+- **协议 V1（对 `performance`，阈值 <2%）**：`step_size ≤ 6h` 时对 7–60 天全部测试区间通过；`step_size = 1天` 仅在 ≥30 天区间通过，7/14 天区间因差值型指标的局部放大效应不通过，1天步长仅适合 ≥30 天尺度分析。V1/V2 均视为通过，可用于论文数值。
 
-**闭环（作者确认，2026-07-21）**：接受"1天步长仅适合 ≥30 天尺度分析"这一使用边界，不需要把协议阈值改为分别约束 `fitness`/`fatigue`。无进一步问题，V1/V2 均视为通过，可用于论文数值。
+### 2.6 step_size 选取的通用启发式
 
-**V3/V4（文献场景复现）不属于本文件**：这两项检验的是"模型能否重现文献描述的宏观现象"（减量后表现峰值、超量恢复出现时间），不是数值格式对不对——按 §2.1 的 V&V 分层，性质上属于姊妹文件 `models/test_validation/validation_report.md` 第1节"文献对标"的"训练适应-疲劳"小节，**已经在那里**（2026-07-21 起该小节显式挂了 V3/V4 编号，接续本文件的 V1/V2）。当前状态：检验点已定义，但"以上三个模型均未针对当前引擎代码执行验证记录"——即所需的具体训练负荷曲线设计与目前已有场景文件之间的对应关系还需要先确定，再跑一次才能填充该节的数值对比表。
-
-### 2.6 step_size 选取的通用启发式（初稿，2026-07-21）
-
-**背景**：2.5 节的结论"1天步长仅适合 ≥30 天尺度分析"是这一组具体参数（`training_load=50`、`g/h/k1/k2`）的经验观察，不是可以直接套到其他模型的公式——曾讨论过用"`step_size` / 总仿真时长"的比值给一个通用阈值（如 1/50），但用同一网格数据可以直接反证：`step=12h, day=14`（比值 1/28）的 `performance` 误差 3.47% 不通过，`step=6h, day=7`（比值同为 1/28）却只有 1.10% 通过——同一比值，结果相反，说明"跟总时长的比例"不是决定性变量。换成不受差值型指标局部极小值干扰的 `fitness`/`fatigue`（Euler 直接积分的状态变量本身）重新检验，比例思路依然不成立，但原因不同：`fatigue(t)` 是趋于饱和平台的指数曲线，相对误差随时间自然衰减，这同样是曲线自身形状决定的，不是比例关系。根本原因是数学结构性的：相对误差 = 绝对误差（只取决于 `step_size`）/ 真值（取决于总时长和曲线形状），两个因子互相独立，压缩不进同一个比值变量。
+**背景**：2.5 节"1天步长仅适合 ≥30 天尺度分析"是这一组具体参数（`training_load=50`、`g/h/k1/k2`）的经验观察，不能直接套到其他模型。`step_size` / 总仿真时长的比值不是决定性变量：`step=12h, day=14`（比值 1/28）的 `performance` 误差 3.47% 不通过，`step=6h, day=7`（比值同为 1/28）却只有 1.10% 通过——同一比值，结果相反。换成不受差值型指标局部极小值干扰的 `fitness`/`fatigue`（Euler 直接积分的状态变量本身）重新检验，比例关系依然不成立：`fatigue(t)` 是趋于饱和平台的指数曲线，相对误差随时间自然衰减，同样由曲线自身形状决定，不是比例关系。根本原因是数学结构性的：相对误差 = 绝对误差（只取决于 `step_size`）/ 真值（取决于总时长和曲线形状），两个因子互相独立，压缩不进同一个比值变量。
 
 **更合理的基准是模型自身的最短特征时间尺度 τ_min**，取以下两者中较小值：
 
@@ -143,7 +139,7 @@ $$
 \text{step\_size} \le \tau_{\min} / 10
 $$
 
-**用本组 fixture 交叉验证**：`training_load` 是全天窗口（24h 宽），疲劳时间常数 `1/k2=15天=360h` 远比输入窗口宽，不是限制项 → τ_min = 24h → 启发式建议 `step_size ≤ 2.4h`。用已有的 6 步长网格逐格核对（含此前"病态"的 `performance` 差值指标）：
+**用本组 fixture 交叉验证**：`training_load` 是全天窗口（24h 宽），疲劳时间常数 `1/k2=15天=360h` 远比输入窗口宽，不是限制项 → τ_min = 24h → 启发式建议 `step_size ≤ 2.4h`。用已有的 6 步长网格逐格核对（含容易受局部极小值干扰的 `performance` 差值指标）：
 
 | step_size | 满足启发式(≤2.4h)? | day7 perf | day14 perf | day30 perf | day60 perf | fitness/fatigue |
 |---|---|---|---|---|---|---|
@@ -177,4 +173,4 @@ python reference_engine/scripts/validate_banister_step_grid.py # 协议 V2 + 2.6
 | 第1节（引擎实现正确性）           | Paper 1 §5.1（软件工程质量） |
 | 第2节（数值精度，Banister V1/V2） | Paper 1 §5.2（数值验证）     |
 
-其余层次（文献对标 → Paper 2、优化合理性 → Paper 3）见 `models/test_validation/validation_report.md` 附录。
+其余层次（文献对标 → Paper 2、优化合理性 → Paper 3）见 `models/validation/validation_report.md` 附录。

@@ -84,7 +84,7 @@
 
 ---
 
-## 六、验证框架（→ test_verify/verification_report.md + models/test_validation/validation_report.md）
+## 六、验证框架（→ test_verify/verification_report.md + models/validation/validation_report.md）
 
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
