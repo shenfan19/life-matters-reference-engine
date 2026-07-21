@@ -36,15 +36,10 @@ flowchart TD
 各步骤的理由：
 
 1. **未声明 `applies_to` → 跳过该条目，不影响任何行为**（纯增量字段）。这样设计是为了让不需要自动接线的模型完全不用碰这个字段，声明与否互不干扰。
-
 2. **`type` 是 `cohens_d`/`beta`/`pk` → 报错，要求去掉 `applies_to` 手写 dynamics**。理由见上一节——这 3 种的接入方式是建模判断，Loader 主动报错比"悄悄按某种默认方式接入、但建模者其实想要另一种方式"更安全：错误的自动接入会得到一个看起来能跑、但语义不对的模型，且不容易被发现。
-
 3. **`applies_to` 指向的变量名必须已在 `variables:` 声明 → 否则报错**。防止拼写错误导致 Loader 生成一个指向不存在变量的公式——如果不在这里检查，错误会推迟到公式求值阶段才暴露，那时候更难定位到底是哪个 evidence 条目的 `applies_to` 写错了。
-
 4. **同一个 `applies_to` 目标不能被两条以上 evidence 同时声明 → 否则报错**。**原因**：多个风险因子的组合方式（相乘=比例风险假设，还是相加=竞争风险模型）是有争议的流行病学方法论问题，Loader 不代为选择。举例：如果吸烟（$RR=2.5$）和肥胖（$OR=1.65$，换算后 $\approx 1.53$）都想接入同一个 `cvd_risk` 状态变量，二者同时起作用时，最终风险应该是"基线 $\times 2.5 \times 1.53$"（假设两个风险因子的效应独立相乘），还是某种加权相加，医学文献本身对此没有统一答案——这个判断必须由建模者手写 dynamics 做出，Loader 只会拒绝这种有歧义的自动接线请求，不会替你选一个默认组合方式。
-
 5. **`step_unit` 必须是 `minute`/`hour`/`day` 之一（与 `formulas.step_unit` 同一约束）→ 否则报错**。这保证生成的公式使用引擎认识的时间粒度，和手写 `formulas` 的约束保持一致，不会出现"自动生成的公式"和"手写的公式"遵循不同规则的情况。
-
 6. **按子类型解析 `rate_unit`（见下）→ 必须能在 `TIME_UNIT_SECONDS` 中找到（`minute`/`hour`/`day`/`week`/`month`/`year`）→ 否则报错**。生成表达式需要用 `rate_unit` 和 `step_unit` 的比值算出时间换算系数 `factor`（见下节）；如果 `rate_unit` 不合法（比如拼错、或指向的条目根本没声明这个字段），后续的换算系数就没有意义，必须在这里挡住。
 
 ## 生成的表达式
@@ -53,15 +48,17 @@ flowchart TD
 
 $$
 \text{factor} = \frac{\text{TIME\_UNIT\_SECONDS}[\text{step\_unit}]}{\text{TIME\_UNIT\_SECONDS}[\text{rate\_unit}]}
+
 $$
 
 （`step_unit` 是生成公式实际用的步长单位；`rate_unit` 是这条速率本身"自然"的时间单位，二者可以不同，比如 `rate_unit: year` 的年发病率接入 `step_unit: day` 的公式，这时 $\text{factor} = 1/365$，把"每年多少"折算成"每天多少"）。
 
-| 子类型 | `rate_unit` 从哪来 | 生成的 dynamics 表达式 |
-|--------|-------------------|----------------------|
-| `ir` / `ard` | 条目自身声明的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$ |
-| `hr` | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$ |
-| `rr` / `or` | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{baseline\_ref} \cdot \text{ev} \cdot \text{factor} \cdot \text{step}$ |
+
+| 子类型       | `rate_unit` 从哪来                    | 生成的 dynamics 表达式                                                                                       |
+| -------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ir` / `ard` | 条目自身声明的`rate_unit`             | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
+| `hr`         | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
+| `rr` / `or`  | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{baseline\_ref} \cdot \text{ev} \cdot \text{factor} \cdot \text{step}$ |
 
 （`ev` 指该 evidence 条目换算后的 `effective` 值；表中 $\mathrel{+}=$ 表示"新值 = 旧值 + 右边这一项"，对应实际生成的 dynamics 字符串 `{applies_to} + ... * step`。）
 
@@ -85,6 +82,7 @@ $$
 
 $$
 0.012 \times 2.5 \times \frac{1}{365} \times 1 \approx 0.0000822 \ /\text{天}
+
 $$
 
 即每天往 `smoker_cvd_risk_auto` 累加约 0.0000822 的风险。
@@ -99,6 +97,7 @@ $$
 
 $$
 0.009 \times \frac{1}{365} \times 1 \approx 0.0000247 \ /\text{天}
+
 $$
 
 两个例子的 `factor` 恰好相同（都是 $1/365$），差异完全来自表达式结构本身——`rr` 是"比例"所以要再乘一次基线才能变成速率，`hr` 是"已经算好的速率"所以不用再乘。这正是上面表格里 `rr`/`or` 一行比 `hr`/`ir`/`ard` 一行多出 `baseline_ref ×` 这一项的原因。
