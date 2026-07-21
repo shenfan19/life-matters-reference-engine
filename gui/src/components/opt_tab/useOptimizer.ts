@@ -94,8 +94,31 @@ export function useOptimizer({
     return () => { if (optPollRef.current) clearInterval(optPollRef.current); };
   }, []);
 
-  // Reset signature when model changes
-  useEffect(() => { setLastRunSignature(null); }, [selectedKey]);
+  // Reset/restore live process state when switching to a different model.
+  // optResult/storedOptResult are restored per-model by useModelInit.ts already;
+  // these "how far did the last run get" fields (Process panel: Gen/Eval/Front/
+  // Feasible/Mean CV cards + trend charts) had no owner to reset them, so a
+  // finished run kept showing the previous model's numbers after switching
+  // models — and switching back showed nothing, because nothing persisted them
+  // per-model either. Restore from modelSessionsRef (written on completion,
+  // below) when this model has a prior run; otherwise clear to idle.
+  // optJobId is deliberately left alone — it's needed to cancel a job that's
+  // still running in the background for a model you've since navigated away from.
+  useEffect(() => {
+    setLastRunSignature(null);
+    const session = selectedKey ? modelSessionsRef.current[selectedKey] : null;
+    if (session?.optHistory?.length) {
+      setOptHistory(session.optHistory);
+      setOptCurGen(session.optHistory[session.optHistory.length - 1]?.iteration || 0);
+      setOptTotalGen(session.optTotalGen || 0);
+      setOptLogs(session.optLogs || []);
+      setOptElapsed(session.optElapsed || 0);
+      setOptMethod(session.optMethod || '');
+    } else {
+      setOptHistory([]); setOptCurGen(0); setOptTotalGen(0);
+      setOptLogs([]); setOptElapsed(0); setOptMethod('');
+    }
+  }, [selectedKey]);
 
   // ── start ────────────────────────────────────────────────────────────────────
 
@@ -190,11 +213,19 @@ export function useOptimizer({
             clearInterval(optPollRef.current!); optPollRef.current = null;
             setOptRunning(false); setRunningModelKey(null);
             setOptResult(sd.result);
-            // Persist result to session even if user has navigated away
+            // Persist result + process snapshot to session even if user has navigated
+            // away — read straight off sd/totalGen (not the optHistory/optElapsed/...
+            // state variables above), since those setters haven't committed yet within
+            // this same callback invocation.
             const targetKey = optTargetKeyRef.current;
             if (targetKey && sd.result) {
               const existing = modelSessionsRef.current[targetKey] || {};
-              const updated = { ...existing, optResult: sd.result };
+              const updated = {
+                ...existing, optResult: sd.result,
+                optHistory: sd.history || [], optTotalGen: totalGen,
+                optElapsed: sd.elapsed || 0, optMethod: sd.method || '',
+                optLogs: sd.logs || [],
+              };
               modelSessionsRef.current[targetKey] = updated;
               const all = readMS(); all[targetKey] = updated; writeMS(all);
             }

@@ -211,6 +211,15 @@ export interface ModelSession {
   optGen: number;
   optSeed?: number;
   optResult: any;
+  // Live-process snapshot from the last completed run, restored into the
+  // Process panel (Gen/Eval/Front/Feasible/Mean CV cards + trend charts) when
+  // switching back to this model — optResult alone only covers the Front/
+  // Solutions section, not "how the run got there".
+  optHistory?: any[];
+  optTotalGen?: number;
+  optElapsed?: number;
+  optMethod?: string;
+  optLogs?: Array<{ t: number; msg: string }>;
   userEdited?: boolean;
 }
 
