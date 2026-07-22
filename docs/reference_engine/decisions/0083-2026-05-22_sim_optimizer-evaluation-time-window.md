@@ -49,6 +49,6 @@ step_size:  { value: stepValue, unit: stepUnit },
 - `sim_engine/src/optimizer_engine.py`：override 合并 + 时间参数读取
 - `sim_gui/src/components/Simulator.tsx`：`startOptimization()` 传入时间
 - `docs/model.md`：optimizer schema 新字段
-- `c:/fan/b_lm_home/LM_FORMAT_1.0.md`：同步 optimizer block schema
+- 内部 LM format 规范草稿：同步 optimizer block schema
 - `docs/opt.md`：新增评估时间窗章节
 - Paper3 YAML：`ckd_protein_pareto_a4_p3`、`hypertension_gout_3obj_a5_p3`、`smoking_stress_a6_p3` 补充 `start_date`/`end_date`
