@@ -32,7 +32,7 @@ FIELD_PATTERN = re.compile(
 )
 
 DEFAULT_SCAN_DIRS = ['cli', 'reference_engine']
-EXCLUDE_DIR_PARTS = {'test_verify', '__pycache__', 'test', 'node_modules'}
+EXCLUDE_DIR_PARTS = {'test_verification', '__pycache__', 'test', 'node_modules'}
 SUPPRESS_COMMENT = '# allow-const'
 
 

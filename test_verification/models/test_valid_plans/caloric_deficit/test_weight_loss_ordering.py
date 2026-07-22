@@ -1,4 +1,4 @@
-"""Multi-value test template for `caloric_deficit` (test_verify/models/README.md).
+"""Multi-value test template for `caloric_deficit` (test_verification/models/README.md).
 
 test_valid_plans.yaml's weight_dynamics is monotone in caloric_deficit and exercise_minutes
 (both strictly reduce body_weight, no interaction term, no offsetting effect) — so the

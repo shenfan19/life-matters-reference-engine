@@ -1146,7 +1146,7 @@ POST /api/validate
 
 **GUI（`gui/`）是面向人类研究者的主接口；CLI（`cli/`）是面向 AI/自动化场景的正式公开接口
 （ADR 0101，修订 ADR 0072 的"CLI 不是正式接口"表述）。两者共用同一个引擎层，结果一致性由
-`test_verify/test_sim_cli_consistency.py` 自动回归验证（ADR 0111）。**
+`test_verification/test_sim_cli_consistency.py` 自动回归验证（ADR 0111）。**
 
 ```
 人类用户 → gui（React）→ HTTP API（api_server.py）→ 引擎层（Python）

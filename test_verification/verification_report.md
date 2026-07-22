@@ -7,7 +7,7 @@
 
 > 本文件回答的是 **verify** 侧的问题——"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理/训练适应机制（那是 **validate** 侧的问题，见 `models/validation/validation_report.md`）。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性（pytest 套件）和数值精度（解析解对比 + 步长收敛性检验），姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
 >
-> `test_verify/` 这个目录本身的定位、和 `models/test_fixtures/` 的关系，见同目录 [`README.md`](README.md)。
+> `test_verification/` 这个目录本身的定位、和 `models/test_fixtures/` 的关系，见同目录 [`README.md`](README.md)。
 
 ---
 
@@ -18,18 +18,18 @@
 
 | 套件                                                                           | 覆盖内容                                                                                                                                                                                                                              |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test_verify/test_sim_cli_consistency.py`                                      | CLI 与 GUI 走同一份 sim/opt 核心代码路径，结果一致；MC 确定性（`runs=1` 时可复现，同 seed 结果一致）                                                                                                                                  |
-| `test_verify/test_schedule_runner.py`、`test_verify/test_same_day_duration.py` | schedule/plan 时间窗口解析边界情况                                                                                                                                                                                                    |
-| `test_verify/errors/`                                                          | 引擎对结构错误/配置错误的检测能力：不仅能加载`models/test_fixtures/valid/`，还要在 `models/test_fixtures/invalid/` 上可靠失败并暴露具体原因（各文件用途见 `models/test_fixtures/fixture_catalog.md` 第10节及各 `README.md`） |
-| `test_verify/models/`                                                          | 单个模型变量在多组取值下的数值行为回归（断言比例/单调性/符号，不硬编码浮点数），见该目录`README.md`                                                                                                                                   |
+| `test_verification/test_sim_cli_consistency.py`                                      | CLI 与 GUI 走同一份 sim/opt 核心代码路径，结果一致；MC 确定性（`runs=1` 时可复现，同 seed 结果一致）                                                                                                                                  |
+| `test_verification/test_schedule_runner.py`、`test_verification/test_same_day_duration.py` | schedule/plan 时间窗口解析边界情况                                                                                                                                                                                                    |
+| `test_verification/errors/`                                                          | 引擎对结构错误/配置错误的检测能力：不仅能加载`models/test_fixtures/valid/`，还要在 `models/test_fixtures/invalid/` 上可靠失败并暴露具体原因（各文件用途见 `models/test_fixtures/fixture_catalog.md` 第10节及各 `README.md`） |
+| `test_verification/models/`                                                          | 单个模型变量在多组取值下的数值行为回归（断言比例/单调性/符号，不硬编码浮点数），见该目录`README.md`                                                                                                                                   |
 
 运行：
 
 ```bash
-pytest test_verify/
+pytest test_verification/
 ```
 
-现状：全量套件当前可通过；`test_verify/models/` 目前只覆盖少数模型变量，远未覆盖 `models/` 下全部模型。
+现状：全量套件当前可通过；`test_verification/models/` 目前只覆盖少数模型变量，远未覆盖 `models/` 下全部模型。
 
 ### 1.2 需要人工/半自动抽查的实现细节
 

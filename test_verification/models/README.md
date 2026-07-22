@@ -1,14 +1,14 @@
 # 数值多值测试目录规范
 
 > 任务来源：`2026-06-19_task_code-trust-verification-infra` 任务4。
-> 与 `test_verify/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
+> 与 `test_verification/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
 > 针对**单个模型变量在多组取值下的数值行为**，用于在改动公式/参数后快速发现"某个变量的
 > 输出不再符合预期"的回归。
 
 ## 目录结构
 
 ```
-test_verify/models/<model_name>/<variable_name>/test_*.py
+test_verification/models/<model_name>/<variable_name>/test_*.py
 ```
 
 - `<model_name>`：`models/` 下某个 `.yaml` 文件的 `metadata.name`（不含路径前缀）。
@@ -23,7 +23,7 @@ test_verify/models/<model_name>/<variable_name>/test_*.py
   `simulation.plans`，每个 plan 代表该变量的一组取值）。
 - 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在公式
   微调后会大量误报，且新人看 diff 时分不清是真回归还是数值漂移。需要精确值比对的场景，
-  数值精度参照 `test_verify/verification_report.md` 第2节协议，文献对标参照 `models/validation/validation_report.md` 第1节协议，单独走验证，不放在这里。
+  数值精度参照 `test_verification/verification_report.md` 第2节协议，文献对标参照 `models/validation/validation_report.md` 第1节协议，单独走验证，不放在这里。
 - 示例：`test_valid_mc_distributions/daily_dose/test_dose_scaling.py` ——
   `test_valid_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
   三个 plan 里取 100/200/350 mg，断言 `plasma_conc`、`peak_plasma` 的确定性稳态值随剂量
@@ -43,5 +43,5 @@ test_verify/models/<model_name>/<variable_name>/test_*.py
 ## 运行
 
 ```bash
-pytest test_verify/models/
+pytest test_verification/models/
 ```

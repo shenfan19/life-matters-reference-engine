@@ -1,4 +1,4 @@
-"""test_verify/verification_report.md §2 Protocol V2 + step_size heuristic: run the
+"""test_verification/verification_report.md §2 Protocol V2 + step_size heuristic: run the
 Banister two-compartment model at 6 step sizes (1day/12h/6h/3h/1h/30min), compare
 against the closed-form analytical solution at 4 checkpoint days (7/14/30/60) for
 all three reported variables (fitness, fatigue, performance), and check the
