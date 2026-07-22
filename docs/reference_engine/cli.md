@@ -216,7 +216,7 @@ Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected
 
 CLI 与 GUI 共用同一个引擎层（`reference_engine/src/`），结果格式一致，可互通——sim 的执行核心
 （`apply_schedules` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
-不是两份各自实现后凑巧一致。这个一致性由 `test_verify/test_sim_cli_consistency.py` 自动回归验证
+不是两份各自实现后凑巧一致。这个一致性由 `test_verification/test_sim_cli_consistency.py` 自动回归验证
 （见 ADR 0111/0112/0113）。
 
 ### 按数据流拆分：哪些共用，哪些独立

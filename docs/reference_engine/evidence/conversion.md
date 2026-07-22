@@ -349,7 +349,7 @@ $$
 
 每个文件的 `metadata.description.result` 字段都写了具体应该算出的数字（比如"30 天后累计约 0.000658"），可以直接改 `simulation.end_date` 跑更长/更短的区间验证。8 种子类型同时共存的综合场景见 `test_valid_evidence_types.yaml`；每个文件的设计意图（为什么要单独测、和相邻文件的关系）见 `models/test_fixtures/fixture_catalog.md` §1。
 
-**这些 fixture 目前只被验证"能否正确加载/被合法拒绝"**（`test_verify/errors/test_evidence_errors.py` 覆盖的是反例——即声明错误的 fixture 会被可靠拒绝），**没有任何 pytest 真正跑一遍仿真去断言 `description.result` 里写的具体数字**。这意味着如果以后 Loader 的换算逻辑改了，这些写在注释里的"期望结果"可能悄悄过期而不会被任何测试发现——这是本仓库另一处值得补的验证缺口，尚未处理。
+**这些 fixture 目前只被验证"能否正确加载/被合法拒绝"**（`test_verification/errors/test_evidence_errors.py` 覆盖的是反例——即声明错误的 fixture 会被可靠拒绝），**没有任何 pytest 真正跑一遍仿真去断言 `description.result` 里写的具体数字**。这意味着如果以后 Loader 的换算逻辑改了，这些写在注释里的"期望结果"可能悄悄过期而不会被任何测试发现——这是本仓库另一处值得补的验证缺口，尚未处理。
 
 ## 已知实现细节（写文档时须如实反映，非建议行为）
 

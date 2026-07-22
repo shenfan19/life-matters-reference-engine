@@ -1,7 +1,7 @@
 // gui/e2e/specs/run-simulation.spec.ts
 // Golden-path smoke test: select a model in the tree, run a simulation, and
 // verify the results panel actually receives data points. This is the layer
-// test_verify/test_sim_cli_consistency.py does not cover — it imports engine
+// test_verification/test_sim_cli_consistency.py does not cover — it imports engine
 // functions directly and never exercises the GUI button -> API call wiring.
 //
 // Uses models/test_fixtures/valid/test_valid_formula_condition.yaml: a small deterministic

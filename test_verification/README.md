@@ -1,6 +1,6 @@
-# test_verify — 引擎代码的 pytest 验证套件
+# test_verification — 引擎代码的 pytest 验证套件
 
-`test_verify/` 是仓库的 Python 单元/回归测试套件，用 `pytest` 驱动，验证的对象是**`cli/`、`reference_engine/` 里的代码本身有没有按预期实现**——不涉及某个具体模型 YAML 的数值是否符合文献/临床常识（那属于 `models/validation/`，见下方"和 models/test_fixtures/、models/validation/ 的关系"）。
+`test_verification/` 是仓库的 Python 单元/回归测试套件，用 `pytest` 驱动，验证的对象是**`cli/`、`reference_engine/` 里的代码本身有没有按预期实现**——不涉及某个具体模型 YAML 的数值是否符合文献/临床常识（那属于 `models/validation/`，见下方"和 models/test_fixtures/、models/validation/ 的关系"）。
 
 ## 这个目录做什么 / 不做什么
 
@@ -24,16 +24,16 @@
 ## 运行
 
 ```bash
-pytest                    # 用 pytest.ini 里的 testpaths = test_verify，跑全部
-pytest test_verify/errors/           # 只跑错误检测用例
-pytest test_verify/models/           # 只跑数值回归用例
-pytest test_verify/test_schedule_runner.py::test_pulse_value_not_inflated_by_nonzero_bounds_floor
+pytest                    # 用 pytest.ini 里的 testpaths = test_verification，跑全部
+pytest test_verification/errors/           # 只跑错误检测用例
+pytest test_verification/models/           # 只跑数值回归用例
+pytest test_verification/test_schedule_runner.py::test_pulse_value_not_inflated_by_nonzero_bounds_floor
 ```
 
 ## 目录结构
 
 ```
-test_verify/
+test_verification/
 ├── verification_report.md       # 引擎实现正确性 + 数值精度验证的方法论与当前结果（verify 侧）
 ├── test_capacity_limits.py       # 并发限流（P1/P2 公网部署防护）
 ├── test_same_day_duration.py     # 同日模型（start_date == end_date）仿真时长回归
@@ -57,6 +57,6 @@ test_verify/
 
 ## 和 `models/test_fixtures/`、`models/validation/` 的关系
 
-`models/test_fixtures/valid/`、`models/test_fixtures/invalid/` 下的 YAML 是"数据"，本目录（`test_verify/`）里的 pytest 用例是"断言"——两者测的是同一件事（引擎代码写得对不对），只是分放在两个仓库：不少测试直接读取 `models/test_fixtures/valid/*.yaml` 作为输入（如 `test_same_day_duration.py` 读取 `test_valid_same_day_duration.yaml`），断言的是引擎代码行为，不是模型科学内容，`cli/batch.py --input-dir test_fixtures/valid` 之类的批量跑法也是同一角色的另一种驱动方式。
+`models/test_fixtures/valid/`、`models/test_fixtures/invalid/` 下的 YAML 是"数据"，本目录（`test_verification/`）里的 pytest 用例是"断言"——两者测的是同一件事（引擎代码写得对不对），只是分放在两个仓库：不少测试直接读取 `models/test_fixtures/valid/*.yaml` 作为输入（如 `test_same_day_duration.py` 读取 `test_valid_same_day_duration.yaml`），断言的是引擎代码行为，不是模型科学内容，`cli/batch.py --input-dir test_fixtures/valid` 之类的批量跑法也是同一角色的另一种驱动方式。
 
 `models/validation/`（含 `validation_report.md`）是完全不同的另一件事——测的是具体模型的输出是否符合文献/临床常识（"validate"），跟本目录、跟 `models/test_fixtures/` 都没有内容上的关系，只是同属"分层验证工作"的另一半，方法论关系见 `verification_report.md` 开篇。

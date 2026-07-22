@@ -66,10 +66,10 @@ CLI 和 GUI 之间完全一致、可复现。
 - 分布元数据（`_param_dist_raw`/`param_distributions`）原样继承，供后续 `apply_parameter_sampling` 使用。
 
 **每个 MC run 必须从这份"干净克隆"重新采样，不能链式复用上一个 run 的终态**——否则多个 run 之间会
-产生虚假的相关性（`test_verify/verification_report.md` §1.2 将此列为需要人工/半自动抽查的实现细节，
+产生虚假的相关性（`test_verification/verification_report.md` §1.2 将此列为需要人工/半自动抽查的实现细节，
 目前没有专门的自动化断言覆盖，改动 MC 相关代码后应抽样核对）。
 
 ## 确定性保证
 
-`mc.runs` 缺席或为 1 时，仿真是完全确定性、可复现的——`test_verify/test_sim_cli_consistency.py` 的
+`mc.runs` 缺席或为 1 时，仿真是完全确定性、可复现的——`test_verification/test_sim_cli_consistency.py` 的
 一部分断言依赖这一性质（CLI 与 GUI 走同一份核心代码路径，相同输入必须逐位相同）。

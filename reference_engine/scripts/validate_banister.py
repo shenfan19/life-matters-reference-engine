@@ -1,4 +1,4 @@
-"""test_verify/verification_report.md §2 Protocol V1: compare the LM engine's Euler
+"""test_verification/verification_report.md §2 Protocol V1: compare the LM engine's Euler
 integration against the Banister two-compartment model's closed-form
 analytical solution under constant load, and report the max relative error.
 
