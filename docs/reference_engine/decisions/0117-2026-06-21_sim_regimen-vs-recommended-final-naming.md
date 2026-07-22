@@ -20,7 +20,7 @@ ADR 0116 把"纯内部实现命名"统一成了 `schedule`（`regimen_runner.py`
 核心字段也都改成了 `schedule`/`schedules`（与 ADR 0116 的内部命名保持一致）。改完之后发现两个问题：
 
 1. **`regimen` 才是这个形式化方法在论文/规范里的本名**：`b_lm_model/docs/LM_format_1.0.md` §7 把
-   "K×4 Regimen"定义为 LM format 的标准输入形式化方法，论文草稿（`c:/fan/b_lm_home/paper/`）和
+   "K×4 Regimen"定义为 LM format 的标准输入形式化方法，论文草稿和
    outreach 邮件已大量使用这个词。把 API/YAML 改成 `schedule` 实际上是在偏离已经对外使用的术语，
    不是在"统一"——内部实现叫什么不影响任何人，但跨边界的契约名应该和已发布的概念术语对齐。
 2. **`optimizer.results.reference.regimen`/`objectives` 是废稿**：排查 `useOptimizer.ts::buildResults()`

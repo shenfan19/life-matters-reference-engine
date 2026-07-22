@@ -84,7 +84,7 @@ const schedules = optBackgrounds.map(bg => buildSchedFromBg(bg)); // 背景
 - `sim_gui/public/locales/sim/*.json` — 新 i18n keys
 - `sim_engine/src/optimizer_engine.py` — 新增 `optimizer.schedules` 支持
 - `docs/model.md` — `optimizer.schedules` 字段文档
-- `c:/fan/b_lm_home/LM_FORMAT_1.0.md` — 同步 optimizer schema
+- 内部 LM format 规范草稿 — 同步 optimizer schema
 
 ## 被否决的方案
 
