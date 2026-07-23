@@ -34,8 +34,17 @@ try:
 except ImportError:
     pass
 
-MODELS_DIR = Path(os.getenv("LM_MODELS_PATH", str(PROJECT_ROOT / "models")))
-OUTPUT_DIR = Path(os.getenv("LM_OUTPUT_PATH", str(PROJECT_ROOT / "output")))
+def _resolve_env_path(env_var: str, default: Path) -> Path:
+    """A relative value must resolve against PROJECT_ROOT, not the process's
+    cwd — the GUI backend (cwd = reference_engine/) and the CLI (cwd = wherever
+    invoked) would otherwise resolve the same .env value to different places.
+    """
+    raw = os.getenv(env_var)
+    return (PROJECT_ROOT / raw) if raw else default
+
+
+MODELS_DIR = _resolve_env_path("LM_MODELS_PATH", PROJECT_ROOT / "models")
+OUTPUT_DIR = _resolve_env_path("LM_OUTPUT_PATH", PROJECT_ROOT / "output")
 SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
 
 # P1/P2 公网部署资源保护（2026-06-25_task_prelaunch-publish-verification-checklist.md §4）：
