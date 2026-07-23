@@ -10,7 +10,7 @@ release/
 *.so
 
 # Environment files
-.env
+# .env
 .venv/
 venv/
 
