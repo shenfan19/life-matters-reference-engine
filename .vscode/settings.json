@@ -28,19 +28,19 @@
     "python.terminal.shellIntegration.enabled": false,
     "folder-color.pathColors": [
         {
-            "folderPath": "b_matter_code\\mods\\",
+            "folderPath": "life-matters-reference-engine\\mods\\",
             "color": "foldercolorizer.color_cc6600"
         },
         {
-            "folderPath": "b_matter_code\\plugins\\",
+            "folderPath": "life-matters-reference-engine\\plugins\\",
             "color": "foldercolorizer.color_cc6600"
         },
         {
-            "folderPath": "b_matter_code\\gui\\",
+            "folderPath": "life-matters-reference-engine\\gui\\",
             "color": "foldercolorizer.color_00cc00"
         },
         {
-            "folderPath": "b_matter_code\\reference_engine\\",
+            "folderPath": "life-matters-reference-engine\\reference_engine\\",
             "color": "foldercolorizer.color_00cc00"
         }
     ]

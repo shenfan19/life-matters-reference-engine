@@ -10,11 +10,7 @@
             "type": "shell",
             "command": "python src/api_server.py",
             "options": {
-                "cwd": "${workspaceFolder}/reference_engine",
-                "env": {
-                    "SCS_MODE": "true",
-                    "LM_MODELS_PATH": "${workspaceFolder}/models"
-                }
+                "cwd": "${workspaceFolder}/reference_engine"
             },
             "isBackground": true,
             "presentation": {
@@ -100,7 +96,7 @@
             "type": "shell",
             "command": "npm run dev",
             "options": {
-                "cwd": "${workspaceFolder}/../b_lm_game_code/game"
+                "cwd": "${workspaceFolder}/../life-matters-game/game"
             },
             "isBackground": true,
             "presentation": {
