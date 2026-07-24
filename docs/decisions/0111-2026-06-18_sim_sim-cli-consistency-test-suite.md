@@ -45,8 +45,14 @@ ADR 判断标准不需要单独立项；但既然问题本身是"两个正式接
 - 新增 `pytest.ini`（`testpaths = tests`）。仓库根目录当时有一个 `pyproject.toml` 不是合法 TOML
   （只是非正式笔记），pytest 默认会尝试解析它作为配置来源并报错退出；`pytest.ini` 优先级更高，
   绕开了这个问题，当时未改动 `pyproject.toml` 本身。**2026-07-24 更新**：确认该文件确实只是
-  asteval/numexpr/sympy 选型的非正式笔记、无任何工具引用后已删除；`pytest.ini` 本身作为正式
-  pytest 配置继续保留，不受影响。
+  asteval/numexpr/sympy 选型的非正式笔记、无任何工具引用后已删除。当前 `testpaths` 实际值是
+  `test_verification`（测试目录后来从 `tests` 重组为 `test_verification`，本条记录的 `tests`
+  是写下本 ADR 时的旧名，未追溯更新）。`pytest.ini` 本身以及 `.pre-commit-config.yaml` 同日
+  一并从仓库根目录挪到 `scripts/`（改名去掉 `.pre-commit-config.yaml` 的前导点），根目录不再
+  放置纯工具配置文件：pytest 改用 `scripts/test.sh` 包装调用（内部 `pytest -c
+  scripts/pytest.ini test_verification`）；pre-commit 用 `pre-commit install -c
+  scripts/pre-commit-config.yaml` 重新生成 `.git/hooks/pre-commit`，`git commit` 时依旧
+  自动触发，无需额外操作。
 
 ## 不在本次范围内
 

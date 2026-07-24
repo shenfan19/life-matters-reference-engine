@@ -59,6 +59,15 @@
   opt"的不对称问题，但属于更大范围的前端内部重构，超出本次"顶层目录改名"范围，留待单独评估
 - `tests/test_sim_cli_consistency.py` 文件名——测试文件名不在本次改名范围内，仅更新其内部 import
 
+## 2026-07-24 更新：`docs/reference_engine/` 嵌套已撤销
+
+本 ADR 引入 `docs/reference_engine/` 嵌套的前提是"多 repo 解压到同一目录联合使用"的发布模式
+（背景第2点）。该发布模式已被放弃：改为各仓库独立并列存放（同一父目录下的 sibling 目录），
+model 仓库路径通过 `LM_MODELS_PATH` 环境变量指定，不再依赖目录重叠/覆盖。`docs/` 跨仓库碰撞
+的前提不再成立，`docs/reference_engine/` 已重新拍平为 `docs/`（`README.md`/`CLAUDE.md`/
+`AGENTS.md` 中的文档索引、`@`-include 路径同步更新）。本 ADR 原文保持不变，仅记录该嵌套决策
+已被后续实践取代。
+
 ## 结果
 
 - `cli/`、`gui/`、`reference_engine/` 三个顶层目录及内部全部 Python import、TS import、`sys.path`、

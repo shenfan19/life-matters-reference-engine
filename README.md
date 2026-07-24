@@ -34,9 +34,9 @@ YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/
 ```
 reference_engine/   Python LM Reference Engine + FastAPI 后端（端口 18080）
 gui/          仿真前端界面（React + Vite，端口 5173）
-cli/          命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/reference_engine/cli.md
+cli/          命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/cli.md
 scripts/      开发工具脚本（i18n、AI 辅助、代码检查等）
-docs/reference_engine/  技术规范与架构决策（ADR）
+docs/  技术规范与架构决策（ADR）
 ```
 
 YAML 模型生态见 → [life-matters-models](https://github.com/shenfan19/life-matters-models)
@@ -104,7 +104,7 @@ python cli/main.py <model.yaml> --opt-only
 python cli/batch.py --input-dir <models_folder>
 ```
 
-输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/reference_engine/cli.md](docs/reference_engine/cli.md)。
+输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/cli.md](docs/cli.md)。
 
 ---
 
@@ -122,21 +122,21 @@ python cli/batch.py --input-dir <models_folder>
 
 | 文档 | 内容 |
 |------|------|
-| [docs/reference_engine/design.md](docs/reference_engine/design.md) | Reference Engine 软件设计（Regimen K×4、会话管理） |
-| [docs/reference_engine/impl.md](docs/reference_engine/impl.md) | Reference Engine 实现细节 |
-| [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
-| [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
-| [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
-| [docs/reference_engine/deploy_scs.md](docs/reference_engine/deploy_scs.md) | SCS 公网部署指南（DigitalOcean 等云主机，systemd + Nginx） |
-| [docs/reference_engine/evidence/conversion.md](docs/reference_engine/evidence/conversion.md) | Evidence 8 种子类型换算公式、溯源字段（权威实现描述） |
-| [docs/reference_engine/evidence/applies_to.md](docs/reference_engine/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
-| [docs/reference_engine/mc.md](docs/reference_engine/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
+| [docs/design.md](docs/design.md) | Reference Engine 软件设计（Regimen K×4、会话管理） |
+| [docs/impl.md](docs/impl.md) | Reference Engine 实现细节 |
+| [docs/requirements.md](docs/requirements.md) | 软件需求文档 |
+| [docs/opt.md](docs/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
+| [docs/cli.md](docs/cli.md) | CLI 批量运行接口说明 |
+| [docs/deploy_scs.md](docs/deploy_scs.md) | SCS 公网部署指南（DigitalOcean 等云主机，systemd + Nginx） |
+| [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence 8 种子类型换算公式、溯源字段（权威实现描述） |
+| [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
+| [docs/mc.md](docs/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
 | [test_verification/verification_report.md](test_verification/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
 | [models/test_validation/validation_report.md](models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
 | [models/test_fixtures/fixture_catalog.md](models/test_fixtures/fixture_catalog.md) | test_fixtures fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
-| [docs/reference_engine/ui_guidelines.md](docs/reference_engine/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
-| [docs/reference_engine/data_flow.md](docs/reference_engine/data_flow.md) | 数据流设计 |
-| [docs/reference_engine/decisions/README.md](docs/reference_engine/decisions/README.md) | 架构决策记录索引（ADR） |
+| [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
+| [docs/data_flow.md](docs/data_flow.md) | 数据流设计 |
+| [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR） |
 
 ---
 
