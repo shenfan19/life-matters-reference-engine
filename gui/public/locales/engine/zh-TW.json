@@ -1,7 +1,7 @@
 {
   "app.title": "Life Matters",
   "about.name": "Life Matters",
-  "app.subtitle": "生命體徵軌跡仿真與優化平台",
+  "app.engine_subtitle": "面向醫學與社會 LM 模型的參考實現引擎",
   "menu.calculator": "計算工具",
   "menu.loader": "模型加載",
   "menu.simulator": "仿真器",
@@ -123,6 +123,7 @@
   "sim.msg.component_model_hint": "此檔案為庫組件——不依賴關聯模型時仿真結果可能不完整",
   "about.subtitle": "參考實現引擎",
   "about.subtitle2": "醫學與社會學模擬與優化平台",
+  "about.subtitle_tooltip": "LM format 的參考實現——理論上也可以有其他引擎實現同一規範",
   "about.affiliation": "中山大學",
   "about.homepage": "主頁",
   "about.close": "關閉",

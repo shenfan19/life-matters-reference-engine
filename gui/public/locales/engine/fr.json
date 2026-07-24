@@ -1,7 +1,7 @@
 {
   "app.title": "Life Matters",
   "about.name": "Life Matters",
-  "app.subtitle": "Plateforme de simulation et d'optimisation de trajectoires de signes vitaux",
+  "app.engine_subtitle": "Moteur de référence pour les modèles LM médicaux et sociaux",
   "menu.calculator": "Calculateur",
   "menu.loader": "Chargeur de modèle",
   "menu.simulator": "Simulateur",
@@ -123,6 +123,7 @@
   "sim.msg.component_model_hint": "Ce fichier est un composant de bibliothèque — les résultats peuvent être incomplets sans ses modèles couplés",
   "about.subtitle": "Moteur de référence",
   "about.subtitle2": "pour la simulation et l'optimisation médicale et sociale",
+  "about.subtitle_tooltip": "Implémentation de référence du format LM — d'autres moteurs peuvent implémenter la même spécification.",
   "about.affiliation": "Université Sun Yat-Sen",
   "about.homepage": "Page d'accueil",
   "about.close": "Fermer",
