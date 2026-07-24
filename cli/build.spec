@@ -8,7 +8,7 @@
 import sys
 from pathlib import Path
 
-ROOT = Path(SPECPATH).parent          # b_lm_sim_code/
+ROOT = Path(SPECPATH).parent          # life-matters-reference-engine/
 SRC  = str(ROOT / 'reference_engine' / 'src')
 ENG  = str(ROOT / 'reference_engine')
 
