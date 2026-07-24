@@ -42,9 +42,11 @@ ADR 判断标准不需要单独立项；但既然问题本身是"两个正式接
 
 ### 配套基础设施
 
-- 新增 `pytest.ini`（`testpaths = tests`）。仓库根目录已有的 `pyproject.toml` 不是合法 TOML
+- 新增 `pytest.ini`（`testpaths = tests`）。仓库根目录当时有一个 `pyproject.toml` 不是合法 TOML
   （只是非正式笔记），pytest 默认会尝试解析它作为配置来源并报错退出；`pytest.ini` 优先级更高，
-  绕开这个问题，不改动 `pyproject.toml` 本身。
+  绕开了这个问题，当时未改动 `pyproject.toml` 本身。**2026-07-24 更新**：确认该文件确实只是
+  asteval/numexpr/sympy 选型的非正式笔记、无任何工具引用后已删除；`pytest.ini` 本身作为正式
+  pytest 配置继续保留，不受影响。
 
 ## 不在本次范围内
 

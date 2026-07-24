@@ -5,7 +5,7 @@
 > 跨尺度多模型动力学仿真框架，对个体行为（Regimen）进行多目标优化决策。
 
 本仓库包含：仿真后端（FastAPI）、仿真前端 GUI（React）。  
-YAML 模型库独立维护，见 → **[life-matters-model](https://github.com/shenfan19/life-matters-model)**  
+YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**  
 游戏前端独立维护，见 → **[life-matters-game](https://github.com/shenfan19/life-matters-game)**
 
 ---
@@ -39,7 +39,7 @@ scripts/      开发工具脚本（i18n、AI 辅助、代码检查等）
 docs/reference_engine/  技术规范与架构决策（ADR）
 ```
 
-YAML 模型生态见 → [life-matters-model](https://github.com/shenfan19/life-matters-model)
+YAML 模型生态见 → [life-matters-models](https://github.com/shenfan19/life-matters-models)
 
 ---
 
@@ -69,12 +69,22 @@ YAML 模型生态见 → [life-matters-model](https://github.com/shenfan19/life-
 **依赖**：Python 3.10+，Node.js 18+
 
 ```bash
-# 后端
 pip install -r reference_engine/requirements.txt
-cd reference_engine && python src/api_server.py   # http://localhost:18080
+cd gui && npm install && cd ..
+```
 
-# 仿真前端
-cd gui && npm install && npm run dev        # http://localhost:5173
+一键启动后端 + 前端（dev 模式，两个窗口，Ctrl+C / 关闭窗口停止）：
+
+```bash
+./run.sh          # macOS / Linux / Git Bash
+run.cmd           # Windows
+```
+
+或手动分别启动：
+
+```bash
+cd reference_engine && python src/api_server.py   # http://localhost:18080
+cd gui && npm run dev                             # http://localhost:5173
 ```
 
 `gui` 通过 Vite proxy 将 `/api` 转发至后端 `:18080`。
@@ -104,7 +114,7 @@ python cli/batch.py --input-dir <models_folder>
 
 **前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
 
-**如何添加模型？** 将 `.yaml` 放入 `../b_lm_model/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [life-matters-model/docs/model.md](https://github.com/shenfan19/life-matters-model/blob/main/docs/model.md)。
+**如何添加模型？** 将 `.yaml` 放入 `../life-matters-models/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [life-matters-models/docs/model.md](https://github.com/shenfan19/life-matters-models/blob/main/docs/model.md)。
 
 ---
 
@@ -117,6 +127,7 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/reference_engine/requirements.md](docs/reference_engine/requirements.md) | 软件需求文档 |
 | [docs/reference_engine/opt.md](docs/reference_engine/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
 | [docs/reference_engine/cli.md](docs/reference_engine/cli.md) | CLI 批量运行接口说明 |
+| [docs/reference_engine/deploy_scs.md](docs/reference_engine/deploy_scs.md) | SCS 公网部署指南（DigitalOcean 等云主机，systemd + Nginx） |
 | [docs/reference_engine/evidence/conversion.md](docs/reference_engine/evidence/conversion.md) | Evidence 8 种子类型换算公式、溯源字段（权威实现描述） |
 | [docs/reference_engine/evidence/applies_to.md](docs/reference_engine/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
 | [docs/reference_engine/mc.md](docs/reference_engine/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
-import { ConfigProvider, App as AntdApp, theme, Popover } from 'antd';
+import { ConfigProvider, App as AntdApp, theme, Popover, Tooltip } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined,
@@ -70,16 +70,15 @@ const initialSimulationState: SimulationState = {
 };
 
 // ─── Top title bar ────────────────────────────────────────────────────────────
-function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t, onAbout }: {
-  simMode: 'sim' | 'opt';
+function TitleBar({ isDarkMode, onToggleDark, language, onLanguage, fontSize, onFontSize, c, t, onAbout }: {
   isDarkMode: boolean; onToggleDark: () => void;
   language: string; onLanguage: (l: Language) => void;
   fontSize: number; onFontSize: (n: number) => void;
   c: typeof C.light; t: (k: string) => string;
   onAbout: () => void;
 }) {
-  const subtitle = t(simMode === 'opt' ? 'menu.sub.simulator.opt' : 'menu.sub.simulator.sim');
-  const engineLabel = t('about.subtitle');
+  const engineLabel = t('app.engine_subtitle');
+  const engineTooltip = t('about.subtitle_tooltip');
 
   return (
     <div style={{
@@ -101,9 +100,11 @@ function TitleBar({ simMode, isDarkMode, onToggleDark, language, onLanguage, fon
           }}>
             {t('app.title')}
           </span>
-          <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
-            · {engineLabel} · {subtitle}
-          </span>
+          <Tooltip title={engineTooltip}>
+            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', cursor: 'default' }}>
+              · {engineLabel}
+            </span>
+          </Tooltip>
         </div>
       </div>
 
@@ -375,7 +376,6 @@ function App() {
 
         {/* ── Title bar ── */}
         <TitleBar
-          simMode={simMode}
           isDarkMode={isDarkMode} onToggleDark={() => setIsDarkMode((d: boolean) => !d)}
           language={language} onLanguage={setLanguage}
           fontSize={fontSize} onFontSize={setFontSize}

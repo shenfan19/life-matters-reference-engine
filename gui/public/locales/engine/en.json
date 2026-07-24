@@ -1,6 +1,6 @@
 {
   "app.title": "Life Matters",
-  "app.subtitle": "Vital Signs Simulation & Optimization Platform",
+  "app.engine_subtitle": "Reference Engine for Medical & Social LM Models",
   "menu.calculator": "Calculator",
   "menu.loader": "Model Loader",
   "menu.simulator": "Simulator",
@@ -123,6 +123,7 @@
   "about.name": "Life Matters",
   "about.subtitle": "Reference Engine",
   "about.subtitle2": "for Medical & Social Simulation/Optimization",
+  "about.subtitle_tooltip": "Reference implementation of the LM format — other engines may implement the same spec.",
   "about.affiliation": "Sun Yat-Sen University",
   "about.homepage": "Homepage",
   "about.close": "Close",
