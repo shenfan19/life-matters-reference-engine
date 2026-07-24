@@ -27,7 +27,7 @@ _saved_/
 *.code-workspace
 messages.mo
 
-# Models folder (symlink to b_lm_model/models, not tracked). Anchored to repo
+# Models folder (symlink to life-matters-models/models, not tracked). Anchored to repo
 # root — an unanchored `models/` also matched `test_verification/models/` (the
 # numeric regression test suite, named test_verify/ until 2026-07-21) at any
 # depth, silently keeping it out of git entirely since it was first added
