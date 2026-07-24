@@ -24,7 +24,8 @@
 ## 运行
 
 ```bash
-pytest                    # 用 pytest.ini 里的 testpaths = test_verification，跑全部
+./scripts/test.sh         # 配置在 scripts/pytest.ini，用这个脚本代替直接敲 pytest，跑全部
+pytest -c scripts/pytest.ini test_verification   # 等价的手动写法
 pytest test_verification/errors/           # 只跑错误检测用例
 pytest test_verification/models/           # 只跑数值回归用例
 pytest test_verification/test_schedule_runner.py::test_pulse_value_not_inflated_by_nonzero_bounds_floor
