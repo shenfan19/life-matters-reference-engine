@@ -211,14 +211,58 @@ class Loader:
         if not hasattr(self, '_param_dist_raw'):
             self._param_dist_raw: dict = {}
 
-        # 应用变量
+        # 应用变量：type 只表达角色（state/input/parameter）。若声明 evidence_type，
+        # 说明该变量的 value 是文献原始效应量（OR/HR/RR/Cohen's d 等），Loader 在此原地
+        # 换算为可进公式的系数（同名，不加后缀），换算前的原始值保留在 evidence_raw_value，
+        # 换算逻辑见 docs/model.md「evidence 的 8 种子类型」。声明 evidence_type 的变量，
+        # 角色必须是 parameter（换算结果本身就是机制系数）。
         import re as _re
         _DIST_RE = _re.compile(
             r'^\s*(normal|uniform|lognormal)\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)\s*$'
         )
-        for var_name, var_data in data.get('variables', {}).items():
+        variables_data = data.get('variables', {})
+        for var_name, var_data in variables_data.items():
             if not clear_existing and var_name in self.variables:
                 logger.warning(f"覆盖变量 (从 {module_name}): {var_name}")
+
+            evidence_type = var_data.get('evidence_type')
+            if evidence_type:
+                var_role = VariableType(var_data.get('type', 'parameter'))
+                if var_role != VariableType.parameter:
+                    raise ValueError(
+                        f"变量 '{var_name}' 声明了 evidence_type='{evidence_type}'，"
+                        f"但 type='{var_role.value}'——evidence 换算结果只能是 parameter 角色，"
+                        "请改为 type: parameter"
+                    )
+                raw_value = float(var_data.get('value', 0.0))
+                if evidence_type in ('rr', 'ir', 'ard', 'beta', 'pk'):
+                    effective = raw_value
+                elif evidence_type == 'or':
+                    p0 = float(var_data.get('baseline_prevalence', 0.0))
+                    effective = raw_value / ((1 - p0) + p0 * raw_value)
+                elif evidence_type == 'cohens_d':
+                    sd = float(var_data.get('population_sd', 1.0))
+                    effective = raw_value * sd
+                elif evidence_type == 'hr':
+                    baseline_ref = var_data.get('baseline_ref', '')
+                    baseline_val = float(variables_data.get(baseline_ref, {}).get('value', 0.0))
+                    effective = baseline_val * raw_value
+                else:
+                    logger.warning(f"未知 evidence_type '{evidence_type}'（变量 {var_name}），跳过换算")
+                    continue
+
+                self.variables[var_name] = Variable(
+                    description=var_data.get('description', ''),
+                    value=effective,
+                    type=VariableType.parameter,
+                    unit=var_data.get('unit'),
+                    reference=var_data.get('reference'),
+                    locator=var_data.get('locator'),
+                    evidence_type=evidence_type,
+                    evidence_raw_value=raw_value
+                )
+                self.variable_history[var_name] = [effective]
+                continue
 
             value = var_data.get('value', var_data.get('default', 0.0))
             if isinstance(value, str):
@@ -247,44 +291,6 @@ class Loader:
             )
             self.variable_history[var_name] = [self.variables[var_name].value]
 
-        # 应用 evidence：Loader 在加载阶段自动把原始文献效应量换算为可进公式的系数，
-        # 换算后的变量与 evidence 同名（不加后缀），dynamics/formulas 直接引用该名字即可。
-        # 换算逻辑见 docs/model.md「evidence 的 8 种子类型」。
-        for ev_name, ev_data in data.get('evidence', {}).items():
-            if ev_name in self.variables:
-                raise ValueError(
-                    f"evidence 名称 '{ev_name}' 与 variables 中已声明的变量重名，请改名以避免冲突"
-                )
-            ev_type = ev_data.get('type')
-            value = float(ev_data.get('value', 0.0))
-            if ev_type in ('rr', 'ir', 'ard', 'beta', 'pk'):
-                effective = value
-            elif ev_type == 'or':
-                p0 = float(ev_data.get('baseline_prevalence', 0.0))
-                effective = value / ((1 - p0) + p0 * value)
-            elif ev_type == 'cohens_d':
-                sd = float(ev_data.get('population_sd', 1.0))
-                effective = value * sd
-            elif ev_type == 'hr':
-                baseline_ref = ev_data.get('baseline_ref', '')
-                baseline_val = float(data.get('evidence', {}).get(baseline_ref, {}).get('value', 0.0))
-                effective = baseline_val * value
-            else:
-                logger.warning(f"未知 evidence 类型 '{ev_type}'（变量 {ev_name}），跳过换算")
-                continue
-
-            self.variables[ev_name] = Variable(
-                description=ev_data.get('description', ''),
-                value=effective,
-                type=VariableType.parameter,
-                unit=ev_data.get('unit'),
-                reference=ev_data.get('reference'),
-                locator=ev_data.get('locator'),
-                evidence_type=ev_type,
-                evidence_raw_value=value
-            )
-            self.variable_history[ev_name] = [effective]
-
         # applies_to：可选，把 ir/ard/hr/rr/or 的换算结果自动接入某个状态变量的 dynamics。
         # cohens_d/beta/pk 不支持（应用方式不唯一，必须手写）。设计依据见
         # docs/model.md「自动接入 dynamics」一节及 home/decisions/2026-06-22_evidence-to-dynamics讨论纪要.md。
@@ -293,68 +299,73 @@ class Loader:
         # 速率的"自然时间单位"（rate_unit，如年发病率的 year）和公式的 step_unit
         # （validator 只接受 minute|hour|day）是两个独立的量，二者比值算成一个数值系数
         # 直接写进生成的 dynamics 表达式里，不依赖 Formula.step_unit 表达年/周/月。
-        evidence_dict = data.get('evidence', {})
         applies_to_targets: Dict[str, str] = {}
         valid_formula_step_units = {'minute', 'hour', 'day'}
-        for ev_name, ev_data in evidence_dict.items():
-            applies_to = ev_data.get('applies_to')
+        for var_name, var_data in variables_data.items():
+            applies_to = var_data.get('applies_to')
             if not applies_to:
                 continue
-            ev_type = ev_data.get('type')
-            if ev_type in ('cohens_d', 'beta', 'pk'):
+            evidence_type = var_data.get('evidence_type')
+            if not evidence_type:
                 raise ValueError(
-                    f"evidence '{ev_name}'（type: {ev_type}）不支持 applies_to 自动接入 dynamics，"
+                    f"变量 '{var_name}' 声明了 applies_to 但未声明 evidence_type，"
+                    "applies_to 仅用于把 evidence 换算结果自动接入某个状态变量的 dynamics，"
+                    "请去掉 applies_to 或补上 evidence_type"
+                )
+            if evidence_type in ('cohens_d', 'beta', 'pk'):
+                raise ValueError(
+                    f"evidence '{var_name}'（evidence_type: {evidence_type}）不支持 applies_to 自动接入 dynamics，"
                     "该子类型的应用方式不唯一（过渡形式/回归结构/PK 模型结构不唯一），"
                     "请去掉 applies_to 并手写 dynamics"
                 )
             if applies_to not in self.variables:
                 raise ValueError(
-                    f"evidence '{ev_name}' 的 applies_to 目标 '{applies_to}' 未在 variables 中声明"
+                    f"evidence '{var_name}' 的 applies_to 目标 '{applies_to}' 未在 variables 中声明"
                 )
             if applies_to in applies_to_targets:
                 raise ValueError(
                     f"目标状态 '{applies_to}' 被多个 evidence（'{applies_to_targets[applies_to]}' 和 "
-                    f"'{ev_name}'）同时声明 applies_to，多因子组合方式（相乘/相加）需要建模判断，"
+                    f"'{var_name}'）同时声明 applies_to，多因子组合方式（相乘/相加）需要建模判断，"
                     "请去掉 applies_to 并手写 dynamics"
                 )
-            step_unit = str(ev_data.get('step_unit', '')).lower()
+            step_unit = str(var_data.get('step_unit', '')).lower()
             if step_unit not in valid_formula_step_units:
                 raise ValueError(
-                    f"evidence '{ev_name}' 使用 applies_to 时必须声明合法的 step_unit"
+                    f"evidence '{var_name}' 使用 applies_to 时必须声明合法的 step_unit"
                     f"（{'/'.join(sorted(valid_formula_step_units))} 之一，与 formulas.step_unit 规则一致）"
                 )
 
-            if ev_type in ('rr', 'or'):
-                baseline_ref = ev_data.get('baseline_ref')
-                baseline_entry = evidence_dict.get(baseline_ref) if baseline_ref else None
+            if evidence_type in ('rr', 'or'):
+                baseline_ref = var_data.get('baseline_ref')
+                baseline_entry = variables_data.get(baseline_ref) if baseline_ref else None
                 if not baseline_ref or baseline_ref not in self.variables or baseline_entry is None:
                     raise ValueError(
-                        f"evidence '{ev_name}'（type: {ev_type}）使用 applies_to 时必须声明 "
+                        f"evidence '{var_name}'（evidence_type: {evidence_type}）使用 applies_to 时必须声明 "
                         "baseline_ref，且必须指向同一文件内一个 ir/ard 类型的 evidence 条目"
                     )
                 rate_unit = str(baseline_entry.get('rate_unit', '')).lower()
-                expr_template = f"{applies_to} + {baseline_ref} * {ev_name} * {{factor}} * step"
-            elif ev_type == 'hr':
-                baseline_ref = ev_data.get('baseline_ref', '')
-                baseline_entry = evidence_dict.get(baseline_ref, {})
+                expr_template = f"{applies_to} + {baseline_ref} * {var_name} * {{factor}} * step"
+            elif evidence_type == 'hr':
+                baseline_ref = var_data.get('baseline_ref', '')
+                baseline_entry = variables_data.get(baseline_ref, {})
                 rate_unit = str(baseline_entry.get('rate_unit', '')).lower()
-                expr_template = f"{applies_to} + {ev_name} * {{factor}} * step"
+                expr_template = f"{applies_to} + {var_name} * {{factor}} * step"
             else:  # ir / ard：自身就是基线速率
-                rate_unit = str(ev_data.get('rate_unit', '')).lower()
-                expr_template = f"{applies_to} + {ev_name} * {{factor}} * step"
+                rate_unit = str(var_data.get('rate_unit', '')).lower()
+                expr_template = f"{applies_to} + {var_name} * {{factor}} * step"
 
             if rate_unit not in TIME_UNIT_SECONDS:
                 raise ValueError(
-                    f"evidence '{ev_name}' 使用 applies_to 时必须能确定 rate_unit"
+                    f"evidence '{var_name}' 使用 applies_to 时必须能确定 rate_unit"
                     f"（{'/'.join(TIME_UNIT_SECONDS.keys())} 之一）——ir/ard 在自身条目声明，"
                     "hr/rr/or 在其 baseline_ref 指向的 ir/ard 条目声明"
                 )
             factor = TIME_UNIT_SECONDS[step_unit] / TIME_UNIT_SECONDS[rate_unit]
             expr = expr_template.format(factor=repr(factor))
 
-            applies_to_targets[applies_to] = ev_name
-            self.formulas[f"_auto_evidence_{ev_name}"] = Formula(
-                description=f"自动生成：evidence '{ev_name}' 接入 '{applies_to}'（applies_to）",
+            applies_to_targets[applies_to] = var_name
+            self.formulas[f"_auto_evidence_{var_name}"] = Formula(
+                description=f"自动生成：evidence '{var_name}' 接入 '{applies_to}'（applies_to）",
                 dynamics={applies_to: expr},
                 step_unit=step_unit,
                 step_size_sec=TIME_UNIT_SECONDS[step_unit],

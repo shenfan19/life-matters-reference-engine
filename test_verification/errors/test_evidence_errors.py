@@ -19,11 +19,11 @@ def _make_engine() -> ReferenceEngine:
     return ReferenceEngine(models_directory=str(MODELS_DIR))
 
 
-def test_evidence_name_colliding_with_variable_is_rejected():
+def test_evidence_type_on_non_parameter_role_is_rejected():
     engine = _make_engine()
     assert not engine.load_models(['test_fixtures/invalid/test_invalid_evidence_name_collision'])
     assert 'baseline_rate' in engine.loader.last_error
-    assert '重名' in engine.loader.last_error
+    assert 'parameter' in engine.loader.last_error
 
 
 def test_evidence_applies_to_missing_baseline_ref_is_rejected():
