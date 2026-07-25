@@ -490,9 +490,9 @@ tunable_params:
 
 ### Evidence 变量（取代旧 probability_constant）
 
-> **注意**：`probability_constant` / `probability_params:` 已退役。发病率、死亡率及所有文献效应量统一用 `evidence:` 节下的对应 `type` 表示。
+> **注意**：`probability_constant` / `probability_params:` 已退役。发病率、死亡率及所有文献效应量统一用 `variables:` 条目上对应的 `evidence_type` 表示。
 
-**概念**：从文献直接读入的效应量，由 Loader 自动换算，换算结果与 evidence 同名写入 `parameter` 类型变量（不是独立的第 4 种类型，不加 `_effective` 后缀），Simulator 只见换算结果，永不进入优化。换算公式、溯源字段、`applies_to` 自动接入 dynamics 的机制见 [evidence/conversion.md](evidence/conversion.md)、[evidence/applies_to.md](evidence/applies_to.md)。
+**概念**：从文献直接读入的效应量，声明为某个 `variables:` 条目的 `evidence_type` 字段（`type` 仍是 `parameter`），由 Loader 自动换算，换算结果原地写回同一个变量（不是独立的第 4 种类型，不加 `_effective` 后缀），Simulator 只见换算结果，永不进入优化。换算公式、溯源字段、`applies_to` 自动接入 dynamics 的机制见 [evidence/conversion.md](evidence/conversion.md)、[evidence/applies_to.md](evidence/applies_to.md)。
 
 仿真引擎的处理方式：不随机采样，直接以期望值计算确定性轨迹：
 
@@ -1075,7 +1075,7 @@ YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提�
 
 ### Evidence 换算（加载期自动完成）
 
-Loader 遍历 YAML `evidence:` 节，按 `type` 字段执行换算，换算结果与 evidence 同名写入 `self.variables`（`parameter` 类型，不加 `_effective` 后缀），`formulas`/`dynamics` 直接用该名字引用。8 种子类型的具体换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
+Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 字段的条目，按该字段执行换算，换算结果原地写回 `self.variables`（`type` 仍是 `parameter`，不加 `_effective` 后缀），`formulas`/`dynamics` 直接用该名字引用。8 种子类型的具体换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
 
 ### Metadata description
 
