@@ -201,7 +201,14 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                         {outputVars.includes(name) && <span style={{ color: c.textMute, marginLeft: 4 }}>({t('sim.intro.output_marker')})</span>}
                       </td>
                       <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.description || ''}>{d.description || '—'}</td>
-                      <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>{varTypeBadge(d.type)}</td>
+                      <td style={{ ...tdS, color: c.textSec, whiteSpace: 'nowrap' }}>
+                        {varTypeBadge(d.type)}
+                        {d.evidence_type && (
+                          <Tooltip title={`${t('sim.var.type.evidence')}: ${d.evidence_type}${d.evidence_raw_value != null ? ` (raw ${d.evidence_raw_value})` : ''}`}>
+                            <span style={{ marginLeft: 3, color: c.textMute, cursor: 'help' }}>•</span>
+                          </Tooltip>
+                        )}
+                      </td>
                       <td style={{ ...tdS, fontFamily: 'monospace', color: c.primary, whiteSpace: 'nowrap' }}>{String(d.value ?? '—')}</td>
                       <td style={{ ...tdS, color: c.textMute, whiteSpace: 'nowrap' }}>{d.unit || '—'}</td>
                       <td style={tdS}><SourceTag source={sourceOf('variables', name)} /></td>

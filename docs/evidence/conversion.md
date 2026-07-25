@@ -1,6 +1,6 @@
 # Evidence 换算：8 种子类型的计算公式
 
-> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `ModelStructure.load()` 处理 `evidence:` 节的那部分代码）。YAML 里怎么声明 `evidence:` 字段、`parameter` 和 `evidence` 该怎么选，见 `b_lm_model` 仓库 `docs/model.md`「变量类型（3 种）+ evidence 顶层换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成公式能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `b_lm_model` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`。
+> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `b_lm_model` 仓库 `docs/model.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成公式能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `b_lm_model` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
 >
 > 本文件面向两类读者：已经熟悉流行病学/生物统计效应量（RR、OR、HR、Cohen's d 等）的人，可以直接看下面的速查表和公式；不熟悉这些统计量的人（比如只懂工程、只懂某一个学科的建模者），请从「换算解决的问题」开始看——每种子类型都配了生活化的例子、正式公式和"为什么这样算是对的"的推导，不要求先有生物统计背景。
 
@@ -16,7 +16,7 @@
 
 ```mermaid
 flowchart TD
-    Y["YAML evidence 条目<br/>声明 type + value + 辅助字段"] --> T{"按 type 分支换算"}
+    Y["variables: 条目<br/>声明 evidence_type + value + 辅助字段"] --> T{"按 evidence_type 分支换算"}
     T -->|"rr / ard / ir / beta / pk"| S1["effective = value<br/>（原样透传，已经是可用系数）"]
     T -->|"or（需 baseline_prevalence）"| S2["effective = OR / ((1 − p0) + p0 × OR)"]
     T -->|"hr（需 baseline_ref）"| S3["effective = baseline_value × HR"]
@@ -37,7 +37,7 @@ flowchart TD
 
 ## 换算结果如何存放
 
-Loader 遍历 YAML `evidence:` 节，按 `type` 换算出 `effective` 值后，**以 evidence 同名**写入 `self.variables[ev_name]`，类型为 `parameter`，不新增独立的 `VariableType.evidence`。`formulas`/`dynamics` 直接引用这个名字即可，不需要记 `_effective` 之类的衍生名。
+Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `evidence_type` 换算出 `effective` 值后，**原地**写入 `self.variables[var_name]`（同名覆盖，`type` 仍是 `parameter`），不新增独立的 `VariableType.evidence`。`formulas`/`dynamics` 直接引用这个名字即可，不需要记 `_effective` 之类的衍生名。
 
 换算后的 `Variable` 额外带两个溯源字段（`reference_engine/src/model_structure/base.py`），仅供查询/调试，不参与仿真计算：
 
@@ -61,7 +61,7 @@ Loader 遍历 YAML `evidence:` 节，按 `type` 换算出 `effective` 值后，*
 | `beta`     | 回归系数 Regression Coefficient     | $\text{effective} = \beta$                              | —                                |
 | `pk`       | PK/PD 参数                          | $\text{effective} = \theta$（参数原样透传）             | —                                |
 
-未知 `type` 不会报错，只会打印一条 warning 并跳过该条目的换算（该 evidence 不会出现在 `self.variables` 中）。
+未知 `evidence_type` 不会报错，只会打印一条 warning 并跳过该条目的换算（该变量不会出现在 `self.variables` 中）。
 
 下面逐一详解每种子类型：它在现实中衡量什么、正式公式、为什么换算公式长这样（或者为什么不需要换算）、用真实 fixture 数字过一遍具体计算。
 
@@ -191,7 +191,7 @@ $$
 
 30 天累积 ≈ $0.009/365 \times 30 \approx 0.00074$。
 
-**必填字段**：`baseline_ref`（指向同一份 YAML 内另一个 evidence 条目的名字，取其**原始值**——注意下方「已知实现细节」一节的重要限制）。
+**必填字段**：`baseline_ref`（指向同一份 YAML 内另一个声明了 `evidence_type` 的 `variables:` 条目名字，取其**原始值**——注意下方「已知实现细节」一节的重要限制）。
 
 ### `ard`：绝对风险差（Absolute Risk Difference）
 
@@ -353,4 +353,4 @@ $$
 
 ## 已知实现细节（写文档时须如实反映，非建议行为）
 
-**`hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型**：上表 `hr` 行的 $h_0$ 直接取 `evidence[baseline_ref]['value']`（原始值，未经该条目自身的类型换算）。这在 `baseline_ref` 指向 `ir`/`ard` 条目时无影响（这两种类型的 $\text{effective} = \text{value}$，原始值与换算值相同），但如果建模者把 `baseline_ref` 误指向一个 `rr`/`or`/`cohens_d` 等条目，Loader 不会报错，会静默用其原始文献值参与乘法，得到语义不对的结果。举例：若误把 `baseline_ref` 指向一个 $OR = 1.65$ 的条目，Loader 会直接用 1.65（换算前的原始 OR）而不是换算后的 $\text{effective} \approx 1.5306$ 去做乘法，得到的 `hr` effective 会比预期偏大且单位含义错误（1.65 是无量纲比值，不是可以当"基线速率"用的绝对速率）。`applies_to` 路径（见 [applies_to.md](applies_to.md)）对 `baseline_ref` 有更严格的校验（强制要求指向 `ir`/`ard`），但这条基础换算路径没有——即不使用 `applies_to` 时，`baseline_ref` 指向非 `ir`/`ard` 条目不会被拦截。建模时应始终让 `hr`/`rr`/`or` 的 `baseline_ref` 指向 `ir`/`ard` 条目。
+**`hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型**：上表 `hr` 行的 $h_0$ 直接取 `variables[baseline_ref]['value']`（原始值，未经该条目自身的类型换算）。这在 `baseline_ref` 指向 `ir`/`ard` 条目时无影响（这两种类型的 $\text{effective} = \text{value}$，原始值与换算值相同），但如果建模者把 `baseline_ref` 误指向一个 `rr`/`or`/`cohens_d` 等条目，Loader 不会报错，会静默用其原始文献值参与乘法，得到语义不对的结果。举例：若误把 `baseline_ref` 指向一个 $OR = 1.65$ 的条目，Loader 会直接用 1.65（换算前的原始 OR）而不是换算后的 $\text{effective} \approx 1.5306$ 去做乘法，得到的 `hr` effective 会比预期偏大且单位含义错误（1.65 是无量纲比值，不是可以当"基线速率"用的绝对速率）。`applies_to` 路径（见 [applies_to.md](applies_to.md)）对 `baseline_ref` 有更严格的校验（强制要求指向 `ir`/`ard`），但这条基础换算路径没有——即不使用 `applies_to` 时，`baseline_ref` 指向非 `ir`/`ard` 条目不会被拦截。建模时应始终让 `hr`/`rr`/`or` 的 `baseline_ref` 指向 `ir`/`ard` 条目。
