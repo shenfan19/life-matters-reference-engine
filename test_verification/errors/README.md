@@ -24,8 +24,8 @@
   废弃符号 `dt`）
 - `test_import_errors.py` — `loader.py` 的 import/YAML 结构校验（循环 import、越出 models
   根目录、顶层 YAML 非 mapping）
-- `test_evidence_errors.py` — `loader.py` 的 evidence 校验（名称冲突、`applies_to` 缺
-  `baseline_ref`）
+- `test_evidence_errors.py` — `loader.py` 的 evidence 校验（`evidence_type` 声明在非
+  `parameter` 角色变量上、`applies_to` 缺 `baseline_ref`）
 - `test_date_errors.py` — `validation.py`（`end_date` 早于 `start_date`）；注意这一条**不**
   在 `load_models()` 阶段失败，只在 `run_simulation()` 才失败，测试里已注明原因
 
