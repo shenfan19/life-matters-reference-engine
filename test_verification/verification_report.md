@@ -5,7 +5,7 @@
 
 # 引擎实现正确性与数值精度验证报告（Verification）
 
-> 本文件回答的是 **verify** 侧的问题——"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理/训练适应机制（那是 **validate** 侧的问题，见 `models/validation/validation_report.md`）。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性（pytest 套件）和数值精度（解析解对比 + 步长收敛性检验），姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
+> 本文件回答的是 **verify** 侧的问题——"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理/训练适应机制（那是 **validate** 侧的问题，见 `models/test_validation/validation_report.md`，该文件"Verify 前提"一节摘录了本文件的核心结论）。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性（pytest 套件）和数值精度（解析解对比 + 步长收敛性检验），姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
 >
 > `test_verification/` 这个目录本身的定位、和 `models/test_fixtures/` 的关系，见同目录 [`README.md`](README.md)。
 
@@ -173,4 +173,4 @@ python reference_engine/scripts/validate_banister_step_grid.py # 协议 V2 + 2.6
 | 第1节（引擎实现正确性）           | Paper 1 §5.1（软件工程质量） |
 | 第2节（数值精度，Banister V1/V2） | Paper 1 §5.2（数值验证）     |
 
-其余层次（文献对标 → Paper 2、优化合理性 → Paper 3）见 `models/validation/validation_report.md` 附录。
+其余层次（文献对标 → Paper 2、优化合理性 → Paper 3）见 `models/test_validation/validation_report.md` 附录。
