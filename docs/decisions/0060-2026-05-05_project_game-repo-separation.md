@@ -8,7 +8,7 @@
 
 ## 背景
 
-Paper 1（软件工具论文）提交前需将 sim repo 转为 public。game 层与论文无关，且代码风格、目标受众均不同，混在同一 repo 中会让论文读者困惑，必须先行分离。
+sim repo 计划转为 public，以便随论文投稿开放代码。game 层与论文无关，且代码风格、目标受众均不同，混在同一 repo 中会让论文读者困惑，必须先行分离。
 
 ---
 
@@ -47,7 +47,7 @@ sim App.tsx 移除 Game Builder 标签和 StoryEngine 相关代码，保留 "Gam
 
 将 `models/` 独立为第三个 repo（`lm-models`），供 sim 和 game 作为 git submodule 引用，并对外部模型贡献者开放。
 
-**暂缓原因：** 当前为 solo 开发者，5月31提交论文，submodule 工作流增加调试摩擦。等论文提交、有外部贡献者意向时再执行。届时执行步骤：
+**暂缓原因：** 临近一次论文投稿节点，submodule 工作流增加调试摩擦，投入产出比不划算。等论文提交、有外部贡献者意向时再执行。届时执行步骤：
 1. `models/` 独立为 `lm-models` repo
 2. sim repo 引入 submodule
 3. game repo 引入 submodule，StoryEditor 改为 js-yaml 直接读本地 YAML
