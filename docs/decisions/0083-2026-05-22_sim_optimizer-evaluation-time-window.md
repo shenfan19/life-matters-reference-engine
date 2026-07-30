@@ -51,4 +51,4 @@ step_size:  { value: stepValue, unit: stepUnit },
 - `docs/model.md`：optimizer schema 新字段
 - 内部 LM format 规范草稿：同步 optimizer block schema
 - `docs/opt.md`：新增评估时间窗章节
-- Paper3 YAML：`ckd_protein_pareto_a4_p3`、`hypertension_gout_3obj_a5_p3`、`smoking_stress_a6_p3` 补充 `start_date`/`end_date`
+- 案例模型 YAML：`ckd_protein_pareto_a4_p3`、`hypertension_gout_3obj_a5_p3`、`smoking_stress_a6_p3` 补充 `start_date`/`end_date`

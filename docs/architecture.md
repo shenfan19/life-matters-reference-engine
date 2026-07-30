@@ -84,13 +84,13 @@ if all_errors:
 - [`PluginManager`](../../reference_engine/src/plugin_manager.py) 递归扫描 `plugins/` 下的 `manifest.yaml`（最多 2 层深度），`load_plugin`/`run_plugin` 动态 `importlib` 加载插件的 `backend.py` 并实例化执行。
 - [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) 注册了 `/api/plugins`（列表）、`/api/plugins/{id}/ui-page`（插件自定义 UI 的 iframe 页面）、`/api/plugins/{id}/run`（执行）三个端点，`api_server.py` 里正常挂载。
 - [`plugin_context.py`](../../reference_engine/src/plugin_context.py) 的 `PluginContext` 给插件提供了统一的日志/缓存/（可选）重新触发仿真的接口。
-- 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于"Paper 2 第二层验证"）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
+- 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于三层验证框架的第二层文献对标）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
 
 **前端完全没有接入**——用户在界面上找不到任何插件入口：
 
 1. [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx)：唯一会调用 `/api/plugins/{id}/run` 的通用表单组件，在 `gui/src` 全树里零 import，没有任何页面渲染它。
 
-（以上现状 2026-06-24 首次记录于 [`b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md`](../../../b_lm_home/tasks/2026-06-24_task_plugin-frontend-dead-code.md)，2026-07-07 复核仍然成立；2026-07-10 已执行方向 A 的确定性第一步，见下。）
+（以上现状 2026-06-24 首次记录，2026-07-07 复核仍然成立；2026-07-10 已执行方向 A 的确定性第一步，见下。）
 
 ### 2.3 后续可能的两个方向
 

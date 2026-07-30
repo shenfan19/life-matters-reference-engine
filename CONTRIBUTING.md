@@ -22,7 +22,7 @@
 
 ## 如何贡献
 
-1.  报告 Bug：如果您发现任何问题，请在我们的 [Issue Tracker](https://github.com/shenfan19/life-matters/issues) 上提交一个 Bug 报告。
+1.  报告 Bug：如果您发现任何问题，请在我们的 [Issue Tracker](https://github.com/shenfan19/life-matters-reference-engine/issues) 上提交一个 Bug 报告。
 2.  提交功能请求：有新的想法或希望看到的功能？提交一个功能请求！
 3.  编写代码：
      Fork 本仓库。
