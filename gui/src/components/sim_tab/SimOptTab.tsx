@@ -3,6 +3,7 @@ import { Button, Dropdown, Empty, message, Tooltip } from 'antd';
 import { CopyOutlined, DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { getC } from '../../core/theme';
 import ParetoChart from '../opt_tab/ParetoChart';
+import ParetoRegroupChart from '../opt_tab/ParetoRegroupChart';
 import OptProgressChart from '../opt_tab/OptProgressChart';
 
 interface SimOptTabProps {
@@ -32,7 +33,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
   onDownloadModel, hasExistingResults, onSendToSim, isActiveModel = true,
 }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'process', 'solutions', 'log']));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'regroup', 'process', 'solutions', 'log']));
   const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set());
 
   // When another model is running, hide live progress/log; keep completed results.
@@ -232,6 +233,13 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
             : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={activeRunning ? t('sim.opt.waiting_first') : t('sim.opt.show_after_run')} />}
         </div>
       </Section>
+
+      {/* Regroup — pick x/y/group fields from the current pareto_front, no re-run needed */}
+      {liveResult?.pareto_front?.length > 0 && (
+        <Section id="regroup" title="Regroup">
+          <ParetoRegroupChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+        </Section>
+      )}
 
       {/* Process — live metric cards + progress charts (merged from Live) */}
       <Section id="process" title="Process" badge={activeCurGen > 0 ? `Gen ${activeCurGen}/${optTotalGen || '-'}` : t('sim.opt.badge.points', { n: activeHistory.length })}>
