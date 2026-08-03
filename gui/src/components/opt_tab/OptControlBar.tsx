@@ -77,6 +77,7 @@ export function OptControlBar({
             onClick={isOtherRunning ? undefined : (optRunning ? onCancel : onStart)}
             disabled={!selectedModel || isOtherRunning}
             style={{ whiteSpace: 'nowrap' }}
+            data-testid="opt-run-button"
           >
             {!isOtherRunning && optRunning ? t('sim.opt.stop_opt') : t('sim.control.run')}
           </Button>
