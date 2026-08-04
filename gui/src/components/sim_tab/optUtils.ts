@@ -48,7 +48,10 @@ export function buildOptInputEventsFromYAML(regimens: any[]): InputEvent[] {
     };
     const opt = s.optimize;
     if (opt) {
-      if (Array.isArray(opt.value) && opt.value.length >= 2) { ev.optimizeValue = true; ev.valueBounds = [opt.value[0], opt.value[1]]; }
+      if (Array.isArray(opt.value) && opt.value.length >= 2) {
+        ev.optimizeValue = true; ev.valueBounds = [opt.value[0], opt.value[1]];
+        if (opt.value_step) ev.valueStep = opt.value_step;
+      }
       const t2win = opt.time_start;
       if (Array.isArray(t2win) && t2win.length === 2) {
         ev.optimizeTime = true; ev.timeWindowStart = t2win[0]; ev.timeWindowEnd = t2win[1];
@@ -104,8 +107,10 @@ export function buildOptRegimens(
       if (hasAnyOpt(ev, activeInputVarNames)) {
         const optBlock: Record<string, any> = {};
         // T1: value bounds (only when value itself is being optimized)
-        if (ev.optimizeValue && ev.valueBounds) optBlock.value = ev.valueBounds;
-        else entry.value = ev.value;
+        if (ev.optimizeValue && ev.valueBounds) {
+          optBlock.value = ev.valueBounds;
+          if (ev.valueStep) optBlock.value_step = ev.valueStep;
+        } else entry.value = ev.value;
         // T2: time_start search window (1-dim; time_end follows at a fixed
         // offset = timeEnd - timeStart). entry.time_start/time_end carry the
         // current values as the width template for backend decoding (ADR 0100).

@@ -20,7 +20,7 @@ task7) — this file keeps only the main flow:
 import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 
-from .optimizer_parsing import _expand_time_window, _hhmm_to_min, _shift_time
+from .optimizer_parsing import _expand_time_window, _hhmm_to_min, _shift_time, _snap_to_step
 from .optimizer_eval import _run_sim, _eval_F, _eval_G
 from .optimizer_backends import _run_nsga2, _run_scipy
 from .validation import validate_simulator_dates, validate_optimizer_regimens
@@ -107,9 +107,11 @@ def run_optimizer(engine, model_name: str,
         # T1: optimize.value = [lo, hi]
         val_bounds = opt.get('value')
         if val_bounds is not None:
+            v_lo, v_hi = float(val_bounds[0]), float(val_bounds[1])
             var_specs.append({'kind': 'value', 'variable': var, 'time': time_val,
-                              'label': label, 'entry': e})
-            lo_list.append(float(val_bounds[0])); hi_list.append(float(val_bounds[1]))
+                              'label': label, 'entry': e,
+                              'lo': v_lo, 'hi': v_hi, 'step': opt.get('value_step')})
+            lo_list.append(v_lo); hi_list.append(v_hi)
 
         # T2: optimize.time_start = ["HH:MM", "HH:MM"].
         # 1-dim: only time_start is searched, time_end follows at a fixed offset
@@ -234,7 +236,11 @@ def run_optimizer(engine, model_name: str,
                 decoded[eid] = d0
             d = decoded[eid]
             if spec['kind'] == 'value':
-                d['value'] = float(x[i])
+                step = spec.get('step')
+                if step and step > 0:
+                    d['value'] = _snap_to_step(float(x[i]), spec['lo'], spec['hi'], float(step))
+                else:
+                    d['value'] = float(x[i])
             elif spec['kind'] == 'time_start':
                 si = max(0, min(len(spec['slots']) - 1, int(round(float(x[i])))))
                 d['time_start'] = spec['slots'][si]

@@ -286,6 +286,8 @@
   "sim.opt.tog.time_end_window_tip": "結束時刻的搜索窗口（獨立）",
   "sim.opt.tog.time_step_label": "搜索步長",
   "sim.opt.tog.time_step_tip": "優化器在起止搜索窗口內嘗試的時間粒度",
+  "sim.opt.tog.value_step_label": "數值步長",
+  "sim.opt.tog.value_step_tip": "留空為連續搜索；填寫後解將落在該步長的整數倍上（如5表示只取5的倍數）",
   "sim.opt.import_from_plan": "從方案導入",
 
   "file.editor.empty_hint": "在左側目錄樹中勾選文件，或新建 / 上傳模型",
