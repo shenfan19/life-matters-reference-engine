@@ -20,7 +20,7 @@ const ParetoRegroupChart: React.FC<{
   const objectives = result?.objectives || [];
   const front = result?.pareto_front || [];
   const xLen = front[0]?.x?.length || 0;
-  const labels: string[] | undefined = result?.regimen_event_labels;
+  const labels: string[] | undefined = result?.decision_var_labels;
 
   const fields: Field[] = useMemo(() => ([
     ...objectives.map((o: any, i: number) => ({ key: `f${i}`, label: o.variable || `f${i + 1}` })),
