@@ -324,7 +324,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
                     />
                   </th>}
                   <th style={{ textAlign: 'left', padding: 4 }}>#</th>
-                  {(optResult.regimen_event_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i + 1}`)).map((name: string, i: number) => (
+                  {(optResult.decision_var_labels || (optResult.best_x || []).map((_: any, i: number) => `x${i + 1}`)).map((name: string, i: number) => (
                     <th key={`x-${i}`} style={{ textAlign: 'right', padding: 4 }}>{name}</th>
                   ))}
                   {(optResult.objectives || []).map((o: any, i: number) => (
