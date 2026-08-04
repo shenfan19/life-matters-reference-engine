@@ -125,10 +125,13 @@ const OptSetupTab: React.FC<OptSetupTabProps> = ({
                   <InputNumber size="small" value={bounds[1]} placeholder="hi" style={{ flex: 1, minWidth: 0 }}
                     onChange={v => updateInputEventOpt(ev.id, { valueBounds: [bounds[0], v ?? 1] })} />
                   <Tooltip title={t('sim.opt.tog.value_step_tip')}>
-                    <InputNumber size="small" value={ev.valueStep ?? null} placeholder={t('sim.opt.tog.value_step_label')}
-                      min={0} style={{ flex: 1, minWidth: '7ch' }}
-                      onChange={v => updateInputEventOpt(ev.id, { valueStep: v ?? undefined })} />
+                    <span style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', color: c.textMute, flexShrink: 0 }}>
+                      {t('sim.opt.tog.value_step_label')}
+                    </span>
                   </Tooltip>
+                  <InputNumber size="small" value={ev.valueStep ?? null} placeholder="—"
+                    min={0} style={{ flex: 1, minWidth: '7ch' }}
+                    onChange={v => updateInputEventOpt(ev.id, { valueStep: v ?? undefined })} />
                 </>
               ) : (
                 <InputNumber size="small" value={ev.value} style={{ flex: 1, minWidth: 0 }}
