@@ -286,6 +286,8 @@
   "sim.opt.tog.time_end_window_tip": "Search window for the end time (independent)",
   "sim.opt.tog.time_step_label": "Search step",
   "sim.opt.tog.time_step_tip": "Time granularity the optimizer steps through within the start/end windows",
+  "sim.opt.tog.value_step_label": "Value step",
+  "sim.opt.tog.value_step_tip": "Leave blank for continuous search; set to snap solutions to multiples of this step (e.g. 5 restricts values to multiples of 5)",
   "sim.opt.import_from_plan": "Import from plan",
 
   "file.editor.empty_hint": "Select files in the left tree, or create / upload a model",

@@ -286,6 +286,8 @@
   "sim.opt.tog.time_end_window_tip": "Fenêtre de recherche pour l'heure de fin (indépendante)",
   "sim.opt.tog.time_step_label": "Pas de recherche",
   "sim.opt.tog.time_step_tip": "Granularité temporelle utilisée par l'optimiseur dans les fenêtres de début/fin",
+  "sim.opt.tog.value_step_label": "Pas de valeur",
+  "sim.opt.tog.value_step_tip": "Laisser vide pour une recherche continue ; renseigner pour aligner les solutions sur des multiples de ce pas (par ex. 5 restreint les valeurs aux multiples de 5)",
   "sim.opt.import_from_plan": "Importer depuis le plan",
 
   "file.editor.empty_hint": "Cochez des fichiers dans l'arborescence gauche, ou créez / téléversez un modèle",

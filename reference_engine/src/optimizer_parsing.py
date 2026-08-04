@@ -7,6 +7,7 @@ Condition parsing reads a constraint's "<= 100" style string into
 """
 
 import re
+from decimal import Decimal
 from typing import List, Tuple
 
 
@@ -32,6 +33,20 @@ def _shift_time(start: str, width_min: int) -> str:
     """Add width_min minutes to an "HH:MM" time, wrapping past 24:00 to 00:00."""
     t = (_hhmm_to_min(start) + width_min) % 1440
     return f'{t // 60:02d}:{t % 60:02d}'
+
+
+def _snap_to_step(raw: float, lo: float, hi: float, step: float) -> float:
+    """Snap raw to the nearest lo-anchored multiple of step, clamped to [lo, hi] (T1).
+
+    Anchored at lo rather than 0 so the grid stays aligned with the searched range
+    even when lo isn't itself a multiple of step (e.g. a [0.9, 1.0] bound). The final
+    round() clears binary float noise round(raw/step)*step alone leaves behind for
+    steps like 0.1 (1.23 -> 1.2000000000000002 without it).
+    """
+    k = round((raw - lo) / step)
+    stepped = min(hi, max(lo, lo + k * step))
+    ndigits = max(0, -Decimal(str(step)).as_tuple().exponent)
+    return round(stepped, ndigits)
 
 
 def _parse_condition(cond: str) -> Tuple[str, float]:

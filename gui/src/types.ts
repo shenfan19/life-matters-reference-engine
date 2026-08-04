@@ -164,6 +164,7 @@ export interface InputEvent {
   // T1: optimize value
   optimizeValue?: boolean;
   valueBounds?: [number, number];
+  valueStep?: number;
   // T2: optimize time_start (window = [start, end] HH:MM strings).
   // 1-dim by default: time_end follows at a fixed offset (= timeEnd - timeStart).
   optimizeTime?: boolean;
