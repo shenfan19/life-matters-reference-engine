@@ -386,6 +386,25 @@ def run_optimizer(engine, model_name: str,
         result = _run_nsga2(evaluate, n_var, n_obj, n_con, bounds_lo, bounds_hi,
                             pop_size, n_gen, seed, objectives, progress_callback=progress_callback)
 
+    # T1 value_step: the raw x recorded by the backend is the algorithm's
+    # continuous internal vector (same as every other tier), not the snapped
+    # value _build_regimen_events used to run the simulation — without this,
+    # pareto_front/best_x would still show the pre-snap decimals evaluate()
+    # never actually simulated. Snap here so recorded x matches simulated x.
+    stepped = [(i, s) for i, s in enumerate(var_specs)
+               if s['kind'] == 'value' and s.get('step') and s['step'] > 0]
+    if stepped and result.get('success'):
+        def _snap_x(xvec):
+            xvec = list(xvec)
+            for i, s in stepped:
+                xvec[i] = _snap_to_step(float(xvec[i]), s['lo'], s['hi'], float(s['step']))
+            return xvec
+        for p in result.get('pareto_front', []):
+            if 'x' in p:
+                p['x'] = _snap_x(p['x'])
+        if result.get('best_x'):
+            result['best_x'] = _snap_x(result['best_x'])
+
     _kind_suffix = {'time_start': ' [time]', 'time_end': ' [time_end]', 'days': ' [days]',
                      'date_start': ' [date]', 'date_end': ' [date_end]'}
     decision_var_labels = [spec['entry'].get('label', spec['variable']) + _kind_suffix.get(spec['kind'], '')

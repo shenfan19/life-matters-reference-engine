@@ -286,7 +286,7 @@
   "sim.opt.tog.time_end_window_tip": "结束时刻的搜索窗口（独立）",
   "sim.opt.tog.time_step_label": "搜索步长",
   "sim.opt.tog.time_step_tip": "优化器在起止搜索窗口内尝试的时间粒度",
-  "sim.opt.tog.value_step_label": "数值步长",
+  "sim.opt.tog.value_step_label": "步长",
   "sim.opt.tog.value_step_tip": "留空为连续搜索；填写后解将落在该步长的整数倍上（如5表示只取5的倍数）",
   "sim.opt.import_from_plan": "从方案导入",
 
