@@ -52,3 +52,8 @@ SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
 # 前端可提示"服务繁忙，请稍后重试"，而不是悄悄排队或让机器过载。
 MAX_CONCURRENT_OPTS = int(os.getenv("LM_MAX_CONCURRENT_OPTS", "2"))
 MAX_CONCURRENT_SIMS = int(os.getenv("LM_MAX_CONCURRENT_SIMS", "5"))
+
+# 部署环境的公网访问地址（IP 或域名），加进 CORS allow_origins 白名单。逗号分隔可以填多个。
+# 不写死在 api_server.py 里，是因为那份源码是本地开发和任何人自部署都共用的，不该焊死某一台
+# 特定服务器的地址；这台机器专属的值写在这里（.env），不写在源码里。
+EXTRA_CORS_ORIGINS = [o.strip() for o in os.getenv("LM_EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
