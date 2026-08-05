@@ -11,6 +11,7 @@ import sys
 
 import app_state
 from app_state import PROJECT_ROOT, SRC_DIR, BACKEND_DIR, MODELS_DIR
+from paths import EXTRA_CORS_ORIGINS
 
 # ── sys.path setup ──────────────────────────────────────────────────────────────
 sys.path.insert(0, str(SRC_DIR))
@@ -107,7 +108,7 @@ app = FastAPI(title="LifeMatters API", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://137.184.220.139"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", *EXTRA_CORS_ORIGINS],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
