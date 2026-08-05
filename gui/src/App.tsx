@@ -94,7 +94,7 @@ function TitleBar({ isDarkMode, onToggleDark, language, onLanguage, fontSize, on
         <HeartPulseIcon size={28} />
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, letterSpacing: '0.04em',
+            fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)', fontWeight: 700, letterSpacing: '0.02em',
             color: c.text,
             fontFamily: '"Georgia", "Times New Roman", serif',
           }}>
@@ -430,16 +430,13 @@ function App() {
             }}
           >
             {/* App title */}
-            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.7143)', fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6 }}>
+            <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.4286)', fontWeight: 700, fontFamily: 'Georgia, serif', color: c.text, marginBottom: 6, lineHeight: 1.3 }}>
               {t('about.name')}
             </div>
 
-            {/* Subtitles */}
+            {/* Subtitle */}
             <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', lineHeight: 1.6 }}>
               {t('about.subtitle')}
-            </div>
-            <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', lineHeight: 1.6 }}>
-              {t('about.subtitle2')}
             </div>
 
             {/* Version + repo */}
