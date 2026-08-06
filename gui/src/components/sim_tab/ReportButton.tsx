@@ -44,7 +44,13 @@ export function ReportButton({
 
   const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
   const allV: Record<string, any> = selectedModel?.content?.variables || {};
-  const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
+  type RefEntry = { citation: string; description?: string };
+  const refs: RefEntry[] = Array.isArray(meta?.references)
+    ? meta.references
+        .map((r: any): RefEntry => (typeof r === 'string' ? { citation: r } : { citation: r?.citation ?? '', description: r?.description }))
+        .sort((a: RefEntry, b: RefEntry) => a.citation.localeCompare(b.citation))
+    : [];
+  const refsHaveNotes = refs.some(r => r.description);
   const metaDescText = descriptionText(meta.description);
   const hasData = simulationData.length > 0;
   const hasOptResult = !!(optResult?.best_f || optResult?.pareto_front?.length);
@@ -122,7 +128,12 @@ export function ReportButton({
 
     if (refs.length > 0) {
       lines.push(`## ${t('sim.report.section.refs')}\n`);
-      refs.forEach((r, i) => lines.push(`[${i + 1}] ${r}`));
+      if (refsHaveNotes) {
+        lines.push(`| ${t('sim.report.md.ref_citation_col')} | ${t('sim.report.md.ref_description_col')} |\n|------|-----|`);
+        refs.forEach(r => lines.push(`| ${r.citation} | ${r.description || '—'} |`));
+      } else {
+        refs.forEach(r => lines.push(`- ${r.citation}`));
+      }
       lines.push('');
     }
 

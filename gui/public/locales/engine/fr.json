@@ -514,6 +514,8 @@
   "sim.report.md.field_col": "Champ",
   "sim.report.md.value_col": "Valeur",
   "sim.report.md.param_col": "Paramètre",
+  "sim.report.md.ref_citation_col": "Citation",
+  "sim.report.md.ref_description_col": "Description",
   "sim.report.md.input_params_hd": "**Paramètres d'entrée**",
   "sim.report.md.time_range_field": "Plage temporelle",
   "sim.report.md.step_field": "Pas",

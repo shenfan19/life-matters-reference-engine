@@ -49,7 +49,13 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
 
   const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
   const allV: Record<string, any> = selectedModel?.content?.variables || {};
-  const refs: string[] = Array.isArray(meta?.references) ? meta.references : [];
+  type RefEntry = { citation: string; description?: string };
+  const refs: RefEntry[] = Array.isArray(meta?.references)
+    ? meta.references
+        .map((r: any): RefEntry => (typeof r === 'string' ? { citation: r } : { citation: r?.citation ?? '', description: r?.description }))
+        .sort((a: RefEntry, b: RefEntry) => a.citation.localeCompare(b.citation))
+    : [];
+  const refsHaveNotes = refs.some(r => r.description);
   const descSections = getDescriptionSections(meta.description);
   const hasData = simulationData.length > 0;
   const hasOptResult = !!(optResult?.best_f || optResult?.pareto_front?.length);
@@ -254,14 +260,25 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
 
       {refs.length > 0 && (
         <Section id="refs" title={t('sim.report.section.refs')} badge={t('sim.report.badge.refs', { n: refs.length })}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {refs.map((r, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-                <span style={{ color: c.primary, fontFamily: 'monospace', flexShrink: 0, minWidth: 24 }}>[{i + 1}]</span>
-                <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r}</span>
-              </div>
-            ))}
-          </div>
+          {refsHaveNotes ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '6px 16px' }}>
+              {refs.map((r, i) => (
+                <React.Fragment key={i}>
+                  <span style={{ color: c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.citation}</span>
+                  <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.description || ''}</span>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {refs.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+                  <span style={{ color: c.textMute, flexShrink: 0, minWidth: 12 }}>&middot;</span>
+                  <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r.citation}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
       )}
 
