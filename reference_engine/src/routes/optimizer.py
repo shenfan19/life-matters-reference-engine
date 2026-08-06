@@ -103,6 +103,7 @@ async def export_model_with_results(request: ExportModelRequest):
     The server file is NEVER modified — this is a stateless operation.
     """
     import yaml
+    from yaml_io import safe_load
     try:
         models_root = app_state.MODELS_DIR
         target = models_root / request.model_key.lstrip('/')
@@ -120,10 +121,10 @@ async def export_model_with_results(request: ExportModelRequest):
                 data['imports'] = []
             except Exception:
                 with open(target, 'r', encoding='utf-8') as f:
-                    data = yaml.safe_load(f) or {}
+                    data = safe_load(f) or {}
         else:
             with open(target, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f) or {}
+                data = safe_load(f) or {}
 
         if not isinstance(data.get('optimizer'), dict):
             raise HTTPException(status_code=400, detail="Model has no optimizer: block")

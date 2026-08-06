@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import app_state
+from yaml_io import safe_load
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ async def convert_scenario(request: ConvertRequest):
         raise HTTPException(status_code=400, detail="Path outside models/")
 
     with open(scen_file, 'r', encoding='utf-8') as f:
-        scenario = yaml.safe_load(f) or {}
+        scenario = safe_load(f) or {}
 
     metadata = scenario.get("metadata", {})
     variables = scenario.get("variables", {})
