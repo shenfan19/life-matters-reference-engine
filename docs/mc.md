@@ -7,7 +7,7 @@
 `parameter` 类型变量的 `value` 除了写静态数值，还可以写分布表达式（`normal(μ, σ)` / `uniform(a, b)` /
 `lognormal(μ, σ)`），表示个体间差异。确定性模式（默认）取分布均值，得到单条可复现轨迹；MC 模式
 对每个声明了分布的 `parameter` 独立采样 N 次，跑出 N 条轨迹，得到输出的分布而非单点。YAML 语法见
-`b_lm_model` 仓库 `docs/model.md`「parameter 示例：静态值 vs 分布值」一节。
+`life-matters-models` 仓库 `docs/LM_format_1.0.md` §2.2/§2.3。
 
 MC 在两个独立层级生效，彼此不共享状态（[ADR 0130](decisions/0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) 决策二撤销了此前"两者共用一份配置"的设计）：
 

@@ -1,6 +1,6 @@
 # Evidence 换算：8 种子类型的计算公式
 
-> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `b_lm_model` 仓库 `docs/model.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成公式能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `b_lm_model` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `life-matters-models` 仓库 `docs/authoring/variables_and_formulas.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成公式能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
 >
 > 本文件面向两类读者：已经熟悉流行病学/生物统计效应量（RR、OR、HR、Cohen's d 等）的人，可以直接看下面的速查表和公式；不熟悉这些统计量的人（比如只懂工程、只懂某一个学科的建模者），请从「换算解决的问题」开始看——每种子类型都配了生活化的例子、正式公式和"为什么这样算是对的"的推导，不要求先有生物统计背景。
 

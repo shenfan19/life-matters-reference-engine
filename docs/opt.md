@@ -178,7 +178,7 @@ x 向量按 `optimizer.startpoint.regimens` 列表顺序展开，每个条目按
 
 `OptResult.pareto_front` 中的 `x` 向量维度随之增加。T2 1 维（仅 `time_start`）时区间宽度
 （`time_end - time_start`）固定不变，搜索后的 `time_end` 按固定宽度推算；同时声明
-`optimize.time_end` 时为 2 维，起止独立搜索（详见 `docs/model.md` x 向量编码规则）。
+`optimize.time_end` 时为 2 维，起止独立搜索（详见 `life-matters-models` 仓库 `docs/authoring/regimens_and_optimizer.md` x 向量编码规则）。
 
 T1 的 `optimize.value` 默认在 `[lo, hi]` 连续区间内搜索，不声明 `value_step` 时解会带任意小数精度；声明 `value_step` 后，解码阶段把内部连续实数 snap 到以 `lo` 为起点、以 `value_step` 为间隔的网格点上，超出 `[lo, hi]` 的网格点会被 clamp 回边界，这与 T2 的 `time_step` 是同一种"连续内部表示 + 解码时离散化"模式，只是网格锚定在 `lo` 而非窗口起点，适合按临床/工程可读精度取值的场景，例如喂养量按 5 mL 一档、代谢当量按 0.1 MET-h 一档。
 

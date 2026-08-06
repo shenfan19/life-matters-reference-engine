@@ -116,7 +116,7 @@ python cli/batch.py --input-dir <models_folder>
 
 **前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
 
-**如何添加模型？** 将 `.yaml` 放入 `../life-matters-models/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [life-matters-models/docs/model.md](https://github.com/shenfan19/life-matters-models/blob/main/docs/model.md)。
+**如何添加模型？** 将 `.yaml` 放入 `../life-matters-models/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [LM_format_1.0.md](https://github.com/shenfan19/life-matters-models/blob/main/docs/LM_format_1.0.md)，建模实践指南见 [life-matters-models/docs/authoring/](https://github.com/shenfan19/life-matters-models/blob/main/docs/authoring/README.md)。
 
 ---
 
