@@ -514,6 +514,8 @@
   "sim.report.md.field_col": "字段",
   "sim.report.md.value_col": "值",
   "sim.report.md.param_col": "参数",
+  "sim.report.md.ref_citation_col": "文献",
+  "sim.report.md.ref_description_col": "说明",
   "sim.report.md.input_params_hd": "**输入参数**",
   "sim.report.md.time_range_field": "时间范围",
   "sim.report.md.step_field": "步长",
