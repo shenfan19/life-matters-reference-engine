@@ -32,7 +32,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
     if app_state.loader_engine is None:
         raise HTTPException(status_code=503, detail="Models system not initialized")
     try:
-        model = app_state.loader_engine.fetch(model_name, folder, use_cache=False)
+        model = app_state.loader_engine.fetch(model_name, folder)
         if model is None:
             raise HTTPException(status_code=404, detail=f"Model not found: {model_name}")
         metadata = {

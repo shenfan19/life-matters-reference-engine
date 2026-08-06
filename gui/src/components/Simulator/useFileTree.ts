@@ -73,27 +73,30 @@ export function useFileTree({
     setTreeLoading(true);
     try {
       const cleanPath = filePath.replace(/^models\//, '');
-      const fileResult = await fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json());
+      // folder/modelName 从请求路径本身推导（server 原样回传 path），不必等第一个请求返回才算，
+      // 这样两个请求可以并发发出，不用串行等第一个 round trip 完成。
+      const folder = cleanPath.includes('/') ? cleanPath.substring(0, cleanPath.lastIndexOf('/')) : undefined;
+      const modelName = cleanPath.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'unknown';
+      const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+
+      const [fileResult, resolvedRes] = await Promise.all([
+        fetch(`${API_BASE}/file/${cleanPath}`).then(r => r.json()),
+        fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`)
+          .then(async r => ({ ok: r.ok, body: await r.json() }))
+          .catch(e => { console.warn('Resolved model load failed, using raw YAML', e); return null; }),
+      ]);
+
       if (!fileResult.success) { message.error(`${t('sim.msg.read_failed')}: ${fileResult.error}`); return null; }
-      const { content, path } = fileResult.data;
-      const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : undefined;
-      const modelName = path.split('/').pop()?.replace(/\.ya?ml$/i, '') || content.metadata?.name || 'unknown';
+      const { content } = fileResult.data;
       let resolvedContent = content;
-      try {
-        const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
-        const res = await fetch(`${API_BASE}/models/${encodeURIComponent(modelName)}${qs}`);
-        const resolved = await res.json();
-        if (resolved?.success && resolved.data) {
-          resolvedContent = {
-            ...content,
-            ...resolved.data,
-            metadata: { ...content.metadata, ...resolved.data.metadata },
-          };
-        } else if (!res.ok) {
-          console.warn('Model resolution failed:', resolved?.detail || 'unknown error');
-        }
-      } catch (e) {
-        console.warn('Resolved model load failed, using raw YAML', e);
+      if (resolvedRes?.ok && resolvedRes.body?.success && resolvedRes.body.data) {
+        resolvedContent = {
+          ...content,
+          ...resolvedRes.body.data,
+          metadata: { ...content.metadata, ...resolvedRes.body.data.metadata },
+        };
+      } else if (resolvedRes && !resolvedRes.ok) {
+        console.warn('Model resolution failed:', resolvedRes.body?.detail || 'unknown error');
       }
       const model: ModelFile = {
         key: filePath, title: resolvedContent.metadata?.name || modelName,

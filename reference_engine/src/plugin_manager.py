@@ -1,7 +1,7 @@
 import os
-import yaml
 from pathlib import Path
 from typing import Dict, List
+from .yaml_io import safe_load
 
 class PluginManager:
     def __init__(self, plugin_dir: str = "plugins"):
@@ -31,7 +31,7 @@ class PluginManager:
                 if manifest_path.exists():
                     try:
                         with open(manifest_path, 'r', encoding='utf-8') as f:
-                            manifest = yaml.safe_load(f)
+                            manifest = safe_load(f)
                             if manifest.get('id') == 'test_plugin':
                                 continue
                             plugin_id = manifest.get('id')

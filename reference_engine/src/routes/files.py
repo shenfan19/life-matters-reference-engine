@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import app_state
+from yaml_io import safe_load
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ def _simple_yaml_merge(files, output_path, models_root):
             continue
         try:
             with open(target, encoding='utf-8') as fh:
-                data = yaml.safe_load(fh) or {}
+                data = safe_load(fh) or {}
         except Exception:
             continue
         merged['variables'].update(data.get('variables') or {})
@@ -99,7 +100,7 @@ def _simple_yaml_validate(file_path, models_root):
         return False, [f'文件不存在: {file_path}']
     try:
         with open(target, encoding='utf-8') as fh:
-            data = yaml.safe_load(fh) or {}
+            data = safe_load(fh) or {}
     except Exception as e:
         return False, [f'YAML 解析错误: {e}']
 
@@ -178,7 +179,7 @@ async def list_files():
                     file_metadata = {}
                     try:
                         with open(item_path, 'r', encoding='utf-8') as f:
-                            data = yaml.safe_load(f)
+                            data = safe_load(f)
                             if isinstance(data, dict):
                                 file_metadata['category'] = data.get('category', 'unknown')
                                 file_metadata['description'] = data.get('description', '')
@@ -216,7 +217,7 @@ async def get_file_content(file_path: str):
         if not yaml_file.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
         with open(yaml_file, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f) or {}
+            data = safe_load(f) or {}
         return {'success': True, 'data': {'path': file_path, 'content': data}}
     except HTTPException:
         raise
@@ -359,7 +360,7 @@ async def upload_model_temp(payload: dict):
         safe_name += '.yaml'
 
     try:
-        raw = yaml.safe_load(text)
+        raw = safe_load(text)
     except yaml.YAMLError as e:
         raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
 
@@ -561,7 +562,7 @@ async def search_files(q: str = ""):
                     if not matched:
                         try:
                             with open(item_path, 'r', encoding='utf-8') as f:
-                                data = yaml.safe_load(f)
+                                data = safe_load(f)
                                 if isinstance(data, dict):
                                     tags = data.get('metadata', {}).get('tags', [])
                                     matched = any(keyword in str(t).lower() for t in tags)
@@ -591,14 +592,14 @@ async def get_story_data(story_id: str):
                 raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
             story_dir = story_file.parent
         with open(story_file, 'r', encoding='utf-8') as f:
-            story_data = yaml.safe_load(f)
+            story_data = safe_load(f)
         cards_data = {}
         if 'cards' in story_data:
             for card_rel_path in story_data['cards']:
                 card_path = story_dir / card_rel_path
                 if card_path.exists():
                     with open(card_path, 'r', encoding='utf-8') as f:
-                        cards_data[card_rel_path] = yaml.safe_load(f)
+                        cards_data[card_rel_path] = safe_load(f)
         return {'success': True, 'data': {'config': story_data, 'cards': cards_data}}
     except HTTPException:
         raise

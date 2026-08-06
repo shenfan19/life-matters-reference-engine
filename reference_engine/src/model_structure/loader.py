@@ -2,10 +2,10 @@
 from .base import ModelMetadata, Variable, Formula, VariableType, TIME_UNIT_SECONDS
 from .utils import merge_dicts
 from ..schedule_runner import resolve_time_interval
+from ..yaml_io import safe_load
 from typing import Dict, Set, Any, List
 from asteval import Interpreter
 import os
-import yaml
 import logging
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class Loader:
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f) or {}
+                data = safe_load(f) or {}
             
             if not isinstance(data, dict):
                 logger.error(f"Invalid YAML format: {file_path}")

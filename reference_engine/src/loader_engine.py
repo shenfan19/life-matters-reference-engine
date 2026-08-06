@@ -13,9 +13,9 @@
 
 import os
 import logging
-import yaml
 from typing import Dict, Any, List, Optional, Set
 from .model_structure import ModelStructure, ModelMetadata
+from .yaml_io import safe_load
 
 # 设置日志记录器，用于在程序运行时输出信息和错误。
 logger = logging.getLogger(__name__)
@@ -172,6 +172,31 @@ class LoaderEngine:
                         continue
         return models
 
+    @staticmethod
+    def _snapshot_mtimes(model: ModelStructure) -> Dict[str, float]:
+        """记录本次加载涉及的所有文件（根文件 + 递归 imports）的 mtime，用于缓存失效判断。"""
+        mtimes = {}
+        for f in model.visited:
+            try:
+                mtimes[f] = os.path.getmtime(f)
+            except OSError:
+                pass
+        return mtimes
+
+    @staticmethod
+    def _cache_entry_fresh(entry) -> bool:
+        """缓存条目里记录的任一文件（根文件或其 imports）mtime 变化，都视为过期。
+        覆盖手动编辑 YAML 后不经过 /api/save-file 等写接口的情况（写接口会直接清缓存）。
+        """
+        _, mtimes = entry
+        for f, cached_mtime in mtimes.items():
+            try:
+                if os.path.getmtime(f) != cached_mtime:
+                    return False
+            except OSError:
+                return False
+        return True
+
     def fetch(self, model_name: str, folder: Optional[str] = None, loaded_models: Optional[Set[str]] = None,
               validate: bool = True, use_cache: bool = True) -> Optional[ModelStructure]:
         """
@@ -191,10 +216,11 @@ class LoaderEngine:
             return None
         loaded_models.add(model_name)
 
-        # 检查缓存。
+        # 检查缓存（同时校验 mtime，命中但文件已变更时视为未命中）。
         cache_key = (model_name, folder or "")
-        if use_cache and cache_key in self.models_cache:
-            return self.models_cache[cache_key]
+        entry = self.models_cache.get(cache_key)
+        if use_cache and entry and self._cache_entry_fresh(entry):
+            return entry[0]
 
         # 查找模型文件路径。
         file_path = self.find_model_file(model_name, folder)
@@ -204,8 +230,9 @@ class LoaderEngine:
             return None
         # 使用绝对路径作为缓存键
         cache_key = os.path.abspath(file_path)
-        if use_cache and cache_key in self.models_cache:
-            return self.models_cache[cache_key]
+        entry = self.models_cache.get(cache_key)
+        if use_cache and entry and self._cache_entry_fresh(entry):
+            return entry[0]
 
         try:
             model = ModelStructure(self.models_directory)
@@ -218,8 +245,9 @@ class LoaderEngine:
 
             # 将加载的模型存入缓存（同时用绝对路径和 (name,folder) 两种 key）。
             if use_cache:
-                self.models_cache[cache_key] = model
-                self.models_cache[(model_name, folder or "")] = model
+                mtimes = self._snapshot_mtimes(model)
+                self.models_cache[cache_key] = (model, mtimes)
+                self.models_cache[(model_name, folder or "")] = (model, mtimes)
             return model
 
         except Exception as e:
@@ -272,7 +300,7 @@ class LoaderEngine:
                     # 第一个文件夹：获取名称
                     if not first_item_processed:
                         with open(root_file_path, 'r', encoding='utf-8') as f:
-                            data = yaml.safe_load(f) or {}
+                            data = safe_load(f) or {}
                             if 'metadata' in data and 'name' in data['metadata']:
                                 output_model_name = data['metadata']['name']
                         first_item_processed = True
@@ -304,7 +332,7 @@ class LoaderEngine:
                     # 第一个文件：获取名称
                     if not first_item_processed:
                         with open(file_path, 'r', encoding='utf-8') as f:
-                            data = yaml.safe_load(f) or {}
+                            data = safe_load(f) or {}
                             if 'metadata' in data and 'name' in data['metadata']:
                                 output_model_name = data['metadata']['name']
                         first_item_processed = True
