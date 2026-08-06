@@ -1,6 +1,6 @@
 # Evidence 的 `applies_to`：自动接入 dynamics
 
-> 对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 里独立于换算循环的第二个循环（遍历 `variables:` 条目，处理 `applies_to` 字段）。换算出 `effective` 值本身的 8 种子类型公式见 [conversion.md](conversion.md)。YAML 字段声明方式见 `b_lm_model` 仓库 `docs/model.md`「自动接入 dynamics」一节。决策背景见 `b_lm_model` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> 对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 里独立于换算循环的第二个循环（遍历 `variables:` 条目，处理 `applies_to` 字段）。换算出 `effective` 值本身的 8 种子类型公式见 [conversion.md](conversion.md)。YAML 字段声明方式见 `life-matters-models` 仓库 `docs/authoring/variables_and_formulas.md`「自动接入 dynamics」一节。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
 >
 > 本文件假设你已经读过 [conversion.md](conversion.md)，理解了 `effective` 换算出来的到底是"比例"（`rr`/`or`）还是"绝对速率"（`hr`/`ard`/`ir`）——`applies_to` 生成的公式为什么因子类型而异，根源就在这个区别。不熟悉这些统计量含义的读者请先看 conversion.md 的「逐一详解」。
 
