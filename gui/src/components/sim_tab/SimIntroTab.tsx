@@ -67,7 +67,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   };
   const SourceTag = ({ source }: { source?: string }) => source ? (
     <span style={{ color: c.textMute, border: `1px solid ${c.border}`, borderRadius: 4, padding: '1px 5px', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7143)', whiteSpace: 'nowrap' }}>
-      from {source}
+      {source}
     </span>
   ) : null;
   const refStr = (ref: unknown, locator?: unknown): string => {
