@@ -151,7 +151,7 @@
   "sim.intro.type": "Type",
   "sim.intro.init_value": "Init",
   "sim.intro.unit": "Unit",
-  "sim.intro.source": "Source",
+  "sim.intro.source": "Import From",
   "sim.intro.output_marker": "output",
   "sim.setup.no_opt_vars": "No opt variables defined (check YAML optimizer.inputs block)",
   "sim.setup.no_events": "No input events",

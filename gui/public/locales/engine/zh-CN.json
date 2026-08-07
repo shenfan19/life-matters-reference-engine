@@ -151,7 +151,7 @@
   "sim.intro.type": "类型",
   "sim.intro.init_value": "初始值",
   "sim.intro.unit": "单位",
-  "sim.intro.source": "来源",
+  "sim.intro.source": "导入自",
   "sim.intro.output_marker": "输出",
   "sim.setup.no_opt_vars": "未定义优化变量（检查 YAML optimizer.inputs 块）",
   "sim.setup.no_events": "暂无输入事件",
