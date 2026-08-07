@@ -1,7 +1,7 @@
 # Sim 决议汇总
 
 > 本文件是 `docs/decisions/` 中仿真引擎、优化器、UI 和项目结构 ADR 的**主题分类摘要**。  
-> YAML 模型格式相关 ADR 见 `b_lm_model/docs/DECISIONS.md`。  
+> YAML 模型格式相关 ADR 见 `life-matters-models/docs/DECISIONS.md`。  
 > 完整时序索引见 [decisions/README.md](decisions/README.md)。
 
 **重要程度**：⭐⭐ = 核心约束，影响格式规范或架构，不可随意更改；⭐ = 重要实现决策；无标注 = 已实施，历史记录
@@ -20,10 +20,10 @@
 | [0054](decisions/0054-2026-05-04_sim_unified-apply-regimens.md) | **仿真/优化 Regimen 执行函数统一；删除 `_apply_regimen_events`** | ⭐⭐ | ✅ |
 | [0064](decisions/0064-2026-05-07_project-edit-refresh-run-snapshot.md) | **编辑态刷新源文件，运行态固定快照（两种不同的模型加载语义）** | ⭐⭐ | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | **Simulator 拆分；Sim/Opt 结果工作区分离** | ⭐⭐ | ✅（OPT/SIM 分离重构待续）|
-| [0099](decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | sustained 模式 `value` 语义修正：窗口总量 / N_steps（step-size 不变性） | | ⚪ 已被 [b_lm_model 0131](../../../b_lm_model/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) 取代 |
+| [0099](decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | sustained 模式 `value` 语义修正：窗口总量 / N_steps（step-size 不变性） | | ⚪ 已被 [life-matters-models 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) 取代 |
 | [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | **统一 pulse/sustained 为时间区间 `time_start`/`time_end`；GUI 取消 full day/time/sustained 三态** | ⭐⭐ | 🟡 部分实施（papers 术语已补充说明，未做全文改写）|
-| [b_lm_model 0131](../../../b_lm_model/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) | **sustained `value` 改为每个匹配日独立满额（`N_steps` = 单次命中窗口自身时长 / step_size），取代 0099 的"整跨度总量"** | ⭐⭐ | ✅ |
-| [b_lm_model 0132](../../../b_lm_model/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md) | **regimen 新增 `delivery: total\|level`，区分"总量摊分"（默认）与"恒定水平不摊分"** | ⭐⭐ | ✅ |
+| [life-matters-models 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) | **sustained `value` 改为每个匹配日独立满额（`N_steps` = 单次命中窗口自身时长 / step_size），取代 0099 的"整跨度总量"** | ⭐⭐ | ✅ |
+| [life-matters-models 0132](../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md) | **regimen 新增 `delivery: total\|level`，区分"总量摊分"（默认）与"恒定水平不摊分"** | ⭐⭐ | ✅ |
 
 ---
 

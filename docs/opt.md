@@ -255,7 +255,7 @@ optimizer:
 
 未提供 `optimizer.startpoint.regimens` 时不回退到 `simulation.plans`——两者是彼此独立的字段，`optimizer.startpoint` 缺失直接报错（见 3.5）。
 
-参考实现：`b_lm_model` 仓库 `models/papers/s1/banister/banister_opt.yaml`。
+参考实现：`life-matters-models` 仓库 `models/papers/s1/banister/banister_opt.yaml`。
 
 ### 3.3 评估时间窗配置（ADR 0083）
 

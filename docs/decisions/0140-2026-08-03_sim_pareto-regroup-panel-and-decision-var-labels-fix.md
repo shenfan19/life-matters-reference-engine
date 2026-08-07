@@ -32,4 +32,4 @@ X/Y/分组三个下拉框的候选字段统一由 `objectives`（`f0..`）和决
 
 ## 未决 / 后续
 
-- 从已保存 `optimizer.results.pareto_front` 的 YAML 文件直接加载查看（不重新跑优化）这条路径，前端 `useModelInit.ts` 本地拼装结果时仍只生成 `regimen_event_labels`、没有 `decision_var_labels`，多维度事件场景下会退回 `x1`/`x2`。已记录到 `b_lm_home/tasks/2026-08-03_task_yaml-preload-decision-var-labels.md`，可选后续任务，本次未做。
+- 从已保存 `optimizer.results.pareto_front` 的 YAML 文件直接加载查看（不重新跑优化）这条路径，前端 `useModelInit.ts` 本地拼装结果时仍只生成 `regimen_event_labels`、没有 `decision_var_labels`，多维度事件场景下会退回 `x1`/`x2`。已记录到 `life-matters-home/tasks/2026-08-03_task_yaml-preload-decision-var-labels.md`，可选后续任务，本次未做。

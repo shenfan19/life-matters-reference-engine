@@ -8,14 +8,14 @@
 
 ## 背景
 
-仓库发布模式是多 repo 叠加：`b_lm_sim_code`（本仓库）、`b_lm_model`、`b_lm_game_code` 各自打包发布，
+仓库发布模式是多 repo 叠加：`life-matters-reference-engine`（本仓库）、`life-matters-models`、`life-matters-game` 各自打包发布，
 用户下载后解压到同一目录联合使用。原顶层结构 `sim_cli/`、`sim_engine/`、`sim_gui/` 的 `sim_` 前缀存在
 两个问题：
 
 1. **命名不准确**：本仓库的引擎同时承担仿真（sim）和优化（opt）两件事——`SimulatorEngine` 类、
    `app_state.simulator_engine` 等命名只体现了 sim，opt 是后加的对称功能，"sim 前缀打头、opt 没有对应
    前缀"的不对称命名容易让人误以为 opt 是次要/外挂功能。
-2. **`docs/` 跨仓库碰撞**：`b_lm_sim_code/docs/`、`b_lm_model/docs/`、`b_lm_game_code/docs/` 三个仓库解压
+2. **`docs/` 跨仓库碰撞**：`life-matters-reference-engine/docs/`、`life-matters-models/docs/`、`life-matters-game/docs/` 三个仓库解压
    到同一目录后会互相覆盖。`models/`、`output/` 是有意共享/合并的目录，但 `docs/` 不应该被覆盖。
 
 讨论过 `docs_sim`/`docs_model` 类前缀改名方案，认为是"分类命名"和"类命名"混用、不够专业。最终采用
@@ -77,8 +77,8 @@ model 仓库路径通过 `LM_MODELS_PATH` 环境变量指定，不再依赖目�
 - `docs/` 重组为 `docs/reference_engine/`（含 `decisions/` 子目录），`README.md`/`CLAUDE.md`/`AGENTS.md`
   中的文档索引、`@`-include 路径（`@docs/ui_guidelines.md` → `@docs/reference_engine/ui_guidelines.md` 等）
   同步更新
-- `docs/reference_engine/decisions/README.md` 中跨仓库引用 `b_lm_model` ADR 的相对路径补一层 `../`
-  （`decisions/` 多嵌套了一层，原 `../../../b_lm_model/...` 失效，改为 `../../../../b_lm_model/...`）
+- `docs/reference_engine/decisions/README.md` 中跨仓库引用 `life-matters-models` ADR 的相对路径补一层 `../`
+  （`decisions/` 多嵌套了一层，原 `../../../life-matters-models/...` 失效，改为 `../../../../life-matters-models/...`）
 - `tests/test_sim_cli_consistency.py`、`tests/models/test_mc_distributions/.../test_dose_scaling.py`
   的内部 import 更新；`pytest tests/` 8 个测试全过
 - `python cli/main.py <model.yaml> --sim-only` 手动验证可正常运行

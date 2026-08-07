@@ -57,7 +57,7 @@ joint/microbiome/symptom）、`masld_insulin`（3个：homair/joint/liverfat）�
 实际上都是在
 "内层鲁棒优化"名不副实、退化为单次确定性评估的条件下算出来的，不是模型作者声明的
 `mc.runs: 5` 真正想要的"对参数不确定性取平均"的结果。这是一个 C 类（模型科学内容）后续
-排查任务，见 `b_lm_home/tasks/2026-07-10_issue_opt-inner-mc-never-worked-rerun-needed.md`。
+排查任务，见 `life-matters-home/tasks/2026-07-10_issue_opt-inner-mc-never-worked-rerun-needed.md`。
 
 ## 决策
 

@@ -30,7 +30,7 @@ ADR 0109 已将仿真输入方案的唯一合法位置强制收口到 `simulatio
 | `self.schedules` 初始化 + `daily_inputs` 解析 | `model_structure/core.py` / `loader.py` |
 | `Simulation._apply_schedules()` 及其在 `step()` 内的调用 | `model_structure/simulation.py` |
 | `self.manual_overrides` 初始化、`clone_model()` 里的克隆、`optimizer_eval.py`/`session_manager.py` 里的写入 | `core.py` / `mc_utils.py` / `optimizer_eval.py` / `session_manager.py` |
-| YAML `daily_inputs` 小节（保留 `accumulators` 小节，二者本不耦合） | `b_lm_model/docs/model.md` |
+| YAML `daily_inputs` 小节（保留 `accumulators` 小节，二者本不耦合） | `life-matters-models/docs/model.md` |
 
 `apply_regimens()`/`regimen_runner.py`（plan-based schedule 执行核心）不受影响——它是当前唯一受支持的输入执行路径。
 
@@ -51,7 +51,7 @@ sim_engine/src/mc_utils.py                    clone_model() 删除 schedules 克
 sim_engine/src/optimizer_eval.py              删除 manual_overrides 写入（已无消费者）
 sim_engine/src/session_manager.py             删除 manual_overrides 写入 + 相关注释
 sim_engine/src/regimen_runner.py              删除引用已不存在的 _apply_schedules 的过时注释
-b_lm_model/docs/model.md                      删除 daily_inputs 小节，accumulators 独立成节
+life-matters-models/docs/model.md                      删除 daily_inputs 小节，accumulators 独立成节
 ```
 
 验证：`pytest tests/` 8 个测试全部通过；`sim_engine` 模块全量 import 正常。
