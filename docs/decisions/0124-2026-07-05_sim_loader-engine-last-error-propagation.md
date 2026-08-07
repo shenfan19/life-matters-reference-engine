@@ -49,7 +49,7 @@ import"、"formula 缺少 step_unit"、"evidence 名称与 variables 重名"等�
   `run_simulation_all_plans`）改为优先展示 `self.loader.last_error`
 - `reference_engine/src/session_manager.py`：`start_session` 同上
 - `reference_engine/src/optimizer_engine.py`：`run_optimizer` 同上
-- 回归锁定：`tests/errors/`（见 0125 †，b_lm_model 仓库）的 11 个用例全部通过
+- 回归锁定：`tests/errors/`（见 0125 †，life-matters-models 仓库）的 11 个用例全部通过
   `ReferenceEngine.load_models()` 断言 `engine.loader.last_error` 包含具体原因，而不是只
   断言返回值是 `False`——这正是本次要修的缺口
 

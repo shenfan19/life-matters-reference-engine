@@ -5,7 +5,7 @@
 **范围**: sim_engine（routes/simulation.py、session_manager.py、optimizer_engine.py、model_structure/loader.py）、
 sim_gui（useSimulation/useModelInit/usePlans/useOptimizer/SimOptTab/optUtils/simUtils）、
 models/（132 个含 `plans[*].regimens` 或 `optimizer.startpoint.regimens` 的文件 + 64 个含
-`optimizer.results` 的文件）、b_lm_model/docs/model.md、sim_code 的 docs/sim_design.md、docs/opt.md
+`optimizer.results` 的文件）、life-matters-models/docs/model.md、sim_code 的 docs/sim_design.md、docs/opt.md
 
 ---
 
@@ -19,7 +19,7 @@ ADR 0116 把"纯内部实现命名"统一成了 `schedule`（`regimen_runner.py`
 用户随后指出项目**还未发布**，"避免改名成本"这个理由不成立，于是临时把 API 契约层和上述两个 YAML
 核心字段也都改成了 `schedule`/`schedules`（与 ADR 0116 的内部命名保持一致）。改完之后发现两个问题：
 
-1. **`regimen` 才是这个形式化方法在论文/规范里的本名**：`b_lm_model/docs/LM_format_1.0.md` §7 把
+1. **`regimen` 才是这个形式化方法在论文/规范里的本名**：`life-matters-models/docs/LM_format_1.0.md` §7 把
    "K×4 Regimen"定义为 LM format 的标准输入形式化方法，论文草稿和
    outreach 邮件已大量使用这个词。把 API/YAML 改成 `schedule` 实际上是在偏离已经对外使用的术语，
    不是在"统一"——内部实现叫什么不影响任何人，但跨边界的契约名应该和已发布的概念术语对齐。
@@ -111,7 +111,7 @@ models/**/*.yaml（132 个文件）               plans[*].schedules / optimizer
                                              → regimens（两处字段统一改名）
 models/**/*.yaml（64 个文件）                 optimizer.results.reference → recommended；
                                              删除 regimen/objectives 解码字典
-b_lm_model/docs/model.md                    全文同步 regimens 字段名 + recommended 字段说明
+life-matters-models/docs/model.md                    全文同步 regimens 字段名 + recommended 字段说明
 docs/sim_design.md, docs/opt.md,
 docs/coding_conventions.md                  字段路径引用同步
 tests/test_sim_cli_consistency.py           start_session(regimens=...) kwarg
