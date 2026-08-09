@@ -122,7 +122,7 @@
   "sim.msg.start_failed": "启动失败",
   "sim.msg.component_model_hint": "此文件为库组件——不依赖关联模型时仿真结果可能不完整",
   "about.subtitle": "医学与社会仿真与优化",
-  "about.subtitle_tooltip": "LM format 的参考实现——理论上也可以有其他引擎实现同一规范",
+  "about.subtitle_tooltip": "LM format 的参考实现：执行 V.E.S.O.（Variables、Equations、Simulation、Optimization）四个机制；理论上也可以有其他引擎实现同一规范",
   "about.affiliation": "中山大学",
   "about.homepage": "主页",
   "about.close": "关闭",
