@@ -14,7 +14,7 @@
 |-----|------|---------|------|
 | [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md) | **Regimen K×4 输入调度：时刻/摄入量/执行日/有效期** | ⭐⭐ | ✅ |
 | [0024](decisions/0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ⭐ | ✅ |
-| [0070](decisions/0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | **asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代** | ⭐⭐ | ✅ |
+| [0070](decisions/0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | **asteval 作为方程安全沙箱：禁止用 Python eval() 直接替代** | ⭐⭐ | ✅ |
 | [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | **MC 概率仿真：parameter 分布表达式、多 run 引擎、半透明曲线渲染** | ⭐⭐ | ✅ |
 | [0130](decisions/0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | **修复 optimizer.mc.runs 被 reset_simulation() 静默清零的 bug（影响19个论文模型）；Opt tab MC 控件与 Sim tab 解耦** | ⭐⭐⭐ | ✅ |
 | [0054](decisions/0054-2026-05-04_sim_unified-apply-regimens.md) | **仿真/优化 Regimen 执行函数统一；删除 `_apply_regimen_events`** | ⭐⭐ | ✅ |
@@ -51,7 +51,7 @@
 | [0050](decisions/0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | **InputEvent 扁平化；激活/未选中的颜色规则（绿色=激活）** | ⭐⭐ | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Sim/Opt Tab 分离与结果工作区 UI | ⭐ | ✅（部分待续）|
 | [0067](decisions/0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化器算法预设与参数滑块 UI | | ✅ |
-| [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
+| [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 方程预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
 | [0069](decisions/0069-2026-05-16_sim_optimizer-results-stateless-design.md) | **optimizer.results 内嵌 + 无状态服务 + warm-start + CSV 导出** | ⭐⭐ | ✅ |
 | [0071](decisions/0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | **全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序** | ⭐ | ✅ |
 | [0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md) | **多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行** | ⭐⭐ | 待实现 |

@@ -157,8 +157,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── left panel sections ───────────────────────────────────────────────────────
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
-  const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'formulas', 'refs']));
-  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, formulas: 1, opt: 1 });
+  const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'equations', 'refs']));
+  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, equations: 1, opt: 1 });
 
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
@@ -384,7 +384,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── derived data ──────────────────────────────────────────────────────────────
   // inputVars / stateVars declared above (before hook calls)
-  const formulas: Record<string, any> = selectedModel?.content?.formulas || {};
+  const equations: Record<string, any> = selectedModel?.content?.equations || {};
   const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
   const resolveOutputVars = (): string[] => {
     const variables: Record<string, any> = selectedModel?.content?.variables || {};
@@ -440,7 +440,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const reportButton = selectedModel ? (
     <ReportButton
-      selectedModel={selectedModel} outputVars={outputVars} formulas={formulas}
+      selectedModel={selectedModel} outputVars={outputVars} equations={equations}
       simulationData={effectiveSimData} inputParams={inputParams}
       simStartDate={simStartDate} simEndDate={simEndDate}
       stepValue={stepValue} stepUnit={stepUnit} batchSize={batchSize}
@@ -642,7 +642,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               {ModelToolbar()}
               <SimIntroTab
                 selectedModel={selectedModel} outputVars={outputVars}
-                formulas={formulas} provenance={provenance}
+                equations={equations} provenance={provenance}
                 introOpen={introOpen} setIntroOpen={setIntroOpen}
                 simulationData={effectiveSimData}
                 inputParams={inputParams}

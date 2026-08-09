@@ -191,7 +191,7 @@ Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected
 
 日志文件记录：
 - CLI 自身的进度消息（每代 `Gen N | eval | feasible | best_f`、各 plan 完成的步数）
-- 仿真/优化运行信息——模型规模（变量/公式数）、imports、起止日期与步长、output 变量列表、
+- 仿真/优化运行信息——模型规模（变量/方程数）、imports、起止日期与步长、output 变量列表、
   schedule/regimen 变量名、NaN/越界告警、完成耗时与 schedule 命中次数（sim）；目标/约束/决策变量/
   算法配置（opt）。这部分内容由 `reference_engine/src/run_logging.py`（sim）和 `optimizer_engine.py` 的
   `log_cb` 机制（opt）生成，与 GUI 运行时日志面板显示的内容是同一份代码产出，只是落地渠道不同

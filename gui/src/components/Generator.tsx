@@ -21,7 +21,7 @@ interface Variable {
   bounds: [number, number];
 }
 
-interface Formula {
+interface Equation {
   key: string;
   name: string;
   description: string;
@@ -34,7 +34,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
   const { t } = useI18n();
   const [form] = Form.useForm();
   const [variables, setVariables] = useState<Variable[]>([]);
-  const [formulas, setFormulas] = useState<Formula[]>([]);
+  const [equations, setEquations] = useState<Equation[]>([]);
   const [metadata, setMetadata] = useState({
     name: '',
     version: '1.0.0',
@@ -70,16 +70,16 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     ));
   };
 
-  // 添加公式
-  const addFormula = () => {
-    const newFormula: Formula = {
-      key: `formula_${Date.now()}`,
-      name: `formula_${formulas.length + 1}`,
-      description: '新公式',
+  // 添加方程
+  const addEquation = () => {
+    const newEquation: Equation = {
+      key: `equation_${Date.now()}`,
+      name: `equation_${equations.length + 1}`,
+      description: '新方程',
       dynamics: {},
       priority: 100,
     };
-    setFormulas([...formulas, newFormula]);
+    setEquations([...equations, newEquation]);
   };
 
   // 生成 YAML
@@ -100,7 +100,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
         };
         return acc;
       }, {} as Record<string, any>),
-      formulas: formulas.reduce((acc, f) => {
+      equations: equations.reduce((acc, f) => {
         acc[f.name] = {
           description: f.description,
           condition: f.condition,
@@ -345,26 +345,26 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
       </Card>
 
       <Card
-        title={`${t('gen.edit.formulas_title')} (${formulas.length})`}
+        title={`${t('gen.edit.equations_title')} (${equations.length})`}
         extra={
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={addFormula}>
-            {t('gen.edit.add_formula')}
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={addEquation}>
+            {t('gen.edit.add_equation')}
           </Button>
         }
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          {formulas.map((f) => (
+          {equations.map((f) => (
             <Card key={f.key} size="small" style={{ background: '#f0f7ff' }}>
               <Row gutter={8}>
                 <Col span={6}>
                   <Input
                     value={f.name}
                     onChange={(e) => {
-                      setFormulas(formulas.map(formula =>
-                        formula.key === f.key ? { ...formula, name: e.target.value } : formula
+                      setEquations(equations.map(equation =>
+                        equation.key === f.key ? { ...equation, name: e.target.value } : equation
                       ));
                     }}
-                    placeholder={t('gen.edit.formula_name_placeholder')}
+                    placeholder={t('gen.edit.equation_name_placeholder')}
                     size="small"
                   />
                 </Col>
@@ -372,11 +372,11 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
                   <Input
                     value={f.description}
                     onChange={(e) => {
-                      setFormulas(formulas.map(formula =>
-                        formula.key === f.key ? { ...formula, description: e.target.value } : formula
+                      setEquations(equations.map(equation =>
+                        equation.key === f.key ? { ...equation, description: e.target.value } : equation
                       ));
                     }}
-                    placeholder={t('gen.edit.formula_desc_placeholder')}
+                    placeholder={t('gen.edit.equation_desc_placeholder')}
                     size="small"
                   />
                 </Col>
@@ -384,11 +384,11 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
                   <Input
                     value={f.condition}
                     onChange={(e) => {
-                      setFormulas(formulas.map(formula =>
-                        formula.key === f.key ? { ...formula, condition: e.target.value } : formula
+                      setEquations(equations.map(equation =>
+                        equation.key === f.key ? { ...equation, condition: e.target.value } : equation
                       ));
                     }}
-                    placeholder={t('gen.edit.formula_cond_placeholder')}
+                    placeholder={t('gen.edit.equation_cond_placeholder')}
                     size="small"
                   />
                 </Col>
@@ -399,8 +399,8 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
                     size="small"
                     icon={<DeleteOutlined />}
                     onClick={() => {
-                      setFormulas(formulas.filter(formula => formula.key !== f.key));
-                      message.success(t('gen.msg.formula_deleted'));
+                      setEquations(equations.filter(equation => equation.key !== f.key));
+                      message.success(t('gen.msg.equation_deleted'));
                     }}
                   />
                 </Col>
@@ -410,9 +410,9 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
               </div>
             </Card>
           ))}
-          {formulas.length === 0 && (
+          {equations.length === 0 && (
             <div style={{ textAlign: 'center', padding: 24, color: '#999' }}>
-              {t('gen.edit.no_formulas')}
+              {t('gen.edit.no_equations')}
             </div>
           )}
         </Space>
@@ -425,7 +425,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
           </Button>
           <Button onClick={() => {
             setVariables([]);
-            setFormulas([]);
+            setEquations([]);
             setMetadata({ name: '', version: '1.0.0', author: '', description: '', tags: [] });
             message.success(t('gen.msg.cleared'));
           }}>

@@ -18,7 +18,7 @@ class ConvertRequest(BaseModel):
 
 
 def _detect_pattern(expr: str):
-    """简单公式模式识别，返回 (pattern, delta_int)"""
+    """简单方程模式识别，返回 (pattern, delta_int)"""
     s = str(expr).strip()
     if re.fullmatch(r'-?\d+(\.\d+)?', s):
         return "P1", round(float(s))
@@ -54,7 +54,7 @@ async def convert_scenario(request: ConvertRequest):
 
     metadata = scenario.get("metadata", {})
     variables = scenario.get("variables", {})
-    formulas = scenario.get("formulas", {})
+    equations = scenario.get("equations", {})
     simulator = scenario.get("simulator", {})
 
     total_time = simulator.get("total_time", 365)
@@ -68,12 +68,12 @@ async def convert_scenario(request: ConvertRequest):
     env_cards = []
     player_cards = []
     variable_to_card = {}
-    formula_patterns = {}
+    equation_patterns = {}
 
-    var_formula_map: dict = {}
-    for fml_key, fml_data in formulas.items():
-        for vname, expr in (fml_data.get("dynamics") or {}).items():
-            var_formula_map.setdefault(vname, []).append((fml_key, str(expr) if expr is not None else ""))
+    var_equation_map: dict = {}
+    for eq_key, eq_data in equations.items():
+        for vname, expr in (eq_data.get("dynamics") or {}).items():
+            var_equation_map.setdefault(vname, []).append((eq_key, str(expr) if expr is not None else ""))
 
     for var_name, var_data in variables.items():
         if var_name == health_var:
@@ -90,7 +90,7 @@ async def convert_scenario(request: ConvertRequest):
                 "cost": 2,
                 "effects": [{"target": "health", "delta": 5, "condition": None}],
                 "channel": "social", "tags": [], "weight": 100,
-                "source": {"variable": var_name, "formula": "", "pattern_detected": "P1"},
+                "source": {"variable": var_name, "equation": "", "pattern_detected": "P1"},
             }
             with open(cards_dir / f"{card_id}.yaml", 'w', encoding='utf-8') as f:
                 yaml.safe_dump(card, f, allow_unicode=True, default_flow_style=False, indent=2)
@@ -100,11 +100,11 @@ async def convert_scenario(request: ConvertRequest):
         elif var_type in ("state", "parameter"):
             pattern = "P1"
             delta = -5
-            formula_expr = ""
-            if var_name in var_formula_map:
-                fml_key, formula_expr = var_formula_map[var_name][0]
-                pattern, delta = _detect_pattern(formula_expr)
-                formula_patterns[formula_expr] = pattern
+            equation_expr = ""
+            if var_name in var_equation_map:
+                eq_key, equation_expr = var_equation_map[var_name][0]
+                pattern, delta = _detect_pattern(equation_expr)
+                equation_patterns[equation_expr] = pattern
             card_id = f"env_{var_name}"
             card_file = f"cards/{card_id}.yaml"
             card = {
@@ -114,7 +114,7 @@ async def convert_scenario(request: ConvertRequest):
                 "effects": [{"target": "health", "delta": delta, "condition": None}],
                 "debuff": None,
                 "channel": "medical", "tags": [], "weight": 100,
-                "source": {"variable": var_name, "formula": formula_expr, "pattern_detected": pattern},
+                "source": {"variable": var_name, "equation": equation_expr, "pattern_detected": pattern},
             }
             with open(cards_dir / f"{card_id}.yaml", 'w', encoding='utf-8') as f:
                 yaml.safe_dump(card, f, allow_unicode=True, default_flow_style=False, indent=2)
@@ -179,7 +179,7 @@ async def convert_scenario(request: ConvertRequest):
             "simulator.total_time": "turns.total",
         },
         "variable_to_card": variable_to_card,
-        "formula_patterns": formula_patterns,
+        "equation_patterns": equation_patterns,
         "manual_overrides": {},
     }
 

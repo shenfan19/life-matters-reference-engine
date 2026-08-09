@@ -57,7 +57,7 @@ class MyPlugin:
         Receive sim data, return a result dict.
 
         inputs keys (all optional — check before use):
-          model       dict   Parsed YAML content (variables, formulas, metadata…)
+          model       dict   Parsed YAML content (variables, equations, metadata…)
           sim_results list   Data points: [{time, var1, var2, …}, …]  (seconds)
           params      dict   Extra parameters from the plugin's own UI form
           sim_config  dict   {start_date, end_date, step_size, step_unit}

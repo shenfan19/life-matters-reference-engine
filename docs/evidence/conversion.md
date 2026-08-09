@@ -1,14 +1,14 @@
-# Evidence 换算：8 种子类型的计算公式
+# Evidence 换算：8 种子类型的计算方程
 
-> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `life-matters-models` 仓库 `docs/authoring/variables_and_formulas.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成公式能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `life-matters-models` 仓库 `docs/authoring/variables_and_equations.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成方程能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
 >
-> 本文件面向两类读者：已经熟悉流行病学/生物统计效应量（RR、OR、HR、Cohen's d 等）的人，可以直接看下面的速查表和公式；不熟悉这些统计量的人（比如只懂工程、只懂某一个学科的建模者），请从「换算解决的问题」开始看——每种子类型都配了生活化的例子、正式公式和"为什么这样算是对的"的推导，不要求先有生物统计背景。
+> 本文件面向两类读者：已经熟悉流行病学/生物统计效应量（RR、OR、HR、Cohen's d 等）的人，可以直接看下面的速查表和方程；不熟悉这些统计量的人（比如只懂工程、只懂某一个学科的建模者），请从「换算解决的问题」开始看——每种子类型都配了生活化的例子、正式方程和"为什么这样算是对的"的推导，不要求先有生物统计背景。
 
 ## 换算解决的问题
 
 一篇论文报出来的"效应量"（effect size）不是一种统一的东西——它可能是"两个概率的比值"（RR），可能是"两个 odds 的比值"（OR），可能是"两个瞬时速率的比值"（HR），可能是"两组的绝对差"（ARD），也可能是"用标准差算出来的标准化差异"（Cohen's d）。这些数字**长得都像一个普通浮点数**（比如 1.65、0.75、0.68），但它们各自的含义、单位、能不能直接相乘相加，是完全不同的。
 
-如果把这些数字不做区分地直接塞进仿真公式（比如直接拿 OR 当作"风险倍数"去乘一个基线概率），会引入系统性的计算错误——错误不会报错，只会让结果"看起来合理但数值不对"。Evidence 换算这一层要做的事，就是先问清楚"这个数字的统计学身份是什么"（`type` 字段），再按该身份对应的公式，把它转换成一个语义统一、单位明确、可以放心在 dynamics 公式里直接使用的**有效系数**（effective）。换算前的原始文献数值不会丢失，会保留在 `evidence_raw_value` 里，方便审查换算是否正确。
+如果把这些数字不做区分地直接塞进仿真方程（比如直接拿 OR 当作"风险倍数"去乘一个基线概率），会引入系统性的计算错误——错误不会报错，只会让结果"看起来合理但数值不对"。Evidence 换算这一层要做的事，就是先问清楚"这个数字的统计学身份是什么"（`type` 字段），再按该身份对应的方程，把它转换成一个语义统一、单位明确、可以放心在 dynamics 方程里直接使用的**有效系数**（effective）。换算前的原始文献数值不会丢失，会保留在 `evidence_raw_value` 里，方便审查换算是否正确。
 
 ## 换算流程总览
 
@@ -26,8 +26,8 @@ flowchart TD
     S3 --> V
     S4 --> V
     V --> A{"声明了 applies_to？"}
-    A -->|"否"| M["建模者在 formulas.dynamics 中<br/>手写引用 effective"]
-    A -->|"是，且 type 属于 ir/ard/hr/rr/or"| G["Loader 自动生成<br/>_auto_evidence_name Formula"]
+    A -->|"否"| M["建模者在 equations.dynamics 中<br/>手写引用 effective"]
+    A -->|"是，且 type 属于 ir/ard/hr/rr/or"| G["Loader 自动生成<br/>_auto_evidence_name Equation"]
     A -->|"是，但 type 属于 cohens_d/beta/pk"| E["报错：不支持 applies_to"]
     G --> D["累加进 applies_to 指向的 state 变量"]
     M --> D
@@ -37,7 +37,7 @@ flowchart TD
 
 ## 换算结果如何存放
 
-Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `evidence_type` 换算出 `effective` 值后，**原地**写入 `self.variables[var_name]`（同名覆盖，`type` 仍是 `parameter`），不新增独立的 `VariableType.evidence`。`formulas`/`dynamics` 直接引用这个名字即可，不需要记 `_effective` 之类的衍生名。
+Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `evidence_type` 换算出 `effective` 值后，**原地**写入 `self.variables[var_name]`（同名覆盖，`type` 仍是 `parameter`），不新增独立的 `VariableType.evidence`。`equations`/`dynamics` 直接引用这个名字即可，不需要记 `_effective` 之类的衍生名。
 
 换算后的 `Variable` 额外带两个溯源字段（`reference_engine/src/model_structure/base.py`），仅供查询/调试，不参与仿真计算：
 
@@ -47,10 +47,10 @@ Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `ev
 | `evidence_type`      | 原始 evidence 的`type`（如 `rr`/`or`/`hr`），非 evidence 来源的 parameter 为 `None` |
 | `evidence_raw_value` | 换算前的原始文献数值（如 OR=1.65），与换算后的`value` 分开保留                      |
 
-## 速查表：8 种子类型换算公式
+## 速查表：8 种子类型换算方程
 
 
-| `type`     | 效应量全称                          | 换算公式                                                | 必填辅助字段                      |
+| `type`     | 效应量全称                          | 换算方程                                                | 必填辅助字段                      |
 | ------------ | ------------------------------------- | --------------------------------------------------------- | ----------------------------------- |
 | `rr`       | 相对风险 Relative Risk              | $\text{effective} = RR$                                 | —                                |
 | `or`       | 比值比 Odds Ratio                   | $\text{effective} = \dfrac{OR}{(1-p_0) + p_0 \cdot OR}$ | `baseline_prevalence`（即 $p_0$） |
@@ -63,7 +63,7 @@ Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `ev
 
 未知 `evidence_type` 不会报错，只会打印一条 warning 并跳过该条目的换算（该变量不会出现在 `self.variables` 中）。
 
-下面逐一详解每种子类型：它在现实中衡量什么、正式公式、为什么换算公式长这样（或者为什么不需要换算）、用真实 fixture 数字过一遍具体计算。
+下面逐一详解每种子类型：它在现实中衡量什么、正式方程、为什么换算方程长这样（或者为什么不需要换算）、用真实 fixture 数字过一遍具体计算。
 
 ## `baseline_ref` 结构关系
 
@@ -94,7 +94,7 @@ $$
 
 其中 $p_1$ 是暴露组（如吸烟者）的事件概率，$p_0$ 是对照组（如不吸烟者）的事件概率。
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = RR
@@ -120,7 +120,7 @@ OR = \frac{p_1/(1-p_1)}{p_0/(1-p_0)}
 
 $$
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = \frac{OR}{(1-p_0) + p_0 \cdot OR}
@@ -129,7 +129,7 @@ $$
 
 **为什么需要换算（这是 8 种子类型里唯一一个"文献数字不能直接当比例用"的类型）**：odds 和概率不是一回事。当患病率很低时（比如 <10%），$\text{odds} \approx p$，OR 和 RR 数值上很接近，直接把 OR 当 RR 用误差不大；但患病率越高，odds 和概率的差距越大，OR 会系统性地比 RR"更极端"（离 1 更远）。如果不做换算就直接拿 OR 去乘基线概率速率，会引入随患病率增大而增大的偏差。所以 Loader 要求额外声明人群患病率 `baseline_prevalence`（$p_0$），先把 OR 转换成一个等效的 RR，之后才能像 `rr` 一样安全地当比例使用。
 
-**换算公式的推导（为什么是对的）**：设人群基础患病率为 $p_0$，暴露组患病率为 $p_1$，代入 OR 的定义并解出 $p_1$：
+**换算方程的推导（为什么是对的）**：设人群基础患病率为 $p_0$，暴露组患病率为 $p_1$，代入 OR 的定义并解出 $p_1$：
 
 $$
 OR = \frac{p_1/(1-p_1)}{p_0/(1-p_0)}
@@ -145,7 +145,7 @@ RR = \frac{p_1}{p_0} = \frac{OR}{(1-p_0) + p_0 \cdot OR}
 
 $$
 
-这是流行病学教材中标准的 OR→RR 换算公式，Loader 的 `effective` 算的正是这个 $RR$。它依赖一个前提：你填的 `baseline_prevalence` 必须真实反映该研究人群的患病率；如果 $p_0$ 选错（比如用了另一个国家/年龄段的患病率），换算结果会跟着错——这是建模者的输入责任，Loader 不会校验 $p_0$ 本身是否合理。
+这是流行病学教材中标准的 OR→RR 换算方程，Loader 的 `effective` 算的正是这个 $RR$。它依赖一个前提：你填的 `baseline_prevalence` 必须真实反映该研究人群的患病率；如果 $p_0$ 选错（比如用了另一个国家/年龄段的患病率），换算结果会跟着错——这是建模者的输入责任，Loader 不会校验 $p_0$ 本身是否合理。
 
 **具体计算**（`test_valid_evidence_or.yaml`）：$OR = 1.65$，$p_0 = 0.12$：
 
@@ -171,7 +171,7 @@ $$
 
 其中 $h_0(t)$ 是对照组的瞬时速率，$h_1(t)$ 是暴露组的瞬时速率。
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = h_0 \cdot HR
@@ -204,7 +204,7 @@ ARD = p_1 - p_0
 
 $$
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = ARD
@@ -230,7 +230,7 @@ $$
 
 其中 $\mu_1$、$\mu_0$ 是两组的均值，$SD$ 是（合并后的）人群标准差。
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = d \cdot SD
@@ -266,7 +266,7 @@ IR = \frac{C}{N \cdot \Delta t}
 
 $$
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = IR
@@ -292,7 +292,7 @@ $$
 
 $\beta$ 即自变量 $x$ 每变化 1 个单位时，因变量 $y$ 的平均变化量。
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = \beta
@@ -316,7 +316,7 @@ $$
 
 例如 $k_e = 0.0347$ (1/hour) 对应半衰期约 20 小时。
 
-**换算公式**：
+**换算方程**：
 
 $$
 \text{effective} = \theta
@@ -345,7 +345,7 @@ $$
 | `cohens_d` | `test_valid_evidence_cohens_d.yaml` | 唯一必须靠`population_sd` 才能换出有量纲结果的子类型                                                           |
 | `ir`       | `test_valid_evidence_ir.yaml`       | 常被其他子类型引用作基线，需要单独确认作为"被引用方"时数值稳定                                                 |
 | `beta`     | `test_valid_evidence_beta.yaml`     | 年化系数折算为日速率（÷365）驱动连续状态变量                                                                  |
-| `pk`       | `test_valid_evidence_pk.yaml`       | 验证换出的速率常数能在小时级步长公式里直接用，不需要额外单位转换                                               |
+| `pk`       | `test_valid_evidence_pk.yaml`       | 验证换出的速率常数能在小时级步长方程里直接用，不需要额外单位转换                                               |
 
 每个文件的 `metadata.description.result` 字段都写了具体应该算出的数字（比如"30 天后累计约 0.000658"），可以直接改 `simulation.end_date` 跑更长/更短的区间验证。8 种子类型同时共存的综合场景见 `test_valid_evidence_types.yaml`；每个文件的设计意图（为什么要单独测、和相邻文件的关系）见 `models/test_fixtures/fixture_catalog.md` §1。
 

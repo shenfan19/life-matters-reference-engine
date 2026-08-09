@@ -38,7 +38,7 @@
 | --------- | ---------------------- | ------- |
 | `pymoo`   | NSGA-II / Callback     | ≥ 0.6.0 |
 | `scipy`   | L-BFGS-B / Nelder-Mead | ≥ 1.7.0 |
-| `asteval` | 公式求值                   | 任意      |
+| `asteval` | 方程求值                   | 任意      |
 | `fastapi` | 异步端点 + `create_task`   | ≥ 0.100 |
 
 pymoo 0.6+ 正确导入路径：

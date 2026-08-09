@@ -1,5 +1,5 @@
 # src/models/loader.py
-from .base import ModelMetadata, Variable, Formula, VariableType, TIME_UNIT_SECONDS
+from .base import ModelMetadata, Variable, Equation, VariableType, TIME_UNIT_SECONDS
 from .utils import merge_dicts
 from ..schedule_runner import resolve_time_interval
 from ..yaml_io import safe_load
@@ -84,7 +84,7 @@ class Loader:
             source_label = self._source_label(file_path)
             merged_sources: Dict[str, Any] = {
                 'variables': {},
-                'formulas': {},
+                'equations': {},
                 'simulation': {},
                 'optimizer': {},
                 'imports': [],
@@ -171,8 +171,8 @@ class Loader:
                             merged_data[sim_key].pop(output_key, None)
             for var_name in (data.get('variables') or {}).keys():
                 merged_sources['variables'][var_name] = source_label
-            for form_name in (data.get('formulas') or {}).keys():
-                merged_sources['formulas'][form_name] = source_label
+            for eq_name in (data.get('equations') or {}).keys():
+                merged_sources['equations'][eq_name] = source_label
             if isinstance(local_sim, dict):
                 for key in local_sim.keys():
                     merged_sources['simulation'][key] = source_label
@@ -198,7 +198,7 @@ class Loader:
         """
         if clear_existing:
             self.variables.clear()
-            self.formulas.clear()
+            self.equations.clear()
             self.variable_history.clear()
             self.simulator.clear()
             self.optimizer.clear()
@@ -213,7 +213,7 @@ class Loader:
 
         # 应用变量：type 只表达角色（state/input/parameter）。若声明 evidence_type，
         # 说明该变量的 value 是文献原始效应量（OR/HR/RR/Cohen's d 等），Loader 在此原地
-        # 换算为可进公式的系数（同名，不加后缀），换算前的原始值保留在 evidence_raw_value，
+        # 换算为可进方程的系数（同名，不加后缀），换算前的原始值保留在 evidence_raw_value，
         # 换算逻辑见 docs/model.md「evidence 的 8 种子类型」。声明 evidence_type 的变量，
         # 角色必须是 parameter（换算结果本身就是机制系数）。
         import re as _re
@@ -296,11 +296,11 @@ class Loader:
         # docs/model.md「自动接入 dynamics」一节及 home/decisions/2026-06-22_evidence-to-dynamics讨论纪要.md。
         # 单独成一个循环（不并入上面的换算循环），确保 baseline_ref 无论声明顺序如何都已存在于 self.variables。
         #
-        # 速率的"自然时间单位"（rate_unit，如年发病率的 year）和公式的 step_unit
+        # 速率的"自然时间单位"（rate_unit，如年发病率的 year）和方程的 step_unit
         # （validator 只接受 minute|hour|day）是两个独立的量，二者比值算成一个数值系数
-        # 直接写进生成的 dynamics 表达式里，不依赖 Formula.step_unit 表达年/周/月。
+        # 直接写进生成的 dynamics 表达式里，不依赖 Equation.step_unit 表达年/周/月。
         applies_to_targets: Dict[str, str] = {}
-        valid_formula_step_units = {'minute', 'hour', 'day'}
+        valid_equation_step_units = {'minute', 'hour', 'day'}
         for var_name, var_data in variables_data.items():
             applies_to = var_data.get('applies_to')
             if not applies_to:
@@ -329,10 +329,10 @@ class Loader:
                     "请去掉 applies_to 并手写 dynamics"
                 )
             step_unit = str(var_data.get('step_unit', '')).lower()
-            if step_unit not in valid_formula_step_units:
+            if step_unit not in valid_equation_step_units:
                 raise ValueError(
                     f"evidence '{var_name}' 使用 applies_to 时必须声明合法的 step_unit"
-                    f"（{'/'.join(sorted(valid_formula_step_units))} 之一，与 formulas.step_unit 规则一致）"
+                    f"（{'/'.join(sorted(valid_equation_step_units))} 之一，与 equations.step_unit 规则一致）"
                 )
 
             if evidence_type in ('rr', 'or'):
@@ -364,20 +364,20 @@ class Loader:
             expr = expr_template.format(factor=repr(factor))
 
             applies_to_targets[applies_to] = var_name
-            self.formulas[f"_auto_evidence_{var_name}"] = Formula(
+            self.equations[f"_auto_evidence_{var_name}"] = Equation(
                 description=f"自动生成：evidence '{var_name}' 接入 '{applies_to}'（applies_to）",
                 dynamics={applies_to: expr},
                 step_unit=step_unit,
                 step_size_sec=TIME_UNIT_SECONDS[step_unit],
             )
 
-        # 应用公式
-        for form_name, form_data in data.get('formulas', {}).items():
-            if not clear_existing and form_name in self.formulas:
-                logger.warning(f"覆盖公式 (从 {module_name}): {form_name}")
+        # 应用方程
+        for eq_name, form_data in data.get('equations', {}).items():
+            if not clear_existing and eq_name in self.equations:
+                logger.warning(f"覆盖方程 (从 {module_name}): {eq_name}")
             
             condition = form_data.get('condition', True)
-            self.formulas[form_name] = Formula(
+            self.equations[eq_name] = Equation(
                 description=form_data.get('description', ''),
                 condition=condition,
                 priority=form_data.get('priority', 0),
@@ -433,13 +433,13 @@ class Loader:
         self.simulator = merge_dicts(self.simulator, simulator_data)
         self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
 
-        # 跨步长 import：每条公式的 `step` 按公式自身声明的 step_unit 换算。
+        # 跨步长 import：每条方程的 `step` 按方程自身声明的 step_unit 换算。
         # step_unit 是必填字段，validator 强制检查；此处直接读取。
-        for form_name, form_data in data.get('formulas', {}).items():
-            if form_name in self.formulas:
-                formula_step_unit = str(form_data.get('step_unit', '')).lower()
-                if formula_step_unit in TIME_UNIT_SECONDS:
-                    self.formulas[form_name].step_size_sec = TIME_UNIT_SECONDS[formula_step_unit]
+        for eq_name, form_data in data.get('equations', {}).items():
+            if eq_name in self.equations:
+                equation_step_unit = str(form_data.get('step_unit', '')).lower()
+                if equation_step_unit in TIME_UNIT_SECONDS:
+                    self.equations[eq_name].step_size_sec = TIME_UNIT_SECONDS[equation_step_unit]
 
         # 解析 time_unit（默认 minute）
         time_unit_raw = str(simulator_data.get('time_unit', 'minute')).lower()
@@ -550,7 +550,7 @@ class Loader:
 
     def append_model(self, file_path: str, module_name: str, log_as_loaded: bool = False, validate: bool = True):
         """
-        追加模型文件（追加模式）：不清空现有内容，追加/覆盖变量和公式。
+        追加模型文件（追加模式）：不清空现有内容，追加/覆盖变量和方程。
         适用于：合并多个模型
         注意：visited 不会被清空，由调用者管理
         """

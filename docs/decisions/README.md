@@ -52,7 +52,7 @@
 | [0043](0043-2026-04-25_game_battlefield-tension-framework.md) | 战场张力框架：battle_progress/danger_accumulation 归 Game-native；origin 字段；命运牌模式 | ✅ 已实施 | 2026-04-25 |
 | [0044 †](../../../life-matters-models/docs/decisions/0044-2026-04-30_sim_schedule作为simulation-input子类型.md) | `simulation.schedules`：时间驱动输入归属 `simulation` 块；pulse 模式；离散 input 不写零值点规则 | ✅ 已实施 | 2026-04-30 |
 | [0045](0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | MC 概率仿真架构：parameter 分布表达式、多 run 引擎、半透明曲线渲染、Opt 内环均值评估、种子管理 | ✅ 已实施 | 2026-04-30 |
-| [0046 †](../../../life-matters-models/docs/decisions/0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；公式用 `step`；simulation 去掉 step/step_unit | ✅ 已实施 | 2026-04-30 |
+| [0046 †](../../../life-matters-models/docs/decisions/0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；方程用 `step`；simulation 去掉 step/step_unit | ✅ 已实施 | 2026-04-30 |
 | [0049](0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | Optimizer 异步 Job 系统设计 | ✅ 已实施 | 2026-05-02 |
 | [0050](0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | InputEvent 扁平化与交互状态颜色规则 | ✅ 已实施 | 2026-05-04 |
 | [0052](0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 格式统一（扁平列表）& optimizer.regimen 支持 | ✅ 已实施 | 2026-05-04 |
@@ -67,9 +67,9 @@
 | [0065 †](../../../life-matters-models/docs/decisions/0065-2026-05-08_sim_structured-description.md) | metadata.description 支持结构化与自由文本 | ✅ 已实施 | 2026-05-08 |
 | [0066](0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Simulator 拆分与 Sim/Opt 结果工作区 | ✅ 已实施；OPT/SIM 分离重构待续 | 2026-05-08 |
 | [0067](0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化算法参数预设（快速/标准/精细）与滑动条联动 UI | ✅ 已实施 | 2026-05-15 |
-| [0068](0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 公式预编译：asteval 运行时解析 → 加载时生成 Python 函数 | ✅ 已实施 | 2026-05-15 |
+| [0068](0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 方程预编译：asteval 运行时解析 → 加载时生成 Python 函数 | ✅ 已实施 | 2026-05-15 |
 | [0069](0069-2026-05-15_sim_run-history-auto-archive.md) | 运行历史自动存档：sim/opt 完成后自动存档，历史抽屉加载/删除 | ✅ 已实施 | 2026-05-15 |
-| [0070](0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | asteval 作为公式安全沙箱：禁止用 Python eval() 直接替代（补录核心约束） | ⭐⭐ 核心约束 | 2026-05-15 |
+| [0070](0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | asteval 作为方程安全沙箱：禁止用 Python eval() 直接替代（补录核心约束） | ⭐⭐ 核心约束 | 2026-05-15 |
 | [0071](0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | 全局圆角卡片面板 + 设置齿轮 Popover（字号/语言）+ 区块拖拽排序 | ✅ 已实施 | 2026-05-15 |
 | [0072](0072-2026-05-15_project_gui-only-no-cli.md) | GUI-only：放弃 CLI 作为正式接口（补录核心约束） | ⭐⭐ 核心约束 | 2026-05-15 |
 | [0073](0073-2026-05-16_sim_multi-plan-simulation.md) | 多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行 | 待实现 | 2026-05-16 |
@@ -102,9 +102,9 @@
 | [0100 †](../../../life-matters-models/docs/decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | 统一 pulse/sustained 为时间区间 [start,end)；GUI 取消 full day / time / sustained 三态 | ✅ 已完成 | 2026-06-11 |
 | [0101](0101-2026-06-13_project_cli-public-release-interface.md) | CLI 升级为公开发布接口（面向 AI / 自动化场景），部分修订 0072/0091 | ✅ 已实施 | 2026-06-13 |
 | [0101 †](../../../life-matters-models/docs/decisions/0101-2026-06-14_model_hold-suffix-todo-field.md) | 文件名质量标记统一为 `_HOLD` + `metadata.todo` 任务列表（替代 0096 model） | ⚪ 文件名部分被 0120 取代 | 2026-06-14 |
-| [0102 †](../../../life-matters-models/docs/decisions/0102-2026-06-14_model_formula-priority-execution-order.md) | 澄清 formula `priority` 执行顺序与同 step 内的更新可见性 | ✅ 已实施 | 2026-06-14 |
+| [0102 †](../../../life-matters-models/docs/decisions/0102-2026-06-14_model_formula-priority-execution-order.md) | 澄清 equation `priority` 执行顺序与同 step 内的更新可见性 | ✅ 已实施 | 2026-06-14 |
 | [0103 †](../../../life-matters-models/docs/decisions/0103-2026-06-14_model_metadata-log-field.md) | 新增 `metadata.log`：模型内改进历史记录 | ✅ 已实施 | 2026-06-14 |
-| [0104 †](../../../life-matters-models/docs/decisions/0104-2026-06-16_model_step-unit-per-formula-and-sim-step-size.md) | 步长设计重构：per-formula step_unit + simulation.step_size（替代 0046） | ✅ 已采纳 | 2026-06-16 |
+| [0104 †](../../../life-matters-models/docs/decisions/0104-2026-06-16_model_step-unit-per-formula-and-sim-step-size.md) | 步长设计重构：per-equation step_unit + simulation.step_size（替代 0046） | ✅ 已采纳 | 2026-06-16 |
 | [0105 †](../../../life-matters-models/docs/decisions/0105-2026-06-16_model_step-unit-conditional-and-deprecate-dt.md) | step_unit 条件必填 + 废弃 dt/step_size 动力学符号（修订 0104） | ✅ 已采纳 | 2026-06-16 |
 | [0106 †](../../../life-matters-models/docs/decisions/0106-2026-06-16_model_remove-formula-dict-unify-to-dynamics.md) | 移除 formula: 字典形式，统一变量更新为 dynamics:（补充 0105） | ✅ 已采纳 | 2026-06-16 |
 | [0107 †](../../../life-matters-models/docs/decisions/0107-2026-06-16_model_output-variables-import-overwrite.md) | output_variables / output_types import 行为统一为覆盖（取代并集） | ✅ 已实施 | 2026-06-16 |

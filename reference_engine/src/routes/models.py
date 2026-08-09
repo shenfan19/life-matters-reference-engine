@@ -17,7 +17,7 @@ async def list_models(folder: Optional[str] = None):
         return {
             "models": [
                 {"name": name, "variables": info["variables"],
-                 "formulas": info["formulas"], "version": info["version"]}
+                 "equations": info["equations"], "version": info["version"]}
                 for name, info in models.items()
             ],
             "total": len(models)
@@ -52,17 +52,17 @@ async def get_model(model_name: str, folder: Optional[str] = None):
             }
             for var_name, var in model.variables.items()
         }
-        formulas = {
+        equations = {
             f_name: {
                 "description": f.description, "condition": f.condition,
                 "priority": f.priority, "dynamics": f.dynamics,
                 "reference": f.reference, "locator": f.locator,
             }
-            for f_name, f in model.formulas.items()
+            for f_name, f in model.equations.items()
         }
         provenance = getattr(model, 'provenance', {}) or {}
         data = {
-            "metadata": metadata, "variables": variables, "formulas": formulas,
+            "metadata": metadata, "variables": variables, "equations": equations,
             "simulation": model.simulator, "simulator": model.simulator,
             "optimizer": model.optimizer,
             "plans": model.plans,

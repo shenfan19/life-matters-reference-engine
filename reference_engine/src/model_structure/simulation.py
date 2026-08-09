@@ -13,8 +13,8 @@ import ast as _ast
 
 logger = logging.getLogger(__name__)
 
-# 公式函数的全局数学环境（作为 exec 的 globals，提供 sin/cos/max 等）
-_FORMULA_GLOBALS: Dict[str, Any] = {
+# 方程函数的全局数学环境（作为 exec 的 globals，提供 sin/cos/max 等）
+_EQUATION_GLOBALS: Dict[str, Any] = {
     '__builtins__': {},
     'math': _math,
     'sin': _math.sin, 'cos': _math.cos, 'tan': _math.tan,
@@ -26,7 +26,7 @@ _FORMULA_GLOBALS: Dict[str, Any] = {
     'pi': _math.pi, 'e': _math.e,
 }
 
-# 每步由引擎注入的时间/步长符号（不是模型变量，但公式可以引用）
+# 每步由引擎注入的时间/步长符号（不是模型变量，但方程可以引用）
 _STEP_SYMS = frozenset({
     'step', 'step_size', 'dt', 't', 'time',
     'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
@@ -55,7 +55,7 @@ def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
 
     local_ns: Dict = {}
     try:
-        exec(fn_code, _FORMULA_GLOBALS, local_ns)
+        exec(fn_code, _EQUATION_GLOBALS, local_ns)
     except Exception:
         return None, None
 
@@ -63,22 +63,22 @@ def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
 
 class Simulation:
     # Simulation
-    def _build_formula_cache(self):
-        """加载后第一次 step() 前调用，把公式表达式转换为真正的 Python 函数。
+    def _build_equation_cache(self):
+        """加载后第一次 step() 前调用，把方程表达式转换为真正的 Python 函数。
         每步直接调用 fn(*args)，变量走 LOAD_FAST 而非字典查找。
         编译失败时 fn=None，step() 回退到 asteval。
         """
-        self._sorted_formulas = sorted(
-            self.formulas.items(),
+        self._sorted_equations = sorted(
+            self.equations.items(),
             key=lambda x: x[1].priority,
             reverse=True
         )
         model_vars = frozenset(self.variables.keys())
         compiled = {}
 
-        for form_name, formula in self._sorted_formulas:
+        for eq_name, equation in self._sorted_equations:
             # 条件
-            raw_cond = formula.condition
+            raw_cond = equation.condition
             if isinstance(raw_cond, str):
                 cond_fn, cond_params = _compile_expr_to_fn(raw_cond, model_vars)
             else:
@@ -86,18 +86,18 @@ class Simulation:
 
             # dynamics：每个变量对应一个函数
             dyn = {}
-            for var_name, expr in formula.dynamics.items():
+            for var_name, expr in equation.dynamics.items():
                 if isinstance(expr, str):
                     fn, params = _compile_expr_to_fn(expr, model_vars)
                     dyn[var_name] = (fn, params, expr)   # expr 备用回退
                 else:
                     dyn[var_name] = (None, None, expr)   # 数值字面量
 
-            compiled[form_name] = {
+            compiled[eq_name] = {
                 'cond': (raw_cond, cond_fn, cond_params),
                 'dyn':  dyn,
             }
-        self._formula_cache = compiled
+        self._equation_cache = compiled
 
     def step(self, step_size: float = 1.0):
         """
@@ -117,12 +117,12 @@ class Simulation:
         # 声明单位下的步长（作者直觉单位），如 1 day 模型 step=1，1 hour 模型 step=1
         declared_step = step_size_sec / unit_sec if unit_sec else step_size_sec
 
-        # 公式中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
+        # 方程中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
         # step 是规范符号；step_size/dt 保留为向后兼容别名
         self.asteval.symtable['step'] = declared_step
         self.asteval.symtable['step_size'] = declared_step
         self.asteval.symtable['dt'] = declared_step
-        # 公式中 t/time = 当前时间（声明单位），修复 time 未定义 bug
+        # 方程中 t/time = 当前时间（声明单位），修复 time 未定义 bug
         self.asteval.symtable['t'] = self.time / unit_sec
         self.asteval.symtable['time'] = self.time / unit_sec
         
@@ -130,9 +130,9 @@ class Simulation:
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
         
-        # 第一次调用时把公式编译为函数（只编译一次）
-        if not hasattr(self, '_sorted_formulas'):
-            self._build_formula_cache()
+        # 第一次调用时把方程编译为函数（只编译一次）
+        if not hasattr(self, '_sorted_equations'):
+            self._build_equation_cache()
 
         # 每步注入的时间/步长值（供 _get_arg 查询）
         step_sym_vals = {
@@ -149,22 +149,22 @@ class Simulation:
                 return v.value
             return step_sym_vals.get(name, 0.0)
 
-        for form_name, formula in self._sorted_formulas:
+        for eq_name, equation in self._sorted_equations:
             try:
-                cache = self._formula_cache[form_name]
+                cache = self._equation_cache[eq_name]
 
-                # 跨步长 import：每条公式的 step 按其来源模块自身的
+                # 跨步长 import：每条方程的 step 按其来源模块自身的
                 # step_size 换算（而非当前运行模型的 step_size），
-                # 例如 1 小时模型 import 了"每日衰减 1%"的公式，
-                # 该公式的 step = 1小时 / 1天 = 1/24。
-                formula_step_sec = getattr(formula, 'step_size_sec', None) or step_size_sec
-                formula_step = step_size_sec / formula_step_sec if formula_step_sec else declared_step
-                step_sym_vals['step'] = formula_step
-                step_sym_vals['step_size'] = formula_step
-                step_sym_vals['dt'] = formula_step
-                self.asteval.symtable['step'] = formula_step
-                self.asteval.symtable['step_size'] = formula_step
-                self.asteval.symtable['dt'] = formula_step
+                # 例如 1 小时模型 import 了"每日衰减 1%"的方程，
+                # 该方程的 step = 1小时 / 1天 = 1/24。
+                equation_step_sec = getattr(equation, 'step_size_sec', None) or step_size_sec
+                equation_step = step_size_sec / equation_step_sec if equation_step_sec else declared_step
+                step_sym_vals['step'] = equation_step
+                step_sym_vals['step_size'] = equation_step
+                step_sym_vals['dt'] = equation_step
+                self.asteval.symtable['step'] = equation_step
+                self.asteval.symtable['step_size'] = equation_step
+                self.asteval.symtable['dt'] = equation_step
 
                 # ── 评估条件 ──────────────────────────────────────────────
                 raw_cond, cond_fn, cond_params = cache['cond']
@@ -172,14 +172,14 @@ class Simulation:
                     try:
                         condition = cond_fn(*[_get_arg(n) for n in cond_params])
                     except Exception as cond_err:
-                        logger.error(f"Error in condition for '{form_name}': {cond_err}")
+                        logger.error(f"Error in condition for '{eq_name}': {cond_err}")
                         continue
                 elif isinstance(raw_cond, str):
                     # 编译失败，回退 asteval
                     try:
                         condition = self.asteval.eval(raw_cond, raise_errors=True)
                     except Exception as cond_err:
-                        logger.error(f"Error evaluating condition for formula '{form_name}': {raw_cond} -> {cond_err}")
+                        logger.error(f"Error evaluating condition for equation '{eq_name}': {raw_cond} -> {cond_err}")
                         continue
                 else:
                     condition = raw_cond if raw_cond is not None else True
@@ -198,7 +198,7 @@ class Simulation:
                             new_value = raw_expr  # 数值字面量
 
                         if new_value is None:
-                            logger.warning(f"Formula '{form_name}' evaluated to None for variable '{var_name}'")
+                            logger.warning(f"Equation '{eq_name}' evaluated to None for variable '{var_name}'")
                             continue
 
                         if var_name in self.variables:
@@ -214,12 +214,12 @@ class Simulation:
                             self.asteval.symtable[var_name] = new_value
 
                     except Exception as dyn_err:
-                        logger.error(f"Error evaluating dynamics for formula '{form_name}', variable '{var_name}': {raw_expr} -> {dyn_err}")
+                        logger.error(f"Error evaluating dynamics for equation '{eq_name}', variable '{var_name}': {raw_expr} -> {dyn_err}")
                         continue
 
 
             except Exception as e:
-                logger.error(f"Unexpected error executing formula '{form_name}': {e}")
+                logger.error(f"Unexpected error executing equation '{eq_name}': {e}")
         
         # 新增：执行 post_step 钩子
         for hook in self.hooks.get('post_step', []):
@@ -289,4 +289,4 @@ class Simulation:
                 initial_value = self.variable_history[var_name][0]
                 self.variable_history[var_name] = [initial_value]
 
-        # 公式缓存在 reset 时不需要重建（公式本身不变），保留即可
+        # 方程缓存在 reset 时不需要重建（方程本身不变），保留即可

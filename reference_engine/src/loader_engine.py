@@ -161,7 +161,7 @@ class LoaderEngine:
                             models[model_name] = {
                                 "name": model.metadata.name,
                                 "variables": len(model.variables),
-                                "formulas": len(model.formulas),
+                                "equations": len(model.equations),
                                 "version": model.metadata.version,
                                 "hooks": len(model.simulator.get('hooks', [])),
                                 "optimizer_method": model.optimizer.get('method', 'N/A'),
@@ -274,7 +274,7 @@ class LoaderEngine:
                     "success": False,
                     "error": "未提供任何模型或文件夹用于合并",
                     "variables": 0,
-                    "formulas": 0
+                    "equations": 0
                 }
             
             merged_model = ModelStructure(self.models_directory)
@@ -294,7 +294,7 @@ class LoaderEngine:
                             "success": False,
                             "error": f"未找到根模型文件 {root_file_name} 在文件夹 {folder}",
                             "variables": 0,
-                            "formulas": 0
+                            "equations": 0
                         }
                     
                     # 第一个文件夹：获取名称
@@ -363,7 +363,7 @@ class LoaderEngine:
                     "success": False,
                     "error": str(ve),
                     "variables": len(merged_model.variables),
-                    "formulas": len(merged_model.formulas)
+                    "equations": len(merged_model.equations)
                 }
             
             # 只有指定了 output_path 才导出
@@ -379,7 +379,7 @@ class LoaderEngine:
                 "success": True,
                 "data": merged_model,
                 "variables": len(merged_model.variables),
-                "formulas": len(merged_model.formulas)
+                "equations": len(merged_model.equations)
             }
             
         except Exception as e:
@@ -387,7 +387,7 @@ class LoaderEngine:
                 "success": False,
                 "error": str(e),
                 "variables": 0,
-                "formulas": 0
+                "equations": 0
             }
 
     # 保留向后兼容的包装方法
@@ -443,7 +443,7 @@ class LoaderEngine:
                 "data": {
                     "output_dir": output_dir,
                     "variables": len(model.variables),
-                    "formulas": len(model.formulas),
+                    "equations": len(model.equations),
                     "files": generated_files
                 }
             }

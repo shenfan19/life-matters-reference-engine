@@ -91,7 +91,7 @@ export function useBuilderState({
       type: content.type, category: content.category,
       content, rawContent: content,
       metadata: content.metadata, variables: content.variables,
-      formulas: content.formulas, simulator: content.simulator,
+      equations: content.equations, simulator: content.simulator,
       optimizer: content.optimizer, imports: content.imports,
       folder: 'session', validated: undefined, validationErrors: [],
     };
@@ -143,7 +143,7 @@ export function useBuilderState({
           type: raw.type, category: raw.category,
           content: raw, rawContent: raw,
           metadata: raw.metadata, variables: raw.variables,
-          formulas: raw.formulas, simulator: raw.simulator,
+          equations: raw.equations, simulator: raw.simulator,
           optimizer: raw.optimizer, imports: raw.imports,
           folder: 'session', validated: undefined, validationErrors: [],
         };
@@ -197,7 +197,7 @@ export function useBuilderState({
       const key = `session/${safeName}.yaml`;
       const template = {
         metadata: { name: safeName, version: '1.0', description: '', tags: [] },
-        variables: {}, formulas: {},
+        variables: {}, equations: {},
         simulation: { start_date: '', end_date: '' },
       };
       handleBuilderSessionUpdate(key, template);
@@ -291,7 +291,7 @@ export function useBuilderState({
         type: content.type, category: content.category,
         content, rawContent: raw,
         metadata: content.metadata, variables: content.variables,
-        formulas: content.formulas, simulator: content.simulator,
+        equations: content.equations, simulator: content.simulator,
         optimizer: content.optimizer, imports: content.imports,
         provenance: content.provenance,
         folder: 'session',

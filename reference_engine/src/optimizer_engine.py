@@ -61,8 +61,8 @@ def run_optimizer(engine, model_name: str,
     # ── log model info ────────────────────────────────────────────────────────
     if log_cb:
         n_vars = len(base_model.variables)
-        n_formulas = len(base_model.formulas) if hasattr(base_model, 'formulas') else 0
-        log_cb(f"Model: {model_name} ({n_vars} vars, {n_formulas} formulas)")
+        n_equations = len(base_model.equations) if hasattr(base_model, 'equations') else 0
+        log_cb(f"Model: {model_name} ({n_vars} vars, {n_equations} equations)")
         prov_imports = (base_model.provenance or {}).get('imports', [])
         if prov_imports:
             log_cb(f"Imports: {', '.join(prov_imports)}")

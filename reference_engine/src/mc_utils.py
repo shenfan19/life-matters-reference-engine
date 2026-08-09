@@ -143,7 +143,7 @@ def clone_model(base):
 
     Does not use deepcopy because ModelStructure holds an asteval Interpreter
     that cannot be pickled. Only mutable runtime state is duplicated; read-only
-    metadata and formulas are shared by reference.
+    metadata and equations are shared by reference.
     """
     from .model_structure import ModelStructure
     from .model_structure.base import Variable
@@ -152,7 +152,7 @@ def clone_model(base):
 
     # Read-only metadata — shared references are safe
     fresh.metadata         = base.metadata
-    fresh.formulas         = base.formulas
+    fresh.equations         = base.equations
     fresh.simulator        = dict(base.simulator)
     fresh.optimizer        = dict(base.optimizer)
     fresh.time_unit        = base.time_unit

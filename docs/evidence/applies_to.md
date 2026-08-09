@@ -1,14 +1,14 @@
 # Evidence 的 `applies_to`：自动接入 dynamics
 
-> 对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 里独立于换算循环的第二个循环（遍历 `variables:` 条目，处理 `applies_to` 字段）。换算出 `effective` 值本身的 8 种子类型公式见 [conversion.md](conversion.md)。YAML 字段声明方式见 `life-matters-models` 仓库 `docs/authoring/variables_and_formulas.md`「自动接入 dynamics」一节。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> 对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 里独立于换算循环的第二个循环（遍历 `variables:` 条目，处理 `applies_to` 字段）。换算出 `effective` 值本身的 8 种子类型方程见 [conversion.md](conversion.md)。YAML 字段声明方式见 `life-matters-models` 仓库 `docs/authoring/variables_and_equations.md`「自动接入 dynamics」一节。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
 >
-> 本文件假设你已经读过 [conversion.md](conversion.md)，理解了 `effective` 换算出来的到底是"比例"（`rr`/`or`）还是"绝对速率"（`hr`/`ard`/`ir`）——`applies_to` 生成的公式为什么因子类型而异，根源就在这个区别。不熟悉这些统计量含义的读者请先看 conversion.md 的「逐一详解」。
+> 本文件假设你已经读过 [conversion.md](conversion.md)，理解了 `effective` 换算出来的到底是"比例"（`rr`/`or`）还是"绝对速率"（`hr`/`ard`/`ir`）——`applies_to` 生成的方程为什么因子类型而异，根源就在这个区别。不熟悉这些统计量含义的读者请先看 conversion.md 的「逐一详解」。
 
 ## 解决什么问题
 
-声明了 `evidence_type` 的 `variables:` 条目换算出 `effective` 系数后，这个系数本身只回答了"这件事的效应有多大"，还没有回答"要把它接到仿真的哪个部分、怎么接"——具体说，就是要把它累加进哪个 `state` 变量的动力学方程，用加法还是乘法组合进已有的风险。举例：换算出"吸烟使 CVD 风险变成 2.5 倍"这个系数（$\text{effective} = 2.5$）之后，还需要有人写一句类似"每天把这个系数乘以基线风险，累加进吸烟者的累积患病概率"的公式——这句公式就是 `applies_to` 要自动生成的东西。
+声明了 `evidence_type` 的 `variables:` 条目换算出 `effective` 系数后，这个系数本身只回答了"这件事的效应有多大"，还没有回答"要把它接到仿真的哪个部分、怎么接"——具体说，就是要把它累加进哪个 `state` 变量的动力学方程，用加法还是乘法组合进已有的风险。举例：换算出"吸烟使 CVD 风险变成 2.5 倍"这个系数（$\text{effective} = 2.5$）之后，还需要有人写一句类似"每天把这个系数乘以基线风险，累加进吸烟者的累积患病概率"的方程——这句方程就是 `applies_to` 要自动生成的东西。
 
-5 种子类型（`ir`/`ard`/`hr`/`rr`/`or`）的接入方式只有一种没有歧义的写法——"以换算后的系数为速率，按步长累加进目标状态"——因为它们的统计定义本身就已经确定了"这是一个关于发生概率的速率"这件事，不存在第二种合理的接入方式。因此声明 `applies_to` 等字段后，Loader 会自动生成对应的 `Formula`，不需要建模者手写这段样板 dynamics。
+5 种子类型（`ir`/`ard`/`hr`/`rr`/`or`）的接入方式只有一种没有歧义的写法——"以换算后的系数为速率，按步长累加进目标状态"——因为它们的统计定义本身就已经确定了"这是一个关于发生概率的速率"这件事，不存在第二种合理的接入方式。因此声明 `applies_to` 等字段后，Loader 会自动生成对应的 `Equation`，不需要建模者手写这段样板 dynamics。
 
 `cohens_d`/`beta`/`pk` **不支持** `applies_to`（声明会直接报错）：这 3 种的接入方式本身是建模判断，不存在唯一写法——例如 `cohens_d` 换算出的"两组均值差"，你可能想让它作为一次性偏移量直接加到目标变量上，也可能想让它作为渐进逼近的目标值（比如"运动 8 周后逐步达到这个提升"）；`beta` 的回归结构可能是线性也可能带交互项；`pk` 的房室模型结构（单室/多室、一级/零级消除）不唯一。这些"怎么接入"的问题没有数学上唯一正确的答案，Loader 不会替建模者做出这个选择，必须手写 dynamics。
 
@@ -19,20 +19,20 @@
 ```mermaid
 flowchart TD
     S0["variables 条目"] --> C1{"1. 声明了 applies_to？"}
-    C1 -->|"否"| SKIP["跳过，不生成 Formula<br/>（纯增量字段，不影响任何行为）"]
+    C1 -->|"否"| SKIP["跳过，不生成 Equation<br/>（纯增量字段，不影响任何行为）"]
     C1 -->|"是"| C1b{"1b. 声明了 evidence_type？"}
     C1b -->|"否"| ERR0["报错：applies_to 仅用于<br/>evidence_type 换算结果，需去掉字段或补上 evidence_type"]
     C1b -->|"是"| C2{"2. evidence_type 是<br/>cohens_d / beta / pk？"}
     C2 -->|"是"| ERR1["报错：不支持 applies_to<br/>需去掉字段、手写 dynamics"]
     C2 -->|"否"| C3{"3. applies_to 指向的变量<br/>已在 variables: 声明？"}
-    C3 -->|"否"| ERR2["报错：目标变量不存在<br/>（防止拼写错误悄悄生成坏公式）"]
+    C3 -->|"否"| ERR2["报错：目标变量不存在<br/>（防止拼写错误悄悄生成坏方程）"]
     C3 -->|"是"| C4{"4. 同一目标被两条以上<br/>evidence_type 变量同时声明？"}
     C4 -->|"是"| ERR3["报错：目标冲突<br/>（多风险因子组合方式有歧义，需手写）"]
     C4 -->|"否"| C5{"5. step_unit 合法？<br/>(minute / hour / day)"}
     C5 -->|"否"| ERR4["报错：非法 step_unit"]
     C5 -->|"是"| C6{"6. 能解析出合法 rate_unit？<br/>(minute/hour/day/week/month/year)"}
     C6 -->|"否"| ERR5["报错：rate_unit 无法确定"]
-    C6 -->|"是"| OK["生成 _auto_evidence_name Formula<br/>累加进目标 state 变量"]
+    C6 -->|"是"| OK["生成 _auto_evidence_name Equation<br/>累加进目标 state 变量"]
 ```
 
 各步骤的理由：
@@ -40,9 +40,9 @@ flowchart TD
 1. **未声明 `applies_to` → 跳过该条目，不影响任何行为**（纯增量字段）。这样设计是为了让不需要自动接线的模型完全不用碰这个字段，声明与否互不干扰。
 2. **声明了 `applies_to` 但未声明 `evidence_type` → 报错**。`applies_to` 并入 `variables:` 之后，理论上任何 `state`/`input`/`parameter` 条目都能写这个字段，但它的意义只在"把 evidence 换算结果接入某个状态变量的动力学"这一件事上成立——普通 parameter 声明 `applies_to` 大概率是笔误或对字段语义的误解，Loader 主动拒绝比静默忽略更安全。
 3. **`evidence_type` 是 `cohens_d`/`beta`/`pk` → 报错，要求去掉 `applies_to` 手写 dynamics**。理由见上一节——这 3 种的接入方式是建模判断，Loader 主动报错比"悄悄按某种默认方式接入、但建模者其实想要另一种方式"更安全：错误的自动接入会得到一个看起来能跑、但语义不对的模型，且不容易被发现。
-4. **`applies_to` 指向的变量名必须已在 `variables:` 声明 → 否则报错**。防止拼写错误导致 Loader 生成一个指向不存在变量的公式——如果不在这里检查，错误会推迟到公式求值阶段才暴露，那时候更难定位到底是哪个 evidence 条目的 `applies_to` 写错了。
+4. **`applies_to` 指向的变量名必须已在 `variables:` 声明 → 否则报错**。防止拼写错误导致 Loader 生成一个指向不存在变量的方程——如果不在这里检查，错误会推迟到方程求值阶段才暴露，那时候更难定位到底是哪个 evidence 条目的 `applies_to` 写错了。
 5. **同一个 `applies_to` 目标不能被两条以上 evidence_type 变量同时声明 → 否则报错**。**原因**：多个风险因子的组合方式（相乘=比例风险假设，还是相加=竞争风险模型）是有争议的流行病学方法论问题，Loader 不代为选择。举例：如果吸烟（$RR=2.5$）和肥胖（$OR=1.65$，换算后 $\approx 1.53$）都想接入同一个 `cvd_risk` 状态变量，二者同时起作用时，最终风险应该是"基线 $\times 2.5 \times 1.53$"（假设两个风险因子的效应独立相乘），还是某种加权相加，医学文献本身对此没有统一答案——这个判断必须由建模者手写 dynamics 做出，Loader 只会拒绝这种有歧义的自动接线请求，不会替你选一个默认组合方式。
-6. **`step_unit` 必须是 `minute`/`hour`/`day` 之一（与 `formulas.step_unit` 同一约束）→ 否则报错**。这保证生成的公式使用引擎认识的时间粒度，和手写 `formulas` 的约束保持一致，不会出现"自动生成的公式"和"手写的公式"遵循不同规则的情况。
+6. **`step_unit` 必须是 `minute`/`hour`/`day` 之一（与 `equations.step_unit` 同一约束）→ 否则报错**。这保证生成的方程使用引擎认识的时间粒度，和手写 `equations` 的约束保持一致，不会出现"自动生成的方程"和"手写的方程"遵循不同规则的情况。
 7. **按子类型解析 `rate_unit`（见下）→ 必须能在 `TIME_UNIT_SECONDS` 中找到（`minute`/`hour`/`day`/`week`/`month`/`year`）→ 否则报错**。生成表达式需要用 `rate_unit` 和 `step_unit` 的比值算出时间换算系数 `factor`（见下节）；如果 `rate_unit` 不合法（比如拼错、或指向的条目根本没声明这个字段），后续的换算系数就没有意义，必须在这里挡住。
 
 ## 生成的表达式
@@ -54,7 +54,7 @@ $$
 
 $$
 
-（`step_unit` 是生成公式实际用的步长单位；`rate_unit` 是这条速率本身"自然"的时间单位，二者可以不同，比如 `rate_unit: year` 的年发病率接入 `step_unit: day` 的公式，这时 $\text{factor} = 1/365$，把"每年多少"折算成"每天多少"）。
+（`step_unit` 是生成方程实际用的步长单位；`rate_unit` 是这条速率本身"自然"的时间单位，二者可以不同，比如 `rate_unit: year` 的年发病率接入 `step_unit: day` 的方程，这时 $\text{factor} = 1/365$，把"每年多少"折算成"每天多少"）。
 
 
 | 子类型       | `rate_unit` 从哪来                    | 生成的 dynamics 表达式                                                                                       |
@@ -69,7 +69,7 @@ $$
 
 `baseline_ref` 的要求：`rr`/`or` 必须显式声明且指向同一 YAML 文件内一个已加载的 `ir`/`ard` 类型 evidence 条目（否则报错，见校验步骤 6 对 `rate_unit` 的间接检查）；`hr` 的 `baseline_ref` 校验较松——若指向的条目不存在，`rate_unit` 会取到空字符串，仍会在步骤 6 因找不到合法 `rate_unit` 而报错，但报错信息只会提示"`rate_unit` 无法确定"，不会直接点出是 `baseline_ref` 写错了，排查时需注意。
 
-生成的 `Formula` 存入 `self.formulas[f"_auto_evidence_{ev_name}"]`，`step_unit`/`step_size_sec` 按上表 `step_unit` 填入，`description` 自动生成为 `"自动生成：evidence '{ev_name}' 接入 '{applies_to}'（applies_to）"`。
+生成的 `Equation` 存入 `self.equations[f"_auto_evidence_{ev_name}"]`，`step_unit`/`step_size_sec` 按上表 `step_unit` 填入，`description` 自动生成为 `"自动生成：evidence '{ev_name}' 接入 '{applies_to}'（applies_to）"`。
 
 ### 完整代入数字的例子（`rr` vs `hr`）
 

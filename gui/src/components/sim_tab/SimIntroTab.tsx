@@ -8,7 +8,7 @@ import SimChart, { VAR_COLORS } from './SimChart';
 interface SimIntroTabProps {
   selectedModel: ModelFile | null;
   outputVars: string[];
-  formulas: Record<string, any>;
+  equations: Record<string, any>;
   provenance: any;
   introOpen: Set<string>;
   setIntroOpen: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -34,7 +34,7 @@ interface SimIntroTabProps {
 }
 
 const SimIntroTab: React.FC<SimIntroTabProps> = ({
-  selectedModel, outputVars, formulas, provenance, introOpen, setIntroOpen,
+  selectedModel, outputVars, equations, provenance, introOpen, setIntroOpen,
   simulationData, inputParams,
   simStartDate, simEndDate, stepValue, stepUnit, batchSize,
   objectives, constraints, optAlgo, optPop, optGen,
@@ -61,7 +61,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
   const hasOptResult = !!(optResult?.best_f || optResult?.pareto_front?.length);
 
   const importLabels: string[] = Array.isArray(provenance?.imports) ? provenance.imports : [];
-  const sourceOf = (kind: 'variables' | 'formulas', name: string) => {
+  const sourceOf = (kind: 'variables' | 'equations', name: string) => {
     const src = provenance?.[kind]?.[name];
     return src && importLabels.includes(src) ? src : '';
   };
@@ -227,8 +227,8 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
         }
       </Section>
 
-      {Object.keys(formulas).length > 0 && (
-        <Section id="formulas" title={t('sim.tabs.formulas')} badge={t('sim.report.badge.n_items', { n: Object.keys(formulas).length })}>
+      {Object.keys(equations).length > 0 && (
+        <Section id="equations" title={t('sim.tabs.equations')} badge={t('sim.report.badge.n_items', { n: Object.keys(equations).length })}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead><tr>
               <th style={{ ...thS, width: '14%' }}>{t('sim.intro.col.name')}</th><th style={{ ...thS, width: '22%' }}>{t('sim.intro.col.description')}</th>
@@ -236,7 +236,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
               <th style={{ ...thS, width: '12%' }}>{t('sim.intro.source')}</th><th style={{ ...thS, width: '12%' }}>{t('sim.intro.col.reference')}</th>
             </tr></thead>
             <tbody>
-              {Object.entries(formulas).map(([name, fd]: [string, any]) => {
+              {Object.entries(equations).map(([name, fd]: [string, any]) => {
                 const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : null;
                 const expr = typeof fd.dynamics === 'object' && fd.dynamics
                   ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')
@@ -248,7 +248,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
                     <td style={{ ...tdS, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fd.description || ''}>{fd.description || '—'}</td>
                     <td style={{ ...tdS, color: isDarkMode ? '#86efac' : '#007A33', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={expr}>{expr || '—'}</td>
                     <td style={{ ...tdS, color: c.textMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cond || ''}>{cond || '—'}</td>
-                    <td style={tdS}><SourceTag source={sourceOf('formulas', name)} /></td>
+                    <td style={tdS}><SourceTag source={sourceOf('equations', name)} /></td>
                     <td style={{ ...tdS, color: c.textMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ref}>{ref || '—'}</td>
                   </tr>
                 );

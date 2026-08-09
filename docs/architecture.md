@@ -17,7 +17,7 @@
 
 | 模块 | 校验对象 | 调用时机 |
 |---|---|---|
-| [`model_structure/validator.py`](../../reference_engine/src/model_structure/validator.py) | 模型结构完整性（变量类型、公式变量引用、metadata 字段类型） | `LoaderEngine.fetch()` 加载模型后（`validate=True` 时，默认开启） |
+| [`model_structure/validator.py`](../../reference_engine/src/model_structure/validator.py) | 模型结构完整性（变量类型、方程变量引用、metadata 字段类型） | `LoaderEngine.fetch()` 加载模型后（`validate=True` 时，默认开启） |
 | [`validation.py`](../../reference_engine/src/validation.py) | 日期/时间字符串格式（`YYYY-MM-DD`、`HH:MM`） | CLI/GUI 仿真或优化**开始运行前**，一次性调用 |
 
 ### 1.1 结构校验：`ModelStructure.validate_model()`
@@ -30,7 +30,7 @@
 validators = [
     ('Metadata', validate_metadata),
     ('Variables', validate_variables),
-    ('Formulas', validate_formulas)
+    ('Equations', validate_equations)
 ]
 for section, validator in validators:
     valid, errors, missing_vars = validator()
@@ -45,15 +45,15 @@ if all_errors:
 三个子校验器各自检查：
 
 - **`validate_metadata`**：`metadata.name/version/author` 必须是字符串，`description` 必须是字符串或字典（对应 `model.md` 的结构化 description 规范）。
-- **`validate_variables`**：`value` 必须是数字、`type` 必须是合法的 `VariableType`、`bounds` 必须是长度为 2 且下界 ≤ 上界的数值区间、初始值必须落在 `bounds` 内、变量名必须是合法 Python 标识符（因为公式最终会编译成 Python 函数，见 [`simulation.py` 的 `_compile_expr_to_fn`](../../reference_engine/src/model_structure/simulation.py)）。
-- **`validate_formulas`**：用 `ast.parse` 解析每条公式的 `condition` 和 `dynamics` 表达式，提取其中引用的变量名，检查是否都能在 `self.variables` 或 `self.formulas` 中找到；同时检查 `step_unit`——公式的 `dynamics` 一旦用到 `step`/`dt`/`step_size`，必须声明合法的 `step_unit`（`minute`/`hour`/`day`），且禁止使用废弃符号 `dt`/`step_size`（只允许 `step`）。
+- **`validate_variables`**：`value` 必须是数字、`type` 必须是合法的 `VariableType`、`bounds` 必须是长度为 2 且下界 ≤ 上界的数值区间、初始值必须落在 `bounds` 内、变量名必须是合法 Python 标识符（因为方程最终会编译成 Python 函数，见 [`simulation.py` 的 `_compile_expr_to_fn`](../../reference_engine/src/model_structure/simulation.py)）。
+- **`validate_equations`**：用 `ast.parse` 解析每条方程的 `condition` 和 `dynamics` 表达式，提取其中引用的变量名，检查是否都能在 `self.variables` 或 `self.equations` 中找到；同时检查 `step_unit`——方程的 `dynamics` 一旦用到 `step`/`dt`/`step_size`，必须声明合法的 `step_unit`（`minute`/`hour`/`day`），且禁止使用废弃符号 `dt`/`step_size`（只允许 `step`）。
 
-在校验模型公式前，还有一段独立的公式级检查（不属于 `validators` 列表，在 `validate_model()` 开头单独跑）：扫描每条公式的 `condition`/`dynamics` 里是否用了 `dt` 却没有搭配 `MINUTE`/`HOUR`/`DAY` 等时间单位常量，命中时只记 `logger.warning`，不算错误——这是历史遗留的宽松检查，晚于它的 `validate_formulas` 的 `step_unit` 强制校验已经是更严格的正式规则。
+在校验模型方程前，还有一段独立的方程级检查（不属于 `validators` 列表，在 `validate_model()` 开头单独跑）：扫描每条方程的 `condition`/`dynamics` 里是否用了 `dt` 却没有搭配 `MINUTE`/`HOUR`/`DAY` 等时间单位常量，命中时只记 `logger.warning`，不算错误——这是历史遗留的宽松检查，晚于它的 `validate_equations` 的 `step_unit` 强制校验已经是更严格的正式规则。
 
 **当前实现中的两处观察**（记录现状，供后续人工判断是否需要处理）：
 
-1. `validator.py` 里定义了 `validate_formulas_old_ver_bug()`（L132-228），但**没有出现在 `validators` 列表里，也没有任何其他调用点**——是一段不会执行的死代码，从函数名（`_old_ver_bug`）看应该是被 `validate_formulas()` 取代后遗留下来的旧实现，未清理。
-2. "从表达式提取变量名"这个逻辑存在两份几乎相同的实现：[`model_structure/utils.py:19` 的模块级 `extract_vars_from_expr`](../../reference_engine/src/model_structure/utils.py)（被 `core.py` 的 `split_model` 和 `validator.py` 自身的 `self.extract_vars_from_expr` 包装方法共用）和 `validate_formulas()` 内部又局部定义了一份同名函数（validator.py:240-263），两者排除的内置符号集合略有差异（局部版本额外排除了 `MINUTE`/`HOUR`/`DAY`/`WEEK`/`MONTH`/`YEAR`/`pi`/`e`）。
+1. `validator.py` 里定义了 `validate_equations_old_ver_bug()`（L132-228），但**没有出现在 `validators` 列表里，也没有任何其他调用点**——是一段不会执行的死代码，从函数名（`_old_ver_bug`）看应该是被 `validate_equations()` 取代后遗留下来的旧实现，未清理。
+2. "从表达式提取变量名"这个逻辑存在两份几乎相同的实现：[`model_structure/utils.py:19` 的模块级 `extract_vars_from_expr`](../../reference_engine/src/model_structure/utils.py)（被 `core.py` 的 `split_model` 和 `validator.py` 自身的 `self.extract_vars_from_expr` 包装方法共用）和 `validate_equations()` 内部又局部定义了一份同名函数（validator.py:240-263），两者排除的内置符号集合略有差异（局部版本额外排除了 `MINUTE`/`HOUR`/`DAY`/`WEEK`/`MONTH`/`YEAR`/`pi`/`e`）。
 
 ### 1.2 日期/时间格式预校验：`validation.py`
 

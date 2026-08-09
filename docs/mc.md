@@ -59,7 +59,7 @@ CLI 和 GUI 之间完全一致、可复现。
 `ModelStructure` 持有一个不可 pickle 的 asteval `Interpreter`，不能用 `copy.deepcopy`。`clone_model(base)`
 因此手动构造一份独立副本：
 
-- 只读元数据（`metadata`/`formulas`/`simulator`/`optimizer`/`time_unit` 等）**共享引用**，不复制。
+- 只读元数据（`metadata`/`equations`/`simulator`/`optimizer`/`time_unit` 等）**共享引用**，不复制。
 - 每个变量重新构造独立的 `Variable` 实例（各 run 需要互不干扰的当前值）。
 - 运行时状态重置：`variable_history` 重新初始化为 `{name: [初始值]}`，`current_step=0`，`time=0.0`，
   重新调用 `_initialize_asteval()` 注入一份新的 asteval 符号表。

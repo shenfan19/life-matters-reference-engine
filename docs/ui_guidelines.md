@@ -73,11 +73,11 @@
 - 中央面板 Tab（Overview / Simulation / Optimization / Report，以及动态 Builder Tab）
 - 模式切换控件（Sim / Opt Segmented）
 - 左侧树节点选中（Tree `nodeSelectedBg`）
-- 左侧 Tab 选中（Inputs / Vars / Formulas）
+- 左侧 Tab 选中（Inputs / Vars / Equations）
 - 小型 pill 开关按钮（时/日/范 toggle）
 
 **不适用范围（以下元素不使用 primary 颜色，统一用 `c.border` / `c.panel`）**：
-- 列表项 / 数据行（如 input event card、变量行、公式行）——这些是数据展示，不是导航状态
+- 列表项 / 数据行（如 input event card、变量行、方程行）——这些是数据展示，不是导航状态
 - 数据行内某个字段的值（如 `optimizeValue=true`）不应让整行变绿；opt 状态由行内的 checkbox 自身表达
 
 **禁止**：

@@ -9,7 +9,7 @@ import { varToDataUrl } from './SimChart';
 interface ReportButtonProps {
   selectedModel: ModelFile | null;
   outputVars: string[];
-  formulas: Record<string, any>;
+  equations: Record<string, any>;
   simulationData: SimulationDataPoint[];
   inputParams: Record<string, number>;
   simStartDate: string;
@@ -32,7 +32,7 @@ interface ReportButtonProps {
 }
 
 export function ReportButton({
-  selectedModel, outputVars, formulas, simulationData, inputParams,
+  selectedModel, outputVars, equations, simulationData, inputParams,
   simStartDate, simEndDate, stepValue, stepUnit, batchSize,
   objectives, constraints, optAlgo, optPop, optGen,
   optResult, optElapsed, optMethod, planDatasets,
@@ -113,10 +113,10 @@ export function ReportButton({
     });
     lines.push('');
 
-    if (Object.keys(formulas).length > 0) {
-      lines.push(`## ${t('sim.tabs.formulas')}\n`);
+    if (Object.keys(equations).length > 0) {
+      lines.push(`## ${t('sim.tabs.equations')}\n`);
       lines.push(`| ${t('sim.intro.col.name')} | ${t('sim.intro.col.description')} | ${t('sim.intro.col.expression')} | ${t('sim.intro.col.condition')} | ${t('sim.intro.col.reference')} |\n|------|------|------|------|------|`);
-      Object.entries(formulas).forEach(([name, fd]: [string, any]) => {
+      Object.entries(equations).forEach(([name, fd]: [string, any]) => {
         const cond = fd.condition && fd.condition !== true && fd.condition !== 'true' ? String(fd.condition) : '—';
         const expr = typeof fd.dynamics === 'object' && fd.dynamics
           ? Object.entries(fd.dynamics).map(([v2, e]) => `${v2} = ${e}`).join('; ')

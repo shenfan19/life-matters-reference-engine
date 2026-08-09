@@ -25,18 +25,18 @@ function fileType(key: string): FTName {
   return 'other';
 }
 
-// ─── Formula type detection ───────────────────────────────────────────────────
+// ─── Equation type detection ───────────────────────────────────────────────────
 
 function autoType(fd: any): string {
   if (fd?.dynamics && Object.keys(fd.dynamics).length > 0) return 'dynamics';
-  if (fd?.formula) return 'formula';
+  if (fd?.equation) return 'equation';
   return '?';
 }
 
 function TChip({ t }: { t: string }) {
   const colors: Record<string, { bg: string; fg: string }> = {
     dynamics: { bg: '#e6f4ff', fg: '#1677ff' },
-    formula:  { bg: '#f6ffed', fg: '#389e0d' },
+    equation:  { bg: '#f6ffed', fg: '#389e0d' },
     '?':      { bg: '#f5f5f5', fg: '#8c8c8c' },
   };
   const { bg, fg } = colors[t] ?? colors['?'];
@@ -190,7 +190,7 @@ export default function FileEditor({
     for (const err of st.errors) {
       const m1 = err.match(/dynamics 键 '([^']+)' 未在 variables 中定义/);
       if (m1) missingVars.push(m1[1]);
-      const m2 = err.match(/变量 '([^']+)' 已定义但未被任何公式使用/);
+      const m2 = err.match(/变量 '([^']+)' 已定义但未被任何方程使用/);
       if (m2) unusedVars.push(m2[1]);
     }
     if (!base.variables) base.variables = {};
@@ -198,11 +198,11 @@ export default function FileEditor({
       if (!base.variables[v])
         base.variables[v] = { type: 'state', unit: '', value: 0, bounds: [0, 100], description: '' };
     if (unusedVars.length > 0) {
-      if (!base.formulas) base.formulas = {};
-      const p = base.formulas['draft_patch'] || { condition: true, priority: 5, dynamics: {} };
+      if (!base.equations) base.equations = {};
+      const p = base.equations['draft_patch'] || { condition: true, priority: 5, dynamics: {} };
       if (!p.dynamics) p.dynamics = {};
       for (const v of unusedVars) p.dynamics[v] = 0;
-      base.formulas['draft_patch'] = p;
+      base.equations['draft_patch'] = p;
     }
     setDrafts(p => ({ ...p, [key]: base }));
     setEditSet(p => new Set([...p, key]));
@@ -294,7 +294,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
   const ft   = FT[fileType(fileKey)];
   const mt   = data?.metadata ?? data?.meta ?? {};
   const vars = data?.variables ?? {};
-  const fmls = data?.formulas  ?? {};
+  const eqs = data?.equations  ?? {};
   const simK = data?.simulator ? 'simulator' : 'simulation';
   const sim  = data?.[simK]   ?? {};
   const formatDescription = (description: any): string => {
@@ -450,37 +450,37 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
             </Sect>
           )}
 
-          {(Object.keys(fmls).length > 0 || editing) && (
-            <Sect title={t('file.editor.section.formulas')} isDarkMode={isDarkMode} action={editing ? (
+          {(Object.keys(eqs).length > 0 || editing) && (
+            <Sect title={t('file.editor.section.equations')} isDarkMode={isDarkMode} action={editing ? (
               <SmBtn onClick={() => onPatch(d => {
-                if (!d.formulas) d.formulas = {};
-                const k = `formula_${Object.keys(d.formulas).length + 1}`;
-                d.formulas[k] = { condition: true, priority: 5, dynamics: {} };
-              })} c={c}>{t('file.editor.add_formula')}</SmBtn>
+                if (!d.equations) d.equations = {};
+                const k = `equation_${Object.keys(d.equations).length + 1}`;
+                d.equations[k] = { condition: true, priority: 5, dynamics: {} };
+              })} c={c}>{t('file.editor.add_equation')}</SmBtn>
             ) : null} c={c}>
-              <FormulasSection fmls={fmls} editing={editing} t={t}
+              <EquationsSection eqs={eqs} editing={editing} t={t}
                 onRename={(fn, nk) => onPatch(d => {
-                  if (!d.formulas || fn === nk) return;
+                  if (!d.equations || fn === nk) return;
                   const rebuilt: any = {};
-                  for (const [k, v] of Object.entries(d.formulas)) rebuilt[k === fn ? nk : k] = v;
-                  d.formulas = rebuilt;
+                  for (const [k, v] of Object.entries(d.equations)) rebuilt[k === fn ? nk : k] = v;
+                  d.equations = rebuilt;
                 })}
-                onField={(fn, field, value) => onPatch(d => { if (d.formulas?.[fn] !== undefined) d.formulas[fn][field] = value; })}
-                onDynChange={(fn, varKey, expr) => onPatch(d => { if (d.formulas?.[fn]) d.formulas[fn].dynamics = { ...d.formulas[fn].dynamics, [varKey]: expr }; })}
+                onField={(fn, field, value) => onPatch(d => { if (d.equations?.[fn] !== undefined) d.equations[fn][field] = value; })}
+                onDynChange={(fn, varKey, expr) => onPatch(d => { if (d.equations?.[fn]) d.equations[fn].dynamics = { ...d.equations[fn].dynamics, [varKey]: expr }; })}
                 onDynRename={(fn, oldK, newK) => onPatch(d => {
-                  if (!d.formulas?.[fn]?.dynamics) return;
+                  if (!d.equations?.[fn]?.dynamics) return;
                   const rebuilt: any = {};
-                  for (const [k, v] of Object.entries(d.formulas[fn].dynamics)) rebuilt[k === oldK ? newK : k] = v;
-                  d.formulas[fn].dynamics = rebuilt;
+                  for (const [k, v] of Object.entries(d.equations[fn].dynamics)) rebuilt[k === oldK ? newK : k] = v;
+                  d.equations[fn].dynamics = rebuilt;
                 })}
-                onDynDelete={(fn, varKey) => onPatch(d => { if (d.formulas?.[fn]?.dynamics) delete d.formulas[fn].dynamics[varKey]; })}
+                onDynDelete={(fn, varKey) => onPatch(d => { if (d.equations?.[fn]?.dynamics) delete d.equations[fn].dynamics[varKey]; })}
                 onDynAdd={(fn) => onPatch(d => {
-                  if (!d.formulas?.[fn]) return;
-                  if (!d.formulas[fn].dynamics) d.formulas[fn].dynamics = {};
-                  const k = `var_${Object.keys(d.formulas[fn].dynamics).length + 1}`;
-                  d.formulas[fn].dynamics[k] = '';
+                  if (!d.equations?.[fn]) return;
+                  if (!d.equations[fn].dynamics) d.equations[fn].dynamics = {};
+                  const k = `var_${Object.keys(d.equations[fn].dynamics).length + 1}`;
+                  d.equations[fn].dynamics[k] = '';
                 })}
-                onDelete={fn => onPatch(d => { if (d.formulas) delete d.formulas[fn]; })}
+                onDelete={fn => onPatch(d => { if (d.equations) delete d.equations[fn]; })}
                 c={c} />
             </Sect>
           )}
@@ -558,17 +558,17 @@ function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode, t }:
   );
 }
 
-// ─── FormulasSection ─────────────────────────────────────────────────────────
+// ─── EquationsSection ─────────────────────────────────────────────────────────
 
-function FormulasSection({ fmls, editing, onRename, onField, onDynChange, onDynRename, onDynDelete, onDynAdd, onDelete, c, t }: {
-  fmls: Record<string, any>; editing: boolean;
+function EquationsSection({ eqs, editing, onRename, onField, onDynChange, onDynRename, onDynDelete, onDynAdd, onDelete, c, t }: {
+  eqs: Record<string, any>; editing: boolean;
   onRename(fn: string, nk: string): void; onField(fn: string, field: string, value: any): void;
   onDynChange(fn: string, varKey: string, expr: string): void; onDynRename(fn: string, oldK: string, newK: string): void;
   onDynDelete(fn: string, varKey: string): void; onDynAdd(fn: string): void; onDelete(fn: string): void; c: any;
   t: (key: string) => any;
 }) {
   const { border, text, textMute: mute, bg, primary } = c;
-  const entries = Object.entries(fmls);
+  const entries = Object.entries(eqs);
   if (!entries.length) return <span style={{ color: mute }}>—</span>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: editing ? 10 : 3 }}>

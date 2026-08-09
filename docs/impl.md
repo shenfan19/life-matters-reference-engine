@@ -267,7 +267,7 @@ tunable_params:
 
 > **注意**：`probability_constant` / `probability_params:` 已退役。发病率、死亡率及所有文献效应量统一用 `variables:` 条目上对应的 `evidence_type` 表示。
 
-**概念**：从文献直接读入的效应量，声明为某个 `variables:` 条目的 `evidence_type` 字段（`type` 仍是 `parameter`），由 Loader 自动换算，换算结果原地写回同一个变量（不是独立的第 4 种类型，不加 `_effective` 后缀），Simulator 只见换算结果，永不进入优化。换算公式、溯源字段、`applies_to` 自动接入 dynamics 的机制见 [evidence/conversion.md](evidence/conversion.md)、[evidence/applies_to.md](evidence/applies_to.md)。
+**概念**：从文献直接读入的效应量，声明为某个 `variables:` 条目的 `evidence_type` 字段（`type` 仍是 `parameter`），由 Loader 自动换算，换算结果原地写回同一个变量（不是独立的第 4 种类型，不加 `_effective` 后缀），Simulator 只见换算结果，永不进入优化。换算方程、溯源字段、`applies_to` 自动接入 dynamics 的机制见 [evidence/conversion.md](evidence/conversion.md)、[evidence/applies_to.md](evidence/applies_to.md)。
 
 仿真引擎的处理方式：不随机采样，直接以期望值计算确定性轨迹：
 
@@ -811,16 +811,16 @@ Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `models/sour
 
 ### 跨模型数据调用原则
 
-- **`components/` 层**：只声明自己的变量和公式，不引用其他模型。
+- **`components/` 层**：只声明自己的变量和方程，不引用其他模型。
 - **`stories/` 层**：`imports` 多个 model，通过 `patches` 覆写参数。
 
 这避免模型间耦合，符合单一职责原则。
 
 ### 表达式求值架构（⭐⭐ 核心约束）
 
-**asteval 是公式表达式的安全沙箱层，不可用 Python 原生 `eval()` 直接替代。**
+**asteval 是方程表达式的安全沙箱层，不可用 Python 原生 `eval()` 直接替代。**
 
-YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提供：
+YAML 方程来自建模者手写，属于"不可信用户输入"。asteval 提供：
 - 无访问文件系统、网络、`__import__` 等危险操作的隔离执行环境
 - 内置数学函数（`sin`/`cos`/`max`/`min` 等）的安全版本
 - 语法错误的可控捕获，不会导致整个引擎崩溃
@@ -830,7 +830,7 @@ YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提�
 | 层 | 工具 | 职责 |
 |----|------|------|
 | **验证层**（加载时） | `asteval` | 解析 + 语法检查；检测未定义变量 |
-| **编译层**（首次 step 前） | `ast.parse` + `exec` | 将表达式转为 Python 函数（`_build_formula_cache`） |
+| **编译层**（首次 step 前） | `ast.parse` + `exec` | 将表达式转为 Python 函数（`_build_equation_cache`） |
 | **执行层**（每步） | 原生 Python 函数调用 | `fn(*args)`，变量走 LOAD_FAST |
 | **回退层**（编译失败时） | `asteval.eval()` | 不中断仿真，保持兼容性 |
 
@@ -839,7 +839,7 @@ YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提�
 ### 变量命名冲突处理
 
 多模型合并时：
-- **根模型（调用方）**定义的变量和公式**始终覆盖**被导入模型中的同名定义。
+- **根模型（调用方）**定义的变量和方程**始终覆盖**被导入模型中的同名定义。
 - 语义歧义的同名变量（如两个模型都定义 `body_weight`）发出警告，要求在 `patches` 中明确指定。
 
 ### 架构约束检测
@@ -850,7 +850,7 @@ YAML 公式来自建模者手写，属于"不可信用户输入"。asteval 提�
 
 ### Evidence 换算（加载期自动完成）
 
-Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 字段的条目，按该字段执行换算，换算结果原地写回 `self.variables`（`type` 仍是 `parameter`，不加 `_effective` 后缀），`formulas`/`dynamics` 直接用该名字引用。8 种子类型的具体换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
+Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 字段的条目，按该字段执行换算，换算结果原地写回 `self.variables`（`type` 仍是 `parameter`，不加 `_effective` 后缀），`equations`/`dynamics` 直接用该名字引用。8 种子类型的具体换算方程、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
 
 ### Metadata description
 
@@ -858,16 +858,16 @@ Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 字段的条目，�
 
 推荐字段名见 `model_design.md`，但 Loader 和 Simulator 不依赖这些推荐字段；新增字段会按 key 自动生成英文标签。
 
-### 公式预编译为 Python 函数（ADR 0068）
+### 方程预编译为 Python 函数（ADR 0068）
 
-模型加载后首次调用 `step()` 时，`_build_formula_cache()` 对每条公式执行一次预编译：
+模型加载后首次调用 `step()` 时，`_build_equation_cache()` 对每条方程执行一次预编译：
 
 1. `ast.parse()` 提取表达式引用的变量名（模型变量 + 步长符号）
 2. `exec()` 在隔离命名空间中生成具名参数函数：
    ```python
    def _fn(blood_glucose, uptake, utilization, step): return blood_glucose + (uptake - utilization) * step
    ```
-3. 缓存 `(fn, [param_names])` 和排好序的公式列表
+3. 缓存 `(fn, [param_names])` 和排好序的方程列表
 
 每步调用 `fn(*[_get_arg(n) for n in params])`，变量通过位置参数传入，Python 内部走 `LOAD_FAST`，无字典查找开销。编译失败时回退到 `asteval.eval()`。
 
@@ -898,9 +898,9 @@ def run_simulation(params, progress_cb):
 | **实时曲线** | 每 N 步广播状态，前端追加数据点并刷新 |
 | **实时调参** | 参数使用 `multiprocessing.Value`，计算线程随时读取 |
 
-### 公式执行顺序
+### 方程执行顺序
 
-多个公式更新同一变量时，通过 `priority` 字段控制执行顺序：
+多个方程更新同一变量时，通过 `priority` 字段控制执行顺序：
 - 数字越小越先执行（如 `-100` 先于 `0`）。
 - 并行冲突变量用 `asteval` 顺序求值，避免隐式 race condition。
 
@@ -908,7 +908,7 @@ def run_simulation(params, progress_cb):
 
 > 以下是历史设计草稿描述的统计校验构想（前向仿真统计发病率、与文献分组对比、对照 KM/RCT 结果），未实现，也不在当前路线图上。
 
-当前实际实现是纯结构校验（`metadata`/`variables`/`formulas` 字段是否存在、类型是否正确、`dynamics` 引用的变量是否已定义等），不涉及任何统计计算：
+当前实际实现是纯结构校验（`metadata`/`variables`/`equations` 字段是否存在、类型是否正确、`dynamics` 引用的变量是否已定义等），不涉及任何统计计算：
 
 ```bash
 GET /api/validate/{file_path}
