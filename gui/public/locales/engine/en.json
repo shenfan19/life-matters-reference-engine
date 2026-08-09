@@ -122,7 +122,7 @@
   "sim.msg.component_model_hint": "This is a library component — results may be incomplete without its coupled models",
   "about.name": "Reference Engine for Life Matters Models",
   "about.subtitle": "Medical & Social Simulation & Optimization",
-  "about.subtitle_tooltip": "Reference implementation of the LM format — other engines may implement the same spec.",
+  "about.subtitle_tooltip": "Reference implementation of the LM format: executes the four V.E.S.O. mechanisms (Variables, Equations, Simulation, Optimization); other engines may implement the same spec.",
   "about.affiliation": "Sun Yat-Sen University",
   "about.homepage": "Homepage",
   "about.close": "Close",

@@ -122,7 +122,7 @@
   "sim.msg.start_failed": "Démarrage échoué",
   "sim.msg.component_model_hint": "Ce fichier est un composant de bibliothèque — les résultats peuvent être incomplets sans ses modèles couplés",
   "about.subtitle": "Simulation et optimisation médicale et sociale",
-  "about.subtitle_tooltip": "Implémentation de référence du format LM — d'autres moteurs peuvent implémenter la même spécification.",
+  "about.subtitle_tooltip": "Implémentation de référence du format LM : exécute les quatre mécanismes V.E.S.O. (Variables, Equations, Simulation, Optimization) ; d'autres moteurs peuvent implémenter la même spécification.",
   "about.affiliation": "Université Sun Yat-Sen",
   "about.homepage": "Page d'accueil",
   "about.close": "Fermer",

@@ -20,15 +20,15 @@ YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/
 
 ## 项目定位
 
-**Life Matters（LM）** 的核心能力：
+**Life Matters（LM）** 用 V.E.S.O. 四个机制描述生命动力学模型：`variables`（变量）、`equations`（方程）、`simulation`（仿真）、`optimizer`（优化），格式定义见 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库的 `docs/LM_format_1.0.md`。
+
+核心能力：
 
 1. 把医学/社会学文献里的统计结论（OR、HR、Cohen's d 等）转化为可运行的 YAML 动力学模型
 2. 在统一框架内同时运行异尺度模型（分钟–小时–天–年）
 3. 对行为干预方案（Regimen）做多目标 Pareto 优化
 4. 把科研模型输出为游戏化场景，供 [life-matters-game](https://github.com/shenfan19/life-matters-game) 消费
 5. 把多篇文献的参数装进同一框架，检验它们是否互相自洽（Simulation-as-Validation）
-
-本引擎读取并执行 LM file 的四个顶层机制——`variables`、`equations`、`simulation`、`optimizer`，合起来读作 V.E.S.O.——格式定义见 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库的 `docs/LM_format_1.0.md`。
 
 
 ---
