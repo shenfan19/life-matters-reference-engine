@@ -93,7 +93,7 @@ $$\tau_i = \sum_{k=1}^{i} \text{softmax}(\alpha)_k \cdot T_{\text{day}}, \quad \
 
 随机事件（战死、手术风险、疾病发作）和其他文献统计量，以 `variables:` 条目上的 **`evidence_type`** 字段纳入模型（8 种子类型：`rr`/`or`/`hr`/`ard`/`cohens_d`/`ir`/`beta`/`pk`；`type` 仍是 `parameter`）。Loader 在加载时自动完成换算，Simulator 只见换算后的有效值。**不进入任何优化搜索空间。**
 
-换算公式、溯源字段（`evidence_type`/`evidence_raw_value`）见 [evidence/conversion.md](evidence/conversion.md)（权威实现描述，含已知实现细节）；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制见 [evidence/applies_to.md](evidence/applies_to.md)；YAML 字段声明方式见 `life-matters-models` 仓库 `docs/LM_format_1.0.md` §2.4 与 `docs/authoring/variables_and_formulas.md`。
+换算方程、溯源字段（`evidence_type`/`evidence_raw_value`）见 [evidence/conversion.md](evidence/conversion.md)（权威实现描述，含已知实现细节）；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制见 [evidence/applies_to.md](evidence/applies_to.md)；YAML 字段声明方式见 `life-matters-models` 仓库 `docs/LM_format_1.0.md` §2.4 与 `docs/authoring/variables_and_equations.md`。
 
 **仿真中的确定性处理**（不做随机采样）：
 
@@ -141,7 +141,7 @@ model.yaml ─────────────────→ story.yaml ─
 
 `parameter` 经内环校准后写入 `model.yaml` 并固定；外环在 `parameter` 固定的前提下搜索 `input` 空间。两环互不干扰，可以独立运行。
 
-`evidence` 变量不进入任何优化环 —— 它是文献给定的约束，Loader 换算后直接作为常量供公式使用。
+`evidence` 变量不进入任何优化环 —— 它是文献给定的约束，Loader 换算后直接作为常量供方程使用。
 
 ---
 
@@ -431,7 +431,7 @@ Opt Tab 与 Sim Tab 的 REGIMENS 面板同源数据结构，但每个维度可�
 └─────────────────────────────────────────────────┘
 
 ▼ Log  [复制] [下载]
-  12:34:05 Model: ckd_protein_a4 (31 vars, 12 formulas)
+  12:34:05 Model: ckd_protein_a4 (31 vars, 12 equations)
   12:34:05 Imports: references/medical/physiology/glucose_regulation_2026_mw
   12:34:05 Sim: start=2026-01-01, step=1 day, 365 steps
   12:34:05 Outputs (5): GFR, muscle_mass, lm_score, ...

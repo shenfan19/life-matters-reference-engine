@@ -55,22 +55,22 @@ _FILE_TEMPLATES = {
     "model": {
         "metadata": {"name": "新模型", "description": "", "tags": [], "version": "1.0"},
         "variables": {"example_var": {"initial_value": 0.0, "unit": "", "description": ""}},
-        "formulas": {},
+        "equations": {},
         "simulator": {"time_unit": "day", "step_size": 3600},
     },
     "scenario": {
         "metadata": {"name": "新场景", "description": "", "tags": [], "version": "1.0"},
         "variables": {},
-        "formulas": {},
+        "equations": {},
         "simulator": {"time_unit": "day", "step_size": 3600},
     },
 }
 
 
 def _simple_yaml_merge(files, output_path, models_root):
-    """Simple YAML merge: combine variables/formulas/simulator from multiple files."""
+    """Simple YAML merge: combine variables/equations/simulator from multiple files."""
     merged = {'metadata': {'name': 'merged', 'description': '', 'tags': []},
-              'variables': {}, 'formulas': {}, 'simulator': {}}
+              'variables': {}, 'equations': {}, 'simulator': {}}
     for f in (files or []):
         target = models_root / f.lstrip('/')
         if not target.exists():
@@ -81,7 +81,7 @@ def _simple_yaml_merge(files, output_path, models_root):
         except Exception:
             continue
         merged['variables'].update(data.get('variables') or {})
-        merged['formulas'].update(data.get('formulas') or {})
+        merged['equations'].update(data.get('equations') or {})
         sim = data.get('simulator') or data.get('simulation') or {}
         merged['simulator'].update(sim)
     if output_path:
@@ -117,20 +117,20 @@ def _simple_yaml_validate(file_path, models_root):
         return False, errors
 
     var_set = set(variables.keys())
-    formulas: dict = data.get('formulas') or {}
+    equations: dict = data.get('equations') or {}
     dyn_keys_used: set = set()
     vars_referenced: set = set()
 
-    for fname, fd in formulas.items():
+    for fname, fd in equations.items():
         if not isinstance(fd, dict):
-            errors.append(f'公式 {fname!r} 格式错误（应为字典）')
+            errors.append(f'方程 {fname!r} 格式错误（应为字典）')
             continue
         dynamics: dict = fd.get('dynamics') or {}
         if not dynamics:
-            errors.append(f'公式 {fname!r} 缺少 dynamics 字段')
+            errors.append(f'方程 {fname!r} 缺少 dynamics 字段')
         for dyn_key, expr in dynamics.items():
             if dyn_key not in var_set:
-                errors.append(f'公式 {fname!r}: dynamics 键 {dyn_key!r} 未在 variables 中定义')
+                errors.append(f'方程 {fname!r}: dynamics 键 {dyn_key!r} 未在 variables 中定义')
             else:
                 dyn_keys_used.add(dyn_key)
             expr_str = str(expr) if expr is not None else ''
@@ -145,7 +145,7 @@ def _simple_yaml_validate(file_path, models_root):
 
     all_used = dyn_keys_used | vars_referenced
     for vname in sorted(var_set - all_used):
-        errors.append(f'变量 {vname!r} 已定义但未被任何公式使用')
+        errors.append(f'变量 {vname!r} 已定义但未被任何方程使用')
 
     return not errors, errors
 
@@ -390,10 +390,10 @@ async def upload_model_temp(payload: dict):
                     "type": v.type.value if hasattr(v.type, 'value') else str(v.type)}
                 for k, v in model.variables.items()
             },
-            "formulas": {
+            "equations": {
                 k: {"description": f.description, "condition": f.condition,
-                    "priority": f.priority, "dynamics": f.dynamics, "formula": f.formula}
-                for k, f in model.formulas.items()
+                    "priority": f.priority, "dynamics": f.dynamics, "equation": f.equation}
+                for k, f in model.equations.items()
             },
             "simulation": model.simulator,
             "simulator": model.simulator,
@@ -498,7 +498,7 @@ async def merge_models(request: MergeRequest):
 
     return {'success': True, 'data': {
         'variables': merged.get('variables', {}),
-        'formulas': merged.get('formulas', {}),
+        'equations': merged.get('equations', {}),
         'output_path': request.output_path
     }}
 

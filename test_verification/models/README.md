@@ -2,7 +2,7 @@
 
 > 任务来源：`2026-06-19_task_code-trust-verification-infra` 任务4。
 > 与 `test_verification/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
-> 针对**单个模型变量在多组取值下的数值行为**，用于在改动公式/参数后快速发现"某个变量的
+> 针对**单个模型变量在多组取值下的数值行为**，用于在改动方程/参数后快速发现"某个变量的
 > 输出不再符合预期"的回归。
 
 ## 目录结构
@@ -15,19 +15,19 @@ test_verification/models/<model_name>/<variable_name>/test_*.py
 - `<variable_name>`：该模型里被测试的**输入变量**（`type: input` 或 `type: parameter`），
   即 `pytest.mark.parametrize` 里取多组值的那个变量。
 - 同一个变量的多组测试用例放在它自己的文件夹下，不与其他变量的测试混在一个文件里——
-  改某个变量的公式时，只需要看这一个文件夹的测试是否还过。
+  改某个变量的方程时，只需要看这一个文件夹的测试是否还过。
 
 ## 写法约定
 
 - 用 `pytest.mark.parametrize` 枚举该变量的多组取值（通常对应模型 YAML 里已有的
   `simulation.plans`，每个 plan 代表该变量的一组取值）。
-- 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在公式
+- 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在方程
   微调后会大量误报，且新人看 diff 时分不清是真回归还是数值漂移。需要精确值比对的场景，
   数值精度参照 `test_verification/verification_report.md` 第2节协议，文献对标参照 `models/validation/validation_report.md` 第1节协议，单独走验证，不放在这里。
 - 示例：`test_valid_mc_distributions/daily_dose/test_dose_scaling.py` ——
   `test_valid_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
   三个 plan 里取 100/200/350 mg，断言 `plasma_conc`、`peak_plasma` 的确定性稳态值随剂量
-  严格线性缩放（该模型的吸收/清除公式对 `daily_dose` 是线性的，无饱和项）。
+  严格线性缩放（该模型的吸收/清除方程对 `daily_dose` 是线性的，无饱和项）。
 - 示例（2026-07-10 新增）：`test_valid_plans/caloric_deficit/test_weight_loss_ordering.py` ——
   三个命名 plan（conservative/balanced/aggressive）在 `caloric_deficit`/`exercise_minutes`
   两个维度上依次加码，断言最终 `body_weight` 严格单调递减，并附带 `max(50.0, ...)` 地板夹紧

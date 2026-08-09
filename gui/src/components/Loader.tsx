@@ -162,7 +162,7 @@ const Loader: React.FC<LoaderProps> = ({
         content,
         metadata: content.metadata,
         variables: content.variables,
-        formulas: content.formulas,
+        equations: content.equations,
         simulator: content.simulator,
         optimizer: content.optimizer,
         imports: content.imports,
@@ -264,9 +264,9 @@ const Loader: React.FC<LoaderProps> = ({
     );
   };
 
-  const renderFormulas = (formulas: Record<string, any>) => {
-    const entries = Object.entries(formulas || {});
-    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('loader.no_formulas')} />;
+  const renderEquations = (equations: Record<string, any>) => {
+    const entries = Object.entries(equations || {});
+    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('loader.no_equations')} />;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {entries.map(([name, detail]) => (
@@ -293,7 +293,7 @@ const Loader: React.FC<LoaderProps> = ({
   };
 
   const varCount = Object.keys(selectedStory?.variables || {}).length;
-  const formulaCount = Object.keys(selectedStory?.formulas || {}).length;
+  const equationCount = Object.keys(selectedStory?.equations || {}).length;
 
   const detailTabs = selectedStory ? [
     {
@@ -329,8 +329,8 @@ const Loader: React.FC<LoaderProps> = ({
       children: <div style={{ padding: '8px 0' }}>{renderVariables(selectedStory.variables || {})}</div>,
     },
     {
-      key: 'formulas', label: `${t('loader.tab_formulas')} (${formulaCount})`,
-      children: <div style={{ padding: '8px 0' }}>{renderFormulas(selectedStory.formulas || {})}</div>,
+      key: 'equations', label: `${t('loader.tab_equations')} (${equationCount})`,
+      children: <div style={{ padding: '8px 0' }}>{renderEquations(selectedStory.equations || {})}</div>,
     },
   ] : [];
 
@@ -461,7 +461,7 @@ const Loader: React.FC<LoaderProps> = ({
                 />
               )}
 
-              {/* Tabs: 基本信息 / 变量 / 公式 */}
+              {/* Tabs: 基本信息 / 变量 / 方程 */}
               <Tabs
                 size="small"
                 items={detailTabs}

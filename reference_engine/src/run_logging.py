@@ -33,8 +33,8 @@ def build_initial_logs(model, model_name: str, total_steps: int, step_size: floa
                         log_cb: LogCb) -> None:
     """Emit the run header: model size, imports, time span, outputs, schedules, MC seed."""
     n_vars = len(model.variables)
-    n_formulas = len(model.formulas) if hasattr(model, 'formulas') else 0
-    log_cb(f"Model: {model_name} ({n_vars} vars, {n_formulas} formulas)")
+    n_equations = len(model.equations) if hasattr(model, 'equations') else 0
+    log_cb(f"Model: {model_name} ({n_vars} vars, {n_equations} equations)")
 
     prov_imports = (model.provenance or {}).get('imports', [])
     if prov_imports:

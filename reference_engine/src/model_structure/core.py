@@ -3,7 +3,7 @@
 from .loader import Loader
 from .validator import Validator
 from .simulation import Simulation
-from .base import ModelMetadata, Variable, Formula, TIME_UNIT_SECONDS
+from .base import ModelMetadata, Variable, Equation, TIME_UNIT_SECONDS
 from typing import Dict, Any, Set
 from asteval import Interpreter
 import logging
@@ -19,8 +19,8 @@ class ModelStructure(Loader, Validator, Simulation):
         self.metadata = None
         # 初始化变量字典
         self.variables = {}
-        # 初始化公式字典
-        self.formulas = {}
+        # 初始化方程字典
+        self.equations = {}
         # 初始化变量历史记录
         self.variable_history = {}
         # 初始化当前仿真步数
@@ -63,7 +63,7 @@ class ModelStructure(Loader, Validator, Simulation):
     
     def split_model(self, output_dir: str):
         """
-        将模型分解为独立公式文件和剩余文件，所有文件生成在 output_dir 目录下。
+        将模型分解为独立方程文件和剩余文件，所有文件生成在 output_dir 目录下。
         :param output_dir: 输出目录（如 models/splited/bcd/）
         """
         # 确保输出目录存在
@@ -73,35 +73,35 @@ class ModelStructure(Loader, Validator, Simulation):
         # 使用 self.current_filename 作为前缀
         prefix = self.current_filename or 'unknown'
 
-        # 提取公式依赖变量
-        formula_deps: Dict[str, Set[str]] = {}
-        for form_name, formula in self.formulas.items():
+        # 提取方程依赖变量
+        equation_deps: Dict[str, Set[str]] = {}
+        for eq_name, equation in self.equations.items():
             deps = set()
-            if isinstance(formula.condition, str):
-                deps.update(self.extract_vars_from_expr(formula.condition))
-            for var, expr in formula.dynamics.items():
+            if isinstance(equation.condition, str):
+                deps.update(self.extract_vars_from_expr(equation.condition))
+            for var, expr in equation.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
                 deps.update(self.extract_vars_from_expr(expr))
                 if var in self.variables:
                     deps.add(var)
-            formula_deps[form_name] = deps
+            equation_deps[eq_name] = deps
 
         # 构建变量使用计数
         var_usage: Dict[str, int] = {}
-        for deps in formula_deps.values():
+        for deps in equation_deps.values():
             for var in deps:
                 var_usage[var] = var_usage.get(var, 0) + 1
 
-        # 识别独立公式
-        independent_formulas = [
-            form_name for form_name, deps in formula_deps.items()
+        # 识别独立方程
+        independent_equations = [
+            eq_name for eq_name, deps in equation_deps.items()
             if all(var_usage.get(var, 0) == 1 for var in deps)
         ]
 
-        # 生成独立公式文件
-        for form_name in independent_formulas:
-            deps = formula_deps[form_name]
+        # 生成独立方程文件
+        for eq_name in independent_equations:
+            deps = equation_deps[eq_name]
             # 过滤 variables，排除 'dt' 如果存在 // dt不再排除
             filtered_vars = {
                 var: {
@@ -114,35 +114,35 @@ class ModelStructure(Loader, Validator, Simulation):
             }
             patch_data = {
                 'metadata': {
-                    'name': f"{prefix}_{form_name}",
+                    'name': f"{prefix}_{eq_name}",
                     'version': self.metadata.version if self.metadata else '1.0.0',
                     'author': self.metadata.author if self.metadata else '',
-                    'description': f"Split module for formula {form_name}",
+                    'description': f"Split module for equation {eq_name}",
                 },
                 'variables': filtered_vars,  # 使用过滤后的 variables
-                'formulas': {
-                    form_name: {
-                        'description': self.formulas[form_name].description,
-                        'condition': self.formulas[form_name].condition,
-                        'priority': self.formulas[form_name].priority,
-                        'dynamics': self.formulas[form_name].dynamics
+                'equations': {
+                    eq_name: {
+                        'description': self.equations[eq_name].description,
+                        'condition': self.equations[eq_name].condition,
+                        'priority': self.equations[eq_name].priority,
+                        'dynamics': self.equations[eq_name].dynamics
                     }
                 }
             }
             # 直接在 output_dir 下生成文件
-            split_file_path = os.path.join(output_dir, f"{prefix}_{form_name}.yaml")
+            split_file_path = os.path.join(output_dir, f"{prefix}_{eq_name}.yaml")
             with open(split_file_path, 'w', encoding='utf-8') as f:
                 yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
                             default_flow_style=False, indent=2)
             logger.info(f"Generated split file: {split_file_path}")
 
         # 生成剩余模型文件
-        remaining_formulas = {k: v for k, v in self.formulas.items() if k not in independent_formulas}
+        remaining_equations = {k: v for k, v in self.equations.items() if k not in independent_equations}
         remaining_vars = set()
-        for formula in remaining_formulas.values():
-            if isinstance(formula.condition, str):
-                remaining_vars.update(self.extract_vars_from_expr(formula.condition))
-            for var, expr in formula.dynamics.items():
+        for equation in remaining_equations.values():
+            if isinstance(equation.condition, str):
+                remaining_vars.update(self.extract_vars_from_expr(equation.condition))
+            for var, expr in equation.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
                 remaining_vars.update(self.extract_vars_from_expr(expr))
@@ -167,13 +167,13 @@ class ModelStructure(Loader, Validator, Simulation):
                 'description': f"Remaining shared modules of {prefix}",
             },
             'variables': filtered_remaining_vars,  # 使用过滤后的 variables
-            'formulas': {
+            'equations': {
                 k: {
                     'description': v.description,
                     'condition': v.condition,
                     'priority': v.priority,
                     'dynamics': v.dynamics
-                } for k, v in remaining_formulas.items()
+                } for k, v in remaining_equations.items()
             }
         }
         # 直接在 output_dir 下生成文件
@@ -204,13 +204,13 @@ class ModelStructure(Loader, Validator, Simulation):
                     'bounds': var.bounds
                 } for var_name, var in self.variables.items()
             },
-            'formulas': {
-                form_name: {
+            'equations': {
+                eq_name: {
                     'description': form.description,
                     'condition': form.condition,
                     'priority': form.priority,
                     'dynamics': form.dynamics,
-                } for form_name, form in self.formulas.items()
+                } for eq_name, form in self.equations.items()
             },
             'simulator': self.simulator,
             'optimizer': self.optimizer

@@ -28,6 +28,8 @@ YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/
 4. 把科研模型输出为游戏化场景，供 [life-matters-game](https://github.com/shenfan19/life-matters-game) 消费
 5. 把多篇文献的参数装进同一框架，检验它们是否互相自洽（Simulation-as-Validation）
 
+本引擎读取并执行 LM file 的四个顶层机制——`variables`、`equations`、`simulation`、`optimizer`，合起来读作 V.E.S.O.——格式定义见 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库的 `docs/LM_format_1.0.md`。
+
 
 ---
 
@@ -130,7 +132,7 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/opt.md](docs/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
 | [docs/cli.md](docs/cli.md) | CLI 批量运行接口说明 |
 | [docs/deploy_scs.md](docs/deploy_scs.md) | SCS 公网部署指南（DigitalOcean 等云主机，systemd + Nginx） |
-| [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence 8 种子类型换算公式、溯源字段（权威实现描述） |
+| [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence 8 种子类型换算方程、溯源字段（权威实现描述） |
 | [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
 | [docs/mc.md](docs/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
 | [test_verification/verification_report.md](test_verification/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |

@@ -15,17 +15,17 @@ class Validator:
 
         # 检查时间单位使用
         time_units = {'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'}
-        for form_name, formula in self.formulas.items():
-            if isinstance(formula.condition, str):
-                vars_in_condition = self.extract_vars_from_expr(formula.condition)
+        for eq_name, equation in self.equations.items():
+            if isinstance(equation.condition, str):
+                vars_in_condition = self.extract_vars_from_expr(equation.condition)
                 if 'dt' in vars_in_condition and not (vars_in_condition & time_units):
-                    logger.warning(f"Formula {form_name}: 'dt' used in condition without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
-            for var_name, expr in formula.dynamics.items():
+                    logger.warning(f"Equation {eq_name}: 'dt' used in condition without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
+            for var_name, expr in equation.dynamics.items():
                 if isinstance(expr, (int, float)):
                     expr = str(expr)
                 vars_in_expr = self.extract_vars_from_expr(expr)
                 if 'dt' in vars_in_expr and not (vars_in_expr & time_units):
-                    logger.warning(f"Formula {form_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
+                    logger.warning(f"Equation {eq_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
 
         # 验证 simulator
         if self.simulator:
@@ -129,7 +129,7 @@ class Validator:
                     is_valid = False
             return is_valid, errors, missing_vars
 
-        def validate_formulas_old_ver_bug() -> tuple[bool, list[str], list[dict]]:
+        def validate_equations_old_ver_bug() -> tuple[bool, list[str], list[dict]]:
             errors = []
             missing_vars = []
             is_valid = True
@@ -176,31 +176,31 @@ class Validator:
                             break
                 return undefined_vars
 
-            for form_name, formula in self.formulas.items():
-                if isinstance(formula.condition, (bool, int, float)):
-                    if isinstance(formula.condition, bool):
+            for eq_name, equation in self.equations.items():
+                if isinstance(equation.condition, (bool, int, float)):
+                    if isinstance(equation.condition, bool):
                         continue
-                    expr = str(formula.condition)
+                    expr = str(equation.condition)
                     missing_vars.extend(collect_undefined_vars(
                         expr,
-                        f"condition of formula '{form_name}'"
+                        f"condition of equation '{eq_name}'"
                     ))
-                elif isinstance(formula.condition, str):
+                elif isinstance(equation.condition, str):
                     missing_vars.extend(collect_undefined_vars(
-                        formula.condition,
-                        f"condition of formula '{form_name}'"
+                        equation.condition,
+                        f"condition of equation '{eq_name}'"
                     ))
                 else:
-                    errors.append(f"condition of formula '{form_name}' invalid: expected bool, number, or string expression, got {type(formula.condition).__name__}")
+                    errors.append(f"condition of equation '{eq_name}' invalid: expected bool, number, or string expression, got {type(equation.condition).__name__}")
                     is_valid = False
                 
                 # 🔧 修复：无论 dynamics 的 key 是否存在，都要验证表达式
-                for var, expr in formula.dynamics.items():
+                for var, expr in equation.dynamics.items():
                     # 首先检查 dynamics 的 key 是否存在
                     if var not in self.variables:
                         missing_vars.append({
                             'variable': var,
-                            'context': f"dynamics of formula '{form_name}'"
+                            'context': f"dynamics of equation '{eq_name}'"
                         })
                         is_valid = False
                     
@@ -209,15 +209,15 @@ class Validator:
                         expr_str = str(expr)
                         missing_vars.extend(collect_undefined_vars(
                             expr_str,
-                            f"dynamics for '{var}' in formula '{form_name}'"
+                            f"dynamics for '{var}' in equation '{eq_name}'"
                         ))
                     elif isinstance(expr, str):
                         missing_vars.extend(collect_undefined_vars(
                             expr,
-                            f"dynamics for '{var}' in formula '{form_name}'"
+                            f"dynamics for '{var}' in equation '{eq_name}'"
                         ))
                     else:
-                        errors.append(f"dynamics for '{var}' in formula '{form_name}' invalid: expected number or string expression, got {type(expr).__name__}")
+                        errors.append(f"dynamics for '{var}' in equation '{eq_name}' invalid: expected number or string expression, got {type(expr).__name__}")
                         is_valid = False
             
             if missing_vars:
@@ -227,8 +227,8 @@ class Validator:
             
             return is_valid, errors, missing_vars
 
-        def validate_formulas() -> tuple[bool, list[str], list[dict]]:
-            """验证公式,收集所有缺失的变量"""
+        def validate_equations() -> tuple[bool, list[str], list[dict]]:
+            """验证方程,收集所有缺失的变量"""
             errors = []
             missing_vars = []
             is_valid = True
@@ -264,47 +264,47 @@ class Validator:
             
             valid_step_units = {'minute', 'hour', 'day'}
 
-            # 遍历所有公式
-            for form_name, formula in self.formulas.items():
+            # 遍历所有方程
+            for eq_name, equation in self.equations.items():
 
                 # 0. 仅当 dynamics 使用步长变量时才验证 step_unit
                 dyn_uses_step = any(
                     isinstance(expr, str) and bool(re.search(r'\b(step|dt|step_size)\b', expr))
-                    for expr in formula.dynamics.values()
+                    for expr in equation.dynamics.values()
                 )
-                step_unit = getattr(formula, 'step_unit', None)
+                step_unit = getattr(equation, 'step_unit', None)
                 if dyn_uses_step:
                     if any(
                         isinstance(expr, str) and bool(re.search(r'\b(dt|step_size)\b', expr))
-                        for expr in formula.dynamics.values()
+                        for expr in equation.dynamics.values()
                     ):
-                        errors.append(f"formula '{form_name}' 的 dynamics 使用了废弃符号 dt/step_size，请改用 step。")
+                        errors.append(f"equation '{eq_name}' 的 dynamics 使用了废弃符号 dt/step_size，请改用 step。")
                         is_valid = False
                     if not step_unit:
-                        errors.append(f"formula '{form_name}' 的 dynamics 使用步长变量，缺少必填字段 step_unit（minute | hour | day）。")
+                        errors.append(f"equation '{eq_name}' 的 dynamics 使用步长变量，缺少必填字段 step_unit（minute | hour | day）。")
                         is_valid = False
                     elif step_unit not in valid_step_units:
-                        errors.append(f"formula '{form_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
+                        errors.append(f"equation '{eq_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
                         is_valid = False
 
                 # 1. 验证 condition
-                if isinstance(formula.condition, str):
-                    vars_in_condition = extract_vars_from_expr(formula.condition)
+                if isinstance(equation.condition, str):
+                    vars_in_condition = extract_vars_from_expr(equation.condition)
                     for var in vars_in_condition:
-                        if var not in self.variables and var not in self.formulas:
+                        if var not in self.variables and var not in self.equations:
                             missing_vars.append({
                                 'variable': var,
-                                'context': f"condition of formula '{form_name}'"
+                                'context': f"condition of equation '{eq_name}'"
                             })
                             is_valid = False
                 
                 # 2. 验证 dynamics
-                for dyn_key, dyn_expr in formula.dynamics.items():
+                for dyn_key, dyn_expr in equation.dynamics.items():
                     # 2a. 检查 dynamics 的 key (左边) 是否定义
                     if dyn_key not in self.variables:
                         missing_vars.append({
                             'variable': dyn_key,
-                            'context': f"dynamics key of formula '{form_name}'"
+                            'context': f"dynamics key of equation '{eq_name}'"
                         })
                         is_valid = False
                     
@@ -312,10 +312,10 @@ class Validator:
                     if isinstance(dyn_expr, str):
                         vars_in_expr = extract_vars_from_expr(dyn_expr)
                         for var in vars_in_expr:
-                            if var not in self.variables and var not in self.formulas:
+                            if var not in self.variables and var not in self.equations:
                                 missing_vars.append({
                                     'variable': var,
-                                    'context': f"dynamics['{dyn_key}'] in formula '{form_name}'"
+                                    'context': f"dynamics['{dyn_key}'] in equation '{eq_name}'"
                                 })
                                 is_valid = False
                     elif isinstance(dyn_expr, (int, float)):
@@ -333,7 +333,7 @@ class Validator:
         validators = [
             ('Metadata', validate_metadata),
             ('Variables', validate_variables),
-            ('Formulas', validate_formulas)
+            ('Equations', validate_equations)
         ]
         for section, validator in validators:
             valid, errors, missing_vars = validator()

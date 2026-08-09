@@ -1,4 +1,4 @@
-"""Error-detection regression tests: structural/formula validation (validator.py).
+"""Error-detection regression tests: structural/equation validation (validator.py).
 
 Each fixture in models/test_fixtures/invalid/ is intentionally broken in exactly one
 way. These tests go through the same path CLI/GUI use to load a model —
@@ -37,14 +37,14 @@ def test_optimizer_missing_method_is_rejected():
     assert 'method' in engine.loader.last_error
 
 
-def test_formula_undefined_variable_is_rejected():
+def test_equation_undefined_variable_is_rejected():
     engine = _make_engine()
-    assert not engine.load_models(['test_fixtures/invalid/test_invalid_formula_undefined_var'])
+    assert not engine.load_models(['test_fixtures/invalid/test_invalid_equation_undefined_var'])
     assert 'undeclared_var' in engine.loader.last_error
 
 
-def test_formula_deprecated_dt_symbol_is_rejected():
+def test_equation_deprecated_dt_symbol_is_rejected():
     engine = _make_engine()
-    assert not engine.load_models(['test_fixtures/invalid/test_invalid_formula_deprecated_dt'])
+    assert not engine.load_models(['test_fixtures/invalid/test_invalid_equation_deprecated_dt'])
     assert 'dt' in engine.loader.last_error
     assert 'step' in engine.loader.last_error

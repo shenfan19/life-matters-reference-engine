@@ -14,7 +14,7 @@ from reference_engine.src.reference_engine import ReferenceEngine  # noqa: E402
 from reference_engine.src.session_manager import SESSION_IDLE_TIMEOUT_SECONDS  # noqa: E402
 
 MODELS_DIR = ROOT / 'models'
-MODEL_NAME = 'test_fixtures/valid/test_valid_formula_condition'
+MODEL_NAME = 'test_fixtures/valid/test_valid_equation_condition'
 
 
 def _make_session():

@@ -11,7 +11,7 @@ window) through increasingly aggressive combined interventions
 dominating the previous on all three input dimensions).
 
 This asserts two things, both confirmed by directly running the four plans (not
-guessed from the formula):
+guessed from the equation):
 
 1. Every intervention plan ends with strictly higher final insulin_sensitivity and
    strictly lower final hba1c than the no-intervention baseline — the core claim of

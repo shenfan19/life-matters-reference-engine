@@ -7,7 +7,7 @@ exercise load) must produce a strict final-body_weight ordering:
 aggressive < balanced < conservative < initial (90.0 kg).
 
 This is a relational check (ordering), not a hardcoded golden value: it survives
-formula tweaks that change the absolute numbers but keep both inputs' sign and
+equation tweaks that change the absolute numbers but keep both inputs' sign and
 relative magnitude. It also guards the `max(50.0, ...)` floor clamp in
 weight_dynamics — if a future parameter change pushed any plan's loss past the
 floor before the others, the strict ordering would collapse into an equality and
@@ -53,7 +53,7 @@ def test_higher_deficit_and_exercise_load_yields_strictly_lower_final_weight(tmp
 
     # Margin from the max(50.0, ...) clamp: if any plan's loss got close enough to the
     # floor to clamp, the strict ordering above could hold by coincidence rather than
-    # by the formula's actual monotonicity. Fail loudly instead of passing by luck.
+    # by the equation's actual monotonicity. Fail loudly instead of passing by luck.
     for label, value in [('conservative', conservative), ('balanced', balanced), ('aggressive', aggressive)]:
         assert value > BODY_WEIGHT_FLOOR + 1.0, (
             f'{label} final body_weight={value} too close to the {BODY_WEIGHT_FLOOR} floor clamp; '

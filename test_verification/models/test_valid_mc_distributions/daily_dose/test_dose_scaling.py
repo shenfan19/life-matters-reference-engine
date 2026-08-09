@@ -1,11 +1,11 @@
 """Multi-value test template for `daily_dose` (test_verification/models/README.md).
 
-test_valid_mc_distributions.yaml's drug_absorption/elimination formulas are linear in
+test_valid_mc_distributions.yaml's drug_absorption/elimination equations are linear in
 daily_dose (no saturation term), so doubling/3.5x the dose must scale the
 deterministic steady-state plasma_conc and peak_plasma by the same ratio, for
 every value daily_dose takes across the model's plans (low/moderate/high
 dose). This is a relational check, not a hardcoded golden value: it survives
-formula tweaks that change the absolute numbers but keep the linearity.
+equation tweaks that change the absolute numbers but keep the linearity.
 """
 
 import csv
