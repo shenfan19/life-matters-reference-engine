@@ -124,7 +124,7 @@ python cli/batch.py --input-dir <models_folder>
 
 ## Acknowledgments
 
-This project was developed with AI coding assistance, primarily [Claude Code](https://claude.ai/code) (Anthropic), for code generation, automated testing, and documentation.
+This project was developed with AI coding assistance for code generation, automated testing, and documentation.
 
 ## License
 
