@@ -82,17 +82,17 @@ function TitleBar({ isDarkMode, onToggleDark, language, onLanguage, fontSize, on
 
   return (
     <div style={{
-      height: 44, flexShrink: 0,
+      minHeight: 44, flexShrink: 0,
       borderBottom: `1px solid ${c.border}`,
       background: c.panel,
       display: 'flex', alignItems: 'center',
-      padding: '0 16px', gap: 0,
+      padding: '6px 16px', gap: 0,
       userSelect: 'none',
     }}>
       {/* Logo wordmark */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, userSelect: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 20, marginTop: 2, marginBottom: 2, userSelect: 'none' }}>
         <HeartPulseIcon size={28} />
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 }}>
           <span style={{
             fontSize: 'calc(var(--lm-font-size, 14px) * 1.2857)', fontWeight: 700, letterSpacing: '0.02em',
             color: c.text,
