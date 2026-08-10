@@ -9,25 +9,7 @@ YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/
 
 ---
 
-## 免责声明
-
-本项目中的历史与医学场景基于公开学术文献，仅用于健康决策教育目的。所有模拟内容不代表对历史人物的道德评判；历史数据经简化处理，不构成医学建议；仿真结果为模型推演，非历史事实重现。
-
-**作者对本仓库的仿真/优化引擎本身负责**——这是本仓库的核心内容。LM format 格式规范与 YAML 模型库独立维护于 [life-matters-models](https://github.com/shenfan19/life-matters-models)，其中大部分模型内容由 AI 辅助生成、尚未经过相关领域专家核实，仅供方法论演示与测试参考，具体可信度边界见该仓库 README「内容可信度声明」一节。
-
----
-
-## 项目定位
-
-**Life Matters（LM）** 用 V.E.S.O. 四个机制描述生命动力学模型：`variables`（变量）、`equations`（方程）、`simulation`（仿真）、`optimizer`（优化），格式定义见 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库的 `docs/LM_format_1.0.md`。
-
-核心能力：
-
-1. 把医学/社会学文献里的统计结论（OR、HR、Cohen's d 等）转化为可运行的 YAML 动力学模型
-2. 在统一框架内同时运行异尺度模型（分钟–小时–天–年）
-3. 对行为干预方案（Regimen）做多目标 Pareto 优化
-4. 把多篇文献的参数装进同一框架，检验它们是否互相自洽（Simulation-as-Validation）
-
+项目整体定位、免责声明见 → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**（LM 项目根基仓库）。本仓库只维护仿真/优化引擎本身，作者对此负责。
 
 ---
 
