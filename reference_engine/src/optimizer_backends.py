@@ -91,6 +91,12 @@ def _run_nsga2(evaluate, n_var, n_obj, n_con, xl, xu, pop_size, n_gen, seed, obj
                         raise _StopOptimization()
 
         _cb = _ProgressCb() if progress_callback else None
+        # KNOWN ISSUE (life-matters-home/tasks/task_index.md, B类, found 2026-08-14):
+        # passing callback=_cb below when progress_callback is None overwrites
+        # pymoo's own no-op Callback() default with a bare None, and every
+        # generation's self.callback(self) then raises TypeError. Dormant in
+        # production — CLI and API always pass progress_callback — but any new
+        # direct caller of run_optimizer() without one will hit it immediately.
 
         # Build initial population: warm-start from previous results if available.
         # Filter solutions whose dimension matches current n_var to avoid shape errors.
