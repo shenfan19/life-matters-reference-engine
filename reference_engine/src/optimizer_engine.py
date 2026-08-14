@@ -224,6 +224,15 @@ def run_optimizer(engine, model_name: str,
                     'valid_end': None,
                     'delivery': e0.get('delivery'),
                 }
+                # T4 end window collapsed (ew[0] == ew[1], not searched): the
+                # fixed date never gets a `date_end` var_spec (see parsing
+                # above), so it must be seeded here or it silently reverts to
+                # "no end date" instead of the declared fixed terminus.
+                date_range_opt0 = e0.get('optimize', {}).get('date_range')
+                if isinstance(date_range_opt0, list) and len(date_range_opt0) == 2:
+                    ew0 = date_range_opt0[1]
+                    if str(ew0[0]) == str(ew0[1]):
+                        d0['valid_end'] = str(ew0[0])
                 dr = e0.get('date_range')
                 if isinstance(dr, list) and len(dr) == 2:
                     d0['valid_start'] = str(dr[0]); d0['valid_end'] = str(dr[1])
