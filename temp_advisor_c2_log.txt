@@ -1,0 +1,12 @@
+
+  Life Matters CLI
+  Model : postpartum_recovery_opt_babynutrition__c2_depression_tighten.yaml
+  Mode  : opt
+  Log   : postpartum_recovery_opt_babynutrition__c2_depression_tighten_2026-08-15_13-06-21_opt.log
+
+  Type  q + Enter  at any time to stop and save current results.
+
+  Gen   1 | eval:     20 | feasible:   5% | best_f: [60.1]  Gen   2 | eval:     40 | feasible:  15% | best_f: [122]  Gen   3 | eval:     60 | feasible:  45% | best_f: [122]  Gen   4 | eval:     80 | feasible: 100% | best_f: [122]  Gen   5 | eval:    100 | feasible: 100% | best_f: [134]  Gen   6 | eval:    120 | feasible: 100% | best_f: [134]  Gen   7 | eval:    140 | feasible: 100% | best_f: [134]  Gen   8 | eval:    160 | feasible: 100% | best_f: [141]  Gen   9 | eval:    180 | feasible: 100% | best_f: [141]  Gen  10 | eval:    200 | feasible: 100% | best_f: [145]  Gen  11 | eval:    220 | feasible: 100% | best_f: [148]  Gen  12 | eval:    240 | feasible: 100% | best_f: [148]  Gen  13 | eval:    260 | feasible: 100% | best_f: [155]  Gen  14 | eval:    280 | feasible: 100% | best_f: [155]  Gen  15 | eval:    300 | feasible: 100% | best_f: [160]
+
+  Done
+  → postpartum_recovery_opt_babynutrition__c2_depression_tighten_2026-08-15_13-06-21_opt.csv

@@ -116,3 +116,6 @@
 | _（0128-0130 与 life-matters-models 同期各自独立编号撞号，0131/0132 起两仓库恢复共用同一序列，见下方说明）_ | | | |
 | [0131 †](../../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) | sustained value 语义修正：每个匹配日独立满额，取代 0099 的"整跨度总量"（同批取代 0126 第3条） | ✅ 已实施 | 2026-07-13 |
 | [0132 †](../../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md) | sustained regimen 新增 `delivery: total\|level`，区分"总量摊分"（训练负荷类）与"恒定水平"（睡眠时长类） | ✅ 已实施 | 2026-07-14 |
+| _（0133-0145 均为 life-matters-models 侧 ADR，本索引 0133-0140 段暂未补录 †，待后续统一整理；0140 为本仓库原生 ADR，见 `0140-2026-08-03_sim_pareto-regroup-panel-and-decision-var-labels-fix.md`）_ | | | |
+| [0146](0146-2026-07-21_sim_opt-progress-snapshot-and-sim-pause-resume-sync.md) | GUI 会话按模型归属：优化进度快照（Gen/Eval/Front/Feasible/Mean CV）持久化 + 仿真 pause/resume 前后端同步 | ✅ 已接受 | 2026-07-21 |
+| [0147](0147-2026-08-04_sim_optimizer-t1-value-step-grid-quantization.md) | 优化器 T1 决策变量新增 `value_step`：连续解按网格量化到可读精度，与 T2 `time_step` 同一模式；配套修复 pareto_front/best_x 记录 snap 前旧值的问题 | ✅ 已接受 | 2026-08-04 |
