@@ -63,5 +63,5 @@ YAML 模型库不在本文件覆盖范围内，独立维护于 [life-matters-mod
 
 ---
 
-- [ ]  投稿那天修改 [priority:: medium]
-  - [ ]  把上面的标题从 `[Unreleased]` 改成 `[1.0.0] - YYYY-MM-DD`，并在对应 commit 上打 `git tag v1.0`。
+- [ ]  投稿那天修改
+    - [ ] 把上面的标题从 `[Unreleased]` 改成 `[1.0.0] - YYYY-MM-DD`，并在对应 commit 上打 `git tag v1.0`。
