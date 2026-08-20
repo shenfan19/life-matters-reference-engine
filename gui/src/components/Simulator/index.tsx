@@ -168,6 +168,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   const [optPop, setOptPop] = useState(50);
   const [optGen, setOptGen] = useState(80);
   const [optSeed, setOptSeed] = useState(42);
+
+  // ── Pareto regroup chart axis/group selection (per-model, view preference not a model edit) ──
+  const [regroupXKey, setRegroupXKey] = useState('');
+  const [regroupYKey, setRegroupYKey] = useState('');
+  const [regroupGroupKey, setRegroupGroupKey] = useState('');
   const switchCenterTab = (tab: string) => {
     if (builderOpen) return; // locked while builder is open
     if (tab === 'plot' || tab === 'setup' || tab === 'simulation') {
@@ -321,6 +326,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     selectedModel, inputEvents, set, setOptRanges, setStoredOptResult, setOptResult, setWarmStartEnabled,
     modelSessionsRef, setInputEvents, setOptInputEvents, setPlans, setActivePlanId,
     setObjectives, setConstraints, setOptAlgo, setOptPop, setOptGen, setOptSeed,
+    setRegroupXKey, setRegroupYKey, setRegroupGroupKey,
     sessionEditedRef, sessionReadyRef, setRunOutputVars, setOutputWarnings, setSimLogs, t,
   });
 
@@ -330,6 +336,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     selectedKey, sessionReadyRef, sessionEditedRef, persistSession,
     inputEvents, optInputEvents, plans, activePlanId,
     objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult,
+    regroupXKey, regroupYKey, regroupGroupKey,
     mode, openSections, sectionWeights,
     setRunOutputVars, setOutputWarnings, setCenterTab,
   });
@@ -754,6 +761,8 @@ const Simulator: React.FC<SimulatorProps> = ({
                   hasExistingResults={hasExistingResults}
                   onSendToSim={addPlansFromOpt}
                   isActiveModel={!runningModelKey || runningModelKey === selectedKey}
+                  regroupXKey={regroupXKey} regroupYKey={regroupYKey} regroupGroupKey={regroupGroupKey}
+                  onRegroupXKeyChange={setRegroupXKey} onRegroupYKeyChange={setRegroupYKey} onRegroupGroupKeyChange={setRegroupGroupKey}
                 />
               }
               progress={<ProgressStrip label="Optimization" percent={optTotalGen ? (optCurGen / optTotalGen) * 100 : (optResult ? 100 : 0)} detail={`gen ${optCurGen}/${optTotalGen || '-'} · ${optRunning ? 'running' : optResult ? 'completed' : 'idle'}`} active={optRunning} c={c} />}

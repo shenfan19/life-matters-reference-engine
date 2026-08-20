@@ -39,6 +39,9 @@ interface UsePersistedUIParams {
   optGen: number;
   optSeed: number;
   optResult: any;
+  regroupXKey: string;
+  regroupYKey: string;
+  regroupGroupKey: string;
   mode: string;
   openSections: Set<string>;
   sectionWeights: Record<string, number>;
@@ -52,6 +55,7 @@ export function usePersistedUI({
   selectedKey, sessionReadyRef, sessionEditedRef, persistSession,
   inputEvents, optInputEvents, plans, activePlanId,
   objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult,
+  regroupXKey, regroupYKey, regroupGroupKey,
   mode, openSections, sectionWeights,
   setRunOutputVars, setOutputWarnings, setCenterTab,
 }: UsePersistedUIParams) {
@@ -136,10 +140,11 @@ export function usePersistedUI({
       optMcRuns, optMcSeed,
       objectives, constraints, optAlgo, optPop, optGen, optSeed,
       optResult,
+      regroupXKey, regroupYKey, regroupGroupKey,
       userEdited: sessionEditedRef.current,
     };
     persistSession(selectedKey, session);
-  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, optMcRuns, optMcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult]);
+  }, [selectedKey, inputEvents, optInputEvents, plans, activePlanId, simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, simRuns, mcSeed, optMcRuns, optMcSeed, objectives, constraints, optAlgo, optPop, optGen, optSeed, optResult, regroupXKey, regroupYKey, regroupGroupKey]);
 
   // ── persist global UI state (selection, mode, layout) ────────────────────────
   useEffect(() => {

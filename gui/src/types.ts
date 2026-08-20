@@ -221,6 +221,11 @@ export interface ModelSession {
   optElapsed?: number;
   optMethod?: string;
   optLogs?: Array<{ t: number; msg: string }>;
+  // Pareto regroup chart axis/group selection (empty string = not chosen yet,
+  // component falls back to its own computed default).
+  regroupXKey?: string;
+  regroupYKey?: string;
+  regroupGroupKey?: string;
   userEdited?: boolean;
 }
 

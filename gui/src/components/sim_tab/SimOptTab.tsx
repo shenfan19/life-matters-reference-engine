@@ -25,12 +25,20 @@ interface SimOptTabProps {
   hasExistingResults: boolean;
   onSendToSim?: (rows: Array<{ x: number[]; f: number[]; rank: number }>) => void;
   isActiveModel?: boolean;
+  regroupXKey?: string;
+  regroupYKey?: string;
+  regroupGroupKey?: string;
+  onRegroupXKeyChange: (key: string) => void;
+  onRegroupYKeyChange: (key: string) => void;
+  onRegroupGroupKeyChange: (key: string) => void;
 }
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
   optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
   onDownloadModel, hasExistingResults, onSendToSim, isActiveModel = true,
+  regroupXKey, regroupYKey, regroupGroupKey,
+  onRegroupXKeyChange, onRegroupYKeyChange, onRegroupGroupKeyChange,
 }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['front', 'regroup', 'process', 'solutions', 'log']));
@@ -237,7 +245,9 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       {/* Regroup — pick x/y/group fields from the current pareto_front, no re-run needed */}
       {liveResult?.pareto_front?.length > 0 && (
         <Section id="regroup" title="Regroup">
-          <ParetoRegroupChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize} />
+          <ParetoRegroupChart result={liveResult} isDarkMode={isDarkMode} c={c} fontSize={fontSize}
+            xKey={regroupXKey} yKey={regroupYKey} groupKey={regroupGroupKey}
+            onXKeyChange={onRegroupXKeyChange} onYKeyChange={onRegroupYKeyChange} onGroupKeyChange={onRegroupGroupKeyChange} />
         </Section>
       )}
 
