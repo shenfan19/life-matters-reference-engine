@@ -46,6 +46,8 @@ YAML 模型生态见 → [life-matters-models](https://github.com/shenfan19/life
   fit to literature data         Pareto front output
 ```
 
+外环优化器没有唯一最优解时，默认以 Pareto 前沿呈现结果，把所有较优组合完整交给使用者评估和参考，命名由来见 [life-matters-models](https://github.com/shenfan19/life-matters-models) README。
+
 ---
 
 ## 快速开始
