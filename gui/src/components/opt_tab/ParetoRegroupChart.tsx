@@ -12,7 +12,13 @@ const ParetoRegroupChart: React.FC<{
   isDarkMode: boolean;
   c: ReturnType<typeof getC>;
   fontSize: number;
-}> = ({ result, isDarkMode, c, fontSize }) => {
+  xKey?: string;
+  yKey?: string;
+  groupKey?: string;
+  onXKeyChange: (key: string) => void;
+  onYKeyChange: (key: string) => void;
+  onGroupKeyChange: (key: string) => void;
+}> = ({ result, isDarkMode, c, fontSize, xKey: xKeyProp, yKey: yKeyProp, groupKey: groupKeyProp, onXKeyChange, onYKeyChange, onGroupKeyChange }) => {
   const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number; xv: number; yv: number; label: string } | null>(null);
@@ -32,16 +38,13 @@ const ParetoRegroupChart: React.FC<{
   const defaultY = fields.find(f => f.key.startsWith('f') && f.key !== defaultX)?.key || fields[1]?.key;
   const defaultGroup = decisionFields.find(f => f.key !== defaultX)?.key || 'none';
 
-  const [xKey, setXKey] = useState(defaultX);
-  const [yKey, setYKey] = useState(defaultY);
-  const [groupKey, setGroupKey] = useState<string>(defaultGroup);
-
-  useEffect(() => {
-    if (!fields.some(f => f.key === xKey)) setXKey(defaultX);
-    if (!fields.some(f => f.key === yKey)) setYKey(defaultY);
-    if (groupKey !== 'none' && !fields.some(f => f.key === groupKey)) setGroupKey(defaultGroup);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  // Session-persisted selection wins as long as it's still valid for the current
+  // result's fields; otherwise fall back to the computed default. No local state:
+  // the parent (per-model session) is the single source of truth, so the selection
+  // survives page refresh and switching models and back without a resync effect.
+  const xKey = fields.some(f => f.key === xKeyProp) ? xKeyProp! : defaultX;
+  const yKey = fields.some(f => f.key === yKeyProp) ? yKeyProp! : defaultY;
+  const groupKey = groupKeyProp === 'none' || fields.some(f => f.key === groupKeyProp) ? groupKeyProp! : defaultGroup;
 
   const valueOf = (p: any, key: string): number => {
     if (!key) return NaN;
@@ -177,13 +180,13 @@ const ParetoRegroupChart: React.FC<{
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8, alignItems: 'center' }}>
         <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{t('sim.opt.regroup_x') || 'X 轴'}</span>
-        <Select size="small" value={xKey} onChange={setXKey} style={{ minWidth: '12ch' }}
+        <Select size="small" value={xKey} onChange={onXKeyChange} style={{ minWidth: '12ch' }}
           options={fields.map(f => ({ value: f.key, label: f.label }))} />
         <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{t('sim.opt.regroup_y') || 'Y 轴'}</span>
-        <Select size="small" value={yKey} onChange={setYKey} style={{ minWidth: '12ch' }}
+        <Select size="small" value={yKey} onChange={onYKeyChange} style={{ minWidth: '12ch' }}
           options={fields.map(f => ({ value: f.key, label: f.label }))} />
         <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>{t('sim.opt.regroup_group') || '分组'}</span>
-        <Select size="small" value={groupKey} onChange={setGroupKey} style={{ minWidth: '12ch' }}
+        <Select size="small" value={groupKey} onChange={onGroupKeyChange} style={{ minWidth: '12ch' }}
           options={[
             { value: 'none', label: t('sim.opt.regroup_group_none') || '不分组' },
             ...fields.filter(f => f.key !== xKey && f.key !== yKey).map(f => ({ value: f.key, label: f.label })),

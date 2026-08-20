@@ -40,6 +40,9 @@ interface UseModelInitParams {
   setOptPop: (n: number) => void;
   setOptGen: (n: number) => void;
   setOptSeed: (n: number) => void;
+  setRegroupXKey: (key: string) => void;
+  setRegroupYKey: (key: string) => void;
+  setRegroupGroupKey: (key: string) => void;
   sessionEditedRef: MutableRefObject<boolean>;
   sessionReadyRef: MutableRefObject<boolean>;
   setRunOutputVars: Dispatch<SetStateAction<string[]>>;
@@ -58,6 +61,7 @@ export function useModelInit({
   selectedModel, inputEvents, set, setOptRanges, setStoredOptResult, setOptResult, setWarmStartEnabled,
   modelSessionsRef, setInputEvents, setOptInputEvents, setPlans, setActivePlanId,
   setObjectives, setConstraints, setOptAlgo, setOptPop, setOptGen, setOptSeed,
+  setRegroupXKey, setRegroupYKey, setRegroupGroupKey,
   sessionEditedRef, sessionReadyRef, setRunOutputVars, setOutputWarnings, setSimLogs, t,
 }: UseModelInitParams) {
   useEffect(() => {
@@ -141,6 +145,9 @@ export function useModelInit({
       setOptSeed(session.optSeed ?? 42);
       setOptResult(session.optResult ?? yamlOptResult ?? null);
       setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length) || !!(session.optResult?.pareto_front?.length));
+      setRegroupXKey(session.regroupXKey ?? '');
+      setRegroupYKey(session.regroupYKey ?? '');
+      setRegroupGroupKey(session.regroupGroupKey ?? '');
       set('simRuns', session.simRuns ?? (sim?.mc?.runs != null ? Math.max(1, Math.min(50, Number(sim.mc.runs))) : 1));
       set('mcSeed', 'mcSeed' in session ? session.mcSeed : (sim?.mc?.seed != null ? Number(sim.mc.seed) : null));
       set('optMcRuns', session.optMcRuns ?? (optBlock?.mc?.runs != null ? Math.max(1, Math.min(50, Number(optBlock.mc.runs))) : 1));
@@ -349,6 +356,9 @@ export function useModelInit({
 
     setWarmStartEnabled(!!(yamlOptResult?.pareto_front?.length));
     setOptResult(yamlOptResult);
+    setRegroupXKey('');
+    setRegroupYKey('');
+    setRegroupGroupKey('');
     sessionReadyRef.current = true;
 
     // Warm-start modal: only on first-ever load (no session existed)
