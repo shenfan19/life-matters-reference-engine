@@ -37,3 +37,8 @@ messages.mo
 # CLI outputs (folder tracked, contents ignored)
 output/*
 !output/.gitkeep
+
+# Ad hoc / AI-drafted scripts (analysis one-offs, not part of the reviewed
+# verification suite) — mirrors the models/temp/ convention: scratch work
+# stays gitignored until a human explicitly promotes it to a tracked path.
+reference_engine/scripts/temp/
