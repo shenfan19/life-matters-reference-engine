@@ -28,3 +28,31 @@ export function descriptionSummary(description: any): string {
   const sections = getDescriptionSections(description);
   return sections.find(s => s.key === 'brief')?.text || sections[0]?.text || '';
 }
+
+export interface RefEntry { citation: string; description?: string }
+
+export function getModelReferences(content: any): RefEntry[] {
+  const refs = content?.references;
+  if (!Array.isArray(refs)) return [];
+  return refs
+    .map((r: any): RefEntry => (typeof r === 'string' ? { citation: r } : { citation: r?.citation ?? '', description: r?.description }))
+    .sort((a: RefEntry, b: RefEntry) => a.citation.localeCompare(b.citation));
+}
+
+export interface ParsedRating { score: number; note: string }
+
+export function parseRating(raw: unknown): ParsedRating {
+  const str = String(raw ?? '');
+  const m = str.match(/^(-?\d*\.?\d+)/);
+  const score = m ? Math.max(0, Math.min(1, parseFloat(m[1]))) : 0;
+  const note = str.replace(/^-?\d*\.?\d+\s*-\s*/, '');
+  return { score, note };
+}
+
+export function ratingStars(score: number): string {
+  const halfSteps = Math.round(score * 5 * 2) / 2;
+  const full = Math.floor(halfSteps);
+  const half = halfSteps - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  return '●'.repeat(full) + (half ? '◐' : '') + '○'.repeat(empty);
+}

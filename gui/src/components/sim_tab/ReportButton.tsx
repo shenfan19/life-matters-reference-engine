@@ -3,7 +3,7 @@ import { Button, Dropdown, Tooltip } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import JSZip from 'jszip';
 import type { ModelFile, PlanResult, SimulationDataPoint, StepUnit } from '../../types';
-import { descriptionText } from '../../core/modelUtils';
+import { descriptionText, getModelReferences } from '../../core/modelUtils';
 import { varToDataUrl } from './SimChart';
 
 interface ReportButtonProps {
@@ -44,12 +44,7 @@ export function ReportButton({
 
   const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
   const allV: Record<string, any> = selectedModel?.content?.variables || {};
-  type RefEntry = { citation: string; description?: string };
-  const refs: RefEntry[] = Array.isArray(meta?.references)
-    ? meta.references
-        .map((r: any): RefEntry => (typeof r === 'string' ? { citation: r } : { citation: r?.citation ?? '', description: r?.description }))
-        .sort((a: RefEntry, b: RefEntry) => a.citation.localeCompare(b.citation))
-    : [];
+  const refs = getModelReferences(selectedModel?.content);
   const refsHaveNotes = refs.some(r => r.description);
   const metaDescText = descriptionText(meta.description);
   const hasData = simulationData.length > 0;
@@ -126,17 +121,6 @@ export function ReportButton({
       lines.push('');
     }
 
-    if (refs.length > 0) {
-      lines.push(`## ${t('sim.report.section.refs')}\n`);
-      if (refsHaveNotes) {
-        lines.push(`| ${t('sim.report.md.ref_citation_col')} | ${t('sim.report.md.ref_description_col')} |\n|------|-----|`);
-        refs.forEach(r => lines.push(`| ${r.citation} | ${r.description || '—'} |`));
-      } else {
-        refs.forEach(r => lines.push(`- ${r.citation}`));
-      }
-      lines.push('');
-    }
-
     lines.push(`## ${t('sim.report.section.simcfg')}\n\n| ${t('sim.report.md.param_col')} | ${t('sim.report.md.value_col')} |\n|------|-----|`);
     lines.push(`| ${t('sim.report.md.time_range_field')} | ${simStartDate} ~ ${simEndDate} |\n| ${t('sim.report.md.step_field')} | ${stepValue} ${stepUnit} |\n| ${t('sim.report.md.batch_field')} | ${batchSize} |`);
     if (Object.keys(inputParams).length) {
@@ -183,6 +167,17 @@ export function ReportButton({
       });
       if (optResult.best_x?.length) {
         lines.push(`| ${t('sim.report.opt_result.decision_vars_label')} | ${(optResult.best_x as number[]).map((v, i) => `x${i}=${v}`).join(', ')} |`);
+      }
+      lines.push('');
+    }
+
+    if (refs.length > 0) {
+      lines.push(`## ${t('sim.report.section.refs')}\n`);
+      if (refsHaveNotes) {
+        lines.push(`| ${t('sim.report.md.ref_citation_col')} | ${t('sim.report.md.ref_description_col')} |\n|------|-----|`);
+        refs.forEach(r => lines.push(`| ${r.citation} | ${r.description || '—'} |`));
+      } else {
+        refs.forEach(r => lines.push(`- ${r.citation}`));
       }
       lines.push('');
     }
