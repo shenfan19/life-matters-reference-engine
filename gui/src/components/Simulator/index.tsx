@@ -2,9 +2,9 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, Modal, Select, Tooltip } from 'antd';
+import { Input, Modal, Tooltip } from 'antd';
 import { BuildOutlined, CloseOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
-import type { SimulatorProps, SimulationState, StepUnit, InputEvent, SimPlan } from '../../types';
+import type { SimulatorProps, SimulationState, InputEvent, SimPlan } from '../../types';
 import FileEditor from '../FileEditor';
 import { useI18n } from '../../core/i18n';
 import { getC } from '../../core/theme';
@@ -54,8 +54,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const {
     status, progress, currentStep, totalSteps, simulationData, dataPerRun,
-    inputParams, stateVariables,
-    simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, batchSize, updateInterval,
+    inputParams,
+    simStartDate, simEndDate, stepValue, stepUnit, optStepValue, optStepUnit, batchSize,
     simRuns, mcSeed, sessionSeed, optMcRuns, optMcSeed,
   } = state;
 
@@ -158,7 +158,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── left panel sections ───────────────────────────────────────────────────────
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(readSP()?.openSections || ['inputs', 'opt']));
   const [introOpen, setIntroOpen] = useState<Set<string>>(new Set(['meta', 'variables', 'equations', 'refs']));
-  const [sectionWeights, setSectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, equations: 1, opt: 1 });
+  const [sectionWeights] = useState<Record<string, number>>(() => readSP()?.sectionWeights || { scene: 2, inputs: 1, vars: 1, equations: 1, opt: 1 });
 
   // ── opt mode state ───────────────────────────────────────────────────────────
   const [, setOptRanges] = useState<Record<string, { min: number; max: number; locked: boolean }>>({});
@@ -192,7 +192,6 @@ const Simulator: React.FC<SimulatorProps> = ({
       const events: InputEvent[] = [];
       for (const r of (saved.regimens || [])) {
         for (const ev of (r.events || [])) {
-          const opt = saved?.regimenOpts?.[r.id];
           events.push({
             id: `${r.id}-${ev.id}`,
             variable: r.variable,
@@ -223,16 +222,6 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   const { modelSessionsRef, sessionReadyRef, persistSession, clearSession } = useSession();
   const sessionEditedRef = useRef(false);
-
-  const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
-
-  // max(days, 1) * 24 not max(hours, 0): a same-day model (start === end)
-  // represents one full calendar day, not zero duration — the old floor ran
-  // zero steps and left any regimen event scheduled later in the day unreachable.
-  const dateToHours = (start: string, end: string) => {
-    const days = (new Date(end + 'T00:00:00').getTime() - new Date(start + 'T00:00:00').getTime()) / 86_400_000;
-    return Math.max(days, 1) * 24;
-  };
 
   const set = <K extends keyof SimulationState>(key: K, val: SimulationState[K]) =>
     setState(prev => ({ ...prev, [key]: val }));
@@ -292,9 +281,9 @@ const Simulator: React.FC<SimulatorProps> = ({
     comparedPlans, setComparedPlans,
     isRunningRef,
     invalidateSim,
-    startSimulation, runBatch,
+    startSimulation,
     pauseSimulation, resumeSimulation, resetSimulation,
-    handleRunCompared, runAllPlans,
+    runAllPlans,
   } = useSimulation({
     state, setState,
     selectedModel, selectedKey,
@@ -308,8 +297,9 @@ const Simulator: React.FC<SimulatorProps> = ({
     t,
   });
 
-  // Combined stop (sim + opt)
+  // Combined stop (sim + opt) — not yet wired to a UI control
   const stopAllJobs = () => { isRunningRef.current = false; stopOptJobs(); };
+  void stopAllJobs;
 
   // ── export/import hook (owns importedSimRuns, simRunCounterRef) ─────────────
   const {
@@ -347,7 +337,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   // runAllPlans, handleRunCompared, exportSimCSV, downloadRawModel) → useSimulation hook
 
   // ── plan management (CRUD + opt-result bridging) ─────────────────────────────
-  const { selectPlan, addPlan, removePlan, addPlansFromOpt, applyBestToSim } = usePlans({
+  const { selectPlan, addPlan, removePlan, addPlansFromOpt } = usePlans({
     plans, setPlans, activePlanId, setActivePlanId,
     inputEvents, setInputEvents, optInputEvents, inputVars, selectedModel,
     sessionEditedRef, set, setMode, setComparedPlans, switchCenterTab, t,
@@ -371,7 +361,7 @@ const Simulator: React.FC<SimulatorProps> = ({
     merging, creatingFile, splitting,
     openBuilder, closeBuilder, handleBuilderSessionUpdate, toggleBuilderFile, uncheckBuilderFile,
     handleMerge, handleSplit, handleCreateFile, handleBuilderUpload, handleImportFile,
-    reloadFromYAML, navigateToRunning, blockIfRunning, runningModelTitle,
+    reloadFromYAML, navigateToRunning, runningModelTitle,
     selectSessionModel, clearSessionModel,
   } = useBuilderState({
     scsMode, centerTab, setCenterTab, prevTabRef, builderOpen, setBuilderOpen,
@@ -383,7 +373,7 @@ const Simulator: React.FC<SimulatorProps> = ({
 
   // ── input event CRUD (sim + opt) ─────────────────────────────────────────────
   const {
-    addInputEvent, updateInputEvent, removeInputEvent, updateInputEventOpt,
+    addInputEvent, updateInputEvent, removeInputEvent,
     addOptInputEvent, removeOptInputEvent, updateOptInputEvent,
   } = useInputEventsCRUD({
     inputVars, sessionEditedRef, invalidateSim, setInputEvents, setOptInputEvents,
@@ -699,12 +689,12 @@ const Simulator: React.FC<SimulatorProps> = ({
                       label: (status === 'running' || status === 'paused') ? t('sim.tab.running') : t('sim.tab.current'),
                       color: PLAN_COLORS[simRunCounterRef.current % PLAN_COLORS.length],
                       data: simulationData, runsData: dataPerRun,
-                      running: status === 'running', inputEvents: [] as any[],
+                      running: status === 'running',
                     }] : []),
                     ...comparedPlans,
                     ...importedSimRuns.map(r => ({
                       id: r.key, label: r.label, color: r.color,
-                      data: r.data, runsData: [] as any[][], running: false, inputEvents: [] as any[],
+                      data: r.data, runsData: [] as any[][], running: false,
                     })),
                   ]}
                   onRemovePlan={removeImportedRun}

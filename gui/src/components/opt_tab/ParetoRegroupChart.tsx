@@ -6,6 +6,7 @@ import { useI18n } from '../../core/i18n';
 const SERIES_COLORS = ['#3b82d8', '#d89a1d', '#9254de', '#13a8a8', '#d4622f'];
 
 type Field = { key: string; label: string };
+type ChartPoint = { xv: number; yv: number; gv: number };
 
 const ParetoRegroupChart: React.FC<{
   result: any;
@@ -60,13 +61,13 @@ const ParetoRegroupChart: React.FC<{
     if (groupKey === 'none' || points.length === 0) {
       return [{ label: t('sim.opt.regroup_all') || '全部解', points: [...points].sort((a: any, b: any) => a.xv - b.xv) }];
     }
-    const gvs = points.map((p: any) => p.gv);
-    const uniq = [...new Set(gvs.map((v: number) => Math.round(v * 100) / 100))].sort((a, b) => a - b);
+    const gvs = points.map((p: ChartPoint) => p.gv);
+    const uniq = Array.from(new Set<number>(gvs.map((v: number) => Math.round(v * 100) / 100))).sort((a, b) => a - b);
     const groupField = fields.find(f => f.key === groupKey);
     if (uniq.length <= 6) {
       return uniq.map(v => ({
         label: `${groupField?.label || groupKey}=${v}`,
-        points: points.filter((p: any) => Math.round(p.gv * 100) / 100 === v).sort((a: any, b: any) => a.xv - b.xv),
+        points: points.filter((p: ChartPoint) => Math.round(p.gv * 100) / 100 === v).sort((a: ChartPoint, b: ChartPoint) => a.xv - b.xv),
       })).filter(g => g.points.length > 0);
     }
     const gMin = Math.min(...gvs), gMax = Math.max(...gvs);

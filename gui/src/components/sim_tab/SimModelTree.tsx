@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Empty, Input, Spin, Tooltip, Tree } from 'antd';
 import {
   CaretRightFilled, ClusterOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, ReloadOutlined,
   UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
-  CloseOutlined, ScissorOutlined,
+  ScissorOutlined,
 } from '@ant-design/icons';
-import type { DataNode, ModelFile, SimulationState } from '../../types';
+import type { DataNode, ModelFile } from '../../types';
 import { getC } from '../../core/theme';
 
 interface SimModelTreeProps {
@@ -56,8 +56,8 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   storyViewMode, setStoryViewMode, expandedKeys, setExpandedKeys,
   selectedKey, treeLoading,
   total, isDarkMode, c, t,
-  loadFileContent, handleSelect, handleTreeNodeClick,
-  runningModelKey, runningModelTitle, onNavigateToRunning,
+  handleSelect,
+  runningModelKey, onNavigateToRunning,
   builderMode = false,
   builderCheckedFiles = [],
   onToggleBuilderFile,
@@ -70,7 +70,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onBuilderUpload,
   sessionModels = [],
   onSelectSessionModel,
-  onClearSessionModel,
   scsMode = false,
   sessionKeys = new Set<string>(),
   onReloadModel,
@@ -330,7 +329,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 selectedKeys={[]}
                 treeData={storyTree}
                 titleRender={builderTitleRender}
-                indent={12}
               />
             ) : storyViewMode === 'tree' ? (
               <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
@@ -338,7 +336,6 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                 onSelect={handleSelect}
                 treeData={storyTree}
                 titleRender={normalTitleRender}
-                indent={12}
               />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

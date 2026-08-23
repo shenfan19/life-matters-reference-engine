@@ -17,7 +17,7 @@ import yaml from 'js-yaml'
 function modelsPlugin() {
   return {
     name: 'models-plugin',
-    configureServer(server: any) {
+    configureServer(_server: any) {
       // 【注释】这些路由现在被代理到 Flask，不再由 Vite 处理
       // 如果将来想让 Vite 直接读取文件，取消下面的注释
       
@@ -91,6 +91,11 @@ function scanDirectory(dirPath: string, basePath = ''): any[] {
   
   return items
 }
+
+// modelsPlugin/scanDirectory/yaml: not wired into `plugins` below — kept per the
+// "保留此代码以备将来切换架构时使用" note above; `void` only silences the unused-symbol
+// check, it doesn't imply these are dead code to delete.
+void yaml; void modelsPlugin; void scanDirectory;
 
 // Vite 配置
 export default defineConfig({

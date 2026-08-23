@@ -12,7 +12,6 @@ import {
   UnorderedListOutlined,
   ClusterOutlined,
   LoadingOutlined,
-  CheckCircleOutlined,
   LockOutlined,
   UnlockOutlined,
 } from '@ant-design/icons';

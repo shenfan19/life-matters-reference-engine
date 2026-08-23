@@ -6,7 +6,7 @@
 // Exposes: persistSession, clearSession, getSession
 
 import { useRef } from 'react';
-import type { InputEvent, ModelSession } from '../../types';
+import type { ModelSession } from '../../types';
 import { PLAN_COLORS } from './simUtils';
 
 const MODEL_SESSION_KEY = 'lm_model_sessions';
@@ -29,14 +29,22 @@ export function initModelSessions(): Record<string, ModelSession> {
     if (sp?.selectedKey && sp.inputEvents?.length && !sessions[sp.selectedKey]) {
       sessions[sp.selectedKey] = {
         inputEvents: sp.inputEvents,
+        optInputEvents: [],
         plans: [{ id: 'plan-1', label: '方案 1', color: PLAN_COLORS[0], inputEvents: sp.inputEvents }],
         activePlanId: 'plan-1',
         simStartDate: sp.simStartDate || '2026-01-01',
         simEndDate: sp.simEndDate || '2026-12-31',
         stepValue: sp.stepValue ?? 1,
         stepUnit: sp.stepUnit ?? 'hour',
+        optStepValue: sp.stepValue ?? 1,
+        optStepUnit: sp.stepUnit ?? 'hour',
+        simRuns: 1,
+        mcSeed: null,
+        optMcRuns: 1,
+        optMcSeed: null,
         objectives: [], constraints: [],
         optAlgo: 'NSGA-II', optPop: 50, optGen: 80,
+        optResult: null,
       };
     }
   } catch {}
