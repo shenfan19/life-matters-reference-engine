@@ -2,7 +2,7 @@ import React from 'react';
 import { Empty, Tooltip } from 'antd';
 import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
 import { getC } from '../../core/theme';
-import { getDescriptionSections } from '../../core/modelUtils';
+import { getDescriptionSections, getModelReferences, parseRating, ratingStars } from '../../core/modelUtils';
 import SimChart, { VAR_COLORS } from './SimChart';
 
 interface SimIntroTabProps {
@@ -49,12 +49,7 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
 
   const meta: any = selectedModel?.content?.metadata ?? selectedModel?.content?.meta ?? {};
   const allV: Record<string, any> = selectedModel?.content?.variables || {};
-  type RefEntry = { citation: string; description?: string };
-  const refs: RefEntry[] = Array.isArray(meta?.references)
-    ? meta.references
-        .map((r: any): RefEntry => (typeof r === 'string' ? { citation: r } : { citation: r?.citation ?? '', description: r?.description }))
-        .sort((a: RefEntry, b: RefEntry) => a.citation.localeCompare(b.citation))
-    : [];
+  const refs = getModelReferences(selectedModel?.content);
   const refsHaveNotes = refs.some(r => r.description);
   const descSections = getDescriptionSections(meta.description);
   const hasData = simulationData.length > 0;
@@ -168,15 +163,13 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
               <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontFamily: 'monospace', marginRight: 4 }}>ratings:</span>
               {entries.map(([key, val], i) => {
-                const raw = String(val);
-                const score = parseInt(raw) || 0;
-                const note = raw.replace(/^\d+\s*-\s*/, '');
+                const { score, note } = parseRating(val);
                 return (
                   <React.Fragment key={key}>
                     {i > 0 && sep}
                     <Tooltip title={note}>
                       <span style={{ color: c.textMute, fontSize: fs, fontFamily: 'monospace', cursor: 'default' }}>
-                        {key} {'●'.repeat(score)}{'○'.repeat(5 - score)}
+                        {key} {ratingStars(score)}
                       </span>
                     </Tooltip>
                   </React.Fragment>
@@ -255,30 +248,6 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
               })}
             </tbody>
           </table>
-        </Section>
-      )}
-
-      {refs.length > 0 && (
-        <Section id="refs" title={t('sim.report.section.refs')} badge={t('sim.report.badge.refs', { n: refs.length })}>
-          {refsHaveNotes ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '6px 16px' }}>
-              {refs.map((r, i) => (
-                <React.Fragment key={i}>
-                  <span style={{ color: c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.citation}</span>
-                  <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.description || ''}</span>
-                </React.Fragment>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {refs.map((r, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
-                  <span style={{ color: c.textMute, flexShrink: 0, minWidth: 12 }}>&middot;</span>
-                  <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r.citation}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </Section>
       )}
 
@@ -362,6 +331,30 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
               <tr><td style={tdS}>{t('sim.report.opt_result.decision_vars_label')}</td><td style={{ ...tdS, fontFamily: 'monospace', color: c.primary }}>{(optResult.best_x as number[]).map((v, i) => `x${i}=${v}`).join(', ')}</td></tr>
             )}
           </tbody></table>
+        </Section>
+      )}
+
+      {refs.length > 0 && (
+        <Section id="refs" title={t('sim.report.section.refs')} badge={t('sim.report.badge.refs', { n: refs.length })}>
+          {refsHaveNotes ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '6px 16px' }}>
+              {refs.map((r, i) => (
+                <React.Fragment key={i}>
+                  <span style={{ color: c.textSec, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.citation}</span>
+                  <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', lineHeight: 1.5, minWidth: 0 }}>{r.description || ''}</span>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {refs.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+                  <span style={{ color: c.textMute, flexShrink: 0, minWidth: 12 }}>&middot;</span>
+                  <span style={{ color: c.textSec, lineHeight: 1.5 }}>{r.citation}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
       )}
 
