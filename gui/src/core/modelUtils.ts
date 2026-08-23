@@ -49,10 +49,12 @@ export function parseRating(raw: unknown): ParsedRating {
   return { score, note };
 }
 
+const RATING_MAX_STARS = 4; // 4 颗星使五个锚点 0/0.25/0.5/0.75/1.0 各自对应整数星数，不落在半星上
+
 export function ratingStars(score: number): string {
-  const halfSteps = Math.round(score * 5 * 2) / 2;
+  const halfSteps = Math.round(score * RATING_MAX_STARS * 2) / 2;
   const full = Math.floor(halfSteps);
   const half = halfSteps - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
+  const empty = RATING_MAX_STARS - full - half;
   return '●'.repeat(full) + (half ? '◐' : '') + '○'.repeat(empty);
 }
