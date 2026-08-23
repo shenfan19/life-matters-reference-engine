@@ -35,8 +35,8 @@ interface SimOptTabProps {
 
 const SimOptTab: React.FC<SimOptTabProps> = ({
   optResult, optRunning, optHistory, optCurGen, optTotalGen, optElapsed, optMethod,
-  optLogs, objectives, constraints, isDarkMode, c, t, fontSize,
-  onDownloadModel, hasExistingResults, onSendToSim, isActiveModel = true,
+  optLogs, objectives, isDarkMode, c, t, fontSize,
+  onDownloadModel, onSendToSim, isActiveModel = true,
   regroupXKey, regroupYKey, regroupGroupKey,
   onRegroupXKeyChange, onRegroupYKeyChange, onRegroupGroupKeyChange,
 }) => {

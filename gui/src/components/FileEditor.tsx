@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { App, Button, Tooltip } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
-import * as jsyaml from 'js-yaml';
+import jsyaml from 'js-yaml';
 import { validateModelFile } from '../core/validate';
 import { useI18n } from '../core/i18n';
 
@@ -81,7 +81,7 @@ export default function FileEditor({
   const [validateSt, setValidateSt] = useState<Record<string, { loading: boolean; valid?: boolean; errors: string[] }>>({});
 
   // Auto-enter edit mode when autoEditKey changes and content is ready
-  const prevAutoEditKey = useRef<string | undefined>();
+  const prevAutoEditKey = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!autoEditKey || autoEditKey === prevAutoEditKey.current) return;
     prevAutoEditKey.current = autoEditKey;
@@ -289,7 +289,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
   validateSt, onEdit, onCancel, onSave, onClose, onPatch, onValidate, onAutoFix, onDelete, onSaveAs,
   c, isDarkMode, scsMode = false, t }: CardProps) {
 
-  const { border, panel, bg, text, textMute: mute, primary } = c;
+  const { border, bg, text, textMute: mute, primary } = c;
   const data = editing ? draft : meta;
   const ft   = FT[fileType(fileKey)];
   const mt   = data?.metadata ?? data?.meta ?? {};
@@ -446,7 +446,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                   } else if (d.variables[varKey]) d.variables[varKey][field] = value;
                 })}
                 onDelete={varKey => onPatch(d => { if (d.variables) delete d.variables[varKey]; })}
-                c={c} isDarkMode={isDarkMode} />
+                c={c} />
             </Sect>
           )}
 
@@ -510,11 +510,11 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
 
 // ─── VarsTable ────────────────────────────────────────────────────────────────
 
-function VarsTable({ vars, editing, onFieldChange, onDelete, c, isDarkMode, t }: {
+function VarsTable({ vars, editing, onFieldChange, onDelete, c, t }: {
   vars: Record<string, any>; editing: boolean;
   onFieldChange(varKey: string, field: string, value: any): void;
   onDelete(varKey: string): void;
-  c: any; isDarkMode: boolean;
+  c: any;
   t: (key: string) => any;
 }) {
   const { border, text, textMute: mute, bg, panel } = c;
@@ -573,14 +573,14 @@ function EquationsSection({ eqs, editing, onRename, onField, onDynChange, onDynR
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: editing ? 10 : 3 }}>
       {entries.map(([fn, fd]: [string, any]) => {
-        const t = autoType(fd);
+        const equationType = autoType(fd);
         const dynEntries = Object.entries(fd.dynamics || {});
         if (!editing) {
           const hasExtra = (fd.condition !== undefined && fd.condition !== true && fd.condition !== 'true') || (fd.priority !== undefined && fd.priority !== 5);
           return (
             <div key={fn} style={{ border: `1px solid ${border}`, borderRadius: 5, overflow: 'hidden', background: isDarkBg(bg) ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
               <div style={{ padding: '5px 10px', borderBottom: dynEntries.length > 0 ? `1px solid ${border}` : 'none', display: 'flex', alignItems: 'center', gap: 6, background: isDarkBg(bg) ? 'rgba(255,255,255,0.04)' : '#f0f0f0' }}>
-                <TChip t={t} /><span style={{ fontFamily: 'monospace', fontWeight: 600, color: text, flex: 1 }}>{fn}</span>
+                <TChip t={equationType} /><span style={{ fontFamily: 'monospace', fontWeight: 600, color: text, flex: 1 }}>{fn}</span>
                 {hasExtra && <span style={{ color: mute, fontFamily: 'monospace' }}>{fd.condition !== undefined && fd.condition !== true && fd.condition !== 'true' ? `if ${fd.condition}` : ''}{fd.priority !== undefined && fd.priority !== 5 ? ` pri:${fd.priority}` : ''}</span>}
               </div>
               {dynEntries.length > 0 && <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>{dynEntries.map(([dk, dv]: [string, any]) => <div key={dk} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}><span style={{ fontFamily: 'monospace', color: text, whiteSpace: 'nowrap', minWidth: 60 }}>{dk}</span><span style={{ color: mute, flexShrink: 0 }}>=</span><span style={{ fontFamily: 'monospace', color: text, wordBreak: 'break-all', lineHeight: 1.5 }}>{String(dv ?? '—')}</span></div>)}</div>}
@@ -590,7 +590,7 @@ function EquationsSection({ eqs, editing, onRename, onField, onDynChange, onDynR
         return (
           <div key={fn} style={{ border: `1px solid ${border}`, borderRadius: 5, background: isDarkBg(bg) ? 'rgba(255,255,255,0.03)' : '#fafafa', overflow: 'hidden' }}>
             <div style={{ padding: '6px 10px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: 6, background: isDarkBg(bg) ? 'rgba(255,255,255,0.04)' : '#f0f7f1' }}>
-              <TChip t={t} /><VarNameInput value={fn} onCommit={nk => onRename(fn, nk)} c={c} />
+              <TChip t={equationType} /><VarNameInput value={fn} onCommit={nk => onRename(fn, nk)} c={c} />
               <span style={{ color: mute, marginLeft: 4 }}>cond:</span>
               <input value={String(fd.condition ?? 'true')} onChange={e => onField(fn, 'condition', e.target.value)} style={{ width: 80, fontFamily: 'monospace', padding: '1px 5px', border: `1px solid ${border}`, borderRadius: 3, background: bg, color: text, outline: 'none' }} />
               <span style={{ color: mute }}>pri:</span>

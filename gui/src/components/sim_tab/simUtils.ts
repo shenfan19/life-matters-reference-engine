@@ -129,13 +129,14 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
       }
       // T3: days combo
       if (opt.days_pool) {
-        const n_range: [number, number] = opt.days_n ?? [1, opt.days_pool.length];
+        const daysPool = opt.days_pool as string[];
+        const n_range: [number, number] = opt.days_n ?? [1, daysPool.length];
         const allPatterns: string[][] = [];
-        for (let n = n_range[0]; n <= n_range[1]; n++) allPatterns.push(...getCombinations(opt.days_pool, n));
+        for (let n = n_range[0]; n <= n_range[1]; n++) allPatterns.push(...getCombinations(daysPool, n));
         const pi = Math.max(0, Math.min(allPatterns.length - 1, Math.round(x[xi] ?? 0)));
         if (allPatterns.length > 0) {
           const daysArr = Array(7).fill(false);
-          for (const d of allPatterns[pi]) if (DAY_MAP[d] !== undefined) daysArr[DAY_MAP[d]] = true;
+          for (const d of allPatterns[pi] as string[]) if (DAY_MAP[d] !== undefined) daysArr[DAY_MAP[d]] = true;
           result[idx] = { ...result[idx], days: daysArr, daysEnabled: true };
         }
         xi++;

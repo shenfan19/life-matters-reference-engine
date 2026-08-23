@@ -1,7 +1,7 @@
 // frontend/src/components/Generator.tsx
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Select, Button, Space, message, Row, Col, Divider, InputNumber, Tabs } from 'antd';
+import { Card, Form, Input, Select, Button, Space, message, Row, Col, InputNumber } from 'antd';
 import { SaveOutlined, PlusOutlined, DeleteOutlined, FileAddOutlined } from '@ant-design/icons';
 import { useI18n } from '../core/i18n';
 

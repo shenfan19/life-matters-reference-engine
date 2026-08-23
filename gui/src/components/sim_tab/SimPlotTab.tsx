@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Collapse, Empty, Tooltip, message } from 'antd';
+import { Button, Collapse, Tooltip, message } from 'antd';
 import { CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ModelFile, SimulationDataPoint, PlanResult } from '../../types';
 import { getC } from '../../core/theme';
+import { useI18n } from '../../core/i18n';
 import JSZip from 'jszip';
 import SimChart, { VAR_COLORS, varToDataUrl } from './SimChart';
 
@@ -373,6 +374,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
 };
 
 const SimLogPanel: React.FC<{ logs: Array<{ t: number; msg: string }>; c: ReturnType<typeof getC> }> = ({ logs, c }) => {
+  const { t } = useI18n();
   const logRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = logRef.current;

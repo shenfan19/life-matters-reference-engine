@@ -38,6 +38,8 @@ const CardPulseIcon = ({ size = 16, color = 'currentColor' }: { size?: number | 
           strokeWidth="1.8" />
   </svg>
 );
+void CardPulseIcon; // not yet wired into any nav/branding element — kept for the LM Game identity use described above
+
 import Simulator from './components/Simulator';
 import type { SimulationState, ModelFile, DataNode } from './types';
 import { useI18n, type Language } from './core/i18n';
@@ -354,6 +356,7 @@ function App() {
         nodeSelectedBg: c.activeBg,
         nodeHoverBg: isDarkMode ? 'rgba(82,196,26,0.08)' : 'rgba(0,122,51,0.06)',
         colorText: isDarkMode ? 'rgba(255,255,255,0.88)' : '#1a2e22',
+        indentSize: 12,
       },
       Segmented: {
         itemSelectedBg: c.activeBg,

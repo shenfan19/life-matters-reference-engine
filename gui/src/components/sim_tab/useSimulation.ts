@@ -7,10 +7,10 @@
 // Returns: sim execution handlers + comparedPlans state
 
 import { useState, useRef } from 'react';
-import { message, Modal } from 'antd';
+import { message } from 'antd';
 import type { InputEvent, ModelFile, PlanResult, SimPlan, SimulationDataPoint, SimulationState, StepUnit } from '../../types';
 import { API_BASE, PLAN_COLORS, xToInputEvents } from './simUtils';
-import { dump as yamlDump } from 'js-yaml';
+import yamlDump from 'js-yaml';
 
 const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
 
@@ -42,7 +42,7 @@ interface UseSimulationParams {
   setRunningModelKey: (key: string | null) => void;
   setSimLogs: (logs: Array<{ t: number; msg: string }>) => void;
   setInputEvents: React.Dispatch<React.SetStateAction<InputEvent[]>>;
-  setMode: (mode: string) => void;
+  setMode: (mode: 'sim' | 'opt') => void;
   switchCenterTab: (tab: string) => void;
   stopOptJobs: () => void;
   autoSaveLocal?: boolean;
@@ -402,7 +402,7 @@ export function useSimulation({
 
   // ── apply best opt solution to sim ────────────────────────────────────────────
 
-  const applyBestToSim = (optResult: any) => {
+  const applyBestToSim = () => {
     const optimizer = selectedModel?.content?.optimizer;
     const bestX = optimizer?.results?.recommended?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
@@ -439,7 +439,7 @@ export function useSimulation({
   const downloadRawModel = () => {
     if (!selectedModel) return;
     const content = selectedModel.rawContent ?? selectedModel.content;
-    const yaml = yamlDump(content, { lineWidth: 120, noRefs: true });
+    const yaml = yamlDump.dump(content, { lineWidth: 120, noRefs: true });
     const name = (selectedModel.content?.metadata?.name || selectedModel.title || 'model').replace(/\s+/g, '_');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));

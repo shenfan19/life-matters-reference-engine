@@ -14,14 +14,14 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { load as yamlLoad } from 'js-yaml';
+import yaml from 'js-yaml';
 import { buildOptInputEventsFromYAML, buildOptRegimens } from './optUtils';
 
 const FIXTURES_DIR = resolve(__dirname, '../../../../models/test_fixtures/valid');
 
 function loadStartpointRegimens(fileName: string): any[] {
   const text = readFileSync(resolve(FIXTURES_DIR, fileName), 'utf8');
-  const data = yamlLoad(text) as any;
+  const data = yaml.load(text) as any;
   return data.optimizer.startpoint.regimens;
 }
 

@@ -17,6 +17,8 @@ import { hasAnyOpt, buildOptRegimens } from '../sim_tab/optUtils';
 import { API_BASE } from '../sim_tab/simUtils';
 import { readMS, writeMS } from '../sim_tab/useSession';
 
+type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
+
 function buildProblemSignature(
   objectives: Array<{ variable: string; direction: string }>,
   constraints: Array<{ variable: string; op: string; value: number }>,
@@ -56,7 +58,7 @@ interface UseOptimizerParams {
   optMcSeed: number | null;
   modelSessionsRef: React.MutableRefObject<Record<string, any>>;
   setRunningModelKey: (key: string | null) => void;
-  setCenterTab: (tab: string) => void;
+  setCenterTab: (tab: CenterTab) => void;
   autoSaveLocal?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
 }
@@ -65,7 +67,7 @@ export function useOptimizer({
   selectedModel, selectedKey,
   inputEvents, inputVars,
   objectives, constraints,
-  optAlgo, optPop, optGen, optSeed,
+  optPop, optGen, optSeed,
   simStartDate, simEndDate, stepValue, stepUnit,
   optMcRuns, optMcSeed,
   modelSessionsRef,
@@ -333,7 +335,7 @@ export function useOptimizer({
     const xHeaders = Array.from({ length: xLen }, (_, i) => `x${i}`);
     const headers = [...xHeaders, ...objNames];
     const rows = front.map(sol => {
-      const fVals = objNames.length > 0 ? objNames.map((_, i) => sol.f[i] ?? '') : sol.f;
+      const fVals = objNames.length > 0 ? objNames.map((_name: string, i: number) => sol.f[i] ?? '') : sol.f;
       return [...sol.x, ...fVals].join(',');
     });
     const csv = [headers.join(','), ...rows].join('\n');
