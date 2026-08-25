@@ -19,7 +19,7 @@ class YamlOptRequest(BaseModel):
 
 class ExportModelRequest(BaseModel):
     model_key: str           # path relative to models/, e.g. "papers/paper2/foo.yaml"
-    results: Dict[str, Any]  # the optimizer.results block to embed
+    results: Dict[str, Any]  # the optimization.results block to embed
     flatten_imports: bool = False  # if True, resolve all imports into a single flat YAML
 
 
@@ -30,7 +30,7 @@ class ExportOptCsvRequest(BaseModel):
 
 @router.post("/api/optimizer/run_yaml")
 async def run_yaml_optimization(request: YamlOptRequest):
-    """Run optimizer using YAML optimizer: block (NSGA-II / L-BFGS-B / Nelder-Mead).
+    """Run optimizer using YAML optimization: block (NSGA-II / L-BFGS-B / Nelder-Mead).
     optimizer_override merges GUI state into the YAML block before running.
     """
     if app_state.engine is None:
@@ -99,7 +99,7 @@ async def get_optimizer_status(job_id: str):
 
 @router.post("/api/optimizer/export-model")
 async def export_model_with_results(request: ExportModelRequest):
-    """Read model YAML, embed optimizer.results in memory, return YAML text.
+    """Read model YAML, embed optimization.results in memory, return YAML text.
     The server file is NEVER modified — this is a stateless operation.
     """
     import yaml
@@ -126,10 +126,10 @@ async def export_model_with_results(request: ExportModelRequest):
             with open(target, 'r', encoding='utf-8') as f:
                 data = safe_load(f) or {}
 
-        if not isinstance(data.get('optimizer'), dict):
-            raise HTTPException(status_code=400, detail="Model has no optimizer: block")
+        if not isinstance(data.get('optimization'), dict):
+            raise HTTPException(status_code=400, detail="Model has no optimization: block")
 
-        data['optimizer']['results'] = request.results
+        data['optimization']['results'] = request.results
         text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
                          sort_keys=False, indent=2)
         name = (data.get('metadata') or {}).get('name', target.stem)

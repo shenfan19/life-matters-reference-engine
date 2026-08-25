@@ -64,7 +64,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
         data = {
             "metadata": metadata, "variables": variables, "equations": equations,
             "simulation": model.simulator, "simulator": model.simulator,
-            "optimizer": model.optimizer,
+            "optimization": model.optimizer,
             "plans": model.plans,
             "imports": provenance.get('imports', []),
             "provenance": provenance, "resolved": True,

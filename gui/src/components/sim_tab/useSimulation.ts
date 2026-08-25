@@ -246,7 +246,7 @@ export function useSimulation({
 
   const handleRunCompared = async (selectedRows: Array<{ x: number[]; f: number[]; rank: number }>) => {
     if (!selectedModel || selectedRows.length === 0) return;
-    const optimizer = selectedModel.content?.optimizer;
+    const optimizer = selectedModel.content?.optimization;
     if (!optimizer) { message.warning(t('sim.msg.no_opt_config')); return; }
 
     const initPlans: PlanResult[] = selectedRows.map((row, i) => ({
@@ -403,7 +403,7 @@ export function useSimulation({
   // ── apply best opt solution to sim ────────────────────────────────────────────
 
   const applyBestToSim = () => {
-    const optimizer = selectedModel?.content?.optimizer;
+    const optimizer = selectedModel?.content?.optimization;
     const bestX = optimizer?.results?.recommended?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
       message.warning(t('sim.msg.no_best_solution')); return;
@@ -418,7 +418,7 @@ export function useSimulation({
   // ── add Pareto solutions as new plans ─────────────────────────────────────────
 
   const addPlansFromOpt = (rows: Array<{ x: number[]; f: number[]; rank: number }>, optResult: any) => {
-    const optimizer = selectedModel?.content?.optimizer ?? optResult?.optimizer_config;
+    const optimizer = selectedModel?.content?.optimization ?? optResult?.optimizer_config;
     if (!optimizer || rows.length === 0) return;
     const newPlans: SimPlan[] = rows.map((row, i) => ({
       id: `pareto-${row.rank}-${Date.now()}-${i}`,

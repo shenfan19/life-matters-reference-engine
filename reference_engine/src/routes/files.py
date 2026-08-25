@@ -397,7 +397,7 @@ async def upload_model_temp(payload: dict):
             },
             "simulation": model.simulator,
             "simulator": model.simulator,
-            "optimizer": model.optimizer,
+            "optimization": model.optimizer,
             "imports": provenance.get('imports', []),
             "provenance": provenance,
             "resolved": True,

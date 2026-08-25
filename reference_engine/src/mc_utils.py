@@ -131,7 +131,7 @@ def apply_parameter_sampling(model, param_distributions: dict, rng=None) -> None
         # the top of every evaluation) silently reverts the variable back to
         # whatever value clone_model() snapshotted BEFORE sampling ran — wiping
         # out the sampled draw before the simulation it was meant to drive even
-        # starts. This is not a hypothetical: it made every optimizer.mc.runs>1
+        # starts. This is not a hypothetical: it made every optimization.mc.runs>1
         # model evaluate all MC runs against the same deterministic mean,
         # silently defeating the entire inner robust-optimization feature.
         if var_name in model.variable_history and model.variable_history[var_name]:

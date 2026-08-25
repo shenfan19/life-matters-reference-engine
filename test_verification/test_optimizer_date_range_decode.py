@@ -53,7 +53,7 @@ simulation:
     label: "no fixed regimen"
     regimens: []
 
-optimizer:
+optimization:
   method: nsga2
   algorithm:
     population_size: 4

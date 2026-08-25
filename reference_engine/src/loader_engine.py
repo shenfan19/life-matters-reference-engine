@@ -164,7 +164,7 @@ class LoaderEngine:
                                 "equations": len(model.equations),
                                 "version": model.metadata.version,
                                 "hooks": len(model.simulator.get('hooks', [])),
-                                "optimizer_method": model.optimizer.get('method', 'N/A'),
+                                "optimization_method": model.optimizer.get('method', 'N/A'),
                                 "extra_deps": len(model.optimizer.get('python_envs', []))
                             }
                     except Exception as e:

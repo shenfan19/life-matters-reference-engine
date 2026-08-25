@@ -40,7 +40,7 @@ class Validator:
         # 验证 optimizer（修改部分：去除类型限制，仅检查存在）
         if self.optimizer:
             if 'method' not in self.optimizer:
-                all_errors.append("optimizer 缺少 method。")
+                all_errors.append("optimization 缺少 method。")
             def _check_opt_var(param, section: str):
                 """
                 验证单个优化变量条目：
@@ -50,7 +50,7 @@ class Validator:
                 """
                 if isinstance(param, str):
                     if param not in self.variables:
-                        all_errors.append(f"optimizer.{section}: '{param}' is missing from variables.")
+                        all_errors.append(f"optimization.{section}: '{param}' is missing from variables.")
                         unique_missing_vars.add(param)
                 elif isinstance(param, dict):
                     maps_to = param.get('maps_to', '')
@@ -60,11 +60,11 @@ class Validator:
                         target_var = maps_to.split('@')[0].strip()
                         if target_var and target_var not in self.variables:
                             all_errors.append(
-                                f"optimizer.{section}: '{name}' maps_to target '{target_var}' is missing from variables."
+                                f"optimization.{section}: '{name}' maps_to target '{target_var}' is missing from variables."
                             )
                             unique_missing_vars.add(target_var)
                     elif name and name not in self.variables:
-                        all_errors.append(f"optimizer.{section}: '{name}' is missing from variables.")
+                        all_errors.append(f"optimization.{section}: '{name}' is missing from variables.")
                         unique_missing_vars.add(name)
 
             if 'variables_to_optimize' in self.optimizer:

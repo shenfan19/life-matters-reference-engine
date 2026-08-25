@@ -138,7 +138,7 @@ export function useOptimizer({
       return;
     }
 
-    const totalGen = selectedModel.content?.optimizer?.algorithm?.n_generations || optGen;
+    const totalGen = selectedModel.content?.optimization?.algorithm?.n_generations || optGen;
 
     // Capture existing front BEFORE clearing (optResult is null after setOptResult(null))
     const previousFront = warmStartEnabled
@@ -167,9 +167,9 @@ export function useOptimizer({
       start_date: simStartDate,
       end_date:   simEndDate,
       step_size:  { value: stepValue, unit: stepUnit },
-      // Inner robust-optimization MC (optimizer.mc.runs/seed) — mirrors the
+      // Inner robust-optimization MC (optimization.mc.runs/seed) — mirrors the
       // algorithm.seed reasoning above: optMcRuns/optMcSeed are read from the
-      // YAML's own optimizer.mc at load time (useModelInit.ts), so an unedited
+      // YAML's own optimization.mc at load time (useModelInit.ts), so an unedited
       // GUI run reproduces the same MC config the CLI uses reading the YAML
       // directly. This is a distinct config from Sim tab's simRuns/mcSeed
       // (simulation.mc) — do not conflate the two.

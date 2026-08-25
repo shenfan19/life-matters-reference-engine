@@ -1,6 +1,6 @@
 // optUtils.ts — Optimizer regimen building utilities (T1–T4)
 //
-// Pure functions that convert InputEvent arrays into the optimizer.regimens
+// Pure functions that convert InputEvent arrays into the optimization.regimens
 // format consumed by the backend, and back. No React state; safe to
 // unit-test in isolation (see optUtils.test.ts).
 
@@ -19,7 +19,7 @@ export function parseDaysMask(days?: string[]): boolean[] {
 }
 
 /**
- * Build editable InputEvents from a YAML optimizer.startpoint.regimens list.
+ * Build editable InputEvents from a YAML optimization.startpoint.regimens list.
  * Inverse of buildOptRegimens — round-tripping an unedited model through
  * both functions should reproduce the original regimens (see optUtils.test.ts).
  */
@@ -78,7 +78,7 @@ export function hasAnyOpt(ev: InputEvent, activeInputVarNames: Set<string>): boo
 }
 
 /**
- * Build the optimizer.startpoint.regimens list from the current inputEvents.
+ * Build the optimization.startpoint.regimens list from the current inputEvents.
  *
  * Events with any active optimization tier get an `optimize:` sub-block;
  * events without are included as fixed background inputs.

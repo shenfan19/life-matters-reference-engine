@@ -9,7 +9,7 @@ Usage:
 
 Monte Carlo run count/seed are not CLI flags — they come from the model's own
 `simulation.mc.runs`/`simulation.mc.seed` (model.md spec), same as how
-optimizer.mc.* already works. Edit the YAML to change them.
+optimization.mc.* already works. Edit the YAML to change them.
 
 Outputs go to output/<model>/ at the project root (override with --output-dir):
   <model>_<YYYY-MM-DD_HH-MM-SS>_sim.csv    (simulation time-series)
@@ -94,9 +94,9 @@ def main() -> None:
             print('  (model has no simulation:/simulator: block — skipping sim step)')
         if not model_declares_step(model_path, 'opt') and args.warm is False:
             run_opt_step = False
-            print('  (model has no optimizer: block — skipping opt step)')
+            print('  (model has no optimization: block — skipping opt step)')
         if not run_sim_step and not run_opt_step:
-            print('Error: model declares neither simulation:/simulator: nor optimizer: — nothing to run.')
+            print('Error: model declares neither simulation:/simulator: nor optimization: — nothing to run.')
             sys.exit(1)
 
     root = _project_root()

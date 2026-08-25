@@ -34,12 +34,12 @@ def run_optimizer(engine, model_name: str,
                   optimizer_override: Optional[Dict] = None,
                   log_cb=None) -> Dict[str, Any]:
     """
-    Run the optimizer defined in YAML optimizer: block.
+    Run the optimizer defined in YAML optimization: block.
     Returns {success, method, objectives, pareto_front, best_x, best_f, n_solutions}.
     pareto_front is a list of {x: [...], f: [...]} dicts (raw, not sign-flipped).
 
-    optimizer_override: if provided, merges into the YAML optimizer: block (GUI overrides YAML).
-    Decision variables are defined in optimizer.startpoint.regimens (entries with optimize: sub-block).
+    optimizer_override: if provided, merges into the YAML optimization: block (GUI overrides YAML).
+    Decision variables are defined in optimization.startpoint.regimens (entries with optimize: sub-block).
     """
     # ── load model ────────────────────────────────────────────────────────────
     if not engine.load_models([model_name], folder):
@@ -56,7 +56,7 @@ def run_optimizer(engine, model_name: str,
                 opt_block[key] = optimizer_override[key]
 
     if not opt_block.get('objectives'):
-        return {"success": False, "error": "No objectives configured (add optimizer: block in YAML or set targets in UI)"}
+        return {"success": False, "error": "No objectives configured (add optimization: block in YAML or set targets in UI)"}
 
     # ── log model info ────────────────────────────────────────────────────────
     if log_cb:
@@ -79,15 +79,15 @@ def run_optimizer(engine, model_name: str,
     # ── parse constraints ─────────────────────────────────────────────────────
     constraints: List[Dict] = list(opt_block.get('constraints', []))
 
-    # ── parse decision variables from optimizer.startpoint.regimens ──────────
+    # ── parse decision variables from optimization.startpoint.regimens ──────────
     regimens_def = (opt_block.get('startpoint') or {}).get('regimens', [])
     if not regimens_def:
-        return {"success": False, "error": "No optimizer.startpoint.regimens defined"}
+        return {"success": False, "error": "No optimization.startpoint.regimens defined"}
 
     opt_entries = [e for e in regimens_def if 'optimize' in e]
     fixed_entries = [e for e in regimens_def if 'optimize' not in e]
     if not opt_entries:
-        return {"success": False, "error": "No entries with optimize: sub-block in optimizer.startpoint.regimens"}
+        return {"success": False, "error": "No entries with optimize: sub-block in optimization.startpoint.regimens"}
 
     try:
         validate_optimizer_regimens(regimens_def)
@@ -296,7 +296,7 @@ def run_optimizer(engine, model_name: str,
     sim_start_date: str = str(opt_block.get('start_date') or sim_data.get('start_date', ''))
     end_date_raw: str = str(opt_block.get('end_date') or sim_data.get('end_date', ''))
     try:
-        validate_simulator_dates(sim_start_date or None, end_date_raw or None, context='optimizer')
+        validate_simulator_dates(sim_start_date or None, end_date_raw or None, context='optimization')
     except ValueError as e:
         return {"success": False, "error": str(e)}
     try:
@@ -324,7 +324,7 @@ def run_optimizer(engine, model_name: str,
     # ── MC settings ───────────────────────────────────────────────────────────
     mc_cfg = opt_block.get('mc', {})
     mc_runs = max(1, int(mc_cfg.get('runs', 1)))
-    # optimizer.mc.seed 独立于 algorithm.seed（algorithm.seed 只用于 NSGA-II）
+    # optimization.mc.seed 独立于 algorithm.seed（algorithm.seed 只用于 NSGA-II）
     mc_seed_raw = mc_cfg.get('seed')
     mc_seed = int(mc_seed_raw) if mc_seed_raw is not None else None
 
@@ -370,7 +370,7 @@ def run_optimizer(engine, model_name: str,
         return F_mean, G_mean
 
     # ── warm-start: seed population from existing results ─────────────────────
-    # Reads optimizer.results.pareto_front from the YAML (or from optimizer_override)
+    # Reads optimization.results.pareto_front from the YAML (or from optimizer_override)
     warm_front = []
     existing_results = opt_block.get('results') or {}
     if isinstance(existing_results, dict):

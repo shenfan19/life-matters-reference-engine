@@ -98,9 +98,9 @@ def validate_schedule_list(schedules: List[Dict], context: str = 'schedule') -> 
 
 
 def validate_optimizer_regimens(regimens_def: List[Dict],
-                                 context: str = 'optimizer.startpoint.regimens') -> None:
+                                 context: str = 'optimization.startpoint.regimens') -> None:
     """Validate time_start/time_end/date_range — both the fixed values and the
-    optimize: search-window bounds — on optimizer.startpoint.regimens entries.
+    optimize: search-window bounds — on optimization.startpoint.regimens entries.
     """
     for i, e in enumerate(regimens_def or []):
         e_ctx = f"{context}[{i}]"

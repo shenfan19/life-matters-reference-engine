@@ -86,8 +86,8 @@ export function useModelInit({
     setOptRanges(ranges);
 
     // ── 2. Always: pre-load opt results from YAML for Pareto chart display ──
-    const optBlock: any = selectedModel?.content?.optimizer;
-    const rawResults = optBlock?.results ?? selectedModel?.rawContent?.optimizer?.results;
+    const optBlock: any = selectedModel?.content?.optimization;
+    const rawResults = optBlock?.results ?? selectedModel?.rawContent?.optimization?.results;
     let yamlOptResult: any = null;
     if (rawResults?.pareto_front?.length > 0) {
       const labels: string[] = [];
@@ -307,11 +307,11 @@ export function useModelInit({
       set('optStepUnit', resolvedStepUnit);
     }
 
-    // mcSeed 来自 simulation.mc.seed，无论是否有 optimizer 块都需要重置
+    // mcSeed 来自 simulation.mc.seed，无论是否有 optimization 块都需要重置
     set('mcSeed', sim?.mc?.seed != null ? Number(sim.mc.seed) : null);
-    // optMcSeed 来自 optimizer.mc.seed——与上面 mcSeed 是两个独立字段，不要混用
-    // （optimizer.mc 控制 opt 内层鲁棒优化每个候选解采样几次，simulation.mc 控制 Sim tab
-    // 展示几条轨迹）。无论是否有 optimizer 块都需要重置，避免残留上一个模型的值。
+    // optMcSeed 来自 optimization.mc.seed——与上面 mcSeed 是两个独立字段，不要混用
+    // （optimization.mc 控制 opt 内层鲁棒优化每个候选解采样几次，simulation.mc 控制 Sim tab
+    // 展示几条轨迹）。无论是否有 optimization 块都需要重置，避免残留上一个模型的值。
     set('optMcSeed', optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null);
 
     // Opt config from YAML
@@ -368,7 +368,7 @@ export function useModelInit({
         title: t('sim.opt.ref_detected_title'),
         content: t('sim.opt.ref_detected_content', { n: bestX.length }),
         okText: t('sim.opt.load_reference'), cancelText: t('sim.opt.use_default_schedule'),
-        onOk: () => setOptInputEvents(prev => xToInputEvents(bestX, optBlock ?? selectedModel?.rawContent?.optimizer, prev)),
+        onOk: () => setOptInputEvents(prev => xToInputEvents(bestX, optBlock ?? selectedModel?.rawContent?.optimization, prev)),
       });
     }
   }, [selectedModel]); // eslint-disable-line react-hooks/exhaustive-deps

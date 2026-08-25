@@ -17,7 +17,7 @@ def write_opt_csv(pareto_front: List[Dict], objectives: List[Dict], out_path: Pa
     """Write Pareto front as CSV: one row per solution, x cols then f cols.
 
     x_labels (if provided and length-matched) names each decision-variable column
-    after its optimizer.startpoint.regimens label instead of the generic x0,x1,...
+    after its optimization.startpoint.regimens label instead of the generic x0,x1,...
     """
     if not pareto_front:
         return

@@ -86,7 +86,7 @@ class Loader:
                 'variables': {},
                 'equations': {},
                 'simulation': {},
-                'optimizer': {},
+                'optimization': {},
                 'imports': [],
             }
             # 获取 models 根目录（用于解析新格式的导入路径）
@@ -176,10 +176,10 @@ class Loader:
             if isinstance(local_sim, dict):
                 for key in local_sim.keys():
                     merged_sources['simulation'][key] = source_label
-            local_optimizer = data.get('optimizer') or {}
+            local_optimizer = data.get('optimization') or {}
             if isinstance(local_optimizer, dict):
                 for key in local_optimizer.keys():
-                    merged_sources['optimizer'][key] = source_label
+                    merged_sources['optimization'][key] = source_label
             merged_data['_sources'] = merged_sources
             
             logger.debug(f"加载数据从 {file_path}")
@@ -431,7 +431,7 @@ class Loader:
             simulator_data['total_time'] = total_sec / step_sec if step_sec > 0 else 1
 
         self.simulator = merge_dicts(self.simulator, simulator_data)
-        self.optimizer = merge_dicts(self.optimizer, data.get('optimizer', {}))
+        self.optimizer = merge_dicts(self.optimizer, data.get('optimization', {}))
 
         # 跨步长 import：每条方程的 `step` 按方程自身声明的 step_unit 换算。
         # step_unit 是必填字段，validator 强制检查；此处直接读取。
