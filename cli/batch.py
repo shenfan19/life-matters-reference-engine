@@ -91,15 +91,15 @@ def _run_one_model(yaml_path: Path, root: Path, batch_dir: Path,
 
     out_dir = setup_output_dir(root, model_name, str(batch_dir))
 
-    # A model not declaring simulation:/simulator: or optimizer: at all is by
+    # A model not declaring simulation:/simulator: or optimization: at all is by
     # design (sim-only/opt-only model), not a failure — skip without attempting
     # the step so batch runs over the full model library don't drown in false
-    # FAILs for models that never had an optimizer block to begin with.
+    # FAILs for models that never had an optimization block to begin with.
     if run_sim_step and not model_declares_step(yaml_path, 'sim'):
         print('    -> sim      SKIP (no simulation:/simulator: block)')
         run_sim_step = False
     if run_opt_step and not model_declares_step(yaml_path, 'opt'):
-        print('    -> opt      SKIP (no optimizer: block)')
+        print('    -> opt      SKIP (no optimization: block)')
         run_opt_step = False
 
     # ── Sim ──────────────────────────────────────────────────────────────────

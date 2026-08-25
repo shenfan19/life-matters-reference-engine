@@ -493,8 +493,8 @@ const Simulator: React.FC<SimulatorProps> = ({
     />
   );
 
-  const existingResults = selectedModel?.rawContent?.optimizer?.results
-    ?? selectedModel?.content?.optimizer?.results;
+  const existingResults = selectedModel?.rawContent?.optimization?.results
+    ?? selectedModel?.content?.optimization?.results;
   const hasExistingResults = !!(existingResults?.pareto_front?.length) || !!(optResult?.pareto_front?.length);
   const currentFront = optResult?.pareto_front ?? existingResults?.pareto_front;
   const OptControls = ModelToolbar(

@@ -103,7 +103,7 @@ export function useFileTree({
         path: filePath, type: resolvedContent.type, category: resolvedContent.category,
         content: resolvedContent, rawContent: content, metadata: resolvedContent.metadata, variables: resolvedContent.variables,
         equations: resolvedContent.equations, simulator: resolvedContent.simulator,
-        optimizer: resolvedContent.optimizer, imports: resolvedContent.imports,
+        optimization: resolvedContent.optimization, imports: resolvedContent.imports,
         provenance: resolvedContent.provenance,
         folder,
         validated: undefined, validationErrors: [],

@@ -104,7 +104,7 @@ export function usePlans({
   // ── apply opt best solution to sim ───────────────────────────────────────────
   // (stays here: needs setInputEvents + setComparedPlans)
   const applyBestToSim = () => {
-    const optimizer = selectedModel?.content?.optimizer;
+    const optimizer = selectedModel?.content?.optimization;
     const bestX = optimizer?.results?.recommended?.x;
     if (!optimizer || !Array.isArray(bestX) || bestX.length === 0) {
       message.warning(t('sim.msg.no_best_solution')); return;

@@ -163,7 +163,7 @@ const Loader: React.FC<LoaderProps> = ({
         variables: content.variables,
         equations: content.equations,
         simulator: content.simulator,
-        optimizer: content.optimizer,
+        optimization: content.optimization,
         imports: content.imports,
         folder: path.includes('/') ? path.split('/')[0] : undefined,
         validated: undefined,

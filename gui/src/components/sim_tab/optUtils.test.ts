@@ -1,7 +1,7 @@
 // optUtils.test.ts — "忠诚性测试" (faithfulness test, ADR 0112)
 //
 // buildOptInputEventsFromYAML / buildOptRegimens are an independent
-// re-implementation (in TS) of the same optimizer.startpoint.regimens
+// re-implementation (in TS) of the same optimization.startpoint.regimens
 // semantics that optimizer_engine.py parses in Python. If an unedited
 // round-trip through these two functions does not reproduce the original
 // YAML, the GUI silently sends a different search space to the optimizer
@@ -22,7 +22,7 @@ const FIXTURES_DIR = resolve(__dirname, '../../../../models/test_fixtures/valid'
 function loadStartpointRegimens(fileName: string): any[] {
   const text = readFileSync(resolve(FIXTURES_DIR, fileName), 'utf8');
   const data = yaml.load(text) as any;
-  return data.optimizer.startpoint.regimens;
+  return data.optimization.startpoint.regimens;
 }
 
 function roundTrip(regimens: any[]): any[] {

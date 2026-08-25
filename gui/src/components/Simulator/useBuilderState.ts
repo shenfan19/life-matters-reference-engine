@@ -92,7 +92,7 @@ export function useBuilderState({
       content, rawContent: content,
       metadata: content.metadata, variables: content.variables,
       equations: content.equations, simulator: content.simulator,
-      optimizer: content.optimizer, imports: content.imports,
+      optimization: content.optimization, imports: content.imports,
       folder: 'session', validated: undefined, validationErrors: [],
     };
     setBuilderSessionMetas(p => ({ ...p, [key]: content }));
@@ -144,7 +144,7 @@ export function useBuilderState({
           content: raw, rawContent: raw,
           metadata: raw.metadata, variables: raw.variables,
           equations: raw.equations, simulator: raw.simulator,
-          optimizer: raw.optimizer, imports: raw.imports,
+          optimization: raw.optimization, imports: raw.imports,
           folder: 'session', validated: undefined, validationErrors: [],
         };
         setSelectedKey(modelKey);
@@ -292,7 +292,7 @@ export function useBuilderState({
         content, rawContent: raw,
         metadata: content.metadata, variables: content.variables,
         equations: content.equations, simulator: content.simulator,
-        optimizer: content.optimizer, imports: content.imports,
+        optimization: content.optimization, imports: content.imports,
         provenance: content.provenance,
         folder: 'session',
         validated: undefined, validationErrors: [],

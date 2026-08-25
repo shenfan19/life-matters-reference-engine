@@ -55,7 +55,7 @@ export interface ModelFile {
     variables?: Record<string, any>;
     equations?: Record<string, any>;
     simulator?: any;
-    optimizer?: any;
+    optimization?: any;
     imports?: string[];
     validated?: boolean;
     validationErrors?: string[];
@@ -112,7 +112,7 @@ export interface SimulationState {
     simRuns: number;        // Monte Carlo 运行条数 (1~50)
     mcSeed: number | null;  // 用户设定的 MC seed（null=每次随机，整数=固定可复现）
     sessionSeed: number;    // 本次 session 实际使用的 seed（由 API 返回）
-    // Opt 内层鲁棒优化 MC（optimizer.mc.runs/seed）——与上面 simRuns/mcSeed（simulation.mc）
+    // Opt 内层鲁棒优化 MC（optimization.mc.runs/seed）——与上面 simRuns/mcSeed（simulation.mc）
     // 是两个独立概念，不共用同一份状态：simRuns/mcSeed 控制 Sim tab 结果里画几条轨迹，
     // optMcRuns/optMcSeed 控制 Opt 每个候选解在优化搜索时要采样几次取平均。参照
     // optStepValue/optStepUnit 与 stepValue/stepUnit 分离的既有模式。

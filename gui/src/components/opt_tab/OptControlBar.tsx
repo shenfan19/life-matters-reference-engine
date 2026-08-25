@@ -134,7 +134,7 @@ export function OptControlBar({
           ]} />
       </div>
 
-      {/* Inner robust-optimization MC config (optimizer.mc.runs/seed) — distinct
+      {/* Inner robust-optimization MC config (optimization.mc.runs/seed) — distinct
           from the Sim tab's simulation.mc, see useOptimizer.ts */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <Tooltip title={`${t('sim.opt.mc_tooltip')} (${simRuns})`}>

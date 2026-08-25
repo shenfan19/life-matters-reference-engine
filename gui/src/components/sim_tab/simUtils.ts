@@ -80,7 +80,7 @@ export function xToInputEvents(x: number[], optimizerConfig: any, baseEvents: In
   const result = baseEvents.map(ev => ({ ...ev }));
   const DAY_MAP: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
-  // New regimens format: optimizer.startpoint.regimens entries with optimize: sub-block
+  // New regimens format: optimization.startpoint.regimens entries with optimize: sub-block
   const regimenOptEntries = Array.isArray(optimizerConfig?.startpoint?.regimens)
     ? (optimizerConfig.startpoint.regimens as any[]).filter((e: any) => e.optimize)
     : [];

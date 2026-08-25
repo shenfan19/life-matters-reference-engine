@@ -20,7 +20,7 @@
 
 ## 文件组织
 
-- `test_structural_errors.py` — `validator.py`（step_size、optimizer.method、方程未声明变量、
+- `test_structural_errors.py` — `validator.py`（step_size、optimization.method、方程未声明变量、
   废弃符号 `dt`）
 - `test_import_errors.py` — `loader.py` 的 import/YAML 结构校验（循环 import、越出 models
   根目录、顶层 YAML 非 mapping）

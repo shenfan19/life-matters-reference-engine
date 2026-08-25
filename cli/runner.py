@@ -38,7 +38,7 @@ def _model_name(model_path: Path, project_root: Path) -> str:
 
 def model_declares_step(model_path: Path, step: str) -> bool:
     """Cheap raw-YAML check for whether a model declares a `simulation:`/`simulator:`
-    (step='sim') or `optimizer:` (step='opt') block at all.
+    (step='sim') or `optimization:` (step='opt') block at all.
 
     Used to tell "model doesn't declare this step" (expected, skip) apart from
     "step declared but failed to run" (real error) — many papers/references
@@ -53,7 +53,7 @@ def model_declares_step(model_path: Path, step: str) -> bool:
         return True
     if step == 'sim':
         return bool(data.get('simulation') or data.get('simulator'))
-    return bool(data.get('optimizer'))
+    return bool(data.get('optimization'))
 
 
 def _time_hours(engine) -> float:
@@ -95,7 +95,7 @@ def run_sim(model_path: Path, project_root: Path, csv_path: Path) -> Optional[Li
 
     Monte Carlo run count/seed come from the model's own `simulation.mc.runs`/
     `simulation.mc.seed` (model.md spec) — same source the GUI falls back to,
-    and the same pattern optimizer_engine.py uses for `optimizer.mc.*`. There is
+    and the same pattern optimizer_engine.py uses for `optimization.mc.*`. There is
     no CLI override: a model declaring `mc.runs: 30` always runs 30 here.
     `mc.runs` absent or 1 means deterministic mode (ADR 0045), writing
     `<stem>__<plan_id>__run{i}.csv` (or `<stem>__run{i}.csv` for a single
@@ -168,7 +168,7 @@ def run_opt(model_path: Path, project_root: Path,
 
     warm_start:
       False       – cold start (ignores stored YAML results)
-      True        – warm start from model YAML optimizer.results
+      True        – warm start from model YAML optimization.results
       Path        – warm start from a specific _opt.csv file
     incremental_csv:
       If given, overwrites this path with the current Pareto front after every
