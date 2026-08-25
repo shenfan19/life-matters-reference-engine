@@ -13,9 +13,9 @@
 
 | ID  | 需求                                               |
 | --- | ------------------------------------------------ |
-| R1  | 优化目标、决策变量、约束完全由 YAML `optimizer:` 块驱动，不硬编码任何目标函数 |
+| R1  | 优化目标、决策变量、约束完全由 YAML `optimization:` 块驱动，不硬编码任何目标函数 |
 | R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead）     |
-| R3  | 决策变量与固定背景输入统一在 `optimizer.startpoint.regimens` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
+| R3  | 决策变量与固定背景输入统一在 `optimization.startpoint.regimens` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
 | R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程                |
 | R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
 | R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
@@ -26,10 +26,10 @@
 | R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
 | R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
 | R13 | **⚠️ 待实现**（2026-07-17 复核，代码无对应逻辑）：搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告。当前 `optimizer_engine.py:369-381` 的算法选择只看 `method_raw`/`n_obj>=2`，不检查 `var_specs` 维度种类，也没有任何上限校验——`method: l-bfgs-b` 配大范围 T2/T3/T4 会直接用 scipy 连续松弛跑，不报错不切换 |
-| R14 | `optimizer` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
+| R14 | `optimization` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
 | R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
 | R16 | Sim 和 Opt 的输入列表完全分离：`InputEvent[]`（sim）不含任何优化字段；`OptInput[]`（opt 决策变量）独立管理（ADR 0084） |
-| R17 | `optimizer.startpoint.regimens` 作为 opt 评估的固定背景输入（无 `optimize:` 块的条目）；该字段是独立声明，缺省时**不**继承 `simulation.plans[*].regimens`，直接报错（`optimizer_engine.py:83-85`） |
+| R17 | `optimization.startpoint.regimens` 作为 opt 评估的固定背景输入（无 `optimize:` 块的条目）；该字段是独立声明，缺省时**不**继承 `simulation.plans[*].regimens`，直接报错（`optimizer_engine.py:83-85`） |
 | R18 | GUI 提供"← 从 Sim 导入"按钮：将当前 sim inputEvents 转换为 opt 决策变量并自动填充 bounds |
 
 ### 1.2 依赖
@@ -56,7 +56,7 @@ from pymoo.termination import get_termination
 
 ### 2.1 架构：唯一优化路径
 
-系统只有一条优化路径，完全由 YAML 的 `optimizer:` 块驱动。
+系统只有一条优化路径，完全由 YAML 的 `optimization:` 块驱动。
 
 | 项目 | 说明 |
 |------|------|
@@ -64,8 +64,8 @@ from pymoo.termination import get_termination
 | 端点 | `POST /api/optimizer/run_yaml` |
 | 核心模块 | `reference_engine/src/optimizer_engine.py`（主流程）+ `optimizer_parsing.py`/`optimizer_eval.py`/`optimizer_backends.py`（按职责拆分，见 3.1） |
 | 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
-| 优化对象 | YAML `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
-| 目标函数来源 | YAML `optimizer.objectives` |
+| 优化对象 | YAML `optimization.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
+| 目标函数来源 | YAML `optimization.objectives` |
 | 进度回调 | pymoo `Callback` 每代调用一次 |
 | 进度展示 | 前端 1.5s 轮询 `/api/optimizer/status/{job_id}` |
 
@@ -93,7 +93,7 @@ Body: {
 ```
 
 `model_name` 使用 `selectedModel.key`（完整相对路径，如 `components/medical/disease/chronic/ckd_protein_muscle.yaml`）。  
-`optimizer_override` 覆盖 YAML `optimizer:` 块中的对应字段，不提供时完全使用 YAML 配置。
+`optimizer_override` 覆盖 YAML `optimization:` 块中的对应字段，不提供时完全使用 YAML 配置。
 
 **轮询状态**
 ```
@@ -134,7 +134,7 @@ DELETE /api/optimizer/job/{job_id}
 }
 ```
 
-> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimizer.results.recommended`（只含 `x`、`f`；不再存解码后的人类可读字典，解码现场用 `xToInputEvents` 完成），由 GUI "保存结果到模型"写回。
+> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimization.results.recommended`（只含 `x`、`f`；不再存解码后的人类可读字典，解码现场用 `xToInputEvents` 完成），由 GUI "保存结果到模型"写回。
 
 ### 2.4 前端状态机
 
@@ -143,7 +143,7 @@ state:
   optRunning: bool         - 是否在运行（轮询期间为 true）
   optResult: any           - 完成后的 OptResult
   optCurGen: int           - 当前代数（轮询更新）
-  optTotalGen: int         - 总代数（从 YAML optimizer.algorithm.n_generations 读取）
+  optTotalGen: int         - 总代数（从 YAML optimization.algorithm.n_generations 读取）
   optLogs: [{t, msg}]     - 日志条目
   optJobId: string|null   - 当前 job_id
   optPollRef: ref          - setInterval handle
@@ -165,7 +165,7 @@ UI:
 
 ### 2.5 T2/T3/T4 调度粒度优化（ADR 0080/0088/0100）
 
-x 向量按 `optimizer.startpoint.regimens` 列表顺序展开，每个条目按
+x 向量按 `optimization.startpoint.regimens` 列表顺序展开，每个条目按
 `[value?, time_start?, time_end?, days?, date_start?, date_end?]` 顺序贡献维度：
 
 | Tier | YAML 字段 | x 维度 | 类型（连续松弛） |
@@ -211,12 +211,12 @@ _run_optimizer_job(job_id, fn)
                    └─ pymoo_minimize → 每代 _ProgressCb.notify → progress_cb
 ```
 
-### 3.2 YAML optimizer 块规范
+### 3.2 YAML optimization 块规范
 
-决策变量与固定背景输入统一写在 `optimizer.startpoint.regimens` 一个扁平列表里（R3/R17）：条目结构与 `simulation.plans[*].regimens` 相同（`variable`/`time_start`/`time_end`/`value`/`days`/`date_range`/`delivery`，见 [design.md](design.md) K×4），额外可加 `optimize:` 子块——有则该条目的对应维度成为决策变量，无则整条作为固定背景输入参与仿真。
+决策变量与固定背景输入统一写在 `optimization.startpoint.regimens` 一个扁平列表里（R3/R17）：条目结构与 `simulation.plans[*].regimens` 相同（`variable`/`time_start`/`time_end`/`value`/`days`/`date_range`/`delivery`，见 [design.md](design.md) K×4），额外可加 `optimize:` 子块——有则该条目的对应维度成为决策变量，无则整条作为固定背景输入参与仿真。
 
 ```yaml
-optimizer:
+optimization:
   method: nsga2
   objectives:
     - variable: output_var_name
@@ -253,16 +253,16 @@ optimizer:
 
 `optimize:` 子块除 T1（`value: [lo, hi]`）外还支持 T2（`time_start`/`time_end` 区间搜索）、T3（`days_pool`+`days_n` 候选星期模式）、T4（`date_range` 起止日窗口），四类可在同一条目上任意组合，详见 3.6。
 
-未提供 `optimizer.startpoint.regimens` 时不回退到 `simulation.plans`——两者是彼此独立的字段，`optimizer.startpoint` 缺失直接报错（见 3.5）。
+未提供 `optimization.startpoint.regimens` 时不回退到 `simulation.plans`——两者是彼此独立的字段，`optimization.startpoint` 缺失直接报错（见 3.5）。
 
 参考实现：`life-matters-models` 仓库 `models/papers/s1/banister/banister_opt.yaml`。
 
 ### 3.3 评估时间窗配置（ADR 0083）
 
-优化器的评估时间窗和步长可在 `optimizer` block 中独立声明，优先级高于 `simulation` / `metadata` 的默认值。GUI 工具栏的日期和步长通过 `optimizer_override` 传入，优先级最高。
+优化器的评估时间窗和步长可在 `optimization` block 中独立声明，优先级高于 `simulation` / `metadata` 的默认值。GUI 工具栏的日期和步长通过 `optimizer_override` 传入，优先级最高。
 
 ```yaml
-optimizer:
+optimization:
   start_date: "YYYY-MM-DD"   # 可选；缺省 simulation.start_date
   end_date:   "YYYY-MM-DD"   # 可选；缺省 simulation.end_date
   step_size:                  # 可选；缺省 metadata.step_size
@@ -272,7 +272,7 @@ optimizer:
 
 **读取优先级**（由高到低）：
 1. `optimizer_override.start_date / end_date / step_size`（GUI 工具栏实时值）
-2. `optimizer.start_date / end_date / step_size`（YAML 静态声明）
+2. `optimization.start_date / end_date / step_size`（YAML 静态声明）
 3. `simulation.start_date / end_date` + `metadata.step_size`（默认继承）
 
 ### 3.3.1 仿真时长计算
@@ -321,9 +321,9 @@ total_steps = max(1, int(time_hours * 3600.0 / step_size))
 
 **症状：点击运行后 log 只有 "Loading model..."，没有 "Gen X"**
 1. 模型文件未找到 → 后端日志查 `ERROR:src.loader_engine:模型...未找到`
-2. `optimizer.objectives` 缺失 → 返回 `"No objectives configured (add optimizer: block in YAML or set targets in UI)"`
-3. `optimizer.startpoint.regimens` 缺失 → 返回 `"No optimizer.startpoint.regimens defined"`
-4. `optimizer.startpoint.regimens` 里没有任何条目带 `optimize:` 子块 → 返回 `"No entries with optimize: sub-block in optimizer.startpoint.regimens"`
+2. `optimization.objectives` 缺失 → 返回 `"No objectives configured (add optimization: block in YAML or set targets in UI)"`
+3. `optimization.startpoint.regimens` 缺失 → 返回 `"No optimization.startpoint.regimens defined"`
+4. `optimization.startpoint.regimens` 里没有任何条目带 `optimize:` 子块 → 返回 `"No entries with optimize: sub-block in optimization.startpoint.regimens"`
 
 **症状：log 有 "Starting optimizer..." 但没有 "Gen X"**
 1. pymoo 未安装 → `pip install pymoo`

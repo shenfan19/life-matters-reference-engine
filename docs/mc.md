@@ -15,7 +15,7 @@ MC 在两个独立层级生效，彼此不共享状态（[ADR 0130](decisions/01
 | 层级     | 配置位置                                                         | 作用                                                                |
 | ---------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | Sim 顶层 | `simulation.mc.runs` / `simulation.mc.seed`                      | 对一次仿真本身跑 N 条轨迹，得到分布                                 |
-| Opt 内层 | `optimizer.mc.runs` / `optimizer.mc.seed`（见 [opt.md](opt.md)） | 优化器评估每个候选解时，对该候选跑 N 次采样取聚合目标值，做鲁棒优化 |
+| Opt 内层 | `optimization.mc.runs` / `optimization.mc.seed`（见 [opt.md](opt.md)） | 优化器评估每个候选解时，对该候选跑 N 次采样取聚合目标值，做鲁棒优化 |
 
 GUI 中 Sim tab 和 Opt tab 的 MC×N/Seed 控件分别绑定各自配置，互不影响。CLI 批量场景（`--input-dir`）
 按各模型 YAML 自己的 `mc.runs` 跑，不是 batch 级别的统一参数——某个模型声明了较大的 `mc.runs`
@@ -50,7 +50,7 @@ CLI 和 GUI 之间完全一致、可复现。
 修复的核心：`reset_simulation()` 会把每个变量重置为 `variable_history[var_name][0]`（即克隆时刻的
 "初始值快照"），而 `optimizer_eval.py::_run_sim()` 每次求值开头都无条件调用 `reset_simulation()`。
 如果采样后不同步这个快照，任何后续 `reset_simulation()` 都会把刚采样的值悄悄冲掉、退回到采样前的
-均值——这不是假设性风险：这个 bug 曾让所有声明了 `optimizer.mc.runs > 1` 的模型在优化搜索过程中
+均值——这不是假设性风险：这个 bug 曾让所有声明了 `optimization.mc.runs > 1` 的模型在优化搜索过程中
 实际上反复评估同一个确定性均值，`mc.seed` 从未真正影响过优化结果，影响了 `models/papers/` 下 19 个
 `*_opt_*.yaml` 文件的历史优化结果（详见 ADR 0130）。改动这个函数时必须保留这次回写。
 

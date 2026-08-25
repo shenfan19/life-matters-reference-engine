@@ -12,7 +12,7 @@ server。验证：
    `start_session(sim_runs=N, seed=X)` 用同一个 master seed，必须逐 run 逐步产生完全相同的
    采样参数和轨迹（ADR 0113：两边共用 `advance_steps` 执行核心 + `derive_seed_list` 种子派生）。
 4. Opt：GUI 路径未编辑时发给后端的 `optimizer_override`（这里直接取 YAML 的
-   `optimizer.startpoint/objectives/constraints/algorithm` 本身，代表一次忠实的前端往返——
+   `optimization.startpoint/objectives/constraints/algorithm` 本身，代表一次忠实的前端往返——
    已用 `gui/src/components/sim_tab/optUtils.test.ts` 验证过该往返对 T1-T4 fixture 无损）
    跑出的结果，必须与 CLI 冷启动（只覆盖 warm_start）完全一致（ADR 0112：seed 硬编码 + T4
    `validRangeEnabled` 丢字段的回归锁定）。
@@ -196,15 +196,15 @@ def test_opt_unedited_gui_override_matches_cli_cold_start():
 
 def test_opt_inner_mc_unedited_gui_override_matches_cli_cold_start():
     """Same GUI-override-vs-CLI-cold-start comparison as the T1 test above, but for a
-    model with `optimizer.mc.runs > 1` (inner robust-optimization Monte Carlo, each
+    model with `optimization.mc.runs > 1` (inner robust-optimization Monte Carlo, each
     candidate evaluated across multiple `parameter` distribution samples and aggregated).
     This path was previously untested — `test_valid_opt_inner_mc.yaml` (models/test_fixtures/valid) was
-    added for it but never wired into a pytest, leaving `optimizer.mc` unverified for
+    added for it but never wired into a pytest, leaving `optimization.mc` unverified for
     GUI/CLI parity even though `simulation.mc` (sim-level MC, ADR 0113) already had
     coverage above. Regression guard: an MC-seeded objective aggregation must be exactly
     reproducible from both entry points, not just from a single deterministic sample.
 
-    `gui_override` includes `mc` (read from the YAML's own `optimizer.mc`, mirroring how
+    `gui_override` includes `mc` (read from the YAML's own `optimization.mc`, mirroring how
     the real GUI's optMcRuns/optMcSeed are loaded at model-open time) — an "unedited" run
     sends back exactly what was already there, same reasoning as `algorithm.seed` above.
     Before the GUI wiring fix (useOptimizer.ts + optMcRuns/optMcSeed state), the frontend
@@ -244,11 +244,11 @@ def test_opt_inner_mc_override_actually_takes_effect():
     way down into useOptimizer's params, but the hook never used it to build
     optimizer_override, and run_optimizer()'s override merge whitelist didn't even accept an
     `mc` key — so changing the control in the GUI silently had zero effect on the actual
-    optimization run, always falling back to the YAML's own `optimizer.mc`, no matter what
+    optimization run, always falling back to the YAML's own `optimization.mc`, no matter what
     the user set.
 
     This test proves the fix by overriding `mc.seed` to a value that DIFFERS from the
-    YAML's own `optimizer.mc.seed` (19) and checking the result actually changes — if the
+    YAML's own `optimization.mc.seed` (19) and checking the result actually changes — if the
     override were silently dropped (the bug), this would incorrectly reproduce the
     YAML-seed result regardless of what override was passed."""
     from reference_engine.src.optimizer_engine import run_optimizer
@@ -274,6 +274,6 @@ def test_opt_inner_mc_override_actually_takes_effect():
     assert overridden_result['success'], overridden_result.get('error')
 
     assert overridden_result['best_f'] != pytest.approx(baseline_result['best_f'], abs=TOL, rel=TOL), (
-        "overriding optimizer.mc.seed produced the same result as the YAML default — "
+        "overriding optimization.mc.seed produced the same result as the YAML default — "
         "the mc override is being silently ignored again"
     )

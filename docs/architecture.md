@@ -65,7 +65,7 @@ if all_errors:
 |---|---|---|
 | `validate_simulator_dates` | `simulator.start_date`/`end_date` | `reference_engine.py` 的 `run_simulation`/`run_simulation_mc`，`session_manager.py` 的 `start_session`，`optimizer_engine.py` |
 | `validate_schedule_list` | regimen 列表里每个事件的 `time_start`/`time_end`/`valid_start`/`valid_end` | 同上（sim 路径） |
-| `validate_optimizer_regimens` | `optimizer.startpoint.regimens` 里固定值和 `optimize:` 搜索窗口的时间/日期字段 | `optimizer_engine.run_optimizer` |
+| `validate_optimizer_regimens` | `optimization.startpoint.regimens` 里固定值和 `optimize:` 搜索窗口的时间/日期字段 | `optimizer_engine.run_optimizer` |
 
 日期校验本身分两种严格度：`_check_date_strict`（标准 ISO 日期，用于 regimen 的 `valid_start`/`valid_end`）和 `_check_date_loose`（额外容忍年份为 0 的"古代日期"占位符，用于 `simulator.start_date`/`end_date`，因为 `loader.py`/`optimizer_engine.py` 的跨度计算显式支持这种近似算法，见 [loader.py:391-401](../../reference_engine/src/model_structure/loader.py)）。
 

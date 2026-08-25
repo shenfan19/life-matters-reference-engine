@@ -297,7 +297,7 @@ export function useModelInit({
       set('simStartDate', DEFAULT_START); set('simEndDate', DEFAULT_END);
     }
 
-    // Opt step: optimizer.step_size, defaults to simulation's step_size when absent (model.md).
+    // Opt step: optimization.step_size, defaults to simulation's step_size when absent (model.md).
     const optStepSize = optBlock?.step_size;
     if (optStepSize?.unit) {
       set('optStepValue', optStepSize.value ?? 1);

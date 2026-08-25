@@ -37,7 +37,7 @@
 | [0046 †](../../../life-matters-models/docs/decisions/0046-2026-04-30_sim_步长设计-step_size元数据与step公式符号.md) | 步长最终方案：`metadata.step_size.{value,unit}`；方程用 `step`；simulation 去掉 step/step_unit | ✅ 已实施 | 2026-04-30 |
 | [0049](0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | Optimizer 异步 Job 系统设计 | ✅ 已实施 | 2026-05-02 |
 | [0050](0050-2026-05-04_sim_InputEvent扁平化与交互状态颜色规则.md) | InputEvent 扁平化与交互状态颜色规则 | ✅ 已实施 | 2026-05-04 |
-| [0052](0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 格式统一（扁平列表）& optimizer.regimen 支持 | ✅ 已实施 | 2026-05-04 |
+| [0052](0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 格式统一（扁平列表）& optimization.regimen 支持 | ✅ 已实施 | 2026-05-04 |
 | [0053 †](../../../life-matters-models/docs/decisions/0053-2026-05-03_sim_date_range调度字段与YAML-schedule优先级修复.md) | `date_range` 日期区间字段；YAML Schedule 优先于 GUI Regimen | ✅ 已实施 | 2026-05-03 |
 | [0054](0054-2026-05-04_sim_unified-apply-regimens.md) | 仿真/优化 Regimen 执行函数统一：删除 `_apply_regimen_events` | ✅ 已实施 | 2026-05-04 |
 | [0055](0055-2026-05-04_project_docs-go-public-private-split.md) | `docs/` 公开发布 / `go/` 内部不发布 分界规则 | ✅ 已实施 | 2026-05-04 |
@@ -65,12 +65,12 @@
 | [0080](0080-2026-05-20_sim_optimizer-schedule-tiers-T2T3T4.md) | 优化器调度粒度分层设计（T2/T3/T4：时间窗 / 星期模式 / 起始日） | ✅ 已实施 | 2026-05-20 |
 | [0081](0081-2026-05-20_sim_lm-score-health-span-metric.md) | LM Score：Life Matters 健康时长核心指标（可恢复 / 不可逆双模式） | ✅ 已实施 | 2026-05-20 |
 | [0082](0082-2026-05-21_sim_lock-unlock-refresh-behavior.md) | 锁定/解锁/切换模型的会话状态设计（两层分离架构）D3–D5 由 0085 取代 | ✅ 已实施（部分取代） | 2026-05-21 |
-| [0083](0083-2026-05-22_sim_optimizer-evaluation-time-window.md) | Optimizer 评估时间窗独立配置（start_date / end_date / step_size） | ✅ 已实施 | 2026-05-22 |
+| [0083](0083-2026-05-22_sim_optimizer-evaluation-time-window.md) | Optimization 评估时间窗独立配置（start_date / end_date / step_size） | ✅ 已实施 | 2026-05-22 |
 | [0084](0084-2026-05-23_sim_sim-opt-separation.md) | Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab 新组件 | ✅ 已实施 | 2026-05-23 |
 | [0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | 移除锁机制、自由切换模型、双箭头运行指示器、云端运行拦截 | ✅ 已实施 | 2026-05-25 |
 | [0086 †](../../../life-matters-models/docs/decisions/0086-2026-05-26_project_lmml-rename-from-lmf.md) | 格式命名：LMF → LMML（Life Matters Model Language） | ✅ 已实施 | 2026-05-26 |
 | [0087](0087-2026-05-27_sim_schedules-plans-coexistence.md) | `simulation.schedules` 与 `plans` 共存语义：plans 优先，papers/ 禁止混用 | ✅ 已实施 | 2026-05-27 |
-| [0088](0088-2026-05-28_sim_optimizer-schedules-unified-format.md) | optimizer.schedules 统一格式：决策变量与固定背景量合并列表 | ✅ 已接受 | 2026-05-28 |
+| [0088](0088-2026-05-28_sim_optimizer-schedules-unified-format.md) | optimization.schedules 统一格式：决策变量与固定背景量合并列表 | ✅ 已接受 | 2026-05-28 |
 | [0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | Session 精化：useSession 分离、userEdited 追踪、Warm-start Dirty 检测 | ✅ 已实施 | 2026-05-30 |
 | [0090](0090-2026-05-31_sim_remove-second-step-unit.md) | 移除 second 步长单位，统一 minute/hour/day | ✅ 已接受 | 2026-05-31 |
 | [0091](0091-2026-06-01_project_cli-batch-tool.md) | `sim_cli/`：批量仿真 CLI 工具 | ✅ 已实施 | 2026-06-01 |
@@ -79,7 +79,7 @@
 | [0096 †](../../../life-matters-models/docs/decisions/0096-2026-06-06_model_filename-quality-markers.md) | 模型文件名质量标记约定（_nosim / _noopt / _noref） | ✅ 已实施 | 2026-06-06 |
 | [0096](0096-2026-06-11_sim_simulation-step-input-unit-convention.md) | `Simulation.step()` 入参单位约定：秒 | ✅ 已接受 | 2026-06-11 |
 | [0097 †](../../../life-matters-models/docs/decisions/0097-2026-06-08_model_description-3-fields.md) | papers/ 模型 description 简化为三字段（brief / problem / method） | ✅ 已实施 | 2026-06-08 |
-| [0098 †](../../../life-matters-models/docs/decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimizer.schedules 新增 mode: sustained（子日步长持续输入） | ✅ 已实施 | 2026-06-11 |
+| [0098 †](../../../life-matters-models/docs/decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimization.schedules 新增 mode: sustained（子日步长持续输入） | ✅ 已实施 | 2026-06-11 |
 | [0099 †](../../../life-matters-models/docs/decisions/0099-2026-06-11_sim_sustained-value-step-invariance.md) | sustained 模式 value 语义修正：窗口总量 / N_steps（step-size 不变性） | ✅ 已实施（修订 0098） | 2026-06-11 |
 | [0100 †](../../../life-matters-models/docs/decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md) | 统一 pulse/sustained 为时间区间 [start,end)；GUI 取消 full day / time / sustained 三态 | ✅ 已完成 | 2026-06-11 |
 | [0101](0101-2026-06-13_project_cli-public-release-interface.md) | CLI 升级为公开发布接口（面向 AI / 自动化场景），部分修订 0072/0091 | ✅ 已实施 | 2026-06-13 |
@@ -96,10 +96,10 @@
 | [0111](0111-2026-06-18_sim_sim-cli-consistency-test-suite.md) | Sim/CLI 一致性回归测试套件：仓库首个自动化测试，钉住 MC 确定性 bug | ✅ 已接受 | 2026-06-18 |
 | [0112](0112-2026-06-19_sim_opt-startpoint-faithfulness-fix.md) | Opt startpoint 解析忠诚性修复：seed 硬编码 + T4 date_range 静默丢失，新增 vitest 忠诚性测试 | ✅ 已接受 | 2026-06-19 |
 | [0113](0113-2026-06-19_sim_execution-core-merge-and-cli-mc.md) | Sim 执行核心合并（CLI/GUI 共用 advance_steps）+ CLI 新增 MC 能力（--mc-runs/--seed） | ✅ 已接受 | 2026-06-19 |
-| [0114](0114-2026-06-20_sim_remove-cli-mc-flags-yaml-only.md) | 移除 CLI `--mc-runs`/`--seed`：MC 配置改为只读 YAML `simulation.mc`，与 optimizer.mc 模式统一（修订 0113） | ✅ 已接受 | 2026-06-20 |
+| [0114](0114-2026-06-20_sim_remove-cli-mc-flags-yaml-only.md) | 移除 CLI `--mc-runs`/`--seed`：MC 配置改为只读 YAML `simulation.mc`，与 optimization.mc 模式统一（修订 0113） | ✅ 已接受 | 2026-06-20 |
 | [0115](0115-2026-06-21_sim_remove-daily-inputs-and-gui-working-state.md) | 移除 `daily_inputs`/`_apply_schedules`/`manual_overrides`：plans 强制后的废稿清理（修订 0074） | ✅ 已接受 | 2026-06-21 |
 | [0116](0116-2026-06-21_sim_rename-regimen-runner-to-schedule-runner.md) | 内部命名统一：`regimen_runner.py` → `schedule_runner.py`，API 契约字段名不变（修订 0115） | ✅ 已接受 | 2026-06-21 |
-| [0117](0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md) | API/YAML 概念层命名维持 `regimen`（与 0116 一致）；`optimizer.results.reference` → `recommended` 并删除解码字典 | ✅ 已接受 | 2026-06-21 |
+| [0117](0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md) | API/YAML 概念层命名维持 `regimen`（与 0116 一致）；`optimization.results.reference` → `recommended` 并删除解码字典 | ✅ 已接受 | 2026-06-21 |
 | [0118](0118-2026-06-22_sim_upfront-datetime-validation.md) | 日期/时间字段前置校验：消除 CLI/GUI 共用的静默回退（schedule_runner/optimizer_engine 多处 except: pass） | ✅ 已接受 | 2026-06-22 |
 | [0119](0119-2026-06-22_sim_unify-sim-run-logging-core.md) | Sim 运行日志核心合并：新增 run_logging.py，CLI/GUI 共用内容生成，IO 出口各自实现（修订 0118 的追问） | ✅ 已接受 | 2026-06-22 |
 | [0120 †](../../../life-matters-models/docs/decisions/0120-2026-06-23_model_drop-hold-filename-suffix.md) | 废除 `_HOLD` 文件名后缀，状态判定仅看 `metadata.todo`（部分取代 0101） | 🟢 已实施 | 2026-06-23 |
@@ -112,7 +112,7 @@
 | [0127 †](../../../life-matters-models/docs/decisions/0127-2026-07-09_model_input-unified-sustained-window-defaults.md) | input 变量统一为 sustained（不再有独立 pulse 模式），窗宽按显式规则默认；`schedule_runner.py` 新增 `resolve_time_interval` 共享函数 | 🟢 已实施 | 2026-07-09 |
 | [0128](0128-2026-07-10_sim_gui-session-idle-timeout.md) | GUI session 30 分钟无活动自动销毁（公网部署 P0）：`last_active` 时间戳 + 后台 5 分钟扫描任务，与 `optimizer_jobs` 计时隔离 | ✅ 已接受 | 2026-07-10 |
 | [0129](0129-2026-07-10_sim_concurrency-limits-opt-jobs-and-sim-sessions.md) | 并发资源保护（P1/P2）：优化 job/仿真 session 全局上限，超限路由层直接返回 503（P3/P4 按需暂不实现） | ✅ 已接受 | 2026-07-10 |
-| [0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | 修复 `optimizer.mc.runs>1` 被 `reset_simulation()` 静默清零的 bug（影响19个论文模型）+ Opt tab MC 控件与 Sim tab 解耦（部分撤销 ADR 0045 决策二） | ✅ 已接受 | 2026-07-10 |
+| [0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | 修复 `optimization.mc.runs>1` 被 `reset_simulation()` 静默清零的 bug（影响19个论文模型）+ Opt tab MC 控件与 Sim tab 解耦（部分撤销 ADR 0045 决策二） | ✅ 已接受 | 2026-07-10 |
 | _（0128-0130 与 life-matters-models 同期各自独立编号撞号，0131/0132 起两仓库恢复共用同一序列，见下方说明）_ | | | |
 | [0131 †](../../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md) | sustained value 语义修正：每个匹配日独立满额，取代 0099 的"整跨度总量"（同批取代 0126 第3条） | ✅ 已实施 | 2026-07-13 |
 | [0132 †](../../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md) | sustained regimen 新增 `delivery: total\|level`，区分"总量摊分"（训练负荷类）与"恒定水平"（睡眠时长类） | ✅ 已实施 | 2026-07-14 |
