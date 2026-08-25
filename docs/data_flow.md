@@ -37,7 +37,7 @@ models/**/*.yaml
                                               │
                                               ▼
                                    models/**/*.yaml
-                                   （写入 optimizer.results 块）
+                                   （写入 optimization.results 块）
                                               │
                                               ▼
                                             git
@@ -101,7 +101,7 @@ x0,x1,...,xN,obj_var1,obj_var2,...
 ...
 ```
 
-`x*` 列为决策变量原始值（与 `optimizer.startpoint.regimens` 中带 `optimize:` 子块的条目顺序对应，有 `label` 时列名用 label 代替 `x0,x1,...`），其余列为目标变量名。可直接导入 GUI opt tab 进行热启动或 Pareto 分析。
+`x*` 列为决策变量原始值（与 `optimization.startpoint.regimens` 中带 `optimize:` 子块的条目顺序对应，有 `label` 时列名用 label 代替 `x0,x1,...`），其余列为目标变量名。可直接导入 GUI opt tab 进行热启动或 Pareto 分析。
 
 ---
 
@@ -111,8 +111,8 @@ CLI 和 GUI 都不自动修改原始 YAML。发布是用户的显式操作：
 
 | 触发方式 | 操作 |
 |---------|------|
-| GUI "保存结果到模型" | 将 session 中的 Pareto 前沿写入 `optimizer.results` 块并保存到服务器 |
-| GUI 下载 YAML | 下载含 `optimizer.results` 的完整 YAML（本地存档，不自动上传） |
+| GUI "保存结果到模型" | 将 session 中的 Pareto 前沿写入 `optimization.results` 块并保存到服务器 |
+| GUI 下载 YAML | 下载含 `optimization.results` 的完整 YAML（本地存档，不自动上传） |
 
 写回后的 YAML 是完整可复现的：包含模型定义、优化配置和已验证结果，可直接共享或上 git。
 

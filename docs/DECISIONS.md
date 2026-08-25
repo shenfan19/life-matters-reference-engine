@@ -16,7 +16,7 @@
 | [0024](decisions/0024-asteval-rebuild-over-clear.md) | asteval Interpreter 重建而非 symtable.clear() | ⭐ | ✅ |
 | [0070](decisions/0070-2026-05-15_sim_asteval-as-safety-sandbox-constraint.md) | **asteval 作为方程安全沙箱：禁止用 Python eval() 直接替代** | ⭐⭐ | ✅ |
 | [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) | **MC 概率仿真：parameter 分布表达式、多 run 引擎、半透明曲线渲染** | ⭐⭐ | ✅ |
-| [0130](decisions/0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | **修复 optimizer.mc.runs 被 reset_simulation() 静默清零的 bug（影响19个论文模型）；Opt tab MC 控件与 Sim tab 解耦** | ⭐⭐⭐ | ✅ |
+| [0130](decisions/0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) | **修复 optimization.mc.runs 被 reset_simulation() 静默清零的 bug（影响19个论文模型）；Opt tab MC 控件与 Sim tab 解耦** | ⭐⭐⭐ | ✅ |
 | [0054](decisions/0054-2026-05-04_sim_unified-apply-regimens.md) | **仿真/优化 Regimen 执行函数统一；删除 `_apply_regimen_events`** | ⭐⭐ | ✅ |
 | [0064](decisions/0064-2026-05-07_project-edit-refresh-run-snapshot.md) | **编辑态刷新源文件，运行态固定快照（两种不同的模型加载语义）** | ⭐⭐ | ✅ |
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | **Simulator 拆分；Sim/Opt 结果工作区分离** | ⭐⭐ | ✅（OPT/SIM 分离重构待续）|
@@ -32,9 +32,9 @@
 | ADR | 标题 | 重要程度 | 状态 |
 |-----|------|---------|------|
 | [0049](decisions/0049-2026-05-02_sim_Optimizer异步Job系统设计.md) | **Optimizer 异步 Job 系统：API 立即返回 job_id，轮询进度** | ⭐⭐ | ✅ |
-| [0052](decisions/0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 扁平列表格式；optimizer.regimen 支持 | ⭐ | ✅ |
+| [0052](decisions/0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md) | Schedule 扁平列表格式；optimization.regimen 支持 | ⭐ | ✅ |
 | [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) | **三层验证框架：数值精度 / 文献对标 / 优化合理性** | ⭐⭐ | ✅（脚本待写）|
-| [0098](decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimizer.schedules 新增 `mode: sustained`（子日步长持续输入） | ⭐ | ✅（旧格式，由 0100 取代但仍受支持）|
+| [0098](decisions/0098-2026-06-11_sim_optimizer-schedule-sustained-mode.md) | optimization.schedules 新增 `mode: sustained`（子日步长持续输入） | ⭐ | ✅（旧格式，由 0100 取代但仍受支持）|
 
 ---
 
@@ -52,7 +52,7 @@
 | [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md) | Sim/Opt Tab 分离与结果工作区 UI | ⭐ | ✅（部分待续）|
 | [0067](decisions/0067-2026-05-15_sim_optimizer-algo-preset-slider-ui.md) | 优化器算法预设与参数滑块 UI | | ✅ |
 | [0068](decisions/0068-2026-05-15_sim_formula-precompile-to-python-function.md) | 方程预编译为 Python 函数（asteval → fn） | ⭐ | ✅ |
-| [0069](decisions/0069-2026-05-16_sim_optimizer-results-stateless-design.md) | **optimizer.results 内嵌 + 无状态服务 + warm-start + CSV 导出** | ⭐⭐ | ✅ |
+| [0069](decisions/0069-2026-05-16_sim_optimizer-results-stateless-design.md) | **optimization.results 内嵌 + 无状态服务 + warm-start + CSV 导出** | ⭐⭐ | ✅ |
 | [0071](decisions/0071-2026-05-15_sim_ui-rounded-cards-settings-gear-drag-sort.md) | **全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序** | ⭐ | ✅ |
 | [0073](decisions/0073-2026-05-16_sim_multi-plan-simulation.md) | **多方案仿真：Plan 术语、数据模型、MC 逐方案独立运行** | ⭐⭐ | 待实现 |
 | [0074](decisions/0074-2026-05-16_sim_gui-working-state-priority.md) | **GUI Working State 优先级高于 YAML Schedule（反转 ADR 0053 对 GUI 变量的规则）** | ⭐⭐ | 待实现 |
@@ -60,7 +60,7 @@
 | [0077](decisions/0077-2026-05-17_sim_session-model-import.md) | **Session 模型导入：原子上传（UUID 临时文件 + 内联解析 + 即时删除）→ localStorage；session/ key 前缀** | ⭐ | ✅（2026-05-18 重写，原两步法已废弃）|
 | [0078](decisions/0078-2026-05-18_project_scs-mode-design.md) | **SCS_MODE：云端部署写操作保护、前端行为适配、合并→session model** | ⭐ | ✅ |
 | [0082](decisions/0082-2026-05-21_sim_lock-unlock-refresh-behavior.md) | **两层状态分离：modelContent / modelSession；localStorage 持久化会话** | ⭐ | ✅（D3–D5 由 0085 取代；D3 reloadFromYAML 由 0089 更新）|
-| [0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) | **Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab；optimizer.schedules** | ⭐ | ✅ |
+| [0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) | **Sim / Opt 完全分离：InputEvent / OptInput 独立类型；OptSetupTab；optimization.schedules** | ⭐ | ✅ |
 | [0085](decisions/0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) | **移除锁机制；自由切换模型；双箭头运行指示器；SCS 模式仅拦截新启动** | ⭐ | ✅ |
 | [0089](decisions/0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) | **Session 精化：`useSession` 分离、`userEdited` 追踪（`(edited)` 标记）、warm-start dirty 检测（⚠ 橙色警告）、非活跃模型 Opt Tab 隔离、rawContent fallback** | ⭐ | ✅ |
 | [0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md) | Sim/Opt 运行时日志面板：内容分层（模型信息、NaN/bounds 警告、完成统计）与实现 | | ✅ |

@@ -79,22 +79,22 @@ pyinstaller cli/build.spec
 | `<model.yaml>` | （必填） | 模型文件路径（绝对路径或相对于项目根的路径） |
 | `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
 | `--opt-only` | （跑 sim + opt） | 只运行优化器（NSGA-II），跳过仿真。与 `--sim-only` 互斥 |
-| `--opt-continue` | （不热启动） | 热启动：从模型 YAML 内嵌的 `optimizer.results` 继续搜索。要求优化器步骤会运行（不能与 `--sim-only` 同传） |
+| `--opt-continue` | （不热启动） | 热启动：从模型 YAML 内嵌的 `optimization.results` 继续搜索。要求优化器步骤会运行（不能与 `--sim-only` 同传） |
 | `--opt-continue PATH` | — | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
 | `--output-dir PATH` | `output/` | 指定输出根目录（相对项目根或绝对路径）。结果写入 `<PATH>/<模型名>/` |
 
 > 仿真步骤和优化步骤各写各自的日志文件（`*_sim.log` / `*_opt.log`），不会混在一起；两步骤都跑时按"先 sim 再 opt"顺序执行，sim 失败则不再跑 opt。
 
 > **模型未声明步骤时的静默跳过**：默认调用（不传 `--sim-only`/`--opt-only`）下，模型没有
-> `simulation:`/`simulator:` 块则跳过 sim，没有 `optimizer:` 块则跳过 opt——打印一行提示，
+> `simulation:`/`simulator:` 块则跳过 sim，没有 `optimization:` 块则跳过 opt——打印一行提示，
 > 不算错误、退出码仍为 `0`（`main.py`/`batch.py` 都有这条 `model_declares_step()` 门控）。
 > 两步骤都被跳过时视为错误（退出码 `1`）。显式传 `--sim-only`/`--opt-only` 则不走这条门控，
 > 缺失对应步骤直接按失败处理。
 
 > **`--opt-continue` 与 `--sim-only` 同传**：报错 `Error: --opt-continue requires the optimizer step (remove --sim-only).`，退出码 `1`。
-> **模型没有 `optimizer:` 块但显式传了 `--opt-continue`**（未传 `--opt-only`/`--sim-only`）：静默跳过门控被绕过，会照常尝试跑优化器，大概率因缺少 `optimizer:` 配置而报错——这是预期行为（用户已明确要求优化器步骤），不是 bug。
+> **模型没有 `optimization:` 块但显式传了 `--opt-continue`**（未传 `--opt-only`/`--sim-only`）：静默跳过门控被绕过，会照常尝试跑优化器，大概率因缺少 `optimization:` 配置而报错——这是预期行为（用户已明确要求优化器步骤），不是 bug。
 
-> **Monte Carlo 跑几次不是 CLI 参数**：跑 N 次仿真的次数和种子来自模型自己的 `simulation.mc.runs`/`simulation.mc.seed`（见 `model.md`），CLI 只是照着 YAML 跑，不提供 `--mc-runs`/`--seed` 这样的覆盖开关——和 `optimizer.mc.*`（优化器的 MC 配置，也只在 YAML 里，从无对应 CLI flag）保持同一套规则：要改运行次数，编辑模型文件，不是命令行。`mc.runs` 缺省或为 1 即确定性模式（取分布均值，ADR 0045）；大于 1 时输出 `<stem>__run{i}.csv`（多方案为 `<stem>__<plan_id>__run{i}.csv`）。
+> **Monte Carlo 跑几次不是 CLI 参数**：跑 N 次仿真的次数和种子来自模型自己的 `simulation.mc.runs`/`simulation.mc.seed`（见 `model.md`），CLI 只是照着 YAML 跑，不提供 `--mc-runs`/`--seed` 这样的覆盖开关——和 `optimization.mc.*`（优化器的 MC 配置，也只在 YAML 里，从无对应 CLI flag）保持同一套规则：要改运行次数，编辑模型文件，不是命令行。`mc.runs` 缺省或为 1 即确定性模式（取分布均值，ADR 0045）；大于 1 时输出 `<stem>__run{i}.csv`（多方案为 `<stem>__<plan_id>__run{i}.csv`）。
 
 ### `batch.py`（批量，遍历文件夹）
 
@@ -124,7 +124,7 @@ pyinstaller cli/build.spec
 | `*_opt.csv` | Pareto 前沿表格，每行一个解（x 列 + f 列）；每代结束后实时覆盖，中断不丢 |
 | `*_{模式}.log` | 运行日志（含每代 feasible ratio） |
 
-CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点击"保存结果到模型"，将 Pareto 前沿写回原始 YAML 的 `optimizer.results` 块。
+CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点击"保存结果到模型"，将 Pareto 前沿写回原始 YAML 的 `optimization.results` 块。
 
 ---
 
@@ -164,7 +164,7 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
 # 1. 从指定 _opt.csv 文件热启动（推荐：路径明确，不依赖模型文件是否已更新）
 python cli/main.py <model.yaml> --opt-only --opt-continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
 
-# 2. 从模型 YAML 内嵌的 optimizer.results 热启动（需先在 GUI 保存结果到模型）
+# 2. 从模型 YAML 内嵌的 optimization.results 热启动（需先在 GUI 保存结果到模型）
 python cli/main.py <model.yaml> --opt-only --opt-continue
 ```
 
@@ -257,7 +257,7 @@ CLI 与 GUI 共用同一个引擎层（`reference_engine/src/`），结果格式
 - 实际运行且成功：`[✓ PASS](./<模型名>/xxx.csv)`（链接到结果 CSV）
 - 实际运行但失败：`✗ FAIL`，错误摘要列附带引擎日志中的最后一条 ERROR 消息
 - 未运行的步骤：`⏭ SKIP`——原因可能是传了 `--sim-only`/`--opt-only`，也可能是模型本身没有声明
-  对应的 `simulation:`/`simulator:` 或 `optimizer:` 块（见上方"模型未声明步骤时的静默跳过"）
+  对应的 `simulation:`/`simulator:` 或 `optimization:` 块（见上方"模型未声明步骤时的静默跳过"）
 
 单个模型崩溃不会中断整批运行；汇总区给出整体 PASS/FAIL 计数（按模型计，只要该模型实际运行的步骤全部成功即为 PASS）。
 

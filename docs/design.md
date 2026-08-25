@@ -172,8 +172,8 @@ GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`�
 | 事件 | inputEvents（GUI 层）的变化 |
 |------|--------------------------|
 | 加载新模型 | 从 `simulation.plans[*].regimens` 解析（`self.plans[plan_id]`），按 plan 填充 inputEvents |
-| 加载含 `optimizer.results.recommended.x` 的模型 | 询问用户是否预填推荐解；选"是"实际只覆盖 **Opt Tab** 的 `optInputEvents`（`useModelInit.ts` `Modal.confirm.onOk`），不触碰本表定义的 Sim `inputEvents`——推荐解本就该作为 Opt 决策变量的起点，此行为合理，此处仅修正文字描述 |
-| Opt 完成，用户点击"以此解运行仿真" | 按 `optimizer.startpoint.regimens` 决策变量映射将解的 `x` 写入 inputEvents |
+| 加载含 `optimization.results.recommended.x` 的模型 | 询问用户是否预填推荐解；选"是"实际只覆盖 **Opt Tab** 的 `optInputEvents`（`useModelInit.ts` `Modal.confirm.onOk`），不触碰本表定义的 Sim `inputEvents`——推荐解本就该作为 Opt 决策变量的起点，此行为合理，此处仅修正文字描述 |
+| Opt 完成，用户点击"以此解运行仿真" | 按 `optimization.startpoint.regimens` 决策变量映射将解的 `x` 写入 inputEvents |
 | 用户手动编辑 | 直接修改 inputEvents |
 
 ### F-MPLAN 扩展
@@ -191,7 +191,7 @@ GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`�
 Opt 产出 N 组输入组合（Pareto 前沿）；Sim 是下游，必须能接住 N 组。软件层负责重组，Opt 结果保持原始格式（`{x, f}` 向量）。
 
 ```
-YAML: optimizer.startpoint.regimens   pareto_front[i].x
+YAML: optimization.startpoint.regimens   pareto_front[i].x
 （含 optimize: 的决策变量）              ↓
            ↓           xToInputEvents(x, optimizerSchedules, baseInputEvents)
                                         ↓
@@ -204,13 +204,13 @@ YAML: optimizer.startpoint.regimens   pareto_front[i].x
 
 **输入**：
 - `x: number[]` — 某个 Pareto 解的决策变量值
-- `optimizerRegimens: object[]` — 当前 YAML 中 `optimizer.startpoint.regimens` 中含 `optimize:` 块的条目列表
+- `optimizerRegimens: object[]` — 当前 YAML 中 `optimization.startpoint.regimens` 中含 `optimize:` 块的条目列表
 - `baseInputEvents: InputEvent[]` — 当前 Sim 的基础 inputEvents（提供 `days`、`valid_range_enabled` 等非优化字段）
 
 **映射规则**（与 Python 后端构建 x 向量的顺序完全一致）：
 
 ```
-对 optimizer.startpoint.regimens 中有 optimize: 块的条目（按列表顺序）:
+对 optimization.startpoint.regimens 中有 optimize: 块的条目（按列表顺序）:
   按启用的 Tier 依次贡献维度：T1(value) + T2(time_slot) + T3(days_combo) + T4(date_offsets)
   x[idx++] → 匹配 variable=varName AND time=event.time 的 baseInputEvent，更新对应字段
 ```
@@ -221,7 +221,7 @@ YAML: optimizer.startpoint.regimens   pareto_front[i].x
 
 | 场景 | 调用方式 |
 |------|---------|
-| 加载模型，预填推荐解 | `xToInputEvents(recommended.x, yaml.optimizer.startpoint.regimens, current)` |
+| 加载模型，预填推荐解 | `xToInputEvents(recommended.x, yaml.optimization.startpoint.regimens, current)` |
 | "以此解运行仿真" | 同上，结果设为当前 Sim Plan 的 inputEvents |
 | Run Compared（N 个 Pareto 解） | 对每个勾选的解调用，得到 N 个 Plan |
 
@@ -478,7 +478,7 @@ Log 面板出现在曲线区底部（可折叠）。仅在有 log 内容时显�
 
 ## 优化目标与方法
 
-优化目标格式（`optimizer.objectives`）与算法选择/参数展开的完整规范见 [opt.md](opt.md)，本节不重复维护。
+优化目标格式（`optimization.objectives`）与算法选择/参数展开的完整规范见 [opt.md](opt.md)，本节不重复维护。
 
 要点：目标不是预设名字符串，而是 `objectives: [{variable, metric, direction}]` 列表；算法后端只有两类——`NSGA-II`（多目标或显式指定时，`pymoo` 库，输出 Pareto 前沿）与 `scipy`（`L-BFGS-B`/`Nelder-Mead`，单目标连续优化）。
 
@@ -533,7 +533,7 @@ time_s,time_h,Plan A,Plan B,…
 
 YAML 下载**永远不覆盖源文件**（另存为语义），Sim 和 Opt 标签行为完全一致：
 
-- **有 opt 结果** → 自动将 `optimizer.results` 块写入副本并下载，通过 `message.success` 告知包含的解数量
+- **有 opt 结果** → 自动将 `optimization.results` 块写入副本并下载，通过 `message.success` 告知包含的解数量
 - **无 opt 结果** → 下载纯模型定义，同样通过 `message.success` 告知
 
 ### 报告与图片导出（ADR 0122）
