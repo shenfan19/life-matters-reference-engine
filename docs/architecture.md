@@ -4,10 +4,16 @@
 > **插件系统**（仿真结果的可选二次分析）。整体数据流全景见 [data_flow.md](data_flow.md)；
 > 优化器设计见 [opt.md](opt.md)。
 >
-> 注意与 [ADR 0056 三层验证框架](decisions/0056-2026-05-04_project_three-tier-validation-framework.md)
-> 的区分：ADR 0056 讲的是**模型科学有效性**的验证（数值精度/文献对标/优化合理性，供论文使用）；
-> 本文档讲的是**代码层面的输入校验**（YAML 结构是否合法、日期/时间字符串格式是否正确），
-> 两者是完全不同的概念，只是都叫"validation"。
+> 注意与 Verify/Validate 框架的区分（现行定义见
+> [test_verification/verification_report.md](../test_verification/verification_report.md) §2.1，
+> 该文件同时给出 Verify 下的两个正式协议 V1/V2；
+> [ADR 0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) 记录了这套框架的早期版本）：
+> **Verify** 只问"这段引擎代码有没有把它声称要解的方程正确解出来"，是纯数值/软件问题，不涉及模型是否符合现实；
+> **Validate** 问的是多个各自独立标定的机制耦合后，输出的联合可行域/Pareto 前沿是否真实、非退化、对决策有意义，
+> 部分需对照外部基准判断（见 `life-matters-models` 仓库
+> [`models/test_validation/validation_report.md`](../../life-matters-models/models/test_validation/validation_report.md)）。
+> 本文档讲的是二者之外的第三件事——**代码层面的输入校验**（YAML 结构是否合法、日期/时间字符串格式是否正确），
+> 三者只是恰好都会被称作"validation"，实际是完全不同的概念。
 
 ---
 
@@ -84,7 +90,7 @@ if all_errors:
 - [`PluginManager`](../../reference_engine/src/plugin_manager.py) 递归扫描 `plugins/` 下的 `manifest.yaml`（最多 2 层深度），`load_plugin`/`run_plugin` 动态 `importlib` 加载插件的 `backend.py` 并实例化执行。
 - [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) 注册了 `/api/plugins`（列表）、`/api/plugins/{id}/ui-page`（插件自定义 UI 的 iframe 页面）、`/api/plugins/{id}/run`（执行）三个端点，`api_server.py` 里正常挂载。
 - [`plugin_context.py`](../../reference_engine/src/plugin_context.py) 的 `PluginContext` 给插件提供了统一的日志/缓存/（可选）重新触发仿真的接口。
-- 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于三层验证框架的第二层文献对标）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
+- 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于 Validate 层的文献对标，即 ADR 0056 三层框架中的"层2"）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
 
 **前端完全没有接入**——用户在界面上找不到任何插件入口：
 
