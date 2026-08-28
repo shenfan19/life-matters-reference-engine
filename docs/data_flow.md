@@ -6,9 +6,11 @@ Life Matters 的数据流围绕一条原则组织：**模型文件是唯一的�
 
 ## 两层存储
 
+模型文件独立维护在 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库；本仓库（life-matters-reference-engine）通过 `.env` 里的 `LM_MODELS_PATH` 变量指向该仓库的 `models/` 目录（默认 `../life-matters-models/models`），由 `reference_engine/src/paths.py` 在启动时解析，GUI 后端和 CLI 共用同一份解析结果，本仓库自身不跟踪任何 YAML 模型文件。
+
 | 层 | 位置 | 性质 | 是否入 git |
 |----|------|------|-----------|
-| **模型层** | `models/**/*.yaml` | 结构定义 + 已发布结果 | ✅ |
+| **模型层** | `models/**/*.yaml`（由 `LM_MODELS_PATH` 指向 life-matters-models 仓库） | 结构定义 + 已发布结果 | ✅，但在 life-matters-models 仓库里，不在本仓库 |
 | **输出层** | `output/` | 本地运行产物（CLI） | ❌（gitignore） |
 
 GUI 的运行状态存在浏览器 localStorage（session），不写磁盘，不入 git。
@@ -40,7 +42,7 @@ models/**/*.yaml
                                    （写入 optimization.results 块）
                                               │
                                               ▼
-                                            git
+                              git（life-matters-models 仓库）
 ```
 
 ---
@@ -57,7 +59,7 @@ models/**/*.yaml
    --opt-continue              从 YAML 内嵌结果热启动
    --opt-continue 20260606_1130  从指定 CSV 热启动
 4. 对结果满意 → 在 GUI opt tab 导入 CSV → "保存结果到模型"
-5. git commit → 发布
+5. 在 life-matters-models 仓库 git commit → 发布
 ```
 
 ### 路径 B：交互式探索（GUI 主导）
@@ -67,7 +69,7 @@ models/**/*.yaml
 2. Sim tab 运行 → 实时图表
 3. Opt tab 设置目标 → 运行优化 → 查看 Pareto 前沿
 4. 选中 Pareto 行 → "发送到 Sim" → 验证最优方案
-5. "保存结果到模型" → git commit
+5. "保存结果到模型" → 在 life-matters-models 仓库 git commit
 ```
 
 ### 路径 C：CLI 产出 → GUI 分析
@@ -114,7 +116,7 @@ CLI 和 GUI 都不自动修改原始 YAML。发布是用户的显式操作：
 | GUI "保存结果到模型" | 将 session 中的 Pareto 前沿写入 `optimization.results` 块并保存到服务器 |
 | GUI 下载 YAML | 下载含 `optimization.results` 的完整 YAML（本地存档，不自动上传） |
 
-写回后的 YAML 是完整可复现的：包含模型定义、优化配置和已验证结果，可直接共享或上 git。
+写回后的 YAML 是完整可复现的：包含模型定义、优化配置和已验证结果，可直接共享或提交到 life-matters-models 仓库。
 
 ---
 

@@ -27,11 +27,13 @@ _saved_/
 *.code-workspace
 messages.mo
 
-# Models folder (symlink to life-matters-models/models, not tracked). Anchored to repo
-# root — an unanchored `models/` also matched `test_verification/models/` (the
-# numeric regression test suite, named test_verify/ until 2026-07-21) at any
-# depth, silently keeping it out of git entirely since it was first added
-# (2026-06-19). Discovered 2026-07-10 while adding new tests there.
+# Models folder (model files live in the sibling life-matters-models repo,
+# resolved via LM_MODELS_PATH in .env / reference_engine/src/paths.py; not
+# tracked here). Anchored to repo root — an unanchored `models/` also matched
+# `test_verification/models/` (the numeric regression test suite, named
+# test_verify/ until 2026-07-21) at any depth, silently keeping it out of git
+# entirely since it was first added (2026-06-19). Discovered 2026-07-10 while
+# adding new tests there.
 /models/
 
 # CLI outputs (folder tracked, contents ignored)

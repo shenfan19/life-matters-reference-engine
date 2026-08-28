@@ -23,7 +23,7 @@
 | R10 | **T4**：支持在建模者指定日期窗口（`date_start_window`）内优化干预起始日 |
 | R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
 | R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
-| R13 | **⚠️ 待实现**（2026-07-17 复核，代码无对应逻辑）：搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告。当前 `optimizer_engine.py:369-381` 的算法选择只看 `method_raw`/`n_obj>=2`，不检查 `var_specs` 维度种类，也没有任何上限校验——`method: l-bfgs-b` 配大范围 T2/T3/T4 会直接用 scipy 连续松弛跑，不报错不切换 |
+| R13 | **⚠️ 待实现**（2026-07-17 复核，代码无对应逻辑）：搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告。当前 `optimizer_engine.py:341,384` 的算法选择只看 `method_raw`/`n_obj>=2`，不检查 `var_specs` 维度种类，也没有任何上限校验——`method: l-bfgs-b` 配大范围 T2/T3/T4 会直接用 scipy 连续松弛跑，不报错不切换 |
 | R14 | `optimization` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
 | R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
 | R16 | Sim 和 Opt 的输入列表完全分离：`InputEvent[]`（sim）不含任何优化字段；`OptInput[]`（opt 决策变量）独立管理（ADR 0084） |
