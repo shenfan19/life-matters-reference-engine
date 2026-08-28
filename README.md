@@ -34,7 +34,8 @@ YAML 模型生态见 → [life-matters-models](https://github.com/shenfan19/life
 | `state` | 随时间演化的状态变量 | — |
 | `input` | 用户干预量，由 Regimen 结构化调度 | 外环 opt（Simulator） |
 | `parameter` | 动力学机制系数，由文献数据拟合确定 | 内环 opt（Modeller，待实现） |
-| `evidence` | 文献直接给出的效应量（OR/HR/RR/Cohen's d），Loader 自动换算 | 不参与优化 |
+
+`parameter` 变量声明 `evidence_type` 字段（OR/HR/RR/Cohen's d 等）时，Loader 会自动把文献效应量换算为可用系数——"evidence" 是这类变量的展示概念，`type` 字段本身仍是 `parameter`，不是第四个独立枚举值，详见 [docs/design.md](docs/design.md)。
 
 ---
 
@@ -116,8 +117,8 @@ python cli/batch.py --input-dir <models_folder>
 | [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
 | [docs/mc.md](docs/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
 | [test_verification/verification_report.md](test_verification/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
-| [models/test_validation/validation_report.md](models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
-| [models/test_fixtures/fixture_catalog.md](models/test_fixtures/fixture_catalog.md) | test_fixtures fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
+| [life-matters-models/models/test_validation/validation_report.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
+| [life-matters-models/models/test_fixtures/fixture_catalog.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_fixtures/fixture_catalog.md) | test_fixtures fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
 | [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
 | [docs/data_flow.md](docs/data_flow.md) | 数据流设计 |
 | [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR） |
