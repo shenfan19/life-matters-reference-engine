@@ -42,13 +42,16 @@ echo "== 3/7 构建前端静态文件 =="
 (cd "$ENGINE_DIR/gui" && npm ci && npm run build)
 
 echo "== 4/7 写 .env（公网部署保护开关，见 ADR 0078/0128/0129）=="
+STATS_TOKEN="$(openssl rand -hex 16)"
 cat > "$ENGINE_DIR/.env" <<EOF
 LM_MODELS_PATH=$MODELS_DIR
 SCS_MODE=true
 LM_MAX_CONCURRENT_OPTS=2
 LM_MAX_CONCURRENT_SIMS=5
+LM_STATS_TOKEN=$STATS_TOKEN
 EOF
 chown "$LM_USER" "$ENGINE_DIR/.env"
+echo "私有访问统计地址（自己收藏，不要分享）：http://<你的服务器公网IP或域名>/api/stats/$STATS_TOKEN"
 
 echo "== 5/7 写 systemd 服务（后端常驻、开机自启、崩溃自动重启）=="
 cat > /etc/systemd/system/lm-backend.service <<EOF
@@ -83,6 +86,17 @@ server {
     location /api/ {
         proxy_pass http://127.0.0.1:18080/;
         proxy_set_header Host \$host;
+    }
+}
+EOF
+cat > /etc/nginx/sites-available/lm-test <<EOF
+server {
+    listen 80;
+    server_name $SERVER_NAME;
+
+    location / {
+        root $ENGINE_DIR/scripts/scs_test_page;
+        try_files \$uri /index.html;
     }
 }
 EOF

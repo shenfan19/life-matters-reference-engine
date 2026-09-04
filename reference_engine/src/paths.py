@@ -57,3 +57,7 @@ MAX_CONCURRENT_SIMS = int(os.getenv("LM_MAX_CONCURRENT_SIMS", "5"))
 # 不写死在 api_server.py 里，是因为那份源码是本地开发和任何人自部署都共用的，不该焊死某一台
 # 特定服务器的地址；这台机器专属的值写在这里（.env），不写在源码里。
 EXTRA_CORS_ORIGINS = [o.strip() for o in os.getenv("LM_EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
+
+# 匿名访问计数的私有查询令牌（routes/visits.py）：URL 路径里的随机字符串，不写死在源码里，
+# 未配置时统计端点整体返回 404，不暴露"这里有个统计接口"这件事本身。
+STATS_TOKEN = os.getenv("LM_STATS_TOKEN", "")

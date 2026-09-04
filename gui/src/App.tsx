@@ -324,6 +324,11 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
+  // Anonymous visit counter (no IP/cookie/identity recorded), see reference_engine/src/routes/visits.py
+  useEffect(() => {
+    fetch('/api/visit', { method: 'POST' }).catch(() => {});
+  }, []);
+
   const antPrimary = c.primary;
   const academicTheme = {
     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,

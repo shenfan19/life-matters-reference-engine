@@ -51,7 +51,8 @@ sudo bash scripts/scs_setup.sh
 （`reference_engine/requirements.txt`）→ 构建前端静态文件（`gui/dist/`）→ 写 `.env`
 （`LM_MODELS_PATH` 指向 `life-matters-models/models`，`SCS_MODE=true` 禁止公网访客写服务器
 文件，`LM_MAX_CONCURRENT_OPTS/SIMS` 限制并发防止把服务器打满）→ 写 systemd 服务
-`lm-backend` → 写 Nginx 反代配置 → 开放防火墙 22/80/443 端口。
+`lm-backend` → 写 Nginx 反代配置（含一个英文"维护中"占位页 `lm-test`，配合 `scs_toggle.sh
+test/live` 临时下线时用） → 开放防火墙 22/80/443 端口。
 
 **有域名**：跑之前先编辑 `scripts/scs_setup.sh` 顶部的 `SERVER_NAME` 变量改成域名；
 只用 IP 访问的话不用改（保持 `_`）。
@@ -66,6 +67,17 @@ sudo bash scripts/scs_setup.sh
 | 看后端是否正常运行 | `systemctl status lm-backend` |
 | 重启后端 | `sudo systemctl restart lm-backend` |
 | 重启 Nginx（改了配置后） | `sudo systemctl reload nginx` |
+| 关闭/开启对外访问 | `bash scripts/scs_toggle.sh off` / `bash scripts/scs_toggle.sh on` |
+| 切到维护占位页 / 切回真实应用 | `bash scripts/scs_toggle.sh test` / `bash scripts/scs_toggle.sh live` |
+| 查看累计访问次数（私有，见下） | 浏览器打开 `http://<IP或域名>/api/stats/<LM_STATS_TOKEN>` |
+
+**访问计数**：首页每次加载会给后端 `/api/visit` 打一次请求，按天累加写进服务器本地的
+`output/visit_count.json`（日期为服务器本地时间，DO 默认 UTC），不记录 IP、cookie 或任何能
+识别访客身份的信息。计数本身通过 `.env` 里的 `LM_STATS_TOKEN`（`scs_setup.sh` 装机时自动
+随机生成一个,装机日志里会打印出完整查询地址,自己收藏,不要分享)私下查看，不设账号登录；
+`/api/stats/<token>` 返回 `{"total": 总数, "by_day": {"2026-09-04": 3, ...}}`，纯文本 JSON，
+按日期排序。地址没被访问过就没人知道它存在，`token` 对不上一律返回 404，不会暴露"这里有个
+统计接口"这件事本身。
 
 ## 5. 更新代码后重新部署
 
