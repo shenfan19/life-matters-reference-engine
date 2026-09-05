@@ -1,437 +1,434 @@
-# 软件设计
+# Software Design
 
-> **决议导航**：本文件中的关键决议已汇总至 [DECISIONS.md](DECISIONS.md)（⭐⭐ 为核心约束）。  
-> 关键 ADR：K×4 → [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md)；MC 仿真 → [0045](decisions/0045-2026-04-30_sim_MC概率仿真与随机参数架构.md)（实现细节见 [mc.md](mc.md)）；Simulator 拆分 → [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md)；
-> 子日时间区间统一 → [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md)；
-> sustained `value` 每匹配日独立满额（取代 0099）→ [life-matters-models 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md)；
-> `delivery: total | level` → [life-matters-models 0132](../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md)；
-> `delivery` 判断规则 + day-lumped map 反模式 → [life-matters-models 0133](../../life-matters-models/docs/decisions/0133-2026-07-15_model_delivery-judgment-principle-and-day-lumped-map.md)
+> **Decision navigation**: the key decisions in this file are summarized in [DECISIONS.md](DECISIONS.md) (⭐⭐ marks a core constraint).  
+> Key ADRs: K×4 -> [0038](decisions/0038-2026-04-20_sim_regimen-k4-input-scheduling.md); MC simulation -> [0045](decisions/0045-2026-04-30_sim_mc-probabilistic-simulation-and-random-parameter-architecture.md) (implementation detail in [mc.md](mc.md)); Simulator decomposition -> [0066](decisions/0066-2026-05-08_sim-simulator-decomposition-and-result-workspaces.md);
+> Sub-day time-interval unification -> [0100](decisions/0100-2026-06-11_sim_unify-pulse-sustained-time-interval.md);
+> sustained `value` filled independently per matched day (replacing 0099) -> [life-matters-models 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md);
+> `delivery: total | level` -> [life-matters-models 0132](../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md);
+> the `delivery` judgment rule plus the day-lumped map anti-pattern -> [life-matters-models 0133](../../life-matters-models/docs/decisions/0133-2026-07-15_model_delivery-judgment-principle-and-day-lumped-map.md)
 
-## 仿真/优化: 数学结构
-### Regimen 的 K×4 参数空间
-一条 **Regimen** 描述**一种行为的重复计划**——类比手机日历里的一条重复事件。每条 Regimen 恰好由四个维度组成：
+## Simulation/optimization: mathematical structure
+### A Regimen's K×4 parameter space
+A **Regimen** describes **a repeating plan for one behavior**, analogous to a recurring event in a phone calendar. Every Regimen consists of exactly four dimensions:
 
-| 字段 | 含义 | 可关闭？ |
+| Field | Meaning | Can it be turned off? |
 |---|---|---|
-| `time_start`/`time_end` 时间区间 | 每天 `[time_start, time_end)` 区间内执行（`time_end == time_start` 即单点脉冲） | 否 |
-| `value` 摄入量 | 每次执行时的量，与时间区间一一配对 | 否 |
-| `days` 执行日 | 每周哪几天执行 | 否（全选=每天） |
-| `valid_range` 有效期 | 此计划在哪段日期内有效 | **可关闭** → 整个仿真期永久有效 |
+| `time_start`/`time_end` the time interval | executed within `[time_start, time_end)` every day (`time_end == time_start` is a single-point pulse) | No |
+| `value` the intake amount | the amount per execution, paired one-to-one with the time interval | No |
+| `days` the execution days | which days of the week it executes on | No (all selected = every day) |
+| `valid_range` the validity period | which date span this plan is active over | **Can be turned off** -> active for the entire simulation period |
 
-**关键：`value` 是单次命中窗口内的总量**（如 0.5 kg、10 IU、45 min），不是速率（不是 kg/h）。`time_start == time_end` 时退化为脉冲：在该时刻瞬时摄入固定量；区间非零宽度时（sustained），`N_steps` = 该窗口自身时长 / `step_size`（与 `date_range`/`days` 命中了多少天无关），每个命中日各自独立按 `value / N_steps` 摊到每个 step（[ADR 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md)，取代 ADR 0099 曾经的"总量按整个生效窗口摊分"规则），单日累计贡献仍等于 `value`，与 `step_size` 无关，也与匹配了多少天无关。若语义上 `value` 表达的是应保持恒定的水平（睡眠时长、救治强度等，而非随时间累积的总量），regimen 条目可设 `delivery: level` 让每个命中 step 直接交付 `value` 本身，不做 `N_steps` 除法（[ADR 0132](../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md)）；不设时默认 `delivery: total`，即上述摊分规则。`delivery: level` 的这一不变性成立的前提是下游方程写在原生粒度上（`step_unit` 不粗于 `simulation.step_size`）——用一个更粗的 `step_unit` 把多步净变化一次算好、再靠 `delivery: level` 重复分发给每个更细的 step，读数虽不漂移但方程不会随步长细化收敛到更精确解，是选错了变量原语，不是 `delivery` 字段的问题（day-lumped map 反模式，[ADR 0133](../../life-matters-models/docs/decisions/0133-2026-07-15_model_delivery-judgment-principle-and-day-lumped-map.md)）。
+**Key: `value` is the total amount within a single hit window** (such as 0.5 kg, 10 IU, 45 min), not a rate (not kg/h). When `time_start == time_end` it degenerates into a pulse: a fixed amount is taken instantaneously at that moment; when the interval has nonzero width (sustained), `N_steps` = that window's own duration divided by `step_size` (unrelated to how many days `date_range`/`days` matched), and each matched day independently accumulates `value / N_steps` per step ([ADR 0131](../../life-matters-models/docs/decisions/0131-2026-07-13_model_sustained-value-per-day-not-per-span.md), replacing ADR 0099's earlier rule of spreading the total across the whole active window). The single-day cumulative contribution still equals `value`, regardless of `step_size` or how many days matched. When `value` semantically expresses a level that should be held constant (such as sleep duration or treatment intensity, rather than a total accumulating over time), a regimen entry can set `delivery: level` so each matched step delivers `value` itself directly, with no `N_steps` division ([ADR 0132](../../life-matters-models/docs/decisions/0132-2026-07-14_model_sustained-delivery-total-vs-level.md)); when unset, the default is `delivery: total`, i.e. the spreading rule above. This invariant under `delivery: level` holds only when the downstream equation is written at native granularity (a `step_unit` no coarser than `simulation.step_size`); using a coarser `step_unit` to compute the net change over several steps at once and then repeatedly redistributing it to each finer step via `delivery: level` keeps the reading from drifting, but the equation then never converges to a more accurate solution as the step size is refined, which is a wrong choice of variable primitive, not a problem with the `delivery` field (the day-lumped map anti-pattern, [ADR 0133](../../life-matters-models/docs/decisions/0133-2026-07-15_model_delivery-judgment-principle-and-day-lumped-map.md)).
 
-**`valid_range` 关闭的语义**：日常习惯（吃饭、喝水、睡觉）不需要起止日期，关闭即等于"从第0天到仿真结束"。阶段性行为（手术康复期用药、参战期间）才需要开启。
+**The semantics of turning off `valid_range`**: an everyday habit (eating, drinking, sleeping) needs no start/end date, and turning it off means "from day 0 to the end of the simulation." A phased behavior (medication during postoperative recovery, wartime combat duty) is what needs it turned on.
 
-#### 典型例子
+#### Typical examples
 
 ```
-早餐进食（脉冲，time_start == time_end）:
-  有效期:    关闭（永久有效）
-  时间区间:  07:30 ~ 07:30
-  摄入量:    0.5 kg
-  执行日:    每天（全选）
+Breakfast eating (a pulse, time_start == time_end):
+  Validity period:  off (permanently active)
+  Time interval:    07:30 ~ 07:30
+  Intake amount:    0.5 kg
+  Execution days:   every day (all selected)
 
-胰岛素注射（早晚各一次，均为脉冲）:
-  有效期:    2024-02-01 ~ 2024-06-30
-  时间区间:  08:00~08:00   20:00~20:00
-  摄入量:    10 IU         8 IU      ← 区间与 value 等长，位置一一对应
-  执行日:    每天
+Insulin injection (once each morning and evening, both pulses):
+  Validity period:  2024-02-01 ~ 2024-06-30
+  Time interval:    08:00~08:00   20:00~20:00
+  Intake amount:    10 IU         8 IU      <- the interval and value lists are the same length, matched position by position
+  Execution days:   every day
 
-有氧运动（脉冲）:
-  有效期:    关闭
-  时间区间:  07:00 ~ 07:00
-  摄入量:    45 min
-  执行日:    周一 周三 周五
+Aerobic exercise (a pulse):
+  Validity period:  off
+  Time interval:    07:00 ~ 07:00
+  Intake amount:    45 min
+  Execution days:   Monday, Wednesday, Friday
 
-白天救治强度（sustained，delivery: level，直接交付水平）:
-  有效期:    1945-08-06 ~ 1945-08-11
-  时间区间:  08:00 ~ 20:00
-  摄入量:    4.0     ← delivery: level 时每个命中 step 直接交付 value 本身，不做 N_steps 除法
-  执行日:    每天
+Daytime rescue intensity (sustained, delivery: level, delivering the level directly):
+  Validity period:  1945-08-06 ~ 1945-08-11
+  Time interval:    08:00 ~ 20:00
+  Intake amount:    4.0     <- with delivery: level, each matched step delivers value itself directly, with no N_steps division
+  Execution days:   every day
 
-训练负荷（sustained，delivery: total 默认，窗口总量按窗口自身时长摊分）:
-  有效期:    关闭
-  时间区间:  08:00 ~ 20:00
-  摄入量:    288.0   ← 窗口自身 12h / step=1h → N_steps=12，每 step 写入 24.0；
-                       每个命中日各自独立累计 288.0，与匹配了多少天无关
-  执行日:    每天
+Training load (sustained, delivery: total by default, the window's total spread across the window's own duration):
+  Validity period:  off
+  Time interval:    08:00 ~ 20:00
+  Intake amount:    288.0   <- the window's own 12h / step=1h -> N_steps=12, writing 24.0 per step;
+                       each matched day independently accumulates 288.0, regardless of how many days matched
+  Execution days:   every day
 ```
 
-K 条 Regimen 组成完整的干预方案，每条各有上述四个维度，每个维度独立可设为 **锁定**（固定值）或 **优化**（给定搜索范围，交由优化器搜索）。
+K Regimens together make up a complete intervention plan; each has the four dimensions above, and each dimension can independently be set to **locked** (a fixed value) or **optimized** (given a search range, left to the optimizer to search).
 
-### Regimen → 优化器参数展开
+### Expanding a Regimen into optimizer parameters
 
-优化器统一接受实数向量 $\theta \in \mathbb{R}^d$。每条 Regimen 中被标记为"优化"的维度展开为 $\theta$ 的一段分量：
+The optimizer uniformly accepts a real vector $\theta \in \mathbb{R}^d$. In each Regimen, a dimension marked "optimize" expands into a segment of $\theta$'s components:
 
-| 字段 | 展开方式 | 贡献维数 |
+| Field | Expansion | Contributed dimensions |
 |---|---|---|
-| `time` 时刻（第 $i$ 个时刻点） | $\tau_i \in [\tau_{\min}, \tau_{\max}]$，单位：小时 | $n_r$（时刻数） |
-| `value` 摄入量（第 $i$ 个） | $d_i \in [d_{\min}, d_{\max}]$ | $n_r$ |
-| `days` 执行日 | 连续松弛 $w_j \in [0,1]$，$j=1\ldots7$；仿真时 $w_j \ge 0.5$ 视为执行 | 7 |
-| `valid_range` 有效期（开启时） | $(t_{\text{start}},\, t_{\text{end}}) \in$ 日期范围 | 2 |
+| `time` a time point (the $i$-th time point) | $\tau_i \in [\tau_{\min}, \tau_{\max}]$, in hours | $n_r$ (the number of time points) |
+| `value` the intake amount (the $i$-th one) | $d_i \in [d_{\min}, d_{\max}]$ | $n_r$ |
+| `days` the execution days | a continuous relaxation $w_j \in [0,1]$, $j=1\ldots7$; during simulation, $w_j \ge 0.5$ is treated as executed | 7 |
+| `valid_range` the validity period (when turned on) | $(t_{\text{start}},\, t_{\text{end}}) \in$ the date range | 2 |
 
-**总搜索维数**：
+**Total search dimensionality**:
 
-$$d = \sum_{r=1}^{K} \Bigl[ n_r \cdot \bigl(\mathbb{1}[\text{B优化}] + \mathbb{1}[\text{C优化}]\bigr) + 7 \cdot \mathbb{1}[\text{D优化}] + 2 \cdot \mathbb{1}[\text{A优化且开启}] \Bigr]$$
+$$d = \sum_{r=1}^{K} \Bigl[ n_r \cdot \bigl(\mathbb{1}[\text{B optimized}] + \mathbb{1}[\text{C optimized}]\bigr) + 7 \cdot \mathbb{1}[\text{D optimized}] + 2 \cdot \mathbb{1}[\text{A optimized and on}] \Bigr]$$
 
-**每周天数（D维）的两种处理**：
+**Two ways to handle the weekly-days dimension (D)**:
 
-1. **连续松弛**（默认）：$w_j \in [0,1]$，优化后取 $w_j \ge 0.5$ 的天作为执行日。适合 NSGA-II（梯度不需要精确）。
-2. **约束枚举**（当用户给出"至少 N 天"约束时）：加入约束 $\sum_j w_j \ge N$，连续松弛仍可用。
+1. **Continuous relaxation** (default): $w_j \in [0,1]$, and after optimization the days with $w_j \ge 0.5$ are taken as the execution days. Suits NSGA-II (no exact gradient needed).
+2. **Constrained enumeration** (when the user gives an "at least N days" constraint): add the constraint $\sum_j w_j \ge N$; continuous relaxation is still usable.
 
-**时刻序列（B维）的时序约束**：若一条 Regimen 有多个时刻点，优化时须保证 $\tau_1 < \tau_2 < \cdots < \tau_{n_r}$。连续化技巧：
+**The time-ordering constraint on the time-point sequence (B)**: if a Regimen has multiple time points, optimization must ensure $\tau_1 < \tau_2 < \cdots < \tau_{n_r}$. A continuation trick:
 
-$$\tau_i = \sum_{k=1}^{i} \text{softmax}(\alpha)_k \cdot T_{\text{day}}, \quad \alpha \in \mathbb{R}^{n_r} \text{ 无约束}$$
+$$\tau_i = \sum_{k=1}^{i} \text{softmax}(\alpha)_k \cdot T_{\text{day}}, \quad \alpha \in \mathbb{R}^{n_r} \text{ unconstrained}$$
 
-优化器对 $\alpha$ 搜索，仿真前先转换回 $\tau_i$，保证时序自动满足。
+The optimizer searches over $\alpha$, converting back to $\tau_i$ before simulation, so ordering is automatically satisfied.
 
-### iCal双向转换工具（未实现）
-**工具价值**：用户可以在手机日历App里直接设计自己的行为计划，导出iCal后一键导入LM仿真。
+### An iCal two-way conversion tool (not implemented)
+**The tool's value**: a user could design their own behavior plan directly in a phone calendar app, export it as iCal, and import it into an LM simulation with one click.
 
-**现状**：`gui/src/` 中无任何 iCal/ics 相关代码，此工具从未实现，也不在当前 Simulator 的开发范围内（[ADR 0117](decisions/0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md)「不在本次范围内」一节已记录该处文档与实现的落差）。后文各交互 mockup 中不再出现 iCal 导出，实际的 Opt → Sim 传递方式见下文「Opt → Sim：N-N 重组架构」一节。
+**Current state**: there is no iCal/ics-related code anywhere in `gui/src/`; this tool has never been implemented and is not within the current Simulator's development scope ([ADR 0117](decisions/0117-2026-06-21_sim_regimen-vs-recommended-final-naming.md)'s "not in this round's scope" section already records this gap between the documentation and the implementation). iCal export no longer appears in the interaction mockups below; the actual Opt-to-Sim handoff is described in the "Opt -> Sim: an N-to-N recomposition architecture" section further down.
 
-### Evidence 变量：文献直接来源的值
+### Evidence variables: values sourced directly from the literature
 
-随机事件（战死、手术风险、疾病发作）和其他文献统计量，以 `variables:` 条目上的 **`evidence_type`** 字段纳入模型（8 种子类型：`rr`/`or`/`hr`/`ard`/`cohens_d`/`ir`/`beta`/`pk`；`type` 仍是 `parameter`）。Loader 在加载时自动完成换算，Simulator 只见换算后的有效值。**不进入任何优化搜索空间。**
+A random event (combat death, surgical risk, disease onset) and other literature-derived statistics enter the model through the **`evidence_type`** field on a `variables:` entry (8 subtypes: `rr`/`or`/`hr`/`ard`/`cohens_d`/`ir`/`beta`/`pk`; `type` is still `parameter`). The Loader completes the conversion automatically at load time, and the Simulator sees only the converted effective value. **It never enters any optimization search space.**
 
-换算方程、溯源字段（`evidence_type`/`evidence_raw_value`）见 [evidence/conversion.md](evidence/conversion.md)（权威实现描述，含已知实现细节）；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制见 [evidence/applies_to.md](evidence/applies_to.md)；YAML 字段声明方式见 `life-matters-models` 仓库 `docs/LM_format_1.0.md` §2.4 与 `docs/authoring/variables_and_equations.md`。
+For the conversion equations and the traceability fields (`evidence_type`/`evidence_raw_value`), see [evidence/conversion.md](evidence/conversion.md) (the authoritative implementation description, with known implementation details); for the `applies_to` mechanism that automatically wires a conversion result into some state variable's dynamics, see [evidence/applies_to.md](evidence/applies_to.md); for the YAML field declaration, see `docs/LM_format_1.0.md` §2.4 and `docs/authoring/variables_and_equations.md` in the `life-matters-models` repository.
 
-**仿真中的确定性处理**（不做随机采样）：
+**Deterministic handling in the simulation** (no random sampling done):
 
 ```
-生存率(t) = ∏(1 − ir_effective × step_size)
+survival(t) = ∏(1 − ir_effective × step_size)
 ```
 
-直接得到期望存活率确定性轨迹，可重现，足够用于 Pareto 优化。分布形式的采样（MC）只应用于 `parameter` 变量，与 evidence 换算是两回事，见 [mc.md](mc.md)。
+This directly yields the deterministic expected-survival-rate trajectory, which is reproducible and adequate for Pareto optimization. Distributional sampling (MC) applies only to `parameter` variables, a separate matter from evidence conversion; see [mc.md](mc.md).
 
 
-## 双环优化架构
+## The dual-loop optimization architecture
 
-LM 的优化体系由两个独立的优化环构成，目标和实现工具完全不同：
+LM's optimization system is made of two independent optimization loops, with entirely different goals and tools:
 
-### 外环：Regimen 搜索（当前主攻，Simulator 实现）
+### The outer loop: Regimen search (the current main focus, implemented in the Simulator)
 
-| 项目       | 说明                                    |
+| Item       | Description                                    |
 | -------- | ------------------------------------- |
-| **搜索对象** | `input` 变量的 Regimen 计划（时刻、剂量、执行天、有效期） |
-| **目标**   | 寻找令 `state` 输出最优的行为/用药方案              |
-| **算法**   | NSGA-II（多目标）/ L-BFGS-B、Nelder-Mead（单目标，scipy）——完整口径见下文「优化目标与方法」一节 |
-| **输出**   | Pareto 前沿：一批非支配 Regimen 方案            |
-| **用户**   | 医生、患者、研究者 —— 关心"怎么做才最好"               |
-| **当前状态** | ✅ 已设计，实现中                             |
+| **Search target** | the Regimen plan of an `input` variable (time, dose, execution days, validity period) |
+| **Goal**   | finding the behavior/medication plan that optimizes the `state` output |
+| **Algorithm** | NSGA-II (multi-objective) / L-BFGS-B, Nelder-Mead (single-objective, scipy), full detail in the "Optimization objectives and methods" section below |
+| **Output**   | a Pareto front: a batch of non-dominated Regimen plans |
+| **User**   | a doctor, patient, or researcher, concerned with "what's the best thing to do" |
+| **Current status** | ✅ designed, in implementation |
 
-### 内环：参数校准（未来，Modeller 实现）
+### The inner loop: parameter calibration (future, implemented in the Modeller)
 
-| 项目       | 说明                                      |
+| Item       | Description                                      |
 | -------- | --------------------------------------- |
-| **搜索对象** | `parameter` 变量（机制系数，如 Bergman p1/p2/p3） |
-| **目标**   | 使仿真曲线拟合文献观测数据（最小化 MSE / AIC）            |
-| **算法**   | L-BFGS-B / Nelder-Mead / Bayesian Opt   |
-| **输出**   | 一组使模型贴合真实数据的 `parameter` 值              |
-| **用户**   | 模型开发者 —— 关心"模型有多准"                      |
-| **当前状态** | ⏳ 设计预留，Modeller 工具待实现                   |
+| **Search target** | a `parameter` variable (a mechanistic coefficient, such as Bergman's p1/p2/p3) |
+| **Goal**   | fitting the simulated curve to literature-observed data (minimizing MSE / AIC) |
+| **Algorithm** | L-BFGS-B / Nelder-Mead / Bayesian Opt   |
+| **Output**   | a set of `parameter` values that fit the model to real data              |
+| **User**   | a model developer, concerned with "how accurate is the model"                      |
+| **Current status** | ⏳ reserved in the design, the Modeller tool not yet implemented                   |
 
-### 两环的关系
+### The relationship between the two loops
 
 ```
-内环（Modeller）              外环（Simulator）
-   ↓ 校准 parameter              ↓ 搜索最优 input
-model.yaml ─────────────────→ story.yaml ──→ Pareto 前沿
-  parameter 值由内环确定          input 的 Regimen 由外环搜索
+The inner loop (Modeller)       The outer loop (Simulator)
+   ↓ calibrating parameter         ↓ searching for the optimal input
+model.yaml ─────────────────→ story.yaml ──→ a Pareto front
+  parameter values set by the inner loop     the input's Regimen searched by the outer loop
 ```
 
-`parameter` 经内环校准后写入 `model.yaml` 并固定；外环在 `parameter` 固定的前提下搜索 `input` 空间。两环互不干扰，可以独立运行。
+Once `parameter` is calibrated by the inner loop, it is written into `model.yaml` and fixed; the outer loop searches the `input` space with `parameter` held fixed. The two loops don't interfere with each other and can run independently.
 
-`evidence` 变量不进入任何优化环 —— 它是文献给定的约束，Loader 换算后直接作为常量供方程使用。
+An `evidence` variable never enters either optimization loop; it is a constraint given by the literature, used directly as a constant by the equations after the Loader converts it.
 
 ---
 
-## GUI Working State Layer（GUI 工作状态层）
+## The GUI Working State Layer
 
-> 对应需求 F-1；架构决策见 ADR 0074、ADR 0109/0110（plans 强制规范）、ADR 0115（移除 daily_inputs 后简化）。
+> Corresponds to requirement F-1; the architectural decisions are ADR 0074, ADR 0109/0110 (mandatory plans normalization), ADR 0115 (simplification after removing daily_inputs).
 
-### 概念
+### Concept
 
-GUI Working State Layer 是 Sim 面板中 `inputEvents[]` 的集合——它是用户可见、可编辑的输入配置，代表"本次仿真实际使用什么值"。
+The GUI Working State Layer is the collection of `inputEvents[]` in the Sim panel — the user-visible, user-editable input configuration, representing "what values this simulation run actually uses."
 
 ```
-加载流程：
-  YAML 文件 → Loader 解析 self.plans → 前端按 plan 还原 inputEvents ← 用户编辑 / Opt 结果注入
+The loading flow:
+  a YAML file → the Loader parses self.plans → the frontend restores inputEvents per plan ← edited by the user / injected by an Opt result
                                      ↓
-                  session 启动：inputEvents 作为 regimens 字段发给后端
+                  a session starts: inputEvents is sent to the backend as the regimens field
                                      ↓
-                              每步：apply_schedules(session['regimens'])
+                              every step: apply_schedules(session['regimens'])
 ```
 
-ADR 0074 当时要解决的问题（旧版 `daily_inputs`/`_apply_schedules` 在每步末尾用 YAML 值覆盖 GUI 编辑）已经
-不存在：`daily_inputs` 整套机制已在 ADR 0115 删除，`simulation.plans[*].regimens` 是仅剩的输入声明位置
-（ADR 0109），而 GUI 的 `inputEvents` 本身就是该 plan 内容的可编辑实例，两者不再是会冲突的两条路径——
-GUI session 每步只调用一次 `apply_schedules()`，输入即 `inputEvents`，不存在"谁覆盖谁"的优先级问题。
+The problem ADR 0074 was addressing at the time (the old `daily_inputs`/`_apply_schedules` overwriting a GUI edit with the YAML value at the end of every step) no longer exists: the whole `daily_inputs` mechanism was removed in ADR 0115, `simulation.plans[*].regimens` is now the only place input is declared (ADR 0109), and the GUI's `inputEvents` is itself the editable instance of that plan's content — the two are no longer two paths that can conflict. A GUI session calls `apply_schedules()` exactly once per step, the input is `inputEvents`, and there is no "who overrides whom" priority question.
 
-### 初始化规则
+### Initialization rules
 
-| 事件 | inputEvents（GUI 层）的变化 |
+| Event | The change to inputEvents (the GUI layer) |
 |------|--------------------------|
-| 加载新模型 | 从 `simulation.plans[*].regimens` 解析（`self.plans[plan_id]`），按 plan 填充 inputEvents |
-| 加载含 `optimization.results.recommended.x` 的模型 | 询问用户是否预填推荐解；选"是"实际只覆盖 **Opt Tab** 的 `optInputEvents`（`useModelInit.ts` `Modal.confirm.onOk`），不触碰本表定义的 Sim `inputEvents`——推荐解本就该作为 Opt 决策变量的起点，此行为合理，此处仅修正文字描述 |
-| Opt 完成，用户点击"以此解运行仿真" | 按 `optimization.startpoint.regimens` 决策变量映射将解的 `x` 写入 inputEvents |
-| 用户手动编辑 | 直接修改 inputEvents |
+| Loading a new model | parsed from `simulation.plans[*].regimens` (`self.plans[plan_id]`), populating inputEvents per plan |
+| Loading a model containing `optimization.results.recommended.x` | asks the user whether to prefill the recommended solution; choosing "yes" actually only overwrites the **Opt Tab**'s `optInputEvents` (`useModelInit.ts`'s `Modal.confirm.onOk`), leaving the Sim `inputEvents` defined by this table untouched — it makes sense for the recommended solution to serve as the starting point of the Opt decision variables, so only the wording here is being corrected |
+| Opt completes, the user clicks "run the simulation with this solution" | writes the solution's `x` into inputEvents according to the `optimization.startpoint.regimens` decision-variable mapping |
+| The user edits manually | modifies inputEvents directly |
 
-### F-MPLAN 扩展
+### The F-MPLAN extension
 
-多方案时，每个 Plan 有独立的 `inputEvents[]`，对应独立的 session，方案间隔离，互不影响。
+With multiple plans, each Plan has its own independent `inputEvents[]`, corresponding to an independent session, isolated from and unaffected by other plans.
 
 ---
 
-## Opt → Sim：N-N 重组架构
+## Opt -> Sim: an N-to-N recomposition architecture
 
-> 对应需求 F-5、F-2、F-3。
+> Corresponds to requirements F-5, F-2, F-3.
 
-### 设计原则
+### Design principle
 
-Opt 产出 N 组输入组合（Pareto 前沿）；Sim 是下游，必须能接住 N 组。软件层负责重组，Opt 结果保持原始格式（`{x, f}` 向量）。
+Opt produces N input combinations (a Pareto front); Sim is downstream and must be able to accept all N. The software layer is responsible for the recomposition, and the Opt result keeps its raw format (an `{x, f}` vector).
 
 ```
 YAML: optimization.startpoint.regimens   pareto_front[i].x
-（含 optimize: 的决策变量）              ↓
+(the decision variables containing optimize:)              ↓
            ↓           xToInputEvents(x, optimizerSchedules, baseInputEvents)
                                         ↓
-                           Plan[i].inputEvents[]   →   独立 session → 仿真曲线 i
+                           Plan[i].inputEvents[]   →   an independent session → simulation curve i
 ```
 
-### xToInputEvents 函数
+### The xToInputEvents function
 
-**职责**：将 Pareto 解的 `x` 向量还原为 Sim 可执行的 `InputEvent[]`。
+**Responsibility**: restoring a Pareto solution's `x` vector into a Sim-executable `InputEvent[]`.
 
-**输入**：
-- `x: number[]` — 某个 Pareto 解的决策变量值
-- `optimizerRegimens: object[]` — 当前 YAML 中 `optimization.startpoint.regimens` 中含 `optimize:` 块的条目列表
-- `baseInputEvents: InputEvent[]` — 当前 Sim 的基础 inputEvents（提供 `days`、`valid_range_enabled` 等非优化字段）
+**Input**:
+- `x: number[]`, the decision-variable values of some Pareto solution
+- `optimizerRegimens: object[]`, the list of entries containing an `optimize:` block within the current YAML's `optimization.startpoint.regimens`
+- `baseInputEvents: InputEvent[]`, the current Sim's base inputEvents (supplying non-optimized fields such as `days` and `valid_range_enabled`)
 
-**映射规则**（与 Python 后端构建 x 向量的顺序完全一致）：
+**The mapping rule** (exactly matching the order the Python backend builds the x vector in):
 
 ```
-对 optimization.startpoint.regimens 中有 optimize: 块的条目（按列表顺序）:
-  按启用的 Tier 依次贡献维度：T1(value) + T2(time_slot) + T3(days_combo) + T4(date_offsets)
-  x[idx++] → 匹配 variable=varName AND time=event.time 的 baseInputEvent，更新对应字段
+For each entry in optimization.startpoint.regimens that has an optimize: block (in list order):
+  the enabled tiers contribute dimensions in order: T1(value) + T2(time_slot) + T3(days_combo) + T4(date_offsets)
+  x[idx++] → matches the baseInputEvent where variable=varName AND time=event.time, updating that field
 ```
 
-**输出**：返回新的 `InputEvent[]`，只更新了 `optimizeValue=true` 事件的 value，其余字段不变。
+**Output**: a new `InputEvent[]`, with only the value of the `optimizeValue=true` events updated, everything else unchanged.
 
-**调用场景**：
+**Call sites**:
 
-| 场景 | 调用方式 |
+| Scenario | How it's called |
 |------|---------|
-| 加载模型，预填推荐解 | `xToInputEvents(recommended.x, yaml.optimization.startpoint.regimens, current)` |
-| "以此解运行仿真" | 同上，结果设为当前 Sim Plan 的 inputEvents |
-| Run Compared（N 个 Pareto 解） | 对每个勾选的解调用，得到 N 个 Plan |
+| Loading a model, prefilling the recommended solution | `xToInputEvents(recommended.x, yaml.optimization.startpoint.regimens, current)` |
+| "Run the simulation with this solution" | the same as above, the result set as the current Sim Plan's inputEvents |
+| Run Compared (N Pareto solutions) | called for each checked solution, yielding N Plans |
 
-### 数量关系
+### The quantitative relationship
 
-| | 1-1（MVP） | N-N（目标） |
+| | 1-to-1 (the MVP) | N-to-N (the target) |
 |--|------------|------------|
-| Opt → Sim | reference.x → 1 个 inputEvents | pareto_front[0..N-1].x → N 个 Plan |
-| Sim 运行 | 1 个 session | N 个并行 session |
-| 图表 | 1 条曲线 | N 条曲线（F-MPLAN） |
-| 代码差异 | `xToInputEvents` × 1 | `xToInputEvents` × N + SimChart 多曲线 |
+| Opt -> Sim | reference.x -> 1 inputEvents | pareto_front[0..N-1].x -> N Plans |
+| Running Sim | 1 session | N parallel sessions |
+| The chart | 1 curve | N curves (F-MPLAN) |
+| The code difference | `xToInputEvents` × 1 | `xToInputEvents` × N + a multi-curve SimChart |
 
-`xToInputEvents` 函数本身是共用的，N-N 仅比 1-1 多了"调用 N 次"和 SimChart 多数据集渲染。SimChart 改造是 F-MPLAN 必要工作，与 1-N 无关。因此**实现 N-N 的额外代价极小**，直接做 N-N。
+The `xToInputEvents` function itself is shared; N-to-N only adds "calling it N times" and multi-dataset SimChart rendering over 1-to-1. The SimChart rework is necessary work for F-MPLAN regardless of 1-to-N. So **the extra cost of implementing N-to-N is minimal**, and N-to-N is done directly.
 
 ---
 
-## 优化: Pareto输出的形态
+## Optimization: the shape of Pareto output
 
-### Pareto前沿是什么
-对于两目标优化，输出是一条**权衡曲线**（50-200个非支配解），每个点代表一种权衡下的最优Regimen方案：
+### What a Pareto front is
+For a two-objective optimization, the output is a **trade-off curve** (50-200 non-dominated solutions), each point representing the optimal Regimen plan under one trade-off:
 ```
-目标1：肝脂肪减少量（越大越好）
+Objective 1: the reduction in liver fat (bigger is better)
                 ↑
               * |
-           *    |         每个*是一个具体可执行的Regimen方案
+           *    |         each * is a specific, executable Regimen plan
         *       |
      *          |
   *             |
                 +——————————————→
-                  目标2：ALT酶峰值（越小越好）
+                  Objective 2: the peak ALT enzyme level (smaller is better)
 
-左上角 = 激进运动方案（最大减脂，但ALT风险高）
-右下角 = 保守休息方案（ALT安全，但减脂少）
-中间弯折点 = 推荐的最佳权衡方案
+Top left = an aggressive exercise plan (maximum fat loss, but high ALT risk)
+Bottom right = a conservative rest plan (safe ALT, but little fat loss)
+The bend in the middle = the recommended best trade-off plan
 ```
 
-### 用户如何使用Pareto输出
+### How the user works with the Pareto output
 
-实际交互是 Opt Tab 结果区的 Solutions 表格，而非本节早期设想的"点选/偏好滑条/iCal 导出"：
+The actual interaction is the Solutions table in the Opt Tab's result area, not the "click a point / preference slider / iCal export" envisioned earlier in this section:
 
-1. `ParetoChart` 显示 Pareto 散点图，悬浮某点显示该方案的目标值提示（无点选逻辑，无方案预览面板）。
-2. Solutions 表格逐行列出每个 Pareto 解的决策变量与目标值，参考解（`recommended`/`best_x`）高亮为 ★ 行。
-3. 用户用行首 checkbox 勾选一个或多个方案，点击「Send to Sim / 发送到 Sim」——不是"导出为 iCal"，而是调用 `xToInputEvents` 把勾选解写回 Sim Tab，每个解各自生成一个独立 Plan（N-N 架构，见下文「Opt → Sim：N-N 重组架构」一节，该节描述与代码吻合）。
+1. `ParetoChart` shows the Pareto scatter plot; hovering over a point shows that plan's objective-value tooltip (no click-selection logic, no plan-preview panel).
+2. The Solutions table lists each Pareto solution's decision variables and objective values row by row, with the reference solution (`recommended`/`best_x`) highlighted as a ★ row.
+3. The user checks one or more plans via the row-leading checkbox and clicks "Send to Sim", not "export as iCal" — this calls `xToInputEvents` to write the checked solutions back to the Sim Tab, each solution generating its own independent Plan (the N-to-N architecture, see the "Opt -> Sim: an N-to-N recomposition architecture" section above, which matches the code).
 
-## 仿真/优化: 界面规划
-### 核心设计理念
+## Simulation/optimization: interface layout
+### The core design idea
 
-Sim 与 Opt 是两个完全独立的顶部 Tab（`centerTab: 'simulation' | 'optimization'`），各自挂载独立的 Setup/ControlBar/结果组件（`SimSetupTab`+`SimControlBar` / `OptSetupTab`+`OptControlBar`），二者布局镜像但状态互相隔离；不存在"Opt 内嵌于 Sim 顶部开关"的模式（[ADR 0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) 已推翻早期这一设想）。
+Sim and Opt are two fully independent top-level Tabs (`centerTab: 'simulation' | 'optimization'`), each mounting its own independent Setup/ControlBar/result components (`SimSetupTab`+`SimControlBar` / `OptSetupTab`+`OptControlBar`); their layouts mirror each other but their state is fully isolated — there is no "Opt embedded as a toggle at the top of Sim" mode ([ADR 0084](decisions/0084-2026-05-23_sim_sim-opt-separation.md) already overturned this earlier idea).
 
-### 整体布局（两栏 4:6，无第三列）
+### The overall layout (a two-column 4:6 split, no third column)
 
-Sim Tab 与 Opt Tab 内部布局镜像，均为 `WorkspacePage` 固定 4:6 两栏（[ADR 0079](decisions/0079-2026-05-18_sim_workspace-layout-4-6-split.md)）：
+The Sim Tab and the Opt Tab mirror each other internally, both a `WorkspacePage` fixed 4:6 two-column split ([ADR 0079](decisions/0079-2026-05-18_sim_workspace-layout-4-6-split.md)):
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  [仿真] [优化]                             ← 顶部 Tab 切换  │
+│  [Simulation] [Optimization]               ← the top-level Tab switch  │
 ├───────────────────────────────────────────────────────────┤
-│  [Story选择器]  [仿真时长]  [步长]    [▶运行][⏸暂停][⏹停止]│ ← 各 Tab 独立 ControlBar
+│  [Story selector]  [duration]  [step size]    [▶Run][⏸Pause][⏹Stop]│ ← each Tab's independent ControlBar
 ├─────────────────────┬─────────────────────────────────────┤
-│  左栏 40%：输入区   │  右栏 60%：结果区                   │
+│  Left column 40%: input area  │  Right column 60%: result area                   │
 │                     │                                     │
-│  Sim: Variables /   │  Sim: 曲线图 + Log                 │
-│  Regimens / Evidence│  Opt: 进度图 + Pareto 散点          │
-│  Opt: 同上，各维度  │       + Solutions 表格              │
-│  可标记 🔒/🔀        │                                     │
+│  Sim: Variables /   │  Sim: curve chart + Log                 │
+│  Regimens / Evidence│  Opt: progress chart + Pareto scatter          │
+│  Opt: the same, each dimension  │       + the Solutions table              │
+│  markable 🔒/🔀        │                                     │
 ├─────────────────────┴─────────────────────────────────────┤
-│  进度条 ████████░░ 80%                                     │
+│  Progress bar ████████░░ 80%                                     │
 └───────────────────────────────────────────────────────────┘
 ```
 
-### Sim Tab 左栏：输入区详细设计
+### The Sim Tab's left column: the input area in detail
 
-左栏分三个折叠块：VARIABLES（初始状态值）、REGIMENS（干预计划列表）、EVIDENCE（只读文献值）。Parameters 面板属于 Modeller 工具（待实现），不在 Simulator 中显示。
+The left column has three collapsible blocks: VARIABLES (initial state values), REGIMENS (the intervention plan list), EVIDENCE (read-only literature values). The Parameters panel belongs to the Modeller tool (not yet implemented) and is not shown in the Simulator.
 
-每条 Regimen 展开后呈现四个维度。`value` 字段显示带单位的**一次性摄入量**，不是速率。
+Each Regimen, once expanded, shows its four dimensions. The `value` field displays a **one-time intake amount** with a unit, not a rate.
 
 ```
 ┌─── VARIABLES ──────────────────────────────────────┐
-│  liver_fat_percentage    初始值: [15.0] %           │
-│  body_weight             初始值: [72.0] kg          │
+│  liver_fat_percentage    initial value: [15.0] %           │
+│  body_weight             initial value: [72.0] kg          │
 └────────────────────────────────────────────────────┘
 
 ┌─── REGIMENS ───────────────────────────────────────┐
-│                                          [+ 新增]  │
+│                                          [+ Add]  │
 │                                                    │
-│  ▼ 早餐进食                              [×删除]   │
+│  ▼ Breakfast eating                              [×Delete]   │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: [关闭 ▼]                             │  │
+│  │ Validity period: [Off ▼]                             │  │
 │  │                                              │  │
-│  │ 时刻 / 摄入量:               [+ 添加时刻]   │  │
+│  │ Time / intake amount:               [+ Add a time]   │  │
 │  │   [07:30]  →  [0.5 kg]      [×]             │  │
 │  │                                              │  │
-│  │ 每周: ☑一 ☑二 ☑三 ☑四 ☑五 ☑六 ☑日          │  │
+│  │ Weekly: ☑Mon ☑Tue ☑Wed ☑Thu ☑Fri ☑Sat ☑Sun          │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ▼ 胰岛素注射                            [×删除]   │
+│  ▼ Insulin injection                            [×Delete]   │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: [2024-02-01] ~ [2024-06-30]  [✓开启] │  │
+│  │ Validity period: [2024-02-01] ~ [2024-06-30]  [✓On] │  │
 │  │                                              │  │
-│  │ 时刻 / 摄入量:               [+ 添加时刻]   │  │
+│  │ Time / intake amount:               [+ Add a time]   │  │
 │  │   [08:00]  →  [10 IU]       [×]             │  │
 │  │   [20:00]  →  [ 8 IU]       [×]             │  │
 │  │                                              │  │
-│  │ 每周: ☑一 ☑二 ☑三 ☑四 ☑五 ☑六 ☑日          │  │
+│  │ Weekly: ☑Mon ☑Tue ☑Wed ☑Thu ☑Fri ☑Sat ☑Sun          │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ▼ 有氧运动                              [×删除]   │
+│  ▼ Aerobic exercise                              [×Delete]   │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: [关闭 ▼]                             │  │
+│  │ Validity period: [Off ▼]                             │  │
 │  │                                              │  │
-│  │ 时刻 / 摄入量:               [+ 添加时刻]   │  │
+│  │ Time / intake amount:               [+ Add a time]   │  │
 │  │   [07:00]  →  [45 min]      [×]             │  │
 │  │                                              │  │
-│  │ 每周: ☑一 ☐二 ☑三 ☐四 ☑五 ☐六 ☐日          │  │
+│  │ Weekly: ☑Mon ☐Tue ☑Wed ☐Thu ☑Fri ☐Sat ☐Sun          │  │
 │  └──────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────┘
 
 ┌─── EVIDENCE ───────────────────────────────────────┐
-│  （只读，Loader 已换算，影响动力学但不进入优化）   │
+│  (read-only, already converted by the Loader, affecting the dynamics but not entering optimization)   │
 │  combat_death_rate   ir   0.008 / day              │
 │  smoking_rr          rr   14.0                     │
 │  obesity_or          or   1.65  → effective 1.43   │
 └────────────────────────────────────────────────────┘
 ```
 
-### Opt Tab 左栏：输入区详细设计
+### The Opt Tab's left column: the input area in detail
 
-Opt Tab 与 Sim Tab 的 REGIMENS 面板同源数据结构，但每个维度可标记为锁定或优化：
+The Opt Tab shares the same underlying data structure as the Sim Tab's REGIMENS panel, but each dimension can be marked locked or optimized:
 
-**🔒 = 锁定**（固定值，不参与搜索）　**🔀 = 优化**（给出范围，交优化器搜索）
+**🔒 = locked** (a fixed value, not searched)　**🔀 = optimized** (a range given, searched by the optimizer)
 
-切换粒度：可以按整条 Regimen 切换，也可以按单个时刻行、或有效期、或每周天数分别切换。
+Toggle granularity: can be switched per whole Regimen, or per individual time row, or per validity period, or per weekly-days set.
 
 ```
-┌─── REGIMENS（优化模式）────────────────────────────┐
+┌─── REGIMENS (optimization mode) ────────────────────────────┐
 │                                                    │
-│  ▼ 早餐进食                                        │
+│  ▼ Breakfast eating                                        │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: 🔒 [关闭]                            │  │
+│  │ Validity period: 🔒 [Off]                            │  │
 │  │                                              │  │
-│  │ 时刻 / 摄入量:                               │  │
-│  │   时刻:   🔒 [07:30]                         │  │← 时刻固定
-│  │   摄入量: 🔀 [0.3 kg ~ 0.8 kg]              │  │← 量待搜索
+│  │ Time / intake amount:                               │  │
+│  │   Time:   🔒 [07:30]                         │  │← the time is fixed
+│  │   Intake amount: 🔀 [0.3 kg ~ 0.8 kg]              │  │← the amount is to be searched
 │  │                                              │  │
-│  │ 每周: 🔒 ☑一 ☑二 ☑三 ☑四 ☑五 ☑六 ☑日       │  │
+│  │ Weekly: 🔒 ☑Mon ☑Tue ☑Wed ☑Thu ☑Fri ☑Sat ☑Sun       │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ▼ 胰岛素注射                                      │
+│  ▼ Insulin injection                                      │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: 🔒 [2024-02-01 ~ 2024-06-30]        │  │
+│  │ Validity period: 🔒 [2024-02-01 ~ 2024-06-30]        │  │
 │  │                                              │  │
-│  │ 时刻1 / 摄入量1:                             │  │
-│  │   时刻:   🔀 [06:00 ~ 10:00]                │  │← 时刻和量都搜索
-│  │   摄入量: 🔀 [5 IU ~ 20 IU]                 │  │
+│  │ Time 1 / intake amount 1:                             │  │
+│  │   Time:   🔀 [06:00 ~ 10:00]                │  │← both the time and the amount are searched
+│  │   Intake amount: 🔀 [5 IU ~ 20 IU]                 │  │
 │  │                                              │  │
-│  │ 时刻2 / 摄入量2:                             │  │
-│  │   时刻:   🔒 [20:00]                         │  │← 晚间时刻固定
-│  │   摄入量: 🔀 [4 IU ~ 15 IU]                 │  │
+│  │ Time 2 / intake amount 2:                             │  │
+│  │   Time:   🔒 [20:00]                         │  │← the evening time is fixed
+│  │   Intake amount: 🔀 [4 IU ~ 15 IU]                 │  │
 │  │                                              │  │
-│  │ 每周: 🔒 ☑全选                              │  │
+│  │ Weekly: 🔒 ☑All selected                              │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ▼ 有氧运动                                        │
+│  ▼ Aerobic exercise                                        │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ 有效期: 🔒 [关闭]                            │  │
+│  │ Validity period: 🔒 [Off]                            │  │
 │  │                                              │  │
-│  │ 时刻 / 摄入量:                               │  │
-│  │   时刻:   🔀 [06:00 ~ 09:00]                │  │
-│  │   摄入量: 🔀 [20 min ~ 90 min]              │  │
+│  │ Time / intake amount:                               │  │
+│  │   Time:   🔀 [06:00 ~ 09:00]                │  │
+│  │   Intake amount: 🔀 [20 min ~ 90 min]              │  │
 │  │                                              │  │
-│  │ 每周: 🔀 [3] ~ [5] 天（优化选择哪几天）      │  │← 天数区间搜索（daysNMin~daysNMax）
+│  │ Weekly: 🔀 [3] ~ [5] days (the optimizer chooses which days)      │  │← a day-count range search (daysNMin~daysNMax)
 │  └──────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────┘
 
-┌─── OBJECTIVES（优化目标）──────────────────────────┐
-│  + 添加目标                                        │
-│  ① liver_fat_percentage    方向: [最小化 ▼]  [×]  │
-│  ② alt_enzyme_level        方向: [最小化 ▼]  [×]  │
+┌─── OBJECTIVES ──────────────────────────┐
+│  + Add an objective                                        │
+│  ① liver_fat_percentage    direction: [Minimize ▼]  [×]  │
+│  ② alt_enzyme_level        direction: [Minimize ▼]  [×]  │
 └────────────────────────────────────────────────────┘
 
-┌─── CONSTRAINTS（约束）─────────────────────────────┐
-│  + 添加约束                                        │
+┌─── CONSTRAINTS ─────────────────────────────┐
+│  + Add a constraint                                        │
 │  alt_enzyme_level   ≤  [120]  U/L                 │
 │  weekly_exercise    ≥  [60]   min                 │
 └────────────────────────────────────────────────────┘
 
-┌─── 算法配置 ────────────────────────────────────────┐
-│  算法: [NSGA-II ▼]    种群: [100]    代数: [200]   │
-│  当前搜索维数: d = 9（自动计算并显示）              │
+┌─── Algorithm configuration ────────────────────────────────────────┐
+│  Algorithm: [NSGA-II ▼]    Population: [100]    Generations: [200]   │
+│  Current search dimensionality: d = 9 (computed and displayed automatically)              │
 └────────────────────────────────────────────────────┘
 ```
 
-**搜索维数 d 的实时计算**：UI 自动统计所有 🔀 维度，显示当前 $d$ 值，帮助用户判断问题规模（$d > 20$ 时提示增大种群）。
+**Real-time computation of the search dimensionality d**: the UI automatically counts every 🔀 dimension and displays the current $d$ value, helping the user gauge the problem size (a hint to increase the population when $d > 20$).
 
-### Sim Tab 右栏：结果区详细设计
+### The Sim Tab's right column: the result area in detail
 
 ```
-┌─── 仿真曲线 ──────────────────────────────────┐
-│  [liver_fat%] [alt_level] [glucose] + 添加     │  ← 变量选择
+┌─── The simulation curve ──────────────────────────────┐
+│  [liver_fat%] [alt_level] [glucose] + Add     │  ← variable selection
 │                                                 │
 │  100%│                                          │
 │      │  ╲                                       │
 │   50%│    ╲___                                 │
 │      │        ╲___________                     │
-│    0%└──────────────────────→ 时间(天)          │
+│    0%└──────────────────────→ time (days)          │
 │        0      30      60      90               │
 └─────────────────────────────────────────────────┘
 
-▼ Log  [复制] [下载]
+▼ Log  [Copy] [Download]
   12:34:05 Model: ckd_protein_a4 (31 vars, 12 equations)
   12:34:05 Imports: references/medical/physiology/glucose_regulation_2026_mw
   12:34:05 Sim: start=2026-01-01, step=1 day, 365 steps
@@ -440,120 +437,120 @@ Opt Tab 与 Sim Tab 的 REGIMENS 面板同源数据结构，但每个维度可�
   12:34:07 Schedule hits: dietary_protein=1095
 ```
 
-Log 面板出现在曲线区底部（可折叠）。仅在有 log 内容时显示。  
-详细内容分层规则见 [ADR 0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md)。
+The Log panel appears at the bottom of the curve area (collapsible), shown only when there is log content.  
+For the detailed content-layering rule, see [ADR 0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md).
 
-### Opt Tab 右栏：结果区详细设计
+### The Opt Tab's right column: the result area in detail
 
-优化运行中显示进度；完成后显示 Pareto 散点图（仅悬浮提示，无点选/预览面板）+ Solutions 表格（checkbox 多选 + Send to Sim，交互细节见上文「优化: Pareto输出的形态」一节）：
+Progress is shown while optimization is running; on completion, a Pareto scatter plot (hover tooltip only, no click-selection/preview panel) plus the Solutions table (multi-select checkboxes plus Send to Sim, interaction detail in the "Optimization: the shape of Pareto output" section above) are shown:
 
 ```
-┌─── 优化进度 ────────────────────────────────────┐
-│  Generation 45/200  ████████░░░░░░░  种群收敛中  │
+┌─── Optimization progress ────────────────────────────────────┐
+│  Generation 45/200  ████████░░░░░░░  the population is converging  │
 └─────────────────────────────────────────────────┘
 
-┌─── Pareto前沿 ──────────────────────────────────┐
-│  目标1: liver_fat减少量（↑更好）                  │
+┌─── The Pareto front ──────────────────────────────────┐
+│  Objective 1: the reduction in liver_fat (↑ better)                  │
 │   ↑                                              │
-│   │        *  *        （悬浮显示目标值提示）    │
+│   │        *  *        (a hover tooltip shows the objective values)    │
 │   │      *                                       │
 │   │    *                                         │
 │   │  *                                           │
-│   └────────────────────→ 目标2: ALT峰值（←更好）  │
+│   └────────────────────→ Objective 2: the peak ALT (← better)  │
 └───────────────────────────────────────────────────┘
 
-┌─── Solutions（Pareto 解列表）───────────────────────┐
+┌─── Solutions (the Pareto solution list) ───────────────────────┐
 │ ☑ #  x1     x2    …  liver_fat  ALT                │
-│ ☑ ★  0.42   06:30 …  -42%       98                 │  ← 参考解高亮
+│ ☑ ★  0.42   06:30 …  -42%       98                 │  ← the reference solution highlighted
 │ ☐ 2   0.38   07:00 …  -35%       85                 │
-│ …（最多 80 行）                                     │
+│ …(80 rows maximum)                                     │
 │ [Send to Sim (2)]  [Clear]              [Download]  │
 └───────────────────────────────────────────────────┘
 ```
 
-早期设想的"右列元数据区"（模型引用文献 / 约束状态 ✅⚠️ / 参数置信度 ★）从未实现，也无任何 ADR 或代码痕迹显示其在开发计划中——两栏 4:6 布局是 ADR 0079 从更早的单栏方案直接演进而来，未经过三栏阶段，此处不再保留描述。
+The "right-column metadata area" envisioned early on (a model's cited literature / constraint status ✅⚠️ / parameter confidence ★) was never implemented, and no ADR or code trace shows it was ever on the development plan — the two-column 4:6 layout evolved directly from an earlier single-column scheme in ADR 0079, with no intervening three-column stage, so that description is not kept here.
 
 ---
 
-> YAML 模型格式规范见 [`model_design.md`](model_design.md)。
+> For the YAML model format specification, see [`model_design.md`](model_design.md).
 
-## 优化目标与方法
+## Optimization objectives and methods
 
-优化目标格式（`optimization.objectives`）与算法选择/参数展开的完整规范见 [opt.md](opt.md)，本节不重复维护。
+The full specification of the optimization-objective format (`optimization.objectives`) and the algorithm-selection/parameter-expansion is in [opt.md](opt.md) and not duplicated in this section.
 
-要点：目标不是预设名字符串，而是 `objectives: [{variable, metric, direction}]` 列表；算法后端只有两类——`NSGA-II`（多目标或显式指定时，`pymoo` 库，输出 Pareto 前沿）与 `scipy`（`L-BFGS-B`/`Nelder-Mead`，单目标连续优化）。
+Key points: an objective is not a preset name string, but an `objectives: [{variable, metric, direction}]` list; there are only two algorithm backends — `NSGA-II` (for multi-objective or when explicitly specified, the `pymoo` library, outputting a Pareto front) and `scipy` (`L-BFGS-B`/`Nelder-Mead`, single-objective continuous optimization).
 
-GUI 算法下拉框（`OptSetupTab.tsx`）实际提供四个选项：NSGA-II / MOEA-D / L-BFGS-B / Nelder-Mead。其中 **MOEA-D 目前是 NSGA-II 后端的别名**，非独立实现——`optimizer_engine.py` 把 `method: moea/d` 与 `nsga2`/`nsga-ii` 一并路由到同一个 `_run_nsga2`（`optimizer_backends.py` 只有 NSGA-II 一种多目标算法），GUI 侧尚未如实标注这一点。
+The GUI's algorithm dropdown (`OptSetupTab.tsx`) actually offers four options: NSGA-II / MOEA-D / L-BFGS-B / Nelder-Mead. Of these, **MOEA-D is currently an alias for the NSGA-II backend**, not an independent implementation — `optimizer_engine.py` routes both `method: moea/d` and `nsga2`/`nsga-ii` to the same `_run_nsga2` (`optimizer_backends.py` has only one multi-objective algorithm, NSGA-II); the GUI side has not yet labeled this accurately.
 
 ---
 
-## 结果交换：CSV 与 YAML（ADR 0094）
+## Result exchange: CSV and YAML (ADR 0094)
 
-### 核心原则
+### The core principle
 
-**CSV 是结果的通用交换格式。** 导入 CSV 是唯一需要理解的操作，其后果由所在标签页的性质自然决定：
+**CSV is the universal result-exchange format.** Importing a CSV is the only operation that needs to be understood; its consequence follows naturally from the nature of whichever tab it happens in:
 
-| 标签页 | 导出 CSV | 导入 CSV → 自动后果 |
+| Tab | Exporting CSV | Importing CSV → the automatic consequence |
 |--------|---------|---------------------|
-| **Sim** | 见下方"Sim CSV 导出格式" | 新增一条带标签的对比曲线 |
-| **Opt** | Pareto 前沿（x0…xN, obj1…objN） | 合并入当前前沿，自动开启热启动 |
-| CLI --sim-only | 自动输出 `_sim.csv` | — |
-| CLI --opt-only | 自动输出 `_opt.csv` | `--opt-continue [TIMESTAMP]` |
+| **Sim** | see "the Sim CSV export format" below | adds a labeled comparison curve |
+| **Opt** | the Pareto front (x0…xN, obj1…objN) | merges into the current front, automatically turning on a warm start |
+| CLI --sim-only | automatically outputs `_sim.csv` | — |
+| CLI --opt-only | automatically outputs `_opt.csv` | `--opt-continue [TIMESTAMP]` |
 
-"多曲线对比"和"热启动"不是独立功能——它们是导入 CSV 在各自上下文中的直接结果，无需单独学习。
+"Multi-curve comparison" and "warm start" are not separate features; they are the direct consequence of importing a CSV in their respective contexts, needing no separate learning.
 
-### Sim CSV 导出格式（ADR 0108）
+### The Sim CSV export format (ADR 0108)
 
-导出范围覆盖所有 plan（当前运行 + Run All Plans 结果 + CSV 导入的历史曲线）：
+The export covers every plan (the current run plus the Run All Plans result plus any historical curve imported from a CSV):
 
-| 情形 | 格式 | 文件名 |
-|------|------|--------|
-| 无对比曲线（单 plan） | 宽表 CSV，列 = `step, time, var1, var2 …` | `model_start_end.csv` |
-| 有对比曲线（多 plan） | ZIP，每变量一个 CSV | `model_start_end.zip` |
+| Case | Format | File name |
+|------|--------|--------|
+| No comparison curve (a single plan) | a wide-table CSV, columns = `step, time, var1, var2 …` | `model_start_end.csv` |
+| With a comparison curve (multiple plans) | a ZIP, one CSV per variable | `model_start_end.zip` |
 
-多 plan 时每个变量的 CSV 格式：
+With multiple plans, each variable's CSV format:
 
 ```
 time_s,time_h,Plan A,Plan B,…
 0,0.0000,5.0,4.8,…
 ```
 
-同类变量的所有 plan 曲线集中在同一文件，便于横向对比分析。下载按钮在无任何仿真数据时禁用。
+All plan curves for the same variable are gathered into one file, for convenient side-by-side comparison. The download button is disabled when there is no simulation data at all.
 
-### Sim 仿真历史曲线
+### The Sim simulation history curve
 
-每次点击 **Run** 时，若当前已有完成的仿真结果，引擎自动将其快照为一条带标签的历史曲线（标签格式：`Sim 2026-01-01 · 1h`），保留在图表对比区。新的仿真在此基础上叠加显示。
+Every time **Run** is clicked, if a completed simulation result already exists, the engine automatically snapshots it as a labeled history curve (label format: `Sim 2026-01-01 · 1h`), kept in the chart's comparison area. The new simulation is overlaid on top of it.
 
-对比曲线行为：
-- **来源**：CSV 导入 或 Run 时自动快照，两者进同一列表
-- **标签**：CSV 来源用文件名；自动快照用 `Sim {起始日} · {步长}` 格式
-- **关闭**：每条曲线在切换栏有 × 按钮，点击即从对比区移除
-- **生命周期**：切换模型或点击重载时，当前仿真结果（simulationData）和所有对比曲线同时清空；模型间的仿真数据相互隔离，不跨模型复用
+Comparison-curve behavior:
+- **Source**: a CSV import or an automatic snapshot on Run, both going into the same list
+- **Label**: a CSV source uses its file name; an automatic snapshot uses the format `Sim {start date} · {step size}`
+- **Closing**: every curve has a × button on its switch bar, clicking it removes that curve from the comparison area
+- **Lifecycle**: switching models or clicking reload clears both the current simulation result (simulationData) and every comparison curve at once; simulation data is isolated between models and never reused across models
 
-### YAML 下载（另存为）
+### YAML download (save as)
 
-YAML 下载**永远不覆盖源文件**（另存为语义），Sim 和 Opt 标签行为完全一致：
+A YAML download **never overwrites the source file** (save-as semantics), and the Sim and Opt tabs behave identically:
 
-- **有 opt 结果** → 自动将 `optimization.results` 块写入副本并下载，通过 `message.success` 告知包含的解数量
-- **无 opt 结果** → 下载纯模型定义，同样通过 `message.success` 告知
+- **With an opt result** → automatically writes the `optimization.results` block into the copy and downloads it, telling the user the number of included solutions via `message.success`
+- **Without an opt result** → downloads the plain model definition, likewise reported via `message.success`
 
-### 报告与图片导出（ADR 0122）
+### Report and image export (ADR 0122)
 
-报告导出按钮（`ReportButton.tsx`）是独立共用组件，同时挂载在 SimControlBar 和 OptControlBar 的工具栏 slot 中。导出格式：
+The report-export button (`ReportButton.tsx`) is an independent shared component, mounted in the toolbar slot of both SimControlBar and OptControlBar. Export formats:
 
-| 格式 | 触发 | 行为 |
+| Format | Trigger | Behavior |
 |------|------|------|
-| **HTML 预览** | 菜单选项 | 新标签页打开，图片以 base64 内嵌，自包含无需联网 |
-| **MD 导出** | 菜单选项 | 下载 `.zip`，内含 `report.md`（相对路径引用图片）+ `images/` 目录（PNG 文件） |
+| **HTML preview** | a menu option | opens in a new tab, with images embedded inline as base64, self-contained with no network needed |
+| **MD export** | a menu option | downloads a `.zip` containing `report.md` (referencing images by relative path) plus an `images/` directory (PNG files) |
 
-MD 导出使用 ZIP 而非单文件，原因是 Markdown 标准不支持 base64 data URL——GitHub、Obsidian、VS Code 等所有主流查看器均无法渲染内嵌 base64 图片；ZIP + 相对路径是唯一通用方案。
+MD export uses a ZIP rather than a single file because the Markdown standard does not support base64 data URLs — none of the mainstream viewers (GitHub, Obsidian, VS Code, etc.) can render an embedded base64 image; a ZIP plus relative paths is the only universal solution.
 
-**图片生成规则**：每变量 × 每 plan 各生成一张 PNG，不叠加多条曲线。文件名格式为 `{varName}_{planLabel}.png`。多 plan 时 MD 正文中每图前插入 `**— Plan 名 —**` 分隔标注。
+**The image-generation rule**: one PNG is generated per variable per plan, with no curves overlaid on top of each other. The file name format is `{varName}_{planLabel}.png`. With multiple plans, a `**— Plan name —**` separator is inserted before each image's group in the MD body.
 
-**数据来源三级 fallback**（`effectiveSimData`）：`simulationData`（当前仿真）→ `importedSimRuns` 最后一条（历史归档）→ `comparedPlans` 第一条有数据的 plan（Pareto 解仿真）。第三级保证 opt 工作流结束后 Overview 和报告不显示"No data"。
+**The three-tier data-source fallback** (`effectiveSimData`): `simulationData` (the current simulation) → the last entry of `importedSimRuns` (a historical archive) → the first plan with data in `comparedPlans` (a Pareto-solution simulation). The third tier guarantees the Overview and the report never show "No data" once an opt workflow finishes.
 
-**逐变量 PNG 下载**：SimPlotTab 每个变量的 Collapse 标题行 `extra` slot 中提供 PNG 和 CSV 两个并排下载按钮。单 plan 时直接下载单张 PNG；多 plan 时下载包含每 plan 独立图片的 ZIP。
+**Per-variable PNG download**: in each variable's Collapse header row, the `extra` slot in SimPlotTab provides two side-by-side download buttons, PNG and CSV. With a single plan, a single PNG downloads directly; with multiple plans, a ZIP containing each plan's own image downloads.
 
-### 已移除
+### Removed
 
-`saveResultsToFile()`（直接覆盖源文件写入结果）已永久移除。结果通过 CSV（交换）或 YAML 另存为（归档/发布）流转。
+`saveResultsToFile()` (writing a result directly over the source file) has been permanently removed. A result now flows only through CSV (exchange) or a YAML save-as (archiving/publishing).

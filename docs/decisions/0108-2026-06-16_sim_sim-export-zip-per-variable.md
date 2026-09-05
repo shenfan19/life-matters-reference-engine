@@ -1,42 +1,42 @@
-# ADR 0108 — Sim 导出重设计：多 plan 时输出按变量分 CSV 的 ZIP 包
+# ADR 0108 — Sim Export Redesign: a Per-Variable-CSV ZIP Bundle for Multi-Plan Output
 
-**Date:** 2026-06-16  
-**Status:** ✅ 已实施  
-**Context:** sim_gui — Sim tab 控制栏下载按钮  
-**Revises:** ADR 0094（Sim 导出行为部分）
-
----
-
-## 背景
-
-ADR 0094 设计的 Sim CSV 导出读取 `state.simulationData`（当前运行的时序）。  
-随后 ADR 0073/0076 引入多 plan 仿真：用户运行"Run All Plans"后，数据进入 `comparedPlans`，`simulationData` 被清空。  
-由此产生 bug：**点击下载按钮无响应**（`simulationData.length === 0`，函数提前返回）。
-
-此外，summary bar 里的"Export Result CSV"按钮是 ADR 0094 前遗留的冗余入口，与控制栏按钮功能重叠。
+**Date:** 2026-06-16
+**Status:** Implemented
+**Context:** sim_gui — the Sim tab control-bar download button
+**Revises:** ADR 0094 (the Sim export-behavior part)
 
 ---
 
-## 决策
+## Background
 
-### 1. 数据范围：覆盖所有 plan，包括 imported runs
+The Sim CSV export designed by ADR 0094 read from `state.simulationData` (the currently running time series).
+ADR 0073/0076 subsequently introduced multi-plan simulation: once a user runs "Run All Plans," the data moves into `comparedPlans`, and `simulationData` gets cleared.
+This produced a bug: **clicking the download button did nothing** (`simulationData.length === 0`, and the function returned early).
 
-导出函数从 `useSimulation` 迁移到 `Simulator.tsx`，在此可访问全量数据：
+In addition, the "Export Result CSV" button in the summary bar was a redundant entry point left over from before ADR 0094, overlapping with the control-bar button.
 
-- `simulationData`（当前运行）
-- `comparedPlans`（Run All Plans 结果）
-- `importedSimRuns`（CSV 导入的历史曲线）
+---
 
-组合逻辑与 SimPlotTab 收到的 `comparedPlans` prop 完全一致。
+## Decision
 
-### 2. 导出格式按 plan 数量自动分支
+### 1. Data scope: cover all plans, including imported runs
 
-| 情形 | 格式 | 文件名 |
+The export function was moved from `useSimulation` into `Simulator.tsx`, where the full dataset is accessible:
+
+- `simulationData` (the current run)
+- `comparedPlans` (results from Run All Plans)
+- `importedSimRuns` (historical curves imported from CSV)
+
+The combination logic exactly matches the `comparedPlans` prop received by SimPlotTab.
+
+### 2. Export format branches automatically on plan count
+
+| Case | Format | Filename |
 |------|------|--------|
-| 无对比曲线（单 plan） | 宽表 CSV，列 = `step, time, var1, var2 …` | `modelName_startDate_endDate.csv` |
-| 有对比曲线（多 plan） | ZIP，每个变量一个 CSV | `modelName_startDate_endDate.zip` |
+| No comparison curves (single plan) | Wide-format CSV, columns = `step, time, var1, var2 …` | `modelName_startDate_endDate.csv` |
+| Comparison curves present (multiple plans) | ZIP, one CSV per variable | `modelName_startDate_endDate.zip` |
 
-多 plan CSV 格式（每个变量一文件）：
+Multi-plan CSV format (one file per variable):
 
 ```
 time_s,time_h,Plan A label,Plan B label,…
@@ -44,32 +44,32 @@ time_s,time_h,Plan A label,Plan B label,…
 3600,1.0000,5.2,5.1,…
 ```
 
-设计理由：同类变量的所有 plan 曲线集中在一个文件里，在 Excel / pandas 中可直接横向对比，无需手动合并。
+Rationale: all plan curves for the same variable are gathered into one file, so they can be compared directly side by side in Excel/pandas without any manual merging.
 
-### 3. 按钮状态
+### 3. Button state
 
-下载按钮 disabled 条件从 `!selectedModel` 收紧为 `!selectedModel || !hasSimData`，  
-其中 `hasSimData = simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0`。
+The download button's disabled condition was tightened from `!selectedModel` to `!selectedModel || !hasSimData`, where
+`hasSimData = simulationData.length > 0 || comparedPlans.some(p => p.data.length > 0) || importedSimRuns.length > 0`.
 
-### 4. 删除 summary bar 中的冗余下载按钮
+### 4. Remove the redundant download button in the summary bar
 
-SimPlotTab 顶部 summary bar 的"Export Result CSV"按钮删除；  
-每个变量 Collapse 面板内的单变量下载按钮（`exportVarCSV`）保留不变。
-
----
-
-## 实施
-
-- `sim_gui/src/components/Simulator.tsx`：新增 `handleExportSimCSV`；引入 `fflate` 做 ZIP 创建
-- `sim_gui/src/components/sim_tab/useSimulation.ts`：移除 `exportSimCSV`
-- `sim_gui/src/components/sim_tab/SimControlBar.tsx`：新增 `hasSimData` prop
-- `sim_gui/src/components/sim_tab/SimPlotTab.tsx`：移除 `onExportCSV` prop 及 summary bar 按钮
-- `sim_gui/package.json`：新增依赖 `fflate ^0.8`
+The "Export Result CSV" button at the top of SimPlotTab's summary bar was removed;
+the per-variable download button inside each variable's Collapse panel (`exportVarCSV`) is unchanged.
 
 ---
 
-## 影响
+## Implementation
 
-- 单 plan 用户：无感知变化，下载行为与之前一致
-- 多 plan 用户：从"只能下载当前 run"升级为"一键下载所有 plan 的完整对比数据"
-- 文件格式：多 plan 时从 `.csv` 变为 `.zip`，解压后每个变量一个 CSV
+- `sim_gui/src/components/Simulator.tsx`: added `handleExportSimCSV`; introduced `fflate` for ZIP creation
+- `sim_gui/src/components/sim_tab/useSimulation.ts`: removed `exportSimCSV`
+- `sim_gui/src/components/sim_tab/SimControlBar.tsx`: added the `hasSimData` prop
+- `sim_gui/src/components/sim_tab/SimPlotTab.tsx`: removed the `onExportCSV` prop and the summary-bar button
+- `sim_gui/package.json`: added the `fflate ^0.8` dependency
+
+---
+
+## Impact
+
+- Single-plan users: no perceptible change, download behavior is the same as before
+- Multi-plan users: upgraded from "can only download the current run" to "one click downloads the full comparison data across all plans"
+- File format: for multiple plans, the format changes from `.csv` to `.zip`, unzipping into one CSV per variable

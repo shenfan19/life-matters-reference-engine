@@ -1,104 +1,104 @@
-# ADR 0077 — Session 模型导入：原子上传 + localStorage 持久化
+# ADR 0077 — Session Model Import: Atomic Upload + localStorage Persistence
 
-**日期**：2026-05-17（2026-05-18 修订）
-**状态**：已决定
-**范围**：LM-Simulator 前端 + 仿真引擎 API
-
----
-
-## 背景
-
-用户需要将本地 YAML 文件导入仿真器，而无需提交到服务器的 `models/` 目录。典型场景：
-
-- 学者上传自己调试中的模型快速验证
-- SCS（云服务）场景：用户上传自定义模型，不影响共享模型库
-- 模型可能通过 `imports:` 引用 `models/` 中的已有组件
+**Date**: 2026-05-17 (revised 2026-05-18)
+**Status**: decided
+**Scope**: LM-Simulator frontend + simulation-engine API
 
 ---
 
-## 约束
+## Background
 
-1. 上传的 YAML 必须能解析其 `imports`（引用服务器 `models/` 中的文件）
-2. 不能允许上传修改共享模型库（安全隔离）
-3. 页面刷新后 session 模型仍可访问
-4. **多用户并发安全**：不同用户上传同名文件不能互相覆盖
+Users need to import a local YAML file into the simulator without committing it to the server's `models/` directory. Typical scenarios:
+
+- A researcher uploading a model they're debugging locally for a quick check
+- SCS (cloud service) scenarios: a user uploads a custom model without touching the shared model library
+- The model may reference existing components in `models/` via `imports:`
 
 ---
 
-## 决定
+## Constraints
 
-### 上传流程（原子操作）
+1. An uploaded YAML must be able to resolve its `imports` (referencing files in the server's `models/`)
+2. Uploads must not be able to modify the shared model library (security isolation)
+3. The session model must remain accessible after a page refresh
+4. **Multi-user concurrency safety**: two different users uploading files with the same name must not overwrite each other
+
+---
+
+## Decision
+
+### Upload flow (atomic operation)
 
 ```
-前端 POST /api/model/upload-temp { text, filename }
+Frontend POST /api/model/upload-temp { text, filename }
     ↓
-后端：写 models/temp/{uuid}_{safe_name}.yaml
-后端：loader_engine.fetch() 解析 imports → 得到 resolved model
-后端：删除临时文件（finally 块保证）
-后端：返回 { success, raw, resolved, filename }
+Backend: writes models/temp/{uuid}_{safe_name}.yaml
+Backend: loader_engine.fetch() resolves imports → produces the resolved model
+Backend: deletes the temp file (guaranteed by a finally block)
+Backend: returns { success, raw, resolved, filename }
     ↓
-前端：直接从响应构建 ModelFile，key = "session/{filename}"
-前端：写入 localStorage lm_session_imports
+Frontend: builds a ModelFile directly from the response, key = "session/{filename}"
+Frontend: writes to localStorage lm_session_imports
 ```
 
-**关键设计点**：
+**Key design points**:
 
-- UUID 前缀（`{uuid}_{safe_name}`）确保并发上传同名文件不冲突
-- 临时文件在 `finally` 块中删除，响应返回前文件已不存在——服务器**零持久化**
-- 前端不再需要第二次请求（原 `loadFileContent(key)` → `/api/models/`）
-- `raw`：原始 YAML 解析结果（未合并 imports）；`resolved`：loader 合并后的完整模型
+- A UUID prefix (`{uuid}_{safe_name}`) ensures concurrent uploads of same-named files never collide
+- The temp file is deleted in a `finally` block, so by the time the response is returned the file no longer exists — the server achieves **zero persistence**
+- The frontend no longer needs a second request (the original `loadFileContent(key)` → `/api/models/`)
+- `raw`: the raw YAML parse result (imports not yet merged); `resolved`: the fully merged model after the loader
 
-### Session 模型的 key 命名
+### Key naming for session models
 
-Session 模型使用 `session/{filename}` 作为 key（不是原来的 `temp/{safe_name}`），明确语义：此 key 不对应服务器上的任何文件，所有后续操作均来自 localStorage。
+Session models use `session/{filename}` as their key (instead of the earlier `temp/{safe_name}`), making the semantics explicit: this key doesn't correspond to any file on the server, and all subsequent operations come from localStorage.
 
-### 前端刷新按钮
+### Frontend refresh button
 
-> **已更新**：见 [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md)。以下原始规则已废弃。
+> **Updated**: see [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md). The original rule below has been deprecated.
 
-~~当 `selectedKey.startsWith('session/')` 时，树顶栏的"重新读取"按钮不显示。~~ 
+~~When `selectedKey.startsWith('session/')`, the tree's top-bar "reload" button is hidden.~~
 
-**当前行为**：刷新按钮对所有模型（包括 session 模型）均可见。点击后调用 `reloadFromYAML()`，session 模型通过重新设置 `confirmedModel` 触发 YAML 重解析，效果等同于普通文件模型的"清除 session + 重新加载"。
+**Current behavior**: the refresh button is visible for every model, including session models. Clicking it calls `reloadFromYAML()`; for a session model, this re-triggers YAML re-parsing by resetting `confirmedModel`, with the same effect as "clear session and reload" for a regular file-backed model.
 
-### localStorage 持久化
+### localStorage persistence
 
-- 键名：`lm_session_imports`
-- 存储：已成功上传并解析的 `ModelFile[]`
-- 上限：最多 10 个，FIFO 淘汰最旧的
-- 刷新页面后：从 localStorage 恢复，在 SimModelTree 顶部独立 Section 展示
-
----
-
-## 放弃的方案
-
-### 方案 B：仅客户端存储，不上传到服务器
-
-YAML 内容完全保存在 localStorage，不解析 `imports`。
-
-**放弃原因**：无法解析 imports，功能意义大打折扣。
-
-### 方案 C：temp 文件放在用户 session 隔离目录
-
-为每个用户创建 `models/temp/{session_id}/` 独立子目录。
-
-**放弃原因**：文件仍然持久化，只是避免了冲突；不如直接原子化操作更简洁。
-
-### 原方案（已废弃）：两步法
-
-原实现将文件持久写入 `models/temp/{safe_name}.yaml`，再通过 `loadFileContent` 发起第二次请求加载。问题：多用户同名文件互相覆盖；temp 目录无限堆积；文件必须保留到第二次请求完成。
+- Key name: `lm_session_imports`
+- Stores: the `ModelFile[]` for successfully uploaded and resolved models
+- Cap: 10 at most, evicting the oldest on a FIFO basis
+- After a page refresh: restored from localStorage and shown in a dedicated section at the top of SimModelTree
 
 ---
 
-## 影响
+## Rejected approaches
 
-- `sim_engine/src/api_server.py`：`POST /api/model/upload-temp` 改为原子操作，返回 `{raw, resolved}`
-- `sim_gui/src/components/Simulator.tsx`：`handleImportFile` 直接从响应构建 `ModelFile`
-- `sim_gui/src/components/SimModelTree.tsx`：session key 检查，刷新按钮隐藏
-- `models/temp/`：仅在请求处理期间短暂存在，不再需要持久目录（可保留作孤儿文件清理用）
+### Option B: client-only storage, no server upload
+
+Keep the full YAML content in localStorage without resolving `imports`.
+
+**Rejected because**: it can't resolve imports, which defeats much of the purpose.
+
+### Option C: temp files in a per-user session-isolated directory
+
+Create a dedicated `models/temp/{session_id}/` subdirectory per user.
+
+**Rejected because**: the files would still be persisted, just avoiding collisions; a fully atomic operation is simpler than this.
+
+### Original approach (deprecated): a two-step process
+
+The original implementation wrote the file persistently to `models/temp/{safe_name}.yaml`, then issued a second request via `loadFileContent` to load it. Problems: same-named files from different users would overwrite each other; the temp directory would accumulate indefinitely; the file had to survive until the second request completed.
 
 ---
 
-## 注意事项
+## Consequences
 
-- 服务器崩溃在 fetch 完成后、finally 执行前，会留下孤儿 UUID 文件。极罕见，可由定时清理处理
-- Session 模型不参与 `/api/files` 树扫描，仅通过 localStorage 呈现
+- `sim_engine/src/api_server.py`: `POST /api/model/upload-temp` becomes an atomic operation, returning `{raw, resolved}`
+- `sim_gui/src/components/Simulator.tsx`: `handleImportFile` builds a `ModelFile` directly from the response
+- `sim_gui/src/components/SimModelTree.tsx`: session-key check, refresh button hidden
+- `models/temp/`: only exists briefly during request handling; a persistent directory is no longer needed (can be kept around for orphan-file cleanup)
+
+---
+
+## Notes
+
+- If the server crashes after the fetch completes but before the finally block runs, an orphaned UUID file is left behind. Extremely rare, and can be handled by scheduled cleanup
+- Session models are not part of the `/api/files` tree scan; they are presented only via localStorage

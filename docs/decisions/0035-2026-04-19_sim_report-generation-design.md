@@ -1,97 +1,97 @@
-# Sim 报告生成设计（ADR）
-**日期**：2026-04-19  
-**状态**：已实现  
-**涉及文件**：`sim_gui/src/components/Simulator.tsx`
+# Sim Report Generation Design (ADR)
+**Date**: 2026-04-19  
+**Status**: implemented  
+**Files touched**: `sim_gui/src/components/Simulator.tsx`
 
 ---
 
-## 背景
+## Background
 
-Simulator 的 Report Tab 原先只有轨迹数据采样表和模型概览，缺乏完整的学术报告结构。需要支持导出可独立传阅的 HTML 预览与 .md 文件。
-
----
-
-## 决策一：报告章节顺序
-
-**确定顺序**：简介 → 模型概览 → 方程列表 → 变量汇总 → 仿真配置 → Plot 曲线 → 优化结果 → 参考文献
-
-**理由**：方程和变量是模型的核心定义，优先于配置参数；Plot 曲线在所有数据呈现之后；参考文献永远置于最末。仿真配置放在变量后是因为配置依赖变量含义才有意义。
-
-每个 section 均可在左侧 checklist 单独勾选。轨迹数据不作为 section，改为顶部"↓ 轨迹 .csv"独立导出按钮（见决策三）。
+The Simulator's Report Tab originally had only a trajectory-data sample table and a model overview, lacking a complete academic-report structure. It needs to support exporting a standalone-shareable HTML preview and an .md file.
 
 ---
 
-## 决策二：含义说明来源
+## Decision 1: report section order
 
-**方程表**新增"含义"列，读取 YAML `formulas[name].description`。  
-**变量表**新增"含义"列，读取 YAML `variables[name].description`。  
-**仿真配置**的输入参数新增"含义"列，从 `variables` 中反查对应变量的 `description`。
+**The fixed order**: introduction -> model overview -> equation list -> variable summary -> simulation configuration -> plot curves -> optimization results -> references
 
-**理由**：YAML 中已有 `description` 字段，无需另行维护；报告无 description 时可溯源至 YAML 补充，形成单一数据源。
+**Rationale**: equations and variables are the model's core definitions, taking priority over configuration parameters; the plot curves come after all the data presentation; references always come last. The simulation configuration is placed after variables because a configuration only makes sense once the variables' meanings are understood.
 
----
-
-## 决策三：轨迹数据单独 CSV 下载
-
-**不**将完整轨迹表嵌入报告，改为顶部 action bar 的"↓ 轨迹 .csv"按钮。
-
-**理由**：
-- 轨迹数据行数可达数千行，嵌入报告会使文件膨胀、可读性差
-- CSV 是数据分析的标准格式，下游工具（Excel、Python、R）直接可用
-- 报告的受众是读者（人），CSV 的受众是工具（机器），职责分离
-
-CSV 列头格式：`varName(描述)` ，保留含义信息。
+Each section can be individually checked off in the left checklist. Trajectory data is not a section; it becomes a standalone "↓ trajectory .csv" export button at the top instead (see Decision 3).
 
 ---
 
-## 决策四：Plot 曲线以 PNG base64 内嵌导出
+## Decision 2: the source of the meaning explanation
 
-HTML 预览和 .md 导出均以 `data:image/png;base64,…` 内嵌图像，无外部文件依赖。
+**The equation table** gains a "Meaning" column, reading YAML's `formulas[name].description`.  
+**The variable table** gains a "Meaning" column, reading YAML's `variables[name].description`.  
+**The simulation configuration**'s input parameters gain a "Meaning" column, looking up the corresponding variable's `description` from `variables`.
 
-**选择 PNG 而非 SVG 的理由**：
-- Canvas `toDataURL('image/png')` 是原生 API，无需手写 SVG 生成器
-- 主流 markdown 渲染器（VS Code、GitHub、Obsidna、Typora）均支持 base64 PNG
-- 单文件自包含，分享时无路径问题
-
-**导出分辨率**：680×160 px @ 2× DPR，白底，固定 light mode（报告面向打印/分享场景）。
-
-### 实现方式
-
-将 SimChart 内的绘制逻辑提取为模块级函数 `drawChartOnCtx(ctx, W, H, varName, data, isDark, lineColor)`，同时被：
-- SimChart 的 `useEffect`（DOM canvas 实时绘制）
-- `varToDataUrl(varName, colorIndex)`（offscreen canvas 生成 PNG data URL）
-
-调用，避免重复逻辑。
-
-### Canvas 首次渲染修复
-
-SimChart 在 accordion 中条件渲染（`{isOpen && ...}`）时，canvas mount 后 `offsetWidth` 尚为 0，useEffect 立即执行导致空画布。修复：useEffect 内用 `requestAnimationFrame` 推迟一帧，待 DOM layout 完成后再绘制。
+**Rationale**: the `description` field already exists in the YAML, so there is no need to maintain it separately; when the report has no description, it can trace back to the YAML to fill it in, forming a single source of truth.
 
 ---
 
-## 决策五：IEEE 编号参考文献系统
+## Decision 3: trajectory data downloads as a separate CSV
 
-**数据来源**（三层，按显示顺序收集）：
-1. `metadata.references` / `metadata.reference`（模型整体引用）
-2. `variables[name].reference`（变量级引用）
-3. `formulas[name].reference`（方程级引用）
+The full trajectory table is **not** embedded in the report; a "↓ trajectory .csv" button in the top action bar is used instead.
 
-**编号规则**：按首次出现顺序统一编号，自动去重。格式 `[N]` inline 标注在含义列末尾，文末独立 `## 参考文献` 章节列出完整条目。
+**Rationale**:
+- Trajectory data can run to thousands of rows, and embedding it would bloat the file and hurt readability
+- CSV is the standard format for data analysis, directly usable by downstream tools (Excel, Python, R)
+- The report's audience is a reader (a person), while CSV's audience is a tool (a machine), so the responsibilities are kept separate
 
-**格式**：IEEE 数字编号风格 `[1] Author et al. (Year) Title. Journal Vol(No):pp.`（内容来自 YAML 原始字符串，不做二次格式化）。
-
-**无引用时**：显示提示语，引导在 YAML 对应字段补充。
+The CSV column-header format is `varName(description)`, preserving the meaning information.
 
 ---
 
-## 决策六：Accordion 重叠修复
+## Decision 4: plot curves export as inline base64 PNGs
 
-Report section 的自定义 accordion 使用 `flexDirection: column` + `gap: 6`，展开/收起时 flex 重排导致相邻 item 短暂重叠。修复：每个 accordion item 加 `flexShrink: 0`，阻止 flex 压缩。
+Both the HTML preview and the .md export embed images inline as `data:image/png;base64,…`, with no external file dependency.
+
+**Rationale for choosing PNG over SVG**:
+- Canvas's `toDataURL('image/png')` is a native API, needing no hand-written SVG generator
+- The mainstream markdown renderers (VS Code, GitHub, Obsidian, Typora) all support base64 PNGs
+- Self-contained in a single file, with no path issues when sharing
+
+**Export resolution**: 680×160 px at 2x DPR, white background, fixed light mode (the report is aimed at printing/sharing scenarios).
+
+### Implementation
+
+The drawing logic inside SimChart is extracted into a module-level function `drawChartOnCtx(ctx, W, H, varName, data, isDark, lineColor)`, called by both:
+- SimChart's `useEffect` (live drawing onto the DOM canvas)
+- `varToDataUrl(varName, colorIndex)` (generating a PNG data URL on an offscreen canvas)
+
+avoiding duplicated logic.
+
+### A canvas first-render fix
+
+When SimChart is conditionally rendered inside an accordion (`{isOpen && ...}`), `offsetWidth` is still 0 right after the canvas mounts, so an immediately-run `useEffect` produces a blank canvas. The fix: defer the drawing inside `useEffect` by one frame using `requestAnimationFrame`, drawing only after DOM layout has completed.
 
 ---
 
-## 不在此 ADR 范围内
+## Decision 5: an IEEE-numbered reference system
 
-- DOCX 导出（未实现，按钮灰显占位）
-- 多变量叠加曲线图（当前每变量独立一图）
-- 参考文献的 BibTeX 导出
+**Data sources** (three tiers, collected in display order):
+1. `metadata.references` / `metadata.reference` (a model-wide reference)
+2. `variables[name].reference` (a variable-level reference)
+3. `formulas[name].reference` (an equation-level reference)
+
+**Numbering rule**: numbered uniformly in order of first appearance, with automatic deduplication. Format: an inline `[N]` marker at the end of the Meaning column, with the full entries listed in a standalone `## References` section at the end.
+
+**Format**: the IEEE numeric style `[1] Author et al. (Year) Title. Journal Vol(No):pp.` (the content comes from the raw YAML string, with no secondary formatting).
+
+**When there is no reference**: a prompt is shown, guiding the user to fill in the corresponding YAML field.
+
+---
+
+## Decision 6: an accordion overlap fix
+
+The Report section's custom accordion uses `flexDirection: column` plus `gap: 6`; on expand/collapse, the flex reflow caused adjacent items to briefly overlap. The fix: add `flexShrink: 0` to every accordion item, preventing flex from compressing it.
+
+---
+
+## Out of scope for this ADR
+
+- DOCX export (not implemented, the button is a grayed-out placeholder)
+- A multi-variable overlaid curve chart (currently each variable gets its own independent chart)
+- BibTeX export of references

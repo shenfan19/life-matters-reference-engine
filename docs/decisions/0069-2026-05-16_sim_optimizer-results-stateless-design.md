@@ -1,74 +1,74 @@
-# 0069 · optimizer.results 内嵌设计与无状态服务架构
+# 0069 · Embedding optimizer.results in YAML and a stateless service architecture
 
-**日期**：2026-05-16  
-**状态**：✅ 已实施  
-**类别**：数据格式 / 持久化 / 软件架构
+**Date**: 2026-05-16
+**Status**: ✅ Implemented
+**Category**: data format / persistence / software architecture
 
 ---
 
-## 背景
+## Background
 
-优化结果（Pareto 前沿、最优 Regimen）是 LM 最有价值的计算产出，但之前：
-- Opt 结果仅存于前端 React 状态，关闭浏览器即丢失
-- 没有保存、续跑、传播结果的标准路径
-- 之前一版实现（ADR 0069 已撤销）采用服务器端 `runs/` 目录持久化，引入了 SaaS 级别的存储依赖——对个人研究者托管的场景不可维护
+Optimization results (the Pareto front, the optimal regimen) are LM's most valuable computed output, but previously:
+- Opt results lived only in frontend React state and were lost when the browser closed
+- There was no standard path for saving, resuming, or sharing results
+- An earlier implementation (the previous version of ADR 0069, since superseded) persisted results server-side under a `runs/` directory, introducing a SaaS-level storage dependency that isn't maintainable for a scenario hosted by an individual researcher
 
-## 核心决策
+## Core decision
 
-### 1. 数据格式：YAML 内嵌，结果随模型走
+### 1. Data format: embedded in YAML, results travel with the model
 
-**决定**：优化结果写入 `optimizer.results` 块，与 optimizer 配置并列存于同一 YAML 文件。
+**Decision**: optimization results are written into an `optimizer.results` block, stored alongside the optimizer configuration in the same YAML file.
 
 ```yaml
 optimizer:
   method: nsga2
   objectives: [...]
-  results:                     # ← 跑完后写入
+  results:                     # ← written after a run completes
     generated_at: "2026-05-16"
     pareto_front:
       - {x: [0.30, 0.29, 0.30], f: [65.8, 47.1]}
     best:
       regimen:
-        dietary_protein: {"早餐蛋白质": 0.30, "午餐蛋白质": 0.29, "晚餐蛋白质": 0.30}
+        dietary_protein: {"breakfast protein": 0.30, "lunch protein": 0.29, "dinner protein": 0.30}
       objectives: {muscle_mass: 65.8, GFR: 47.1}
 ```
 
-**理由**：
-- 发布模型 = 发布结果，一个文件包含完整可复现信息
-- 人类可直接阅读，不需要后处理工具
-- YAML flow-style（每解一行）在 50 个解时约 50 行，不破坏文件可读性
-- 与模型格式（YAML-first 路线）完全统一
+**Rationale**:
+- Publishing the model is publishing the results — one file contains all the information needed for reproduction
+- Human-readable directly, with no post-processing tool required
+- YAML flow style (one line per solution) stays around 50 lines for 50 solutions, without hurting file readability
+- Fully consistent with the model format's YAML-first direction
 
-**替代方案被否决**：
-- 独立 JSON 文件（results.json）：需要管理两个文件，发布时容易遗漏
-- 服务器端数据库：SaaS 复杂度，个人托管不可维护
+**Rejected alternatives**:
+- A separate JSON file (results.json): requires managing two files, easy to forget one on publication
+- A server-side database: SaaS-level complexity, not maintainable for individual hosting
 
-### 2. 无状态服务架构
+### 2. Stateless service architecture
 
-**决定**：服务器不做任何持久化存储。数据流：
+**Decision**: the server does no persistent storage of any kind. The data flow:
 
 ```
-用户上传 model.yaml → 服务器计算 → 用户下载 model.yaml（含结果）→ 服务器遗忘
+User uploads model.yaml → server computes → user downloads model.yaml (with results) → server forgets
 ```
 
-**理由**：
-- 个人研究者托管：无存储成本，无 GDPR 隐患，无用户账号压力
-- 科学家天然信任"自己管文件"的工作模式（与 R/Python 习惯一致）
-- 无状态让服务器可以随时重启，不影响用户数据
+**Rationale**:
+- For hosting by an individual researcher: no storage cost, no GDPR exposure, no user-account burden
+- Scientists naturally trust a "you manage your own files" workflow (consistent with R/Python habits)
+- Statelessness lets the server restart at any time without affecting user data
 
-**与 SaaS 的区别**：这是"无状态计算服务"（stateless compute service），类比 Binder/RStudio Cloud，而非 Notion/Figma 型 SaaS。
+**Distinction from SaaS**: this is a "stateless compute service," analogous to Binder/RStudio Cloud, not a Notion/Figma-style SaaS.
 
-### 3. 仿真结果处理
+### 3. Handling simulation results
 
-**决定**：仿真结果（时间序列）只提供 CSV 导出，不保存到服务器，不导入续跑。
+**Decision**: simulation results (time series) are only offered as a CSV export; they are not saved to the server and cannot be re-imported to resume.
 
-**理由**：仿真结果廉价（可随时重跑），CSV 是科学家最通用的格式（Excel/R/Python 直接打开）。断点续算对 sim 意义不大——"改参数后继续跑"实际上等价于"重新跑新参数"。
+**Rationale**: simulation results are cheap (can be rerun at any time), and CSV is the format scientists find most universally usable (opens directly in Excel/R/Python). Checkpoint-and-resume adds little value for sim — "keep running after changing a parameter" is effectively equivalent to "rerun with the new parameter."
 
-### 4. 热启动（Warm-start）
+### 4. Warm start
 
-**决定**：加载含 `optimizer.results` 的模型时，GUI 自动将 `pareto_front` 的 `x` 向量作为 NSGA-II 初始种群。
+**Decision**: when loading a model containing `optimizer.results`, the GUI automatically uses the `pareto_front`'s `x` vectors as the initial population for NSGA-II.
 
-**实现**：
+**Implementation**:
 ```python
 # optimizer_engine.py _run_nsga2()
 if warm_x:
@@ -78,34 +78,34 @@ if warm_x:
     algo = NSGA2(pop_size=pop_size, sampling=sampling)
 ```
 
-**优势**：比 pickle checkpoint 更灵活——可以改 pop_size、改代数，甚至小幅改目标，而不是死板地从上次状态继续。
+**Advantage**: more flexible than a pickle checkpoint — pop_size or the generation count can be changed, and even the objectives can be slightly modified, instead of rigidly continuing from a prior exact state.
 
 ---
 
-## 实现范围
+## Implementation scope
 
-### 新端点
-- `POST /api/optimizer/write-results` — 将 `results` 块写回模型 YAML
+### New endpoint
+- `POST /api/optimizer/write-results` — writes the `results` block back into the model YAML
 
-### 修改的模块
-| 文件 | 改动 |
+### Modules changed
+| File | Change |
 |------|------|
-| `optimizer_engine.py` | `_run_nsga2` 支持 `warm_x` 参数；`run_optimizer` 提取 `optimizer.results.pareto_front` |
-| `api_server.py` | 新增 `write-results` 端点 |
-| `Simulator.tsx` | `exportSimCSV`（CSV 下载）、`saveOptResults`、`downloadModelYAML`；startOptimization 注入 warm_start |
-| `SimOptTab.tsx` | "保存结果到模型"按钮、"下载模型"按钮、热启动提示横幅 |
+| `optimizer_engine.py` | `_run_nsga2` gains a `warm_x` parameter; `run_optimizer` extracts `optimizer.results.pareto_front` |
+| `api_server.py` | adds the `write-results` endpoint |
+| `Simulator.tsx` | `exportSimCSV` (CSV download), `saveOptResults`, `downloadModelYAML`; `startOptimization` injects warm_start |
+| `SimOptTab.tsx` | "save results to model" button, "download model" button, warm-start hint banner |
 
-### 更新的模型文件
-所有 5 个含 optimizer 块的 published 模型均加入了 `optimizer.results` 样本：
-- `paper1/fatty_liver_a1_p1` — 单目标，演示格式
-- `paper2/ckd_protein_a4_p2`, `hypertension_gout_a5_p2` — 双目标
-- `paper3/ckd_protein_pareto_a4_p3`, `hypertension_gout_3obj_a5_p3`, `smoking_stress_a6_p3` — 2-3 目标，论文主案例
+### Model files updated
+All 5 published models with an optimizer block gained an `optimizer.results` sample:
+- `paper1/fatty_liver_a1_p1` — single objective, demonstrates the format
+- `paper2/ckd_protein_a4_p2`, `hypertension_gout_a5_p2` — two objectives
+- `paper3/ckd_protein_pareto_a4_p3`, `hypertension_gout_3obj_a5_p3`, `smoking_stress_a6_p3` — 2-3 objectives, main paper cases
 
 ---
 
-## 局限性
+## Limitations
 
-- **服务器重启后 opt 丢失**：若用户未点击"保存结果到模型"，服务器重启后 opt 结果丢失。缓解：opt 完成后 GUI 的 Best 面板常驻，用户看到结果后有机会保存。
-- **Opt 无真正断点续算**：warm-start 只能继承上次前沿，不能从上次种群的精确状态继续。对于 < 1 小时的运行，这足够；对超长运行（数小时），未来可考虑 pymoo checkpoint。
-- **Sim 无断点续算**：有意为之（结果廉价）。
-- **无历史对比**：每次保存覆写，不保留多次运行的对比记录。未来可在 `best` 下加 `history: [...]` 存储多次运行摘要。
+- **Opt results are lost on server restart**: if the user hasn't clicked "save results to model," an opt result is lost on server restart. Mitigated by keeping the GUI's Best panel visible after completion, giving the user a chance to save once they've seen the result.
+- **No true checkpoint-resume for Opt**: warm-start can only inherit the prior front, not resume from the exact prior population state. This is sufficient for runs under an hour; for very long runs (hours), a pymoo checkpoint could be considered in the future.
+- **No checkpoint-resume for Sim**: intentional (results are cheap to reproduce).
+- **No history comparison**: each save overwrites the previous one, with no record of multiple runs. A future `history: [...]` list under `best` could store summaries of multiple runs.

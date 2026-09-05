@@ -1,44 +1,41 @@
-# 用户与部署模式
+# Users and Deployment Modes
 
-## 当前部署形态
+## Current deployment shape
 
-Life Matters Simulator 支持两种部署模式，由环境变量 `SCS_MODE` 控制：
+Life Matters Simulator supports two deployment modes, controlled by the environment variable `SCS_MODE`:
 
-| 模式 | 启动方式 | 写操作 | CLI |
+| Mode | How to start | Write operations | CLI |
 |------|---------|--------|-----|
-| **本地模式**（默认） | `uvicorn ...`（不设 SCS_MODE） | 完整权限 | ✅ 可用 |
-| **SCS 模式**（云端演示） | `SCS_MODE=true uvicorn ...` | 禁止写服务器文件 | ❌ 不适用 |
+| **Local mode** (default) | `uvicorn ...` (SCS_MODE not set) | Full permissions | Available |
+| **SCS mode** (cloud demo) | `SCS_MODE=true uvicorn ...` | Writing to server files forbidden | Not applicable |
 
-两种模式共用同一个 `reference_engine/` 和 `gui/`，差别仅在写操作保护。  
-详见 [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md)。
+Both modes share the same `reference_engine/` and `gui/`; the only difference is write-operation protection.  
+See [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md) for detail.
 
 ---
 
-## 本地用户的数据布局
+## Local user data layout
 
 ```
-models/          ← 模型定义（git 管理，公开）
-output/          ← CLI 运行结果（gitignore，本地私有）
+models/          <- model definitions (git-managed, public)
+output/          <- CLI run results (gitignored, locally private)
   *_sim_YYYYMMDD_HHMM.csv
   *_opt_YYYYMMDD_HHMM.csv
   *_{mode}.log
 ```
 
-完整数据流见 [`data_flow.md`](data_flow.md)。
+See [`data_flow.md`](data_flow.md) for the complete data flow.
 
 ---
 
-## GUI 仿真 session 生命周期
+## GUI simulation session lifecycle
 
-GUI 仿真 session（`ReferenceEngine.sessions`，`session_manager.py`）30 分钟无活动自动销毁，
-与其 `running`（是否正在自动播放）状态无关——浏览器标签页关闭、用户中途放弃都会在最长约
-35 分钟内（30 分钟超时 + 最多 5 分钟等下一次后台扫描）被回收，避免公网多用户场景下僵尸
-session 堆积耗尽服务器内存。优化任务（`app_state.optimizer_jobs`）独立计时，不受此影响。  
-详见 [ADR 0128](decisions/0128-2026-07-10_sim_gui-session-idle-timeout.md)。
+A GUI simulation session (`ReferenceEngine.sessions`, `session_manager.py`) is automatically destroyed after 30 minutes of inactivity, regardless of its `running` state (whether it is auto-playing); closing a browser tab or a user abandoning it midway are both reclaimed within about 35 minutes at most (a 30-minute timeout plus up to a 5-minute wait for the next background scan), preventing zombie sessions from piling up and exhausting server memory in a public multi-user scenario. Optimization jobs (`app_state.optimizer_jobs`) time independently and are unaffected by this.  
+See [ADR 0128](decisions/0128-2026-07-10_sim_gui-session-idle-timeout.md) for detail.
 
 ---
 
-## 用户账号体系
+## User account system
 
-当前版本不引入用户账号。SCS 模式通过无账号的写保护实现多人安全共享。  
-未来若引入账号体系，鉴权层将替代 `SCS_MODE`，届时本文件随之更新。
+The current version does not introduce a user-account system. SCS mode achieves safe multi-person sharing without accounts, through write protection alone.  
+If an account system is introduced in the future, an authentication layer will replace `SCS_MODE`, and this file will be updated accordingly at that time.

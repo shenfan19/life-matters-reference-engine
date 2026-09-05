@@ -1,22 +1,22 @@
-# 0001 — 仿真器双列布局与多图方案
+# 0001 — Simulator two-column layout and multi-chart scheme
 
-**状态**：✅ 已实施  
-**日期**：2026-03-28
+**Status**: implemented
+**Date**: 2026-03-28
 
-## 背景
+## Background
 
-旧版三列布局（场景树 | 单图 | 右侧参数 Tab）存在问题：
-- 右侧 280px 对优化器参数（变量范围 × N + 目标 + 约束 + 算法）空间不足
-- 单图叠加多变量，量纲不同无法清晰对比
-- 字体缩放（`zoom: fontSize/16`）导致固定像素列布局不稳定
+The old three-column layout (scene tree | single chart | right-side parameter tabs) had several problems:
+- The 280px right panel had insufficient space for optimizer parameters (variable ranges × N + objectives + constraints + algorithm)
+- Overlaying multiple variables on a single chart made it impossible to compare cleanly across different units
+- Font scaling (`zoom: fontSize/16`) made the fixed-pixel column layout unstable
 
-## 决策
+## Decision
 
-改为双列布局：左侧（380px 可拖）+ 中央（flex）。右侧面板整合进左侧 Tab。中央每个输出变量独立一张图（SimChart），各自有 Y 轴和 CSV 导出。
+Switch to a two-column layout: left column (380px, resizable) + center column (flex). The right panel is folded into the left-side tabs. Each output variable in the center gets its own chart (SimChart), with its own Y axis and CSV export.
 
-## 后果
+## Consequences
 
-- ✅ 参数区空间充足，优化器配置可展开
-- ✅ 每张图量纲独立，精确校验更容易
-- ⚠️ 多图竖向堆叠，变量多时需滚动
-- ⚠️ 跨变量对比需要目测，不如叠加图直观
+- Sufficient space for parameters, so optimizer configuration can expand fully
+- Each chart has an independent unit, making precise verification easier
+- Multiple charts stack vertically, requiring scrolling when there are many variables
+- Cross-variable comparison now requires visual estimation rather than being immediate on an overlaid chart

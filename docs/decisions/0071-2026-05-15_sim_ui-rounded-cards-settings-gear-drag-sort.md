@@ -1,36 +1,36 @@
-# 0071 · 全局圆角卡片面板 + 设置齿轮 Popover + 区块拖拽排序
+# 0071 · Global rounded-card panels + settings-gear popover + drag-to-reorder sections
 
-**日期**：2026-05-15  
-**状态**：✅ 已实施  
-**类别**：GUI / 交互设计
-
----
-
-## 背景
-
-现有 SimSetupTab（左侧输入面板）、SimOptTab（优化结果区）、SimIntroTab（Overview 区）的可折叠区块均采用 `borderBottom: 1px solid` 扁平分割线样式——区块之间无视觉边界，展开内容与相邻区块的界限模糊，用户难以聚焦当前操作区域。
-
-右上角设置项（字号选择器、语言下拉、暗色 toggle）三个控件并排常驻标题栏，占用水平空间；字号和语言属于低频偏好操作，不需要始终可见。
-
-SimSetupTab 的区块顺序固定，用户无法根据工作习惯调整（如先看 Optimizer 设置再看 Inputs）。
+**Date**: 2026-05-15
+**Status**: ✅ Implemented
+**Category**: GUI / interaction design
 
 ---
 
-## 决策
+## Background
 
-### 1. 全局圆角卡片面板
+The collapsible sections in SimSetupTab (the left input panel), SimOptTab (the optimization result area), and SimIntroTab (the Overview area) all used a flat `borderBottom: 1px solid` divider style — there was no visual boundary between sections, expanded content blurred into the neighboring section, and users had trouble focusing on the section they were working in.
 
-所有可折叠区块（`Section` 组件）统一替换为独立圆角卡片：
+The three settings controls in the top right (font-size selector, language dropdown, dark-mode toggle) sat permanently side by side in the title bar, taking up horizontal space; font size and language are low-frequency preferences that don't need to stay always visible.
+
+SimSetupTab's section order was fixed, so users couldn't rearrange it to match their own workflow (e.g., checking Optimizer settings before Inputs).
+
+---
+
+## Decision
+
+### 1. Global rounded-card panels
+
+Every collapsible section (the `Section` component) is uniformly replaced with a standalone rounded card:
 
 ```
 borderRadius: 10px
 border: 1px solid c.border
-boxShadow: 暗色 0 1px 5px rgba(0,0,0,0.35) / 亮色 0 1px 4px rgba(0,0,0,0.08)
+boxShadow: dark 0 1px 5px rgba(0,0,0,0.35) / light 0 1px 4px rgba(0,0,0,0.08)
 overflow: hidden
 background: c.panel
 ```
 
-卡片容器从 `display: flex; flexDirection: column`（高度分割）改为滚动列表：
+The card container changes from `display: flex; flexDirection: column` (height-split) to a scrolling list:
 
 ```
 overflowY: auto
@@ -38,54 +38,54 @@ padding: 8px
 gap: 8px
 ```
 
-折叠态呈圆角胶囊，展开态为完整卡片，卡间间距 8px 提供明确的格式塔分组边界。
+Collapsed sections appear as rounded pills, expanded ones as full cards, with 8px of gap between cards giving a clear Gestalt grouping boundary.
 
-**影响范围**：`SimSetupTab`、`SimOptTab`、`SimIntroTab` 三个组件中的 `Section` 组件，以及各自的容器 div。`SimOptTab` 顶部固定摘要栏同步去掉 `borderBottom`。
+**Scope**: the `Section` component within `SimSetupTab`, `SimOptTab`, and `SimIntroTab`, and each of their container divs. `SimOptTab`'s fixed top summary bar also drops its `borderBottom`.
 
-### 2. 设置齿轮 Popover
+### 2. Settings-gear popover
 
-标题栏右侧改为三个控件：
+The title bar's right side becomes three controls:
 
 ```
-[⚙ 齿轮]  [🌙/☀ 暗色]  [ℹ About]
+[⚙ gear]  [🌙/☀ dark mode]  [ℹ About]
 ```
 
-- **暗色 toggle** 保留在外，因为这是演示/实际使用中切换频率最高的操作
-- **字号选择器**（12 / 14 / 16 px）和**语言下拉**（EN / 简体中文 / 繁體中文 / Français）收入齿轮图标触发的 `Popover`（`trigger: "click"`, `placement: "bottomRight"`）
-- Popover 内容为两行：行一"字号 + 三按钮组"，行二"语言 + select"
+- The **dark-mode toggle** stays outside because it's the highest-frequency control in demos/real use
+- The **font-size selector** (12 / 14 / 16 px) and **language dropdown** (EN / Simplified Chinese / Traditional Chinese / French) move into a `Popover` triggered by the gear icon (`trigger: "click"`, `placement: "bottomRight"`)
+- The popover content has two rows: row one is "font size + a three-button group," row two is "language + select"
 
-使用 antd `Popover` + `SettingOutlined` 图标，无需额外状态管理（Popover 自管理 open 状态）。
+Uses antd's `Popover` + `SettingOutlined` icon, requiring no extra state management (Popover manages its own open state).
 
-### 3. 区块拖拽排序（SimSetupTab）
+### 3. Drag-to-reorder sections (SimSetupTab)
 
-SimSetupTab 的区块支持用户自由拖拽排序（仅同列内上下重排，不支持跨列）：
+SimSetupTab's sections can be freely reordered by dragging (only reordering vertically within the same column, not across columns):
 
-- 引入 `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities`
-- 每张卡片头部左侧加 `HolderOutlined`（⠿）握柄图标
-- 拖动激活阈值：位移超过 6px 才触发（防止点击误触发拖拽）
-- 握柄点击加 `stopPropagation`，不影响折叠/展开
-- 排序状态存于 `SimSetupTab` 本地 state（`tabOrder`），mode 切换（sim ↔ opt）时自动重置为默认顺序
-- 旧的区块高度分割拖拽（`startSectionResize`）随新卡片布局一并移除；`sectionWeights` / `SECTION_H` prop 保留接口但不再使用
+- Introduces `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities`
+- Each card header gets a `HolderOutlined` (⠿) grip icon on the left
+- Drag activation threshold: a drag only starts after 6px of movement (prevents an accidental click from triggering a drag)
+- The grip's click handler calls `stopPropagation` so it doesn't affect collapse/expand
+- Order state lives in `SimSetupTab`'s local state (`tabOrder`), and resets to the default order automatically on a mode switch (sim ↔ opt)
+- The old height-split drag-resize (`startSectionResize`) is removed along with the new card layout; the `sectionWeights` / `SECTION_H` props keep their interface but are no longer used
 
 ---
 
-## 被排除的方案
+## Rejected approaches
 
-| 方案 | 排除原因 |
+| Approach | Reason for rejection |
 |------|---------|
-| 多列自由拖拽（Grafana 式） | 图表组件宽度敏感，跨列拖入窄列渲染差；实现复杂度 400+ 行 |
-| 列数切换按钮（1列/2列 toggle） | 灵活性低，不如拖排对用户直观 |
-| 字号/语言也收入齿轮 + 暗色也收入 | 暗色是演示场景高频操作，收起后路径过长 |
-| 区块顺序持久化到 localStorage | 当前仅 2 个区块，收益有限；mode 切换需重置逻辑复杂 |
+| Free multi-column drag (Grafana-style) | chart components are width-sensitive, rendering poorly when dragged into a narrower column; implementation complexity of 400+ lines |
+| A column-count toggle (1-column/2-column) | low flexibility, less intuitive than drag-reordering |
+| Also moving font size/language into the gear, and dark mode too | dark mode is a high-frequency demo action; tucking it away lengthens the path too much |
+| Persisting section order to localStorage | only 2 sections at present, limited benefit; mode-switch reset logic would get complicated |
 
 ---
 
-## 影响文件
+## Files affected
 
-| 文件 | 变更 |
+| File | Change |
 |------|------|
-| `sim_gui/src/App.tsx` | TitleBar：去掉 FontSizer 和 language select 常驻控件；加 `SettingOutlined` + `Popover`；`Popover` 内嵌字号按钮组和语言下拉 |
-| `sim_gui/src/components/SimSetupTab.tsx` | `Section` 卡片化；容器改为滚动 + gap；引入 dnd-kit 实现排序；`SortableCard` 子组件；移除 `startSectionResize` |
-| `sim_gui/src/components/SimOptTab.tsx` | `Section` 卡片化；容器加 `padding: 8, gap: 8`；顶部摘要栏去 `borderBottom` |
-| `sim_gui/src/components/SimIntroTab.tsx` | `Section` 卡片化；容器加 `padding: 8, gap: 8` |
-| `sim_gui/package.json` | 新增依赖 `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities` |
+| `sim_gui/src/App.tsx` | TitleBar: removes the permanent FontSizer and language-select controls; adds `SettingOutlined` + `Popover`; the popover embeds the font-size button group and language dropdown |
+| `sim_gui/src/components/SimSetupTab.tsx` | `Section` becomes a card; container becomes scroll + gap; introduces dnd-kit for reordering; `SortableCard` subcomponent; removes `startSectionResize` |
+| `sim_gui/src/components/SimOptTab.tsx` | `Section` becomes a card; container gets `padding: 8, gap: 8`; top summary bar drops `borderBottom` |
+| `sim_gui/src/components/SimIntroTab.tsx` | `Section` becomes a card; container gets `padding: 8, gap: 8` |
+| `sim_gui/package.json` | adds dependencies `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` |

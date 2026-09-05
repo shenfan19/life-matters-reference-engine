@@ -1,83 +1,71 @@
-# ADR 0116 — 内部命名统一：`regimen_runner.py` → `schedule_runner.py`（修订 0115）
+# ADR 0116 — Internal naming unification: `regimen_runner.py` → `schedule_runner.py` (amends 0115)
 
-**日期**: 2026-06-21
-**状态**: 已接受
-**范围**: sim_engine（`schedule_runner.py` 及调用方）、sim_gui（`useSimulation.ts`/`useModelInit.ts`）、sim_cli/build.spec、docs
+**Date**: 2026-06-21
+**Status**: Accepted
+**Scope**: sim_engine (`schedule_runner.py` and its callers), sim_gui (`useSimulation.ts`/`useModelInit.ts`), sim_cli/build.spec, docs
 
 ---
 
-## 背景
+## Background
 
-ADR 0115 删除了 `daily_inputs`/`Simulation._apply_schedules()`/`manual_overrides` 整套旧机制。在那之前，
-代码里长期用 `regimen` 这个词命名"plan-based 输入执行核心"（`regimen_runner.py`、`apply_regimens()`、
-`_build_regimen_events`），而 YAML 规范用 `schedule` 命名同一份数据（`simulation.plans[*].schedules`）。
-这个用词分裂**并非随意**：ADR 0115 之前，`Simulation` 类上确实存在另一个不同的方法
-`_apply_schedules()`（处理旧版 `daily_inputs`），如果当时把 `apply_regimens` 改名为 `apply_schedules`，
-会直接和它撞名，混淆两套语义不同的执行路径。
+ADR 0115 removed the entire legacy `daily_inputs`/`Simulation._apply_schedules()`/`manual_overrides` mechanism. Before that, the codebase had long used the word `regimen` to name the "plan-based input execution core" (`regimen_runner.py`, `apply_regimens()`, `_build_regimen_events`), while the YAML spec used `schedule` to name the same data (`simulation.plans[*].schedules`). This terminology split was **not arbitrary**: prior to ADR 0115, the `Simulation` class had a genuinely distinct method, `_apply_schedules()` (handling the legacy `daily_inputs`); renaming `apply_regimens` to `apply_schedules` at that time would have collided with it directly, conflating two execution paths with different semantics.
 
-ADR 0115 删除了 `_apply_schedules()` 之后，这个撞名风险已经消失——`apply_regimens`（现
-`apply_schedules`）是仓库里唯一的输入执行路径，没有第二个同名/近名函数与之竞争。用户随后要求把这部分
-"纯内部命名"按之前评估的方案统一过去。
+Once ADR 0115 removed `_apply_schedules()`, that collision risk disappeared — `apply_regimens` (now `apply_schedules`) is the repository's only input execution path, with no second same-named/near-named function competing for it. The user then asked to carry out the "pure internal naming" unification per the previously evaluated plan.
 
-## 决策
+## Decision
 
-**统一内部实现命名为 `schedule`，但不改动跨前后端的 API 契约字段名：**
+**Unify internal implementation naming to `schedule`, without changing the API contract field names shared across frontend and backend:**
 
-| 改动对象 | regimen → schedule |
+| Change target | regimen → schedule |
 |---------|---------------------|
-| `sim_engine/src/regimen_runner.py` | 重命名为 `schedule_runner.py` |
+| `sim_engine/src/regimen_runner.py` | renamed to `schedule_runner.py` |
 | `apply_regimens()` | → `apply_schedules()` |
-| `precompute_sustained_divisors`/`advance_steps` 的 `regimens` 参数 | → `schedules` |
-| `_n_active_days`/内部循环变量 `reg` | → `sched` |
-| `optimizer_engine.py` 的 `_build_regimen_events` 闭包 | → `_build_schedule_events` |
-| `optimizer_eval.py` 的 `regimen_events_by_var`/`regimens_list` | → `schedule_events_by_var`/`schedules_list` |
-| `simulator_engine.py` 的 `schedule_regimens`（本就是半改过的混合命名）局部变量 | → `schedules` |
-| 前端 `buildRegimenPayload`/`varRegimens` | → `buildSchedulePayload`/`varSchedules` |
-| `sim_cli/build.spec` 的 hiddenimport | `'regimen_runner'` → `'schedule_runner'` |
+| `precompute_sustained_divisors`/`advance_steps`'s `regimens` parameter | → `schedules` |
+| `_n_active_days`/internal loop variable `reg` | → `sched` |
+| `optimizer_engine.py`'s `_build_regimen_events` closure | → `_build_schedule_events` |
+| `optimizer_eval.py`'s `regimen_events_by_var`/`regimens_list` | → `schedule_events_by_var`/`schedules_list` |
+| `simulator_engine.py`'s `schedule_regimens` (already a half-converted mixed name) local variable | → `schedules` |
+| Frontend `buildRegimenPayload`/`varRegimens` | → `buildSchedulePayload`/`varSchedules` |
+| `sim_cli/build.spec`'s hiddenimport | `'regimen_runner'` → `'schedule_runner'` |
 
-**不改动（API 契约 / 跨前后端字段名，维持现状）：**
+**Not changed (API contract / cross-frontend-backend field names, kept as-is):**
 
-- HTTP 请求字段 `SimulationStartRequest.regimens`、`start_session(regimens=...)`、`session['regimens']`
-- Pydantic 类 `RegimenData`/`RegimenEventData`（与上面的 `regimens` 字段一一对应）
-- 响应字段 `result['regimen_variable']`/`result['regimen_event_labels']`（前端 `useModelInit.ts`/
-  `SimOptTab.tsx` 读取的 key）
-- YAML `optimizer.results.reference.regimen`（写入/读回模型文件的持久化字段）
-- 文档里的"GUI Regimen"措辞（概念层面的用词，留给后续单独评估，见下）
+- HTTP request field `SimulationStartRequest.regimens`, `start_session(regimens=...)`, `session['regimens']`
+- Pydantic classes `RegimenData`/`RegimenEventData` (corresponding to the `regimens` field above)
+- Response fields `result['regimen_variable']`/`result['regimen_event_labels']` (keys read by the frontend's `useModelInit.ts`/`SimOptTab.tsx`)
+- YAML `optimizer.results.reference.regimen` (the persisted field written to and read back from model files)
+- The "GUI Regimen" phrasing used in the documentation (a concept-level term, left for separate later evaluation — see below)
 
-理由：这些是跨前后端/跨进程边界的契约名，改名涉及双端同步或 YAML 向后兼容问题，和"消除引擎内部
-两套术语"这件事本身无关，不在本次范围内。
+Rationale: these are contract names crossing the frontend-backend/process boundary; renaming them would require synchronizing both ends or dealing with YAML backward compatibility, which is unrelated to the goal of "eliminating two terminologies inside the engine" and is out of scope here.
 
-## 结果
+## Outcome
 
 ```
-sim_engine/src/regimen_runner.py → schedule_runner.py   apply_regimens → apply_schedules，
-                                                          regimens 参数/局部变量 → schedules
+sim_engine/src/regimen_runner.py → schedule_runner.py   apply_regimens → apply_schedules,
+                                                          regimens parameter/local variables → schedules
 sim_engine/src/optimizer_engine.py    _build_regimen_events → _build_schedule_events
 sim_engine/src/optimizer_eval.py      regimen_events_by_var/regimens_list → schedule_events_by_var/schedules_list
-sim_engine/src/simulator_engine.py    import 更新；schedule_regimens 局部变量 → schedules
-sim_engine/src/session_manager.py     import 更新
-sim_engine/src/model_structure/{loader,core}.py   注释更新（apply_regimens → apply_schedules）
+sim_engine/src/simulator_engine.py    imports updated; schedule_regimens local variable → schedules
+sim_engine/src/session_manager.py     imports updated
+sim_engine/src/model_structure/{loader,core}.py   comments updated (apply_regimens → apply_schedules)
 sim_cli/build.spec                    hiddenimports: regimen_runner → schedule_runner
 sim_gui/src/components/sim_tab/useSimulation.ts        buildRegimenPayload → buildSchedulePayload
 sim_gui/src/components/Simulator/useModelInit.ts       varRegimens → varSchedules
-sim_gui/.../optUtils.test.ts, simUtils.ts              注释更新
-docs/cli.md, docs/opt.md, docs/coding_conventions.md   函数名引用更新
-docs/sim_design.md   "GUI Working State Layer" 小节按 ADR 0115 后的现状重写
-                      （manual_overrides/_apply_schedules 已不存在，不再有"谁覆盖谁"的优先级问题）
+sim_gui/.../optUtils.test.ts, simUtils.ts              comments updated
+docs/cli.md, docs/opt.md, docs/coding_conventions.md   function name references updated
+docs/sim_design.md   the "GUI Working State Layer" section rewritten to match the post-ADR-0115 state
+                      (manual_overrides/_apply_schedules no longer exist; there is no longer a
+                      "who overrides whom" precedence question)
 ```
 
-验证：`pytest tests/` 8 个测试全过；`sim_gui` `tsc --noEmit` 零错误；`vitest run` 全过。
+Verification: all 8 tests in `pytest tests/` passed; `sim_gui`'s `tsc --noEmit` reported zero errors; `vitest run` passed in full.
 
-## 不在本次范围内
+## Out of scope for this change
 
-- API 字段名 `regimens`/`RegimenData`/`regimen_variable`/`regimen_event_labels`、YAML
-  `reference.regimen` 的概念层命名是否也要统一成 `schedule`——这涉及前后端契约改动和 YAML
-  持久化字段，是否要做留待单独评估，不与本次"纯内部命名"改动混在一次提交里。
+- Whether the concept-level naming of the API fields `regimens`/`RegimenData`/`regimen_variable`/`regimen_event_labels` and the YAML `reference.regimen` should also be unified to `schedule` — this touches the frontend-backend contract and the YAML persistence field, and whether to do it is left for separate evaluation, not bundled into this "pure internal naming" change.
 
-## 关联
+## Related
 
-- ADR 0115 — 本次改名的直接前提（移除了会撞名的 `_apply_schedules`）
-- ADR 0109/0110 — `schedule` 一词在 YAML 规范里的来源
-- ADR 0117 — 确认本 ADR"不在本次范围内"列出的 API/YAML 契约层维持原状（`regimens`/`RegimenData`
-  不变）；同时 `optimizer.results.reference.regimen` 已改名 `recommended` 并删除解码字典，
-  本文档第 44 行的提法已过期，以 ADR 0117 为准
+- ADR 0115 — the direct precondition for this rename (it removed the colliding `_apply_schedules`)
+- ADR 0109/0110 — the origin of the term `schedule` in the YAML spec
+- ADR 0117 — confirms that the API/YAML contract layer listed as "out of scope" in this ADR remains unchanged (`regimens`/`RegimenData` stay as-is); it also renames `optimizer.results.reference.regimen` to `recommended` and removes the decoding dictionary — line 44 of this document is now superseded; see ADR 0117 for the current state

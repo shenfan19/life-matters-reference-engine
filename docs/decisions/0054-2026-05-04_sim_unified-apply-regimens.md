@@ -1,43 +1,43 @@
-# 0054 — 仿真/优化 Regimen 执行函数统一为 `_apply_regimens`
+# 0054 — Unifying the sim/opt regimen execution function into `_apply_regimens`
 
-**日期**：2026-05-04  
-**状态**：✅ 已实施
-
----
-
-## 背景
-
-优化器（`optimizer_engine.py`）和仿真器（`simulator_engine.py`）各自维护了一套 Regimen 事件执行逻辑：
-
-- `optimizer_engine._apply_regimen_events`：接收 `dict[var → events]` 格式，逐事件覆写变量值（"最后一个事件赢"语义）。
-- `simulator_engine._apply_regimens`：接收 `list[{variable, events}]` 格式，脉冲重置 + 累加语义。
-
-两套逻辑不一致，导致同一 Regimen 在仿真和优化中产生不同行为。尤其是同一变量的多时刻事件：仿真结果是累加，优化结果是覆盖。
+**Date**: 2026-05-04
+**Status**: implemented
 
 ---
 
-## 决策
+## Background
 
-**删除 `optimizer_engine._apply_regimen_events`，由优化器直接导入并调用 `SimulatorEngine._apply_regimens`。**
+The optimizer (`optimizer_engine.py`) and the simulator (`simulator_engine.py`) each maintained their own regimen event-execution logic:
 
-优化器在调用前将 `dict[var → events]` 格式转换为 `list[{variable, events}]` 格式，再传入统一函数。
+- `optimizer_engine._apply_regimen_events`: accepted a `dict[var → events]` format and overwrote the variable value event by event (a "last event wins" semantics).
+- `simulator_engine._apply_regimens`: accepted a `list[{variable, events}]` format, with pulse reset plus accumulation semantics.
 
-`_apply_regimens` 的语义固定为：
-1. **脉冲重置**：每步开始时，将所有受 Regimen 控制的变量归零。
-2. **累加触发**：本步内触发的所有事件值累加（而非覆盖）。
-
----
-
-## 理由
-
-- 仿真和优化使用同一物理引擎，语义必须一致。
-- 脉冲重置 + 累加是正确的日历调度语义（三餐蛋白质 = 三次脉冲之和，而非最后一餐覆盖）。
-- 单一实现，bug 修一处即全局生效。
+The two implementations were inconsistent, so the same regimen produced different behavior between simulation and optimization. This was especially visible for multiple events on the same variable within a day: the simulation result accumulated them, while the optimization result overwrote them.
 
 ---
 
-## 后果
+## Decision
 
-- 优化器的 Regimen 执行行为与仿真完全一致。
-- 优化器需在 `_run_sim` 中做一次格式转换（`dict → list`），约 5 行代码。
-- 原 `_apply_regimen_events` 约 45 行代码删除。
+**Delete `optimizer_engine._apply_regimen_events`; have the optimizer import and call `SimulatorEngine._apply_regimens` directly.**
+
+Before calling it, the optimizer converts its `dict[var → events]` format into the `list[{variable, events}]` format, then passes it into the unified function.
+
+The semantics of `_apply_regimens` are fixed as:
+1. **Pulse reset**: at the start of every step, all variables controlled by a regimen are reset to zero.
+2. **Accumulated triggering**: all events triggered within that step have their values summed (rather than overwritten).
+
+---
+
+## Rationale
+
+- Simulation and optimization use the same physical engine, so their semantics must be consistent.
+- Pulse reset plus accumulation is the correct calendar-scheduling semantics (three meals' worth of protein equals the sum of three pulses, not the last meal overwriting the others).
+- A single implementation means a bug fix applies everywhere at once.
+
+---
+
+## Consequences
+
+- The optimizer's regimen-execution behavior now exactly matches simulation.
+- The optimizer needs one format conversion (`dict → list`) inside `_run_sim`, roughly 5 lines of code.
+- The original `_apply_regimen_events`, about 45 lines of code, was deleted.

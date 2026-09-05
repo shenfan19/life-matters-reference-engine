@@ -1,70 +1,70 @@
-# ADR 0060 — Game 独立 Repo 与 UI 架构
+# ADR 0060 — Game Repository Separation and UI Architecture
 
-**日期：** 2026-05-05  
-**状态：** 已接受  
-**范围：** 项目整体结构，sim_gui，game
-
----
-
-## 背景
-
-sim repo 计划转为 public，以便随论文投稿开放代码。game 层与论文无关，且代码风格、目标受众均不同，混在同一 repo 中会让论文读者困惑，必须先行分离。
+**Date:** 2026-05-05
+**Status:** Accepted
+**Scope:** overall project structure, sim_gui, game
 
 ---
 
-## 决定
+## Background
 
-### 1. 分离边界
+The sim repo is planned to go public alongside a paper submission. The game layer is unrelated to the paper, and its code style and target audience differ from the sim layer; keeping them in the same repo would confuse paper readers, so they must be separated first.
 
-| 内容 | 去向 |
+---
+
+## Decision
+
+### 1. Separation boundary
+
+| Content | Destination |
 |------|------|
 | `game/` | game repo |
-| `models/stories/` | game repo（游戏故事内容） |
-| `sim_gui/src/components/StoryEditor.tsx` | game repo（随 game 迁移） |
-| `sim_gui/src/components/StoryEngine.tsx` | game repo（随 game 迁移） |
-| game 专属 ADR（0006、0010、0011 等） | game repo `docs/decisions/` |
-| `sim_gui/` | sim repo（保留） |
-| `sim_engine/` | sim repo（保留） |
-| `models/published/` `models/source/` | sim repo（保留） |
-| `plugins/` `docs/` | sim repo（保留） |
+| `models/stories/` | game repo (game story content) |
+| `sim_gui/src/components/StoryEditor.tsx` | game repo (moves with game) |
+| `sim_gui/src/components/StoryEngine.tsx` | game repo (moves with game) |
+| game-specific ADRs (0006, 0010, 0011, etc.) | game repo `docs/decisions/` |
+| `sim_gui/` | sim repo (stays) |
+| `sim_engine/` | sim repo (stays) |
+| `models/published/`, `models/source/` | sim repo (stays) |
+| `plugins/`, `docs/` | sim repo (stays) |
 
-sim App.tsx 移除 Game Builder 标签和 StoryEngine 相关代码，保留 "Game Player ↗" 按钮（跨 repo 打开 localhost:5174）。
+The sim `App.tsx` removes the Game Builder tab and StoryEngine-related code, keeping a "Game Player ↗" button that opens `localhost:5174` across repos.
 
-### 2. Game 内部 UI 架构
+### 2. Game's internal UI architecture
 
-**顶部导航两个标签，Play 为默认入口：**
+**Two top-level nav tabs, with Play as the default entry point:**
 
 ```
 [♠ Life Matters Game]  [Play]  [Build]
 ```
 
-- **Play**：现有 StorySelect → CardGame 流程，不动
-- **Build**：GameBuilder（由 StoryEditor 演化而来）
+- **Play**: the existing StorySelect → CardGame flow, unchanged
+- **Build**: GameBuilder (evolved from StoryEditor)
 
-不设独立首页——两个功能不构成需要分流的体量。待第三个功能出现时再加。
+No separate landing page — the two features don't yet warrant a router of their own. Add one once a third feature appears.
 
-### 3. 未来 models/ 独立 repo（决议但暂缓）
+### 3. Future standalone models/ repo (decided but deferred)
 
-将 `models/` 独立为第三个 repo（`lm-models`），供 sim 和 game 作为 git submodule 引用，并对外部模型贡献者开放。
+Split `models/` into a third repo (`lm-models`), referenced by sim and game as a git submodule, and open to external model contributors.
 
-**暂缓原因：** 临近一次论文投稿节点，submodule 工作流增加调试摩擦，投入产出比不划算。等论文提交、有外部贡献者意向时再执行。届时执行步骤：
-1. `models/` 独立为 `lm-models` repo
-2. sim repo 引入 submodule
-3. game repo 引入 submodule，StoryEditor 改为 js-yaml 直接读本地 YAML
+**Reason for deferral:** close to a paper submission deadline; the submodule workflow adds debugging friction with a poor cost-benefit ratio at this point. Revisit once the paper is submitted and external contributors express interest. Execution steps at that point:
+1. Split `models/` into the `lm-models` repo
+2. sim repo adds it as a submodule
+3. game repo adds it as a submodule, and StoryEditor switches to reading local YAML directly via js-yaml
 
-### 4. Game 读取 sim 数据的方案
+### 4. How game reads sim data
 
-Game StoryEditor/Builder 读取 model 变量结构时：
-- **短期**：直接解析 `models/stories/` 内的 YAML（js-yaml，无 API 依赖）
-- **中期（models 独立后）**：读 submodule 中的 YAML
-- **不做**：调用 sim API（两个独立 repo 不能假设对方在线）
+When Game's StoryEditor/Builder reads a model's variable structure:
+- **Short term**: parse the YAML under `models/stories/` directly (js-yaml, no API dependency)
+- **Medium term** (once models/ is standalone): read YAML from the submodule
+- **Not doing**: calling the sim API (the two repos cannot assume the other is online)
 
 ---
 
-## 影响
+## Consequences
 
-- `sim_gui/src/App.tsx`：移除 story 页面、StoryEditor、StoryEngine import
-- `game/src/App.tsx`：加入 Play/Build 顶部导航
-- `game/src/components/GameBuilder.tsx`：新建
-- `models/stories/` → game repo 随行
-- game 专属 ADR 随 game repo 迁移（sim repo docs/ 保留 sim 专属 ADR）
+- `sim_gui/src/App.tsx`: removes the story page, StoryEditor, and StoryEngine imports
+- `game/src/App.tsx`: adds the Play/Build top nav
+- `game/src/components/GameBuilder.tsx`: new file
+- `models/stories/` moves with the game repo
+- Game-specific ADRs migrate with the game repo (the sim repo's docs/ keeps sim-specific ADRs)

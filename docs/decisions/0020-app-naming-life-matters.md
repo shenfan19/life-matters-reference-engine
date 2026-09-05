@@ -1,44 +1,44 @@
-# 0020 — 应用命名：统一为 Life Matters，中文副名仅在 About 中显示
+# 0020 — App naming: unified as Life Matters, with the Chinese subtitle shown only in About
 
-**状态**：✅ 已实施  
-**日期**：2026-04-07
+**Status**: implemented
+**Date**: 2026-04-07
 
-## 背景
+## Background
 
-应用曾同时使用「Life Matters」和「立民」两个名称，以「·」连接（`Life Matters·立民`）出现在标题栏、About 弹窗等位置。「立民」作为创作初期的中文意译，主观色彩较强，不如英文名通用；在正式界面中并列出现显得不稳定，且在小字号下辨识度差。
+The app previously used both "Life Matters" and "立民" together, joined by a "·" (`Life Matters·立民`), appearing in the title bar, About dialog, and elsewhere. "立民" was an early-stage Chinese free translation of the name, fairly subjective in tone and less universal than the English name; appearing side by side with it in formal UI felt unstable, and it was hard to read at small font sizes.
 
-## 决策
+## Decision
 
-### 1. 对外统一名称
+### 1. A single external name
 
-所有界面位置（标题栏、浏览器标签、状态栏、免责声明）统一使用 **Life Matters**，中英文语言下均相同。
+Every UI location (title bar, browser tab, status bar, disclaimer) uses **Life Matters** uniformly, the same in both Chinese and English.
 
-`app.title` locale 键各语言均为 `"Life Matters"`。
+The `app.title` locale key is `"Life Matters"` in every language.
 
-### 2. About 弹窗例外
+### 2. An exception for the About dialog
 
-About 弹窗作为项目信息的详细展示场所，中文语言下标题显示 **Life Matters (立民)**，以括号形式保留中文副名，供了解背景的用户参考。
+The About dialog, as the detailed presentation of project information, shows **Life Matters (立民)** as its title under the Chinese locale, keeping the Chinese subtitle in parentheses for users who want the background.
 
-实现方式：新增独立的 `about.name` locale 键，与 `app.title` 分开管理：
+Implementation: a separate `about.name` locale key is added, managed independently of `app.title`:
 
-| 语言 | `app.title` | `about.name` |
+| Language | `app.title` | `about.name` |
 |------|-------------|--------------|
 | en | Life Matters | Life Matters |
 | zh-CN | Life Matters | Life Matters (立民) |
 | zh-TW | Life Matters | Life Matters (立民) |
 
-About 弹窗标题使用 `t('about.name')`，其他所有位置使用 `t('app.title')`。
+The About dialog title uses `t('about.name')`; every other location uses `t('app.title')`.
 
-### 3. 免责声明标题
+### 3. The disclaimer title
 
-`disclaimer.title` 简化为：
-- 中文：`免责声明` / `免責聲明`
-- 英文：`Disclaimer`
+`disclaimer.title` is simplified to:
+- Chinese: `免责声明` / `免責聲明`
+- English: `Disclaimer`
 
-不再带 Life Matters 或立民前缀，避免在已有品牌名上下文中重复。
+It no longer carries a Life Matters or 立民 prefix, avoiding repetition in a context where the brand name already appears.
 
-## 后果
+## Consequences
 
-- ✅ 标题栏、状态栏等高频可见位置简洁统一
-- ✅ 「立民」副名保留在 About 弹窗，不完全丢失创作意图
-- ✅ `app.title` 与 `about.name` 分开，未来如需再调整互不影响
+- High-visibility locations such as the title bar and status bar are concise and consistent
+- The "立民" subtitle is preserved in the About dialog, so the original naming intent is not entirely lost
+- `app.title` and `about.name` are managed separately, so future adjustments to one do not affect the other

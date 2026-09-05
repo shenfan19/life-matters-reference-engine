@@ -1,80 +1,78 @@
-# 0082 · 2026-05-21 · Sim · 锁定/解锁/切换模型的会话状态设计
+# 0082 · 2026-05-21 · Sim · Session-state design for lock/unlock/model switching
 
-**部分取代**：D3–D5 章节（锁图标行为、运行时解锁确认、锁定不持久化）已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 取代。D1–D2（两层分离架构、modelSession 持久化）仍有效。D3（刷新到 YAML 默认值）已由 [ADR 0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) D9 更新。
+**Partially superseded**: sections D3-D5 (lock-icon behavior, running-time unlock confirmation, lock not persisted) have been superseded by [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md). D1-D2 (the two-layer separation architecture, modelSession persistence) remain valid. D3 (refresh to the YAML default) has been updated by [ADR 0089](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md) D9.
 
-## 背景
+## Background
 
-原始问题：用户在 GUI 中编辑 inputEvents 后点击锁定，编辑内容被重置为 YAML 默认值。
-根本原因：`inputEvents`（用户会话）和 `selectedModel`（模型结构）耦合在同一个 `useEffect` 里，
-任何触发 `selectedModel` 变更的操作（包括锁定时的 YAML 重读）都会无条件重置用户状态。
+Original problem: after a user edits inputEvents in the GUI and clicks lock, the edits get reset to the YAML default values.
+Root cause: `inputEvents` (the user session) and `selectedModel` (the model structure) were coupled inside the same `useEffect`; any operation that triggered a `selectedModel` change (including the YAML re-read on locking) would unconditionally reset the user's state.
 
-讨论中还发现两个额外问题：
-- 运行时可以通过树视图的锁图标解锁，无任何拦截或提示
-- 切换到其他模型再切回来，之前的编辑数据全部丢失
+Two additional problems surfaced during the discussion:
+- While a run was in progress, the lock could be unlocked via the tree view's lock icon with no interception or prompt
+- Switching to another model and back lost all previously edited data
 
-## 核心架构决策：两层分离
+## Core architectural decision: two-layer separation
 
-将 Simulator 的状态分为性质不同的两层：
+The Simulator's state is split into two layers of differing character:
 
 ```
-层1  modelContent[key]   YAML 结构（loadFileContent 刷新，只读）
-层2  modelSession[key]   用户会话（用户编辑驱动，持久化到 localStorage）
+Layer 1  modelContent[key]   YAML structure (refreshed by loadFileContent, read-only)
+Layer 2  modelSession[key]   the user session (driven by user edits, persisted to localStorage)
 ```
 
-**层2 的内容（ModelSession 类型）：**
+**Layer 2's content (the ModelSession type):**
 - `inputEvents` / `plans` / `activePlanId`
 - `simStartDate` / `simEndDate` / `stepValue` / `stepUnit`
 - `objectives` / `constraints` / `optAlgo` / `optPop` / `optGen`
 
-**实现方式：**
+**Implementation:**
 - `modelSessionsRef = useRef<Record<string, ModelSession>>(initModelSessions())`
-  在组件初始化时从 localStorage (`lm_model_sessions`) 读取，并迁移旧格式的全局 `inputEvents`。
-- 持续更新：每当 session 字段变化，写入 `modelSessionsRef.current[selectedKey]` 并同步到 localStorage。
-- `useEffect([selectedModel])` 重构为三段：
-  1. 永远执行：解析模型结构 → `inputParams`、`stateVariables`、`optRanges`
-  2. 永远执行：从 YAML 预加载 opt 结果（Pareto 图表数据）
-  3. 有 session → restore；无 session → 从 YAML 初始化（首次加载）
+  reads from localStorage (`lm_model_sessions`) at component init, and migrates the old global `inputEvents` format.
+- Continuous update: whenever a session field changes, it's written into `modelSessionsRef.current[selectedKey]` and synced to localStorage.
+- `useEffect([selectedModel])` was refactored into three parts:
+  1. Always runs: parses the model structure into `inputParams`, `stateVariables`, `optRanges`
+  2. Always runs: preloads opt results (Pareto-chart data) from the YAML
+  3. If a session exists -> restore it; if not -> initialize from the YAML (first load)
 
-## D1：锁定时保留用户编辑
+## D1: preserving user edits on lock
 
-**原来的方案（已废弃）：** `skipInputReinitRef` flag 打补丁。
+**The old approach (deprecated)**: patching in a `skipInputReinitRef` flag.
 
-**新方案：** 锁定调用 `loadFileContent`，触发 `useEffect([selectedModel])`，
-但 `modelSessionsRef.current[key]` 已有最新的用户状态，直接 restore，YAML 默认值不再生效。
-flag 不需要了，架构自然解决。
+**The new approach**: locking calls `loadFileContent`, which triggers `useEffect([selectedModel])`, but `modelSessionsRef.current[key]` already holds the latest user state, so it's restored directly — the YAML default no longer takes effect.
+The flag is no longer needed; the architecture resolves this naturally.
 
-## D2：切换模型后回来保留会话
+## D2: preserving the session when returning to a switched-away model
 
-会话连续写入 `modelSessionsRef`，切换到新模型时旧模型的 session 保留在 map 里。
-切回旧模型时 `useEffect` 找到 session 直接 restore，数据不丢失。
+The session is continuously written to `modelSessionsRef`; when switching to a new model, the old model's session stays in the map.
+Switching back to the old model, `useEffect` finds the session and restores it directly — no data is lost.
 
-## D3：刷新到 YAML 默认值
+## D3: refreshing to the YAML default
 
-> **已更新**：见 [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md)。以下为原始描述，仍适用于普通文件模型；session 模型有独立路径。
+> **Updated**: see [ADR 0089 D9](0089-2026-05-30_sim_session-refactor-warm-start-dirty-active-model.md). What follows is the original description, which still applies to plain file-based models; session models now have a separate path.
 
-工具栏的"重新加载"按钮（`⟳`）调用 `reloadFromYAML()`：
-先 `clearSession(key)`（等价于原来的 `delete modelSessionsRef.current[key]`），再根据模型类型分叉：
-- **普通文件模型**：调用 `loadFileContent(key, { preserveTab: true })`
-- **session/ 模型**：重新 `setConfirmedModel(sessModel)` 触发 YAML 重解析
+The toolbar's "reload" button (`⟳`) calls `reloadFromYAML()`:
+first `clearSession(key)` (equivalent to the old `delete modelSessionsRef.current[key]`), then branching by model type:
+- **A plain file-based model**: calls `loadFileContent(key, { preserveTab: true })`
+- **A session/ model**: calls `setConfirmedModel(sessModel)` again to trigger a YAML re-parse
 
-两种路径均使 `useEffect` 找不到 session，走 YAML 初始化路径。`sessionEditedRef` 同时清零，模型树 `(edited)` 标记消失。
+Both paths cause `useEffect` to find no session and fall into the YAML-initialization path. `sessionEditedRef` is cleared at the same time, and the `(edited)` marker disappears from the model tree.
 
-## D4：运行时解锁弹确认框
+## D4: a confirmation dialog for unlocking while running
 
-`SimModelTree` 新增 `isSimulating` prop。
-解锁点击统一走 `handleUnlock()`：
-- `isSimulating` 为 false → 直接解锁
-- `isSimulating` 为 true → `Modal.confirm` 弹出确认（"解锁将终止仿真，确认吗？"），用户确认后才执行 `onUnlock`
+`SimModelTree` gained an `isSimulating` prop.
+An unlock click now uniformly goes through `handleUnlock()`:
+- `isSimulating` is false -> unlock directly
+- `isSimulating` is true -> a `Modal.confirm` pops up ("Unlocking will terminate the simulation, confirm?"), and `onUnlock` only runs after the user confirms
 
-## D5：锁定状态不跨刷新持久化
+## D5: the lock state does not persist across a refresh
 
-YAML 可能在刷新期间被外部修改，还原旧的锁定状态会绕过验证。
-页面刷新后始终从解锁状态开始，用户需重新点击锁图标验证。
+The YAML may have been modified externally during the interval, so restoring the old lock state would bypass validation.
+After a page refresh, the state always starts unlocked, and the user must click the lock icon again to re-validate.
 
-## 被否决的方案
+## Rejected approaches
 
-**继续用 `skipInputReinitRef`：** 治标不治本，每个新场景需要新 flag。
+**Keep using `skipInputReinitRef`**: treats the symptom rather than the cause, and every new scenario would need a new flag.
 
-**session 只存内存不写 localStorage：** 页面刷新后数据丢失，不如 game 的持久化体验。
+**Keep the session in memory only, without writing to localStorage**: data would be lost on a page refresh, a worse persistence experience than game's.
 
-**unlock while running 直接禁用按钮：** 用户确实可能需要紧急中止，弹确认比禁用更好。
+**Disable the button outright when unlocking while running**: the user may genuinely need to abort urgently; a confirmation dialog is better than an outright disable.

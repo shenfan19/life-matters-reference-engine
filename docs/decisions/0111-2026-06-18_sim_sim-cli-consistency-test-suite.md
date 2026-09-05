@@ -1,82 +1,54 @@
-# ADR 0111 — Sim/CLI 一致性回归测试套件
+# ADR 0111 — The Sim/CLI Consistency Regression Test Suite
 
-**日期**: 2026-06-18
-**状态**: 已接受
-**范围**: sim_engine（测试基础设施，仓库首个自动化测试套件）
+**Date**: 2026-06-18
+**Status**: Accepted
+**Scope**: sim_engine (test infrastructure, the repository's first automated test suite)
 
 ---
 
-## 背景
+## Background
 
-`docs/cli.md`"与 GUI 的关系"一节写着"CLI 与 GUI 共用同一个引擎层，结果格式一致，可互通"——
-这是对外部使用者（含 AI agent，见 ADR 0101）的承诺，但此前没有任何自动化手段验证它。
-排查中确认这个承诺曾经是不成立的（见 [ADR 0110](0110-2026-06-17_sim_unify-plan-schedule-parsing.md)
-关于 plan/regimen 解析双实现的部分），且发现 `session_manager.py::start_session()` 有一处
-独立 bug：含分布参数（`parameter: normal(...)` 等）的模型，`sim_runs=1`（未显式要求 MC）时仍会
-随机采样，而不是按 [ADR 0045](0045-2026-04-30_sim_MC概率仿真与随机参数架构.md) 的规定取均值——
-导致 GUI 默认运行结果和 CLI 永远对不上，且 GUI 自己都不可重现。
+The "Relationship with the GUI" section of `docs/cli.md` states "the CLI and GUI share the same engine layer, with a consistent result format, and are interoperable" — this is a promise to external users (including AI agents, see ADR 0101), but until now no automated means existed to verify it.
+Investigation confirmed this promise once did not hold (see the part of [ADR 0110](0110-2026-06-17_sim_unify-plan-schedule-parsing.md) about the plan/regimen parsing's dual implementation), and found a separate bug in `session_manager.py::start_session()`: for a model containing a distribution parameter (`parameter: normal(...)`, etc.), when `sim_runs=1` (MC not explicitly requested), it still sampled randomly instead of taking the mean as specified by [ADR 0045](0045-2026-04-30_sim_mc-probabilistic-simulation-and-random-parameter-architecture.md) — causing the GUI's default run result and the CLI's to never match, and the GUI's own result to not even be reproducible with itself.
 
-这是单文件 bug 修复（`session_manager.py` 的 per-run 采样判断补一个 `n_runs > 1` 条件），按项目
-ADR 判断标准不需要单独立项；但既然问题本身是"两个正式接口的结果一致性"，需要一个能长期盯住这件事
-的自动化测试，而不是每次靠人工排查才发现。
+This is a single-file bug fix (adding an `n_runs > 1` condition to the per-run sampling check in `session_manager.py`), which by the project's ADR criteria would not need its own entry; but since the problem itself is about "consistency of results between two formal interfaces," an automated test that keeps a long-term eye on this is needed, rather than relying on manual investigation to discover it each time.
 
-## 决策
+## Decision
 
-**新增 `tests/` 目录，作为仓库首个自动化测试套件，专门验证 CLI 与 GUI 路径对同一模型的仿真结果一致。**
+**Add a `tests/` directory, the repository's first automated test suite, dedicated to verifying that the CLI and GUI paths give consistent simulation results for the same model.**
 
-遵循 [ADR 0072](0072-2026-05-15_project_gui-only-no-cli.md) 已经定下的约束——"测试直接 import
-引擎层 Python 函数，不经 CLI 解析层"——`tests/test_sim_cli_consistency.py` 不 fork `sim_cli/main.py`
-子进程、不起 HTTP server，直接 import `sim_engine.src.simulator_engine.SimulatorEngine`：
+Following the constraint [ADR 0072](0072-2026-05-15_project_gui-only-no-cli.md) already established — "tests directly import the engine-layer Python functions, not going through the CLI's parsing layer" — `tests/test_sim_cli_consistency.py` does not fork a `sim_cli/main.py` subprocess or start an HTTP server; it imports `sim_engine.src.simulator_engine.SimulatorEngine` directly:
 
-- **CLI 路径**：`engine.run_simulation()` / `run_simulation_all_plans()`（写 CSV，读回比较）
-- **GUI 路径**：`engine.start_session()` + `batch_steps()`（内存返回，直接比较）
-- 两条路径喂同一份 `current_model.plans[plan_id]`（后端已解析的 regimen 数据，ADR 0110 之后是
-  唯一来源），逐步比较每个输出变量的值，要求数值完全一致
+- **The CLI path**: `engine.run_simulation()` / `run_simulation_all_plans()` (writes CSV, reads it back for comparison)
+- **The GUI path**: `engine.start_session()` plus `batch_steps()` (returns in memory, compared directly)
+- Both paths are fed the same `current_model.plans[plan_id]` (the backend's already-parsed regimen data, the sole source since ADR 0110), comparing every output variable's value step by step, requiring exact numerical agreement
 
-测试用例：
-1. `models/test/test_plans.yaml`（无分布参数）× 3 个 plan：纯粹验证 CLI 的连续 `run_simulation`
-   循环和 GUI 的 `start_session`/`batch_steps` 分批循环这两种不同的执行机制，在喂同样 regimen 数据
-   时是否产生相同轨迹。
-2. `models/test/test_mc_distributions.yaml`（有分布参数）：GUI 路径 `sim_runs=1`，钉住上述 MC
-   确定性 bug 的回归——验证后该用例确认能在恢复 bug 时失败、修复后通过。
+Test cases:
+1. `models/test/test_plans.yaml` (no distribution parameters) times 3 plans: purely verifies whether the CLI's continuous `run_simulation` loop and the GUI's `start_session`/`batch_steps` batched loop, two different execution mechanisms, produce the same trajectory when fed the same regimen data.
+2. `models/test/test_mc_distributions.yaml` (has distribution parameters): the GUI path at `sim_runs=1`, pinning down a regression for the MC-determinism bug above — after verification, this case is confirmed to fail when the bug is reintroduced and pass once fixed.
 
-### 配套基础设施
+### Accompanying infrastructure
 
-- 新增 `pytest.ini`（`testpaths = tests`）。仓库根目录当时有一个 `pyproject.toml` 不是合法 TOML
-  （只是非正式笔记），pytest 默认会尝试解析它作为配置来源并报错退出；`pytest.ini` 优先级更高，
-  绕开了这个问题，当时未改动 `pyproject.toml` 本身。**2026-07-24 更新**：确认该文件确实只是
-  asteval/numexpr/sympy 选型的非正式笔记、无任何工具引用后已删除。当前 `testpaths` 实际值是
-  `test_verification`（测试目录后来从 `tests` 重组为 `test_verification`，本条记录的 `tests`
-  是写下本 ADR 时的旧名，未追溯更新）。`pytest.ini` 本身以及 `.pre-commit-config.yaml` 同日
-  一并从仓库根目录挪到 `scripts/`（改名去掉 `.pre-commit-config.yaml` 的前导点），根目录不再
-  放置纯工具配置文件：pytest 改用 `scripts/test.sh` 包装调用（内部 `pytest -c
-  scripts/pytest.ini test_verification`）；pre-commit 用 `pre-commit install -c
-  scripts/pre-commit-config.yaml` 重新生成 `.git/hooks/pre-commit`，`git commit` 时依旧
-  自动触发，无需额外操作。
+- Added `pytest.ini` (`testpaths = tests`). The repository root at the time had a `pyproject.toml` that was not valid TOML (just an informal note); pytest would by default try to parse it as a configuration source and error out; `pytest.ini` takes higher priority and sidesteps this problem, without changing `pyproject.toml` itself at the time. **Update on 2026-07-24**: confirmed this file was indeed just an informal note on the asteval/numexpr/sympy choice, with no tool referencing it, and it has been deleted. The current `testpaths` value is actually `test_verification` (the test directory was later reorganized from `tests` to `test_verification`; the `tests` recorded in this entry is the old name at the time this ADR was written, not retroactively updated). `pytest.ini` itself, along with `.pre-commit-config.yaml`, were also moved from the repository root to `scripts/` on the same day (renamed to drop `.pre-commit-config.yaml`'s leading dot), so the root no longer holds a pure tooling-config file: pytest now uses a `scripts/test.sh` wrapper call (internally `pytest -c scripts/pytest.ini test_verification`); pre-commit regenerates `.git/hooks/pre-commit` with `pre-commit install -c scripts/pre-commit-config.yaml`, and still triggers automatically on `git commit`, with no extra step needed.
 
-## 不在本次范围内
+## Out of scope for this round
 
-- ~~不验证优化器（`--opt`）路径的一致性：CLI 和 GUI 的 opt 路由都直接调用同一个
-  `sim_engine.src.optimizer_engine.run_optimizer`，没有发现分叉，暂不需要专门测试。~~
-  **更正（见 [ADR 0112](0112-2026-06-19_sim_opt-startpoint-faithfulness-fix.md)）**：当时只
-  确认了"两边调用同一个函数"，没有检查传入的 `optimizer_override` 是否等价——后续排查发现
-  GUI 一直把 `algorithm.seed` 硬编码成 `42`，且 T4（`optimize.date_range`）搜索维度在前端往返
-  中被静默丢弃，两者都已修复，并补上了 opt 一致性测试（见 ADR 0112/0113）。
-- 不验证前端 TypeScript 的 plan 映射逻辑（ADR 0110 处理的那部分）：那是纯字段映射，已通过浏览器
-  实测验证，不在这个 Python 测试套件的范围内。
+- ~~Not verifying the optimizer (`--opt`) path's consistency: the CLI's and GUI's opt routes both call the same `sim_engine.src.optimizer_engine.run_optimizer` directly, and no divergence was found, so a dedicated test isn't needed for now.~~
+  **Correction (see [ADR 0112](0112-2026-06-19_sim_opt-startpoint-faithfulness-fix.md))**: at the time, only "both sides call the same function" was confirmed, without checking whether the `optimizer_override` passed in was equivalent — a later investigation found the GUI had always hardcoded `algorithm.seed` to `42`, and the T4 (`optimize.date_range`) search dimension was silently dropped in a frontend round-trip; both have since been fixed, and an opt-consistency test has been added (see ADR 0112/0113).
+- Not verifying the frontend TypeScript's plan-mapping logic (the part ADR 0110 handled): that is pure field mapping, already verified through actual browser testing, and out of scope for this Python test suite.
 
-## 结果
+## Result
 
 ```
-tests/test_sim_cli_consistency.py   新增，4 个测试用例
-pytest.ini                          新增
-sim_engine/src/session_manager.py   start_session() 的采样条件补 n_runs > 1（ADR 0045 回归修复）
+tests/test_sim_cli_consistency.py   Added, 4 test cases
+pytest.ini                          Added
+sim_engine/src/session_manager.py   Added an n_runs > 1 condition to start_session()'s sampling check (an ADR 0045 regression fix)
 ```
 
-## 关联
+## Related
 
-- ADR 0045 — MC 概率仿真架构（"MC=1 确定性模式取均值"的原始决策）
-- ADR 0072 — 测试直接 import 引擎层函数，不经 CLI 解析层
-- ADR 0101 — CLI 升级为公开发布接口（结果一致性对 AI/自动化使用者尤其重要）
-- ADR 0110 — Plan/Schedule 解析单一来源
-- `docs/cli.md`"与 GUI 的关系"一节的"结果格式一致"承诺
+- ADR 0045 — the MC probabilistic-simulation architecture (the original decision that "MC=1 means deterministic mode, taking the mean")
+- ADR 0072 — tests directly import engine-layer functions, not going through the CLI's parsing layer
+- ADR 0101 — the CLI upgraded to a public release interface (result consistency matters especially to AI/automated users)
+- ADR 0110 — a single source for Plan/Schedule parsing
+- `docs/cli.md`'s "Relationship with the GUI" section's "consistent result format" promise

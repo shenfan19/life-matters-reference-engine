@@ -1,35 +1,32 @@
-# Reference Engine 内部架构：校验层与插件系统
+# Reference Engine Internal Architecture: The Validation Layer and the Plugin System
 
-> 本文档聚焦两个此前没有文档覆盖的内部模块：**校验层**（模型加载后的结构/格式检查）和
-> **插件系统**（仿真结果的可选二次分析）。整体数据流全景见 [data_flow.md](data_flow.md)；
-> 优化器设计见 [opt.md](opt.md)。
+> This document focuses on two internal modules not previously covered by documentation: the **validation layer** (structural/format checks after a model loads) and the **plugin system** (optional secondary analysis of simulation results). For the full data-flow picture, see [data_flow.md](data_flow.md); for the optimizer design, see [opt.md](opt.md).
 >
-> 注意与 Verify/Validate 框架的区分（现行定义见
-> [test_verification/verification_report.md](../test_verification/verification_report.md) §2.1，
-> 该文件同时给出 Verify 下的两个正式协议 V1/V2；
-> [ADR 0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) 记录了这套框架的早期版本）：
-> **Verify** 只问"这段引擎代码有没有把它声称要解的方程正确解出来"，是纯数值/软件问题，不涉及模型是否符合现实；
-> **Validate** 问的是多个各自独立标定的机制耦合后，输出的联合可行域/Pareto 前沿是否真实、非退化、对决策有意义，
-> 部分需对照外部基准判断（见 `life-matters-models` 仓库
-> [`models/test_validation/validation_report.md`](../../life-matters-models/models/test_validation/validation_report.md)）。
-> 本文档讲的是二者之外的第三件事——**代码层面的输入校验**（YAML 结构是否合法、日期/时间字符串格式是否正确），
-> 三者只是恰好都会被称作"validation"，实际是完全不同的概念。
+> Note the distinction from the Verify/Validate framework (the current definition is in
+> [test_verification/verification_report.md](../test_verification/verification_report.md) §2.1,
+> which also gives the two formal protocols V1/V2 under Verify;
+> [ADR 0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) records an early version of this framework):
+> **Verify** only asks "did this piece of engine code correctly solve the equation it claims to solve," a pure numerical/software question unrelated to whether the model matches reality;
+> **Validate** asks whether the output, after coupling several independently calibrated mechanisms, gives a joint feasible region/Pareto front that is genuine, non-degenerate, and meaningful for a decision,
+> partly requiring judgment against an external benchmark (see the `life-matters-models` repository's
+> [`models/test_validation/validation_report.md`](../../life-matters-models/models/test_validation/validation_report.md)).
+> This document covers a third thing, distinct from both — **code-level input validation** (whether the YAML structure is valid, whether a date/time string's format is correct);
+> the three concepts happen to all be called "validation," but are entirely different notions.
 
 ---
 
-## 1. 校验层
+## 1. The validation layer
 
-校验分成两个独立的模块，各自校验不同的东西，互不重叠：
+Validation splits into two independent modules, each checking a different thing, with no overlap:
 
-| 模块 | 校验对象 | 调用时机 |
+| Module | What it validates | When it's called |
 |---|---|---|
-| [`model_structure/validator.py`](../../reference_engine/src/model_structure/validator.py) | 模型结构完整性（变量类型、方程变量引用、metadata 字段类型） | `LoaderEngine.fetch()` 加载模型后（`validate=True` 时，默认开启） |
-| [`validation.py`](../../reference_engine/src/validation.py) | 日期/时间字符串格式（`YYYY-MM-DD`、`HH:MM`） | CLI/GUI 仿真或优化**开始运行前**，一次性调用 |
+| [`model_structure/validator.py`](../../reference_engine/src/model_structure/validator.py) | Model structural integrity (variable types, equation variable references, metadata field types) | After `LoaderEngine.fetch()` loads a model (when `validate=True`, on by default) |
+| [`validation.py`](../../reference_engine/src/validation.py) | Date/time string format (`YYYY-MM-DD`, `HH:MM`) | A one-time call **before** the CLI/GUI simulation or optimization starts running |
 
-### 1.1 结构校验：`ModelStructure.validate_model()`
+### 1.1 Structural validation: `ModelStructure.validate_model()`
 
-`Validator` 是 `ModelStructure` 的 mixin 之一（`class ModelStructure(Loader, Validator, Simulation)`），
-`validate_model()` 内部按顺序跑三个子校验器，把所有错误收集起来一次性抛出，而不是遇到第一个错误就停：
+`Validator` is one of `ModelStructure`'s mixins (`class ModelStructure(Loader, Validator, Simulation)`), and `validate_model()` internally runs three sub-validators in sequence, collecting every error and throwing them all at once, rather than stopping at the first error:
 
 ```python
 # model_structure/validator.py:333-349
@@ -48,63 +45,63 @@ if all_errors:
     )
 ```
 
-三个子校验器各自检查：
+Each of the three sub-validators checks:
 
-- **`validate_metadata`**：`metadata.name/version/author` 必须是字符串，`description` 必须是字符串或字典（对应 `model.md` 的结构化 description 规范）。
-- **`validate_variables`**：`value` 必须是数字、`type` 必须是合法的 `VariableType`、`bounds` 必须是长度为 2 且下界 ≤ 上界的数值区间、初始值必须落在 `bounds` 内、变量名必须是合法 Python 标识符（因为方程最终会编译成 Python 函数，见 [`simulation.py` 的 `_compile_expr_to_fn`](../../reference_engine/src/model_structure/simulation.py)）。
-- **`validate_equations`**：用 `ast.parse` 解析每条方程的 `condition` 和 `dynamics` 表达式，提取其中引用的变量名，检查是否都能在 `self.variables` 或 `self.equations` 中找到；同时检查 `step_unit`——方程的 `dynamics` 一旦用到 `step`/`dt`/`step_size`，必须声明合法的 `step_unit`（`minute`/`hour`/`day`），且禁止使用废弃符号 `dt`/`step_size`（只允许 `step`）。
+- **`validate_metadata`**: `metadata.name/version/author` must be strings, and `description` must be a string or a dict (corresponding to `model.md`'s structured-description convention).
+- **`validate_variables`**: `value` must be a number, `type` must be a valid `VariableType`, `bounds` must be a numeric interval of length 2 with the lower bound no greater than the upper bound, the initial value must fall within `bounds`, and the variable name must be a valid Python identifier (because equations are ultimately compiled into Python functions, see [`simulation.py`'s `_compile_expr_to_fn`](../../reference_engine/src/model_structure/simulation.py)).
+- **`validate_equations`**: uses `ast.parse` to parse each equation's `condition` and `dynamics` expressions, extracting the variable names referenced within, and checking that they can all be found in `self.variables` or `self.equations`; also checks `step_unit` — once an equation's `dynamics` uses `step`/`dt`/`step_size`, a valid `step_unit` (`minute`/`hour`/`day`) must be declared, and the deprecated symbols `dt`/`step_size` are forbidden (only `step` is allowed).
 
-在校验模型方程前，还有一段独立的方程级检查（不属于 `validators` 列表，在 `validate_model()` 开头单独跑）：扫描每条方程的 `condition`/`dynamics` 里是否用了 `dt` 却没有搭配 `MINUTE`/`HOUR`/`DAY` 等时间单位常量，命中时只记 `logger.warning`，不算错误——这是历史遗留的宽松检查，晚于它的 `validate_equations` 的 `step_unit` 强制校验已经是更严格的正式规则。
+Before validating a model's equations, there is also a separate, independent equation-level check (not part of the `validators` list, run separately at the start of `validate_model()`): scanning whether each equation's `condition`/`dynamics` uses `dt` without pairing it with a time-unit constant like `MINUTE`/`HOUR`/`DAY`; a hit only logs `logger.warning`, not counted as an error — a legacy, lenient check whose stricter formal successor, `validate_equations()`'s `step_unit` enforcement, came later.
 
-**当前实现中的两处观察**（记录现状，供后续人工判断是否需要处理）：
+**Two observations in the current implementation** (recorded as the current state, for later manual judgment on whether they need addressing):
 
-1. `validator.py` 里定义了 `validate_equations_old_ver_bug()`（L132-228），但**没有出现在 `validators` 列表里，也没有任何其他调用点**——是一段不会执行的死代码，从函数名（`_old_ver_bug`）看应该是被 `validate_equations()` 取代后遗留下来的旧实现，未清理。
-2. "从表达式提取变量名"这个逻辑存在两份几乎相同的实现：[`model_structure/utils.py:19` 的模块级 `extract_vars_from_expr`](../../reference_engine/src/model_structure/utils.py)（被 `core.py` 的 `split_model` 和 `validator.py` 自身的 `self.extract_vars_from_expr` 包装方法共用）和 `validate_equations()` 内部又局部定义了一份同名函数（validator.py:240-263），两者排除的内置符号集合略有差异（局部版本额外排除了 `MINUTE`/`HOUR`/`DAY`/`WEEK`/`MONTH`/`YEAR`/`pi`/`e`）。
+1. `validator.py` defines `validate_equations_old_ver_bug()` (L132-228), but it **does not appear in the `validators` list, nor is it called from anywhere else** — dead code that never executes; judging from the function name (`_old_ver_bug`), it appears to be a leftover old implementation superseded by `validate_equations()`, never cleaned up.
+2. The logic for "extracting variable names from an expression" exists in two nearly identical implementations: [the module-level `extract_vars_from_expr` in `model_structure/utils.py:19`](../../reference_engine/src/model_structure/utils.py) (shared by `core.py`'s `split_model` and `validator.py`'s own wrapper method `self.extract_vars_from_expr`), and a same-named function defined locally again inside `validate_equations()` (validator.py:240-263); the two differ slightly in the set of built-in symbols they exclude (the local version additionally excludes `MINUTE`/`HOUR`/`DAY`/`WEEK`/`MONTH`/`YEAR`/`pi`/`e`).
 
-### 1.2 日期/时间格式预校验：`validation.py`
+### 1.2 Date/time format pre-validation: `validation.py`
 
-这个模块解决的是一个具体问题：`schedule_runner.py` 和 `optimizer_engine.py` 在**逐步执行的热循环深处**解析日期/时间字符串（例如 `date.fromisoformat(sim_start_date)`），遇到格式错误时会**静默回退**到默认值（如 epoch `1900-01-01`，或整个优化窗口回退成 `total_time`），而不是报错。这意味着 `valid_start` 或 `time_start` 里的一个笔误，会在 CLI 和 GUI 两条路径上各自静默地改变仿真结果，且两边回退逻辑不一定完全一致。
+This module solves a specific problem: `schedule_runner.py` and `optimizer_engine.py` parse date/time strings (e.g. `date.fromisoformat(sim_start_date)`) **deep inside a step-by-step hot loop**, and when they hit a format error, they **silently fall back** to a default value (such as the epoch `1900-01-01`, or the whole optimization window falling back to `total_time`), rather than raising an error. This means a typo in `valid_start` or `time_start` silently changes the simulation result independently on both the CLI and GUI paths, and the two sides' fallback logic isn't necessarily identical.
 
-`validation.py` 的做法是：在仿真/优化真正开始前，一次性遍历所有会被后续代码解析的日期/时间字段，格式不对就直接抛 `ValueError`，用一次报错代替两处可能分叉的静默回退。四个校验函数分别对应不同的数据来源：
+`validation.py`'s approach: before the simulation/optimization actually starts, walk through every date/time field that later code will parse, and raise a `ValueError` right away for a bad format, replacing two potentially divergent silent fallbacks with one upfront error. The four validation functions each correspond to a different data source:
 
-| 函数 | 校验对象 | 被谁调用 |
+| Function | What it validates | Called by |
 |---|---|---|
-| `validate_simulator_dates` | `simulator.start_date`/`end_date` | `reference_engine.py` 的 `run_simulation`/`run_simulation_mc`，`session_manager.py` 的 `start_session`，`optimizer_engine.py` |
-| `validate_schedule_list` | regimen 列表里每个事件的 `time_start`/`time_end`/`valid_start`/`valid_end` | 同上（sim 路径） |
-| `validate_optimizer_regimens` | `optimization.startpoint.regimens` 里固定值和 `optimize:` 搜索窗口的时间/日期字段 | `optimizer_engine.run_optimizer` |
+| `validate_simulator_dates` | `simulator.start_date`/`end_date` | `reference_engine.py`'s `run_simulation`/`run_simulation_mc`, `session_manager.py`'s `start_session`, `optimizer_engine.py` |
+| `validate_schedule_list` | Each regimen event's `time_start`/`time_end`/`valid_start`/`valid_end` in the schedule list | The same as above (the sim path) |
+| `validate_optimizer_regimens` | The fixed-value and `optimize:` search-window time/date fields under `optimization.startpoint.regimens` | `optimizer_engine.run_optimizer` |
 
-日期校验本身分两种严格度：`_check_date_strict`（标准 ISO 日期，用于 regimen 的 `valid_start`/`valid_end`）和 `_check_date_loose`（额外容忍年份为 0 的"古代日期"占位符，用于 `simulator.start_date`/`end_date`，因为 `loader.py`/`optimizer_engine.py` 的跨度计算显式支持这种近似算法，见 [loader.py:391-401](../../reference_engine/src/model_structure/loader.py)）。
+Date validation itself has two strictness levels: `_check_date_strict` (standard ISO date, used for a regimen's `valid_start`/`valid_end`) and `_check_date_loose` (additionally tolerating a year-0 "ancient date" placeholder, used for `simulator.start_date`/`end_date`, because `loader.py`/`optimizer_engine.py`'s span calculation explicitly supports this approximation, see [loader.py:391-401](../../reference_engine/src/model_structure/loader.py)).
 
 ---
 
-## 2. 插件系统现状与后续可能
+## 2. The plugin system: current state and future possibilities
 
-### 2.1 设计意图
+### 2.1 Design intent
 
-`plugins/` 的设计目标是：后端 [`PluginManager`](../../reference_engine/src/plugin_manager.py) 扫描 `plugins/<name>/manifest.yaml` 自动发现插件，前端用一个通用组件根据 manifest 声明的输入 schema 渲染表单，调用 `/api/plugins/{id}/run` 拿结果展示——即"仿真跑完之后，用户可选地跑一个二次分析（因果推断、敏感性分析等），不需要为每种分析单独写一个 GUI 页面"。
+`plugins/`'s design goal: the backend [`PluginManager`](../../reference_engine/src/plugin_manager.py) scans `plugins/<name>/manifest.yaml` to auto-discover plugins, and the frontend uses a generic component to render a form based on the input schema declared in the manifest, calling `/api/plugins/{id}/run` to fetch and display the result — that is, "after a simulation finishes, the user can optionally run a secondary analysis (causal inference, sensitivity analysis, etc.) without a dedicated GUI page having to be written for each kind of analysis."
 
-### 2.2 当前状态：后端可用，前端零接入
+### 2.2 Current state: the backend works, the frontend has zero integration
 
-**后端是完整可运行的**：
+**The backend is fully functional**:
 
-- [`PluginManager`](../../reference_engine/src/plugin_manager.py) 递归扫描 `plugins/` 下的 `manifest.yaml`（最多 2 层深度），`load_plugin`/`run_plugin` 动态 `importlib` 加载插件的 `backend.py` 并实例化执行。
-- [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) 注册了 `/api/plugins`（列表）、`/api/plugins/{id}/ui-page`（插件自定义 UI 的 iframe 页面）、`/api/plugins/{id}/run`（执行）三个端点，`api_server.py` 里正常挂载。
-- [`plugin_context.py`](../../reference_engine/src/plugin_context.py) 的 `PluginContext` 给插件提供了统一的日志/缓存/（可选）重新触发仿真的接口。
-- 当前有两个真实插件：`plugins/sensitivity_analysis/`（对状态变量与目标变量算 Pearson 相关系数，输出龙卷风图数据，manifest 标注用于 Validate 层的文献对标，即 ADR 0056 三层框架中的"层2"）和 `plugins/post_causal_inference/`（Granger 因果检验，输出因果图边列表）。两者 manifest 都声明 `ui.type: none`，即不提供自定义 UI，只能通过 `DynamicForm.tsx` 这类通用表单驱动。
+- [`PluginManager`](../../reference_engine/src/plugin_manager.py) recursively scans for `manifest.yaml` under `plugins/` (up to 2 levels deep); `load_plugin`/`run_plugin` dynamically load a plugin's `backend.py` via `importlib`, instantiating and executing it.
+- [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) registers three endpoints, `/api/plugins` (list), `/api/plugins/{id}/ui-page` (an iframe page for a plugin's custom UI), and `/api/plugins/{id}/run` (execution), properly mounted in `api_server.py`.
+- [`plugin_context.py`](../../reference_engine/src/plugin_context.py)'s `PluginContext` gives a plugin a unified interface for logging/caching/(optionally) retriggering a simulation.
+- There are currently two real plugins: `plugins/sensitivity_analysis/` (computes the Pearson correlation coefficient between state and objective variables, outputting tornado-chart data; its manifest notes it is intended for literature benchmarking at the Validate layer, "tier 2" in ADR 0056's three-tier framework) and `plugins/post_causal_inference/` (a Granger causality test, outputting a causal-graph edge list). Both manifests declare `ui.type: none`, meaning they supply no custom UI and can only be driven through a generic form component like `DynamicForm.tsx`.
 
-**前端完全没有接入**——用户在界面上找不到任何插件入口：
+**The frontend has no integration at all** — a user cannot find any plugin entry point in the interface:
 
-1. [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx)：唯一会调用 `/api/plugins/{id}/run` 的通用表单组件，在 `gui/src` 全树里零 import，没有任何页面渲染它。
+1. [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx): the only generic form component that calls `/api/plugins/{id}/run`, has zero imports anywhere in the `gui/src` tree, and no page renders it.
 
-（以上现状 2026-06-24 首次记录，2026-07-07 复核仍然成立；2026-07-10 已执行方向 A 的确定性第一步，见下。）
+(The state above was first recorded on 2026-06-24, rechecked and confirmed still true on 2026-07-07; direction A's decisive first step was executed on 2026-07-10, see below.)
 
-### 2.3 后续可能的两个方向
+### 2.3 Two possible future directions
 
-**2026-07-10 已执行**：`reference_engine/src/PluginLoader.tsx`（放错目录的孤儿 React 组件，零引用，文件首行自带 `// if delete?` 注释）和 `gui/src/plugin_ui_server.py`（从未启动过的孤儿 `FastAPI()` app，零引用）已删除——这一步无论后续走方向 A 还是方向 B 都该做，不预判方向选择。
+**Already executed on 2026-07-10**: `reference_engine/src/PluginLoader.tsx` (an orphaned React component placed in the wrong directory, zero references, with a `// if delete?` comment on its first line) and `gui/src/plugin_ui_server.py` (an orphaned `FastAPI()` app that was never started, zero references) have been deleted — this step should be done regardless of whether direction A or direction B is chosen later, and does not prejudge the choice of direction.
 
-剩下这是一个产品范围问题，不只是清理代码，目前仍未决定：
+What remains is a product-scope question, not just code cleanup, and is still undecided:
 
-- **方向 A（补前端入口）**：保留插件系统整体架构，把 `DynamicForm.tsx` 接到某个实际页面上（例如模型工具栏、或独立的"插件"标签页），让现有的两个插件（敏感性分析、因果推断）变得可用。
-- **方向 B（整体移除）**：判定插件功能属于从未真正落地的半成品，把 `plugins/` 子系统（`PluginManager`、`routes/plugins.py`、`plugin_context.py`、两个示例插件、`DynamicForm.tsx`）一并移除，等真正需要插件化的二次分析能力时重新设计。
+- **Direction A (add a frontend entry point)**: keep the plugin system's overall architecture, and wire `DynamicForm.tsx` into some actual page (e.g. a model toolbar, or a standalone "Plugins" tab), making the two existing plugins (sensitivity analysis, causal inference) usable.
+- **Direction B (remove it entirely)**: judge that the plugin feature is a half-finished piece that never truly landed, and remove the `plugins/` subsystem altogether (`PluginManager`, `routes/plugins.py`, `plugin_context.py`, the two example plugins, `DynamicForm.tsx`), redesigning it if a genuine need for pluggable secondary analysis arises later.
 
-选择哪个方向取决于"敏感性分析/因果推断这类仿真后二次分析"在产品路线图里的优先级，不是纯技术判断。
+Which direction to choose depends on the priority of "post-simulation secondary analysis like sensitivity analysis/causal inference" on the product roadmap, not a purely technical judgment.

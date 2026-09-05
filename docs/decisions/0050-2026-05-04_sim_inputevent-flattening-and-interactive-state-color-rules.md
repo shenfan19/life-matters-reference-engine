@@ -1,91 +1,91 @@
-# ADR 0050 — InputEvent 扁平化设计、Run 按钮修复、树标签、交互状态颜色规则
+# ADR 0050 — InputEvent flattening, Run button fix, tree labels, interactive state color rules
 
-**日期**：2026-05-04  
-**状态**：已实施
-
----
-
-## 背景
-
-本 ADR 覆盖 2026-05-04 一批集中改动，涉及四个独立问题：
-
-1. **InputEvent 扁平化**：原 `Regimen / RegimenOpt` 嵌套结构导致多事件共享 `valueBounds`，且 UI 行数过多、不直观。
-2. **Run 按钮无反应**：opt 模式下 `!isLocked` 和 `status === 'completed'` 均会使按钮禁用，导致首次点击即无响应。
-3. **树面板标签错误**：左侧列表 header 显示"Scenarios"、组名"MODELS"指向 `components/` 文件夹，顺序也颠倒。
-4. **交互状态颜色不统一**：Segmented 控件和树节点选中态使用灰色（`#2a2a2a`），与其他激活态（绿色）不一致，视觉上不明显。
+**Date**: 2026-05-04
+**Status**: implemented
 
 ---
 
-## 决策
+## Background
 
-### 1. InputEvent 扁平化（Simulator.tsx）
+This ADR covers a batch of concentrated changes made on 2026-05-04, spanning four independent issues:
 
-**废弃** `Regimen / RegimenEvent / RegimenOpt` 三层嵌套结构，引入单一 `InputEvent` 接口：
+1. **InputEvent flattening**: the original `Regimen / RegimenOpt` nested structure caused multiple events to share `valueBounds`, and the UI took too many rows and was not intuitive.
+2. **Run button unresponsive**: in opt mode, both `!isLocked` and `status === 'completed'` disabled the button, so the first click did nothing.
+3. **Wrong tree-panel labels**: the header of the left-hand list showed "Scenarios," the group name "MODELS" pointed at the `components/` folder, and the order was reversed.
+4. **Inconsistent interactive-state colors**: the Segmented control and tree-node selected state used gray (`#2a2a2a`), inconsistent with other active states (green), making it visually unclear.
+
+---
+
+## Decision
+
+### 1. InputEvent flattening (Simulator.tsx)
+
+**Deprecate** the three-tier nested `Regimen / RegimenEvent / RegimenOpt` structure, and introduce a single `InputEvent` interface:
 
 ```ts
 interface InputEvent {
   id: string;
-  variable: string;    // type: input 的变量名
+  variable: string;    // the name of a type: input variable
   time: string;        // "HH:mm"
-  timeEnabled: boolean; // 是否显示时间字段（UI 开关）
+  timeEnabled: boolean; // whether the time field is shown (a UI toggle)
   value: number;
   label: string;
   daysEnabled: boolean;
   days: boolean[];     // [Mon..Sun]
   validRangeEnabled: boolean;
   validStart: string; validEnd: string;
-  optimizeValue: boolean;  // 是否作为优化决策变量
+  optimizeValue: boolean;  // whether this is treated as an optimization decision variable
   valueBounds: [number, number]; // [lo, hi]
 }
 ```
 
-**新 UI 布局（`renderInputsContent`）**：
-- 行1：`[变量下拉] [値▣灰色] [時⊙] [日⊙] [范⊙]` 4个 pill 开关 + `[× 删除]`（右对齐，`flex:1` 隔开）
-- 行2：`[值 InputNumber] [单位] [☑ opt] [lo ~ hi]`（opt 模式下可见）
-- 行3（组合）：`[时间 HH:mm]?  [七日按钮]?  [起止日期]?`（任意开关打开时合并显示）
+**New UI layout** (`renderInputsContent`):
+- Row 1: `[variable dropdown] [value pill, gray] [time pill] [days pill] [range pill]` — 4 pill toggles + `[× delete]` (right-aligned, separated by `flex:1`)
+- Row 2: `[value InputNumber] [unit] [☑ opt] [lo ~ hi]` (visible in opt mode)
+- Row 3 (combined): `[time HH:mm]?  [seven-day buttons]?  [start/end dates]?` (shown merged when any toggle is on)
 
-`timeEnabled` 仅控制 UI 可见性，`time` 字段始终随 regimen payload 传给后端。
+`timeEnabled` only controls UI visibility; the `time` field is always passed to the backend as part of the regimen payload.
 
-**从 optimizer.inputs 预填 optimizeValue**（新模型加载时）：
-模型加载 `useEffect` 在 fresh init 后，如 YAML `optimizer.inputs` 中某条目含 `optimize.value`，自动将对应 `inputEvents` 条目的 `optimizeValue = true`、`valueBounds = optimize.value`。
+**Pre-filling `optimizeValue` from optimizer.inputs** (on loading a new model):
+The model-loading `useEffect`, after a fresh init, automatically sets `optimizeValue = true` and `valueBounds = optimize.value` on the corresponding `inputEvents` entry whenever a YAML `optimizer.inputs` entry contains `optimize.value`.
 
-### 2. Run 按钮修复
+### 2. Run button fix
 
-**原问题**：
+**Original problem**:
 ```js
 disabled={!isLocked || (mode==='opt' && (optRunning || status==='completed'))}
 ```
-opt 模式需要 `isLocked`（与 sim 一样），且第一次优化完成后 `status='completed'` 永久禁用按钮。
+Opt mode required `isLocked` (just like sim), and once `status='completed'` after the first optimization run, the button was permanently disabled.
 
-**修复**：
+**Fix**:
 ```js
-// 新
+// new
 disabled={mode === 'opt' ? optRunning : (!isLocked || status === 'completed')}
 ```
-- opt 模式：只有 `optRunning` 时禁用；不要求锁定；完成后可再次运行。
-- sim 模式：保持原行为（需锁定，completed 禁用）。
+- Opt mode: disabled only while `optRunning`; no lock required; can be run again after completion.
+- Sim mode: original behavior kept (requires locking, disabled when completed).
 
-优化完成回调从 `set('status', 'completed')` 改为 `set('status', 'idle')`，避免模式切换 Segmented 被锁死。
+The optimization-completion callback changed from `set('status', 'completed')` to `set('status', 'idle')`, preventing the mode-switch Segmented control from getting stuck disabled.
 
-### 3. 树面板标签修复
+### 3. Tree-panel label fix
 
-| 位置 | 原值 | 新值 |
+| Location | Old value | New value |
 |------|------|------|
-| 面板 header（locale key `sim.scene.header`） | Scenarios / 场景 | Models / 模型库 |
-| `components/` 文件夹分组标签 | MODELS | COMPONENTS |
-| 组顺序 | SCENARIOS 在上 | COMPONENTS 在上，SCENARIOS 在下 |
+| Panel header (locale key `sim.scene.header`) | Scenarios / 场景 | Models / 模型库 |
+| The `components/` folder's group label | MODELS | COMPONENTS |
+| Group order | SCENARIOS on top | COMPONENTS on top, SCENARIOS below |
 
-### 4. 交互状态颜色规则
+### 4. Interactive-state color rules
 
-**原则**：绿色 = 激活/选中，灰色 = 未选中，红色 = 危险。
+**Principle**: green = active/selected, gray = unselected, red = danger.
 
-| 状态 | 颜色方案 |
+| State | Color scheme |
 |------|----------|
-| 激活/选中 | 前景 `c.primary`，背景 `c.activeBg`，边框 `c.primary` |
-| 悬停 | 背景 `c.navHover`（主色8%透明度） |
-| 未选中 | 前景 `c.textSec`，背景 transparent |
+| Active/selected | foreground `c.primary`, background `c.activeBg`, border `c.primary` |
+| Hover | background `c.navHover` (primary color at 8% opacity) |
+| Unselected | foreground `c.textSec`, background transparent |
 
-**具体修改**（`App.tsx` → `academicTheme.components`）：
+**Specific changes** (`App.tsx` → `academicTheme.components`):
 ```js
 Segmented: {
   itemSelectedBg:    isDark ? '#1a3a22' : '#e8f5e9',
@@ -93,51 +93,51 @@ Segmented: {
   trackBg:           isDark ? '#1a1a1a' : '#f0f0f0',
 },
 Tree: {
-  nodeSelectedBg: isDark ? '#1a3a22' : '#e8f5e9',  // 原 #2a2a2a（不可见）
+  nodeSelectedBg: isDark ? '#1a3a22' : '#e8f5e9',  // was #2a2a2a (barely visible)
   nodeHoverBg:    isDark ? 'rgba(82,196,26,0.08)' : 'rgba(0,122,51,0.06)',
 },
 ```
 
-规则同步写入 `docs/global_prompt.md § 2.1 交互状态颜色规则`。
+The rule is also recorded in `docs/global_prompt.md § 2.1, Interactive State Color Rules`.
 
 ---
 
-## 文件变更
+## Files changed
 
 ```
 sim_gui/src/components/Simulator.tsx
-  InputEvent 接口新增 timeEnabled
-  renderInputsContent: 全新 pill toggle 布局，删除按钮右对齐
-  startOptimization: 完成后 status='idle'，按钮无需 isLocked
-  loadFileTree: COMPONENTS 前置，标签修正
-  init useEffect: 从 optimizer.inputs 预填 optimizeValue
+  InputEvent interface: added timeEnabled
+  renderInputsContent: entirely new pill-toggle layout, delete button right-aligned
+  startOptimization: status='idle' on completion, button no longer requires isLocked
+  loadFileTree: COMPONENTS moved first, labels corrected
+  init useEffect: pre-fill optimizeValue from optimizer.inputs
 
 sim_gui/src/App.tsx
-  academicTheme.components: 新增 Segmented token，修正 Tree token
-  StatusBar: 三态指示（running=amber, online=green, offline=red）
-  health check: simState.status==='running' 时跳过轮询
+  academicTheme.components: new Segmented token, corrected Tree token
+  StatusBar: three-state indicator (running=amber, online=green, offline=red)
+  health check: skip polling while simState.status==='running'
 
 sim_gui/public/locales/sim/{en,zh-CN,zh-TW}.json
   sim.scene.header: "Scenarios" → "Models" / "模型库"
 
 docs/global_prompt.md
-  §2.1 交互状态颜色规则（新增）
+  §2.1 Interactive State Color Rules (new)
 
 models/source/medical/test/
-  l1_drug_single_obj.yaml: 加 type:model，描述增加 [TEST L1] 标注
-  l2_drug_pareto.yaml:     加 type:model，描述增加 [TEST L2] 标注
-  l3_two_drug_mc.yaml:     新建，双变量双目标+MC，pop=20 gen=25
+  l1_drug_single_obj.yaml: added type:model, description annotated with [TEST L1]
+  l2_drug_pareto.yaml:     added type:model, description annotated with [TEST L2]
+  l3_two_drug_mc.yaml:     new file, two-variable two-objective with MC, pop=20 gen=25
 ```
 
 ---
 
-## 结果与验证
+## Outcome and verification
 
-- opt 模式下点击 Run：不再需要先锁定，优化完成后可再次点击 ✓
-- Segmented sim/opt 切换：选中项显示绿色背景（与其他激活元素一致）✓
-- 树节点选中：绿色背景（`#1a3a22` 暗色 / `#e8f5e9` 浅色），不再是灰色 ✓
-- 左侧 header 显示"Models / 模型库" ✓
-- COMPONENTS 组在 SCENARIOS 上方 ✓
-- test 模型显示 `model_type: "model"` 紫色标签 ✓
-- InputEvent 行1+行2 = 最小2行，开关展开最多3行（时间/日/范合并一行）✓
-- 删除按钮与 toggle 之间有 `flex:1` 间距，不易误触 ✓
+- Clicking Run in opt mode: no longer requires locking first, and can be clicked again after optimization completes — confirmed
+- Segmented sim/opt switch: the selected item shows a green background (consistent with other active elements) — confirmed
+- Tree-node selection: a green background (`#1a3a22` dark / `#e8f5e9` light), no longer gray — confirmed
+- The left-hand header shows "Models / 模型库" — confirmed
+- The COMPONENTS group appears above SCENARIOS — confirmed
+- Test models display the `model_type: "model"` purple tag — confirmed
+- InputEvent row 1 + row 2 = minimum 2 rows, expanding toggles add at most 3 rows (time/days/range merge into one row) — confirmed
+- There is `flex:1` spacing between the delete button and the toggles, reducing accidental clicks — confirmed

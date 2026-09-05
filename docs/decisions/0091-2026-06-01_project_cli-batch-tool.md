@@ -1,164 +1,161 @@
-# 0091 — `sim_cli/`：批量仿真 CLI 工具
+# 0091 — `sim_cli/`: a Batch Simulation CLI Tool
 
-**日期**：2026-06-01  
-**状态**：✅ 已实施（2026-06-01 修订：去除 `_opt.yaml` 输出；2026-06-06 修订：时间戳格式、`--continue` 简化、批量测试脚本）  
-**类别**：架构 / 接口  
-**修订**：部分修订 ADR 0072（GUI-only）
-
----
-
-## 背景
-
-ADR 0072 确立"GUI 是唯一正式用户接口，CLI 仅用于内部调试"。  
-随着 `optimizer.results` 集成到模型 YAML、模型文件数量增加，出现两个新需求：
-
-1. **批量运行**：对多个模型批量跑仿真或优化，GUI 无法自动化。
-2. **开发调试**：跑优化过程中需要观察 `feasible ratio`、提前停止保存中间结果、热启动继续，GUI 的交互限制了调试效率。
+**Date:** 2026-06-01
+**Status:** Implemented (revised 2026-06-01: dropped `_opt.yaml` output; revised 2026-06-06: timestamp format, `--continue` simplification, batch test script)
+**Category:** Architecture / Interface
+**Revises:** partially revises ADR 0072 (GUI-only)
 
 ---
 
-## 决策
+## Background
 
-新增 `sim_cli/` 模块，实现以下能力：
+ADR 0072 established "the GUI is the sole formal user interface; the CLI is for internal debugging only."
+As `optimizer.results` became integrated into the model YAML and the number of model files grew, two new needs emerged:
 
-| 能力 | 说明 |
+1. **Batch runs:** running simulations or optimizations across many models in batch — something the GUI cannot automate.
+2. **Development debugging:** while running an optimization, developers need to watch the `feasible ratio`, stop early and save intermediate results, and warm-start a continuation — the GUI's interaction model limits debugging efficiency.
+
+---
+
+## Decision
+
+Add a `sim_cli/` module implementing the following capabilities:
+
+| Capability | Description |
 |------|------|
-| `--sim` | 读取模型 YAML，运行仿真，输出 CSV |
-| `--opt` | 运行 NSGA-II 优化，输出带结果的完整模型 YAML + Pareto CSV |
-| `--continue` | 热启动：从模型中已有的 `optimizer.results` 继续搜索 |
-| 提前停止 | 运行中输入 `q` + Enter，当代完成后停止并保存当前前沿 |
-| 实时日志 | 每代输出 `feasible ratio`、`n_eval`、`best_f` |
+| `--sim` | Read a model YAML, run the simulation, output a CSV |
+| `--opt` | Run NSGA-II optimization, output a full model YAML with results plus a Pareto CSV |
+| `--continue` | Warm start: continue the search from `optimizer.results` already present in the model |
+| Early stop | Type `q` + Enter while running; stops after the current generation finishes and saves the current front |
+| Live logging | Each generation prints `feasible ratio`, `n_eval`, `best_f` |
 
 ---
 
-## IO 设计决策
+## IO Design Decisions
 
-### 输出文件格式
+### Output file format
 
-| 文件 | 内容 |
+| File | Content |
 |------|------|
-| `*_sim.csv` | 仿真时间序列 |
-| `*_opt.csv` | Pareto 前沿（x 列 + f 列）；每代实时覆盖写入 |
-| `*_{mode}.log` | 运行日志 |
+| `*_sim.csv` | Simulation time series |
+| `*_opt.csv` | Pareto front (x columns + f columns); overwritten live after each generation |
+| `*_{mode}.log` | Run log |
 
-文件名含时间戳（`YYYY-MM-DD_HH-MM-SS`，精确到秒），多次运行不覆盖，可追溯。  
-所有输出写入 `output/`（内容 `.gitignore`，目录本身入 git）。
+Filenames include a timestamp (`YYYY-MM-DD_HH-MM-SS`, second precision) so repeated runs don't overwrite each other and remain traceable.
+All output is written to `output/` (its contents are `.gitignore`d, but the directory itself is tracked in git).
 
-**修订（2026-06-01）**：原设计含 `*_opt.yaml`（完整模型副本 + results）。
-经评估该文件与"GUI 保存结果到模型"功能重叠，引入了"哪个 YAML 是主文件"的歧义，已移除。
-发布路径改为：GUI 导入 `_opt.csv` → "保存结果到模型" → 写回原始 YAML。
+**Revision (2026-06-01):** the original design included `*_opt.yaml` (a full model copy plus results).
+On evaluation this overlapped with the "GUI save results to model" feature and introduced ambiguity over "which YAML is authoritative," so it was removed.
+The publishing path is now: GUI imports `_opt.csv` → "save results to model" → writes back to the original YAML.
 
-### 结果不自动写回模型
+### Results are never written back to the model automatically
 
-CLI 不修改原始模型 YAML。发布是用户的显式操作，不是 CLI 自动行为：
-- 调试阶段可能跑多次，每次覆盖会污染模型定义
-- 用户对"什么时候结果值得发布"有判断权
-- 发布路径：GUI "导入 CSV" → "保存结果到模型" → git
+The CLI does not modify the original model YAML. Publishing is an explicit user action, not automatic CLI behavior:
+- During debugging a model may be run many times, and overwriting each time would pollute the model definition
+- The user is the one who judges when a result is worth publishing
+- Publishing path: GUI "import CSV" → "save results to model" → git
 
-### 模型文件依然是单文件（不拆分）
+### The model file remains a single file (not split)
 
-讨论过将 `optimizer.results` 独立为 sidecar 文件，最终维持单文件设计。  
-理由：目标用户（临床研究者）通过邮件/补充材料共享模型，单文件无歧义。
-
----
-
-## 早停机制实现
-
-`optimizer_engine._ProgressCb` 新增：
-- `self.latest_front`：每代保存当前 Pareto 前沿
-- `progress_callback` 返回 `True` 时抛出 `_StopOptimization`
-- `_run_nsga2` 捕获异常后从 `latest_front` 构建结果，`result["stopped"] = True`
-
-键盘监听使用 stdin（`q` + Enter），兼容 VSCode 集成终端、Git Bash 及所有平台。  
-`msvcrt.kbhit()` 方案因被 VSCode 拦截而放弃。
+Splitting `optimizer.results` out into a sidecar file was discussed but ultimately dropped in favor of keeping a single-file design.
+Rationale: the target users (clinical researchers) share models via email/supplementary materials, where a single file avoids ambiguity.
 
 ---
 
-## 与 ADR 0072 的关系
+## Early-Stop Mechanism Implementation
 
-ADR 0072 的核心约束保持不变：
-- GUI 仍是唯一正式用户接口
-- CLI 不向普通用户宣传，不承诺功能对等
-- 自动化批量场景的"正式"路径仍是 HTTP API
+`optimizer_engine._ProgressCb` gained:
+- `self.latest_front`: saves the current Pareto front after each generation
+- when `progress_callback` returns `True`, a `_StopOptimization` is raised
+- `_run_nsga2` catches the exception and builds the result from `latest_front`, setting `result["stopped"] = True`
 
-本 ADR 新增的 CLI 定位为**开发者/高级用户工具**，可编译为独立 exe 分发给有批量需求的合作研究者。不进入 GUI 文档，不接受功能请求驱动的迭代。
+Keyboard input is read via stdin (`q` + Enter), which works across the VSCode integrated terminal, Git Bash, and all platforms.
+The `msvcrt.kbhit()` approach was dropped because it gets intercepted by VSCode.
 
-**2026-06-13 修订（ADR 0101）**：CLI 进一步升级为面向 AI/自动化场景的公开发布接口，
-随代码 release 提供 `lm-sim.exe`，并在 README/`cli.md` 中说明用途。
-"不进入 GUI 文档"的约束不变——GUI 文档仍只面向人类用户，CLI 文档独立维护于 `cli.md`。
+---
+
+## Relationship to ADR 0072
+
+The core constraints of ADR 0072 remain unchanged:
+- The GUI is still the sole formal user interface
+- The CLI is not advertised to ordinary users and does not promise feature parity
+- The "formal" path for automated batch scenarios is still the HTTP API
+
+The CLI added by this ADR is positioned as a **developer/power-user tool**, which can be compiled into a standalone exe and distributed to collaborating researchers who need batch capabilities. It is not covered in the GUI documentation, and its iteration is not driven by feature requests.
+
+**Revision 2026-06-13 (ADR 0101):** the CLI was further upgraded into a publicly released interface aimed at AI/automation scenarios,
+shipping `lm-sim.exe` alongside code releases, with its purpose documented in the README/`cli.md`.
+The "not covered in the GUI documentation" constraint is unchanged — GUI documentation still targets human users only, and CLI documentation continues to live independently in `cli.md`.
 
 ---
 
 ---
 
-## 2026-06-06 修订
+## 2026-06-06 Revision
 
-### 1. 时间戳格式变更
+### 1. Timestamp format change
 
-原格式 `YYYYMMDD_HHMM`（精度到分钟）改为 `YYYY-MM-DD_HH-MM-SS`（精度到秒）。  
-原因：同分钟内多次运行会覆盖输出文件；秒级精度消除冲突，且格式更易读。
+The original format `YYYYMMDD_HHMM` (minute precision) was changed to `YYYY-MM-DD_HH-MM-SS` (second precision).
+Reason: multiple runs within the same minute would overwrite each other's output files; second precision eliminates the collision and is also more readable.
 
-影响范围：`sim_cli/output.py::make_stem()`，文件名示例已更新至 `cli.md`。
+Scope of impact: `sim_cli/output.py::make_stem()`; the filename examples in `cli.md` were updated accordingly.
 
-### 2. `--continue` 接口简化
+### 2. Simplified the `--continue` interface
 
-移除原"写法二"（`--continue TIMESTAMP`，形如 `--continue 20260606_1122`）。  
-保留：
-- `--continue`（无参数）：从模型 YAML 的 `optimizer.results` 热启动
-- `--continue PATH`：从指定 `_opt.csv` 文件热启动（相对于项目根或绝对路径）
+Removed the original "form two" (`--continue TIMESTAMP`, e.g. `--continue 20260606_1122`).
+Retained:
+- `--continue` (no argument): warm-start from the `optimizer.results` in the model YAML
+- `--continue PATH`: warm-start from a specified `_opt.csv` file (relative to the project root or absolute)
 
-原因：时间戳写法依赖文件名格式的隐含约定，路径写法更明确，也兼容批量子目录布局。
+Reason: the timestamp form relied on an implicit convention about filename format, whereas the path form is unambiguous and also works with batch subdirectory layouts.
 
-### 3. `script/test_batch.sh` — 批量测试脚本
+### 3. `script/test_batch.sh` — a batch test script
 
-新增 `script/test_batch.sh`，作为 CLI 的批量编排层：
+Added `script/test_batch.sh` as an orchestration layer on top of the CLI:
 
-- 遍历指定文件夹（默认 `models/references`）下所有 YAML
-- 对每个模型依次执行 `--sim` 和 `--opt`
-- 每次运行创建 `output/YYYY-MM-DD_HH-MM-SS/` 子目录，所有 CSV、log 和 `batch_report.md` 放入其中
-- 并发运行多个实例不冲突（子目录按脚本启动时间戳区分）
-- 参数通过环境变量控制：`MODEL_FOLDER`、`RUN_OPT`
+- Walks all YAML files in a given folder (default `models/references`)
+- Runs `--sim` and `--opt` in turn for each model
+- Each run creates an `output/YYYY-MM-DD_HH-MM-SS/` subdirectory holding all the CSVs, logs, and a `batch_report.md`
+- Concurrent instances don't conflict (subdirectories are distinguished by the script's own start timestamp)
+- Parameters are controlled via environment variables: `MODEL_FOLDER`, `RUN_OPT`
 
-子目录管理是脚本的职责，CLI 本身始终写入 `output/` 根目录，对批量逻辑无感知。
+Managing subdirectories is the script's own responsibility; the CLI itself always writes to the `output/` root and is unaware of any batch logic.
 
-**公开性**：`batch_test.sh` 随代码公开发布（无敏感内容，合作者维护模型库时可用）；不进入 S1 论文（纯工程工具，非科学贡献）。
+**Publicity:** `batch_test.sh` is published with the code (no sensitive content, useful to collaborators maintaining the model library); it is not part of the S1 paper (a pure engineering tool, not a scientific contribution).
 
-**2026-06-13 修订：迁移为 `sim_cli/batch.py`（见下方）。**
-
----
-
-## 2026-06-13 修订：`script/test_batch.sh` → `sim_cli/batch.py`
-
-ADR 0101 把 CLI 升级为面向 AI/发布的公开接口后，`test_batch.sh` 暴露出两个问题：
-
-1. **依赖 bash**：发布的 `lm-sim.exe` 在纯 Windows（无 Git Bash）环境下无法使用批量功能，与"公开接口"定位不符。
-2. **subprocess + stdout 解析**：脚本通过 `python sim_cli/main.py ... 2>&1` 拿到输出后用 `grep` 提取 CSV 文件名/错误信息，脆弱且与 `main.py` 的打印格式耦合。
-
-**决策**：删除 `script/test_batch.sh`，新增 `sim_cli/batch.py`：
-
-- 纯 Python，与 `main.py` 同目录，不依赖 bash，PyInstaller 编译的 `lm-sim` 同环境可用
-- 直接 `import runner.run_sim / run_opt` 在进程内调用，不经 subprocess，无需解析 stdout
-- 每个模型的运行包在 `try/except` 中，单个模型崩溃不中断整批（原 bash 版靠 subprocess 天然隔离，Python 版需显式处理）
-- 错误摘要通过临时挂载的 `logging.Handler` 捕获 ERROR 级别日志，而非 grep 文本
-- 参数、批次目录结构（`<output-dir>/<timestamp>/<模型名>/`）、`batch_report.md` 格式与原 bash 版保持一致
-
-CLI 本身（`main.py`）的"按模型分子目录 + `--output-dir`"规则（本次 ADR 0101 实施时引入）对两者通用，`batch.py` 只是给每个模型调用传入同一个批次目录作为 `output_dir`。
-
-### `--all-plans` 移除：`--sim` 始终输出全部 plans
-
-`--all-plans` 是刚引入不久的可选开关，与 `--sim` 共存意义不大：`run_sim`/`run_sim_all_plans`
-两套代码路径几乎重复，且对 AI 调用者而言"是否要遍历 plans"不该是需要记住的额外参数。
-
-**决策**：合并为单一 `run_sim`——若模型定义了 `simulation.plans`，对每个方案各跑一次并输出
-`<stem>__<plan_id>.csv`；若未定义（隐式单一 plan），输出 `<stem>.csv`（与之前的命名兼容）。
-`main.py` 和 `batch.py` 均移除 `--all-plans` 参数。
+**Revision 2026-06-13: migrated to `sim_cli/batch.py` (see below).**
 
 ---
 
-## 关联
+## 2026-06-13 Revision: `script/test_batch.sh` → `sim_cli/batch.py`
 
-- `docs/cli.md` — 使用文档
-- `sim_cli/` — 实现目录（`main.py` 单模型，`batch.py` 批量）
-- ADR 0072 — GUI-only 决策（部分修订）
-- ADR 0101 — CLI 升级为公开发布接口；`--output-dir` + 按模型分子目录规则；`batch.py` 取代 `test_batch.sh`
-- `sim_engine/src/optimizer_engine.py` — `_StopOptimization` + `latest_front` 改动
+After ADR 0101 upgraded the CLI into a public interface for AI/release scenarios, `test_batch.sh` exposed two problems:
+
+1. **Bash dependency:** the released `lm-sim.exe` couldn't use the batch feature on a plain Windows environment (no Git Bash), at odds with its "public interface" positioning.
+2. **Subprocess + stdout parsing:** the script captured output via `python sim_cli/main.py ... 2>&1` and used `grep` to extract CSV filenames/error messages — fragile, and coupled to `main.py`'s print format.
+
+**Decision:** delete `script/test_batch.sh` and add `sim_cli/batch.py`:
+
+- Pure Python, in the same directory as `main.py`, no bash dependency; usable in the same PyInstaller-compiled `lm-sim` environment
+- Calls `runner.run_sim / run_opt` directly via `import`, in-process, without going through a subprocess or parsing stdout
+- Each model's run is wrapped in `try/except`, so one model crashing doesn't abort the whole batch (the old bash version got this isolation for free from subprocess; the Python version needs it handled explicitly)
+- Error summaries are captured via a temporarily mounted `logging.Handler` at the ERROR level, rather than by grepping text
+- Parameters, the batch directory structure (`<output-dir>/<timestamp>/<model-name>/`), and the `batch_report.md` format are kept consistent with the original bash version
+
+The `main.py` rule of "one subdirectory per model plus `--output-dir`" (introduced alongside this same ADR 0101 implementation) applies to both; `batch.py` simply passes the same batch directory as `output_dir` for every model's call.
+
+### `--all-plans` removed: `--sim` always outputs all plans
+
+`--all-plans` was a recently introduced optional switch that made little sense alongside `--sim`: the `run_sim`/`run_sim_all_plans` code paths were nearly duplicates, and "whether to iterate over plans" shouldn't be an extra parameter an AI caller needs to remember.
+
+**Decision:** merge into a single `run_sim` — if the model defines `simulation.plans`, it runs once per plan and outputs `<stem>__<plan_id>.csv`; if not defined (an implicit single plan), it outputs `<stem>.csv` (compatible with the previous naming). Both `main.py` and `batch.py` drop the `--all-plans` parameter.
+
+---
+
+## Related
+
+- `docs/cli.md` — usage documentation
+- `sim_cli/` — implementation directory (`main.py` for a single model, `batch.py` for batch runs)
+- ADR 0072 — the GUI-only decision (partially revised)
+- ADR 0101 — CLI upgraded to a public release interface; the `--output-dir` plus per-model-subdirectory rule; `batch.py` replaces `test_batch.sh`
+- `sim_engine/src/optimizer_engine.py` — the `_StopOptimization` + `latest_front` changes

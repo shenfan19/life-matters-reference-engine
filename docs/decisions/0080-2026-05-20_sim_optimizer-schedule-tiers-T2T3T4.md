@@ -1,174 +1,174 @@
-# ADR 0080 — 优化器调度粒度分层设计（T2/T3/T4）
+# ADR 0080 — Optimizer schedule-granularity tier design (T2/T3/T4)
 
 **Date**: 2026-05-20
-**Status**: Design（文档完成，待实现）
+**Status**: Design (documentation complete, implementation pending)
 
 ---
 
 ## Requirements
 
-### 背景与动机
+### Background and motivation
 
-现有优化器（T1）仅支持对事件**值**（剂量/强度）的连续优化，时间、星期、起止日期均作为固定参数写死在 YAML 中。
+The existing optimizer (T1) only supports continuous optimization of an event's **value** (dose/intensity); time, weekday, and start/end dates are all fixed parameters hardcoded into the YAML.
 
-真实干预场景中，时机本身往往是关键决策变量：
+In real intervention scenarios, the timing itself is often the key decision variable:
 
-| 领域 | 场景示例 | 时机变量 |
+| Domain | Example scenario | Timing variable |
 |------|---------|---------|
-| 时间营养学 | 进食窗口对代谢的影响（16:8 vs 14:10） | 进食开始时刻 |
-| 时间药理学 | 同一药物早晚服效果差异（昼夜节律） | 给药时刻 |
-| 运动训练 | 游泳池只开周末，骑车只能工作日 | 星期模式 |
-| 临床治疗 | 手术后第几天开始化疗影响副作用与疗效 | 干预起始日 |
-| 社会场景 | 间歇性断食（5:2）、饥荒救援物资投放 | 断食日、资源到达日 |
+| Chrono-nutrition | The effect of an eating window on metabolism (16:8 vs 14:10) | The start time of eating |
+| Chronopharmacology | Morning-versus-evening efficacy differences for the same drug (circadian rhythm) | Dosing time |
+| Exercise training | A swimming pool open only on weekends, cycling only possible on weekdays | The weekday pattern |
+| Clinical treatment | Which post-surgery day chemotherapy starts affects side effects and efficacy | The intervention start day |
+| Social scenarios | Intermittent fasting (5:2), famine-relief supply drops | The fasting day, the resource-arrival day |
 
-### 功能需求
+### Functional requirements
 
-**R1（T2 时间窗）**：优化器应支持在建模者指定的时间窗（如 `07:00~09:00`）内搜索最优给药/进食时刻，粒度可选 `1h`（默认）或 `15min`。
+**R1 (T2 time window)**: the optimizer should support searching for the optimal dosing/eating time within a modeler-specified time window (e.g. `07:00~09:00`), with a granularity of `1h` (default) or `15min`.
 
-**R2（T3 星期模式）**：优化器应支持从建模者预定义的候选星期模式列表中选择一个（如"周一三五"、"周末"），而非在全 2⁷ 组合空间中搜索。
+**R2 (T3 weekday pattern)**: the optimizer should support choosing one pattern from a modeler-predefined list of candidate weekday patterns (e.g. "Monday/Wednesday/Friday", "weekends"), rather than searching the full 2^7 combination space.
 
-**R3（T4 起始日）**：优化器应支持在建模者指定的日期窗口内搜索最优干预起始日（如 5 月 1 日–30 日中哪一天开始最好）。
+**R3 (T4 start date)**: the optimizer should support searching for the optimal intervention start date within a modeler-specified date window (e.g. which day between May 1 and May 30 is best to start).
 
-**R4（可组合）**：T2/T3/T4 可对同一 `inputs` 条目任意组合启用；x 向量自动拼接所有已启用维度。
+**R4 (composable)**: T2/T3/T4 can be enabled in any combination on the same `inputs` entry; the x vector automatically concatenates every enabled dimension.
 
-**R5（向后兼容）**：现有 T1-only 模型不受影响；新字段均为可选。
+**R5 (backward compatible)**: existing T1-only models are unaffected; all new fields are optional.
 
-### 约束需求（搜索可行性）
+### Constraint requirements (search feasibility)
 
-以下约束是需求的一部分，直接影响设计选择——**搜索可行性本身是一个系统指标**：
+The following constraints are part of the requirements and directly affect design choices — **search feasibility is itself a system-level metric**:
 
-**C1（搜索空间有界）**：T2 时间槽数 = `(window_end - window_start) / opt_step + 1`，通常 2–9 个；T3 候选模式数 ≤ 6（建模者保证）；T4 日期偏移数 ≤ 365 天。单个模型的整数决策变量维度预期 ≤ 10。
+**C1 (bounded search space)**: the T2 slot count = `(window_end - window_start) / opt_step + 1`, typically 2-9; the T3 candidate-pattern count <= 6 (guaranteed by the modeler); the T4 date-offset count <= 365 days. A single model's integer decision-variable dimensionality is expected to be <= 10.
 
-**C2（碰撞防止）**：同一 `inputs` 列表中，各条目的时间窗设计上不重叠，防止同一仿真步内多个事件同时命中导致脉冲意外累加。引擎不自动检测碰撞，建模者负责设计。
+**C2 (collision prevention)**: within the same `inputs` list, entries' time windows are designed not to overlap, preventing multiple events from hitting the same simulation step and accidentally stacking pulses. The engine does not automatically detect collisions; the modeler is responsible for the design.
 
-**C3（算法兼容）**：T2/T3/T4 产生整数决策变量，NSGA-II（pymoo `MixedVariableProblem`）支持混合整数；L-BFGS-B / Nelder-Mead 不支持，启用时自动切换并警告。
+**C3 (algorithm compatibility)**: T2/T3/T4 produce integer decision variables; NSGA-II (pymoo's `MixedVariableProblem`) supports mixed integers; L-BFGS-B / Nelder-Mead do not, and should auto-switch with a warning when these are enabled.
 
-**C4（收敛预期）**：标准档（pop=50, gen=80）下，典型 T1+T2+T3 组合（约 5 个决策变量）4,000 次评估应足以收敛；若搜索空间过大由建模者通过减少候选模式数控制。
+**C4 (convergence expectation)**: under the standard preset (pop=50, gen=80), a typical T1+T2+T3 combination (about 5 decision variables) should converge within 4,000 evaluations; if the search space is too large, the modeler controls it by reducing the candidate-pattern count.
 
-### 非功能需求
+### Non-functional requirements
 
-**NF1（YAML 可读性）**：新字段采用 `time_window`、`opt_step`、`days_options`、`date_start_window` 命名，与仿真积分步长 `metadata.step_size` 无歧义。
+**NF1 (YAML readability)**: new fields are named `time_window`, `opt_step`, `days_options`, and `date_start_window`, unambiguous relative to the simulation integration step size `metadata.step_size`.
 
-**NF2（GUI 明确性）**：每个 Tier 对应独立可识别的控件，不使用自由文本输入。
+**NF2 (GUI clarity)**: each tier corresponds to an independently recognizable control; no free-text input is used.
 
-**NF3（结果可读性）**：`reference.regimen` 存储解码后的人类可读值（`time: "08:00"`、`days: [Sat, Sun]`、`date_start: "2026-05-08"`）。
+**NF3 (result readability)**: `reference.regimen` stores decoded, human-readable values (`time: "08:00"`, `days: [Sat, Sun]`, `date_start: "2026-05-08"`).
 
 ---
 
 ## Design
 
-### 四层粒度体系
+### The four-tier granularity system
 
-| Tier | 优化对象 | x 维度类型 | 优先级 |
+| Tier | Optimization target | x-dimension type | Priority |
 |------|---------|-----------|--------|
-| T1 | 事件值（剂量/强度） | 连续实数 | 已实现 |
-| T2 | 事件时刻（时间窗内） | 整数（槽索引） | 高：科学新颖性强 |
-| T4 | 干预起始日（日期窗内） | 整数（天偏移） | 中 |
-| T3 | 星期模式（候选集） | 整数（模式索引） | 低：纯排列 |
+| T1 | Event value (dose/intensity) | continuous real | implemented |
+| T2 | Event time (within a time window) | integer (slot index) | high: strong scientific novelty |
+| T4 | Intervention start date (within a date window) | integer (day offset) | medium |
+| T3 | Weekday pattern (from a candidate set) | integer (pattern index) | low: pure permutation |
 
-### YAML 语法
+### YAML syntax
 
 ```yaml
 optimizer:
   inputs:
-    # T1：仅值优化
+    # T1: value-only optimization
     - variable: drug_dose
       time: "08:00"
-      label: "每日剂量"
+      label: "Daily dose"
       optimize:
         value: [5.0, 20.0]
 
-    # T2：值 + 时间窗优化
+    # T2: value plus time-window optimization
     - variable: meal_carbs
       time_window: "07:00~09:00"
-      opt_step: 1h               # 缺省 1h；精细场景可设 15min
-      label: "早餐碳水"
+      opt_step: 1h               # defaults to 1h; a fine-grained scenario can set 15min
+      label: "Breakfast carbs"
       optimize:
         value: [30, 80]
         time: true
 
-    # T3：值 + 星期模式选择
+    # T3: value plus weekday-pattern selection
     - variable: exercise_load
       time: "17:00"
       days_options:
         - [Mon, Wed, Fri]
         - [Tue, Thu, Sat]
         - [Sat, Sun]
-      label: "运动"
+      label: "Exercise"
       optimize:
         value: [30, 90]
         days: true
 
-    # T4：值 + 干预起始日优化
+    # T4: value plus intervention-start-date optimization
     - variable: caloric_restriction
       time: "08:00"
       days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
       date_start_window: "2026-05-01~2026-05-30"
-      label: "热量限制"
+      label: "Caloric restriction"
       optimize:
         value: [400, 800]
         date_start: true
 
-    # 固定输入（无 optimize 块）
+    # A fixed input (no optimize block)
     - variable: water_intake
       time: "08:00"
       value: 1.5
 ```
 
-### x 向量编码
+### x-vector encoding
 
-每个 `inputs` 条目按 `[value?, time?, days?, date_start?]` 顺序展开，仅启用的 Tier 贡献维度：
+Each `inputs` entry expands in the order `[value?, time?, days?, date_start?]`, with only the enabled tiers contributing dimensions:
 
-| 启用 Tier | 贡献维度 | 变量类型 |
+| Enabled tier | Dimensions contributed | Variable type |
 |----------|---------|---------|
-| T1 | 1（value） | `RealVar(lo, hi)` |
-| T2 | +1（time_slot_idx） | `IntVar(0, N_slots-1)` |
-| T3 | +1（pattern_idx） | `IntVar(0, N_patterns-1)` |
-| T4 | +1（day_offset） | `IntVar(0, D-1)` |
-| 固定输入 | 0 | — |
+| T1 | 1 (value) | `RealVar(lo, hi)` |
+| T2 | +1 (time_slot_idx) | `IntVar(0, N_slots-1)` |
+| T3 | +1 (pattern_idx) | `IntVar(0, N_patterns-1)` |
+| T4 | +1 (day_offset) | `IntVar(0, D-1)` |
+| A fixed input | 0 | — |
 
-**示例**：`meal_carbs`（T1+T2，3 槽）+ `exercise_load`（T1+T3，3 模式）：
+**Example**: `meal_carbs` (T1+T2, 3 slots) plus `exercise_load` (T1+T3, 3 patterns):
 ```
 x = [carbs_value, time_slot_idx, exercise_value, pattern_idx]
     [   55.3,           1,            62.0,            2      ]
-# time_slot_idx=1 → ["07:00","08:00","09:00"][1] = "08:00"
-# pattern_idx=2   → [[MWF],[TTS],[SS]][2] = [Sat, Sun]
+# time_slot_idx=1 -> ["07:00","08:00","09:00"][1] = "08:00"
+# pattern_idx=2   -> [[MWF],[TTS],[SS]][2] = [Sat, Sun]
 ```
 
-### reference.regimen 格式扩展
+### The reference.regimen format extension
 
-T2/T3/T4 启用时，叶值从标量改为字典；T1-only 保持标量（向后兼容）：
+Once T2/T3/T4 are enabled, a leaf value changes from a scalar to a dict; T1-only stays scalar (backward compatible):
 
 ```yaml
 reference:
   regimen:
     drug_dose:
-      "每日剂量": 12.5           # T1-only：标量
+      "Daily dose": 12.5           # T1-only: scalar
     meal_carbs:
-      "早餐碳水":
+      "Breakfast carbs":
         value: 55.3
-        time: "08:00"            # T2 解码
+        time: "08:00"            # T2 decoded
     exercise_load:
-      "运动":
+      "Exercise":
         value: 62.0
-        days: [Sat, Sun]         # T3 解码
+        days: [Sat, Sun]         # T3 decoded
     caloric_restriction:
-      "热量限制":
+      "Caloric restriction":
         value: 620.0
-        date_start: "2026-05-08" # T4 解码
+        date_start: "2026-05-08" # T4 decoded
 ```
 
 ---
 
 ## Implementation
 
-### 前端：`InputEvent` 类型扩展（types.ts）
+### Frontend: `InputEvent` type extension (types.ts)
 
-新增字段（均为可选，不破坏现有条目）：
+New fields (all optional, without breaking existing entries):
 
 ```typescript
 interface InputEvent {
-  // 已有字段
+  // existing fields
   variable: string;
   time: string;
   value: number;
@@ -178,41 +178,41 @@ interface InputEvent {
   optimizeValue?: boolean;
   valueBounds?: [number, number];
 
-  // T2 新增
+  // new for T2
   timeWindow?: string;         // "07:00~09:00"
-  optStep?: string;            // "1h" | "15min"，缺省 "1h"
+  optStep?: string;            // "1h" | "15min", defaulting to "1h"
   optimizeTime?: boolean;
 
-  // T3 新增
+  // new for T3
   daysOptions?: string[][];    // [[Mon,Wed,Fri], [Sat,Sun], ...]
   optimizeDays?: boolean;
 
-  // T4 新增
+  // new for T4
   dateStartWindow?: string;    // "2026-05-01~2026-05-30"
   optimizeDateStart?: boolean;
 }
 ```
 
-### 前端：GUI 控件（SimSetupTab.tsx）
+### Frontend: GUI controls (SimSetupTab.tsx)
 
-每个 `InputEvent` 行在 opt 模式下，已有 value bounds 控件后追加：
+For each `InputEvent` row in opt mode, the following are appended after the existing value-bounds control:
 
-**T2 控件**（当 `timeWindow` 存在且 `optimizeTime=true`）：
-- 两个 TimePicker（起/止，步长与 `optStep` 对应），展示窗口范围
-- Select 粒度选项：`1h` / `15min`
-- 展示只读预览："3 slots: 07:00 / 08:00 / 09:00"
+**T2 control** (when `timeWindow` is present and `optimizeTime=true`):
+- Two TimePickers (start/end, with a step matching `optStep`), showing the window range
+- A granularity Select: `1h` / `15min`
+- A read-only preview: "3 slots: 07:00 / 08:00 / 09:00"
 
-**T3 控件**（当 `daysOptions` 存在且 `optimizeDays=true`）：
-- 候选模式列表，每行一个 Tag 组（如 `Mon Wed Fri`）
-- 不可编辑（候选来自 YAML），提示"optimizer 将选择其中一个"
+**T3 control** (when `daysOptions` is present and `optimizeDays=true`):
+- A list of candidate patterns, each row a Tag group (e.g. `Mon Wed Fri`)
+- Not editable (candidates come from the YAML), with a hint "the optimizer will choose one of these"
 
-**T4 控件**（当 `dateStartWindow` 存在且 `optimizeDateStart=true`）：
-- 两个 DatePicker（起/止），展示可选窗口
-- 展示只读预览："30 day window"
+**T4 control** (when `dateStartWindow` is present and `optimizeDateStart=true`):
+- Two DatePickers (start/end), showing the selectable window
+- A read-only preview: "30 day window"
 
-### 前端：`xToInputEvents` 扩展（Simulator.tsx）
+### Frontend: `xToInputEvents` extension (Simulator.tsx)
 
-现有函数只处理 T1（value 替换）。扩展为按条目逐维解码：
+The existing function only handles T1 (value substitution). It's extended to decode per-entry, dimension by dimension:
 
 ```typescript
 function xToInputEvents(x: number[], inputs: OptimizerInput[], baseEvents: InputEvent[]): InputEvent[] {
@@ -220,7 +220,7 @@ function xToInputEvents(x: number[], inputs: OptimizerInput[], baseEvents: Input
   const result = baseEvents.map(ev => ({ ...ev }));
 
   for (const inp of inputs) {
-    if (!inp.optimize) continue;  // 固定输入，跳过
+    if (!inp.optimize) continue;  // a fixed input, skip
 
     const idx = result.findIndex(ev => ev.variable === inp.variable && ev.time === inp.effectiveTime);
     if (idx < 0) { xi += dimCount(inp); continue; }
@@ -250,24 +250,24 @@ function xToInputEvents(x: number[], inputs: OptimizerInput[], baseEvents: Input
 }
 ```
 
-辅助函数 `expandTimeWindow("07:00~09:00", "1h")` → `["07:00", "08:00", "09:00"]`。
+The helper `expandTimeWindow("07:00~09:00", "1h")` -> `["07:00", "08:00", "09:00"]`.
 
-### 后端：`optimizer_engine.py` 扩展
+### Backend: `optimizer_engine.py` extension
 
-#### 解析阶段（`run_optimizer` 入口）
+#### The parsing stage (the `run_optimizer` entry point)
 
 ```python
 def _parse_inputs(inputs_yaml: list) -> tuple[list, list, list]:
     """
-    返回 (var_specs, bounds, var_types)
-    var_types 元素: 'real' | 'int'
+    Returns (var_specs, bounds, var_types)
+    var_types elements: 'real' | 'int'
     """
     var_specs, bounds, var_types = [], [], []
 
     for inp in inputs_yaml:
         opt = inp.get('optimize')
         if not opt:
-            continue  # 固定输入
+            continue  # a fixed input
 
         # T1: value
         lo, hi = opt['value']
@@ -300,7 +300,7 @@ def _parse_inputs(inputs_yaml: list) -> tuple[list, list, list]:
     return var_specs, bounds, var_types
 ```
 
-#### 构建事件（`_build_regimen_events(x, var_specs)`）
+#### Building events (`_build_regimen_events(x, var_specs)`)
 
 ```python
 def _build_regimen_events(x, var_specs):
@@ -333,7 +333,7 @@ def _build_regimen_events(x, var_specs):
     return events_by_var
 ```
 
-#### pymoo 变量类型声明
+#### pymoo variable-type declaration
 
 ```python
 from pymoo.core.mixed import MixedVariableProblem
@@ -349,9 +349,9 @@ for i, (spec, (lo, hi), vtype) in enumerate(zip(var_specs, bounds, var_types)):
 problem = MixedVariableProblem(n_obj=n_obj, n_constr=n_constr, vars=variables, ...)
 ```
 
-如果所有变量均为 `real`（纯 T1），降级为现有 `FloatRandomSampling` 路径（向后兼容）。
+If every variable is `real` (pure T1), it falls back to the existing `FloatRandomSampling` path (backward compatible).
 
-#### `_expand_time_window` 辅助
+#### The `_expand_time_window` helper
 
 ```python
 def _expand_time_window(window: str, opt_step: str) -> list[str]:
@@ -370,17 +370,17 @@ def _expand_time_window(window: str, opt_step: str) -> list[str]:
 
 ---
 
-## 影响文件
+## Files affected
 
 ```
-docs/model_design.md                               ✅ 已更新（YAML Schema + 章节）
-docs/decisions/0080-...（本文件）                  ✅
+docs/model_design.md                               done (YAML schema plus section)
+docs/decisions/0080-... (this file)                done
 
-sim_gui/src/types.ts                               InputEvent 新增 T2/T3/T4 字段
-sim_gui/src/components/SimSetupTab.tsx             T2/T3/T4 opt 控件
-sim_gui/src/components/Simulator.tsx               xToInputEvents 混合整数解码
-                                                   init useEffect 解析新 YAML 字段
+sim_gui/src/types.ts                               InputEvent gains new T2/T3/T4 fields
+sim_gui/src/components/SimSetupTab.tsx             T2/T3/T4 opt controls
+sim_gui/src/components/Simulator.tsx               xToInputEvents mixed-integer decoding
+                                                   init useEffect parses new YAML fields
 
-sim_engine/src/optimizer_engine.py                 _parse_inputs、_build_regimen_events
-                                                   expandTimeWindow、MixedVariableProblem
+sim_engine/src/optimizer_engine.py                 _parse_inputs, _build_regimen_events
+                                                   expandTimeWindow, MixedVariableProblem
 ```

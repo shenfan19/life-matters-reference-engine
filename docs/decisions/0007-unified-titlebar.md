@@ -1,30 +1,30 @@
-# 0007 — Sim / Game 顶栏统一
+# 0007 — Unifying the Sim / Game title bar
 
-**状态**：✅ 已实施  
-**日期**：2026-04-04
+**Status**: implemented
+**Date**: 2026-04-04
 
-## 背景
+## Background
 
-`sim_gui`（端口 5173）和 `game`（端口 5174）是同一产品的两个子应用，但顶栏风格不一致：
+`sim_gui` (port 5173) and `game` (port 5174) are two sub-applications of the same product, but their title bars were inconsistent:
 
-- sim 有完整的顶栏：LM logo、"Life Matters" 大标题、页面导航、语言选择、暗/亮切换。
-- game 的 CardGame 页面（游戏进行中）顶栏极简，只有 LM 波形 logo、当前 story 名称和一个返回按钮，缺少语言和暗/亮控制。
-- game 的 StorySelect 页面（选关）已有完整顶栏，但 CardGame 未继承。
+- Sim has a full title bar: the LM logo, the "Life Matters" main title, page navigation, language selection, and dark/light toggle.
+- Game's CardGame page (during play) has a minimal title bar with only the LM waveform logo, the current story name, and a back button, lacking language and dark/light controls.
+- Game's StorySelect page (level selection) already has a full title bar, but CardGame did not inherit it.
 
-## 决策
+## Decision
 
-CardGame 顶栏对齐 StorySelect，增加以下元素：
-- LM 波形 logo + "Life Matters" 大标题（`Georgia` 字体，20px）
-- 竖线分隔
-- 当前 story 名称（原有，调整为次要色 `textSec`）+ 时间段（原有）
-- 右侧：返回按钮、语言选择 `<select>`、暗/亮切换按钮
+Align the CardGame title bar with StorySelect by adding:
+- the LM waveform logo + "Life Matters" main title (`Georgia` font, 20px)
+- a vertical divider
+- the current story name (already present, adjusted to the secondary color `textSec`) + the time period (already present)
+- on the right: a back button, a language `<select>`, and a dark/light toggle button
 
-顶栏高度从 42px 统一为 50px，与 StorySelect 一致。
+Title bar height is unified from 42px to 50px, matching StorySelect.
 
-实现：`App.tsx` 新增 `onToggleDark` prop 传入 CardGame；CardGame 内通过已有的 `useI18n()` hook 获取 `setLanguage`，无需额外 prop。
+Implementation: `App.tsx` adds an `onToggleDark` prop passed into CardGame; inside CardGame, `setLanguage` is obtained through the existing `useI18n()` hook, so no additional prop is needed.
 
-## 后果
+## Consequences
 
-- ✅ 用户从选关页进入游戏后，顶栏视觉保持一致，可随时切换语言和明暗
-- ✅ 不依赖额外状态提升，CardGame 自身管理语言切换
-- ⚠️ 游戏进行中切换语言不会重置游戏状态（`langAtLoad` ref 保证加载时语言已固定），但 UI 文字会立即变化
+- Users moving from the level-select page into a game see a visually consistent title bar and can switch language or theme at any time
+- No additional state lifting is required; CardGame manages its own language switching
+- Switching language mid-game does not reset game state (the `langAtLoad` ref keeps the language fixed at load time), but the UI text updates immediately

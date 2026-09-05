@@ -1,48 +1,48 @@
-# 0056 — 三层验证框架（数值精度 / 文献对标 / 优化合理性）
+# 0056 — Three-tier validation framework (numerical accuracy / literature benchmarking / optimization plausibility)
 
-**日期**：2026-05-04  
-**状态**：✅ 已实施（框架文档），部分自动化脚本待实现
-
----
-
-## 背景
-
-LM 的仿真和优化结果将用于学术论文。需要一套系统化的验证方法来证明：
-
-1. 数值积分器本身没有实现错误。
-2. 模型参数合理，输出在医学上可信。
-3. 优化器输出的 Pareto 前沿临床上说得通。
-
-此前没有明确的验证协议，仅靠目视检查曲线。
+**Date**: 2026-05-04
+**Status**: implemented (framework documented), some automation scripts pending
 
 ---
 
-## 决策
+## Background
 
-采用**三层递进验证框架**，写入 `docs/validation.md`：
+LM's simulation and optimization results will be used in academic papers. A systematic validation method is needed to demonstrate:
 
-| 层 | 名称 | 参照物 | 自动化 |
+1. The numerical integrator itself has no implementation errors.
+2. Model parameters are reasonable and outputs are medically credible.
+3. The Pareto front produced by the optimizer makes clinical sense.
+
+Previously there was no clearly defined validation protocol, relying only on visual inspection of curves.
+
+---
+
+## Decision
+
+Adopt a **three-tier progressive validation framework**, documented in `docs/validation.md`:
+
+| Tier | Name | Reference | Automation |
 |----|------|--------|--------|
-| 层1 | 数值精度 | Banister 解析解（精确值） | 全自动脚本 |
-| 层2 | 文献对标 | 文献关键数据点（效应量范围） | 半自动 + AI 辅助判读 |
-| 层3 | 优化合理性 | 指南静态点位置 + 单目标退化一致性 | 人工 + AI 辅助 |
+| Tier 1 | Numerical accuracy | Banister analytical solution (exact value) | fully automated script |
+| Tier 2 | Literature benchmarking | key literature data points (effect-size ranges) | semi-automated + AI-assisted interpretation |
+| Tier 3 | Optimization plausibility | guideline static-point positions + single-objective degeneracy consistency | manual + AI-assisted |
 
-**层2 的核心设计决定**：医学模型不做逐点精确匹配，只验证**效应量是否在文献给出的合理范围内**（例如：HCTZ 25mg 导致血压降低 8–12 mmHg，对应 Law 2009）。
+**The core design decision for Tier 2**: medical models are not matched point-by-point exactly; only whether the **effect size falls within the plausible range given in the literature** is verified (for example: HCTZ 25mg lowers blood pressure by 8-12 mmHg, per Law 2009).
 
-**报告格式**：生成 markdown 报告，关键时间点数值表内嵌（约 5–15 行），完整时间序列数据存为独立 CSV 文件，报告中注明路径。AI 可直接读 markdown 报告协助判断。
-
----
-
-## 理由
-
-- 只有层1能做精确比对（有解析解），医学模型的正确验证方式是范围对比而非精确匹配。
-- 三层服务不同严格程度的验证目的（数值精度/临床文献对标/优化合理性），要求各不相同，避免过度验证（层2 不需要像层1 那样精确）。
-- markdown 内嵌数值表使 AI 辅助阅读成为可能，无需额外解析 CSV。
+**Report format**: a markdown report is generated, with a table of key time-point values embedded inline (roughly 5-15 rows); the full time-series data is stored as a separate CSV file, with its path noted in the report. AI can read the markdown report directly to assist judgment.
 
 ---
 
-## 更新（2026-07-19）：协议编号调整
+## Rationale
 
-上表"层1（Banister V1/V2/V3）"是本 ADR 制定时（2026-05-04）的设想编号，三者均属层1/verify。实际实现中 V2/V3 被赋予了"文献场景复现"的含义（属于层2/validate，而非层1/verify），层1 后续新增的步长收敛性检验协议则占用了下一个可用编号 V4——导致同属 verify 层的两个数值协议（解析解对比、步长收敛性检验）编号不相邻，反而被 validate 层的文献场景协议隔开，纯属先后实现顺序造成的历史编号，不反映分层设计。
+- Only Tier 1 allows exact comparison (since an analytical solution exists); the correct way to validate a medical model is range comparison, not exact matching.
+- The three tiers serve different degrees of validation rigor (numerical accuracy / clinical literature benchmarking / optimization plausibility), each with different requirements, avoiding over-validation (Tier 2 does not need to be as precise as Tier 1).
+- Embedding value tables inline in markdown makes AI-assisted reading possible without needing to parse the CSV separately.
 
-已重新编号，使层次与编号连续对应：**V1**（解析解逐日对比）+ **V2**（步长收敛性检验，原 V4）同属层1/verify；**V3**（原 V2）+ **V4**（原 V3，均为文献场景复现）同属层2/validate。现行定义以 `test_verify/verification_report.md` §2 为准；本文件上方表格保留原始设计记录，不回填修改。
+---
+
+## Update (2026-07-19): protocol numbering adjustment
+
+The table above, "Tier 1 (Banister V1/V2/V3)," reflects the numbering envisioned when this ADR was written (2026-05-04), under which all three protocols belonged to Tier 1/verify. In the actual implementation, V2/V3 were given the meaning of "literature-scenario reproduction" (belonging to Tier 2/validate, not Tier 1/verify), and the step-size convergence test protocol later added to Tier 1 took the next available number, V4 — leaving the two numerical protocols that both belong to the verify tier (analytical-solution comparison, step-size convergence testing) non-adjacent in numbering, separated instead by the validate tier's literature-scenario protocols. This is purely a historical numbering artifact from implementation order and does not reflect the tiered design.
+
+Renumbering has since aligned the tiers with contiguous numbers: **V1** (day-by-day analytical-solution comparison) + **V2** (step-size convergence testing, formerly V4) both belong to Tier 1/verify; **V3** (formerly V2) + **V4** (formerly V3, both literature-scenario reproduction) both belong to Tier 2/validate. The current definitions are authoritative in `test_verify/verification_report.md` §2; the table above in this file preserves the original design record and is left unmodified.

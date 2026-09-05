@@ -1,66 +1,66 @@
-# ADR 0068 — 公式预编译：asteval → Python 函数
+# ADR 0068 — Formula Precompilation: asteval → Python Function
 
-## 状态
+## Status
 
-✅ 已实施
+✅ Implemented
 
-## 日期
+## Date
 
 2026-05-15
 
-## 背景
+## Background
 
-仿真引擎的主性能瓶颈在 `simulation.py` 的 `step()` 循环：每一步对每一条公式调用 `asteval.eval(expr_string)`，即每步都要重新解析字符串、构建 AST、通过 asteval 的 Python 解释器执行。类比 MATLAB 中每步用 `subs` 而非 `matlabFunction`。
+The simulation engine's main performance bottleneck was in the `step()` loop of `simulation.py`: every step called `asteval.eval(expr_string)` for every formula, meaning every step re-parsed the expression string, rebuilt the AST, and executed it through asteval's Python interpreter. This is analogous to using `subs` instead of `matlabFunction` at every step in MATLAB.
 
-典型优化问题（`pop=50, gen=80`）会执行 4,000 次完整仿真，每次仿真数百到数千步，导致运行时间半小时以上，严重阻碍调试。
+A typical optimization problem (`pop=50, gen=80`) executes 4,000 full simulations, each with hundreds to thousands of steps, leading to run times over half an hour and severely hampering debugging.
 
-asteval 的作用是提供一个安全的表达式求值环境（含数学函数、变量隔离），但其运行时开销远高于原生 Python。
+asteval's job is to provide a safe expression-evaluation environment (with math functions and variable isolation), but its runtime overhead is far higher than native Python.
 
-## 决策
+## Decision
 
-### 架构：asteval → Python 函数 → step 调用函数
+### Architecture: asteval → Python function → step-time function call
 
-在模型加载后第一次调用 `step()` 时，执行一次 `_build_formula_cache()`：
+On the first call to `step()` after a model loads, run `_build_formula_cache()` once:
 
-1. **提取变量依赖**：用 `ast.parse()` 遍历表达式 AST，提取所有 `ast.Name` 节点，分为模型变量和步长符号（`step`、`t`、`HOUR` 等）。
-2. **生成 Python 函数**：用 `exec()` 在隔离命名空间中定义函数，函数参数即依赖的变量名：
+1. **Extract variable dependencies**: walk the expression AST with `ast.parse()`, extract every `ast.Name` node, and split them into model variables and step-size symbols (`step`, `t`, `HOUR`, etc.).
+2. **Generate a Python function**: use `exec()` in an isolated namespace to define a function whose parameters are exactly the dependent variable names:
    ```python
    def _fn(blood_glucose, uptake, utilization, step):
        return blood_glucose + (uptake - utilization) * step
    ```
-   数学函数（`sin`、`max` 等）通过函数的 globals 环境（`_FORMULA_GLOBALS`）提供，不作参数。
-3. **存储函数与参数列表**：缓存 `(fn, [param_names])` 到 `self._formula_cache`，同时缓存按优先级排好序的公式列表（`self._sorted_formulas`）。
+   Math functions (`sin`, `max`, etc.) are supplied through the function's globals environment (`_FORMULA_GLOBALS`), not as parameters.
+3. **Store the function and its parameter list**: cache `(fn, [param_names])` in `self._formula_cache`, along with a priority-sorted formula list (`self._sorted_formulas`).
 
-### step() 调用方式
+### How step() calls it
 
-每步通过 `_get_arg(name)` 读取当前变量值（优先从 `self.variables[name].value`，其次从步长符号），按参数列表顺序构建位置参数列表后调用：
+Each step reads the current value of each variable via `_get_arg(name)` (preferring `self.variables[name].value`, falling back to step-size symbols), builds a positional argument list in parameter order, and calls:
 
 ```python
 new_value = fn(*[_get_arg(n) for n in params])
 ```
 
-变量在步内更新后，下一条公式通过 `_get_arg` 读到最新值，保持原有的步内依赖顺序语义。
+After a variable is updated within a step, the next formula reads its latest value through `_get_arg`, preserving the original within-step dependency-order semantics.
 
-### 回退机制
+### Fallback mechanism
 
-若 `exec()` 编译失败（语法不兼容），`fn=None`，`step()` 回退到 `asteval.eval(raw_expr)`，不中断仿真。
+If `exec()` fails to compile (syntax incompatibility), `fn=None`, and `step()` falls back to `asteval.eval(raw_expr)` without interrupting the simulation.
 
-### 性能对比
+### Performance comparison
 
-| 方式 | 变量访问 | 每步开销 |
+| Approach | Variable access | Per-step cost |
 |------|---------|---------|
-| asteval（原） | 字典查找 + asteval 解释执行 | 最高 |
-| compile() + eval(code, symtable) | 字典查找 | 中等 |
-| **Python 函数（本方案）** | LOAD_FAST（位置参数） | 最低 |
+| asteval (original) | dict lookup + asteval interpreted execution | highest |
+| compile() + eval(code, symtable) | dict lookup | medium |
+| **Python function (this approach)** | LOAD_FAST (positional argument) | lowest |
 
-预期提速 5–15×，具体倍数取决于公式复杂度和变量数量。
+Expected speedup is 5-15x, depending on formula complexity and variable count.
 
-## 影响文件
+## Files affected
 
-- `sim_engine/src/model_structure/simulation.py`：新增 `_compile_expr_to_fn()`、`_build_formula_cache()`、`_FORMULA_GLOBALS`、`_STEP_SYMS`；改写 `step()` 公式执行循环
+- `sim_engine/src/model_structure/simulation.py`: adds `_compile_expr_to_fn()`, `_build_formula_cache()`, `_FORMULA_GLOBALS`, `_STEP_SYMS`; rewrites the formula-execution loop in `step()`
 
-## 不改变的内容
+## What doesn't change
 
-- asteval 继续保留：用于验证器（`validator.py`）、ODE 路径（`simulator_engine.py` 旧路径）和编译失败时的回退
-- 公式语法、YAML 格式、变量系统不变
-- 步内变量依赖顺序语义不变（靠优先级排序 + `_get_arg` 实时读值保证）
+- asteval is still kept: used by the validator (`validator.py`), the ODE path (`simulator_engine.py`'s legacy path), and as the fallback on compile failure
+- Formula syntax, YAML format, and the variable system are unchanged
+- Within-step variable dependency-order semantics are unchanged (guaranteed by priority sorting plus real-time reads via `_get_arg`)

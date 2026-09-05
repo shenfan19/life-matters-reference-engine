@@ -1,41 +1,41 @@
-# 模块拆分规范
+# Module-Splitting Conventions
 
-> 适用范围：`cli/`、`reference_engine/`、`gui/` 的 Python 与 TypeScript/JSX 源码。
-> 判断一个文件/函数是否需要拆分，以及如何拆，统一按本文件执行。
+> Scope: Python and TypeScript/JSX source under `cli/`, `reference_engine/`, and `gui/`.
+> Whether a file/function needs splitting, and how, is decided uniformly by this file.
 
-## 1. 核心原则：职责，不是行数
+## 1. Core principle: responsibility, not line count
 
-**拆分信号是"一个文件/函数混杂了多个不相关职责"，不是"行数超过某个门槛"。**
+**The signal for splitting is "a file/function mixes multiple unrelated responsibilities," not "the line count exceeds some threshold."**
 
-- 一个 300 行但只做一件事（如纯粹的数据加载）的文件，不需要拆。
-- 一个 150 行但混了"解析输入 + 跑算法 + 格式化输出 + 写文件"四件事的文件，需要拆。
-- 行数可以作为"该停下来检查一下职责"的提醒信号，但**拆分的理由必须写成"职责 A 和职责 B 应该分开"，不能写成"这个文件太长了"**。
+- A 300-line file that does only one thing (e.g. pure data loading) does not need splitting.
+- A 150-line file that mixes four things, "parsing input plus running an algorithm plus formatting output plus writing a file," needs splitting.
+- Line count can serve as a reminder signal to "stop and check the responsibilities," but **the reason for splitting must be written as "responsibility A and responsibility B should be separated," not "this file is too long."**
 
-## 2. 识别职责的方法
+## 2. How to identify responsibilities
 
-逐个函数/组件回答：
+Answer the following for each function/component:
 
-1. **它的输入和输出是什么粒度？** 如果一个文件里有的函数操作"单个事件"，有的操作"整个仿真会话"，有的操作"HTTP 请求/响应"——这是三种不同粒度，是拆分信号。
-2. **它依赖哪些外部系统？** 同一文件里既直接读写文件系统，又调用业务算法，又组装 API 响应——说明 I/O 层、计算层、接口层混在一起。
-3. **改动它的理由会不会互相牵连？** 如果"改优化算法参数"和"改命令行输出格式"需要碰同一个文件，说明算法逻辑和展示逻辑没分开。
-4. **闭包是否在偷偷扮演独立函数？** 函数体内定义的多个闭包（如 `run_optimizer` 内部的 `_build_regimen_events`/`_clone`/`evaluate`），如果各自有清晰独立的输入输出、且不依赖外层局部变量做隐式状态共享，应提升为顶层函数或独立模块，而不是无限期留在闭包里。
+1. **What granularity are its inputs and outputs?** If some functions in a file operate on "a single event," others on "the whole simulation session," and others on "an HTTP request/response," that's three different granularities, a splitting signal.
+2. **What external systems does it depend on?** If the same file both directly reads and writes the filesystem, calls business-logic algorithms, and assembles an API response, that shows the I/O layer, the computation layer, and the interface layer are mixed together.
+3. **Do the reasons for changing it entangle with each other?** If "changing an optimization-algorithm parameter" and "changing the CLI output format" both require touching the same file, that shows the algorithm logic and the presentation logic are not separated.
+4. **Is a closure secretly acting as a standalone function?** Multiple closures defined within a function body (such as `_build_regimen_events`/`_clone`/`evaluate` inside `run_optimizer`), if each has a clear, independent input and output and does not depend on the outer function's local variables for implicit shared state, should be promoted to top-level functions or a separate module, rather than left indefinitely as closures.
 
-## 3. 拆分 Checklist（审查 diff 时对照）
+## 3. Splitting checklist (check against this when reviewing a diff)
 
-- [ ] 新增/改动的函数，能用一句话说清楚它做什么；如果要用"和"连接两件不相关的事，考虑拆分。
-- [ ] 文件内的函数是否都在同一个"层"上（纯计算 / I/O / 接口适配）？跨层混杂时拆分到不同文件。
-- [ ] 算法后端（如多种优化器实现）是否各自独立，不与"调用哪个后端"的调度逻辑混在同一个函数体？
-- [ ] 辅助/工具函数（时间窗口解析、字符串格式化等）是否可独立于主流程测试？如果必须连带整个主流程才能测，说明耦合过重。
-- [ ] 拆分后的每个新文件/模块，是否仍能用一句话描述其单一职责？如果还需要"和"，说明还没拆干净。
-- [ ] 拆分不引入新的公共状态（全局变量、共享 mutable 对象）作为模块间耦合的替代方案。
+- [ ] Can a new or changed function be described in one sentence? If describing it needs "and" to join two unrelated things, consider splitting.
+- [ ] Are all the functions in a file at the same "layer" (pure computation / I/O / interface adaptation)? Split into different files when layers are mixed.
+- [ ] Are algorithm backends (e.g. multiple optimizer implementations) each independent, not mixed into the same function body as the dispatch logic for "which backend to call"?
+- [ ] Can helper/utility functions (time-window parsing, string formatting, etc.) be tested independently of the main flow? If they can only be tested by dragging in the whole main flow, the coupling is too tight.
+- [ ] Can each new file/module after splitting still be described by a single responsibility in one sentence? If it still needs "and," the split isn't clean yet.
+- [ ] Does the split avoid introducing new shared state (global variables, a shared mutable object) as a substitute for inter-module coupling?
 
-## 4. 不要做的事
+## 4. What not to do
 
-- 不要仅因为"文件超过 N 行"就机械拆分，拆出来的文件如果职责依然混杂，没有解决问题。
-- 不要为了拆分新建一层不必要的抽象（接口、基类）——如果只有一个实现，直接用具体函数/类。
-- 不要在同一次 PR 里把"拆分重构"和"修复 bug/改动行为"混在一起，二者应分两次提交，方便逐项核对 diff。
+- Don't mechanically split just because "the file exceeds N lines" — if the resulting files still mix responsibilities, nothing has been solved.
+- Don't introduce an unnecessary abstraction layer (an interface, a base class) just for the sake of splitting — if there's only one implementation, use a concrete function/class directly.
+- Don't mix "splitting/refactoring" with "fixing a bug/changing behavior" in the same PR; the two should be two separate commits, so the diff can be checked item by item.
 
-## 5. 验收标准
+## 5. Acceptance criteria
 
-- 审查 diff 时，对每个新增或改动的文件，能用 Checklist 第 3 条逐项打勾。
-- 任何"拆分"类改动的 commit message 必须说明拆出的每个模块各自的职责，不能只写"重构 xxx.py"。
+- When reviewing a diff, every new or changed file should be checkable item by item against checklist item 3.
+- Any "splitting" commit's message must state the responsibility of each module split out; it cannot just say "refactor xxx.py."

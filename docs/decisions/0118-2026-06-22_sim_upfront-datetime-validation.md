@@ -1,82 +1,63 @@
-# ADR 0118 — 日期/时间字段前置校验，消除 CLI/GUI 共用的静默回退
+# ADR 0118 — Upfront date/time field validation, eliminating the silent fallback shared by CLI/GUI
 
-**日期**: 2026-06-22
-**状态**: 已接受
-**范围**: sim_engine（`simulator_engine.py`、`session_manager.py`、`optimizer_engine.py`，新增 `validation.py`）、sim_cli（`runner.py`）
+**Date**: 2026-06-22
+**Status**: Accepted
+**Scope**: sim_engine (`simulator_engine.py`, `session_manager.py`, `optimizer_engine.py`, new `validation.py`), sim_cli (`runner.py`)
 
 ---
 
-## 背景
+## Background
 
-排查报错机制现状时发现：`schedule_runner.py`、`optimizer_engine.py`、`sim_cli/runner.py` 里多处把
-日期/时间字符串解析失败当作"正常情况"处理——`except ValueError: pass`、`except Exception: return 默认值`
-——格式错误的 `start_date`/`end_date`/`time_start`/`valid_start` 等字段不会报错，而是悄悄换成默认值
-（epoch 1900-01-01、`total_time` 兜底、整日 86400 秒）继续往下跑。CLI 和 GUI 都不提示，测试也发现不了：
-改错一个 YAML 字段，仿真"看起来正常跑完"，但跑的不是用户预期的输入。
+An audit of the current error-detection mechanism found that `schedule_runner.py`, `optimizer_engine.py`, and `sim_cli/runner.py` each treat date/time string parse failures as "normal" in multiple places — `except ValueError: pass`, `except Exception: return <default>` — so a malformed `start_date`/`end_date`/`time_start`/`valid_start` field does not raise an error; instead it silently falls back to a default value (epoch 1900-01-01, the `total_time` fallback, a full day of 86400 seconds) and execution continues. Neither the CLI nor the GUI surfaces this, and tests do not catch it either: mistype a YAML field, and the simulation "appears to run fine" while actually running on something other than the user's intended input.
 
-代表性位置：
+Representative locations:
 
-- `schedule_runner.py` 的 `_time_range_day_seconds`/`_n_active_days`/`apply_schedules` 共五处
-  `date.fromisoformat(...)` 包在 `except ValueError: pass` 或 `except Exception: return 86400.0` 里。
-- `optimizer_engine.py::run_optimizer()` 计算 `sim_start_date`/`end_date` 对应总时长时，整段用
-  `except Exception` 包住——日期**缺失**（合法，total_time 是合法的替代配置方式）和日期**格式错误**
-  （用户输入错误）被同一段代码吞掉，结果都是静默回退到 `total_time`，是本次发现的最高风险点：优化器会在
-  一个完全不同于配置意图的时间窗口上跑完，没有任何错误或警告。
-- `sim_cli/runner.py::_time_hours()` 是 CLI 自己重复计算总时长的旧逻辑，同样的吞错模式。
+- `schedule_runner.py`'s `_time_range_day_seconds`/`_n_active_days`/`apply_schedules` have five separate occurrences of `date.fromisoformat(...)` wrapped in either `except ValueError: pass` or `except Exception: return 86400.0`.
+- When `optimizer_engine.py::run_optimizer()` computes the total duration corresponding to `sim_start_date`/`end_date`, the whole block is wrapped in `except Exception` — a **missing** date (legitimate, since `total_time` is a valid alternative configuration) and a **malformed** date (a user input error) are swallowed by the same code, both resulting in a silent fallback to `total_time`. This is the highest-risk finding of the audit: the optimizer would run to completion on a time window entirely different from the configured intent, with no error or warning of any kind.
+- `sim_cli/runner.py::_time_hours()` is the CLI's own duplicated legacy logic for computing total duration, exhibiting the same error-swallowing pattern.
 
-## 决策
+## Decision
 
-**新增 `sim_engine/src/validation.py`，CLI 与 GUI 在"真正开始执行前"各调用一次，复用现有的
-`{"success": False, "error": str(e)}` 错误通道（已经是 CLI 日志/stdout、API `HTTPException.detail`、
-前端 `message.error()` 三端共用的报错路径——见 `routes/simulation.py` 把 `result['error']` 转成
-`HTTPException`，`useSimulation.ts` 用 `message.error(e.message)` 展示。本次不新增新的报错通道，
-只是让被吞掉的错误真正抬出来，走这条已有通道。**
+**Add `sim_engine/src/validation.py`, called once each by the CLI and the GUI "right before execution actually begins," reusing the existing `{"success": False, "error": str(e)}` error channel (already shared by all three of the CLI's log/stdout, the API's `HTTPException.detail`, and the frontend's `message.error()` — see `routes/simulation.py` converting `result['error']` into an `HTTPException`, and `useSimulation.ts` displaying it via `message.error(e.message)`. No new error channel is introduced here; the swallowed errors are simply surfaced through this existing channel.**
 
-`validation.py` 提供三个函数：
+`validation.py` provides three functions:
 
-| 函数 | 校验对象 | 严格度 |
+| Function | What it validates | Strictness |
 |---|---|---|
-| `validate_simulator_dates` | `simulator.start_date`/`end_date`（含 `optimizer.start_date`/`end_date`） | 宽松：容忍 `year == 0` 的"古代日期"占位（loader.py/optimizer_engine.py 的总时长近似算法已显式支持），仍做月/日合法性校验（用闰年代入校验 `02-29`），并检查 `end_date` 不早于 `start_date` |
-| `validate_schedule_list` | schedule/event 级 `valid_start`/`valid_end`/`time_start`/`time_end`（CLI `schedule_entries` 与 GUI `regimens` 参数共用同一形状） | 严格：与消费端 `schedule_runner.py` 实际使用的 `date.fromisoformat()` 要求一致 |
-| `validate_optimizer_regimens` | `optimizer.startpoint.regimens` 固定值与 `optimize:` 搜索窗口（`time_start`/`time_end`/`date_range`） | 严格，同上 |
+| `validate_simulator_dates` | `simulator.start_date`/`end_date` (including `optimizer.start_date`/`end_date`) | Lenient: tolerates a `year == 0` "epoch date" placeholder (explicitly supported by the total-duration approximation logic in loader.py/optimizer_engine.py), while still checking month/day validity (validating `02-29` against leap years) and confirming `end_date` is not before `start_date` |
+| `validate_schedule_list` | schedule/event-level `valid_start`/`valid_end`/`time_start`/`time_end` (the same shape used by the CLI's `schedule_entries` and the GUI's `regimens` parameter) | Strict: matches the `date.fromisoformat()` requirement actually used by the consumer, `schedule_runner.py` |
+| `validate_optimizer_regimens` | `optimizer.startpoint.regimens` fixed values and the `optimize:` search window (`time_start`/`time_end`/`date_range`) | Strict, same as above |
 
-调用位置（均在进入逐步执行的热循环之前，一次性校验，校验失败转换为标准失败 dict）：
+Call sites (all before entering the step-wise hot loop, validating once upfront; a validation failure is converted into the standard failure dict):
 
-- `simulator_engine.py::run_simulation()` / `run_simulation_mc()`（CLI 仿真路径）
-- `session_manager.py::start_session()`（GUI 仿真路径）
-- `optimizer_engine.py::run_optimizer()`（CLI/GUI 共用的优化器入口，ADR 0113）
-- `sim_cli/runner.py::_time_hours()`（CLI 独立的总时长预估，原本的吞错模式单独打了一个 patch）
+- `simulator_engine.py::run_simulation()` / `run_simulation_mc()` (CLI simulation path)
+- `session_manager.py::start_session()` (GUI simulation path)
+- `optimizer_engine.py::run_optimizer()` (the CLI/GUI-shared optimizer entry point, ADR 0113)
+- `sim_cli/runner.py::_time_hours()` (the CLI's own independent total-duration estimate; its error-swallowing pattern got its own dedicated patch)
 
-热循环内部（`schedule_runner.py` 的 `try/except`）**保留原样**，不删除——前置校验通过后理论上不会再
-触发，继续留作防御性兜底。
+The `try/except` inside the hot loop (`schedule_runner.py`) is **left as-is** and not removed — in theory it should no longer trigger once upfront validation passes, and it remains as a defensive fallback.
 
-## 结果
+## Outcome
 
 ```
-sim_engine/src/validation.py              新增：3 个校验函数
-sim_engine/src/simulator_engine.py        run_simulation()/run_simulation_mc() 开头加校验
-sim_engine/src/session_manager.py         start_session() 开头加校验
-sim_engine/src/optimizer_engine.py        run_optimizer() 加两处校验（regimens 定义 + 时间窗口日期）
-sim_cli/runner.py                         _time_hours() 改为校验后抛出，run_sim() 捕获并走既有失败路径
+sim_engine/src/validation.py              new: 3 validation functions
+sim_engine/src/simulator_engine.py        validation added at the start of run_simulation()/run_simulation_mc()
+sim_engine/src/session_manager.py         validation added at the start of start_session()
+sim_engine/src/optimizer_engine.py        two validations added to run_optimizer() (regimens definition + time-window dates)
+sim_cli/runner.py                         _time_hours() now validates and raises; run_sim() catches it and follows the existing failure path
 ```
 
-验证：`pytest tests/` 8 个测试全过；用真实模型（banister）跑通 CLI sim/opt 无回归；故意改坏一个模型的
-`start_date`/regimen `time_start`，CLI 和直接调用 `start_session()` 都能在执行前拿到同一句清晰错误，而
-不是"看起来跑完了"。
+Verification: all 8 tests in `pytest tests/` passed; running a real model (banister) through the CLI sim/opt path showed no regression; deliberately corrupting a model's `start_date` or a regimen's `time_start`, both the CLI and a direct call to `start_session()` now surface the same clear error before execution, rather than "appearing to finish."
 
-## 不在本次范围内
+## Out of scope for this change
 
-- `schedule_runner.py`/`optimizer_engine.py` 内部仍存在的 `try/except` 兜底本身——继续保留作防御性代码，
-  不是本次校验的目标，也不计划删除。
-- "格式合法但语义上不合理"的更深校验（例如 schedule 的 `valid_range` 与仿真整体时间窗口完全不重叠、
-  `optimize.date_range` 搜索窗口宽度为 0 等）——超出"格式校验"范围，留待按需评估。
-- 现有 `/api/validate` 接口（YAML 静态结构校验）——本次是运行时参数校验，两者目标不同，不合并。
-- GUI 前端展示逻辑——已有 `message.error()` 通道能透传 `error` 字段，不需要新增组件。
+- The `try/except` fallbacks that remain inside `schedule_runner.py`/`optimizer_engine.py` themselves — kept as defensive code, not the target of this validation pass, and there is no plan to remove them.
+- Deeper validation of "format-legal but semantically unreasonable" cases (e.g. a schedule's `valid_range` not overlapping the simulation's overall time window at all, or `optimize.date_range` search window width being 0) — beyond the scope of "format validation," left for evaluation as needed.
+- The existing `/api/validate` endpoint (static YAML structural validation) — this is runtime parameter validation, a different goal, and the two are not merged.
+- GUI frontend display logic — the existing `message.error()` channel already passes the `error` field through; no new component is needed.
 
-## 关联
+## Related
 
-- ADR 0100 — pulse/sustained 时间区间统一（`time_start`/`time_end` 字段语义的来源）
-- ADR 0113 — Sim 执行核心合并：CLI/GUI 共用 `advance_steps`/`run_optimizer`，本次校验加在它们共同的
-  上游入口，不需要在两条路径各写一份
-- ADR 0111 — Sim/CLI 一致性回归测试套件：校验保证两条路径在同一种坏输入下报出同一句错误，而不是各自
-  静默走向不同的错误结果
+- ADR 0100 — pulse/sustained time-interval unification (the origin of the `time_start`/`time_end` field semantics)
+- ADR 0113 — Sim execution-core merge: CLI/GUI share `advance_steps`/`run_optimizer`, and this validation is added at their shared upstream entry point, avoiding the need to write it twice
+- ADR 0111 — Sim/CLI consistency regression test suite: validation guarantees both paths raise the same error under the same bad input, rather than each silently arriving at a different erroneous result

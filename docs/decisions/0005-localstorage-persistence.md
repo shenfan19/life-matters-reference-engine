@@ -1,55 +1,55 @@
-# 0005 — 客户端状态持久化：localStorage
+# 0005 — Client-side state persistence: localStorage
 
-**状态**：✅ 已实施  
-**日期**：2026-04-02
+**Status**: implemented
+**Date**: 2026-04-02
 
-## 背景
+## Background
 
-页面刷新（F5）或意外关闭浏览器后，所有仿真状态（选中场景、输入设置、运行结果）全部丢失。用户对 Web UI 的信任度低于桌面 exe，因为浏览器本身不够稳定，结果白跑的风险不可接受。
+A page refresh (F5) or an accidental browser close wiped out all simulation state — selected scene, input settings, run results. Users trust a web UI less than a desktop exe, since the browser itself is less stable, and the risk of losing a completed run is unacceptable.
 
-## 决策
+## Decision
 
-使用 `localStorage` 在客户端持久化两类数据：
+Use `localStorage` on the client to persist two categories of data:
 
-**配置类（随每次变更即时写入）：**
-- `selectedKey` — 当前选中的场景路径
+**Configuration (written immediately on every change):**
+- `selectedKey` — the currently selected scene path
 - `mode` — sim / opt
-- `inputEntries` — 输入计划条目
-- `isLocked` — 是否已验证锁定
-- `openSections` / `sectionWeights` — 左侧 accordion 展开状态与高度比例
-- `timeValue / timeUnit / stepValue / stepUnit` — 时长步长设置
+- `inputEntries` — input schedule entries
+- `isLocked` — whether validation is locked
+- `openSections` / `sectionWeights` — the left accordion's expanded state and height ratios
+- `timeValue / timeUnit / stepValue / stepUnit` — duration and step-size settings
 
-**仿真结果（仅在 status 发生变化时写入，运行中跳过）：**
-- `simulationData` — 完整数据点数组
+**Simulation results (written only when status changes, skipped while running):**
+- `simulationData` — the full array of data points
 - `status / currentStep / progress`
 
-恢复策略：
-- 刷新后优先从 localStorage 读取，跳过模型默认值覆盖
-- 若 status 为 `paused`，恢复为 `completed`（后端 session 已消失，无法继续，但数据可查看）
-- 场景选中后等待文件树加载完成再触发模型加载，保证恢复时序正确
+Restoration strategy:
+- On refresh, read from localStorage first, skipping the model's default-value overrides
+- If status is `paused`, restore it as `completed` (the backend session is gone by then and cannot be resumed, but the data can still be viewed)
+- After a scene is selected, wait for the file tree to finish loading before triggering the model load, to keep restoration timing correct
 
-存储 key：`sim_persist`，单 JSON 对象，无版本控制。
+Storage key: `sim_persist`, a single JSON object, with no version control.
 
-**2026-04-06 补充：** `sim_prefs` key 扩展了持久化字段。
+**2026-04-06 addendum:** the `sim_prefs` key was expanded to cover more persisted fields.
 
-原先 `sim_prefs` 只保存 `isDarkMode` 和 `fontSize`；`simMode` 从 `sim_persist` 单独读取，`page`（当前标签页）不持久化（每次刷新重置为 `simulator`）。
+Previously `sim_prefs` only stored `isDarkMode` and `fontSize`; `simMode` was read separately from `sim_persist`, and `page` (the current tab) was not persisted at all (it reset to `simulator` on every refresh).
 
-现在统一写入 `sim_prefs`：
+Now everything is written to `sim_prefs` uniformly:
 
 ```typescript
 localStorage.setItem('sim_prefs', JSON.stringify({ isDarkMode, fontSize, page, simMode }));
 ```
 
-恢复时通过 `readPrefs()` 读取，各字段带 `?? 默认值` 兜底。`sim_persist` 中的 `mode` 字段保留兼容（Simulator 组件内部仍使用），两套 key 并存。
+On restore, `readPrefs()` reads these back, with each field falling back via `?? default`. The `mode` field in `sim_persist` is kept for compatibility (still used internally by the Simulator component), so the two keys coexist.
 
-**2026-06-05 补充：** `sim_persist` 单 key 不区分模型，切换模型时 GUI 主动清空 `simulationData`、`dataPerRun` 和 `status`，防止上一个模型的数据以零值曲线形式出现在新模型的图表中。模型间仿真数据相互隔离。
+**2026-06-05 addendum:** the single `sim_persist` key does not distinguish between models, so when the model is switched, the GUI proactively clears `simulationData`, `dataPerRun`, and `status`, preventing the previous model's data from showing up as zero-valued curves on the new model's charts. Simulation data is isolated between models.
 
-## 后果
+## Consequences
 
-- ✅ F5 刷新、意外关闭后状态完全恢复
-- ✅ 运行结果（图表数据）持久保留至下次 Reset 或切换模型
-- ✅ 实现纯前端，无需后端改动
-- ⚠️ 单浏览器单设备，换设备/清缓存后数据丢失
-- ⚠️ 数据量大时（长仿真 + 多变量）可能接近 5MB 上限
-- ⚠️ 无版本兼容处理，模型结构升级后旧 localStorage 数据可能导致异常（需手动清理或加 schema 版本号）
-- ⬜ 云部署/多用户场景需换成后端持久化（见 TODO）
+- State is fully recovered after an F5 refresh or an accidental close
+- Run results (chart data) persist until the next Reset or model switch
+- The implementation is purely front-end, requiring no backend changes
+- Limited to a single browser on a single device; data is lost on a device change or cache clear
+- With large data volumes (long simulations plus many variables), storage can approach the 5MB limit
+- There is no version-compatibility handling, so old localStorage data can cause anomalies after a model structure upgrade (requires manual cleanup or a schema version number)
+- Cloud deployment / multi-user scenarios will need backend persistence instead (see TODO)
