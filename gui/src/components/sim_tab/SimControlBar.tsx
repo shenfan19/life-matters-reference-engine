@@ -135,7 +135,7 @@ export function SimControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载仿真 | 上传仿真 */}
+      {/* File operations — order: download simulation | upload simulation */}
       <div style={{ width: 1, height: 16, background: c.border }} />
 
       <Tooltip title={t('sim.ctrl.dl_sim_tip')}>

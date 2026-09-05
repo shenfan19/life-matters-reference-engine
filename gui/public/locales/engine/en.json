@@ -147,6 +147,8 @@
   "sim.var.type.parameter": "Parameter",
   "sim.var.type.evidence": "Evidence",
   "sim.intro.no_description": "No description",
+  "sim.intro.reviewed.unreviewed_title": "Sample model, AI-drafted, not yet reviewed",
+  "sim.intro.reviewed.reviewed_label": "Reviewed",
   "sim.intro.no_variables": "No variables",
   "sim.intro.type": "Type",
   "sim.intro.init_value": "Init",

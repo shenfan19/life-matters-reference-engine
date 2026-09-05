@@ -337,12 +337,12 @@ const Loader: React.FC<LoaderProps> = ({
     <Spin spinning={loading} indicator={<LoadingOutlined style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.7143)' }} />}>
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 500 }}>
 
-        {/* 场景列表 */}
+        {/* The scenario list */}
         <div style={{
           flex: '0 0 50%', minHeight: 260, display: 'flex', flexDirection: 'column',
           borderBottom: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
         }}>
-          {/* 标题栏 */}
+          {/* The title bar */}
           <div style={{
             padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
             borderBottom: `1px solid ${isDarkMode ? '#1e3824' : '#c8e6c9'}`,
@@ -372,7 +372,7 @@ const Loader: React.FC<LoaderProps> = ({
             </Button>
           </div>
 
-          {/* 树/列表 */}
+          {/* The tree/list */}
           <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
             {storyViewMode === 'tree' ? (
               <Tree
@@ -413,13 +413,13 @@ const Loader: React.FC<LoaderProps> = ({
           </div>
         </div>
 
-        {/* 详情面板 */}
+        {/* The detail panel */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
           {!selectedStory ? (
             <Empty description={t('loader.select_scenario')} style={{ marginTop: 40 }} />
           ) : (
             <>
-              {/* 标题行 + 验证锁定按钮 */}
+              {/* The title row + the validate/lock button */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
                   {selectedStory.title}
@@ -437,7 +437,7 @@ const Loader: React.FC<LoaderProps> = ({
                 </Tooltip>
               </div>
 
-              {/* 验证结果内联显示 */}
+              {/* Inline display of the validation result */}
               {validationResult && (
                 <Alert
                   type={validationResult.success ? 'success' : 'error'}
@@ -460,7 +460,7 @@ const Loader: React.FC<LoaderProps> = ({
                 />
               )}
 
-              {/* Tabs: 基本信息 / 变量 / 方程 */}
+              {/* Tabs: basic info / variables / equations */}
               <Tabs
                 size="small"
                 items={detailTabs}

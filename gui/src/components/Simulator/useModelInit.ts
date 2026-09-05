@@ -307,11 +307,13 @@ export function useModelInit({
       set('optStepUnit', resolvedStepUnit);
     }
 
-    // mcSeed 来自 simulation.mc.seed，无论是否有 optimization 块都需要重置
+    // mcSeed comes from simulation.mc.seed; it must be reset regardless of whether an optimization block exists
     set('mcSeed', sim?.mc?.seed != null ? Number(sim.mc.seed) : null);
-    // optMcSeed 来自 optimization.mc.seed——与上面 mcSeed 是两个独立字段，不要混用
-    // （optimization.mc 控制 opt 内层鲁棒优化每个候选解采样几次，simulation.mc 控制 Sim tab
-    // 展示几条轨迹）。无论是否有 optimization 块都需要重置，避免残留上一个模型的值。
+    // optMcSeed comes from optimization.mc.seed — an independent field from mcSeed above, don't
+    // conflate them (optimization.mc controls how many samples the Opt inner-loop robust
+    // optimization draws per candidate solution, while simulation.mc controls how many
+    // trajectories the Sim tab shows). It must be reset regardless of whether an optimization
+    // block exists, to avoid leaking the previous model's value.
     set('optMcSeed', optBlock?.mc?.seed != null ? Number(optBlock.mc.seed) : null);
 
     // Opt config from YAML

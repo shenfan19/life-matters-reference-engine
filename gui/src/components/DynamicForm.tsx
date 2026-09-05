@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 interface Props {
-  schema: any; // 从 manifest.ui.schema 传入
+  schema: any; // passed in from manifest.ui.schema
   pluginId: string;
 }
 

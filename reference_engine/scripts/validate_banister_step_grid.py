@@ -2,8 +2,8 @@
 Banister two-compartment model at 6 step sizes (1day/12h/6h/3h/1h/30min), compare
 against the closed-form analytical solution at 4 checkpoint days (7/14/30/60) for
 all three reported variables (fitness, fatigue, performance), and check the
-tau_min/10 step_size heuristic (see verification_report.md "step_size 选取的通用
-启发式") against the resulting error grid.
+tau_min/10 step_size heuristic (see verification_report.md "the general heuristic
+for choosing step_size") against the resulting error grid.
 
 Usage (from repo root or reference_engine/):
     python reference_engine/scripts/validate_banister_step_grid.py

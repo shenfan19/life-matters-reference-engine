@@ -109,13 +109,15 @@ export interface SimulationState {
     optStepUnit: StepUnit;
     batchSize: number;
     updateInterval: number;
-    simRuns: number;        // Monte Carlo 运行条数 (1~50)
-    mcSeed: number | null;  // 用户设定的 MC seed（null=每次随机，整数=固定可复现）
-    sessionSeed: number;    // 本次 session 实际使用的 seed（由 API 返回）
-    // Opt 内层鲁棒优化 MC（optimization.mc.runs/seed）——与上面 simRuns/mcSeed（simulation.mc）
-    // 是两个独立概念，不共用同一份状态：simRuns/mcSeed 控制 Sim tab 结果里画几条轨迹，
-    // optMcRuns/optMcSeed 控制 Opt 每个候选解在优化搜索时要采样几次取平均。参照
-    // optStepValue/optStepUnit 与 stepValue/stepUnit 分离的既有模式。
+    simRuns: number;        // number of Monte Carlo runs (1~50)
+    mcSeed: number | null;  // the user-set MC seed (null = random each time, an integer = fixed/reproducible)
+    sessionSeed: number;    // the seed actually used by this session (returned by the API)
+    // The Opt inner-loop robust-optimization MC (optimization.mc.runs/seed) is an independent
+    // concept from simRuns/mcSeed above (simulation.mc) and does not share state with it:
+    // simRuns/mcSeed controls how many trajectories are drawn in the Sim tab's results,
+    // while optMcRuns/optMcSeed controls how many samples Opt averages over per candidate
+    // solution during the optimization search. This mirrors the existing pattern of
+    // optStepValue/optStepUnit being kept separate from stepValue/stepUnit.
     optMcRuns: number;
     optMcSeed: number | null;
 }

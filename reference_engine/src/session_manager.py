@@ -20,9 +20,9 @@ from . import run_logging
 
 logger = logging.getLogger(__name__)
 
-# P0 公网部署前置条件：无活动 session 超过该时长即视为僵尸 session，见
-# 2026-06-25_task_prelaunch-publish-verification-checklist.md §4。优化 job 独立计时
-# （app_state.optimizer_jobs），不受此超时影响。
+# A P0 prerequisite for public deployment: a session with no activity beyond this duration is
+# treated as a zombie session, see 2026-06-25_task_prelaunch-publish-verification-checklist.md §4.
+# An optimization job times out independently (app_state.optimizer_jobs) and is unaffected by this.
 SESSION_IDLE_TIMEOUT_SECONDS = 1800.0
 
 
@@ -81,7 +81,7 @@ class SessionManagerMixin:
         """
         try:
             if not self.load_models([model_name], folder):
-                return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
+                return {"success": False, "error": self.loader.last_error or f"Failed to load model: {model_name}"}
 
             base_model = self.current_model
 
@@ -182,7 +182,7 @@ class SessionManagerMixin:
             }
 
             logger.info(
-                "会话已创建: %s, 模型: %s, 总步数: %d, runs: %d, seed: %d",
+                "Session created: %s, model: %s, total steps: %d, runs: %d, seed: %d",
                 session_id, model_name, total_steps, n_runs, session_seed,
             )
 
@@ -205,7 +205,7 @@ class SessionManagerMixin:
             }
 
         except Exception as e:
-            logger.error("创建会话失败: %s", e, exc_info=True)
+            logger.error("Failed to create session: %s", e, exc_info=True)
             return {"success": False, "error": str(e)}
 
     # ── batch step execution ───────────────────────────────────────────────────
@@ -223,12 +223,12 @@ class SessionManagerMixin:
         """
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
 
             session = self.sessions[session_id]
             session['last_active'] = _time()
             if not session['running']:
-                return {"success": False, "error": "会话已暂停"}
+                return {"success": False, "error": "Session is paused"}
 
             step_size = session['step_size']
             output_variables = session['output_variables']
@@ -261,7 +261,7 @@ class SessionManagerMixin:
                     _log_completion(session, model, session['current_step'], output_variables)
 
                 logger.info(
-                    "单条批量执行: session=%s, steps=%d, total=%d/%d",
+                    "Single-run batch execution: session=%s, steps=%d, total=%d/%d",
                     session_id, actual_steps, session['current_step'], session['total_steps'],
                 )
                 return {
@@ -344,7 +344,7 @@ class SessionManagerMixin:
                                  run_suffix=f" × {sim_runs} runs")
 
             logger.info(
-                "多条批量执行: session=%s, steps=%d, runs=%d, progress=%.1f%%",
+                "Multi-run batch execution: session=%s, steps=%d, runs=%d, progress=%.1f%%",
                 session_id, n_steps, sim_runs, progress,
             )
             return {
@@ -365,7 +365,7 @@ class SessionManagerMixin:
             }
 
         except Exception as e:
-            logger.error("批量执行失败: %s", e, exc_info=True)
+            logger.error("Batch execution failed: %s", e, exc_info=True)
             return {"success": False, "error": str(e)}
 
     # ── session control ────────────────────────────────────────────────────────
@@ -373,39 +373,39 @@ class SessionManagerMixin:
     def pause_session(self, session_id: str) -> Dict[str, Any]:
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
             self.sessions[session_id]['running'] = False
             self.sessions[session_id]['last_active'] = _time()
-            logger.info("会话已暂停: %s", session_id)
-            return {"success": True, "message": "会话已暂停"}
+            logger.info("Session paused: %s", session_id)
+            return {"success": True, "message": "Session paused"}
         except Exception as e:
-            logger.error("暂停会话失败: %s", e)
+            logger.error("Failed to pause session: %s", e)
             return {"success": False, "error": str(e)}
 
     def resume_session(self, session_id: str) -> Dict[str, Any]:
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
             self.sessions[session_id]['running'] = True
             self.sessions[session_id]['last_active'] = _time()
-            logger.info("会话已继续: %s", session_id)
-            return {"success": True, "message": "会话已继续"}
+            logger.info("Session resumed: %s", session_id)
+            return {"success": True, "message": "Session resumed"}
         except Exception as e:
-            logger.error("继续会话失败: %s", e)
+            logger.error("Failed to resume session: %s", e)
             return {"success": False, "error": str(e)}
 
     def reset_session(self, session_id: str) -> Dict[str, Any]:
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
             session = self.sessions[session_id]
             model = session['model']
             model.reset_simulation()
             session.update({'current_step': 0, 'time': 0.0, 'running': True, 'completed': False, 'data': [], 'last_active': _time()})
-            logger.info("会话已重置: %s", session_id)
-            return {"success": True, "message": "会话已重置", "initial_state": model.get_current_state()}
+            logger.info("Session reset: %s", session_id)
+            return {"success": True, "message": "Session reset", "initial_state": model.get_current_state()}
         except Exception as e:
-            logger.error("重置会话失败: %s", e)
+            logger.error("Failed to reset session: %s", e)
             return {"success": False, "error": str(e)}
 
     # ── data export ────────────────────────────────────────────────────────────
@@ -413,12 +413,12 @@ class SessionManagerMixin:
     def export_session_csv(self, session_id: str, output_path: Optional[str] = None) -> Dict[str, Any]:
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
             session = self.sessions[session_id]
             session['last_active'] = _time()
             data = session['data']
             if not data:
-                return {"success": False, "error": "没有数据可导出"}
+                return {"success": False, "error": "No data to export"}
             if not output_path:
                 from datetime import datetime
                 from .paths import OUTPUT_DIR
@@ -432,10 +432,10 @@ class SessionManagerMixin:
                 writer = csv.DictWriter(f, fieldnames=headers)
                 writer.writeheader()
                 writer.writerows(data)
-            logger.info("会话数据已导出: %s", output_path)
+            logger.info("Session data exported: %s", output_path)
             return {"success": True, "csv_path": output_path, "rows": len(data)}
         except Exception as e:
-            logger.error("导出 CSV 失败: %s", e)
+            logger.error("Failed to export CSV: %s", e)
             return {"success": False, "error": str(e)}
 
     # ── idle session cleanup (P0, public deployment) ───────────────────────────
@@ -456,7 +456,7 @@ class SessionManagerMixin:
         for sid in stale_ids:
             del self.sessions[sid]
         if stale_ids:
-            logger.info("清理僵尸会话（超过 %.0fs 无活动）：%s", idle_seconds, stale_ids)
+            logger.info("Cleaned up zombie sessions (idle beyond %.0fs): %s", idle_seconds, stale_ids)
         return stale_ids
 
     # ── session info ───────────────────────────────────────────────────────────
@@ -464,7 +464,7 @@ class SessionManagerMixin:
     def get_session_info(self, session_id: str) -> Dict[str, Any]:
         try:
             if session_id not in self.sessions:
-                return {"success": False, "error": f"会话不存在: {session_id}"}
+                return {"success": False, "error": f"Session does not exist: {session_id}"}
             session = self.sessions[session_id]
             session['last_active'] = _time()
             total = session['total_steps']
@@ -490,5 +490,5 @@ class SessionManagerMixin:
                 },
             }
         except Exception as e:
-            logger.error("获取会话信息失败: %s", e)
+            logger.error("Failed to get session info: %s", e)
             return {"success": False, "error": str(e)}

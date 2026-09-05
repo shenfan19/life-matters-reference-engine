@@ -23,9 +23,10 @@ def check_write():
 
 
 def check_optimizer_capacity():
-    """P1 公网部署资源保护：全局并发优化 job 上限，见 paths.MAX_CONCURRENT_OPTS。
-    只数 status == 'running' 的 job——completed/failed/cancelled 的历史 job 仍留在
-    optimizer_jobs 里供前端轮询结果，不占并发名额。"""
+    """A P1 resource protection for public deployment: the global cap on concurrent optimization
+    jobs, see paths.MAX_CONCURRENT_OPTS. Only counts jobs with status == 'running' — a completed/
+    failed/cancelled historical job stays in optimizer_jobs for the frontend to poll its result,
+    without occupying a concurrency slot."""
     running = sum(1 for job in optimizer_jobs.values() if job.get('status') == 'running')
     if running >= MAX_CONCURRENT_OPTS:
         raise HTTPException(
@@ -35,11 +36,13 @@ def check_optimizer_capacity():
 
 
 def check_sim_capacity():
-    """P2 公网部署资源保护：全局仿真 session 上限，见 paths.MAX_CONCURRENT_SIMS。
-    只数未完成（completed=False）的 session——已跑完的 session 仍留在 engine.sessions
-    里供前端轮询/导出结果，不占并发名额（对齐 check_optimizer_capacity() 只数
-    status=='running' 的 job）。过期 session 由 cleanup_stale_sessions()（ADR 0128）
-    每 5 分钟回收，两者共同防止僵尸/并发 session 无限堆积。"""
+    """A P2 resource protection for public deployment: the global cap on concurrent simulation
+    sessions, see paths.MAX_CONCURRENT_SIMS. Only counts sessions that aren't finished
+    (completed=False) — a finished session stays in engine.sessions for the frontend to poll/
+    export its result, without occupying a concurrency slot (matching check_optimizer_capacity()
+    only counting jobs with status=='running'). A stale session is reclaimed by
+    cleanup_stale_sessions() (ADR 0128) every 5 minutes; together the two prevent an unbounded
+    pile-up of zombie/concurrent sessions."""
     if engine is None:
         return
     running = sum(1 for session in engine.sessions.values() if not session.get('completed', False))

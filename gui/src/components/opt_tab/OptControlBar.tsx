@@ -155,7 +155,7 @@ export function OptControlBar({
         />
       </div>
 
-      {/* File operations — order: 下载优化 | 上传优化 */}
+      {/* File operations — order: download optimization | upload optimization */}
       <div style={{ width: 1, height: 16, background: c.border, flexShrink: 0 }} />
 
       <Tooltip title={t('sim.opt.dl_opt_tip')}>

@@ -10,7 +10,7 @@ class PluginManager:
         self.scan_plugins()
     
     def scan_plugins(self):
-        """递归扫描插件（最多2层深度）"""
+        """Recursively scans for plugins (up to 2 levels deep)"""
         self.plugins = {} # Clear existing
         def scan_recursive(directory, depth=0, max_depth=2):
             if depth > max_depth:
@@ -50,11 +50,11 @@ class PluginManager:
         scan_recursive(self.plugin_dir)
     
     def get_plugin_list(self) -> List[dict]:
-        """获取插件清单"""
+        """Gets the plugin list"""
         return [p['manifest'] for p in self.plugins.values()]
     
     def load_plugin(self, plugin_id: str):
-        """动态加载插件并返回模块"""
+        """Dynamically loads a plugin and returns its module"""
         import importlib.util
         import sys
         
@@ -64,7 +64,7 @@ class PluginManager:
         plugin_info = self.plugins[plugin_id]
         manifest = plugin_info['manifest']
         
-        # 动态导入 backend.py
+        # Dynamically import backend.py
         backend_path = plugin_info['path'] / manifest['backend']['entry']
         
         module_name = f"plugin_{plugin_id}"
@@ -79,7 +79,7 @@ class PluginManager:
         return module
         
     def run_plugin(self, plugin_id: str, inputs: dict, context):
-        """执行插件"""
+        """Runs a plugin"""
         module = self.load_plugin(plugin_id)
         plugin_info = self.plugins[plugin_id]
         class_name = plugin_info['manifest']['backend']['class']

@@ -53,13 +53,13 @@ class FileNewRequest(BaseModel):
 
 _FILE_TEMPLATES = {
     "model": {
-        "metadata": {"name": "新模型", "description": "", "tags": [], "version": "1.0"},
+        "metadata": {"name": "New Model", "description": "", "tags": [], "version": "1.0"},
         "variables": {"example_var": {"initial_value": 0.0, "unit": "", "description": ""}},
         "equations": {},
         "simulator": {"time_unit": "day", "step_size": 3600},
     },
     "scenario": {
-        "metadata": {"name": "新场景", "description": "", "tags": [], "version": "1.0"},
+        "metadata": {"name": "New Scenario", "description": "", "tags": [], "version": "1.0"},
         "variables": {},
         "equations": {},
         "simulator": {"time_unit": "day", "step_size": 3600},
@@ -97,23 +97,23 @@ def _simple_yaml_validate(file_path, models_root):
     """Semantic validation of a model YAML file."""
     target = models_root / file_path.lstrip('/')
     if not target.exists():
-        return False, [f'文件不存在: {file_path}']
+        return False, [f'File does not exist: {file_path}']
     try:
         with open(target, encoding='utf-8') as fh:
             data = safe_load(fh) or {}
     except Exception as e:
-        return False, [f'YAML 解析错误: {e}']
+        return False, [f'YAML parse error: {e}']
 
     errors = []
     meta = data.get('metadata') or data.get('meta')
     if not meta:
-        errors.append('缺少 metadata 字段')
+        errors.append('Missing metadata field')
     elif not (meta.get('name') or '').strip():
-        errors.append('metadata.name 为空')
+        errors.append('metadata.name is empty')
 
     variables: dict = data.get('variables') or {}
     if not variables:
-        errors.append('缺少 variables 字段（或为空）')
+        errors.append('Missing variables field (or empty)')
         return False, errors
 
     var_set = set(variables.keys())
@@ -123,14 +123,14 @@ def _simple_yaml_validate(file_path, models_root):
 
     for fname, fd in equations.items():
         if not isinstance(fd, dict):
-            errors.append(f'方程 {fname!r} 格式错误（应为字典）')
+            errors.append(f'Equation {fname!r} has an invalid format (expected a dict)')
             continue
         dynamics: dict = fd.get('dynamics') or {}
         if not dynamics:
-            errors.append(f'方程 {fname!r} 缺少 dynamics 字段')
+            errors.append(f'Equation {fname!r} is missing the dynamics field')
         for dyn_key, expr in dynamics.items():
             if dyn_key not in var_set:
-                errors.append(f'方程 {fname!r}: dynamics 键 {dyn_key!r} 未在 variables 中定义')
+                errors.append(f'Equation {fname!r}: dynamics key {dyn_key!r} is not defined in variables')
             else:
                 dyn_keys_used.add(dyn_key)
             expr_str = str(expr) if expr is not None else ''
@@ -145,7 +145,7 @@ def _simple_yaml_validate(file_path, models_root):
 
     all_used = dyn_keys_used | vars_referenced
     for vname in sorted(var_set - all_used):
-        errors.append(f'变量 {vname!r} 已定义但未被任何方程使用')
+        errors.append(f'Variable {vname!r} is defined but not used by any equation')
 
     return not errors, errors
 

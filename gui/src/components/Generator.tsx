@@ -43,12 +43,12 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     tags: [] as string[],
   });
 
-  // 添加变量
+  // Add a variable
   const addVariable = () => {
     const newVar: Variable = {
       key: `var_${Date.now()}`,
       name: `new_variable_${variables.length + 1}`,
-      description: '新变量',
+      description: 'New variable',
       value: 0,
       unit: '',
       type: 'state',
@@ -57,32 +57,32 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     setVariables([...variables, newVar]);
   };
 
-  // 删除变量
+  // Delete a variable
   const deleteVariable = (key: string) => {
     setVariables(variables.filter(v => v.key !== key));
     message.success(t('gen.msg.var_deleted'));
   };
 
-  // 更新变量
+  // Update a variable
   const updateVariable = (key: string, field: string, value: any) => {
     setVariables(variables.map(v => 
       v.key === key ? { ...v, [field]: value } : v
     ));
   };
 
-  // 添加方程
+  // Add an equation
   const addEquation = () => {
     const newEquation: Equation = {
       key: `equation_${Date.now()}`,
       name: `equation_${equations.length + 1}`,
-      description: '新方程',
+      description: 'New equation',
       dynamics: {},
       priority: 100,
     };
     setEquations([...equations, newEquation]);
   };
 
-  // 生成 YAML
+  // Generate YAML
   const generateYAML = () => {
     const yamlContent = {
       metadata: {
@@ -119,7 +119,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
 
     const yamlStr = JSON.stringify(yamlContent, null, 2);
     
-    // 下载 YAML 文件
+    // Download the YAML file
     const blob = new Blob([yamlStr], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -130,21 +130,21 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     message.success(t('gen.msg.yaml_generated'));
   };
 
-  // 根据子页面渲染不同内容
+  // Render different content depending on the sub-page
   const renderSubPage = () => {
     switch (subPage) {
-      case '1-1': // 模板生成
+      case '1-1': // Template generation
         return renderTemplateGeneration();
-      case '1-2': // 手动编辑
+      case '1-2': // Manual editing
         return renderManualEdit();
-      case '1-3': // 从论文生成
+      case '1-3': // Generate from a paper
         return renderPaperGeneration();
       default:
         return renderManualEdit();
     }
   };
 
-  // 模板生成页面
+  // The template-generation page
   const renderTemplateGeneration = () => (
     <Card title={t('gen.template.title')}>
       <Form layout="vertical">
@@ -172,7 +172,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     </Card>
   );
 
-  // 从论文生成页面
+  // The generate-from-a-paper page
   const renderPaperGeneration = () => (
     <Card title={t('gen.paper.title')}>
       <Form layout="vertical">
@@ -197,7 +197,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
     </Card>
   );
 
-  // 手动编辑页面
+  // The manual-editing page
   const renderManualEdit = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <Card title={t('gen.edit.meta_title')}>

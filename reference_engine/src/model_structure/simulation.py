@@ -1,8 +1,8 @@
 # src/models/simulation.py
-# 修改记录:
-# 1. 修复第 18 行: dt 未定义 → 改为 step_size
-# 2. 修复第 63 行: dt 未定义 → 改为 step_size
-# 3. 添加备注: 未来支持动态 dt (根据误差自适应调整步长)
+# Change log:
+# 1. Fixed line 18: dt was undefined -> changed to step_size
+# 2. Fixed line 63: dt was undefined -> changed to step_size
+# 3. Added a note: future support for a dynamic dt (adaptive step size based on error)
 
 from typing import Dict, List, Any
 from .base import VariableType, Variable, TIME_UNIT_SECONDS
@@ -13,7 +13,7 @@ import ast as _ast
 
 logger = logging.getLogger(__name__)
 
-# 方程函数的全局数学环境（作为 exec 的 globals，提供 sin/cos/max 等）
+# The global math environment for equation functions (used as exec's globals, providing sin/cos/max, etc.)
 _EQUATION_GLOBALS: Dict[str, Any] = {
     '__builtins__': {},
     'math': _math,
@@ -26,7 +26,7 @@ _EQUATION_GLOBALS: Dict[str, Any] = {
     'pi': _math.pi, 'e': _math.e,
 }
 
-# 每步由引擎注入的时间/步长符号（不是模型变量，但方程可以引用）
+# The time/step-size symbols injected by the engine every step (not model variables, but equations can reference them)
 _STEP_SYMS = frozenset({
     'step', 'step_size', 'dt', 't', 'time',
     'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
@@ -34,18 +34,18 @@ _STEP_SYMS = frozenset({
 
 
 def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
-    """把表达式字符串编译成 Python 函数，返回 (fn, param_names) 或 (None, None)。
-    param_names 是有序的参数名列表，调用时按位置传入当前值。
+    """Compiles an expression string into a Python function, returning (fn, param_names) or (None, None).
+    param_names is an ordered list of parameter names; the current values are passed positionally at call time.
     """
     try:
         tree = _ast.parse(expr_str, mode='eval')
     except SyntaxError:
         return None, None
 
-    # 提取表达式中引用的所有名字
+    # Extract all names referenced in the expression
     all_names = {node.id for node in _ast.walk(tree) if isinstance(node, _ast.Name)}
 
-    # 分成模型变量参数 + 步长符号参数（math 函数在 globals 里，不作参数）
+    # Split into model-variable parameters + step-size-symbol parameters (math functions are in globals, not parameters)
     var_params = sorted(all_names & model_var_names)
     step_params = sorted(all_names & _STEP_SYMS)
     params = var_params + step_params
@@ -64,9 +64,9 @@ def _compile_expr_to_fn(expr_str: str, model_var_names: frozenset):
 class Simulation:
     # Simulation
     def _build_equation_cache(self):
-        """加载后第一次 step() 前调用，把方程表达式转换为真正的 Python 函数。
-        每步直接调用 fn(*args)，变量走 LOAD_FAST 而非字典查找。
-        编译失败时 fn=None，step() 回退到 asteval。
+        """Called before the first step() after loading, converting equation expressions into real Python functions.
+        Every step calls fn(*args) directly, with variables going through LOAD_FAST rather than a dict lookup.
+        On a compilation failure fn=None, and step() falls back to asteval.
         """
         self._sorted_equations = sorted(
             self.equations.items(),
@@ -77,21 +77,21 @@ class Simulation:
         compiled = {}
 
         for eq_name, equation in self._sorted_equations:
-            # 条件
+            # The condition
             raw_cond = equation.condition
             if isinstance(raw_cond, str):
                 cond_fn, cond_params = _compile_expr_to_fn(raw_cond, model_vars)
             else:
-                cond_fn, cond_params = None, None  # 布尔/None，直接用原值
+                cond_fn, cond_params = None, None  # a bool/None, used directly
 
-            # dynamics：每个变量对应一个函数
+            # dynamics: one function per variable
             dyn = {}
             for var_name, expr in equation.dynamics.items():
                 if isinstance(expr, str):
                     fn, params = _compile_expr_to_fn(expr, model_vars)
-                    dyn[var_name] = (fn, params, expr)   # expr 备用回退
+                    dyn[var_name] = (fn, params, expr)   # expr kept as a fallback
                 else:
-                    dyn[var_name] = (None, None, expr)   # 数值字面量
+                    dyn[var_name] = (None, None, expr)   # a numeric literal
 
             compiled[eq_name] = {
                 'cond': (raw_cond, cond_fn, cond_params),
@@ -101,40 +101,40 @@ class Simulation:
 
     def step(self, step_size: float = 1.0):
         """
-        执行单步仿真
-        :param step_size: 时间步长(秒) - TODO: 未来支持动态 dt (自适应步长)
+        Executes a single simulation step
+        :param step_size: the time step size (in seconds) - TODO: future support for a dynamic dt (adaptive step size)
         """
-        # 新增：执行 pre_step 钩子
+        # Run the pre_step hooks
         for hook in self.hooks.get('pre_step', []):
             try:
                 hook(self)
             except Exception as e:
                 logger.warning(f"Pre-step hook failed: {e}")
 
-        # step_size 入参已经是秒（调用方传入 simulator['step_size'] = raw_step * unit_sec）
+        # The step_size argument is already in seconds (the caller passes in simulator['step_size'] = raw_step * unit_sec)
         unit_sec = TIME_UNIT_SECONDS.get(getattr(self, 'time_unit', 'minute'), 60.0)
         step_size_sec = step_size
-        # 声明单位下的步长（作者直觉单位），如 1 day 模型 step=1，1 hour 模型 step=1
+        # The step size in the declared unit (the author's intuitive unit), e.g. step=1 for a 1-day model, step=1 for a 1-hour model
         declared_step = step_size_sec / unit_sec if unit_sec else step_size_sec
 
-        # 方程中 step/step_size/dt = 声明单位下的步长（作者直觉单位）
-        # step 是规范符号；step_size/dt 保留为向后兼容别名
+        # In an equation, step/step_size/dt = the step size in the declared unit (the author's intuitive unit)
+        # step is the canonical symbol; step_size/dt are kept as backward-compatible aliases
         self.asteval.symtable['step'] = declared_step
         self.asteval.symtable['step_size'] = declared_step
         self.asteval.symtable['dt'] = declared_step
-        # 方程中 t/time = 当前时间（声明单位），修复 time 未定义 bug
+        # In an equation, t/time = the current time (in the declared unit); fixes the previously-undefined time bug
         self.asteval.symtable['t'] = self.time / unit_sec
         self.asteval.symtable['time'] = self.time / unit_sec
-        
-        # 更新变量到 asteval 符号表
+
+        # Update variables into the asteval symbol table
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
-        
-        # 第一次调用时把方程编译为函数（只编译一次）
+
+        # On the first call, compile the equations into functions (compiled only once)
         if not hasattr(self, '_sorted_equations'):
             self._build_equation_cache()
 
-        # 每步注入的时间/步长值（供 _get_arg 查询）
+        # The time/step-size values injected each step (for _get_arg to look up)
         step_sym_vals = {
             'step': declared_step, 'step_size': declared_step, 'dt': declared_step,
             't': self.time / unit_sec, 'time': self.time / unit_sec,
@@ -143,7 +143,7 @@ class Simulation:
         }
 
         def _get_arg(name: str) -> float:
-            """按参数名取当前值：优先从模型变量，其次从步长符号。"""
+            """Gets the current value by parameter name: model variables first, then step-size symbols."""
             v = self.variables.get(name)
             if v is not None:
                 return v.value
@@ -153,10 +153,10 @@ class Simulation:
             try:
                 cache = self._equation_cache[eq_name]
 
-                # 跨步长 import：每条方程的 step 按其来源模块自身的
-                # step_size 换算（而非当前运行模型的 step_size），
-                # 例如 1 小时模型 import 了"每日衰减 1%"的方程，
-                # 该方程的 step = 1小时 / 1天 = 1/24。
+                # Cross-step-size import: each equation's step is converted according to its own
+                # source module's step_size (not the currently running model's step_size) —
+                # for example, a 1-hour model imports an equation for "a 1% daily decay",
+                # and that equation's step = 1 hour / 1 day = 1/24.
                 equation_step_sec = getattr(equation, 'step_size_sec', None) or step_size_sec
                 equation_step = step_size_sec / equation_step_sec if equation_step_sec else declared_step
                 step_sym_vals['step'] = equation_step
@@ -166,7 +166,7 @@ class Simulation:
                 self.asteval.symtable['step_size'] = equation_step
                 self.asteval.symtable['dt'] = equation_step
 
-                # ── 评估条件 ──────────────────────────────────────────────
+                # ── Evaluate the condition ──────────────────────────────────
                 raw_cond, cond_fn, cond_params = cache['cond']
                 if cond_fn is not None:
                     try:
@@ -175,7 +175,7 @@ class Simulation:
                         logger.error(f"Error in condition for '{eq_name}': {cond_err}")
                         continue
                 elif isinstance(raw_cond, str):
-                    # 编译失败，回退 asteval
+                    # Compilation failed, fall back to asteval
                     try:
                         condition = self.asteval.eval(raw_cond, raise_errors=True)
                     except Exception as cond_err:
@@ -187,7 +187,7 @@ class Simulation:
                 if not condition:
                     continue
 
-                # ── 处理 dynamics ─────────────────────────────────────────
+                # ── Process dynamics ─────────────────────────────────────────
                 for var_name, (fn, params, raw_expr) in cache['dyn'].items():
                     try:
                         if fn is not None:
@@ -195,7 +195,7 @@ class Simulation:
                         elif isinstance(raw_expr, str):
                             new_value = self.asteval.eval(raw_expr, raise_errors=True)
                         else:
-                            new_value = raw_expr  # 数值字面量
+                            new_value = raw_expr  # a numeric literal
 
                         if new_value is None:
                             logger.warning(f"Equation '{eq_name}' evaluated to None for variable '{var_name}'")
@@ -220,30 +220,30 @@ class Simulation:
 
             except Exception as e:
                 logger.error(f"Unexpected error executing equation '{eq_name}': {e}")
-        
-        # 新增：执行 post_step 钩子
+
+        # Run the post_step hooks
         for hook in self.hooks.get('post_step', []):
             try:
                 hook(self)
             except Exception as e:
                 logger.warning(f"Post-step hook failed: {e}")
-        
-        # 更新步数和时间（self.time 始终以秒计）
+
+        # Update the step count and time (self.time is always in seconds)
         self.current_step += 1
         self.time += step_size_sec
-        
+
 
     def run_steps(self, steps: int, step_size: float = 1.0):
-        """运行指定步数的仿真"""
+        """Runs the simulation for the given number of steps"""
         for _ in range(steps):
-            self.step(step_size)  # 修复: 传递 step_size 参数
+            self.step(step_size)  # fix: pass the step_size argument through
 
     def set_variable_value(self, var_name: str, value: float):
-        """设置变量值，并应用边界约束"""
+        """Sets a variable's value, applying its bounds constraint"""
         if var_name in self.variables:
             var = self.variables[var_name]
-            # 应用边界约束
-            var.value = max(min(value, var.bounds[1] if var.bounds else float('inf')), 
+            # Apply the bounds constraint
+            var.value = max(min(value, var.bounds[1] if var.bounds else float('inf')),
                            var.bounds[0] if var.bounds else float('-inf'))
             self.asteval.symtable[var_name] = var.value
             self.variable_history[var_name].append(var.value)
@@ -251,42 +251,42 @@ class Simulation:
             logger.error(f"Variable {var_name} not found")
 
     def get_current_state(self) -> Dict[str, Any]:
-        """获取当前变量状态"""
-        return {name: {"value": var.value, "unit": var.unit, "description": var.description, "type": var.type.value} 
+        """Gets the current variable state"""
+        return {name: {"value": var.value, "unit": var.unit, "description": var.description, "type": var.type.value}
                 for name, var in self.variables.items()}
 
     def get_controllable_variables(self) -> Dict[str, Variable]:
-        """获取可控制变量（输入和参数类型）"""
-        return {name: var for name, var in self.variables.items() 
+        """Gets the controllable variables (input and parameter types)"""
+        return {name: var for name, var in self.variables.items()
                 if var.type in [VariableType.input, VariableType.PARAMETER]}
 
     def set_parameters(self, params: List[float]):
-        """设置参数值"""
+        """Sets parameter values"""
         controllable_vars = self.get_controllable_variables()
         for i, (var_name, var) in enumerate(controllable_vars.items()):
             if i < len(params):
                 self.set_variable_value(var_name, params[i])
 
     def get_objective(self, target: str) -> float:
-        """返回指定变量的当前值作为目标函数（越小越好的约定）"""
+        """Returns the current value of the given variable as the objective function (by convention, smaller is better)"""
         if target in self.variables:
             return float(self.variables[target].value)
         return float('inf')
 
     def reset_simulation(self):
-        """重置仿真状态到初始值"""
+        """Resets the simulation state to its initial values"""
         for var_name, var in self.variables.items():
             if var_name in self.variable_history and self.variable_history[var_name]:
                 var.value = self.variable_history[var_name][0]
                 self.asteval.symtable[var_name] = var.value
-        
+
         self.current_step = 0
         self.time = 0.0
 
-        # 重置历史记录（保留初始值）
+        # Reset history (keeping the initial value)
         for var_name in self.variable_history:
             if self.variable_history[var_name]:
                 initial_value = self.variable_history[var_name][0]
                 self.variable_history[var_name] = [initial_value]
 
-        # 方程缓存在 reset 时不需要重建（方程本身不变），保留即可
+        # The equation cache doesn't need to be rebuilt on reset (the equations themselves don't change), keep it as-is

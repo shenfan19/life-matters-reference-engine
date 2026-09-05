@@ -47,17 +47,22 @@ MODELS_DIR = _resolve_env_path("LM_MODELS_PATH", PROJECT_ROOT / "models")
 OUTPUT_DIR = _resolve_env_path("LM_OUTPUT_PATH", PROJECT_ROOT / "output")
 SCS_MODE = os.getenv("SCS_MODE", "false").lower() == "true"
 
-# P1/P2 公网部署资源保护（2026-06-25_task_prelaunch-publish-verification-checklist.md §4）：
-# 全局并发上限，防止多用户同时跑大规模优化/仿真耗尽服务器资源。第 N+1 个请求返回 503，
-# 前端可提示"服务繁忙，请稍后重试"，而不是悄悄排队或让机器过载。
+# A P1/P2 resource protection for public deployment (2026-06-25_task_prelaunch-publish-verification-checklist.md §4):
+# a global concurrency cap, preventing multiple users from running large-scale optimizations/
+# simulations at once and exhausting the server. The (N+1)th request returns 503, letting the
+# frontend show "the server is busy, please retry later" instead of silently queuing or
+# overloading the machine.
 MAX_CONCURRENT_OPTS = int(os.getenv("LM_MAX_CONCURRENT_OPTS", "2"))
 MAX_CONCURRENT_SIMS = int(os.getenv("LM_MAX_CONCURRENT_SIMS", "5"))
 
-# 部署环境的公网访问地址（IP 或域名），加进 CORS allow_origins 白名单。逗号分隔可以填多个。
-# 不写死在 api_server.py 里，是因为那份源码是本地开发和任何人自部署都共用的，不该焊死某一台
-# 特定服务器的地址；这台机器专属的值写在这里（.env），不写在源码里。
+# The deployment environment's public-facing address (an IP or domain), added to the CORS
+# allow_origins whitelist. Comma-separated, multiple values allowed. Not hardcoded in
+# api_server.py, since that source file is shared by local development and anyone's own
+# self-deployment and shouldn't be welded to one specific server's address; a value specific to
+# this machine is written here instead (.env), not in the source code.
 EXTRA_CORS_ORIGINS = [o.strip() for o in os.getenv("LM_EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
 
-# 匿名访问计数的私有查询令牌（routes/visits.py）：URL 路径里的随机字符串，不写死在源码里，
-# 未配置时统计端点整体返回 404，不暴露"这里有个统计接口"这件事本身。
+# A private query token for the anonymous visit counter (routes/visits.py): a random string in
+# the URL path, not hardcoded in the source. When unconfigured, the stats endpoint returns a
+# blanket 404, not exposing the fact that a stats endpoint even exists.
 STATS_TOKEN = os.getenv("LM_STATS_TOKEN", "")

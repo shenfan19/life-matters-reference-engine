@@ -38,7 +38,7 @@ async def _session_cleanup_loop():
             try:
                 app_state.engine.cleanup_stale_sessions()
             except Exception as e:
-                logger.error(f"清理僵尸会话失败: {e}")
+                logger.error(f"Failed to clean up zombie sessions: {e}")
 
 
 # ── Lifespan: initialize engines ────────────────────────────────────────────────
