@@ -1,127 +1,127 @@
 <img src="gui/public/favicon.svg" width="48" height="48" alt="Life Matters icon" />
 
-# Life Matters · 仿真引擎
+# Life Matters · Simulation Engine
 
-> 跨尺度多模型动力学仿真框架，对个体行为（Regimen）进行多目标优化决策。
+> A cross-scale, multi-model dynamics simulation framework, running multi-objective optimization decisions over individual behavior (Regimen).
 
-本仓库包含：仿真后端（FastAPI）、仿真前端 GUI（React）。  
-YAML 模型库独立维护，见 → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**
-
----
-
-项目整体定位、免责声明见 → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**（LM 项目根基仓库）。本仓库只维护仿真/优化引擎本身，作者对此负责。
+This repository contains: the simulation backend (FastAPI), the simulation frontend GUI (React).  
+The YAML model library is maintained independently, see → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**
 
 ---
 
-## 仓库结构
+For the project's overall positioning and disclaimer, see → **[life-matters-models](https://github.com/shenfan19/life-matters-models)** (the LM project's foundation repository). This repository maintains only the simulation/optimization engine itself, for which the author is responsible.
+
+---
+
+## Repository structure
 
 ```
-reference_engine/   Python LM Reference Engine + FastAPI 后端（端口 18080）
-gui/          仿真前端界面（React + Vite，端口 5173）
-cli/          命令行接口（lm-sim + 批量运行 batch.py），面向 AI/脚本场景，详见 docs/cli.md
-scripts/      开发工具脚本（i18n、AI 辅助、代码检查等）
-docs/  技术规范与架构决策（ADR）
+reference_engine/   Python LM Reference Engine + a FastAPI backend (port 18080)
+gui/          The simulation frontend interface (React + Vite, port 5173)
+cli/          The command-line interface (lm-sim plus the batch runner batch.py), aimed at AI/script scenarios, see docs/cli.md
+scripts/      Development tooling scripts (i18n, AI assistance, code checks, etc.)
+docs/  Technical specifications and architecture decisions (ADRs)
 ```
 
-YAML 模型生态见 → [life-matters-models](https://github.com/shenfan19/life-matters-models)
+For the YAML model ecosystem, see → [life-matters-models](https://github.com/shenfan19/life-matters-models)
 
 ---
 
-## 变量类型体系
+## The variable-type system
 
-| 类型 | 用途 | 优化归属 |
+| Type | Purpose | Optimization ownership |
 |------|------|---------|
-| `state` | 随时间演化的状态变量 | — |
-| `input` | 用户干预量，由 Regimen 结构化调度 | 外环 opt（Simulator） |
-| `parameter` | 动力学机制系数，由文献数据拟合确定 | 内环 opt（Modeller，待实现） |
+| `state` | A state variable evolving over time | — |
+| `input` | A user-intervention quantity, structurally scheduled by a Regimen | The outer optimization loop (Simulator) |
+| `parameter` | A dynamics mechanism coefficient, fixed by fitting to literature data | The inner optimization loop (Modeller, not yet implemented) |
 
-`parameter` 变量声明 `evidence_type` 字段（OR/HR/RR/Cohen's d 等）时，Loader 会自动把文献效应量换算为可用系数——"evidence" 是这类变量的展示概念，`type` 字段本身仍是 `parameter`，不是第四个独立枚举值，详见 [docs/design.md](docs/design.md)。
+When a `parameter` variable declares an `evidence_type` field (OR/HR/RR/Cohen's d, etc.), the Loader automatically converts the literature effect size into a usable coefficient — "evidence" is a display concept for this kind of variable, and the `type` field itself is still `parameter`, not a fourth independent enum value; see [docs/design.md](docs/design.md) for detail.
 
 ---
 
-## 双环优化架构
+## The dual-loop optimization architecture
 
 ```
-内环（Modeller，待实现）      外环（Simulator，当前主攻）
+Inner loop (Modeller, not yet implemented)      Outer loop (Simulator, the current primary focus)
   calibrate parameter    →      search optimal input Regimen
   fit to literature data         Pareto front output
 ```
 
-外环优化器没有唯一最优解时，默认以 Pareto 前沿呈现结果，把所有较优组合完整交给使用者评估和参考，命名由来见 [life-matters-models](https://github.com/shenfan19/life-matters-models) README。
+When the outer-loop optimizer has no single optimal solution, the result is by default presented as a Pareto front, handing the full set of better combinations to the user for evaluation and reference; see the [life-matters-models](https://github.com/shenfan19/life-matters-models) README for the origin of the naming.
 
 ---
 
-## 快速开始
+## Quick start
 
-**依赖**：Python 3.10+，Node.js 18+
+**Dependencies**: Python 3.10+, Node.js 18+
 
 ```bash
 pip install -r reference_engine/requirements.txt
 cd gui && npm install && cd ..
 ```
 
-一键启动后端 + 前端（dev 模式，两个窗口，Ctrl+C / 关闭窗口停止）：
+Start the backend plus frontend together with one command (dev mode, two windows; Ctrl+C / closing the window stops it):
 
 ```bash
 ./run.sh          # macOS / Linux / Git Bash
 run.cmd           # Windows
 ```
 
-或手动分别启动：
+Or start them separately by hand:
 
 ```bash
 cd reference_engine && python src/api_server.py   # http://localhost:18080
 cd gui && npm run dev                             # http://localhost:5173
 ```
 
-`gui` 通过 Vite proxy 将 `/api` 转发至后端 `:18080`。
+`gui` forwards `/api` to the backend at `:18080` via the Vite proxy.
 
-### 命令行接口（CLI）
+### Command-line interface (CLI)
 
-面向脚本和 AI agent 的运行接口，无需启动后端/前端：
+A run interface aimed at scripts and AI agents, with no need to start the backend/frontend:
 
 ```bash
-python cli/main.py <model.yaml>              # 同时跑 sim + opt
+python cli/main.py <model.yaml>              # runs both sim and opt
 python cli/main.py <model.yaml> --sim-only
 python cli/main.py <model.yaml> --opt-only
 
-# 批量运行一个文件夹下的所有模型，生成 batch_report.md
+# Batch-run every model under a folder, generating batch_report.md
 python cli/batch.py --input-dir <models_folder>
 ```
 
-输出为结构化 CSV + 日志，写入 `output/<模型名>/`。Release 中提供编译好的 `lm-sim`，无需安装 Python。详见 [docs/cli.md](docs/cli.md)。
+The output is structured CSV plus logs, written to `output/<model name>/`. A compiled `lm-sim` is provided in the release, requiring no Python installation. See [docs/cli.md](docs/cli.md) for detail.
 
 ---
 
-## 常见问题
+## FAQ
 
-**后端端口占用？** 默认 18080。修改 `reference_engine/src/api_server.py`，同步更新 `gui/vite.config.ts` 的 proxy 目标。
+**The backend port is in use?** The default is 18080. Change it in `reference_engine/src/api_server.py`, and update `gui/vite.config.ts`'s proxy target to match.
 
-**前端空白？** 确认后端已启动，访问 `http://localhost:18080/api/health` 验证，再检查 `npm install` 是否完成。
+**The frontend is blank?** Confirm the backend has started by visiting `http://localhost:18080/api/health`, then check whether `npm install` finished.
 
-**如何添加模型？** 将 `.yaml` 放入 `../life-matters-models/models/references/` 对应子目录，命名规则 `{topic}_{year}_{author}.yaml`，格式见 [LM_format_1.0.md](https://github.com/shenfan19/life-matters-models/blob/main/docs/LM_format_1.0.md)，建模实践指南见 [life-matters-models/docs/authoring/](https://github.com/shenfan19/life-matters-models/blob/main/docs/authoring/README.md)。
+**How do I add a model?** Place the `.yaml` under the corresponding subdirectory of `../life-matters-models/models/references/`, following the naming convention `{topic}_{year}_{author}.yaml`; for the format, see [LM_format_1.0.md](https://github.com/shenfan19/life-matters-models/blob/main/docs/LM_format_1.0.md), and for a modeling-practice guide, see [life-matters-models/docs/authoring/](https://github.com/shenfan19/life-matters-models/blob/main/docs/authoring/README.md).
 
 ---
 
-## 文档索引
+## Documentation index
 
-| 文档 | 内容 |
+| Document | Content |
 |------|------|
-| [docs/design.md](docs/design.md) | Reference Engine 软件设计（Regimen K×4、会话管理） |
-| [docs/impl.md](docs/impl.md) | Reference Engine 实现细节 |
-| [docs/requirements.md](docs/requirements.md) | 软件需求文档 |
-| [docs/opt.md](docs/opt.md) | Optimizer 设计与实现（NSGA-II、scipy、MC 内嵌） |
-| [docs/cli.md](docs/cli.md) | CLI 批量运行接口说明 |
-| [docs/deploy_scs.md](docs/deploy_scs.md) | SCS 公网部署指南（DigitalOcean 等云主机，systemd + Nginx） |
-| [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence 8 种子类型换算方程、溯源字段（权威实现描述） |
-| [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence `applies_to` 自动接入 dynamics 机制 |
-| [docs/mc.md](docs/mc.md) | Monte Carlo 实现细节（分布采样、seed 派生、model 克隆） |
-| [test_verification/verification_report.md](test_verification/verification_report.md) | 验证报告（verify）：引擎实现正确性 / 数值精度，方法论与当前执行结果合一 |
-| [life-matters-models/models/test_validation/validation_report.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_validation/validation_report.md) | 验证报告（validate）：文献对标 / 优化合理性 / API-IO / 模型科学内容 |
-| [life-matters-models/models/test_fixtures/fixture_catalog.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_fixtures/fixture_catalog.md) | test_fixtures fixture 全览：按 evidence/import/mc/opt/lm_score 等领域逐项说明每个测试用例 |
-| [docs/ui_guidelines.md](docs/ui_guidelines.md) | 前端 UI/UX 设计规范（颜色 token、i18n、响应式） |
-| [docs/data_flow.md](docs/data_flow.md) | 数据流设计 |
-| [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录索引（ADR） |
+| [docs/design.md](docs/design.md) | The Reference Engine's software design (Regimen K x 4, session management) |
+| [docs/impl.md](docs/impl.md) | The Reference Engine's implementation detail |
+| [docs/requirements.md](docs/requirements.md) | The software requirements document |
+| [docs/opt.md](docs/opt.md) | The Optimizer's design and implementation (NSGA-II, scipy, embedded MC) |
+| [docs/cli.md](docs/cli.md) | An explanation of the CLI batch-run interface |
+| [docs/deploy_scs.md](docs/deploy_scs.md) | The SCS public-deployment guide (DigitalOcean and similar cloud hosts, systemd plus Nginx) |
+| [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence's 8 subtype conversion equations and traceability fields (the authoritative implementation description) |
+| [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence's `applies_to` mechanism for automatically wiring into dynamics |
+| [docs/mc.md](docs/mc.md) | Monte Carlo implementation detail (distribution sampling, seed derivation, model cloning) |
+| [test_verification/verification_report.md](test_verification/verification_report.md) | The validation report (verify): engine implementation correctness / numerical precision, with methodology and current execution results combined |
+| [life-matters-models/models/test_validation/validation_report.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_validation/validation_report.md) | The validation report (validate): literature benchmarking / optimization plausibility / API-IO / a model's scientific content |
+| [life-matters-models/models/test_fixtures/fixture_catalog.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_fixtures/fixture_catalog.md) | A complete overview of the test_fixtures fixtures: explaining each test case item by item, grouped by area, evidence/import/mc/opt/lm_score, etc. |
+| [docs/ui_guidelines.md](docs/ui_guidelines.md) | The frontend UI/UX design conventions (color tokens, i18n, responsiveness) |
+| [docs/data_flow.md](docs/data_flow.md) | The data-flow design |
+| [docs/decisions/README.md](docs/decisions/README.md) | An index of architecture decision records (ADRs) |
 
 ---
 
@@ -131,5 +131,5 @@ This project was developed with AI coding assistance for code generation, automa
 
 ## License
 
-PolyForm Noncommercial 1.0.0 — 学术和非商业用途免费，商业使用需授权。  
-详见 [LICENSE](LICENSE) 或 https://polyformproject.org/licenses/noncommercial/1.0.0/
+PolyForm Noncommercial 1.0.0 — free for academic and non-commercial use, commercial use requires a license.  
+See [LICENSE](LICENSE) or https://polyformproject.org/licenses/noncommercial/1.0.0/

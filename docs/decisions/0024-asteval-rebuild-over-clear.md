@@ -1,34 +1,34 @@
-# 0024 — asteval Interpreter 重建而非 symtable.clear()
+# 0024 — Rebuild the asteval Interpreter instead of calling symtable.clear()
 
-**状态**: ✅ 已实施  
-**日期**: 2026-04-12  
-**作者**: shenfan19
+**Status**: implemented
+**Date**: 2026-04-12
+**Author**: shenfan19
 
 ---
 
-## 背景
+## Background
 
-`ModelStructure._initialize_asteval()` 每次加载新模型后需要刷新符号表，将当前变量写入 `asteval.symtable`。
-原实现使用 `symtable.clear()` 清空旧条目后再重新写入：
+`ModelStructure._initialize_asteval()` needs to refresh the symbol table after loading a new model, writing the current variables into `asteval.symtable`.
+The original implementation cleared out the old entries with `symtable.clear()` before rewriting them:
 
 ```python
 def _initialize_asteval(self):
-    self.asteval.symtable.clear()          # ← 问题所在
+    self.asteval.symtable.clear()          # ← the problem
     for var_name, var in self.variables.items():
         self.asteval.symtable[var_name] = var.value
 ```
 
-`asteval` 的 `Interpreter` 没有分层符号表（没有"用户层"与"内置层"之分），所有内容（包括 `abs`、`min`、`max`、`sin` 等内置函数）都存放在同一个 `symtable` 字典中。  
-`symtable.clear()` 会**一并删除所有内置函数**，导致模型公式中的 `min()`、`max()` 等调用在下一步中抛出 `NameError`，仿真静默失败。
+`asteval`'s `Interpreter` has no layered symbol table (no separation between a "user layer" and a "built-in layer") — everything, including built-in functions like `abs`, `min`, `max`, `sin`, lives in the same `symtable` dict.
+`symtable.clear()` therefore **wipes out all the built-in functions too**, causing calls like `min()` and `max()` in model formulas to raise `NameError` on the next step, failing the simulation silently.
 
-## 决策
+## Decision
 
-不清空，直接重建 `Interpreter()`，让 asteval 自己完成内置函数注册：
+Instead of clearing the table, rebuild the `Interpreter()` outright and let asteval register its own built-ins:
 
 ```python
 def _initialize_asteval(self):
-    self.asteval = Interpreter()           # 重建，内置函数自动注册
-    # 注入时间常量
+    self.asteval = Interpreter()           # rebuilt; built-in functions register automatically
+    # inject time constants
     self.asteval.symtable['SECOND'] = 1.0
     self.asteval.symtable['MINUTE'] = 60.0
     self.asteval.symtable['HOUR']   = 3600.0
@@ -40,11 +40,11 @@ def _initialize_asteval(self):
         self.asteval.symtable[var_name] = var.value
 ```
 
-## 为什么不手动恢复内置函数
+## Why not manually restore the built-ins
 
-手动枚举并恢复所有 asteval 内置（`abs`、`min`、`max`、`sin`、`cos`、`log`、`sqrt` 等 ~30 个）是脆弱的维护负担：asteval 版本升级可能新增/修改内置集合，维护者必须同步跟踪。  
-重建 Interpreter 把这份责任交还给 asteval 本身，符合"让工具自己管自己"的原则。
+Manually enumerating and restoring all of asteval's built-ins (`abs`, `min`, `max`, `sin`, `cos`, `log`, `sqrt`, roughly 30 in all) is a fragile maintenance burden: an asteval version upgrade can add or change the built-in set, and a maintainer would have to track it in sync.
+Rebuilding the Interpreter hands that responsibility back to asteval itself, consistent with the principle of letting a tool manage its own state.
 
-## 性能
+## Performance
 
-`Interpreter()` 构造开销极小（微秒级），每次 `step()` 不会重建，只在 `_initialize_asteval()` 被调用时（即模型加载/变量变更时）才触发。对仿真性能无影响。
+Constructing an `Interpreter()` is extremely cheap (microsecond-scale) and is not rebuilt on every `step()` — it only fires when `_initialize_asteval()` is called (i.e. on model load or a variable change). It has no impact on simulation performance.

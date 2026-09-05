@@ -1,152 +1,152 @@
-# ADR 0078 — SCS 模式：云端多用户部署的写操作保护
+# ADR 0078 — SCS Mode: Write Protection for Cloud Multi-User Deployment
 
-**日期**：2026-05-18（2026-05-18 持续更新）
-**状态**：已决定
-**范围**：仿真引擎 API + 前端全部写操作入口
-
----
-
-## 背景
-
-LM-Simulator 原设计为作者本地单用户工具，所有 API 写操作均无鉴权保护。计划以 SCS（Software-as-a-Cloud-Service）形式向学者开放演示时，任意访客均可覆盖或删除 `models/` 目录中的共享模型文件，存在严重安全风险。
+**Date**: 2026-05-18 (continuously updated on 2026-05-18)
+**Status**: decided
+**Scope**: simulation-engine API + every frontend write-operation entry point
 
 ---
 
-## 约束
+## Background
 
-1. 本地开发体验不能受影响（作者仍需完整写操作权限）
-2. 不引入用户账号体系（当前阶段过重）
-3. SCS 用户应能：上传自己的 YAML、编辑（内存）、下载结果、运行仿真
-4. SCS 用户不能：修改服务器上的 `models/` 任意文件
+LM-Simulator was originally designed as a single-user local tool for the author, with no authentication protecting any API write operation. Plans to open it up to researchers as an SCS (Software-as-a-Cloud-Service) demo mean any visitor could overwrite or delete shared model files under `models/` on the server — a serious security risk.
 
 ---
 
-## 决定
+## Constraints
 
-### SCS_MODE 环境变量
+1. The local development experience must not be affected (the author still needs full write access)
+2. No user account system should be introduced (too heavyweight at this stage)
+3. SCS users should be able to: upload their own YAML, edit it (in memory), download results, and run simulations
+4. SCS users should not be able to: modify any file under the server's `models/`
 
-后端启动时读取 `SCS_MODE` 环境变量（大小写不敏感）：
+---
+
+## Decision
+
+### The SCS_MODE environment variable
+
+On startup, the backend reads the `SCS_MODE` environment variable (case-insensitive):
 
 ```bash
-# 云端部署
+# cloud deployment
 SCS_MODE=true uvicorn ...
 
-# 本地开发（默认 false，不设置即可）
+# local development (default false; simply leave it unset)
 ```
 
-VSCode tasks.json 通过 `options.env` 注入，而非 shell 语法（跨平台兼容）：
+VSCode's tasks.json injects it via `options.env` rather than shell syntax (for cross-platform compatibility):
 
 ```json
 "options": { "cwd": "...", "env": { "SCS_MODE": "true" } }
 ```
 
-`SCS_MODE` 保持 boolean，不扩展为多值枚举（见放弃方案）。
+`SCS_MODE` stays a boolean and is not expanded into a multi-value enum (see rejected approaches).
 
-### 后端：写操作 403 guard
+### Backend: a 403 guard on write operations
 
-所有修改服务器文件系统的端点，在函数体首行调用 `_check_write()`：
+Every endpoint that modifies the server's filesystem calls `_check_write()` as the first line of its function body:
 
-| 端点 | 操作 |
+| Endpoint | Operation |
 |------|------|
-| `POST /api/save-file` | 保存结构化模型 |
-| `POST /api/file-raw/{path}` | 保存原始文本 |
-| `POST /api/file-structured/{path}` | 保存 JSON→YAML |
-| `POST /api/file-move` | 移动/重命名文件 |
-| `POST /api/file-new` | 从模板新建文件（SCS 下由前端改为创建 session model） |
-| `DELETE /api/file/{path}` | 删除文件 |
-| `POST /api/split` | 拆分模型（写盘） |
+| `POST /api/save-file` | save a structured model |
+| `POST /api/file-raw/{path}` | save raw text |
+| `POST /api/file-structured/{path}` | save JSON → YAML |
+| `POST /api/file-move` | move/rename a file |
+| `POST /api/file-new` | create a file from a template (under SCS, the frontend instead creates a session model) |
+| `DELETE /api/file/{path}` | delete a file |
+| `POST /api/split` | split a model (writes to disk) |
 
-`POST /api/merge` 和 `POST /api/model/upload-temp` 不直接 403，有各自的 SCS 分支逻辑（见下）。
+`POST /api/merge` and `POST /api/model/upload-temp` don't return a flat 403; each has its own SCS-specific branch (see below).
 
 ### GET /api/config
 
-新增只读端点，供前端获取运行模式：
+A new read-only endpoint for the frontend to discover the running mode:
 
 ```
 GET /api/config → { "scs_mode": true/false }
 ```
 
-前端在 Simulator 挂载时请求一次，存入 `scsMode` state，向下传递给 FileEditor 和 SimModelTree。
+The frontend requests this once when Simulator mounts, stores it in `scsMode` state, and passes it down to FileEditor and SimModelTree.
 
-### 前端：文件编辑器（FileEditor.tsx）行为适配
+### Frontend: behavior adaptations in the file editor (FileEditor.tsx)
 
-`ModelBuilder.tsx`（旧的 1530 行全功能组件）已被 `FileEditor.tsx`（~600 行，仅包含 embedded 模式所需的卡片编辑功能）替换。旧组件左侧文件树在 embedded 模式下永远隐藏，是死代码。
+`ModelBuilder.tsx` (the old 1530-line, full-featured component) has been replaced by `FileEditor.tsx` (~600 lines, containing only the card-editing functionality needed in embedded mode). The old component's left-hand file tree was always hidden in embedded mode, making it dead code.
 
-| 功能 | 本地模式 | SCS 模式 |
+| Feature | Local mode | SCS mode |
 |------|---------|---------|
-| 编辑模型字段 | ✅ | ✅ |
-| 保存到服务器 | ✅ | ❌ 按钮灰色，Tooltip"仅本地模式下可用" |
-| 保存 session model | ✅ | ✅（写 localStorage，不走服务器） |
-| 下载当前 draft | ✅ | ✅（始终可用） |
-| 删除文件 | ✅ | ❌ 按钮隐藏 |
-| 自动修复（写盘） | ✅ | ❌ 按钮隐藏 |
-| 拖拽移动文件 | ✅ | ❌ 已移至 SimModelTree，不在 FileEditor |
+| Edit model fields | Yes | Yes |
+| Save to server | Yes | No, button grayed out, tooltip "available only in local mode" |
+| Save session model | Yes | Yes (writes to localStorage, not the server) |
+| Download the current draft | Yes | Yes (always available) |
+| Delete a file | Yes | No, button hidden |
+| Auto-fix (writes to disk) | Yes | No, button hidden |
+| Drag to move a file | Yes | No, already moved to SimModelTree, not in FileEditor |
 
-### 前端：新建文件（SCS 模式）
+### Frontend: creating a new file (SCS mode)
 
-SCS 模式下点击"新建"不调用 `POST /api/file-new`，而是：
+Under SCS mode, clicking "New" doesn't call `POST /api/file-new`; instead:
 
-1. 弹窗只询问模型名称（非路径）
-2. 在前端创建空模板 `ModelFile`（key = `session/{name}.yaml`）
-3. 直接在 FileEditor 中打开为编辑卡片，自动进入编辑模式
-4. 注册到 `sessionModels`（localStorage）
+1. The dialog only asks for a model name (not a path)
+2. The frontend creates an empty template `ModelFile` (key = `session/{name}.yaml`)
+3. It opens directly as an edit card in FileEditor, entering edit mode automatically
+4. It's registered into `sessionModels` (localStorage)
 
-### 前端：合并（Merge）SCS 行为
+### Frontend: Merge behavior under SCS
 
-SCS 模式下弹窗只询问文件名（非服务器路径）。后端 `POST /api/merge` 在 SCS 模式下不写盘，返回内存合并结果：
+Under SCS mode, the dialog only asks for a filename (not a server path). The backend's `POST /api/merge` doesn't write to disk under SCS mode; it returns the merged result in memory:
 
 ```json
 { "success": true, "scs_mode": true, "raw": {...}, "yaml_text": "...", "filename": "merged.yaml" }
 ```
 
-前端将结果构建为 session model，打开 Builder，自动进入编辑模式。
+The frontend builds the result into a session model and opens Builder, entering edit mode automatically.
 
-### 前端：上传（Upload）到 Builder
+### Frontend: uploading to Builder
 
-Builder 工具栏新增上传按钮（`UploadOutlined`），上传后通过 `POST /api/model/upload-temp`（原子操作，见 ADR 0077）创建 session model，自动在 FileEditor 中打开编辑卡片。
+Builder's toolbar gains an upload button (`UploadOutlined`); after upload, `POST /api/model/upload-temp` (an atomic operation, see ADR 0077) creates a session model, which opens automatically as an edit card in FileEditor.
 
-### 前端：Session model 在树中的行为
+### Frontend: session-model behavior in the tree
 
-- **普通模式**：点击 session model → 加载为当前 sim 模型（和 server model 一致）
-- **Builder 模式**：session model 显示复选框（和树中 server model 一致），勾选 → 在 FileEditor 中显示编辑卡片；选中时不显示锁图标
+- **Normal mode**: clicking a session model loads it as the current sim model (same as a server model)
+- **Builder mode**: a session model shows a checkbox (same as a server model in the tree); checking it shows an edit card in FileEditor; no lock icon is shown when selected
 
-### 前端：运行按钮限制（SCS 模式）
+### Frontend: run-button restrictions (SCS mode)
 
-SCS 模式下，当另一个模型正在运行时，当前模型的 Sim/Opt 运行按钮 disabled，悬停显示 Tooltip：
+Under SCS mode, while another model is running, the current model's Sim/Opt run buttons are disabled, showing a tooltip on hover:
 
-> "请先前往「X」停止运行后再启动"
+> "Please stop the run in 'X' before starting a new one"
 
-锁图标已由 [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md) 移除；运行拦截改为仅在用户尝试启动新运行时弹出确认框，不再阻止模型切换。
-
----
-
-## 放弃的方案
-
-### 多 MODE 枚举（LOCAL / SCS / DEMO / ...）
-
-资源限制（并发数）、Demo 白名单等维度与写保护无关，各自用独立变量控制。枚举会将不相关关注点耦合，随需求增长变成难以维护的 big switch。
-
-**决定**：保持 boolean `SCS_MODE`，其他维度独立控制。
-
-### 前端隐藏所有写入口（新建、合并、上传）
-
-后端已有 403 兜底，保留这些按钮让 SCS 用户通过 session model 工作流完成编辑任务。
+The lock icon was removed by [ADR 0085](0085-2026-05-25_sim_remove-lock-free-switch-running-indicator.md); the run interception now only pops a confirmation dialog when the user actually tries to start a new run, and no longer blocks switching models.
 
 ---
 
-## 影响
+## Rejected approaches
 
-- `sim_engine/src/api_server.py`：`SCS_MODE`、`_check_write()`、`GET /api/config`、merge 端点 SCS 分支
-- `sim_gui/src/components/FileEditor.tsx`：**新文件**，替换 ModelBuilder.tsx；`scsMode` prop、session key 保存走 localStorage、`checkedFiles` 计算修复（含 session key）、`preloadedMetas` 绕过服务器 fetch
-- `sim_gui/src/components/Simulator.tsx`：`scsMode` fetch、handleMerge SCS 分支、handleCreateFile SCS 分支、handleBuilderSessionUpdate、builderSessionMetas、builderAutoEditKey、builderUploadRef
-- `sim_gui/src/components/SimModelTree.tsx`：`scsMode` prop、Builder 模式下 session model 显示复选框、session key 刷新按钮隐藏、Builder 工具栏上传按钮
-- `sim_gui/src/components/ModelBuilder.tsx`：**已删除**
-- `.vscode/tasks.json`：通过 `options.env.SCS_MODE` 控制
+### A multi-value MODE enum (LOCAL / SCS / DEMO / ...)
+
+Concerns like resource limits (concurrency caps) and a demo whitelist are unrelated to write protection and are each controlled by their own independent variable. An enum would couple unrelated concerns together and turn into an unmaintainable big switch as requirements grow.
+
+**Decision**: keep the boolean `SCS_MODE`; every other dimension is controlled independently.
+
+### Hiding all write entry points on the frontend (New, Merge, Upload)
+
+The backend already has a 403 fallback, so keeping these buttons lets SCS users complete editing tasks through the session-model workflow.
 
 ---
 
-## 注意事项
+## Consequences
 
-- **SCS_MODE 仅保护文件系统**。计算资源（并发仿真/优化数量）的限制尚未实现，见 tasks/task_sim.md → SCS 计算资源限制条目
-- **Session model 架构**：session key 前缀检测分散在多处，有改进空间。已记录为 tasks/task_sim.md → AA 条目
-- **SaaS 路径**：未来引入用户账号体系时，鉴权层将替代 SCS_MODE；届时改动范围是整个 API 层
+- `sim_engine/src/api_server.py`: `SCS_MODE`, `_check_write()`, `GET /api/config`, the merge endpoint's SCS branch
+- `sim_gui/src/components/FileEditor.tsx`: **new file**, replaces ModelBuilder.tsx; `scsMode` prop, session-key saves go to localStorage, fixed `checkedFiles` computation (including session keys), `preloadedMetas` bypasses the server fetch
+- `sim_gui/src/components/Simulator.tsx`: `scsMode` fetch, handleMerge's SCS branch, handleCreateFile's SCS branch, handleBuilderSessionUpdate, builderSessionMetas, builderAutoEditKey, builderUploadRef
+- `sim_gui/src/components/SimModelTree.tsx`: `scsMode` prop, session models show a checkbox in Builder mode, refresh button hidden for session keys, upload button in Builder's toolbar
+- `sim_gui/src/components/ModelBuilder.tsx`: **deleted**
+- `.vscode/tasks.json`: controlled via `options.env.SCS_MODE`
+
+---
+
+## Notes
+
+- **SCS_MODE only protects the filesystem**. Limiting compute resources (concurrent simulation/optimization counts) is not yet implemented; see tasks/task_sim.md → the SCS compute-resource-limit item
+- **Session-model architecture**: session-key prefix checks are scattered across multiple places, and there's room to improve this. Recorded as tasks/task_sim.md → item AA
+- **SaaS path**: once a user-account system is introduced in the future, an auth layer will replace SCS_MODE; at that point the change will span the entire API layer

@@ -1,64 +1,64 @@
-# LM 软件需求文档
+# LM Software Requirements
 
-## 核心定位
+## Core positioning
 
-LM（Life Matters）是一个**跨尺度多模型动力学仿真框架**，专注于个人健康轨迹仿真。
+LM (Life Matters) is a **cross-scale, multi-model dynamics simulation framework**, focused on simulating an individual's personal health trajectory.
 
-**核心能力**：在统一框架里同时运行异尺度模型，并对跨模型交互进行 Regimen 级多目标优化。
+**Core capability**: running models at different scales simultaneously within a unified framework, and running Regimen-level multi-objective optimization over the interaction across models.
 
-> 类比 GPS：不比测绘更精确，但解决了"实时路径规划"这个测绘本身不解决的问题。
+> An analogy to GPS: not more precise than surveying, but solving the problem of "real-time route planning," which surveying itself does not solve.
 
-## 功能范围
+## Feature scope
 
-**核心（80%）**：个人健康轨迹仿真
+**Core (80%)**: personal health-trajectory simulation
 
-**扩展（20%）**：医学 / 社会学应用
-- 增加用户基数
-- 展示 LM 通用性
-- 不改变核心定位
+**Extensions (20%)**: medical / social-science applications
+- Growing the user base
+- Demonstrating LM's generality
+- Not changing the core positioning
 
-## 学术空白与技术定位
+## Academic gap and technical positioning
 
-现有医学仿真工具覆盖：
-- 分钟–小时尺度：血糖 ODE、PK/PD
-- 年–十年尺度：流行病学 SD
+Existing medical-simulation tools cover:
+- Minute-to-hour scale: blood-glucose ODEs, PK/PD
+- Year-to-decade scale: epidemiological SD
 
-**空白**：日–周–月尺度的跨模型组合，以及"个体行为层多模型跨尺度优化"——无现有工具覆盖。
+**The gap**: day-week-month-scale cross-model composition, and "multi-model cross-scale optimization at the individual-behavior layer" — no existing tool covers this.
 
-## 核心价值主张
+## Core value proposition
 
-LM 把分散在文献里的统计结论，通过 YAML 可组合框架，转化为可以跨尺度联合运行并优化的动力学仿真系统。
+LM converts statistical conclusions scattered across the literature into a dynamics simulation system that can be jointly run and optimized across scales, through a composable YAML framework.
 
-## 应用场景
+## Application scenarios
 
-LM 的使用方向分为两类，共享同一套引擎和模型。
+LM's use falls into two categories, sharing the same engine and models.
 
-### 前向应用：行为优化
+### Forward application: behavioral optimization
 
-给定已校准的动力学模型，对用户的行为干预方案（Regimen）做多目标 Pareto 优化，输出可执行的最优方案建议。典型场景：慢病患者的饮食 + 用药联合优化、运动方案设计。
+Given an already-calibrated dynamics model, run multi-objective Pareto optimization over a user's behavioral-intervention plan (Regimen), outputting an actionable optimal-plan recommendation. Typical scenarios: joint diet-plus-medication optimization for a chronic-disease patient, exercise-plan design.
 
-### 逆向应用：文献一致性校验（Simulation-as-Validation）
+### Reverse application: literature-consistency checking (Simulation-as-Validation)
 
-把文献报告的参数装入 YAML，运行仿真，将输出与文献结论对比，检验文献的内部自洽性和跨文献一致性。
+Load parameters reported by the literature into YAML, run the simulation, and compare the output against the literature's conclusion, checking the literature's internal self-consistency and cross-literature consistency.
 
-**三种校验模式：**
+**Three checking modes:**
 
-| 模式 | 操作 | 典型输出 |
+| Mode | Operation | Typical output |
 |------|------|---------|
-| **单文献重现** | 用原文参数跑仿真，看能否重现原文报告的结论 | 参数自洽 / 存在未说明的隐含假设 / 参数规格不完整 |
-| **跨文献参数叠加** | 把两篇研究的参数同时装入同一框架运行 | 联合可行域受限 / 需引入分层变量 / 适用人群范围不同 |
-| **多文献联合约束** | 多个研究同时作为约束，搜索联合可行的参数值域 | 可行域边界 / 可行域为空集 |
+| **Single-publication reproduction** | Run the simulation with the original text's parameters, see whether it reproduces the original text's reported conclusion | Parameters self-consistent / an unstated implicit assumption exists / parameter specification incomplete |
+| **Cross-publication parameter overlay** | Load two studies' parameters into the same framework at once and run it | The joint feasible region is constrained / a stratification variable needs introducing / the applicable populations differ |
+| **Multi-publication joint constraint** | Multiple studies act as constraints simultaneously, searching the jointly feasible parameter range | The feasible region's boundary / the feasible region is an empty set |
 
-**典型案例**：胰岛素敏感性（HOMA-IR）与糖耐量（OGTT）在不同来源的参数下，仿真结果可能出现内在矛盾——这与医学文献中已知的"各研究结果不一致"问题对应，LM 提供了动力学视角的重现路径。
+**A typical example**: insulin sensitivity (HOMA-IR) and glucose tolerance (OGTT) can show an internal contradiction in simulation results under parameters from different sources — this corresponds to the "inconsistent results across studies" problem already known in the medical literature, and LM supplies a dynamics-based path to reproducing it.
 
-**社会学应用**：历史数据和社会动力学参数同样可以通过 LM 进行跨来源比对，检验不同研究记录的动力学自洽性。
+**Social-science applications**: historical data and social-dynamics parameters can likewise be cross-checked across sources through LM, testing the dynamical self-consistency of different research records.
 
-## 优化双环需求
+## The dual-loop optimization requirement
 
-LM 的优化需求分为两个独立目标：
+LM's optimization requirement splits into two independent objectives:
 
-**外环（Regimen 搜索）**：在给定的生理/动力学模型下，搜索令状态输出最优的用户行为/用药方案（`input` 变量的 Regimen 计划）。这是 LM-Simulator 的核心功能，当前主攻。输出 Pareto 前沿，直接服务于医生、患者决策。
+**Outer loop (Regimen search)**: given a physiological/dynamics model, search for the user behavior/medication plan (a Regimen schedule of `input` variables) that optimizes the state output. This is LM-Simulator's core function, currently the primary focus. It outputs a Pareto front, serving physician and patient decisions directly.
 
-**内环（参数校准）**：将 YAML 中的 `parameter`（机制系数，如 Bergman 最小模型的 p1/p2/p3）对文献观测数据进行拟合，使模型贴合真实生理数据。这属于 **Modeller 工具**的功能范畴，服务于模型开发者，待后续实现。
+**Inner loop (parameter calibration)**: fitting a YAML's `parameter` (mechanism coefficients, such as the Bergman minimal model's p1/p2/p3) against literature-observed data, so the model fits real physiological data. This falls within the scope of the **Modeller tool**, serving model developers, not yet implemented.
 
-两环目标正交、工具分离：外环在 `parameter` 已确定的前提下运行，内环校准好后写入模型 YAML 并固定。`evidence` 变量（原始文献效应量，Loader 自动换算）不进入任何优化环。
+The two loops' objectives are orthogonal, and the tools are separate: the outer loop runs on the premise that `parameter` is already fixed; the inner loop, once calibrated, is written into the model YAML and fixed. The `evidence` variable (a raw literature effect size, automatically converted by the Loader) enters neither optimization loop.

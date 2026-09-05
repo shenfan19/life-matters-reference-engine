@@ -1,7 +1,7 @@
 # ADR 0094 — Result Exchange: CSV as Universal Format, YAML as Unified Model Download
 
-**Date:** 2026-06-05  
-**Status:** Accepted（Sim 导出行为由 ADR 0108 修订）  
+**Date:** 2026-06-05
+**Status:** Accepted (Sim's export behavior revised by ADR 0108)
 **Context:** sim_gui — Sim tab, Opt tab, CLI
 
 ---
@@ -22,31 +22,31 @@ Importing CSV has tab-specific consequences that follow naturally from what each
 
 | Tab | Export CSV content | Import CSV → automatic consequence |
 |-----|-------------------|-------------------------------------|
-| Sim | 仿真时序（时间序列） | 新增一条带标签的对比曲线 |
-| Opt | 优化结果（Pareto 前沿） | 合并入 Pareto 前沿，自动开启热启动 |
+| Sim | Simulation time series | Adds a new labeled comparison curve |
+| Opt | Optimization results (Pareto front) | Merges into the Pareto front, automatically enabling warm-start |
 | CLI --sim | Auto `_sim.csv` | — |
 | CLI --opt | Auto `_opt.csv` | `--continue [TIMESTAMP]` |
 
-"多曲线对比"和"热启动"不是独立功能——它们是导入 CSV 在各自上下文的直接结果，无需单独学习。
+"Multi-curve comparison" and "warm-start" are not separate features — they are the natural, context-specific consequence of importing a CSV, requiring no separate learning.
 
-### 2. Sim 仿真历史曲线（auto-snapshot）
+### 2. Sim historical-curve auto-snapshot
 
-每次点击 Run 时，若当前已有完成的仿真结果，GUI 自动将其快照为一条历史对比曲线，标签为 `Sim {起始日} · {步长}`。CSV 导入的曲线与自动快照进同一列表。
+Each time Run is clicked, if a completed simulation result already exists, the GUI automatically snapshots it into a labeled historical comparison curve, labeled `Sim {start date} · {step size}`. Curves imported from CSV go into the same list.
 
-每条曲线在切换栏显示 × 按钮，可单独移除。切换模型或点击重载时列表清空。
+Each curve shows a × button in the legend for individually removing it. The list is cleared on model switch or reload.
 
-这使"多步长对比"的操作变为：Run → 改步长 → Run → 图中自动出现两条曲线。
+This turns "compare step sizes" into: Run → change step size → Run → two curves automatically appear on the chart.
 
 ### 3. YAML download is unified across Sim and Opt tabs
 
 Both tabs share the same session (`ModelSession`). The model download button behaves identically regardless of which tab the user is on:
 
-- **有 opt 结果** → 自动将 `optimizer.results` 块写入副本并下载
-- **无 opt 结果** → 下载原始模型 YAML
+- **Opt results present** → automatically writes the `optimizer.results` block into a copy and downloads it
+- **No opt results** → downloads the original model YAML
 
-用户通过 `message.success` 得知下载内容（含解数量或"无优化结果"）。无需用户主动选择含/不含——会话状态即真相。
+The user learns what was downloaded (including the solution count, or "no optimization results") via a `message.success`. There's no need for the user to actively choose whether to include results — the session state is the source of truth.
 
-**"保存结果到原文件" is permanently removed.** The source YAML is never overwritten from the GUI. Results travel via CSV (exchange) or YAML Save As (archive/publish).
+**"Save results to the original file" is permanently removed.** The source YAML is never overwritten from the GUI. Results travel via CSV (exchange) or YAML Save As (archive/publish).
 
 ### 3. All file operations notify the user after completion
 
@@ -54,44 +54,44 @@ Every download/upload shows a `message.success` stating what was transferred and
 
 | Operation | Notification example |
 |-----------|----------------------|
-| 模型下载（含结果） | "已下载模型（含 12 个 Pareto 解）" |
-| 模型下载（无结果） | "已下载模型（无优化结果）" |
-| 仿真结果导出 | "已下载仿真时序（1440 个数据点，CSV）" |
-| 优化结果导出 | "已下载优化结果（20 个 Pareto 解，CSV）" |
-| 仿真结果导入 | "已上传仿真时序 "…"（1440 个数据点，已叠加为对比曲线）" |
-| 优化结果导入 | "导入 N 个解，共 M 个（已开启热启动）" |
+| Model download (with results) | "Downloaded model (including 12 Pareto solutions)" |
+| Model download (no results) | "Downloaded model (no optimization results)" |
+| Simulation result export | "Downloaded simulation time series (1440 data points, CSV)" |
+| Optimization result export | "Downloaded optimization results (20 Pareto solutions, CSV)" |
+| Simulation result import | "Uploaded simulation time series '…' (1440 data points, added as a comparison curve)" |
+| Optimization result import | "Imported N solutions, M total (warm-start enabled)" |
 
 ### 4. Toolbar button order (both tabs, end section)
 
 ```
-Sim:  | 模型↓ | ↓仿真 | ↑仿真 | 重载 |
-Opt:  | 模型↓ | ↓优化 | ↑优化 | 重载 |
+Sim:  | Model↓ | ↓Sim | ↑Sim | Reload |
+Opt:  | Model↓ | ↓Opt | ↑Opt | Reload |
 ```
 
-- **模型↓** — YAML 另存为（统一行为，两个 tab 相同）
-- **↓仿真 / ↓优化** — CSV 导出，标签明确区分内容类型（仿真时序 vs Pareto 前沿）
-- **↑仿真 / ↑优化** — CSV 导入，标签同上
-- **重载** — 清除 session，同时重置仿真和优化，重新加载 YAML 默认值
+- **Model↓** — YAML "Save As" (unified behavior, same on both tabs)
+- **↓Sim / ↓Opt** — CSV export, with labels making the content type explicit (simulation time series vs. Pareto front)
+- **↑Sim / ↑Opt** — CSV import, same labeling
+- **Reload** — clears the session, resetting both simulation and optimization, and reloads the YAML defaults
 
-Tooltip 进一步说明格式（CSV/YAML）和操作后果。
+Tooltips further explain the format (CSV/YAML) and the consequences of the action.
 
 ### 5. Reload mutual lock
 
-重载会同时清除仿真和优化的 session 状态，因此：
+Reloading clears both the simulation and optimization session state at once, so:
 
-- **仿真运行中（running / paused）** → Opt 工具栏的"重载"按钮禁用，tooltip 显示"仿真运行中，无法重载"
-- **优化运行中** → Sim 工具栏的"重载"按钮禁用，tooltip 显示"优化运行中，无法重载"
+- **While a simulation is running (running / paused)** → the "Reload" button on the Opt toolbar is disabled, with the tooltip "Simulation is running, cannot reload"
+- **While an optimization is running** → the "Reload" button on the Sim toolbar is disabled, with the tooltip "Optimization is running, cannot reload"
 
-两个 tab 共享同一个 `ModelSession`，任意一侧运行时都不允许重载，防止状态撕裂。
+Both tabs share the same `ModelSession`, so reload is disallowed while either side is running, to prevent state from being torn apart.
 
 ---
 
 ## Consequences
 
 ### Removed
-- `saveResultsToFile()` — 直接覆盖源文件。
-- "保存结果" (SaveOutlined) button。
-- Opt YAML 下载的含/不含结果 Dropdown（合并为统一自动行为）。
+- `saveResultsToFile()` — directly overwrote the source file.
+- The "Save Results" (SaveOutlined) button.
+- The with/without-results Dropdown on the Opt YAML download (merged into a unified automatic behavior).
 
 ### Added
 - Sim CSV import → labeled overlay curve (auto-snapshot on Run + CSV import share same list).

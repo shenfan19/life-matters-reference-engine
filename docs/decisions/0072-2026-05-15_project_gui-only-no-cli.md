@@ -1,58 +1,58 @@
-# 0072 · GUI-only：放弃 CLI 作为正式接口
+# 0072 · GUI-only: dropping the CLI as a formal interface
 
-**日期**：2026-05-15（补录；原始决策早于 ADR 编号体系建立）  
-**状态**：⚠️ 部分修订 — GUI 仍是面向人类用户的唯一正式接口；`sim_cli/` 作为开发者/批量工具新增（见 ADR 0091），
-并已升级为面向 AI/自动化场景的公开发布接口（见 ADR 0101）  
-**类别**：架构 / 接口设计
+**Date**: 2026-05-15 (backfilled; the original decision predates the ADR numbering system)
+**Status**: ⚠️ Partially revised — the GUI remains the sole formal interface for human users; `sim_cli/` was added as a developer/batch tool (see ADR 0091),
+and has since been upgraded into a formally published interface for AI/automation scenarios (see ADR 0101)
+**Category**: architecture / interface design
 
 ---
 
-## 背景
+## Background
 
-LM 系统早期同时维护了：
-- `sim_gui/`：React + Vite 前端，通过 `/api` 与引擎通信
-- `sim_engine/src/optimizer_cli.py`：命令行入口，直接调用引擎层
+The LM system originally maintained both:
+- `sim_gui/`: a React + Vite frontend, talking to the engine via `/api`
+- `sim_engine/src/optimizer_cli.py`: a command-line entry point calling directly into the engine layer
 
-随着 GUI 功能迭代（多目标 Pareto 可视化、MC 曲线叠加、历史存档、拖拽排序等），CLI 与 GUI 的功能集开始出现永久性分叉——CLI 无法渲染图表、无法交互调参、无法实时反馈进度。
+As the GUI's feature set grew (multi-objective Pareto visualization, MC curve overlays, history archives, drag-reordering, etc.), the CLI's and GUI's feature sets began to permanently diverge — the CLI cannot render charts, cannot interactively tune parameters, and cannot give real-time progress feedback.
 
-目标用户是**懂科研但不熟悉命令行的医生/研究员**，CLI 对他们没有价值。同时维护两套接口带来显著的文档、测试、兼容性成本，并会不断消耗功能迭代的精力。
+The target users are **doctors/researchers who understand the science but aren't comfortable with a command line**. The CLI has no value for them. Maintaining two interfaces at once carries significant documentation, testing, and compatibility costs, and would continually drain effort away from feature development.
 
-## 决策
+## Decision
 
-**LM 的正式用户接口是 GUI（`sim_gui/`）。CLI 不再作为正式入口，不随代码发布，不接受新功能请求。**
+**LM's formal user interface is the GUI (`sim_gui/`). The CLI is no longer a formal entry point: it does not ship with the code and does not accept new feature requests.**
 
-具体约束：
+Specific constraints:
 
-1. **不新增 CLI 功能**：所有新功能只在 GUI 实现，不同步到 CLI
-2. **不修复 CLI bug**：`optimizer_cli.py` 等文件暂留，仅供内部调试；发现 bug 不修
-3. **不把 CLI 作为自动化测试入口**：测试直接调用引擎层 Python 函数，不经 CLI 解析层
-4. ~~不在文档中宣传 CLI~~（已由 ADR 0101 修订：CLI 作为面向 AI/自动化场景的接口写入 README/docs，
-   但 README/docs 中面向人类用户的部分仍以 GUI 为主）
-5. **API 服务器（`api_server.py`）是引擎的正式编程接口**：自动化/批量场景通过 HTTP API 调用，而非 CLI
+1. **No new CLI features**: all new functionality is implemented only in the GUI, never mirrored to the CLI
+2. **No CLI bug fixes**: `optimizer_cli.py` and similar files remain for internal debugging only; bugs found in them are not fixed
+3. **The CLI is not a test entry point**: tests call the engine-layer Python functions directly, bypassing the CLI parsing layer
+4. ~~The CLI is not advertised in documentation~~ (revised by ADR 0101: the CLI is now documented in the README/docs as an interface for AI/automation scenarios,
+   though the human-facing parts of the README/docs still center on the GUI)
+5. **The API server (`api_server.py`) is the engine's formal programmatic interface**: automation/batch scenarios go through the HTTP API, not the CLI
 
-## 为什么不维护 CLI
+## Why not maintain the CLI
 
-| 原因 | 说明 |
+| Reason | Explanation |
 |------|------|
-| 用户群不匹配 | 目标用户是医生/研究员，不熟悉命令行参数 |
-| 功能无法对等 | 图表、历史、拖拽等 GUI 能力 CLI 天然缺失 |
-| 双重维护成本 | CLI 的参数解析、错误处理与 GUI 接口层完全重复 |
-| 安全边界更清晰 | GUI → HTTP API → 引擎 的三层架构隔离比 CLI 直调引擎更安全 |
+| User mismatch | the target users are doctors/researchers, not comfortable with command-line arguments |
+| Feature parity is unattainable | charts, history, drag-reordering, and similar GUI capabilities are inherently absent from a CLI |
+| Double maintenance cost | the CLI's argument parsing and error handling fully duplicate the GUI's interface layer |
+| Clearer security boundary | the GUI → HTTP API → engine three-layer architecture isolates more safely than the CLI calling the engine directly |
 
-## 被排除的方案
+## Rejected approaches
 
-| 方案 | 排除原因 |
-|------|---------|
-| 同时维护 CLI + GUI | 双倍维护成本；CLI 功能集永远落后 GUI |
-| CLI 作为批量脚本入口 | 用 HTTP API 替代更安全、更好测试、无需 argparse 层 |
-| 重构 CLI 为 TUI（终端交互界面） | 目标用户不受益；投入产出比极低 |
+| Approach | Reason for rejection |
+|------|------|
+| Maintain both CLI and GUI | double the maintenance cost; the CLI's feature set would always lag the GUI |
+| CLI as a batch-scripting entry point | the HTTP API is safer, better tested, and needs no argparse layer |
+| Rebuild the CLI as a TUI (terminal interactive interface) | no benefit to the target users; very poor cost-benefit ratio |
 
-## 例外
+## Exceptions
 
-- 内部开发调试可以临时使用 CLI 脚本，不需要走 PR review
-- 引擎层 Python 函数可以被测试脚本直接 import 调用（不经 CLI）
+- Internal development/debugging may use CLI scripts on an ad hoc basis, without going through PR review
+- Engine-layer Python functions may be imported and called directly by test scripts (bypassing the CLI)
 
-## 关联
+## Related
 
-- `sim_impl.md` §接口层约束 — 同步记录此约束
-- `sim_engine/src/optimizer_cli.py` — 文件暂留，标注已废弃
+- `sim_impl.md` §interface-layer constraints — this constraint is also recorded there
+- `sim_engine/src/optimizer_cli.py` — file kept for now, marked as deprecated

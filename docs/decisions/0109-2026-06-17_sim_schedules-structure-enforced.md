@@ -1,47 +1,47 @@
-# ADR 0109 — schedules 位置强制规范：sim→plans，opt→startpoint
+# ADR 0109 — Enforced Location for `schedules`: sim→plans, opt→startpoint
 
-**日期**: 2026-06-17  
-**状态**: 已接受  
-**范围**: sim_engine · sim_gui · models/（全库）
+**Date:** 2026-06-17
+**Status:** Accepted
+**Scope:** sim_engine · sim_gui · models/ (repo-wide)
 
 ---
 
-## 背景
+## Background
 
-LM format 经过若干版本演进后，`schedules` 字段在 YAML 中存在三个不同位置：
+After several rounds of evolution in the LM format, the `schedules` field existed in three different locations in YAML:
 
-| 位置 | 历史语义 |
+| Location | Historical semantics |
 |------|---------|
-| `simulation.schedules` | 旧版单方案默认输入（ADR 0076 前） |
-| `simulation.plans[*].schedules` | 新版多方案输入（ADR 0076 引入） |
-| `optimizer.schedules` | 优化器决策变量 + 固定背景（ADR 0088 统一） |
+| `simulation.schedules` | Legacy single-plan default input (before ADR 0076) |
+| `simulation.plans[*].schedules` | New multi-plan input (introduced by ADR 0076) |
+| `optimizer.schedules` | Optimizer decision variables + fixed background (unified by ADR 0088) |
 
-这三种格式并存带来两个问题：
+Having these three formats coexist created two problems:
 
-1. **`simulation.schedules`**（顶层）：ADR 0087 已说明 `plans` 存在时该字段对 GUI 无效，但结构上仍允许单独存在，导致建模者混淆「单方案模型应该写哪里」。
-2. **`optimizer.schedules`**：`startpoint` 概念缺失——优化器需要一个明确的「起点描述」块，而非将决策变量定义散放在 `optimizer:` 的直属子层。`schedules` 直接挂在 `optimizer:` 下，既不符合「从某个初始方案出发搜索」的语义，也难以扩展（未来可能在 `startpoint` 下加 `variable_values`、`seed` 等字段）。
+1. **`simulation.schedules`** (top-level): ADR 0087 already noted that this field has no effect on the GUI once `plans` is present, but structurally it could still exist on its own, leaving modelers confused about "where should a single-plan model's schedule go."
+2. **`optimizer.schedules`**: the `startpoint` concept was missing — the optimizer needs an explicit "starting-point description" block, rather than having decision-variable definitions scattered directly under `optimizer:`. Attaching `schedules` directly under `optimizer:` neither matches the semantics of "search starting from some initial plan" nor is it easy to extend (a future need might be to add fields like `variable_values` or `seed` under `startpoint`).
 
 ---
 
-## 决策
+## Decision
 
-**强制唯一位置规范（不可撤销）：**
+**Enforce a unique, non-negotiable location for each context:**
 
-| 上下文 | 唯一合法位置 |
+| Context | Sole legal location |
 |--------|------------|
-| 仿真输入方案 | `simulation.plans[*].schedules` |
-| 优化器决策起点 | `optimizer.startpoint.schedules` |
+| Simulation input plan | `simulation.plans[*].schedules` |
+| Optimizer decision starting point | `optimizer.startpoint.schedules` |
 
-### 废弃位置
+### Deprecated locations
 
-| 废弃字段 | 废弃版本 | 替换 |
+| Deprecated field | Deprecated as of | Replacement |
 |---------|---------|------|
-| `simulation.schedules`（顶层） | 2026-06-17 | `simulation.plans[*].schedules` |
-| `optimizer.schedules`（顶层） | 2026-06-17 | `optimizer.startpoint.schedules` |
+| `simulation.schedules` (top-level) | 2026-06-17 | `simulation.plans[*].schedules` |
+| `optimizer.schedules` (top-level) | 2026-06-17 | `optimizer.startpoint.schedules` |
 
-### `optimizer.startpoint` 语义
+### Semantics of `optimizer.startpoint`
 
-`startpoint` 块描述优化器的「起点状态」：优化从这里定义的方案结构出发，搜索各 `optimize:` 参数的最优值。将 `schedules` 置于 `startpoint` 下，明确表达「这是初始协议描述，其中标记了哪些维度待搜索」，为未来扩展（如 `startpoint.variable_values` 覆盖初始变量值）预留结构。
+The `startpoint` block describes the optimizer's "starting state": optimization starts from the plan structure defined here and searches for optimal values for each `optimize:` parameter. Placing `schedules` under `startpoint` makes explicit that "this is the initial protocol description, with certain dimensions of it marked for search," and leaves room for future extension (e.g. `startpoint.variable_values` overriding initial variable values).
 
 ```yaml
 optimizer:
@@ -50,12 +50,12 @@ optimizer:
       - variable: training_load
         time_start: "09:00"
         optimize:
-          value: [40.0, 120.0]   # T1 搜索范围
+          value: [40.0, 120.0]   # T1 search range
 ```
 
-### `simulation.plans` 单方案模型
+### `simulation.plans` for a single-plan model
 
-不存在多方案需求的模型，使用单 plan（`id: default`）：
+A model with no multi-plan need uses a single plan (`id: default`):
 
 ```yaml
 simulation:
@@ -70,31 +70,31 @@ simulation:
 
 ---
 
-## 迁移范围
+## Migration Scope
 
-| 类型 | 文件数 | 改动 |
+| Type | File count | Change |
 |------|-------|------|
-| `optimizer.schedules` 迁移 | 115 | → `optimizer.startpoint.schedules` |
-| `simulation.schedules` 迁移 | 49 | → `simulation.plans[0].schedules` |
+| `optimizer.schedules` migration | 115 | → `optimizer.startpoint.schedules` |
+| `simulation.schedules` migration | 49 | → `simulation.plans[0].schedules` |
 
-迁移由自动脚本完成，保留所有注释、数据、缩进风格。
+The migration was performed by an automated script, preserving all comments, data, and indentation style.
 
 ---
 
-## 代码改动摘要
+## Code Change Summary
 
-| 文件 | 改动 |
+| File | Change |
 |------|------|
 | `sim_engine/src/optimizer_engine.py` | `opt_block.get('schedules')` → `opt_block.get('startpoint', {}).get('schedules')` |
 | `sim_gui/src/components/opt_tab/useOptimizer.ts` | `optimizerOverride.schedules` → `optimizerOverride.startpoint.schedules` |
 | `sim_gui/src/components/sim_tab/simUtils.ts` | `optimizerConfig?.schedules` → `optimizerConfig?.startpoint?.schedules` |
-| `sim_gui/src/components/Simulator.tsx` | 两处 `optBlock.schedules` → `optBlock.startpoint?.schedules` |
+| `sim_gui/src/components/Simulator.tsx` | Two instances of `optBlock.schedules` → `optBlock.startpoint?.schedules` |
 
 ---
 
-## 不向后兼容
+## No Backward Compatibility
 
-- 旧格式 `optimizer.schedules`：后端报错 `No optimizer.startpoint.schedules defined`
-- 旧格式 `simulation.schedules`（无 `plans`）：后端 loader 忽略（已不解析），GUI 显示空 events
+- Old format `optimizer.schedules`: the backend errors with `No optimizer.startpoint.schedules defined`
+- Old format `simulation.schedules` (without `plans`): the backend loader ignores it (no longer parsed), and the GUI shows empty events
 
-所有模型已同步迁移，无历史遗留。
+All models have already been migrated; there is no historical carryover.

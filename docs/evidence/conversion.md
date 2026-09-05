@@ -1,135 +1,135 @@
-# Evidence 换算：8 种子类型的计算方程
+# Evidence Conversion: the 8 Subtypes' Computational Equations
 
-> 本文件是 evidence 换算的**权威实现描述**（对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 处理 `variables:` 条目 `evidence_type` 字段的那部分代码）。YAML 里怎么在 `variables:` 条目上声明 `evidence_type` 字段、`parameter` 和 evidence_type 该怎么选，见 `life-matters-models` 仓库 `docs/authoring/variables_and_equations.md`「变量类型（3 种）+ evidence_type 原地换算」一节；本文件只回答"Loader 具体怎么把文献效应量算成方程能用的系数"。`applies_to` 自动接入 dynamics 的机制见同目录 [applies_to.md](applies_to.md)。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> This file is the **authoritative implementation description** of evidence conversion (corresponding to the part of `_apply_model_data` in `reference_engine/src/model_structure/loader.py` that handles the `evidence_type` field of a `variables:` entry). For how to declare the `evidence_type` field on a `variables:` entry in YAML, and how to choose between `parameter` and an evidence_type, see the "Variable types (3 kinds) plus in-place evidence_type conversion" section of `docs/authoring/variables_and_equations.md` in the `life-matters-models` repository; this file only answers "specifically how the Loader converts a literature effect size into a coefficient usable by an equation." For the mechanism that automatically wires `applies_to` into dynamics, see [applies_to.md](applies_to.md) in the same directory. For the decision background, see `docs/decisions/0040-2026-04-22_sim_medical-evidence-types-and-variable-mapping.md` in the `life-matters-models` repository (the original design of the top-level `evidence:` block) and `docs/decisions/0137-*.md` (the later decision to fold it into `variables:`).
 >
-> 本文件面向两类读者：已经熟悉流行病学/生物统计效应量（RR、OR、HR、Cohen's d 等）的人，可以直接看下面的速查表和方程；不熟悉这些统计量的人（比如只懂工程、只懂某一个学科的建模者），请从「换算解决的问题」开始看——每种子类型都配了生活化的例子、正式方程和"为什么这样算是对的"的推导，不要求先有生物统计背景。
+> This file is written for two kinds of readers: someone already familiar with epidemiological/biostatistical effect sizes (RR, OR, HR, Cohen's d, etc.) can go straight to the quick-reference table and equations below; someone unfamiliar with these statistics (e.g. an engineering-only modeler, or one familiar with only one other discipline) should start from "What problem the conversion solves" — each subtype comes with an everyday example, the formal equation, and a derivation of "why computing it this way is correct," requiring no prior biostatistics background.
 
-## 换算解决的问题
+## What problem the conversion solves
 
-一篇论文报出来的"效应量"（effect size）不是一种统一的东西——它可能是"两个概率的比值"（RR），可能是"两个 odds 的比值"（OR），可能是"两个瞬时速率的比值"（HR），可能是"两组的绝对差"（ARD），也可能是"用标准差算出来的标准化差异"（Cohen's d）。这些数字**长得都像一个普通浮点数**（比如 1.65、0.75、0.68），但它们各自的含义、单位、能不能直接相乘相加，是完全不同的。
+The "effect size" a paper reports is not one uniform thing — it might be "the ratio of two probabilities" (RR), "the ratio of two odds" (OR), "the ratio of two instantaneous rates" (HR), "the absolute difference between two groups" (ARD), or "a standardized difference computed using a standard deviation" (Cohen's d). These numbers **all look like an ordinary float** (e.g. 1.65, 0.75, 0.68), but their meaning, units, and whether they can be directly multiplied or added, are completely different from each other.
 
-如果把这些数字不做区分地直接塞进仿真方程（比如直接拿 OR 当作"风险倍数"去乘一个基线概率），会引入系统性的计算错误——错误不会报错，只会让结果"看起来合理但数值不对"。Evidence 换算这一层要做的事，就是先问清楚"这个数字的统计学身份是什么"（`type` 字段），再按该身份对应的方程，把它转换成一个语义统一、单位明确、可以放心在 dynamics 方程里直接使用的**有效系数**（effective）。换算前的原始文献数值不会丢失，会保留在 `evidence_raw_value` 里，方便审查换算是否正确。
+If these numbers are dropped into a simulation equation without distinguishing them (e.g. taking an OR directly as a "risk multiplier" to multiply a baseline probability), a systematic computational error is introduced — an error that raises no error, just makes the result "look plausible but be numerically wrong." What the evidence-conversion layer does is first ask clearly "what is this number's statistical identity" (the `type` field), then convert it, via the equation corresponding to that identity, into an **effective coefficient** with a unified meaning, a clear unit, and safe for direct use in a dynamics equation. The raw literature value before conversion is not lost — it is kept in `evidence_raw_value`, making it easy to review whether the conversion is correct.
 
-## 换算流程总览
+## An overview of the conversion pipeline
 
-从 YAML 声明到最终进入仿真状态变量，一条 evidence 会经过两个阶段：**换算**（本文件，把文献数字变成语义统一的 effective 系数）和**接入**（[applies_to.md](applies_to.md)，把 effective 系数接到某个状态变量的动力学方程上）。
+From a YAML declaration to finally entering a simulation state variable, a piece of evidence goes through two stages: **conversion** (this file, turning a literature number into a semantically unified effective coefficient) and **wiring** ([applies_to.md](applies_to.md), wiring the effective coefficient into some state variable's dynamics equation).
 
 ```mermaid
 flowchart TD
-    Y["variables: 条目<br/>声明 evidence_type + value + 辅助字段"] --> T{"按 evidence_type 分支换算"}
-    T -->|"rr / ard / ir / beta / pk"| S1["effective = value<br/>（原样透传，已经是可用系数）"]
-    T -->|"or（需 baseline_prevalence）"| S2["effective = OR / ((1 − p0) + p0 × OR)"]
-    T -->|"hr（需 baseline_ref）"| S3["effective = baseline_value × HR"]
-    T -->|"cohens_d（需 population_sd）"| S4["effective = d × population_sd"]
-    S1 --> V["写入 self.variables[ev_name]<br/>type = parameter，记录 evidence_type / evidence_raw_value"]
+    Y["A variables: entry<br/>declares evidence_type plus value plus auxiliary fields"] --> T{"Branch conversion by evidence_type"}
+    T -->|"rr / ard / ir / beta / pk"| S1["effective = value<br/>(passed through as-is, already a usable coefficient)"]
+    T -->|"or (requires baseline_prevalence)"| S2["effective = OR / ((1 minus p0) + p0 x OR)"]
+    T -->|"hr (requires baseline_ref)"| S3["effective = baseline_value x HR"]
+    T -->|"cohens_d (requires population_sd)"| S4["effective = d x population_sd"]
+    S1 --> V["Written into self.variables[ev_name]<br/>type = parameter, recording evidence_type / evidence_raw_value"]
     S2 --> V
     S3 --> V
     S4 --> V
-    V --> A{"声明了 applies_to？"}
-    A -->|"否"| M["建模者在 equations.dynamics 中<br/>手写引用 effective"]
-    A -->|"是，且 type 属于 ir/ard/hr/rr/or"| G["Loader 自动生成<br/>_auto_evidence_name Equation"]
-    A -->|"是，但 type 属于 cohens_d/beta/pk"| E["报错：不支持 applies_to"]
-    G --> D["累加进 applies_to 指向的 state 变量"]
+    V --> A{"Is applies_to declared?"}
+    A -->|"No"| M["The modeler hand-writes a reference<br/>to effective in equations.dynamics"]
+    A -->|"Yes, and type is ir/ard/hr/rr/or"| G["The Loader auto-generates an<br/>_auto_evidence_name Equation"]
+    A -->|"Yes, but type is cohens_d/beta/pk"| E["Error: applies_to not supported"]
+    G --> D["Accumulated into the state variable applies_to points to"]
     M --> D
 ```
 
-左边是本文件覆盖的换算阶段，右边（`是否声明 applies_to`之后）是 [applies_to.md](applies_to.md) 覆盖的接入阶段。
+The left side is the conversion stage this file covers; the right side (after "is applies_to declared") is the wiring stage [applies_to.md](applies_to.md) covers.
 
-## 换算结果如何存放
+## How the conversion result is stored
 
-Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 的条目，按 `evidence_type` 换算出 `effective` 值后，**原地**写入 `self.variables[var_name]`（同名覆盖，`type` 仍是 `parameter`），不新增独立的 `VariableType.evidence`。`equations`/`dynamics` 直接引用这个名字即可，不需要记 `_effective` 之类的衍生名。
+The Loader iterates over the entries in the YAML's `variables:` that declare `evidence_type`, and once it computes the `effective` value per `evidence_type`, writes it **in place** into `self.variables[var_name]` (overriding under the same name, with `type` staying `parameter`), without adding a separate `VariableType.evidence`. `equations`/`dynamics` reference this name directly, with no need to remember a derived name like `_effective`.
 
-换算后的 `Variable` 额外带两个溯源字段（`reference_engine/src/model_structure/base.py`），仅供查询/调试，不参与仿真计算：
+The converted `Variable` carries two additional traceability fields (`reference_engine/src/model_structure/base.py`), for query/debugging only, not participating in simulation computation:
 
 
-| 字段                 | 含义                                                                                |
+| Field                 | Meaning                                                                                |
 | ---------------------- | ------------------------------------------------------------------------------------- |
-| `evidence_type`      | 原始 evidence 的`type`（如 `rr`/`or`/`hr`），非 evidence 来源的 parameter 为 `None` |
-| `evidence_raw_value` | 换算前的原始文献数值（如 OR=1.65），与换算后的`value` 分开保留                      |
+| `evidence_type`      | The original evidence's `type` (e.g. `rr`/`or`/`hr`); `None` for a parameter not sourced from evidence |
+| `evidence_raw_value` | The raw literature value before conversion (e.g. OR=1.65), kept separately from the converted `value` |
 
-## 速查表：8 种子类型换算方程
+## Quick reference: the 8 subtypes' conversion equations
 
 
-| `type`     | 效应量全称                          | 换算方程                                                | 必填辅助字段                      |
-| ------------ | ------------------------------------- | --------------------------------------------------------- | ----------------------------------- |
-| `rr`       | 相对风险 Relative Risk              | $\text{effective} = RR$                                 | —                                |
-| `or`       | 比值比 Odds Ratio                   | $\text{effective} = \dfrac{OR}{(1-p_0) + p_0 \cdot OR}$ | `baseline_prevalence`（即 $p_0$） |
-| `hr`       | 风险比 Hazard Ratio                 | $\text{effective} = h_0 \cdot HR$                       | `baseline_ref`（提供 $h_0$）      |
-| `ard`      | 绝对风险差 Absolute Risk Difference | $\text{effective} = ARD$                                | —                                |
-| `cohens_d` | 效应量 Cohen's d                    | $\text{effective} = d \cdot SD$                         | `population_sd`（即 $SD$）        |
-| `ir`       | 发病率/死亡率 Incidence Rate        | $\text{effective} = IR$                                 | —                                |
-| `beta`     | 回归系数 Regression Coefficient     | $\text{effective} = \beta$                              | —                                |
-| `pk`       | PK/PD 参数                          | $\text{effective} = \theta$（参数原样透传）             | —                                |
+| `type`     | Full name of the effect size                          | Conversion equation                                                | Required auxiliary field                      |
+| ------------ | ------------------------------------------------- | --------------------------------------------------------- | ----------------------------------- |
+| `rr`       | Relative Risk              | $\text{effective} = RR$                                 | —                                |
+| `or`       | Odds Ratio                   | $\text{effective} = \dfrac{OR}{(1-p_0) + p_0 \cdot OR}$ | `baseline_prevalence` (i.e. $p_0$) |
+| `hr`       | Hazard Ratio                 | $\text{effective} = h_0 \cdot HR$                       | `baseline_ref` (supplying $h_0$)      |
+| `ard`      | Absolute Risk Difference | $\text{effective} = ARD$                                | —                                |
+| `cohens_d` | Cohen's d effect size                    | $\text{effective} = d \cdot SD$                         | `population_sd` (i.e. $SD$)        |
+| `ir`       | Incidence Rate        | $\text{effective} = IR$                                | —                                |
+| `beta`     | Regression Coefficient     | $\text{effective} = \beta$                              | —                                |
+| `pk`       | A PK/PD parameter                          | $\text{effective} = \theta$ (the parameter passed through as-is)             | —                                |
 
-未知 `evidence_type` 不会报错，只会打印一条 warning 并跳过该条目的换算（该变量不会出现在 `self.variables` 中）。
+An unknown `evidence_type` does not raise an error — it only prints a warning and skips that entry's conversion (the variable never appears in `self.variables`).
 
-下面逐一详解每种子类型：它在现实中衡量什么、正式方程、为什么换算方程长这样（或者为什么不需要换算）、用真实 fixture 数字过一遍具体计算。
+Below is a walkthrough of each subtype in turn: what it measures in reality, its formal equation, why the conversion equation looks the way it does (or why no conversion is needed), and a worked example using real fixture numbers.
 
-## `baseline_ref` 结构关系
+## The `baseline_ref` structural relationship
 
-`hr`/`rr`/`or` 三种类型的换算或后续接入都需要一个"基线"——某个已经是绝对速率的 `ir`/`ard` 条目。这不是三个独立的字段，而是同一种结构关系的三次复用：
+The conversion or subsequent wiring of the three types `hr`/`rr`/`or` all need a "baseline" — some `ir`/`ard` entry that is already an absolute rate. This is not three independent fields but one structural relationship reused three times:
 
 ```mermaid
 flowchart LR
-    IR["ir / ard 条目<br/>已经是绝对速率（effective = value）"]
-    IR -->|"baseline_ref 指向<br/>换算阶段就用到"| HR["hr 条目<br/>effective = baseline_value × HR"]
-    IR -->|"baseline_ref 指向<br/>仅 applies_to 自动接线时需要"| RR["rr 条目<br/>effective = RR（纯比例）"]
-    IR -->|"baseline_ref 指向<br/>仅 applies_to 自动接线时需要"| OR["or 条目<br/>effective = 换算后的等效 RR"]
+    IR["An ir / ard entry<br/>already an absolute rate (effective = value)"]
+    IR -->|"baseline_ref points here,<br/>used at the conversion stage itself"| HR["An hr entry<br/>effective = baseline_value x HR"]
+    IR -->|"baseline_ref points here,<br/>needed only for applies_to auto-wiring"| RR["An rr entry<br/>effective = RR (a pure ratio)"]
+    IR -->|"baseline_ref points here,<br/>needed only for applies_to auto-wiring"| OR["An or entry<br/>effective = the converted equivalent RR"]
 ```
 
-`hr` 在**换算阶段**就要用到 `baseline_ref`（因为 $h_0$ 直接参与 effective 的计算）；`rr`/`or` 的换算本身不需要 `baseline_ref`（它们的 effective 只是比例），只有想用 `applies_to` 自动生成 dynamics 时才必须声明 `baseline_ref`，因为自动生成的表达式需要一个基线速率把"比例"变成"速率"（见 [applies_to.md](applies_to.md)）。
+`hr` needs `baseline_ref` right at the **conversion stage** (because $h_0$ directly participates in computing effective); `rr`/`or`'s conversion itself doesn't need `baseline_ref` (their effective is just a ratio) — `baseline_ref` only needs declaring when auto-generating dynamics with `applies_to`, because the auto-generated expression needs a baseline rate to turn a "ratio" into a "rate" (see [applies_to.md](applies_to.md)).
 
-## 逐一详解
+## Walkthrough
 
-### `rr`：相对风险（Relative Risk）
+### `rr`: Relative Risk
 
-**是什么**：两组人群中"事件发生概率"的比值。例如吸烟者中出现心血管疾病（CVD）的比例，除以不吸烟者中出现 CVD 的比例，如果结果是 2.5，就是说吸烟者患病的概率是不吸烟者的 2.5 倍。
+**What it is**: the ratio of "event probability" between two populations. For example, dividing the proportion of smokers who develop cardiovascular disease (CVD) by the proportion of non-smokers who develop CVD; if the result is 2.5, that means a smoker's probability of developing the disease is 2.5 times a non-smoker's.
 
-正式定义：
+Formal definition:
 
 $$
 RR = \frac{p_1}{p_0}
 
 $$
 
-其中 $p_1$ 是暴露组（如吸烟者）的事件概率，$p_0$ 是对照组（如不吸烟者）的事件概率。
+where $p_1$ is the event probability in the exposed group (e.g. smokers), and $p_0$ is the event probability in the control group (e.g. non-smokers).
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = RR
 
 $$
 
-**为什么不需要换算**：RR 的定义本身就已经是一个"归一化的比例"——它把两组的绝对概率相除，得到的是一个纯粹的倍数，不依赖任何额外信息就能直接拿来当"风险倍数"用。所以 Loader 不用对它做任何数学变换，读入的数字就是换算结果。
+**Why no conversion is needed**: RR's definition is itself already a "normalized ratio" — dividing the two groups' absolute probabilities gives a pure multiplier, usable directly as a "risk multiplier" with no additional information needed. So the Loader does no mathematical transformation on it at all; the number read in is the conversion result.
 
-**但要注意**：RR 只是"倍数"，不是"每天/每年增加多少概率"这种绝对速率。要把它变成仿真里真正能累加的风险增量，还需要乘上一个基线速率（baseline）——这一步不在换算阶段做，而是在建模者手写的 dynamics，或 `applies_to` 自动生成的 dynamics 里完成（见 [applies_to.md](applies_to.md)）。
+**But note**: RR is only a "multiplier," not an absolute rate like "how much probability is added per day/year." To turn it into a risk increment the simulation can actually accumulate, it still needs multiplying by a baseline rate — this step is not done at the conversion stage, but in the modeler's hand-written dynamics, or in the dynamics `applies_to` auto-generates (see [applies_to.md](applies_to.md)).
 
-**具体计算**（`test_valid_evidence_rr.yaml`）：$RR = 2.5 \Rightarrow \text{effective} = 2.5$（原样透传）。手写 dynamics 中，这个 2.5 乘上基线日风险 `baseline_cvd_daily_risk = 0.000033/天`，得到吸烟者每日风险增量 $0.000033 \times 2.5 = 0.0000825$/天，30 天累计 ≈ 0.00248。
+**A worked example** (`test_valid_evidence_rr.yaml`): $RR = 2.5 \Rightarrow \text{effective} = 2.5$ (passed through as-is). In hand-written dynamics, this 2.5 is multiplied by the baseline daily risk `baseline_cvd_daily_risk = 0.000033/day`, giving a smoker's daily risk increment of $0.000033 \times 2.5 = 0.0000825$/day, accumulating to about 0.00248 over 30 days.
 
-**必填字段**：无。可选 `baseline_ref` + `applies_to`（若想让 Loader 自动生成 dynamics，`baseline_ref` 需指向一个 `ir`/`ard` 条目）。
+**Required fields**: none. Optionally `baseline_ref` plus `applies_to` (if the Loader is to auto-generate dynamics, `baseline_ref` needs to point to an `ir`/`ard` entry).
 
-### `or`：比值比（Odds Ratio）
+### `or`: Odds Ratio
 
-**是什么**：和 RR 很像，但比较的不是"概率"而是"odds"（发生 : 不发生的比值，$\text{odds} = p/(1-p)$）。例如肥胖人群患 CVD 的 odds，是正常体重人群 odds 的 1.65 倍，$OR = 1.65$。OR 常见于病例对照研究，因为这类研究设计下 RR 无法直接算出，只有 OR 可以。
+**What it is**: similar to RR, but comparing not "probability" but "odds" (the ratio of occurring to not occurring, $\text{odds} = p/(1-p)$). For example, the odds of CVD in an obese population are 1.65 times the odds in a normal-weight population, $OR = 1.65$. OR is common in case-control studies, because that study design cannot compute RR directly — only OR is obtainable.
 
-正式定义：
+Formal definition:
 
 $$
 OR = \frac{p_1/(1-p_1)}{p_0/(1-p_0)}
 
 $$
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = \frac{OR}{(1-p_0) + p_0 \cdot OR}
 
 $$
 
-**为什么需要换算（这是 8 种子类型里唯一一个"文献数字不能直接当比例用"的类型）**：odds 和概率不是一回事。当患病率很低时（比如 <10%），$\text{odds} \approx p$，OR 和 RR 数值上很接近，直接把 OR 当 RR 用误差不大；但患病率越高，odds 和概率的差距越大，OR 会系统性地比 RR"更极端"（离 1 更远）。如果不做换算就直接拿 OR 去乘基线概率速率，会引入随患病率增大而增大的偏差。所以 Loader 要求额外声明人群患病率 `baseline_prevalence`（$p_0$），先把 OR 转换成一个等效的 RR，之后才能像 `rr` 一样安全地当比例使用。
+**Why conversion is needed (this is the one subtype, of the 8, whose literature number cannot be used directly as a ratio)**: odds and probability are not the same thing. When the disease rate is low (e.g. under 10%), $\text{odds} \approx p$, and OR and RR are numerically close, so using OR directly as RR introduces little error; but the higher the disease rate, the larger the gap between odds and probability, and OR is systematically "more extreme" than RR (further from 1). Multiplying a baseline probability rate by OR directly without conversion introduces a bias that grows with disease rate. So the Loader requires the population's disease rate `baseline_prevalence` ($p_0$) to be declared separately, first converting OR into an equivalent RR, only after which it can be safely used as a ratio like `rr`.
 
-**换算方程的推导（为什么是对的）**：设人群基础患病率为 $p_0$，暴露组患病率为 $p_1$，代入 OR 的定义并解出 $p_1$：
+**Deriving the conversion equation (why it is correct)**: let the population's baseline disease rate be $p_0$ and the exposed group's disease rate be $p_1$; substituting into OR's definition and solving for $p_1$:
 
 $$
 OR = \frac{p_1/(1-p_1)}{p_0/(1-p_0)}
@@ -138,219 +138,219 @@ p_1 = \frac{p_0 \cdot OR}{(1-p_0) + p_0 \cdot OR}
 
 $$
 
-再代入 $RR = p_1 / p_0$：
+Substituting into $RR = p_1 / p_0$:
 
 $$
 RR = \frac{p_1}{p_0} = \frac{OR}{(1-p_0) + p_0 \cdot OR}
 
 $$
 
-这是流行病学教材中标准的 OR→RR 换算方程，Loader 的 `effective` 算的正是这个 $RR$。它依赖一个前提：你填的 `baseline_prevalence` 必须真实反映该研究人群的患病率；如果 $p_0$ 选错（比如用了另一个国家/年龄段的患病率），换算结果会跟着错——这是建模者的输入责任，Loader 不会校验 $p_0$ 本身是否合理。
+This is the standard OR-to-RR conversion equation found in epidemiology textbooks, and the Loader's `effective` computes exactly this $RR$. It relies on one premise: the `baseline_prevalence` you supply must genuinely reflect this study population's disease rate; if $p_0$ is chosen wrongly (e.g. using another country's/age group's disease rate), the conversion result will be wrong along with it — this is the modeler's input responsibility, and the Loader does not validate whether $p_0$ itself is reasonable.
 
-**具体计算**（`test_valid_evidence_or.yaml`）：$OR = 1.65$，$p_0 = 0.12$：
+**A worked example** (`test_valid_evidence_or.yaml`): $OR = 1.65$, $p_0 = 0.12$:
 
 $$
 \text{effective} = \frac{1.65}{(1-0.12) + 0.12 \times 1.65} = \frac{1.65}{0.88 + 0.198} = \frac{1.65}{1.078} \approx 1.5306
 
 $$
 
-可以看到效应量从 1.65"缩水"到了 1.5306——这正是 OR 天然比 RR 更极端的体现：同一份数据算出的 OR 总是比 RR 离 1 更远。
+You can see the effect size has "shrunk" from 1.65 to 1.5306 — this is exactly OR's natural tendency to be more extreme than RR: the OR computed from the same data is always further from 1 than the RR.
 
-**必填字段**：`baseline_prevalence`（$p_0$，人群患病率，必须与研究设计匹配）。
+**Required field**: `baseline_prevalence` ($p_0$, the population's disease rate, which must match the study design).
 
-### `hr`：风险比（Hazard Ratio）
+### `hr`: Hazard Ratio
 
-**是什么**：常见于生存分析/队列研究，衡量的是"单位时间内事件发生的瞬时速率（hazard）"之比，而不是某个时间点的累积概率之比。例如他汀类药物使 CVD 的 hazard 降低到对照组的 0.75 倍，$HR = 0.75$。
+**What it is**: common in survival analysis/cohort studies, measuring the ratio of "the instantaneous rate (hazard) at which an event occurs per unit time," not the ratio of cumulative probability at some point in time. For example, a statin lowers CVD hazard to 0.75 times the control group's, $HR = 0.75$.
 
-正式定义：
+Formal definition:
 
 $$
 HR = \frac{h_1(t)}{h_0(t)}
 
 $$
 
-其中 $h_0(t)$ 是对照组的瞬时速率，$h_1(t)$ 是暴露组的瞬时速率。
+where $h_0(t)$ is the control group's instantaneous rate, and $h_1(t)$ is the exposed group's instantaneous rate.
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = h_0 \cdot HR
 
 $$
 
-其中 $h_0$ 取自 `baseline_ref` 指向的 `ir` 条目的原始值。
+where $h_0$ is taken from the raw value of the `ir` entry `baseline_ref` points to.
 
-**为什么这样算是对的**：HR 的定义就是两个瞬时速率的比值，只要知道对照组的速率 $h_0$，乘以 HR 就直接得到暴露组的速率 $h_1$——这个乘积本身已经是一个**绝对速率**（有单位，如 prob/year），而不是像 `rr`/`or` 那样只是一个无量纲的比例。这也是为什么 `hr` 换算出来的数（0.009，单位 prob/year）和 `rr`/`or` 换算出来的数（2.5、1.5306，无量纲）性质不同，二者在 `applies_to` 自动接线阶段的处理方式也因此不同（见 [applies_to.md](applies_to.md)）。
+**Why computing it this way is correct**: HR is by definition the ratio of two instantaneous rates, so knowing the control group's rate $h_0$, multiplying by HR directly gives the exposed group's rate $h_1$ — this product is itself already an **absolute rate** (with units, such as prob/year), not a dimensionless ratio like `rr`/`or`. This is also why the number `hr` converts to (0.009, in prob/year) differs in nature from what `rr`/`or` convert to (2.5, 1.5306, dimensionless), and why the two are handled differently at the `applies_to` auto-wiring stage (see [applies_to.md](applies_to.md)).
 
-**具体计算**（`test_valid_evidence_hr.yaml`）：$h_0 = 0.012$ (prob/year)，$HR = 0.75$：
+**A worked example** (`test_valid_evidence_hr.yaml`): $h_0 = 0.012$ (prob/year), $HR = 0.75$:
 
 $$
 \text{effective} = 0.012 \times 0.75 = 0.009 \ \text{(prob/year)}
 
 $$
 
-30 天累积 ≈ $0.009/365 \times 30 \approx 0.00074$。
+Accumulating over 30 days gives about $0.009/365 \times 30 \approx 0.00074$.
 
-**必填字段**：`baseline_ref`（指向同一份 YAML 内另一个声明了 `evidence_type` 的 `variables:` 条目名字，取其**原始值**——注意下方「已知实现细节」一节的重要限制）。
+**Required field**: `baseline_ref` (the name of another `variables:` entry in the same YAML that declares `evidence_type`, taking its **raw value** — note the important limitation in "Known implementation detail" below).
 
-### `ard`：绝对风险差（Absolute Risk Difference）
+### `ard`: Absolute Risk Difference
 
-**是什么**：两组事件发生率的直接相减，不是比值。例如服用阿司匹林使中风的年风险绝对降低 0.8 个百分点，$ARD = 0.008$ (prob/year)——注意这和"降低了 X 倍"（相对风险）是完全不同的说法，0.008 是一个绝对数值，不是比例。
+**What it is**: a direct subtraction between two groups' event rates, not a ratio. For example, taking aspirin lowers the annual stroke risk by an absolute 0.8 percentage points, $ARD = 0.008$ (prob/year) — note this is a completely different statement from "lowered by X-fold" (relative risk); 0.008 is an absolute value, not a ratio.
 
-正式定义：
+Formal definition:
 
 $$
 ARD = p_1 - p_0
 
 $$
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = ARD
 
 $$
 
-**为什么不需要换算**：ARD 定义本身就是"暴露组绝对速率 − 对照组绝对速率"这个差值，文献报出来的数字已经是一个有单位的绝对速率，可以直接当作 dynamics 里的累加速率使用，不需要换算。（相对地，`rr`/`or` 报的是比值这种相对量，才需要额外一步才能变成绝对速率。）
+**Why no conversion is needed**: ARD is by definition the difference "the exposed group's absolute rate minus the control group's absolute rate"; the number the literature reports is already an absolute rate with units, directly usable as an accumulation rate in dynamics, needing no conversion. (By contrast, `rr`/`or` report a ratio, a relative quantity, requiring an extra step to become an absolute rate.)
 
-**具体计算**（`test_valid_evidence_ard.yaml`）：$ARD = 0.008$ (prob/year) $\Rightarrow \text{effective} = 0.008$。30 天累积 ≈ $0.008/365 \times 30 \approx 0.000658$。
+**A worked example** (`test_valid_evidence_ard.yaml`): $ARD = 0.008$ (prob/year) gives $\text{effective} = 0.008$. Accumulating over 30 days gives about $0.008/365 \times 30 \approx 0.000658$.
 
-**必填字段**：无。
+**Required fields**: none.
 
-### `cohens_d`：效应量 Cohen's d
+### `cohens_d`: the Cohen's d effect size
 
-**是什么**：心理学/行为科学、部分医学研究中常用的"标准化均值差"，衡量两组的平均值差了几个标准差，而不是差了几个原始单位。例如一项运动干预项目使最大摄氧量（VO2max）提升了 0.68 个标准差，$d = 0.68$。用标准差做单位的好处是可以跨不同量表、不同研究比较效应大小；坏处是它本身"没有单位"，不能直接代表现实世界里的 mL/kg/min、mmHg 之类具体数值。
+**What it is**: a "standardized mean difference" commonly used in psychology/behavioral science and some medical research, measuring how many standard deviations apart two groups' averages are, rather than how many raw units apart. For example, an exercise intervention raises maximal oxygen uptake (VO2max) by 0.68 standard deviations, $d = 0.68$. Using a standard deviation as the unit lets effect sizes be compared across different scales and studies; the downside is that it is itself "unitless" and cannot directly represent a real-world value like mL/kg/min or mmHg.
 
-正式定义：
+Formal definition:
 
 $$
 d = \frac{\mu_1 - \mu_0}{SD}
 
 $$
 
-其中 $\mu_1$、$\mu_0$ 是两组的均值，$SD$ 是（合并后的）人群标准差。
+where $\mu_1$ and $\mu_0$ are the two groups' means, and $SD$ is the (pooled) population standard deviation.
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = d \cdot SD
 
 $$
 
-**为什么这样算是对的**：这一步是 Cohen's d 定义的逆运算——把定义式两边同乘 $SD$，直接解出原始单位下的均值差 $\mu_1 - \mu_0$：
+**Why computing it this way is correct**: this step is the inverse of Cohen's d's definition — multiplying both sides of the definition by $SD$ directly solves for the mean difference in raw units, $\mu_1 - \mu_0$:
 
 $$
 \mu_1 - \mu_0 = d \cdot SD
 
 $$
 
-要把 $d$ 用在 dynamics 里去改变一个有真实单位的变量（比如 VO2max，单位 mL/kg/min），必须先做这一步"还原"。
+To use $d$ in dynamics to change a variable with real units (e.g. VO2max, in mL/kg/min), this "restoring" step must be done first.
 
-**具体计算**（`test_valid_evidence_cohens_d.yaml`）：$d = 0.68$，$SD = 6.0$ (mL/kg/min)：
+**A worked example** (`test_valid_evidence_cohens_d.yaml`): $d = 0.68$, $SD = 6.0$ (mL/kg/min):
 
 $$
 \text{effective} = 0.68 \times 6.0 = 4.08 \ \text{(mL/kg/min)}
 
 $$
 
-**必填字段**：`population_sd`（必须来自与目标变量匹配的人群——用错人群的标准差会让还原出的数字失真，这是建模者的输入责任，Loader 不会校验 SD 本身是否合理）。
+**Required field**: `population_sd` (must come from a population matching the target variable — using the wrong population's standard deviation distorts the restored number; this is the modeler's input responsibility, and the Loader does not validate whether the SD itself is reasonable).
 
-### `ir`：发病率/死亡率（Incidence Rate）
+### `ir`: Incidence Rate
 
-**是什么**：单位时间内一个人群中新发病例（或死亡）所占的比例，比如"年发病率 1.2%"。这是 8 种子类型里最"天然"的一种——文献报出来的数字本身就是"每年/每天多大概率会发生"，不需要任何数学变换就能当速率用。
+**What it is**: the fraction of a population that develops a new case (or dies) per unit time, e.g. "an annual incidence of 1.2%." This is the most "natural" of the 8 subtypes — the number the literature reports is already "the probability of this happening per year/day," usable directly as a rate with no mathematical transformation needed.
 
-正式定义（$N$ 为期初人群数，$C$ 为观察期内新发病例数）：
+Formal definition ($N$ is the population size at the start of the period, $C$ is the number of new cases during the observation period):
 
 $$
 IR = \frac{C}{N \cdot \Delta t}
 
 $$
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = IR
 
 $$
 
-**为什么不需要换算**：定义本身即绝对速率，Loader 原样透传。`ir` 常被 `hr`/`rr`/`or` 通过 `baseline_ref` 引用作为"基线"，因为它已经是现成的绝对速率，可以直接作为"没有暴露因素时的默认速率"。
+**Why no conversion is needed**: the definition itself is already an absolute rate, and the Loader passes it through as-is. `ir` is often referenced by `hr`/`rr`/`or` via `baseline_ref` as a "baseline," because it is already a ready-made absolute rate, directly usable as "the default rate with no exposure factor."
 
-**具体计算**（`test_valid_evidence_ir.yaml`）：$IR = 0.012$ (prob/year) $\Rightarrow \text{effective} = 0.012$。30 天累积 ≈ $0.012/365 \times 30 \approx 0.000986$。
+**A worked example** (`test_valid_evidence_ir.yaml`): $IR = 0.012$ (prob/year) gives $\text{effective} = 0.012$. Accumulating over 30 days gives about $0.012/365 \times 30 \approx 0.000986$.
 
-**必填字段**：无（作为被引用的 baseline 时通常需要声明 `rate_unit`，供 `applies_to` 自动接线时换算时间单位用，见 [applies_to.md](applies_to.md)）。
+**Required fields**: none (when serving as a referenced baseline, it typically needs `rate_unit` declared, used for time-unit conversion during `applies_to` auto-wiring, see [applies_to.md](applies_to.md)).
 
-### `beta`：回归系数（Regression Coefficient）
+### `beta`: Regression Coefficient
 
-**是什么**：来自统计回归模型（如线性回归）里的斜率，衡量"自变量每变化 1 个单位，因变量平均变化多少"。例如年龄每增长 1 岁，收缩压（SBP）平均上升 0.45 mmHg，$\beta = 0.45$ (mmHg/year)。
+**What it is**: a slope from a statistical regression model (such as linear regression), measuring "how much the dependent variable changes on average per 1-unit change in the independent variable." For example, systolic blood pressure (SBP) rises by an average of 0.45 mmHg per additional year of age, $\beta = 0.45$ (mmHg/year).
 
-正式定义（以简单线性回归为例）：
+Formal definition (using simple linear regression as an example):
 
 $$
 y = \beta \cdot x + c
 
 $$
 
-$\beta$ 即自变量 $x$ 每变化 1 个单位时，因变量 $y$ 的平均变化量。
+$\beta$ is the average change in the dependent variable $y$ per 1-unit change in the independent variable $x$.
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = \beta
 
 $$
 
-**为什么不需要换算**：回归系数报出来就是"每单位自变量对应的因变量变化量"，本身已经是可以直接使用的斜率/速率，不需要换算。但要注意它的时间单位往往是"每年"，如果模型用"天"作为 step，需要在 dynamics 里自己除以 365——这一步 Loader 不会自动做，因为 `beta` 不支持 `applies_to`（见下），必须手写 dynamics，换算时间单位是手写逻辑的一部分。
+**Why no conversion is needed**: a regression coefficient is reported as "the change in the dependent variable per unit of the independent variable," which is itself already a directly usable slope/rate, needing no conversion. But note its time unit is often "per year"; if the model uses "day" as its step, it must be divided by 365 in dynamics by hand — the Loader does not do this automatically, because `beta` does not support `applies_to` (see below), so dynamics must be hand-written, and converting the time unit is part of that hand-written logic.
 
-**具体计算**（`test_valid_evidence_beta.yaml`）：$\beta = 0.45$ (mmHg/year) $\Rightarrow \text{effective} = 0.45$。手写 dynamics 为 $\text{systolic\_bp} + 0.45/365 \times \text{step}$，每天上升 ≈ 0.00123 mmHg，30 天后 SBP ≈ 120.037（起始 120）。
+**A worked example** (`test_valid_evidence_beta.yaml`): $\beta = 0.45$ (mmHg/year) gives $\text{effective} = 0.45$. The hand-written dynamics is $\text{systolic\_bp} + 0.45/365 \times \text{step}$, rising by about 0.00123 mmHg per day, reaching SBP of about 120.037 after 30 days (starting at 120).
 
-**必填字段**：无。不支持 `applies_to`（回归结构本身可能是线性、非线性、带交互项，Loader 不能替建模者假设怎么接入）。
+**Required fields**: none. Does not support `applies_to` (the regression structure itself might be linear, nonlinear, or include an interaction term, and the Loader cannot assume how to wire it in on the modeler's behalf).
 
-### `pk`：PK/PD 参数
+### `pk`: a PK/PD parameter
 
-**是什么**：药代动力学/药效学参数，例如药物消除速率常数 $k_e$（描述药物在体内被清除的快慢）。$k_e$ 与半衰期 $t_{1/2}$ 的关系：
+**What it is**: a pharmacokinetic/pharmacodynamic parameter, such as the drug-elimination rate constant $k_e$ (describing how fast a drug is cleared from the body). $k_e$'s relationship to the half-life $t_{1/2}$:
 
 $$
 t_{1/2} = \frac{\ln 2}{k_e}
 
 $$
 
-例如 $k_e = 0.0347$ (1/hour) 对应半衰期约 20 小时。
+For example, $k_e = 0.0347$ (1/hour) corresponds to a half-life of about 20 hours.
 
-**换算方程**：
+**Conversion equation**:
 
 $$
 \text{effective} = \theta
 
 $$
 
-（$\theta$ 泛指任意 PK/PD 参数，如 $k_e$、表观分布容积 $V_d$、吸收速率常数等，原样透传。）
+($\theta$ refers generally to any PK/PD parameter, such as $k_e$, the apparent volume of distribution $V_d$, an absorption rate constant, etc., passed through as-is.)
 
-**为什么不需要换算**：PK 参数通常已经是模型方程里可以直接使用的速率常数或结构参数，不需要数学变换。但建模者必须自己确保 dynamics 里的时间单位与参数单位（如 `1/hour`）匹配——`pk` 同样不支持 `applies_to`，这个匹配工作是手写 dynamics 的一部分。
+**Why no conversion is needed**: a PK parameter is usually already a rate constant or structural parameter directly usable in a model equation, needing no mathematical transformation. But the modeler must ensure the time unit in dynamics matches the parameter's unit (e.g. `1/hour`) — `pk` likewise does not support `applies_to`, and this matching is part of hand-writing dynamics.
 
-**具体计算**（`test_valid_evidence_pk.yaml`）：$k_e = 0.0347$ (1/hour) $\Rightarrow \text{effective} = 0.0347$。dynamics（`step_unit: hour`）里直接写 $\text{drug\_conc} \times \text{drug\_ke} \times \text{step}$ 作为消除项，不需要额外乘时间换算系数，因为 $k_e$ 的单位（1/hour）已经和 `step_unit`（hour）匹配；如果 $k_e$ 单位是 `1/day` 而仿真按小时推进，就需要在 dynamics 里手动除以 24。
+**A worked example** (`test_valid_evidence_pk.yaml`): $k_e = 0.0347$ (1/hour) gives $\text{effective} = 0.0347$. In dynamics (`step_unit: hour`), $\text{drug\_conc} \times \text{drug\_ke} \times \text{step}$ is written directly as the elimination term, with no extra time-conversion factor needed, because $k_e$'s unit (1/hour) already matches `step_unit` (hour); if $k_e$'s unit were `1/day` while the simulation advances by the hour, it would need dividing by 24 by hand in dynamics.
 
-**必填字段**：无。不支持 `applies_to`（PK 模型结构——单室/多室、一级/零级消除——不唯一，Loader 不能替建模者选择结构）。
+**Required fields**: none. Does not support `applies_to` (the PK model structure, single- versus multi-compartment, first- versus zero-order elimination, is not unique, and the Loader cannot choose a structure on the modeler's behalf).
 
-## 可运行示例与验证覆盖
+## Runnable examples and validation coverage
 
-`life-matters-models` 仓库 `models/test_fixtures/valid/` 下有 8 个最小 fixture，一种子类型一个文件，各自只含"一个 evidence + 一两个展示/累积变量"，可以直接加载/仿真跑一遍看效果，比在文档里贴一份不会跑的 YAML 更可靠（不会因为换算逻辑改了而没人发现文档示例已经算不出那个数）。上面「逐一详解」里的所有计算示例都取自这些 fixture 的真实数值。
+Under `models/test_fixtures/valid/` in the `life-matters-models` repository are 8 minimal fixtures, one file per subtype, each containing only "one evidence plus one or two display/accumulation variables," directly loadable/runnable to see the effect, more reliable than pasting an unrunnable YAML into the documentation (it can't happen that the conversion logic changes and no one notices the documentation's example no longer computes that number). Every calculation example in "Walkthrough" above is taken from these fixtures' real values.
 
 
-| 子类型     | fixture                             | 验证的点                                                                                                       |
+| Subtype     | Fixture                             | What it verifies                                                                                                       |
 | ------------ | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `rr`       | `test_valid_evidence_rr.yaml`       | 手写 dynamics 乘一个普通 parameter 基线，对比`applies_to` 自动接线到 `ir` 基线，两条路径基线不同、数值不应相等 |
-| `or`       | `test_valid_evidence_or.yaml`       | 唯一需要非线性换算（`baseline_prevalence`）的子类型                                                            |
-| `hr`       | `test_valid_evidence_hr.yaml`       | `baseline_ref` 引用同文件内 `ir` 条目做基线                                                                    |
-| `ard`      | `test_valid_evidence_ard.yaml`      | 手写 dynamics 与`applies_to` 自动生成的 dynamics 逐步数值必须一致                                              |
-| `cohens_d` | `test_valid_evidence_cohens_d.yaml` | 唯一必须靠`population_sd` 才能换出有量纲结果的子类型                                                           |
-| `ir`       | `test_valid_evidence_ir.yaml`       | 常被其他子类型引用作基线，需要单独确认作为"被引用方"时数值稳定                                                 |
-| `beta`     | `test_valid_evidence_beta.yaml`     | 年化系数折算为日速率（÷365）驱动连续状态变量                                                                  |
-| `pk`       | `test_valid_evidence_pk.yaml`       | 验证换出的速率常数能在小时级步长方程里直接用，不需要额外单位转换                                               |
+| `rr`       | `test_valid_evidence_rr.yaml`       | A hand-written dynamics multiplying an ordinary parameter baseline, compared against `applies_to` auto-wired to an `ir` baseline; the two paths' baselines differ, and the values should not be equal |
+| `or`       | `test_valid_evidence_or.yaml`       | The only subtype requiring a nonlinear conversion (`baseline_prevalence`)                                                            |
+| `hr`       | `test_valid_evidence_hr.yaml`       | `baseline_ref` referencing an `ir` entry in the same file as the baseline                                                                    |
+| `ard`      | `test_valid_evidence_ard.yaml`      | A hand-written dynamics and the `applies_to`-auto-generated dynamics must agree step by step numerically                                              |
+| `cohens_d` | `test_valid_evidence_cohens_d.yaml` | The only subtype that must rely on `population_sd` to convert into a dimensioned result                                                           |
+| `ir`       | `test_valid_evidence_ir.yaml`       | Often referenced by other subtypes as a baseline, needing separate confirmation the value is stable when acting as "the one being referenced"                                                 |
+| `beta`     | `test_valid_evidence_beta.yaml`     | An annualized coefficient converted into a daily rate (divided by 365), driving a continuous state variable                                                                  |
+| `pk`       | `test_valid_evidence_pk.yaml`       | Verifies the converted rate constant can be used directly in an hour-level-step equation, with no extra unit conversion needed                                               |
 
-每个文件的 `metadata.description.result` 字段都写了具体应该算出的数字（比如"30 天后累计约 0.000658"），可以直接改 `simulation.end_date` 跑更长/更短的区间验证。8 种子类型同时共存的综合场景见 `test_valid_evidence_types.yaml`；每个文件的设计意图（为什么要单独测、和相邻文件的关系）见 `models/test_fixtures/fixture_catalog.md` §1。
+Every file's `metadata.description.result` field states the specific number that should be computed (e.g. "about 0.000658 accumulated after 30 days"), and `simulation.end_date` can be edited directly to test a longer/shorter window. For a comprehensive scenario with all 8 subtypes coexisting, see `test_valid_evidence_types.yaml`; for each file's design intent (why it's tested separately, its relationship to neighboring files), see §1 of `models/test_fixtures/fixture_catalog.md`.
 
-**这些 fixture 目前只被验证"能否正确加载/被合法拒绝"**（`test_verification/errors/test_evidence_errors.py` 覆盖的是反例——即声明错误的 fixture 会被可靠拒绝），**没有任何 pytest 真正跑一遍仿真去断言 `description.result` 里写的具体数字**。这意味着如果以后 Loader 的换算逻辑改了，这些写在注释里的"期望结果"可能悄悄过期而不会被任何测试发现——这是本仓库另一处值得补的验证缺口，尚未处理。
+**These fixtures are currently verified only for "can they be correctly loaded/legally rejected"** (`test_verification/errors/test_evidence_errors.py` covers the negative cases — that is, a fixture declaring an error is reliably rejected); **no pytest actually runs a simulation through to assert the specific number written in `description.result`**. This means that if the Loader's conversion logic changes in the future, these "expected results" written in the comments could silently go stale without any test catching it — this is another validation gap in this repository worth filling, not yet addressed.
 
-## 已知实现细节（写文档时须如实反映，非建议行为）
+## A known implementation detail (documented here as-is, not a recommended behavior)
 
-**`hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型**：上表 `hr` 行的 $h_0$ 直接取 `variables[baseline_ref]['value']`（原始值，未经该条目自身的类型换算）。这在 `baseline_ref` 指向 `ir`/`ard` 条目时无影响（这两种类型的 $\text{effective} = \text{value}$，原始值与换算值相同），但如果建模者把 `baseline_ref` 误指向一个 `rr`/`or`/`cohens_d` 等条目，Loader 不会报错，会静默用其原始文献值参与乘法，得到语义不对的结果。举例：若误把 `baseline_ref` 指向一个 $OR = 1.65$ 的条目，Loader 会直接用 1.65（换算前的原始 OR）而不是换算后的 $\text{effective} \approx 1.5306$ 去做乘法，得到的 `hr` effective 会比预期偏大且单位含义错误（1.65 是无量纲比值，不是可以当"基线速率"用的绝对速率）。`applies_to` 路径（见 [applies_to.md](applies_to.md)）对 `baseline_ref` 有更严格的校验（强制要求指向 `ir`/`ard`），但这条基础换算路径没有——即不使用 `applies_to` 时，`baseline_ref` 指向非 `ir`/`ard` 条目不会被拦截。建模时应始终让 `hr`/`rr`/`or` 的 `baseline_ref` 指向 `ir`/`ard` 条目。
+**`hr`'s `baseline_ref` is not validated for its target's type on the base conversion path**: $h_0$ in the `hr` row of the table above is taken directly from `variables[baseline_ref]['value']` (the raw value, not converted through that entry's own type conversion). This has no effect when `baseline_ref` points to an `ir`/`ard` entry (for these two types, $\text{effective} = \text{value}$, so the raw value and the converted value are the same), but if a modeler mistakenly points `baseline_ref` at an `rr`/`or`/`cohens_d` entry, the Loader raises no error and silently uses its raw literature value in the multiplication, producing a semantically wrong result. For example, if `baseline_ref` is mistakenly pointed at an entry with $OR = 1.65$, the Loader will use 1.65 (the raw OR before conversion) directly, rather than the converted $\text{effective} \approx 1.5306$, in the multiplication, giving an `hr` effective that is larger than expected and semantically wrong in its unit (1.65 is a dimensionless ratio, not an absolute rate usable as a "baseline rate"). The `applies_to` path (see [applies_to.md](applies_to.md)) has a stricter check on `baseline_ref` (forcing it to point to `ir`/`ard`), but this base conversion path does not — meaning that without using `applies_to`, `baseline_ref` pointing to a non-`ir`/`ard` entry is not blocked. When modeling, `hr`/`rr`/`or`'s `baseline_ref` should always point to an `ir`/`ard` entry.

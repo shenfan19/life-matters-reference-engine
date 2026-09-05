@@ -1,41 +1,27 @@
-# ADR 0121 — 顶层目录改名：`sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`
+# ADR 0121 — Top-level directory rename: `sim_cli`/`sim_engine`/`sim_gui` → `cli`/`reference_engine`/`gui`
 
-**日期**: 2026-06-24
-**状态**: 已接受
-**范围**: 仓库顶层三个目录及其全部内部引用、`docs/` 重组、`SimulatorEngine` 类名
+**Date**: 2026-06-24
+**Status**: Accepted
+**Scope**: the repository's three top-level directories and every internal reference to them, `docs/` reorganization, the `SimulatorEngine` class name
 
 ---
 
-## 背景
+## Background
 
-仓库发布模式是多 repo 叠加：`life-matters-reference-engine`（本仓库）、`life-matters-models`、`life-matters-game` 各自打包发布，
-用户下载后解压到同一目录联合使用。原顶层结构 `sim_cli/`、`sim_engine/`、`sim_gui/` 的 `sim_` 前缀存在
-两个问题：
+The release model layers multiple repositories: `life-matters-reference-engine` (this repo), `life-matters-models`, and `life-matters-game` are each packaged and released independently, and users download and unpack them into the same directory for combined use. The original top-level structure, `sim_cli/`, `sim_engine/`, `sim_gui/`, had two problems with its `sim_` prefix:
 
-1. **命名不准确**：本仓库的引擎同时承担仿真（sim）和优化（opt）两件事——`SimulatorEngine` 类、
-   `app_state.simulator_engine` 等命名只体现了 sim，opt 是后加的对称功能，"sim 前缀打头、opt 没有对应
-   前缀"的不对称命名容易让人误以为 opt 是次要/外挂功能。
-2. **`docs/` 跨仓库碰撞**：`life-matters-reference-engine/docs/`、`life-matters-models/docs/`、`life-matters-game/docs/` 三个仓库解压
-   到同一目录后会互相覆盖。`models/`、`output/` 是有意共享/合并的目录，但 `docs/` 不应该被覆盖。
+1. **Inaccurate naming**: this repo's engine handles both simulation (sim) and optimization (opt) — names like the `SimulatorEngine` class and `app_state.simulator_engine` only reflect sim, with opt added later as a symmetric capability. Prefixing with `sim_` while giving opt no corresponding prefix creates an asymmetric naming that can make opt look like a secondary/bolted-on feature.
+2. **`docs/` collision across repositories**: `life-matters-reference-engine/docs/`, `life-matters-models/docs/`, and `life-matters-game/docs/` would overwrite one another once all three repositories are unpacked into the same directory. `models/` and `output/` are directories intentionally shared/merged, but `docs/` should not be overwritten.
 
-讨论过 `docs_sim`/`docs_model` 类前缀改名方案，认为是"分类命名"和"类命名"混用、不够专业。最终采用
-`docs/reference_engine/`、`docs/model/`（model 仓库）、`docs/game/`（game 仓库）的嵌套方案——`docs/` 本身不
-带前缀，内容按产品分到子目录，与 `cli/`、`gui/`、`reference_engine/` 这种顶层目录"该叫什么就叫什么、不为
-假设的未来碰撞预先加前缀"的原则保持一致（这三个目录目前在三个仓库间没有实际碰撞，无需改名）。
+Renaming schemes using prefixes like `docs_sim`/`docs_model` were discussed but judged to mix "categorical naming" with "class naming" in an unprofessional way. The final approach nests documentation by product: `docs/reference_engine/`, `docs/model/` (models repo), `docs/game/` (game repo) — `docs/` itself carries no prefix, with content sorted into subdirectories by product, consistent with the principle already applied to `cli/`, `gui/`, and `reference_engine/` as top-level directories: "name it what it is; don't prefix for a hypothetical future collision" (these three directories currently have no actual collision across the three repositories, so no rename is needed there).
 
-中间版本曾把顶层目录定为 `ref_engine/`、文档目录定为 `docs/engine/`，但 `ref_engine` 缩写不直观、
-`engine` 单独又太泛（没说清是哪个引擎），且与本仓库的官方品牌术语"LM Reference Engine"（见
-`lm_nomenclature.md`）脱节。最终拼全为 `reference_engine`/`docs/reference_engine`，与
-`class ReferenceEngine`、README 等已经在用的措辞完全对应，不引入新词（如 `core`）造成又一层命名/概念
-不对应。
+An intermediate version had settled on `ref_engine/` for the top-level directory and `docs/engine/` for the documentation directory, but `ref_engine` is an unintuitive abbreviation, and `engine` alone is too generic (it doesn't say which engine), disconnected from this repo's official brand term "LM Reference Engine" (see `lm_nomenclature.md`). The final choice spells it out in full as `reference_engine`/`docs/reference_engine`, matching wording already in use elsewhere (`class ReferenceEngine`, the README, etc.) exactly, without introducing a new word (such as `core`) that would create yet another layer of naming/concept mismatch.
 
-## 决策
+## Decision
 
-**去掉 `sim_` 前缀，三选一原则：要么不加前缀，要么用 "reference engine" 一类强调"参考实现"而非
-"唯一实现"的措辞打头；不用 `sim_` 强调，因为还有一个对称的 `opt`，给其中一个加前缀而不给另一个加是
-不合适的二选一。命名缩写一律拼全，不为了短而牺牲可读性。**
+**Drop the `sim_` prefix, following one of two options: either no prefix at all, or wording like "reference engine" that emphasizes "a reference implementation" rather than "the only implementation." `sim_` is not used because there is also a symmetric `opt`, and prefixing one while leaving the other unprefixed is an unsuitable either/or choice. Abbreviations are always spelled out in full — readability is never sacrificed for brevity.**
 
-| 改动对象 | 新名 |
+| Change target | New name |
 |---------|------|
 | `sim_cli/` | `cli/` |
 | `sim_engine/` | `reference_engine/` |
@@ -44,48 +30,32 @@
 | `class SimulatorEngine` | `class ReferenceEngine` |
 | `app_state.simulator_engine` | `app_state.engine` |
 | `PluginContext.__init__(simulator_engine=...)` | `PluginContext.__init__(engine=...)` |
-| `gui/public/locales/sim/` | `gui/public/locales/engine/`（与 game 仓库 `game/public/locales/game/` 对齐） |
+| `gui/public/locales/sim/` | `gui/public/locales/engine/` (aligned with the game repo's `game/public/locales/game/`) |
 | `<I18nProvider section="sim">` | `<I18nProvider section="engine">` |
-| `docs/`（本仓库内容） | `docs/reference_engine/`，其中 `sim_design.md`/`sim_impl.md`/`sim_requirements.md` → `design.md`/`impl.md`/`requirements.md` |
+| `docs/` (this repo's content) | `docs/reference_engine/`, with `sim_design.md`/`sim_impl.md`/`sim_requirements.md` → `design.md`/`impl.md`/`requirements.md` |
 
-**不改动（非本次范围）**：
+**Not changed (out of scope for this change)**:
 
-- `models/`、`output/` 顶层目录名——本就是有意跨仓库共享/合并的目录，不存在命名问题
-- `plugins/`——没有 `sim_`/对称性问题
-- 历史 ADR 文件内容（`docs/reference_engine/decisions/*.md`）——ADR 是不可变历史记录，文件名标签
-  （如 `0074-..._sim_gui-working-state-priority.md` 里的 `sim_` 是 ADR 内容范围标签，不是本次改名对象）
-  及正文中对当时实际路径的引用均保持原样
-- `gui/src/components/sim_tab/` 等前端内部组件文件夹名——发现该文件夹同样存在"sim_ 前缀但内容含
-  opt"的不对称问题，但属于更大范围的前端内部重构，超出本次"顶层目录改名"范围，留待单独评估
-- `tests/test_sim_cli_consistency.py` 文件名——测试文件名不在本次改名范围内，仅更新其内部 import
+- The `models/`/`output/` top-level directory names — these are already intentionally shared/merged directories across repositories, with no naming problem to solve.
+- `plugins/` — has no `sim_`/asymmetry problem.
+- Historical ADR file content (`docs/reference_engine/decisions/*.md`) — an ADR is immutable historical record; a filename label such as the `sim_` in `0074-..._sim_gui-working-state-priority.md` is a content-scope tag for that ADR, not a target of this rename, and references to actual paths at the time in the body text are left as-is.
+- `gui/src/components/sim_tab/` and similar frontend internal component folder names — this folder was found to have the same "`sim_`-prefixed but containing opt" asymmetry, but that belongs to a larger-scope frontend internal refactor, beyond this "top-level directory rename," and is left for separate evaluation.
+- `tests/test_sim_cli_consistency.py`'s filename — test filenames are not within this rename's scope; only its internal imports were updated.
 
-## 2026-07-24 更新：`docs/reference_engine/` 嵌套已撤销
+## 2026-07-24 update: the `docs/reference_engine/` nesting has been reverted
 
-本 ADR 引入 `docs/reference_engine/` 嵌套的前提是"多 repo 解压到同一目录联合使用"的发布模式
-（背景第2点）。该发布模式已被放弃：改为各仓库独立并列存放（同一父目录下的 sibling 目录），
-model 仓库路径通过 `LM_MODELS_PATH` 环境变量指定，不再依赖目录重叠/覆盖。`docs/` 跨仓库碰撞
-的前提不再成立，`docs/reference_engine/` 已重新拍平为 `docs/`（`README.md`/`CLAUDE.md`/
-`AGENTS.md` 中的文档索引、`@`-include 路径同步更新）。本 ADR 原文保持不变，仅记录该嵌套决策
-已被后续实践取代。
+The premise for introducing the `docs/reference_engine/` nesting in this ADR was "multiple repositories unpacked into the same directory for combined use" (background point 2). That release model has since been abandoned in favor of each repository being stored independently, as sibling directories under the same parent, with the models repository's path specified via the `LM_MODELS_PATH` environment variable, no longer relying on directory overlap/overwriting. The premise of `docs/` colliding across repositories no longer holds, and `docs/reference_engine/` has been flattened back to `docs/` (the documentation index and `@`-include paths in `README.md`/`CLAUDE.md`/`AGENTS.md` were updated accordingly). This ADR's original text is left unchanged; this note only records that the nesting decision has since been superseded by later practice.
 
-## 结果
+## Outcome
 
-- `cli/`、`gui/`、`reference_engine/` 三个顶层目录及内部全部 Python import、TS import、`sys.path`、
-  `build.spec`（PyInstaller hiddenimports）、`.vscode/tasks.json`、`.vscode/settings.json`、
-  `lm.code-workspace`、`.pre-commit-config.yaml`、`scripts/check_hardcoded_constants.py`、
-  `run_server_and_log.py` 中的路径引用全部更新
-- `docs/` 重组为 `docs/reference_engine/`（含 `decisions/` 子目录），`README.md`/`CLAUDE.md`/`AGENTS.md`
-  中的文档索引、`@`-include 路径（`@docs/ui_guidelines.md` → `@docs/reference_engine/ui_guidelines.md` 等）
-  同步更新
-- `docs/reference_engine/decisions/README.md` 中跨仓库引用 `life-matters-models` ADR 的相对路径补一层 `../`
-  （`decisions/` 多嵌套了一层，原 `../../../life-matters-models/...` 失效，改为 `../../../../life-matters-models/...`）
-- `tests/test_sim_cli_consistency.py`、`tests/models/test_mc_distributions/.../test_dose_scaling.py`
-  的内部 import 更新；`pytest tests/` 8 个测试全过
-- `python cli/main.py <model.yaml> --sim-only` 手动验证可正常运行
-- GUI 后端 `reference_engine/src/api_server.py`、`reference_engine/src/reference_engine.py` import 验证通过
+- The `cli/`, `gui/`, and `reference_engine/` top-level directories and all internal Python imports, TS imports, `sys.path`, `build.spec` (PyInstaller hiddenimports), `.vscode/tasks.json`, `.vscode/settings.json`, `lm.code-workspace`, `.pre-commit-config.yaml`, `scripts/check_hardcoded_constants.py`, and `run_server_and_log.py` path references were all updated.
+- `docs/` was reorganized into `docs/reference_engine/` (including the `decisions/` subdirectory), with the documentation index and `@`-include paths in `README.md`/`CLAUDE.md`/`AGENTS.md` (`@docs/ui_guidelines.md` → `@docs/reference_engine/ui_guidelines.md`, etc.) updated accordingly.
+- The cross-repo relative-path references to `life-matters-models` ADRs in `docs/reference_engine/decisions/README.md` gained an extra `../` (because `decisions/` is now nested one level deeper, the original `../../../life-matters-models/...` was invalidated and became `../../../../life-matters-models/...`).
+- The internal imports of `tests/test_sim_cli_consistency.py` and `tests/models/test_mc_distributions/.../test_dose_scaling.py` were updated; all 8 tests in `pytest tests/` passed.
+- `python cli/main.py <model.yaml> --sim-only` was manually verified to run correctly.
+- The GUI backend's `reference_engine/src/api_server.py` and `reference_engine/src/reference_engine.py` imports were verified to work.
 
-## 关联
+## Related
 
-- ADR 0116 — 上一次类似的"消除内部术语不对称"改名（`regimen_runner.py` → `schedule_runner.py`），
-  本次沿用同样的改名记录格式
-- ADR 0072/0101 — CLI 接口地位的历史决策，本次改名不影响其结论，仅改目录名
+- ADR 0116 — a previous similar rename eliminating internal terminology asymmetry (`regimen_runner.py` → `schedule_runner.py`); this change follows the same rename-record format
+- ADR 0072/0101 — historical decisions on the CLI interface's status; this rename does not affect their conclusions, only the directory names

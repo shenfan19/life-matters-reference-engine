@@ -1,65 +1,65 @@
-# 0013 — 相对字号系统 + 字号选择器
+# 0013 — Relative font-scale system + font-size selector
 
-**状态**：✅ 已实施  
-**日期**：2026-04-05
+**Status**: implemented
+**Date**: 2026-04-05
 
-## 背景
+## Background
 
-两个应用之前存在大量硬编码字号（`fontSize: 12`、`fontSize: 16` 等），导致：
-1. 字号无法统一调整，桌面/手机用户体验差异大
-2. 设计变更时需要逐一修改，容易遗漏
-3. sim_gui 曾有字号下拉选择器，后被移除（ADR 0008），需以更好的方式恢复
+Both applications previously had a large number of hardcoded font sizes (`fontSize: 12`, `fontSize: 16`, etc.), which caused:
+1. Font sizes could not be adjusted uniformly, so the desktop and mobile experience diverged sharply
+2. Design changes required editing sizes one by one, which was easy to miss
+3. `sim_gui` once had a font-size dropdown selector, which was later removed (ADR 0008) and needed to be restored in a better form
 
-## 决策
+## Decision
 
-### 1. `makeFontScale(base)` 算术偏移系统
+### 1. The `makeFontScale(base)` arithmetic-offset system
 
-以基准字号 `base`（默认 16px）为锚点，所有字号用差值定义：
+Anchored on a base font size `base` (default 16px), all font sizes are defined by an offset from it:
 
 ```typescript
 function makeFontScale(base: number) {
   return {
-    xs:   base - 5,   // 辅助文字、角标
-    sm:   base - 3,   // 次级标签、按钮
-    md:   base,       // 正文
-    lg:   base + 2,   // 小标题
-    xl:   base + 4,   // 大标题
-    card: base + 8,   // 卡牌名称（突出，信息密度低）
-    eff:  base - 1,   // 卡牌效果文字（紧凑）
+    xs:   base - 5,   // helper text, badges
+    sm:   base - 3,   // secondary labels, buttons
+    md:   base,       // body text
+    lg:   base + 2,   // subheadings
+    xl:   base + 4,   // headings
+    card: base + 8,   // card names (emphasized, low information density)
+    eff:  base - 1,   // card effect text (compact)
   };
 }
 ```
 
-选择差值而非比例（如 `base * 1.2`）是因为差值在小字号变化时更线性、更易心算，设计师可直接推理"比正文小 3px"。
+Offsets were chosen over ratios (e.g. `base * 1.2`) because offsets stay more linear across small font-size changes and are easier to reason about mentally — a designer can directly think "3px smaller than body text."
 
-卡牌字号特意设为 `base + 8`（远大于正文），因为卡牌游戏要求卡名一眼可读、信息少而精准。
+The card font size is deliberately set to `base + 8` (much larger than body text), since a card game requires the card name to be readable at a glance, with little but precise information.
 
-### 2. 三档字号选择器 `FontSizer`
+### 2. The three-step font selector `FontSizer`
 
-替代旧版下拉列表，改用三个 A 按钮（视觉上大小递增）：
+Replaces the old dropdown list with three "A" buttons of increasing visual size:
 
 ```
 [A]  [A]  [A]
 14   16   18
 ```
 
-- 点击即切换，当前档位高亮主题色边框
-- 组件通过 `fontSize`、`onFontSize`、`c`（颜色 token）三个 props 驱动
-- 两个应用均在顶部工具栏右侧区域放置
+- Clicking switches immediately, with the current step highlighted by the theme-color border
+- The component is driven by three props: `fontSize`, `onFontSize`, `c` (color tokens)
+- Both applications place it in the top toolbar's right-side area
 
-### 3. 状态提升到 App 根组件
+### 3. State lifted to the App root component
 
-`fontSize` 状态在两个应用均提升至根 `App` 组件，通过 props 下传，并持久化到 `localStorage`：
+`fontSize` state is lifted to the root `App` component in both applications, passed down via props, and persisted to `localStorage`:
 
-- Game：存于 `game_persist` key
-- Sim：存于 `sim_prefs` key
+- Game: stored under the `game_persist` key
+- Sim: stored under the `sim_prefs` key
 
-Ant Design ConfigProvider 的 `fontSize` token 也随之动态变化，影响所有 antd 组件字号。
+Ant Design ConfigProvider's `fontSize` token also changes dynamically, affecting the font size of all antd components.
 
-## 后果
+## Consequences
 
-- ✅ 任意字号调整只需改一处，所有子组件自动跟随
-- ✅ 三档选择比下拉列表更直观，点击区域更大，适合触屏
-- ✅ 持久化后刷新不丢失用户偏好
-- ⚠️ `base - 5`（即 9px）在 base=14 时可能过小，日后可加下限保护
-- ⚠️ 卡牌字号 `base + 8` 在 base=18 时为 26px，在窄卡宽（132px）下需注意换行
+- Any font-size adjustment only requires a single change, and all child components follow automatically
+- The three-step selector is more intuitive than a dropdown, with a larger click target suited to touchscreens
+- Persistence means user preferences survive a refresh
+- `base - 5` (i.e. 9px) may be too small when base=14; a lower bound could be added later
+- The card font size `base + 8` becomes 26px at base=18, which needs attention for line wrapping given the narrow card width (132px)

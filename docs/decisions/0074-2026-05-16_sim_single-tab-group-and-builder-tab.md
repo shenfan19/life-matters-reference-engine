@@ -1,84 +1,84 @@
-# ADR 0074 — 单层标签组导航与动态 Builder Tab
+# ADR 0074 — Single-Level Tab Navigation and a Dynamic Builder Tab
 
-**日期**：2026-05-16  
-**状态**：已采纳  
-**范围**：LM-Simulator 前端导航结构 + 模型库编辑入口
-
----
-
-## 背景
-
-原有导航结构分为两层：
-
-1. **顶层导航**（标题栏）：Tools | Simulator
-2. **中央面板 Tab**：Overview / Simulation / Optimization / Report
-
-用户在"工具"与"仿真"之间切换时需要感知两层结构，且 ModelBuilder（模型库编辑器）作为独立页面存在，与仿真工作流完全割裂——建模者需要离开仿真上下文才能编辑模型。
+**Date**: 2026-05-16
+**Status**: adopted
+**Scope**: LM-Simulator frontend navigation structure + model-library edit entry point
 
 ---
 
-## 决策
+## Background
 
-### 1. 移除顶层导航，保留唯一标签组
+The original navigation structure had two levels:
 
-顶层 Tools / Simulator 导航标签从标题栏完全移除。应用启动后始终处于仿真界面，标题栏仅保留品牌标识与设置按钮。
+1. **Top-level navigation** (title bar): Tools | Simulator
+2. **Central panel tabs**: Overview / Simulation / Optimization / Report
 
-导航唯一入口为中央面板的四个固定 Tab：
+Users had to track two levels of structure when switching between "tools" and "simulation," and the ModelBuilder (model-library editor) existed as a separate page, completely disconnected from the simulation workflow — modelers had to leave the simulation context to edit a model.
+
+---
+
+## Decision
+
+### 1. Remove the top-level navigation, keep a single tab group
+
+The top-level Tools / Simulator navigation tabs are removed entirely from the title bar. After the app starts, it always stays in the simulation view, and the title bar keeps only the brand mark and a settings button.
+
+The single point of navigation is the central panel's four fixed tabs:
 
 ```
 Overview | Simulation | Optimization | Report
 ```
 
-### 2. Builder Tab：动态出现，编辑完成后消失
+### 2. Builder tab: appears dynamically, disappears when editing finishes
 
-ModelBuilder 不再是独立页面，而是以**动态 Tab** 的形式挂载在中央面板 Tab 栏右侧。
+ModelBuilder is no longer a separate page; instead it mounts as a **dynamic tab** to the right of the central panel's tab bar.
 
-**生命周期**：
+**Lifecycle**:
 
-| 动作 | 触发方 | 结果 |
+| Action | Trigger | Result |
 |------|--------|------|
-| 点击左侧目录树 Edit 按钮（✎） | 用户 | Builder Tab 出现，成为当前 Tab |
-| 其他四个 Tab 被锁定（置灰，hover 显示提示） | 系统 | 编辑模式独占中央区域 |
-| 点击 Builder Tab 上的 × | 用户 | Tab 消失，返回进入前的 Tab，自动刷新目录树 |
+| Click the Edit button (✎) on a node in the left directory tree | user | the Builder tab appears and becomes the active tab |
+| The other four tabs are locked (grayed out, with a hint on hover) | system | edit mode takes exclusive control of the central area |
+| Click the × on the Builder tab | user | the tab disappears, returning to whichever tab was active before, and the directory tree auto-refreshes |
 
-这是"情境化编辑（contextual editing）"模式，类似 Word 选中表格时出现"表格工具"上下文选项卡。
+This is a "contextual editing" pattern, similar to Word's "Table Tools" contextual ribbon that appears when a table is selected.
 
-**编辑模式关键约束**：同一时刻只能有一个 Builder Tab（不支持多个并发编辑会话）。
+**Key constraint on edit mode**: only one Builder tab can exist at a time (no concurrent editing sessions).
 
-### 3. 左侧目录树统一：单选 / 多选双模式
+### 3. Unified left directory tree: single-select / multi-select dual mode
 
-左侧 `SimModelTree` 组件支持两种行为模式，由 `builderMode` prop 控制：
+The left-hand `SimModelTree` component supports two behavior modes, controlled by a `builderMode` prop:
 
-| 模式 | 触发条件 | 行为 |
+| Mode | Trigger condition | Behavior |
 |------|---------|------|
-| **单选模式**（默认） | Builder Tab 关闭 | 点击文件 → 加载到仿真上下文；锁定/解锁按钮可见 |
-| **多选模式**（Builder） | Builder Tab 打开 | 文件节点显示 checkbox；表头显示 New / Merge 操作按钮 |
+| **Single-select** (default) | Builder tab closed | clicking a file loads it into the simulation context; lock/unlock buttons are visible |
+| **Multi-select** (Builder) | Builder tab open | file nodes show a checkbox; the header shows New / Merge action buttons |
 
-两种模式共享同一组件、同一颗目录树数据（`storyTree`），样式风格统一。Merge 和 New 操作通过 Simulator 层的 Modal 对话框完成，调用现有 `/api/merge` 和 `/api/file-new` 端点。
+Both modes share the same component and the same tree data (`storyTree`), with a consistent visual style. Merge and New operations are completed through a modal dialog at the Simulator layer, calling the existing `/api/merge` and `/api/file-new` endpoints.
 
-### 4. 目录树直接呈现磁盘结构，不做包装
+### 4. The directory tree renders the disk structure directly, with no wrapping
 
-`loadFileTree` 直接调用 `convert(modelsNode.children)`，将 `models/` 下的所有子目录按原始层级渲染，不再生成人工的 GROUP HEADER 包装节点。
+`loadFileTree` calls `convert(modelsNode.children)` directly, rendering every subdirectory under `models/` at its original level, with no artificial GROUP HEADER wrapper nodes.
 
-**改动前**：每个一级子目录被包装为大写 GROUP header（如 `MODELS/PUBLISHED`），且空目录被过滤掉。  
-**改动后**：目录名称保持原始大小写，所有目录（包括空的 `temp/`）均可见，字体大小与文件节点一致。
+**Before**: each top-level subdirectory was wrapped in an uppercase GROUP header (e.g. `MODELS/PUBLISHED`), and empty directories were filtered out.
+**After**: directory names keep their original case, every directory (including empty ones like `temp/`) is visible, and the font size matches file nodes.
 
 ---
 
-## 权衡
+## Tradeoffs
 
-| 方案 | 优点 | 缺点 |
+| Approach | Pros | Cons |
 |------|------|------|
-| **动态 Tab（本方案）** | 可在编辑中切换到其他 Tab 查看；模式边界清晰；关闭即完成 | 编辑期间其他 Tab 锁定，无法同时浏览仿真结果 |
-| Builder 作为永久固定 Tab | 随时可访问 | 增加认知负担，暗示仿真与编辑可以并行（实际不应该）|
-| Overview 页内联编辑 | 无额外 Tab | YAML 合并等复杂操作难以内联表达 |
+| **Dynamic tab (this approach)** | can switch to another tab mid-edit to check something; mode boundaries are clear; closing it means you're done | the other tabs are locked while editing, so you can't browse simulation results at the same time |
+| Builder as a permanent fixed tab | always accessible | adds cognitive load, and implies simulation and editing can run in parallel (which they shouldn't) |
+| Inline editing within Overview | no extra tab | complex operations like YAML merging are hard to express inline |
 
-**锁定其他 Tab 的理由**：模型库级操作（合并、新建、重组）与运行仿真在语义上互斥——用户不应该一边 merge 模型文件一边跑仿真。锁定使模式边界在 UI 层可见。
+**Rationale for locking the other tabs**: model-library-level operations (merge, create, reorganize) are semantically mutually exclusive with running a simulation — a user shouldn't be merging model files while a simulation is running. Locking makes this mode boundary visible at the UI level.
 
 ---
 
-## 不在范围
+## Out of scope
 
-- 多个并发 Builder Tab（不需要）
-- Builder Tab 的持久化（不保存"正在编辑"状态到 localStorage）
-- 模型文件内容的版本对比（由 git 承担）
+- Multiple concurrent Builder tabs (not needed)
+- Persisting the Builder tab (an "in-progress edit" state is not saved to localStorage)
+- Diffing model file content across versions (handled by git)

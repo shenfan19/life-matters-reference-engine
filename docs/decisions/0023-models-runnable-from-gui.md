@@ -1,44 +1,44 @@
-# 0023 — Models 可在 GUI 文件树中直接运行
+# 0023 — Models can be run directly from the GUI file tree
 
-**状态**: ✅ 已实施  
-**日期**: 2026-04-12  
-**作者**: shenfan19
+**Status**: implemented
+**Date**: 2026-04-12
+**Author**: shenfan19
 
 ---
 
-## 背景
+## Background
 
-过去，仿真器 GUI 的文件树（左侧 Scenarios 面板）只展示 `models/scenarios/` 下的场景文件。如果想测试一个独立的 model 文件（如 `running.yaml`），必须为它单独建一个空壳 scenario。
+Previously, the simulator GUI's file tree (the left-hand Scenarios panel) only showed scenario files under `models/scenarios/`. To test a standalone model file (e.g. `running.yaml`), a user had to build a separate empty-shell scenario just for it.
 
-这导致两个问题：
-1. 测试新模型时需要写冗余的 scenario wrapper，阻碍快速迭代；
-2. 每个 model 有自己的 `simulator` 配置（`total_time`、`step_size`、`output_variables`），脱离 scenario 无法被触发。
+This caused two problems:
+1. Testing a new model required writing a redundant scenario wrapper, which slowed down iteration.
+2. Each model has its own `simulator` configuration (`total_time`, `step_size`, `output_variables`), which could not be triggered outside a scenario.
 
-## 决策
+## Decision
 
-在 GUI 文件树中同时暴露 `SCENARIOS` 和 `MODELS` 两个顶级分组，让带有完整 `simulator` 配置的 model 文件可以直接被选中、验证并运行，无需 scenario 包装。
+Expose two top-level groups, `SCENARIOS` and `MODELS`, in the GUI file tree, so a model file with a complete `simulator` configuration can be selected, validated, and run directly, without needing a scenario wrapper.
 
-具体实现：
-- `loadFileTree` 同时扫描 `scenarios/` 和 `models/` 目录；
-- SCENARIOS 组和 MODELS 组作为不可选的分组节点，下挂各自的文件树；
-- Models 文件节点使用紫色 tag 区分视觉风格；
-- `handleValidateAndLock` 在 validate 时读取返回的 `standalone` 字段，若为 `false` 则展示警告提示（不阻止运行）。
+Implementation details:
+- `loadFileTree` scans both the `scenarios/` and `models/` directories
+- SCENARIOS and MODELS appear as non-selectable group nodes, each with its own file tree beneath it
+- Model file nodes are visually distinguished with a purple tag
+- `handleValidateAndLock` reads the `standalone` field returned by validation; if it is `false`, a warning is shown (without blocking the run)
 
-## standalone 约定
+## The `standalone` convention
 
-每个 model 文件在 `metadata` 中用 `standalone` 字段声明是否可独立运行：
+Each model file declares in its `metadata` whether it can run independently, via the `standalone` field:
 
 ```yaml
 metadata:
-  standalone: true   # 有完整 simulator 配置，可直接运行（默认）
-  standalone: false  # 库组件，依赖其他模型 import，单独运行结果不完整
+  standalone: true   # has a complete simulator configuration, can run directly (default)
+  standalone: false  # a library component, depends on being imported by other models; running it alone yields incomplete results
 ```
 
-`standalone: false` 的模型在 GUI 验证时会显示：
-> "此文件为库组件——不依赖关联模型时仿真结果可能不完整"
+A model with `standalone: false` shows the following message during GUI validation:
+> "This file is a library component — simulation results may be incomplete without its dependent models"
 
-## 被否定的方案
+## Rejected alternatives
 
-- **只在 scenarios/ 下建 test 场景**：样板代码多，维护负担重，每次改 model 参数都要同步 scenario。  
-- **新增专门的 test/ 工具页面**：开发成本高，且与现有仿真器功能重复。  
-- **不做区分，所有 model 都可运行**：`standalone: false` 的库组件（如 `diabetes_core`）在没有依赖时仿真结果无意义，容易误导用户。
+- **Building test scenarios only under scenarios/**: too much boilerplate, high maintenance burden, requiring the scenario to be kept in sync every time a model's parameters change.
+- **A dedicated test/ tooling page**: high development cost, and largely duplicates the existing simulator's functionality.
+- **No distinction, letting every model run**: library components with `standalone: false` (e.g. `diabetes_core`) produce meaningless simulation results when run without their dependencies, which is likely to mislead users.

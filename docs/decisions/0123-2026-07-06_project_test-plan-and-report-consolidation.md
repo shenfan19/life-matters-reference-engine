@@ -1,72 +1,51 @@
-# 0123 — 测试大纲 + 测试报告合并，迁至 `models/test/`
+# 0123 — Test plan + test report merged, moved to `models/test/`
 
-**日期**：2026-07-06
-**状态**：✅ 已接受
+**Date**: 2026-07-06
+**Status**: Accepted
 
 ---
 
-## 背景
+## Background
 
-测试/验证相关文档此前散落在四处，互不引用、职责边界模糊：
+Testing/validation documentation was previously scattered across four locations, none cross-referencing the others, with blurred boundaries of responsibility:
 
-1. `docs/reference_engine/validation.md`（ADR 0056 三层验证框架：数值精度/文献对标/优化合理性），
-   引用了尚未实现的 `scripts/validate_banister.py`。
-2. `life-matters-home/process/c_paper_model_verify_checklist.md`（逐 YAML 模型 A–F 人工核对表）。
-3. `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md`（项目级上线/发表前
-   检查清单，与 #2 部分重叠，同时混有部署/安全等内部专属内容）。
-4. `tests/errors/README.md`、`tests/models/README.md`、`models/test/{valid,invalid}/README.md`
-   （实际 pytest 套件的范围说明，分散引用前三者）。
+1. `docs/reference_engine/validation.md` (ADR 0056's three-tier validation framework: numerical precision / literature benchmarking / optimization plausibility), which referenced a `scripts/validate_banister.py` that had not yet been implemented.
+2. `life-matters-home/process/c_paper_model_verify_checklist.md` (a manual A–F checklist for each YAML model).
+3. `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` (a project-level pre-launch/pre-publication checklist, partially overlapping with #2, while also mixing in internal-only content such as deployment/security).
+4. `tests/errors/README.md`, `tests/models/README.md`, `models/test/{valid,invalid}/README.md` (scope descriptions for the actual pytest suites, each referencing the three documents above in a scattered way).
 
-没有单一"测什么、怎么测、通过标准是什么"（大纲）与"实际测过什么、结果如何"（报告）的区分，
-新协作者需要跨四个仓库拼凑全貌。
+There was no single distinction between "what is tested, how, and what the pass criteria are" (a plan) and "what has actually been tested and with what results" (a report); a new collaborator had to piece together the full picture across four repositories.
 
-## 决策
+## Decision
 
-### 1. 拆成大纲 + 报告两个文件，放在 `models/test/`
+### 1. Split into a plan and a report, placed under `models/test/`
 
-- `models/test/test_plan.md`：静态方法论——测试范围、协议、通过标准。合并 #1（三层框架全文）、
-  #2（A–F 核对表全文）、#3 中通用的引擎数值正确性/API-IO 检查方法（非项目专属 bug 追踪）。
-- `models/test/test_report.md`：动态执行记录——每次运行/复核后追加一条结果，不覆盖历史。
+- `models/test/test_plan.md`: static methodology — test scope, protocol, pass criteria. Merges #1 (the full three-tier framework), #2 (the full A–F checklist), and the general engine-numerical-correctness/API-IO checking methods from #3 (not the project-specific bug tracking).
+- `models/test/test_report.md`: a dynamic execution record — each run/review appends a result entry, never overwriting history.
 
-**放在 `models/test/` 而不是 `docs/reference_engine/`**：测试对象本质是"引擎 + 模型"的组合（层2/层3
-验证、逐模型核对表都是针对具体 YAML 模型运行的），模型生态仓库（`life-matters-models`）已有 `models/test/`
-承载测试 fixture（`valid/`/`invalid/`），大纲+报告与这些 fixture 同属"测试基础设施"，放在一起比
-分散在 `docs/reference_engine/` 与 `life-matters-home` 两处更容易维护和引用。
+**Placed under `models/test/` rather than `docs/reference_engine/`**: the object under test is fundamentally the "engine + model" combination (the tier-2/tier-3 validations and the per-model checklist are all run against specific YAML models), and the model-ecosystem repository (`life-matters-models`) already has `models/test/` hosting test fixtures (`valid/`/`invalid/`). Keeping the plan and report alongside these fixtures, as part of the same "test infrastructure," is easier to maintain and reference than splitting them across `docs/reference_engine/` and `life-matters-home`.
 
-### 2. 公开/内部边界：不是所有"测试相关文档"都合并搬迁
+### 2. The public/internal boundary: not every "test-related document" gets merged and moved
 
-`models/test/` 随代码库公开发布（GitHub）。#3 号文档混有部署资源保护（如 session 超时 P0 未实现）、
-安全合规等**内部专属**内容——公开这类信息等于公示未修复的漏洞。因此：
+`models/test/` is published publicly along with the codebase (GitHub). Document #3 mixes in **internal-only** content such as deployment resource protection (e.g. the P0 session-timeout item, not yet implemented at the time) and security compliance — publishing this kind of information would amount to disclosing unfixed vulnerabilities. Accordingly:
 
-- #1、#2 全文合并，原文件删除（内容纯粹是科学方法论，无发布风险）。
-- #3 只把**通用检查方法**（引擎数值正确性一般性检查项、API/IO 边界检查方法）合并进
-  `test_plan.md`，原文件保留在 `life-matters-home/tasks/`，只做瘦身（重复部分改为指向 test_plan.md 的
-  指针），继续承载部署/安全/具体 bug 追踪等内部内容。
-- #4 三个 README 不变（描述的是 fixture 目录本身，不是待合并的"测试文档"）。
+- #1 and #2 were merged in full, and the original files deleted (their content is purely scientific methodology, with no publication risk).
+- Only the **general checking methods** from #3 (general engine-numerical-correctness checks, API/IO boundary checking methods) were merged into `test_plan.md`; the original file remains in `life-matters-home/tasks/`, only slimmed down (the duplicated portions replaced with pointers to `test_plan.md`), continuing to hold internal content such as deployment/security and specific bug tracking.
+- The three README files in #4 are unchanged (they describe the fixture directories themselves, not the "test documents" being merged).
 
-### 3. 报告只记录已实际验证的内容，不照抄旧文档的断言
+### 3. The report records only what has actually been verified, not carried-over assertions from the old documents
 
-生成 `test_report.md` 时实际运行了 `pytest tests/`（22 项全部通过，2026-07-06），如实记录；
-层2/层3 验证从未针对当前引擎代码执行过，报告中明确标注"尚未执行"，不复用 `validation.md`
-设计期埋入的示例数值冒充已验证结果。
+While generating `test_report.md`, `pytest tests/` was actually run (22 tests, all passing, 2026-07-06) and recorded as-is; the tier-2/tier-3 validations had never been executed against the current engine code, so the report explicitly marks them as "not yet executed," rather than reusing the illustrative figures embedded in `validation.md` at design time as if they were already-verified results.
 
-## 结果
+## Outcome
 
-- 新增：`models/test/test_plan.md`、`models/test/test_report.md`
-- 删除：`docs/reference_engine/validation.md`、`life-matters-home/process/c_paper_model_verify_checklist.md`
-- 瘦身：`life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md`（第1/3节改为
-  指针，保留内部专属追踪项）
-- 更新引用：根 `README.md`、`docs/reference_engine/DECISIONS.md`、
-  `docs/reference_engine/decisions/README.md`、`models/papers/README.md`、
-  `life-matters-home/process/lm_update_checklist.md`、`life-matters-home/process/case_study_minipaper_methodology.md`、
-  `tests/models/README.md`
+- Added: `models/test/test_plan.md`, `models/test/test_report.md`
+- Removed: `docs/reference_engine/validation.md`, `life-matters-home/process/c_paper_model_verify_checklist.md`
+- Slimmed down: `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` (sections 1/3 replaced with pointers, internal-only tracking items retained)
+- Updated references: the root `README.md`, `docs/reference_engine/DECISIONS.md`, `docs/reference_engine/decisions/README.md`, `models/papers/README.md`, `life-matters-home/process/lm_update_checklist.md`, `life-matters-home/process/case_study_minipaper_methodology.md`, `tests/models/README.md`
 
-## 未决
+## Open items
 
-- ~~`reference_engine/scripts/validate_banister.py` 仍未实现，层1数值精度验证仍依赖人工计算~~
-  **2026-07-10 已实现并执行 V1**（真实结果 FAIL，误差放大机制分析见 `test_report.md` 第2节；
-  `test_plan.md` 第0节汇总表同步更新）。V2/V3 仍未实现，依赖另一条 C 类未决问题（训练负荷
-  数字对齐方向）。
-- `tests/models/` 数值回归覆盖率**2026-07-10 起从 1 个模型变量扩展到 2 个**（新增
-  `test_plans/caloric_deficit` 关系型回归），仍偏低，持续追踪见
-  `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` §8。
+- ~~`reference_engine/scripts/validate_banister.py` still not implemented; tier-1 numerical-precision validation still relies on manual computation~~
+  **Implemented and run as V1 on 2026-07-10** (the actual result was FAIL; the error-amplification mechanism is analyzed in `test_report.md` section 2; the summary table in `test_plan.md` section 0 was updated accordingly). V2/V3 remain unimplemented, pending another open category-C item (the direction of aligning training-load figures).
+- Numerical regression coverage in `tests/models/` **expanded from 1 model variable to 2 as of 2026-07-10** (a new `test_plans/caloric_deficit` relational regression), still low; ongoing tracking in `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` §8.

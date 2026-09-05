@@ -1,51 +1,51 @@
-# ADR 0067 — 优化算法参数预设与滑动条 UI
+# ADR 0067 — Optimizer Algorithm Parameter Presets and Slider UI
 
-## 状态
+## Status
 
-✅ 已实施
+✅ Implemented
 
-## 日期
+## Date
 
 2026-05-15
 
-## 背景
+## Background
 
-优化器运行时间极长（半小时以上），根因是 GUI 默认值 `pop=100, gen=200`，产生 20,000 次仿真评估。用户对 `population_size` / `n_generations` 这两个参数缺乏直觉，不知道如何权衡速度与精度，且原有控件仅为两个裸 `InputNumber`，无任何引导。
+Optimizer runs took extremely long (over half an hour), rooted in the GUI defaults `pop=100, gen=200`, which produce 20,000 simulation evaluations. Users have no intuition for the `population_size` / `n_generations` parameters and no way to judge the speed/precision tradeoff, and the original controls were just two bare `InputNumber` fields with no guidance at all.
 
-同时，`L-BFGS-B` 和 `Nelder-Mead` 单目标算法不使用种群/代数概念，原来的控件显示在这两个算法下是无意义的噪音。
+At the same time, the single-objective algorithms `L-BFGS-B` and `Nelder-Mead` don't use the population/generation concept, so the existing controls were meaningless noise under those two algorithms.
 
-## 决策
+## Decision
 
-### 1. 默认值收紧
+### 1. Tighten the defaults
 
-`Simulator.tsx` 的初始状态从 `pop=100, gen=200`（20,000 次评估）改为 `pop=50, gen=80`（4,000 次评估），对应"标准"档位。
+`Simulator.tsx`'s initial state changes from `pop=100, gen=200` (20,000 evaluations) to `pop=50, gen=80` (4,000 evaluations), matching the "Standard" tier.
 
-### 2. 三档预设按钮
+### 2. Three preset buttons
 
-在算法选择器下方加入快速 / 标准 / 精细三个预设按钮，点击同步更新滑动条和输入框：
+Below the algorithm selector, add Fast / Standard / Fine preset buttons; clicking one updates the slider and input box in sync:
 
-| 档位 | pop | gen | 总评估次数 | 适用场景 |
+| Tier | pop | gen | Total evaluations | Use case |
 |------|-----|-----|-----------|---------|
-| 快速 | 20  | 40  | 800       | 调试、快速验证 |
-| 标准 | 50  | 80  | 4,000     | 日常使用（默认） |
-| 精细 | 100 | 200 | 20,000    | 发表级精度 |
+| Fast | 20  | 40  | 800       | debugging, quick checks |
+| Standard | 50  | 80  | 4,000     | everyday use (default) |
+| Fine | 100 | 200 | 20,000    | publication-grade precision |
 
-超出预设范围可直接在输入框手动填入，滑动条显示到 200 封顶。
+Values outside the presets can be entered directly in the input box; the slider caps its display at 200.
 
-### 3. 滑动条 + 输入框联动
+### 3. Slider + input box, linked
 
-原来的两个 `InputNumber` 替换为 `Slider + InputNumber` 组合：
+The original two `InputNumber` fields are replaced with a `Slider + InputNumber` combination:
 
-- 拖动结束（`onChangeComplete`）才更新父组件状态，避免每像素触发重渲染导致卡顿
-- 输入框失焦或回车才提交，避免输入中途值跳动
-- 本地 state（`localPop` / `localGen`）持有草稿值，提交时同步到父组件
+- The parent state updates only when a drag ends (`onChangeComplete`), avoiding a re-render on every pixel of movement, which was causing jank
+- The input box commits only on blur or Enter, avoiding value jumps mid-typing
+- Local state (`localPop` / `localGen`) holds the draft value and syncs to the parent component on commit
 
-### 4. 按算法类型显示/隐藏
+### 4. Shown/hidden by algorithm type
 
-种群/代数控件仅在 NSGA-II 和 MOEA/D 下显示；L-BFGS-B 和 Nelder-Mead 选中时隐藏，避免无意义的参数暴露。
+The population/generation controls are shown only under NSGA-II and MOEA/D; they're hidden when L-BFGS-B or Nelder-Mead is selected, avoiding meaningless parameter exposure.
 
-## 影响文件
+## Files affected
 
 - `sim_gui/src/components/SimSetupTab.tsx`
-- `sim_gui/src/components/Simulator.tsx`（默认值）
-- `sim_gui/public/locales/sim/zh-CN.json`、`en.json`、`zh-TW.json`（新增 preset 键）
+- `sim_gui/src/components/Simulator.tsx` (defaults)
+- `sim_gui/public/locales/sim/zh-CN.json`, `en.json`, `zh-TW.json` (new preset keys)

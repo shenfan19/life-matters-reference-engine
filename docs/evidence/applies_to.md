@@ -1,110 +1,110 @@
-# Evidence 的 `applies_to`：自动接入 dynamics
+# Evidence's `applies_to`: Automatically Wiring into Dynamics
 
-> 对应 `reference_engine/src/model_structure/loader.py` 中 `_apply_model_data` 里独立于换算循环的第二个循环（遍历 `variables:` 条目，处理 `applies_to` 字段）。换算出 `effective` 值本身的 8 种子类型方程见 [conversion.md](conversion.md)。YAML 字段声明方式见 `life-matters-models` 仓库 `docs/authoring/variables_and_equations.md`「自动接入 dynamics」一节。决策背景见 `life-matters-models` 仓库 `docs/decisions/0040-2026-04-22_sim_医学证据类型与变量映射.md`（顶层 `evidence:` 节的原始设计）与 `docs/decisions/0137-*.md`（并入 `variables:` 的后续决策）。
+> Corresponds to the second loop in `_apply_model_data`, in `reference_engine/src/model_structure/loader.py`, independent of the conversion loop (iterating over `variables:` entries, handling the `applies_to` field). For the 8 subtypes' equations that compute the `effective` value itself, see [conversion.md](conversion.md). For how to declare the YAML field, see the "Automatically wiring into dynamics" section of `docs/authoring/variables_and_equations.md` in the `life-matters-models` repository. For the decision background, see `docs/decisions/0040-2026-04-22_sim_medical-evidence-types-and-variable-mapping.md` in the `life-matters-models` repository (the original design of the top-level `evidence:` block) and `docs/decisions/0137-*.md` (the later decision to fold it into `variables:`).
 >
-> 本文件假设你已经读过 [conversion.md](conversion.md)，理解了 `effective` 换算出来的到底是"比例"（`rr`/`or`）还是"绝对速率"（`hr`/`ard`/`ir`）——`applies_to` 生成的方程为什么因子类型而异，根源就在这个区别。不熟悉这些统计量含义的读者请先看 conversion.md 的「逐一详解」。
+> This file assumes you have already read [conversion.md](conversion.md) and understand whether `effective`'s conversion produces a "ratio" (`rr`/`or`) or an "absolute rate" (`hr`/`ard`/`ir`) — this distinction is the root reason why the equation `applies_to` generates differs by subtype. Readers unfamiliar with what these statistics mean should read conversion.md's "walkthrough" section first.
 
-## 解决什么问题
+## What problem this solves
 
-声明了 `evidence_type` 的 `variables:` 条目换算出 `effective` 系数后，这个系数本身只回答了"这件事的效应有多大"，还没有回答"要把它接到仿真的哪个部分、怎么接"——具体说，就是要把它累加进哪个 `state` 变量的动力学方程，用加法还是乘法组合进已有的风险。举例：换算出"吸烟使 CVD 风险变成 2.5 倍"这个系数（$\text{effective} = 2.5$）之后，还需要有人写一句类似"每天把这个系数乘以基线风险，累加进吸烟者的累积患病概率"的方程——这句方程就是 `applies_to` 要自动生成的东西。
+Once a `variables:` entry declaring `evidence_type` has computed its `effective` coefficient, that coefficient alone only answers "how large is this thing's effect," not yet "which part of the simulation it should wire into, and how" — specifically, which `state` variable's dynamics equation it should accumulate into, and whether to combine it with the existing risk additively or multiplicatively. For example, after computing the coefficient "smoking makes CVD risk 2.5-fold" ($\text{effective} = 2.5$), someone still needs to write an equation along the lines of "each day, multiply this coefficient by the baseline risk and accumulate it into the smoker's cumulative disease probability" — this equation is exactly what `applies_to` is meant to auto-generate.
 
-5 种子类型（`ir`/`ard`/`hr`/`rr`/`or`）的接入方式只有一种没有歧义的写法——"以换算后的系数为速率，按步长累加进目标状态"——因为它们的统计定义本身就已经确定了"这是一个关于发生概率的速率"这件事，不存在第二种合理的接入方式。因此声明 `applies_to` 等字段后，Loader 会自动生成对应的 `Equation`，不需要建模者手写这段样板 dynamics。
+For 5 subtypes (`ir`/`ard`/`hr`/`rr`/`or`), there is only one unambiguous way to wire them in — "treat the converted coefficient as a rate, and accumulate it into the target state per step" — because their statistical definition alone already fixes the fact that "this is a rate concerning an occurrence probability," with no second reasonable way to wire it in. So once `applies_to` and related fields are declared, the Loader automatically generates the corresponding `Equation`, and the modeler need not hand-write this boilerplate dynamics.
 
-`cohens_d`/`beta`/`pk` **不支持** `applies_to`（声明会直接报错）：这 3 种的接入方式本身是建模判断，不存在唯一写法——例如 `cohens_d` 换算出的"两组均值差"，你可能想让它作为一次性偏移量直接加到目标变量上，也可能想让它作为渐进逼近的目标值（比如"运动 8 周后逐步达到这个提升"）；`beta` 的回归结构可能是线性也可能带交互项；`pk` 的房室模型结构（单室/多室、一级/零级消除）不唯一。这些"怎么接入"的问题没有数学上唯一正确的答案，Loader 不会替建模者做出这个选择，必须手写 dynamics。
+`cohens_d`/`beta`/`pk` **do not support** `applies_to` (declaring it raises an error directly): for these 3, how to wire it in is itself a modeling judgment call, with no single correct way to write it — for example, the "difference between two group means" that `cohens_d` converts to might be intended as a one-time offset added directly to the target variable, or as a target value approached gradually (e.g. "reaching this improvement gradually after 8 weeks of exercise"); `beta`'s regression structure might be linear or might include an interaction term; `pk`'s compartment-model structure (single- or multi-compartment, first-order or zero-order elimination) is not unique. These "how to wire it in" questions have no mathematically unique correct answer, and the Loader will not make this choice on the modeler's behalf — dynamics must be hand-written.
 
-## 触发条件与校验顺序
+## Trigger conditions and validation order
 
-对每个 `variables:` 条目，`applies_to` 循环按以下顺序检查（任一步失败即 raise，不静默跳过）：
+For each `variables:` entry, the `applies_to` loop checks in the following order (any step failing raises immediately, with no silent skip):
 
 ```mermaid
 flowchart TD
-    S0["variables 条目"] --> C1{"1. 声明了 applies_to？"}
-    C1 -->|"否"| SKIP["跳过，不生成 Equation<br/>（纯增量字段，不影响任何行为）"]
-    C1 -->|"是"| C1b{"1b. 声明了 evidence_type？"}
-    C1b -->|"否"| ERR0["报错：applies_to 仅用于<br/>evidence_type 换算结果，需去掉字段或补上 evidence_type"]
-    C1b -->|"是"| C2{"2. evidence_type 是<br/>cohens_d / beta / pk？"}
-    C2 -->|"是"| ERR1["报错：不支持 applies_to<br/>需去掉字段、手写 dynamics"]
-    C2 -->|"否"| C3{"3. applies_to 指向的变量<br/>已在 variables: 声明？"}
-    C3 -->|"否"| ERR2["报错：目标变量不存在<br/>（防止拼写错误悄悄生成坏方程）"]
-    C3 -->|"是"| C4{"4. 同一目标被两条以上<br/>evidence_type 变量同时声明？"}
-    C4 -->|"是"| ERR3["报错：目标冲突<br/>（多风险因子组合方式有歧义，需手写）"]
-    C4 -->|"否"| C5{"5. step_unit 合法？<br/>(minute / hour / day)"}
-    C5 -->|"否"| ERR4["报错：非法 step_unit"]
-    C5 -->|"是"| C6{"6. 能解析出合法 rate_unit？<br/>(minute/hour/day/week/month/year)"}
-    C6 -->|"否"| ERR5["报错：rate_unit 无法确定"]
-    C6 -->|"是"| OK["生成 _auto_evidence_name Equation<br/>累加进目标 state 变量"]
+    S0["A variables entry"] --> C1{"1. Does it declare applies_to?"}
+    C1 -->|"No"| SKIP["Skip, no Equation generated<br/>(a pure opt-in field, affects no behavior)"]
+    C1 -->|"Yes"| C1b{"1b. Does it declare evidence_type?"}
+    C1b -->|"No"| ERR0["Error: applies_to is only for<br/>an evidence_type conversion result; remove the field or add evidence_type"]
+    C1b -->|"Yes"| C2{"2. Is evidence_type<br/>cohens_d / beta / pk?"}
+    C2 -->|"Yes"| ERR1["Error: applies_to not supported<br/>remove the field, hand-write dynamics"]
+    C2 -->|"No"| C3{"3. Is the variable applies_to<br/>points to already declared in variables:?"}
+    C3 -->|"No"| ERR2["Error: target variable does not exist<br/>(prevents a typo from silently generating a bad equation)"]
+    C3 -->|"Yes"| C4{"4. Is the same target declared by<br/>more than one evidence_type variable at once?"}
+    C4 -->|"Yes"| ERR3["Error: target conflict<br/>(combining multiple risk factors is ambiguous, must hand-write)"]
+    C4 -->|"No"| C5{"5. Is step_unit valid?<br/>(minute / hour / day)"}
+    C5 -->|"No"| ERR4["Error: invalid step_unit"]
+    C5 -->|"Yes"| C6{"6. Can a valid rate_unit be resolved?<br/>(minute/hour/day/week/month/year)"}
+    C6 -->|"No"| ERR5["Error: rate_unit could not be determined"]
+    C6 -->|"Yes"| OK["Generate an _auto_evidence_name Equation<br/>accumulating into the target state variable"]
 ```
 
-各步骤的理由：
+The reason for each step:
 
-1. **未声明 `applies_to` → 跳过该条目，不影响任何行为**（纯增量字段）。这样设计是为了让不需要自动接线的模型完全不用碰这个字段，声明与否互不干扰。
-2. **声明了 `applies_to` 但未声明 `evidence_type` → 报错**。`applies_to` 并入 `variables:` 之后，理论上任何 `state`/`input`/`parameter` 条目都能写这个字段，但它的意义只在"把 evidence 换算结果接入某个状态变量的动力学"这一件事上成立——普通 parameter 声明 `applies_to` 大概率是笔误或对字段语义的误解，Loader 主动拒绝比静默忽略更安全。
-3. **`evidence_type` 是 `cohens_d`/`beta`/`pk` → 报错，要求去掉 `applies_to` 手写 dynamics**。理由见上一节——这 3 种的接入方式是建模判断，Loader 主动报错比"悄悄按某种默认方式接入、但建模者其实想要另一种方式"更安全：错误的自动接入会得到一个看起来能跑、但语义不对的模型，且不容易被发现。
-4. **`applies_to` 指向的变量名必须已在 `variables:` 声明 → 否则报错**。防止拼写错误导致 Loader 生成一个指向不存在变量的方程——如果不在这里检查，错误会推迟到方程求值阶段才暴露，那时候更难定位到底是哪个 evidence 条目的 `applies_to` 写错了。
-5. **同一个 `applies_to` 目标不能被两条以上 evidence_type 变量同时声明 → 否则报错**。**原因**：多个风险因子的组合方式（相乘=比例风险假设，还是相加=竞争风险模型）是有争议的流行病学方法论问题，Loader 不代为选择。举例：如果吸烟（$RR=2.5$）和肥胖（$OR=1.65$，换算后 $\approx 1.53$）都想接入同一个 `cvd_risk` 状态变量，二者同时起作用时，最终风险应该是"基线 $\times 2.5 \times 1.53$"（假设两个风险因子的效应独立相乘），还是某种加权相加，医学文献本身对此没有统一答案——这个判断必须由建模者手写 dynamics 做出，Loader 只会拒绝这种有歧义的自动接线请求，不会替你选一个默认组合方式。
-6. **`step_unit` 必须是 `minute`/`hour`/`day` 之一（与 `equations.step_unit` 同一约束）→ 否则报错**。这保证生成的方程使用引擎认识的时间粒度，和手写 `equations` 的约束保持一致，不会出现"自动生成的方程"和"手写的方程"遵循不同规则的情况。
-7. **按子类型解析 `rate_unit`（见下）→ 必须能在 `TIME_UNIT_SECONDS` 中找到（`minute`/`hour`/`day`/`week`/`month`/`year`）→ 否则报错**。生成表达式需要用 `rate_unit` 和 `step_unit` 的比值算出时间换算系数 `factor`（见下节）；如果 `rate_unit` 不合法（比如拼错、或指向的条目根本没声明这个字段），后续的换算系数就没有意义，必须在这里挡住。
+1. **`applies_to` not declared: skip this entry, affecting no behavior** (a pure opt-in field). This design lets a model that doesn't need auto-wiring never have to touch this field at all; declaring it or not does not interfere either way.
+2. **`applies_to` declared but `evidence_type` not declared: error**. Once `applies_to` was folded into `variables:`, in principle any `state`/`input`/`parameter` entry could write this field, but its meaning only holds for the one purpose of "wiring an evidence conversion result into some state variable's dynamics" — an ordinary parameter declaring `applies_to` is very likely a typo or a misunderstanding of the field's meaning, and the Loader actively rejecting it is safer than silently ignoring it.
+3. **`evidence_type` is `cohens_d`/`beta`/`pk`: error, requiring `applies_to` to be removed and dynamics hand-written**. The reason is in the previous section — how to wire these 3 in is a modeling judgment call, and the Loader actively erroring is safer than "silently wiring it in some default way, when the modeler actually wanted a different way": a wrong auto-wiring would produce a model that appears to run but has the wrong semantics, and this is not easy to notice.
+4. **The variable name `applies_to` points to must already be declared in `variables:`, otherwise error**. This prevents a typo from causing the Loader to generate an equation pointing at a nonexistent variable — if this weren't checked here, the error would be deferred until the equation-evaluation stage, at which point it is much harder to pin down which evidence entry's `applies_to` was wrong.
+5. **The same `applies_to` target cannot be declared by more than one evidence_type variable at once, otherwise error**. **Reason**: how to combine multiple risk factors (multiplicatively, the proportional-hazards assumption, or additively, a competing-risks model) is a disputed question of epidemiological methodology, and the Loader will not choose on the modeler's behalf. For example: if both smoking ($RR=2.5$) and obesity ($OR=1.65$, converting to about $1.53$) want to wire into the same `cvd_risk` state variable, when both act at once, should the final risk be "baseline times 2.5 times 1.53" (assuming the two risk factors' effects multiply independently), or some weighted sum — the medical literature itself has no unified answer to this. This judgment must be made by the modeler hand-writing dynamics; the Loader will only refuse this kind of ambiguous auto-wiring request, and will not pick a default combination method for you.
+6. **`step_unit` must be one of `minute`/`hour`/`day` (the same constraint as `equations.step_unit`), otherwise error**. This guarantees the generated equation uses a time granularity the engine understands, keeping it consistent with the constraint on hand-written `equations`, so an "auto-generated equation" and a "hand-written equation" never follow different rules.
+7. **Resolving `rate_unit` by subtype (below), which must be found in `TIME_UNIT_SECONDS` (`minute`/`hour`/`day`/`week`/`month`/`year`), otherwise error**. Generating the expression needs the ratio of `rate_unit` to `step_unit` to compute the time-conversion coefficient `factor` (see below); if `rate_unit` is invalid (e.g. misspelled, or pointing to an entry that never declared this field at all), the subsequent conversion coefficient would be meaningless, and this must be blocked here.
 
-## 生成的表达式
+## The generated expression
 
-时间单位换算系数：
+The time-unit conversion coefficient:
 
 $$
 \text{factor} = \frac{\text{TIME\_UNIT\_SECONDS}[\text{step\_unit}]}{\text{TIME\_UNIT\_SECONDS}[\text{rate\_unit}]}
 
 $$
 
-（`step_unit` 是生成方程实际用的步长单位；`rate_unit` 是这条速率本身"自然"的时间单位，二者可以不同，比如 `rate_unit: year` 的年发病率接入 `step_unit: day` 的方程，这时 $\text{factor} = 1/365$，把"每年多少"折算成"每天多少"）。
+(`step_unit` is the step-size unit the generated equation actually uses; `rate_unit` is this rate's own "natural" time unit, and the two can differ, e.g. an annual incidence with `rate_unit: year` wired into an equation with `step_unit: day`, giving $\text{factor} = 1/365$, converting "how much per year" into "how much per day").
 
 
-| 子类型       | `rate_unit` 从哪来                    | 生成的 dynamics 表达式                                                                                       |
+| Subtype       | Where `rate_unit` comes from                    | The generated dynamics expression                                                                                       |
 | -------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `ir` / `ard` | 条目自身声明的`rate_unit`             | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
-| `hr`         | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
-| `rr` / `or`  | `baseline_ref` 指向条目的 `rate_unit` | $\text{applies\_to} \mathrel{+}= \text{baseline\_ref} \cdot \text{ev} \cdot \text{factor} \cdot \text{step}$ |
+| `ir` / `ard` | The entry's own declared `rate_unit`             | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
+| `hr`         | The `rate_unit` of the entry `baseline_ref` points to | $\text{applies\_to} \mathrel{+}= \text{ev} \cdot \text{factor} \cdot \text{step}$                            |
+| `rr` / `or`  | The `rate_unit` of the entry `baseline_ref` points to | $\text{applies\_to} \mathrel{+}= \text{baseline\_ref} \cdot \text{ev} \cdot \text{factor} \cdot \text{step}$ |
 
-（`ev` 指该 evidence 条目换算后的 `effective` 值；表中 $\mathrel{+}=$ 表示"新值 = 旧值 + 右边这一项"，对应实际生成的 dynamics 字符串 `{applies_to} + ... * step`。）
+(`ev` refers to this evidence entry's converted `effective` value; $\mathrel{+}=$ in the table means "new value = old value plus this term on the right," corresponding to the actually generated dynamics string `{applies_to} + ... * step`.)
 
-**为什么 `hr` 和 `rr`/`or` 的表达式不一样**：`hr` 在换算阶段（[conversion.md](conversion.md)）已经把 $\text{effective} = h_0 \cdot HR$ 算成了一个绝对速率，所以这里直接乘 $\text{factor} \cdot \text{step}$ 累加即可；而 `rr`/`or` 换算阶段的 `effective` 是**纯比例**（`rr` 原样，`or` 转换后也仍是比例），本身不是速率，所以生成表达式里要再乘一次 `baseline_ref`（引用基线 `ir`/`ard` 条目换算后的变量值）才能得到"基线 × 比例"的速率。
+**Why `hr`'s expression differs from `rr`/`or`'s**: `hr`, at the conversion stage ([conversion.md](conversion.md)), has already computed $\text{effective} = h_0 \cdot HR$ as an absolute rate, so here it only needs multiplying by $\text{factor} \cdot \text{step}$ and accumulating directly; whereas `rr`/`or`'s `effective` at the conversion stage is a **pure ratio** (`rr` as-is, and `or` after conversion is still a ratio), not itself a rate, so the generated expression needs one more multiplication by `baseline_ref` (referencing the converted variable value of the baseline `ir`/`ard` entry) to get a "baseline times ratio" rate.
 
-`baseline_ref` 的要求：`rr`/`or` 必须显式声明且指向同一 YAML 文件内一个已加载的 `ir`/`ard` 类型 evidence 条目（否则报错，见校验步骤 6 对 `rate_unit` 的间接检查）；`hr` 的 `baseline_ref` 校验较松——若指向的条目不存在，`rate_unit` 会取到空字符串，仍会在步骤 6 因找不到合法 `rate_unit` 而报错，但报错信息只会提示"`rate_unit` 无法确定"，不会直接点出是 `baseline_ref` 写错了，排查时需注意。
+Requirements on `baseline_ref`: for `rr`/`or`, it must be explicitly declared and point to an already-loaded `ir`/`ard`-type evidence entry within the same YAML file (otherwise an error, via the indirect check on `rate_unit` in validation step 6); `hr`'s `baseline_ref` check is looser — if the entry it points to doesn't exist, `rate_unit` resolves to an empty string, which will still error at step 6 for failing to find a valid `rate_unit`, but the error message will only say "`rate_unit` could not be determined," without directly pointing out that `baseline_ref` was wrong; watch for this when troubleshooting.
 
-生成的 `Equation` 存入 `self.equations[f"_auto_evidence_{ev_name}"]`，`step_unit`/`step_size_sec` 按上表 `step_unit` 填入，`description` 自动生成为 `"自动生成：evidence '{ev_name}' 接入 '{applies_to}'（applies_to）"`。
+The generated `Equation` is stored in `self.equations[f"_auto_evidence_{ev_name}"]`, with `step_unit`/`step_size_sec` filled in per `step_unit` in the table above, and `description` auto-generated as `"Auto-generated: evidence '{ev_name}' wired into '{applies_to}' (applies_to)"`.
 
-### 完整代入数字的例子（`rr` vs `hr`）
+### A fully worked example with numbers (`rr` vs `hr`)
 
-用 [conversion.md](conversion.md) 里已经算过 `effective` 的两个 fixture，把生成表达式的每一步代入具体数字，直接对比"比例型"（`rr`）和"绝对速率型"（`hr`）两条路径的差异。
+Using the two fixtures for which `effective` was already computed in [conversion.md](conversion.md), substituting concrete numbers into each step of the generated expression, directly comparing the "ratio-type" (`rr`) and "absolute-rate-type" (`hr`) paths.
 
-**`rr` 路径**（`test_valid_evidence_rr.yaml` 中 `smoking_cvd_rr`）：
+**The `rr` path** (`smoking_cvd_rr` in `test_valid_evidence_rr.yaml`):
 
-- 换算结果（见 conversion.md）：$\text{effective} = RR = 2.5$（无量纲比例）。
-- `applies_to: smoker_cvd_risk_auto`，`baseline_ref: baseline_cvd_ir`（该条目 `rate_unit: year`），`step_unit: day`。
-- $\text{factor} = \dfrac{\text{TIME\_UNIT\_SECONDS[day]}}{\text{TIME\_UNIT\_SECONDS[year]}} = \dfrac{1}{365}$。
-- 生成表达式：$\text{smoker\_cvd\_risk\_auto} \mathrel{+}= \text{baseline\_cvd\_ir} \times \text{smoking\_cvd\_rr} \times \text{factor} \times \text{step}$。
-- 代入数字（$\text{baseline\_cvd\_ir} = 0.012$，$\text{step} = 1$）：
-
-$$
-0.012 \times 2.5 \times \frac{1}{365} \times 1 \approx 0.0000822 \ /\text{天}
+- Conversion result (see conversion.md): $\text{effective} = RR = 2.5$ (a dimensionless ratio).
+- `applies_to: smoker_cvd_risk_auto`, `baseline_ref: baseline_cvd_ir` (this entry has `rate_unit: year`), `step_unit: day`.
+- $\text{factor} = \dfrac{\text{TIME\_UNIT\_SECONDS[day]}}{\text{TIME\_UNIT\_SECONDS[year]}} = \dfrac{1}{365}$.
+- The generated expression: $\text{smoker\_cvd\_risk\_auto} \mathrel{+}= \text{baseline\_cvd\_ir} \times \text{smoking\_cvd\_rr} \times \text{factor} \times \text{step}$.
+- Substituting numbers ($\text{baseline\_cvd\_ir} = 0.012$, $\text{step} = 1$):
 
 $$
-
-即每天往 `smoker_cvd_risk_auto` 累加约 0.0000822 的风险。
-
-**`hr` 路径**（`test_valid_evidence_hr.yaml` 中 `statin_cvd_hr`）：
-
-- 换算结果（见 conversion.md）：$\text{effective} = h_0 \times HR = 0.012 \times 0.75 = 0.009$（已经是绝对速率，单位 prob/year）。
-- `applies_to: statin_protected_risk_auto`，`baseline_ref: baseline_cvd_ir`（`rate_unit: year`），`step_unit: day`。
-- $\text{factor} = 1/365$（与上例相同，因为 `rate_unit`/`step_unit` 组合相同）。
-- 生成表达式：$\text{statin\_protected\_risk\_auto} \mathrel{+}= \text{statin\_cvd\_hr} \times \text{factor} \times \text{step}$（**不再乘 `baseline_ref`**，因为 `statin_cvd_hr` 本身已经是绝对速率，再乘一次基线会重复计入）。
-- 代入数字：
-
-$$
-0.009 \times \frac{1}{365} \times 1 \approx 0.0000247 \ /\text{天}
+0.012 \times 2.5 \times \frac{1}{365} \times 1 \approx 0.0000822 \ /\text{day}
 
 $$
 
-两个例子的 `factor` 恰好相同（都是 $1/365$），差异完全来自表达式结构本身——`rr` 是"比例"所以要再乘一次基线才能变成速率，`hr` 是"已经算好的速率"所以不用再乘。这正是上面表格里 `rr`/`or` 一行比 `hr`/`ir`/`ard` 一行多出 `baseline_ref ×` 这一项的原因。
+That is, about 0.0000822 of risk is accumulated into `smoker_cvd_risk_auto` each day.
 
-## 执行顺序说明
+**The `hr` path** (`statin_cvd_hr` in `test_valid_evidence_hr.yaml`):
 
-`applies_to` 处理是独立于 evidence 换算的**第二个循环**（不并入换算循环），确保无论 YAML 中 `variables:` 条目的声明顺序如何，`baseline_ref` 指向的条目在这个循环开始前都已经在换算循环中处理完毕、存在于 `self.variables`/`variables_data` 中。
+- Conversion result (see conversion.md): $\text{effective} = h_0 \times HR = 0.012 \times 0.75 = 0.009$ (already an absolute rate, in prob/year).
+- `applies_to: statin_protected_risk_auto`, `baseline_ref: baseline_cvd_ir` (`rate_unit: year`), `step_unit: day`.
+- $\text{factor} = 1/365$ (the same as the example above, since the `rate_unit`/`step_unit` combination is the same).
+- The generated expression: $\text{statin\_protected\_risk\_auto} \mathrel{+}= \text{statin\_cvd\_hr} \times \text{factor} \times \text{step}$ (**no longer multiplied by `baseline_ref`**, because `statin_cvd_hr` is already an absolute rate, and multiplying by the baseline again would double-count it).
+- Substituting numbers:
+
+$$
+0.009 \times \frac{1}{365} \times 1 \approx 0.0000247 \ /\text{day}
+
+$$
+
+The two examples' `factor` happen to be identical (both $1/365$), and the difference comes entirely from the expression's own structure — `rr` is a "ratio," so it needs one more multiplication by the baseline to become a rate; `hr` is "already a computed rate," so no further multiplication is needed. This is exactly why the `rr`/`or` row in the table above has the extra `baseline_ref x` term that the `hr`/`ir`/`ard` row does not.
+
+## A note on execution order
+
+`applies_to` handling is a **second loop** independent of the evidence conversion (not folded into the conversion loop), ensuring that regardless of the declaration order of `variables:` entries in the YAML, the entry `baseline_ref` points to has already been processed by the conversion loop and exists in `self.variables`/`variables_data` before this loop begins.

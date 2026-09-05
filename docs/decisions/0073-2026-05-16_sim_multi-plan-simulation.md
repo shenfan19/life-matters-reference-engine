@@ -1,106 +1,106 @@
-# ADR 0073 — 多方案仿真：术语、数据模型与 MC 交互
+# ADR 0073 — Multi-Plan Simulation: Terminology, Data Model, and MC Interaction
 
-**日期**：2026-05-16  
-**状态**：已采纳（"Plan 不进 YAML"部分已被 ADR 0076 取代）  
-**范围**：LM-Simulator 前端 + 仿真引擎 API
-
----
-
-## 背景
-
-Pareto 前沿优化会产生一组非支配解，每个解对应一套完整的输入时间调度（Regimen）。建模者需要同时运行并可视化多套 Regimen 下的仿真轨迹，以便直观比较权衡。
-
-这引出两个需要做出明确决定的问题：
-
-1. **术语**：现有系统里"inputs"已指代输入变量（`type: input` 的 YAML 变量），需要一个不歧义的词来称呼"一套完整的输入配置"。
-2. **MC 交互**：多方案模式下，蒙特卡洛概率扰动如何与每个方案交互？
+**Date**: 2026-05-16
+**Status**: adopted (the "Plan does not go into YAML" part has been superseded by ADR 0076)
+**Scope**: LM-Simulator frontend + simulation-engine API
 
 ---
 
-## 术语决策
+## Background
 
-### 既有术语
+Pareto-front optimization produces a set of non-dominated solutions, each corresponding to a complete input time schedule (a regimen). Modelers need to run and visualize multiple regimens' simulation trajectories simultaneously, in order to compare tradeoffs directly.
 
-| 术语 | 现有含义 | 层级 |
+This raises two questions that need an explicit decision:
+
+1. **Terminology**: "inputs" already refers to input variables (YAML variables with `type: input`), so we need an unambiguous word for "one complete input configuration."
+2. **MC interaction**: in multi-plan mode, how should Monte Carlo probabilistic perturbation interact with each plan?
+
+---
+
+## Terminology decision
+
+### Existing terminology
+
+| Term | Existing meaning | Layer |
 |------|---------|------|
-| Input / 输入变量 | YAML `type: input` 的变量（如 `carb_intake`） | 变量层 |
-| Regimen / 用药方案 | 一个 input 变量的时间调度序列（时刻→值） | 调度层 |
-| Schedule | YAML `simulation.schedules` 中的单条时间事件 | 事件层 |
+| Input | a YAML variable of `type: input` (e.g. `carb_intake`) | variable layer |
+| Regimen | a time schedule (time → value) for one input variable | schedule layer |
+| Schedule | a single time-event entry in YAML `simulation.schedules` | event layer |
 
-### 新术语：Plan（方案）
+### New term: Plan
 
-**决定**：引入 **Plan（方案）** 作为"一次仿真运行的完整输入配置"的标准术语。
+**Decision**: introduce **Plan** as the standard term for "the complete input configuration behind one simulation run."
 
-| 术语 | 中文 | 含义 |
+| Term | Chinese | Meaning |
 |------|------|------|
-| Plan | 方案 | 一套完整的 Regimen 配置，驱动一次仿真运行 |
-| Multi-plan simulation | 多方案仿真 | 在同一图表中同时运行并对比多个 Plan 的功能 |
+| Plan | 方案 | a complete regimen configuration driving one simulation run |
+| Multi-plan simulation | 多方案仿真 | running and comparing multiple Plans within the same chart |
 
-**选词理由**：
-- "Plan"语义上是"打算如何输入"，天然对应 Regimen 概念，且不与"input 变量"混淆
-- "Strategy"（策略）语义更宏观，容易与优化目标混淆
-- "Case"（案例）常用于测试语境，有歧义
-- "Scenario"（情景）在 LM-Game 中已有特定含义，避免复用
+**Why this word**:
+- "Plan" semantically means "how one intends to feed inputs," which naturally maps onto the regimen concept, and doesn't clash with "input variable"
+- "Strategy" is too broad semantically and easily confused with optimization objectives
+- "Case" is commonly used in a testing context and would be ambiguous
+- "Scenario" already has a specific meaning in LM-Game, so its reuse is avoided
 
-**命名规则**：
-- 代码层：`Plan`（类型名）、`plans`（数组）、`activePlanId`
-- UI 层（中文）：方案、方案列表、添加方案、删除方案
-- UI 层（英文）：Plan, Plans, Add Plan, Remove Plan
+**Naming convention**:
+- Code layer: `Plan` (type name), `plans` (array), `activePlanId`
+- UI layer (Chinese): 方案, 方案列表, 添加方案, 删除方案
+- UI layer (English): Plan, Plans, Add Plan, Remove Plan
 
 ---
 
-## 数据模型
+## Data model
 
-一个 Plan 是前端的运行时对象，不持久化到 YAML（方案是调试/分析工具，不是模型定义的一部分）。
+A Plan is a frontend runtime object and is not persisted to YAML (a plan is a debugging/analysis tool, not part of the model definition).
 
 ```typescript
 interface Plan {
-  id: string          // 唯一 ID，如 "plan-1"
-  label: string       // 用户可编辑的名称，如 "高蛋白方案"
-  color: string       // 图表区分色，从预设调色板分配
-  inputEvents: InputEvent[]  // 沿用现有 InputEvent 结构（与单方案 Regimen 相同）
+  id: string          // unique id, e.g. "plan-1"
+  label: string       // user-editable name, e.g. "High-protein plan"
+  color: string       // the chart's distinguishing color, assigned from a preset palette
+  inputEvents: InputEvent[]  // reuses the existing InputEvent structure (same as a single-plan regimen)
 }
 ```
 
-**共享字段**（所有 Plan 共享，不属于任何单个 Plan）：
-- 模型路径（`modelPath`）
-- 时间范围（`startDate` / `endDate`）
-- 步长（由模型 YAML 决定）
-- MC 设置（`mcEnabled`、`mcRuns`、`mcSeed`）
+**Shared fields** (shared across all Plans, not owned by any single Plan):
+- Model path (`modelPath`)
+- Time range (`startDate` / `endDate`)
+- Step size (determined by the model YAML)
+- MC settings (`mcEnabled`, `mcRuns`, `mcSeed`)
 
-**单方案退化**：当 `plans.length === 1` 时，UI 不显示方案列表，与现有单方案行为完全一致。
+**Single-plan degeneration**: when `plans.length === 1`, the UI does not show a plan list, and behavior is identical to the existing single-plan behavior.
 
 ---
 
-## MC 与多方案的交互
+## MC's interaction with multiple plans
 
-**决定**：MC 扰动**逐方案独立运行**，各方案使用相同的 MC 参数配置（runs、seed），但每方案产生独立的随机样本集合。
+**Decision**: MC perturbation runs **independently per plan**; each plan uses the same MC parameter configuration (runs, seed), but produces its own independent set of random samples.
 
-**理由**：
+**Rationale**:
 
-| 问题 | 决定 | 理由 |
+| Question | Decision | Rationale |
 |------|------|------|
-| 每个方案是否跑 MC？ | 是，各自独立 | 方案间差异本身就是"不同行为策略在相同个体差异分布下的效果"，需要各自的不确定性带 |
-| 各方案用同一 seed 还是不同 seed？ | 相同 seed | 相同 seed 使随机采样的个体群体保持一致，方案间差异更纯粹地反映策略差异而非随机波动差异 |
-| 不确定性带是否叠加显示？ | 是 | 同一图表中每个方案显示均值曲线 + 半透明置信带，颜色与方案色一致 |
+| Does each plan run MC? | Yes, independently | the difference between plans is itself "the effect of different behavioral strategies under the same distribution of individual variation," which needs its own uncertainty band per plan |
+| Same seed across plans, or different seeds? | Same seed | a shared seed keeps the randomly sampled population consistent, so differences between plans more purely reflect strategy differences rather than random-sampling noise |
+| Are uncertainty bands overlaid? | Yes | within the same chart, each plan shows a mean curve plus a semi-transparent confidence band, colored to match the plan's color |
 
-**可视化规则**：
-- 确定性模式：每方案一条曲线
-- MC 模式：每方案一条均值曲线 + 一个置信带（默认 5–95 百分位）
-
----
-
-## 与 F-OS（Opt→Sim 直通）的衔接
-
-从 Opt 面板"在 Sim 中运行"时：
-- 若当前只有一个 Plan，将该 Plan 的 inputEvents 替换为该解的 Regimen
-- 若用户选择"作为新方案添加"，在现有 Plans 中追加一个新 Plan，label 默认为解的序号（如 "Pareto #3"）
+**Visualization rules**:
+- Deterministic mode: one curve per plan
+- MC mode: one mean curve plus one confidence band (default 5th-95th percentile) per plan
 
 ---
 
-## 不在范围
+## Interaction with F-OS (Opt → Sim pass-through)
 
-- 方案配置保存到 YAML 或本地文件（方案是会话级对象）
-- 方案间统计显著性检验
-- 跨不同模型的方案比较（方案必须共享同一模型）
-- 方案数量超过 6 个（UI 颜色可区分上限）
+When running "in Sim" from the Opt panel:
+- If there is currently only one Plan, that Plan's inputEvents are replaced with the selected solution's regimen
+- If the user chooses "add as a new plan," a new Plan is appended to the existing Plans, with its label defaulting to the solution's index (e.g. "Pareto #3")
+
+---
+
+## Out of scope
+
+- Saving plan configurations to YAML or a local file (a plan is a session-scoped object)
+- Statistical significance testing between plans
+- Comparing plans across different models (all plans must share the same model)
+- More than 6 plans (the UI's color-distinguishability limit)

@@ -1,45 +1,45 @@
-# Optimizer 文档
+# Optimizer Documentation
 
-> **决议导航**：本文件中的关键决议已汇总至 [DECISIONS.md](DECISIONS.md)（⭐⭐ 为核心约束）。  
-> 关键 ADR：异步 Job → [0049](decisions/0049-2026-05-02_sim_Optimizer异步Job系统设计.md)；三层验证 → [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md)；Regimen 格式 → [0052](decisions/0052-2026-05-04_sim_schedule格式统一与opt-regimen支持.md)
+> **Decision navigation**: the key decisions in this file are summarized in [DECISIONS.md](DECISIONS.md) (⭐⭐ marks a core constraint).  
+> Key ADRs: the asynchronous job system -> [0049](decisions/0049-2026-05-02_sim_optimizer-async-job-system-design.md); the three-tier validation framework -> [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md); the Regimen format -> [0052](decisions/0052-2026-05-04_sim_schedule-format-unification-and-opt-regimen-support.md)
 
 ---
 
 ## 1. Requirements
 
-### 1.1 功能需求
+### 1.1 Functional requirements
 
-| ID  | 需求                                               |
+| ID  | Requirement                                               |
 | --- | ------------------------------------------------ |
-| R1  | 优化目标、决策变量、约束完全由 YAML `optimization:` 块驱动，不硬编码任何目标函数 |
-| R2  | 支持多目标算法（NSGA-II）和单目标算法（L-BFGS-B、Nelder-Mead）     |
-| R3  | 决策变量与固定背景输入统一在 `optimization.startpoint.regimens` 列表中定义；有 `optimize:` 块的条目为决策变量，无则为固定背景 |
-| R4  | 优化任务异步执行，API 立即返回 `job_id`，不阻塞主线程                |
-| R5  | 前端可通过轮询实时获取进度（当前代数、日志、fitness）                   |
-| R6  | GUI 可通过 `optimizer_override` 覆盖 YAML 中的优化配置      |
-| R7  | 支持任务取消（标记 cancelled，当前迭代完成后停止）                   |
-| R8  | **T2**：支持在建模者指定时间窗（`time_window`）内优化给药/进食时刻，粒度 `opt_step` 可选 `1h`（缺省）或 `15min` |
-| R9  | **T3**：支持从建模者预定义的候选星期模式列表（`days_options`）中选择一个，不在全 2⁷ 空间搜索 |
-| R10 | **T4**：支持在建模者指定日期窗口（`date_start_window`）内优化干预起始日 |
-| R11 | T2/T3/T4 可与 T1（值优化）任意组合，x 向量自动拼接所有已启用维度 |
-| R12 | T2/T3/T4 使用连续松弛（float bounds + 评估时取整），保持 NSGA-II 代码不变 |
-| R13 | **⚠️ 待实现**（2026-07-17 复核，代码无对应逻辑）：搜索可行性约束：T2 槽数 ≤ 9，T3 候选模式数 ≤ 6，T4 窗口天数 ≤ 365；单目标算法（L-BFGS-B / Nelder-Mead）遇 T2/T3/T4 时自动切换为 NSGA-II 并警告。当前 `optimizer_engine.py:341,384` 的算法选择只看 `method_raw`/`n_obj>=2`，不检查 `var_specs` 维度种类，也没有任何上限校验——`method: l-bfgs-b` 配大范围 T2/T3/T4 会直接用 scipy 连续松弛跑，不报错不切换 |
-| R14 | `optimization` 块可独立声明评估时间窗（`start_date`/`end_date`/`step_size`），用于缩短评估周期或保证结果可复现；缺省继承 `simulation` / `metadata` 设置（ADR 0083） |
-| R15 | GUI 工具栏的时间控件值通过 `optimizer_override` 传入引擎，优先级高于 YAML 静态值；改动实时有效 |
-| R16 | Sim 和 Opt 的输入列表完全分离：`InputEvent[]`（sim）不含任何优化字段；`OptInput[]`（opt 决策变量）独立管理（ADR 0084） |
-| R17 | `optimization.startpoint.regimens` 作为 opt 评估的固定背景输入（无 `optimize:` 块的条目）；该字段是独立声明，缺省时**不**继承 `simulation.plans[*].regimens`，直接报错（`optimizer_engine.py:83-85`） |
-| R18 | GUI 提供"← 从 Sim 导入"按钮：将当前 sim inputEvents 转换为 opt 决策变量并自动填充 bounds |
+| R1  | The optimization objectives, decision variables, and constraints are driven entirely by the YAML `optimization:` block, with no objective function hardcoded |
+| R2  | Supports a multi-objective algorithm (NSGA-II) and single-objective algorithms (L-BFGS-B, Nelder-Mead) |
+| R3  | Decision variables and fixed background inputs are defined together in the `optimization.startpoint.regimens` list; an entry with an `optimize:` block is a decision variable, otherwise it is a fixed background |
+| R4  | An optimization task runs asynchronously; the API returns a `job_id` immediately, without blocking the main thread |
+| R5  | The frontend can poll for live progress (the current generation, logs, fitness) |
+| R6  | The GUI can override the YAML's optimization configuration via `optimizer_override` |
+| R7  | Supports task cancellation (marking it cancelled, stopping after the current iteration finishes) |
+| R8  | **T2**: supports optimizing a dosing/eating time within a modeler-specified time window (`time_window`), with `opt_step` granularity of `1h` (default) or `15min` |
+| R9  | **T3**: supports choosing one pattern from a modeler-predefined list of candidate weekday patterns (`days_options`), rather than searching the full 2^7 space |
+| R10 | **T4**: supports optimizing an intervention's start date within a modeler-specified date window (`date_start_window`) |
+| R11 | T2/T3/T4 can be combined arbitrarily with T1 (value optimization); the x vector automatically concatenates every enabled dimension |
+| R12 | T2/T3/T4 use continuous relaxation (float bounds, rounded at evaluation time), keeping the NSGA-II code unchanged |
+| R13 | **Not yet implemented** (rechecked 2026-07-17, no corresponding logic in the code): search-feasibility constraints: T2's slot count <= 9, T3's candidate-pattern count <= 6, T4's window length <= 365 days; a single-objective algorithm (L-BFGS-B / Nelder-Mead) should auto-switch to NSGA-II with a warning when encountering T2/T3/T4. Currently `optimizer_engine.py:341,384`'s algorithm selection only looks at `method_raw`/`n_obj>=2`, without checking `var_specs`'s dimension types, and has no upper-bound validation at all — `method: l-bfgs-b` combined with a large-range T2/T3/T4 runs directly with scipy's continuous relaxation, with no error and no switch |
+| R14 | The `optimization` block can independently declare an evaluation time window (`start_date`/`end_date`/`step_size`), used to shorten the evaluation period or guarantee reproducibility; defaults to inheriting the `simulation` / `metadata` settings (ADR 0083) |
+| R15 | The GUI toolbar's time-control values are passed into the engine via `optimizer_override`, taking priority over the YAML's static values; a change takes effect live |
+| R16 | Sim's and Opt's input lists are fully separated: `InputEvent[]` (sim) contains no optimization field at all; `OptInput[]` (opt decision variables) is managed independently (ADR 0084) |
+| R17 | `optimization.startpoint.regimens` acts as the fixed background input for an opt evaluation (entries with no `optimize:` block); this field is declared independently and, when absent, does **not** inherit `simulation.plans[*].regimens`, erroring directly instead (`optimizer_engine.py:83-85`) |
+| R18 | The GUI provides a "<- Import from Sim" button: converting the current sim inputEvents into opt decision variables and auto-filling their bounds |
 
-### 1.2 依赖
+### 1.2 Dependencies
 
-| 库         | 用途                     | 最低版本    |
+| Library         | Purpose                     | Minimum version    |
 | --------- | ---------------------- | ------- |
-| `pymoo`   | NSGA-II / Callback     | ≥ 0.6.0 |
-| `scipy`   | L-BFGS-B / Nelder-Mead | ≥ 1.7.0 |
-| `asteval` | 方程求值                   | 任意      |
-| `fastapi` | 异步端点 + `create_task`   | ≥ 0.100 |
+| `pymoo`   | NSGA-II / Callback     | >= 0.6.0 |
+| `scipy`   | L-BFGS-B / Nelder-Mead | >= 1.7.0 |
+| `asteval` | Equation evaluation                   | any      |
+| `fastapi` | Async endpoints plus `create_task`   | >= 0.100 |
 
-pymoo 0.6+ 正确导入路径：
+The correct import path for pymoo 0.6+:
 ```python
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import Problem
@@ -52,24 +52,24 @@ from pymoo.termination import get_termination
 
 ## 2. Design
 
-### 2.1 架构：唯一优化路径
+### 2.1 Architecture: the single optimization path
 
-系统只有一条优化路径，完全由 YAML 的 `optimization:` 块驱动。
+The system has only one optimization path, driven entirely by the YAML's `optimization:` block.
 
-| 项目 | 说明 |
+| Item | Description |
 |------|------|
-| 前端入口 | `Simulator.tsx` `startOptimization()` |
-| 端点 | `POST /api/optimizer/run_yaml` |
-| 核心模块 | `reference_engine/src/optimizer_engine.py`（主流程）+ `optimizer_parsing.py`/`optimizer_eval.py`/`optimizer_backends.py`（按职责拆分，见 3.1） |
-| 算法 | NSGA-II（多目标）/ L-BFGS-B / Nelder-Mead（单目标） |
-| 优化对象 | YAML `optimization.startpoint.regimens` 中含 `optimize:` 块的条目（T1–T4 决策变量） |
-| 目标函数来源 | YAML `optimization.objectives` |
-| 进度回调 | pymoo `Callback` 每代调用一次 |
-| 进度展示 | 前端 1.5s 轮询 `/api/optimizer/status/{job_id}` |
+| Frontend entry point | `Simulator.tsx`'s `startOptimization()` |
+| Endpoint | `POST /api/optimizer/run_yaml` |
+| Core modules | `reference_engine/src/optimizer_engine.py` (the main flow) plus `optimizer_parsing.py`/`optimizer_eval.py`/`optimizer_backends.py` (split by responsibility, see 3.1) |
+| Algorithm | NSGA-II (multi-objective) / L-BFGS-B / Nelder-Mead (single-objective) |
+| Optimization target | Entries in YAML `optimization.startpoint.regimens` containing an `optimize:` block (T1-T4 decision variables) |
+| Objective-function source | YAML `optimization.objectives` |
+| Progress callback | A pymoo `Callback` called once per generation |
+| Progress display | The frontend polls `/api/optimizer/status/{job_id}` every 1.5s |
 
 ### 2.2 REST API
 
-**启动任务**
+**Starting a task**
 ```
 POST /api/optimizer/run_yaml
 Body: {
@@ -87,16 +87,16 @@ Body: {
     warm_start?: [{x: [...], f: [...]}],
   }
 }
-返回: {success: true, job_id: "uuid"}
+Returns: {success: true, job_id: "uuid"}
 ```
 
-`model_name` 使用 `selectedModel.key`（完整相对路径，如 `components/medical/disease/chronic/ckd_protein_muscle.yaml`）。  
-`optimizer_override` 覆盖 YAML `optimization:` 块中的对应字段，不提供时完全使用 YAML 配置。
+`model_name` uses `selectedModel.key` (the complete relative path, e.g. `components/medical/disease/chronic/ckd_protein_muscle.yaml`).  
+`optimizer_override` overrides the corresponding field in the YAML's `optimization:` block; when not supplied, the YAML configuration is used entirely as-is.
 
-**轮询状态**
+**Polling status**
 ```
 GET /api/optimizer/status/{job_id}
-返回: {
+Returns: {
   status:    "running" | "completed" | "failed" | "cancelled",
   history:   [{iteration, fitness, n_eval}],
   logs:      [{t: float, msg: str}],
@@ -109,13 +109,13 @@ GET /api/optimizer/status/{job_id}
 }
 ```
 
-**取消任务**
+**Cancelling a task**
 ```
 DELETE /api/optimizer/job/{job_id}
 ```
-标记为 cancelled，线程池中的任务继续运行到当前迭代结束。
+Marks it cancelled; the task in the thread pool keeps running until the current iteration finishes.
 
-### 2.3 OptResult 结构
+### 2.3 The OptResult structure
 
 ```json
 {
@@ -132,86 +132,84 @@ DELETE /api/optimizer/job/{job_id}
 }
 ```
 
-> **注**：`best_x`/`best_f` 是 API 响应级字段（取 Pareto 前沿第一个解）。YAML 层面的 canonical 表示是 `optimization.results.recommended`（只含 `x`、`f`；不再存解码后的人类可读字典，解码现场用 `xToInputEvents` 完成），由 GUI "保存结果到模型"写回。
+> **Note**: `best_x`/`best_f` are API-response-level fields (taking the Pareto front's first solution). The canonical representation at the YAML level is `optimization.results.recommended` (containing only `x` and `f`; the decoded human-readable dict is no longer stored, with decoding done on the fly via `xToInputEvents`), written back by the GUI's "Save results to the model."
 
-### 2.4 前端状态机
+### 2.4 The frontend state machine
 
 ```
 state:
-  optRunning: bool         - 是否在运行（轮询期间为 true）
-  optResult: any           - 完成后的 OptResult
-  optCurGen: int           - 当前代数（轮询更新）
-  optTotalGen: int         - 总代数（从 YAML optimization.algorithm.n_generations 读取）
-  optLogs: [{t, msg}]     - 日志条目
-  optJobId: string|null   - 当前 job_id
-  optPollRef: ref          - setInterval handle
+  optRunning: bool         - whether it's running (true while polling)
+  optResult: any           - the OptResult once finished
+  optCurGen: int           - the current generation (updated by polling)
+  optTotalGen: int         - the total number of generations (read from YAML optimization.algorithm.n_generations)
+  optLogs: [{t, msg}]     - log entries
+  optJobId: string|null   - the current job_id
+  optPollRef: ref          - the setInterval handle
 
 startOptimization():
-  POST run_yaml → 得到 job_id → setOptRunning(true)
-  → setInterval(1500ms): GET status → 更新进度
-    completed → setOptResult(data.result), clearInterval
-    failed    → message.error, clearInterval
+  POST run_yaml -> gets job_id -> setOptRunning(true)
+  -> setInterval(1500ms): GET status -> updates progress
+    completed -> setOptResult(data.result), clearInterval
+    failed    -> message.error, clearInterval
 
 cancelOptimization():
-  clearInterval → DELETE job/{job_id} → setOptRunning(false)
+  clearInterval -> DELETE job/{job_id} -> setOptRunning(false)
 
 UI:
-  optRunning=true            → 进度面板（Gen X/N + 日志 + 停止按钮）
-  !optRunning && pareto_front → ParetoChart
-  !optRunning && !optResult  → 占位提示
+  optRunning=true            -> a progress panel (Gen X/N plus logs plus a stop button)
+  !optRunning && pareto_front -> ParetoChart
+  !optRunning && !optResult  -> a placeholder prompt
 ```
 
-### 2.5 T2/T3/T4 调度粒度优化（ADR 0080/0088/0100）
+### 2.5 T2/T3/T4 scheduling-granularity optimization (ADR 0080/0088/0100)
 
-x 向量按 `optimization.startpoint.regimens` 列表顺序展开，每个条目按
-`[value?, time_start?, time_end?, days?, date_start?, date_end?]` 顺序贡献维度：
+The x vector expands in the order of the `optimization.startpoint.regimens` list, with each entry contributing dimensions in the order
+`[value?, time_start?, time_end?, days?, date_start?, date_end?]`:
 
-| Tier | YAML 字段 | x 维度 | 类型（连续松弛） |
+| Tier | YAML field | x dimensions | Type (continuous relaxation) |
 |------|----------|-------|--------------|
-| T1 值 | `optimize.value: [lo, hi]`，可选 `value_step` | 1 | float，声明 `value_step` 后离散为网格点 |
-| T2 时间窗（1 维） | `optimize.time_start: [lo, hi]`，`time_step` | +1 | float → slot idx |
-| T2 时间窗（2 维） | 额外声明 `optimize.time_end: [lo, hi]` | +2 | float → slot idx ×2 |
-| T3 星期模式 | `optimize.days_pool` + `days_n` | +1 | float → pattern idx |
-| T4 起始日 | `optimize.date_range`（两组窗口） | +1~2 | float → day offset |
+| T1 value | `optimize.value: [lo, hi]`, optionally `value_step` | 1 | float, discretized into a grid once `value_step` is declared |
+| T2 time window (1D) | `optimize.time_start: [lo, hi]`, `time_step` | +1 | float -> a slot index |
+| T2 time window (2D) | additionally declaring `optimize.time_end: [lo, hi]` | +2 | float -> a slot index x2 |
+| T3 weekday pattern | `optimize.days_pool` plus `days_n` | +1 | float -> a pattern index |
+| T4 start date | `optimize.date_range` (two window sets) | +1~2 | float -> a day offset |
 
-`OptResult.pareto_front` 中的 `x` 向量维度随之增加。T2 1 维（仅 `time_start`）时区间宽度
-（`time_end - time_start`）固定不变，搜索后的 `time_end` 按固定宽度推算；同时声明
-`optimize.time_end` 时为 2 维，起止独立搜索（详见 `life-matters-models` 仓库 `docs/authoring/regimens_and_optimization.md` x 向量编码规则）。
+`OptResult.pareto_front`'s `x` vector's dimensionality grows accordingly. In T2's 1D form (only `time_start`), the interval width (`time_end - time_start`) stays fixed, and the searched `time_end` is derived from that fixed width; declaring `optimize.time_end` at the same time makes it 2D, with the start and end searched independently (see the `life-matters-models` repository's `docs/authoring/regimens_and_optimization.md` for the x-vector encoding rule in detail).
 
-T1 的 `optimize.value` 默认在 `[lo, hi]` 连续区间内搜索，不声明 `value_step` 时解会带任意小数精度；声明 `value_step` 后，解码阶段把内部连续实数 snap 到以 `lo` 为起点、以 `value_step` 为间隔的网格点上，超出 `[lo, hi]` 的网格点会被 clamp 回边界，这与 T2 的 `time_step` 是同一种"连续内部表示 + 解码时离散化"模式，只是网格锚定在 `lo` 而非窗口起点，适合按临床/工程可读精度取值的场景，例如喂养量按 5 mL 一档、代谢当量按 0.1 MET-h 一档。
+T1's `optimize.value` searches within the continuous interval `[lo, hi]` by default, and without `value_step` declared, a solution can carry arbitrary decimal precision; once `value_step` is declared, the decoding stage snaps the internal continuous real number onto a grid anchored at `lo` with a spacing of `value_step`, clamping any grid point outside `[lo, hi]` back to the boundary — this is the same "continuous internal representation plus discretization at decode time" pattern as T2's `time_step`, just anchored at `lo` rather than the window's start, suited to a scenario needing a clinically/engineering-readable precision, e.g. a feeding amount in steps of 5 mL, or a metabolic equivalent in steps of 0.1 MET-h.
 
 ---
 
 ## 3. Implementation
 
-### 3.1 完整调用链
+### 3.1 The complete call chain
 
 ```
 Simulator.tsx  startOptimization()
   └─ POST /api/optimizer/run_yaml
-        ├─ 创建 job_id, job_history: List[Dict]
-        ├─ progress_cb(entry) → job_history.append + 每5代写log
+        ├─ creates job_id, job_history: List[Dict]
+        ├─ progress_cb(entry) -> job_history.append plus writing a log every 5 generations
         ├─ fn = functools.partial(run_yaml_optimizer, ...)
         ├─ asyncio.create_task(_run_optimizer_job(job_id, fn))
-        └─ 返回 {success: True, job_id}
+        └─ returns {success: True, job_id}
 
 _run_optimizer_job(job_id, fn)
-  └─ await loop.run_in_executor(None, fn)   # 线程池，不阻塞 event loop
+  └─ await loop.run_in_executor(None, fn)   # a thread pool, does not block the event loop
        └─ run_optimizer(engine, model_name, folder, progress_cb)
              ├─ engine.load_models([model_name], folder=None)
              ├─ base_model = engine.current_model
              ├─ opt_block = dict(base_model.optimizer)
-             ├─ 解析 objectives, constraints, inputs/regimen, algo, mc
-             ├─ 计算 time_hours / total_steps（见 3.3）
-             ├─ 构造 evaluate(x) 闭包
-             │     _clone(base_model) → _run_sim() → _eval_F() + _eval_G()
+             ├─ parses objectives, constraints, inputs/regimen, algo, mc
+             ├─ computes time_hours / total_steps (see 3.3)
+             ├─ constructs the evaluate(x) closure
+             │     _clone(base_model) -> _run_sim() -> _eval_F() + _eval_G()
              └─ _run_nsga2(evaluate, ..., progress_callback=progress_cb)
-                   └─ pymoo_minimize → 每代 _ProgressCb.notify → progress_cb
+                   └─ pymoo_minimize -> _ProgressCb.notify each generation -> progress_cb
 ```
 
-### 3.2 YAML optimization 块规范
+### 3.2 The YAML optimization-block specification
 
-决策变量与固定背景输入统一写在 `optimization.startpoint.regimens` 一个扁平列表里（R3/R17）：条目结构与 `simulation.plans[*].regimens` 相同（`variable`/`time_start`/`time_end`/`value`/`days`/`date_range`/`delivery`，见 [design.md](design.md) K×4），额外可加 `optimize:` 子块——有则该条目的对应维度成为决策变量，无则整条作为固定背景输入参与仿真。
+Decision variables and fixed background inputs are written together in a single flat list, `optimization.startpoint.regimens` (R3/R17): an entry's structure matches `simulation.plans[*].regimens` (`variable`/`time_start`/`time_end`/`value`/`days`/`date_range`/`delivery`, see [design.md](design.md)'s K x 4), with an `optimize:` sub-block optionally added — if present, the entry's corresponding dimension becomes a decision variable; if absent, the whole entry participates in the simulation as a fixed background input.
 
 ```yaml
 optimization:
@@ -222,12 +220,13 @@ optimization:
       direction: maximize
   constraints:
     - variable: constraint_var
-      condition: "<= 250"    # 缺省不写 metric：整条轨迹逐步校验（trajectory-wide max/min）
+      condition: "<= 250"    # metric omitted by default: the whole trajectory is checked step by step (a trajectory-wide max/min)
     - variable: another_constraint_var
       condition: ">= 10"
-      metric: mean            # 'final' | 'mean' | 'max' | 'min'；显式写 metric 时先按该口径把
-                               # 轨迹压成单值再比较（如 mean 表示"整体/平均达标"而非"每步都不能低于阈值"，
-                               # 允许有计划内的短暂低谷，如安排的完全休息日）
+      metric: mean            # 'final' | 'mean' | 'max' | 'min'; when metric is written explicitly, the
+                               # trajectory is first collapsed to a single value by that convention before comparing
+                               # (e.g. mean means "overall/on-average meeting the target," not "must never fall below
+                               # the threshold at any step," allowing a planned brief dip, such as a scheduled full rest day)
   startpoint:
     regimens:
       - variable: input_var_name
@@ -236,54 +235,54 @@ optimization:
         days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
         label: "Morning dose"
         optimize:
-          value: [0.0, 50.0]   # T1：value 区间 → 决策变量
+          value: [0.0, 50.0]   # T1: a value interval -> a decision variable
       - variable: another_var
         time_start: "20:00"
         time_end: "20:00"
-        value: 5.0              # 无 optimize: → 固定输入，不参与搜索
+        value: 5.0              # no optimize: -> a fixed input, not searched
   algorithm:
     population_size: 10
     n_generations: 15
-    seed: 19                    # NSGA-II 遗传算法 seed，与 MC 无关
-  mc:                           # 可选；缺席或 runs=1 = 单次评估（默认）
-    runs: 5                     # 每次候选评估的内层 MC run 数
+    seed: 19                    # the NSGA-II genetic-algorithm seed, unrelated to MC
+  mc:                           # optional; absent or runs=1 means a single evaluation (the default)
+    runs: 5                     # the number of inner-loop MC runs per candidate evaluation
 ```
 
-`optimize:` 子块除 T1（`value: [lo, hi]`）外还支持 T2（`time_start`/`time_end` 区间搜索）、T3（`days_pool`+`days_n` 候选星期模式）、T4（`date_range` 起止日窗口），四类可在同一条目上任意组合，详见 3.6。
+Besides T1 (`value: [lo, hi]`), the `optimize:` sub-block also supports T2 (`time_start`/`time_end` interval search), T3 (`days_pool` plus `days_n`, a candidate weekday pattern), and T4 (`date_range`, a start/end date window); the four can be combined arbitrarily on the same entry, see 3.6 for detail.
 
-未提供 `optimization.startpoint.regimens` 时不回退到 `simulation.plans`——两者是彼此独立的字段，`optimization.startpoint` 缺失直接报错（见 3.5）。
+When `optimization.startpoint.regimens` is not provided, it does not fall back to `simulation.plans` — the two are independent fields, and a missing `optimization.startpoint` errors directly (see 3.5).
 
-参考实现：`life-matters-models` 仓库 `models/papers/s1/banister/banister_opt.yaml`。
+Reference implementation: `models/papers/s1/banister/banister_opt.yaml` in the `life-matters-models` repository.
 
-### 3.3 评估时间窗配置（ADR 0083）
+### 3.3 Evaluation-time-window configuration (ADR 0083)
 
-优化器的评估时间窗和步长可在 `optimization` block 中独立声明，优先级高于 `simulation` / `metadata` 的默认值。GUI 工具栏的日期和步长通过 `optimizer_override` 传入，优先级最高。
+The optimizer's evaluation time window and step size can be declared independently in the `optimization` block, taking priority over the `simulation` / `metadata` defaults. The GUI toolbar's date and step-size controls are passed in via `optimizer_override`, taking the highest priority.
 
 ```yaml
 optimization:
-  start_date: "YYYY-MM-DD"   # 可选；缺省 simulation.start_date
-  end_date:   "YYYY-MM-DD"   # 可选；缺省 simulation.end_date
-  step_size:                  # 可选；缺省 metadata.step_size
+  start_date: "YYYY-MM-DD"   # optional; defaults to simulation.start_date
+  end_date:   "YYYY-MM-DD"   # optional; defaults to simulation.end_date
+  step_size:                  # optional; defaults to metadata.step_size
     value: 1
     unit: day
 ```
 
-**读取优先级**（由高到低）：
-1. `optimizer_override.start_date / end_date / step_size`（GUI 工具栏实时值）
-2. `optimization.start_date / end_date / step_size`（YAML 静态声明）
-3. `simulation.start_date / end_date` + `metadata.step_size`（默认继承）
+**Read priority** (highest to lowest):
+1. `optimizer_override.start_date / end_date / step_size` (the GUI toolbar's live value)
+2. `optimization.start_date / end_date / step_size` (the YAML's static declaration)
+3. `simulation.start_date / end_date` plus `metadata.step_size` (the default inheritance)
 
-### 3.3.1 仿真时长计算
+### 3.3.1 Simulation-duration calculation
 
 ```python
-# step_size: opt block 优先，否则 simulation block
+# step_size: the opt block takes priority, otherwise the simulation block
 _opt_step_cfg = opt_block.get('step_size')
 if _opt_step_cfg and isinstance(_opt_step_cfg, dict):
     _unit_to_sec = {'minute': 60.0, 'hour': 3600.0, 'day': 86400.0}
     step_size = float(_opt_step_cfg.get('value', 1)) * _unit_to_sec.get(
         str(_opt_step_cfg.get('unit', 'minute')).lower(), 60.0)
 else:
-    step_size = float(base_model.simulator.get('step_size', 86400.0))  # 秒
+    step_size = float(base_model.simulator.get('step_size', 86400.0))  # seconds
 
 sd = opt_block.get('start_date') or sim_data.get('start_date', '')
 ed = opt_block.get('end_date')   or sim_data.get('end_date', '')
@@ -291,66 +290,67 @@ if sd and ed:
     sy, sm, sdd_ = [int(x) for x in sd.split('-')]
     ey, em, edd_ = [int(x) for x in ed.split('-')]
     if sy >= 1:
-        total_days = (date(ey, em, edd_) - date(sy, sm, sdd_)).days  # 精确
+        total_days = (date(ey, em, edd_) - date(sy, sm, sdd_)).days  # exact
     else:
-        total_days = (ey-sy)*365 + (em-sm)*30 + (edd_-sdd_)          # 古代日期近似
-    time_hours = max(total_days, 1) * 24.0   # 先 clamp 天数下限再乘 24，修复单日/子日步长模型的
-                                              # unreachable-schedule bug（旧写法 max(1.0, total_days*24.0)
-                                              # 在 total_days<1 时会得到非 24 的倍数，错过命中窗口）
+        total_days = (ey-sy)*365 + (em-sm)*30 + (edd_-sdd_)          # an ancient-date approximation
+    time_hours = max(total_days, 1) * 24.0   # clamp the day-count lower bound first, then multiply by 24, fixing an
+                                              # unreachable-schedule bug for single-day/sub-day-step models (the old
+                                              # form max(1.0, total_days*24.0) gave a non-multiple-of-24 value when
+                                              # total_days<1, missing the hit window)
 else:
     time_hours = float(base_model.simulator.get('total_time', 1)) * step_size / 3600.0
 
 total_steps = max(1, int(time_hours * 3600.0 / step_size))
 ```
 
-### 3.4 进度回调数据格式
+### 3.4 The progress-callback data format
 
-每代一条（`_ProgressCb.notify`）：
+One entry per generation (`_ProgressCb.notify`):
 ```python
 {'iteration': algorithm.n_gen, 'fitness': float(np.min(F)), 'n_eval': algorithm.evaluator.n_eval}
 ```
 
-每5代一条日志（`_add_log`）：
+One log entry every 5 generations (`_add_log`):
 ```python
 {'t': unix_timestamp, 'msg': "Gen 5  best=-24.3215  eval=100"}
 ```
 
-### 3.5 调试检查清单
+### 3.5 A debugging checklist
 
-**症状：点击运行后 log 只有 "Loading model..."，没有 "Gen X"**
-1. 模型文件未找到 → 后端日志查 `ERROR:src.loader_engine:模型...未找到`
-2. `optimization.objectives` 缺失 → 返回 `"No objectives configured (add optimization: block in YAML or set targets in UI)"`
-3. `optimization.startpoint.regimens` 缺失 → 返回 `"No optimization.startpoint.regimens defined"`
-4. `optimization.startpoint.regimens` 里没有任何条目带 `optimize:` 子块 → 返回 `"No entries with optimize: sub-block in optimization.startpoint.regimens"`
+**Symptom: after clicking run, the log only shows "Loading model...", with no "Gen X"**
+1. The model file was not found -> check the backend log for `ERROR:src.loader_engine:Model ... not found`
+2. `optimization.objectives` is missing -> returns `"No objectives configured (add optimization: block in YAML or set targets in UI)"`
+3. `optimization.startpoint.regimens` is missing -> returns `"No optimization.startpoint.regimens defined"`
+4. No entry in `optimization.startpoint.regimens` carries an `optimize:` sub-block -> returns `"No entries with optimize: sub-block in optimization.startpoint.regimens"`
 
-**症状：log 有 "Starting optimizer..." 但没有 "Gen X"**
-1. pymoo 未安装 → `pip install pymoo`
-2. pymoo 版本 < 0.6 → `_ProgressCb.notify` API 不同，需升级
-3. `n_gen=0` 或 `pop_size=0` → 检查 YAML algorithm 配置
+**Symptom: the log shows "Starting optimizer..." but no "Gen X"**
+1. pymoo is not installed -> `pip install pymoo`
+2. The pymoo version is below 0.6 -> `_ProgressCb.notify`'s API differs, an upgrade is needed
+3. `n_gen=0` or `pop_size=0` -> check the YAML's algorithm configuration
 
-**症状：completed 但 optResult.pareto_front 为空**
-1. NSGA-II 返回 `res.X = None` → 检查 `job['error']` 字段
-2. 前端条件：`optResult?.pareto_front?.length > 0` → 确认 result 是 `data.result` 而非 `data`
+**Symptom: completed, but optResult.pareto_front is empty**
+1. NSGA-II returned `res.X = None` -> check the `job['error']` field
+2. A frontend condition: `optResult?.pareto_front?.length > 0` -> confirm the result is `data.result`, not `data`
 
-**症状：轮询返回 404**
-1. 后端重启了（job 在内存中，重启清空）
+**Symptom: polling returns 404**
+1. The backend restarted (jobs live in memory and are cleared on restart)
 
-### 3.6 T2/T3/T4 实现（ADR 0080，2026-05-20）
+### 3.6 The T2/T3/T4 implementation (ADR 0080, 2026-05-20)
 
-**后端（`optimizer_engine.py`）**
+**Backend (`optimizer_engine.py`)**
 
-- `_expand_time_window(window, opt_step)` → slot 列表
-- `run_optimizer` inputs 解析段：逐条目按 T1/T2/T3/T4 追加 `var_specs` 条目和 bounds
-- `_build_regimen_events(x)` 两步解码：先按 `id(entry)` 合并同条目，再写入 `time`/`days`/`valid_start`
-- `schedule_runner.apply_schedules` 事件循环内新增 `ev.valid_start` 检查（T4 起始日过滤）
+- `_expand_time_window(window, opt_step)` -> a list of slots
+- The `run_optimizer` inputs-parsing section: for each entry, appends a `var_specs` entry and bounds per T1/T2/T3/T4
+- `_build_regimen_events(x)`'s two-step decoding: first merging by `id(entry)` for the same entry, then writing `time`/`days`/`valid_start`
+- `schedule_runner.apply_schedules`'s event loop gained a check on `ev.valid_start` (a T4 start-date filter)
 
-> **R13（搜索空间上限 + 单目标自动切换 NSGA-II）未实现**，见 1.1 表格标注；本节描述的 T1–T4 解码本身已实现，缺的只是可行性护栏。
+> **R13 (a search-space upper bound plus auto-switching a single-objective algorithm to NSGA-II) is not yet implemented**, see the table annotation in 1.1; the T1-T4 decoding this section describes is itself already implemented, missing only the feasibility guardrail.
 
-**前端（`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`）**
+**Frontend (`types.ts` / `Simulator.tsx` / `SimSetupTab.tsx`)**
 
-- `InputEvent` 新增 7 个可选字段：`timeWindow`, `optStep`, `optimizeTime`, `daysOptions`, `optimizeDays`, `dateStartWindow`, `optimizeDateStart`
-- `xToInputEvents` 完全重写：修复了原有函数对 list-format inputs 的解析 bug，按 var_specs 顺序解码 T1–T4
-- init useEffect：从 YAML `inputs:` 块读入所有 T2/T3/T4 字段
-- `startOptimization`：从 `regimen:` 格式切换为 `inputs:` 格式（支持多变量），透传 T2/T3/T4 字段
-- `SimSetupTab` opt 模式下，值 bounds 下方新增 T2/T3/T4 行（仅当 YAML 有对应字段时显示）
-2. job_id 未正确传递给轮询
+- `InputEvent` gained 7 new optional fields: `timeWindow`, `optStep`, `optimizeTime`, `daysOptions`, `optimizeDays`, `dateStartWindow`, `optimizeDateStart`
+- `xToInputEvents` fully rewritten: fixed a bug in the original function's parsing of list-format inputs, decoding T1-T4 in `var_specs` order
+- The init useEffect: reads all T2/T3/T4 fields in from the YAML's `inputs:` block
+- `startOptimization`: switched from the `regimen:` format to the `inputs:` format (supporting multiple variables), passing T2/T3/T4 fields through
+- In `SimSetupTab`'s opt mode, T2/T3/T4 rows are added below the value bounds (shown only when the YAML has the corresponding fields)
+2. job_id was not passed correctly to the polling

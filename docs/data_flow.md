@@ -1,101 +1,101 @@
-# 数据流
+# Data Flow
 
-Life Matters 的数据流围绕一条原则组织：**模型文件是唯一的真相来源，计算结果是局部临时产物，发布是显式的主动操作。**
+Life Matters's data flow is organized around one principle: **the model file is the single source of truth, computed results are local, temporary artifacts, and publishing is an explicit, deliberate action.**
 
 ---
 
-## 两层存储
+## Two storage layers
 
-模型文件独立维护在 [life-matters-models](https://github.com/shenfan19/life-matters-models) 仓库；本仓库（life-matters-reference-engine）通过 `.env` 里的 `LM_MODELS_PATH` 变量指向该仓库的 `models/` 目录（默认 `../life-matters-models/models`），由 `reference_engine/src/paths.py` 在启动时解析，GUI 后端和 CLI 共用同一份解析结果，本仓库自身不跟踪任何 YAML 模型文件。
+The model files are maintained independently in the [life-matters-models](https://github.com/shenfan19/life-matters-models) repository; this repository (life-matters-reference-engine) points to that repository's `models/` directory via the `LM_MODELS_PATH` variable in `.env` (default `../life-matters-models/models`), resolved at startup by `reference_engine/src/paths.py`, with the GUI backend and the CLI sharing the same resolved path; this repository itself tracks no YAML model files.
 
-| 层 | 位置 | 性质 | 是否入 git |
+| Layer | Location | Nature | In git? |
 |----|------|------|-----------|
-| **模型层** | `models/**/*.yaml`（由 `LM_MODELS_PATH` 指向 life-matters-models 仓库） | 结构定义 + 已发布结果 | ✅，但在 life-matters-models 仓库里，不在本仓库 |
-| **输出层** | `output/` | 本地运行产物（CLI） | ❌（gitignore） |
+| **The model layer** | `models/**/*.yaml` (pointed to by `LM_MODELS_PATH`, in the life-matters-models repository) | Structural definitions plus published results | Yes, but in the life-matters-models repository, not this one |
+| **The output layer** | `output/` | Local run artifacts (CLI) | No (gitignored) |
 
-GUI 的运行状态存在浏览器 localStorage（session），不写磁盘，不入 git。
+The GUI's running state lives in the browser's localStorage (a session), never written to disk, never in git.
 
 ---
 
-## 数据流全景
+## The full data-flow picture
 
 ```
 models/**/*.yaml
     │
     ├─ CLI --sim-only ─────────────────► output/*_sim_YYYYMMDD_HHMM.csv
-    │                                        （时间序列，每列一个输出变量）
+    │                                        (a time series, one output variable per column)
     │
     ├─ CLI --opt-only ─────────────────► output/*_opt_YYYYMMDD_HHMM.csv
-    │   （每代覆盖写入，中断不丢）               （Pareto 前沿，x 列 + f 列）
+    │   (overwritten each generation, nothing lost on interruption)   (the Pareto front, x columns plus f columns)
     │
-    ├─ GUI sim tab ────────────────────► 内存 session（图表）
+    ├─ GUI sim tab ────────────────────► an in-memory session (charts)
     │
-    └─ GUI opt tab ────────────────────► 内存 session（Pareto 前沿）
+    └─ GUI opt tab ────────────────────► an in-memory session (the Pareto front)
                                               │
-                        output/*_opt.csv ─────┤ 导入 CSV → 合并 Pareto，
-                        （GUI 导入按钮）        │ 开启热启动
+                        output/*_opt.csv ─────┤ imported CSV -> merged into the Pareto set,
+                        (the GUI's import button)  │ enabling warm-start
                                               │
-                                      "保存结果到模型"
+                                    "Save results to the model"
                                               │
                                               ▼
                                    models/**/*.yaml
-                                   （写入 optimization.results 块）
+                                   (writing the optimization.results block)
                                               │
                                               ▼
-                              git（life-matters-models 仓库）
+                              git (the life-matters-models repository)
 ```
 
 ---
 
-## 三条典型路径
+## Three typical paths
 
-### 路径 A：本地批量优化（CLI 主导）
+### Path A: local batch optimization (CLI-led)
 
 ```
-1. 编写 / 调整 models/xxx.yaml
+1. Write / adjust models/xxx.yaml
 2. python cli/main.py models/xxx.yaml --opt-only
-   → output/xxx_opt_20260606_1130.csv（每代实时更新）
-3. 需要继续搜索：
-   --opt-continue              从 YAML 内嵌结果热启动
-   --opt-continue 20260606_1130  从指定 CSV 热启动
-4. 对结果满意 → 在 GUI opt tab 导入 CSV → "保存结果到模型"
-5. 在 life-matters-models 仓库 git commit → 发布
+   -> output/xxx_opt_20260606_1130.csv (updated live each generation)
+3. To keep searching:
+   --opt-continue              warm-starts from the YAML's embedded results
+   --opt-continue 20260606_1130  warm-starts from the specified CSV
+4. Satisfied with the result -> import the CSV in the GUI's opt tab -> "Save results to the model"
+5. git commit in the life-matters-models repository -> publish
 ```
 
-### 路径 B：交互式探索（GUI 主导）
+### Path B: interactive exploration (GUI-led)
 
 ```
-1. 在 GUI 加载模型，调整 inputEvents
-2. Sim tab 运行 → 实时图表
-3. Opt tab 设置目标 → 运行优化 → 查看 Pareto 前沿
-4. 选中 Pareto 行 → "发送到 Sim" → 验证最优方案
-5. "保存结果到模型" → 在 life-matters-models 仓库 git commit
+1. Load the model in the GUI, adjust inputEvents
+2. Run the Sim tab -> a live chart
+3. Set an objective in the Opt tab -> run the optimization -> view the Pareto front
+4. Select a Pareto row -> "Send to Sim" -> verify the optimal plan
+5. "Save results to the model" -> git commit in the life-matters-models repository
 ```
 
-### 路径 C：CLI 产出 → GUI 分析
+### Path C: CLI output analyzed in the GUI
 
 ```
-1. CLI 在无 GUI 环境批量跑出 output/*_opt.csv
-2. 打开 GUI → opt tab → "导入 CSV"
-3. Pareto 解合并到当前 session，热启动 checkbox 自动开启
-4. 继续在 GUI 中搜索或导出到 Sim
+1. The CLI batch-runs output/*_opt.csv in a GUI-less environment
+2. Open the GUI -> the opt tab -> "Import CSV"
+3. The Pareto solutions merge into the current session, with the warm-start checkbox auto-enabled
+4. Continue searching in the GUI, or export to Sim
 ```
 
 ---
 
-## CSV 格式（统一交换格式）
+## The CSV format (a unified exchange format)
 
-### `*_sim.csv`（仿真时序）
+### `*_sim.csv` (a simulation time series)
 
 ```
 time,var1,var2,...
-0,初始值,...
+0,initial value,...
 1,...
 ```
 
-第一列为时间步（按 step_size.unit 计），其余列为 `output_variables` 中指定的变量。
+The first column is the time step (measured in step_size.unit), and the remaining columns are the variables named in `output_variables`.
 
-### `*_opt.csv`（Pareto 前沿）
+### `*_opt.csv` (a Pareto front)
 
 ```
 x0,x1,...,xN,obj_var1,obj_var2,...
@@ -103,29 +103,29 @@ x0,x1,...,xN,obj_var1,obj_var2,...
 ...
 ```
 
-`x*` 列为决策变量原始值（与 `optimization.startpoint.regimens` 中带 `optimize:` 子块的条目顺序对应，有 `label` 时列名用 label 代替 `x0,x1,...`），其余列为目标变量名。可直接导入 GUI opt tab 进行热启动或 Pareto 分析。
+The `x*` columns are the decision variables' raw values (corresponding in order to the entries with an `optimize:` sub-block under `optimization.startpoint.regimens`; when a `label` is given, the column name uses the label instead of `x0,x1,...`), and the remaining columns are the objective-variable names. It can be imported directly into the GUI's opt tab for warm-starting or Pareto analysis.
 
 ---
 
-## 结果发布机制
+## The results-publishing mechanism
 
-CLI 和 GUI 都不自动修改原始 YAML。发布是用户的显式操作：
+Neither the CLI nor the GUI automatically modifies the original YAML. Publishing is an explicit user action:
 
-| 触发方式 | 操作 |
+| Trigger | Action |
 |---------|------|
-| GUI "保存结果到模型" | 将 session 中的 Pareto 前沿写入 `optimization.results` 块并保存到服务器 |
-| GUI 下载 YAML | 下载含 `optimization.results` 的完整 YAML（本地存档，不自动上传） |
+| The GUI's "Save results to the model" | Writes the session's Pareto front into the `optimization.results` block and saves it to the server |
+| Downloading the YAML from the GUI | Downloads the complete YAML including `optimization.results` (a local archive, not auto-uploaded) |
 
-写回后的 YAML 是完整可复现的：包含模型定义、优化配置和已验证结果，可直接共享或提交到 life-matters-models 仓库。
+The YAML after being written back is fully reproducible: it includes the model definition, the optimization configuration, and the validated results, and can be shared directly or committed to the life-matters-models repository.
 
 ---
 
-## SCS 模式差异
+## The SCS-mode difference
 
-SCS（云端部署）下 CLI 不可用，输出层不存在。GUI 的行为差异仅在写保护：
+Under SCS (cloud deployment), the CLI is unavailable and the output layer does not exist. The GUI's behavior differs only in write protection:
 
-- 运行仿真 / 优化：✅ 相同
-- 导入 CSV：✅ 相同（内存合并）
-- 保存结果到服务器：❌ 禁止（只能下载 YAML）
+- Running a simulation / optimization: the same
+- Importing a CSV: the same (an in-memory merge)
+- Saving results to the server: forbidden (only downloading the YAML is possible)
 
-详见 [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md)。
+See [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md) for detail.

@@ -1,60 +1,60 @@
-# 0019 — 免责声明：位置、内容与呈现规范
+# 0019 — Disclaimer: placement, content, and presentation
 
-**状态**：✅ 已实施  
-**日期**：2026-04-07
+**Status**: implemented
+**Date**: 2026-04-07
 
-## 背景
+## Background
 
-项目涉及真实历史人物的健康决策模拟，需要在适当位置向用户说明学术目的与使用边界，同时符合学术合理使用（Fair Use）原则。此前免责声明文字散落在代码字符串中，缺乏统一出处，且部分位置完全缺失。
+The project simulates health-related decisions involving real historical figures, and needs to state its academic purpose and boundaries of use to users at the appropriate points, while conforming to academic fair-use principles. Disclaimer text was previously scattered across code strings with no single source of truth, and some placements were missing it entirely.
 
-## 决策
+## Decision
 
-### 1. 出现位置（共 4 处）
+### 1. Placement (4 locations)
 
-| 位置 | 时机 | 呈现形式 |
+| Location | Trigger | Presentation |
 |------|------|---------|
-| Game 首次进入（`game/App.tsx`） | 首次打开应用，`localStorage` 无接受记录 | 全屏遮罩，须点击确认后消失，永久记录 |
-| Game Story 进入（`CardGame.tsx`） | 每次进入新 story | 全屏遮罩，点击「开始故事」继续 |
-| Game About 弹窗（`AboutModal.tsx`） | 点击 ⓘ 图标 | 弹窗底部区块，分隔线隔开 |
-| Sim About 弹窗（`sim_gui/App.tsx`） | 点击 ⓘ 图标 | 弹窗底部区块，分隔线隔开 |
+| Game first entry (`game/App.tsx`) | First time opening the app, no acceptance record in `localStorage` | Full-screen overlay, dismissed only by clicking confirm, recorded permanently |
+| Game story entry (`CardGame.tsx`) | Every time a new story is entered | Full-screen overlay, dismissed by clicking "Start Story" |
+| Game About dialog (`AboutModal.tsx`) | Clicking the ⓘ icon | A block at the bottom of the dialog, separated by a divider |
+| Sim About dialog (`sim_gui/App.tsx`) | Clicking the ⓘ icon | A block at the bottom of the dialog, separated by a divider |
 
-### 2. 内容结构
+### 2. Content structure
 
-所有位置统一使用相同的三段式结构，内容来源于 locale 键：
+All locations use the same three-part structure uniformly, sourced from locale keys:
 
 ```
-disclaimer.title  — 标题：「免责声明」/ 「Disclaimer」
-disclaimer.intro  — 一句总述
-disclaimer.points — 四条 bullet（数组）
+disclaimer.title  — title: "Disclaimer"
+disclaimer.intro  — a one-sentence summary
+disclaimer.points — four bullet points (array)
 ```
 
-四条内容：
-1. 所有模拟内容不代表对历史人物的道德评判
-2. 历史数据经简化处理，不构成医学建议
-3. 涉及真实人物的场景均以教育为目的，符合学术合理使用（Fair Use）原则
-4. 游戏/模拟结果为模型推演，非历史事实重现
+The four points:
+1. All simulated content does not represent a moral judgment of any historical figure
+2. Historical data has been simplified and does not constitute medical advice
+3. Scenarios involving real people are for educational purposes and conform to academic fair-use principles
+4. Game/simulation results are model projections, not a reconstruction of historical fact
 
-### 3. 呈现规范
+### 3. Presentation rules
 
-- **标题字号**大于正文，不使用 uppercase 小帽样式
-- **不使用边框盒子**包裹免责声明区块；About 弹窗中用 `borderTop` 分隔线与作者信息区隔开
-- Bullet 使用 `·`（居中点），不用 `•`（实心圆点）
-- 底栏状态条保留一行短句（`statusBar.disclaimer`），作为持续提示
+- The **title font size** is larger than body text, without an uppercase small-caps style
+- **No bordered box** wraps the disclaimer block; in the About dialog, a `borderTop` divider separates it from the author-info area
+- Bullets use `·` (a centered dot), not `•` (a filled circle)
+- The status bar at the bottom keeps a single short line (`statusBar.disclaimer`) as a persistent reminder
 
-### 4. Locale 文件位置
+### 4. Locale file locations
 
-实际服务的文件在各应用的 `public/locales/` 目录下，**不是**根目录 `locales/`：
+The files actually served live under each application's `public/locales/` directory, **not** the root-level `locales/`:
 
 ```
 game/public/locales/game/{en,zh-CN,zh-TW}.json
 sim_gui/public/locales/sim/{en,zh-CN,zh-TW}.json
 ```
 
-根目录 `locales/` 为备份/参考，不被 Vite 服务。
+The root-level `locales/` directory is a backup/reference and is not served by Vite.
 
-## 后果
+## Consequences
 
-- ✅ 用户在使用前必须主动确认免责声明（首次进入）
-- ✅ 每个 story 进入时再次提示，覆盖偶发用户
-- ✅ About 弹窗作为长期可查阅的出处
-- ✅ 所有文字通过 i18n 管理，支持中英文繁简四语言
+- Users must actively confirm the disclaimer before first use
+- It appears again on entering each story, catching occasional users
+- The About dialog serves as a permanently accessible reference
+- All text is managed through i18n, covering English, Simplified Chinese, and Traditional Chinese

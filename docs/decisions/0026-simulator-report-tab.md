@@ -1,62 +1,62 @@
-# 0026 — 仿真器报告标签：左列勾选 + 右侧折叠预览
+# 0026 — Simulator report tab: left-column checkboxes + right-side collapsible preview
 
-**状态**: ✅ 已实施（DOCX 导出占位，待续）  
-**日期**: 2026-04-13  
-**作者**: shenfan19
+**Status**: implemented (DOCX export is a placeholder, to follow)
+**Date**: 2026-04-13
+**Author**: shenfan19
 
 ---
 
-## 背景
+## Background
 
-仿真结束后，用户需要将结果整理成文档用于分享或存档。原有工作流需手动从图表和控制台截图拼合，没有结构化输出路径。
+After a simulation finishes, users need to assemble the results into a document for sharing or archiving. The existing workflow required manually taking screenshots of charts and the console and pasting them together, with no structured export path.
 
-需求：
-- 可选择性地输出哪些章节（不是所有人都需要完整报告）
-- 能在导出前预览内容，确认数据正确
-- 至少支持一种无需额外工具的开放格式
+Requirements:
+- Selectable output sections (not everyone needs the full report)
+- A way to preview content before export, to confirm the data is correct
+- Support for at least one open format that requires no additional tools
 
-## 决策
+## Decision
 
-在仿真器中间栏加入第三个标签「📄 报告」，排在「配置」和「图表」之后。
+Add a third tab, "Report," to the simulator's center column, after "Configuration" and "Charts."
 
-### 布局结构
+### Layout structure
 
 ```
-[ HTML 预览 ] [ ↓ 导出 .md ] [ ↓ 导出 .docx (待实现) ]  ← 顶部操作栏
+[ HTML preview ] [ ↓ export .md ] [ ↓ export .docx (pending) ]  ← top action bar
 ─────────────────────────────────────────────────────
-左列（固定 168px）  │  右侧（可滚动）
-章节勾选列表         │  已选章节的折叠预览面板
+Left column (fixed 168px)  │  Right side (scrollable)
+Section checklist          │  Collapsible preview panel for selected sections
 ```
 
-**左列**：每个章节一行 checkbox，选中时绿色左边框高亮。勾选 = 章节加入导出 & 右侧预览自动展开；取消 = 两者同步关闭。禁用项（「轨迹数据」无仿真数据时，「优化结果」非优化模式时）显示 Tooltip 解释原因，不使用常驻警告条。
+**Left column**: one checkbox row per section, highlighted with a green left border when selected. Checking a box adds the section to the export and auto-expands its preview on the right; unchecking does both in reverse. Disabled items ("Trajectory Data" when there is no simulation data, "Optimization Results" outside optimization mode) show a Tooltip explaining why, rather than a persistent warning banner.
 
-**右侧折叠面板**：每个已选章节对应一个可折叠卡片。标题行显示章节名和数量摘要（如「变量汇总 · 12 个」），展开后渲染格式化表格/列表（不是 raw markdown），折叠后摘要仍可读。折叠状态与勾选状态解耦：可以只选不看，也可以展开后不勾选（但不会导出）。
+**Right-side collapsible panel**: each selected section has a collapsible card. The header row shows the section name and a count summary (e.g. "Variable Summary · 12 items"); expanding it renders a formatted table/list (not raw markdown), and the summary remains readable when collapsed. The collapsed state is decoupled from the checked state: a section can be checked but not expanded, or expanded but not checked (in which case it is not exported).
 
-### 可选章节
+### Optional sections
 
-| 章节 | 内容 | 禁用条件 |
+| Section | Content | Disabled when |
 |------|------|----------|
-| 模型概览 | 名称、描述、标签、变量/方程统计 | 无 |
-| 仿真配置 | 时长、步长、批量大小、输入参数表 | 无 |
-| 变量汇总 | 全部变量：类型、初始值、最终值、单位 | 无 |
-| 方程列表 | 方程名、激活条件、影响变量 | 无 |
-| 轨迹数据 | 采样时间序列（约 15–20 行） | 未完成仿真 |
-| 优化结果 | 目标函数、约束条件、算法参数 | 非优化模式 |
+| Model Overview | Name, description, tags, variable/equation counts | never |
+| Simulation Configuration | Duration, step size, batch size, input parameter table | never |
+| Variable Summary | All variables: type, initial value, final value, unit | never |
+| Equation List | Equation name, activation condition, affected variables | never |
+| Trajectory Data | Sampled time series (roughly 15-20 rows) | simulation not completed |
+| Optimization Results | Objective function, constraints, algorithm parameters | not in optimization mode |
 
-默认勾选：模型概览、仿真配置、变量汇总、轨迹数据。
+Checked by default: Model Overview, Simulation Configuration, Variable Summary, Trajectory Data.
 
-### 导出格式
+### Export formats
 
-**Markdown（已实现）**：浏览器直接 Blob 下载，文件名自动生成为 `report_<模型名>_<时间戳>.md`。无需后端，无需选择路径。
+**Markdown (implemented)**: downloaded directly as a browser Blob, with the filename auto-generated as `report_<model-name>_<timestamp>.md`. No backend needed, no path selection needed.
 
-**HTML 预览（已实现）**：`window.open()` 新标签页，写入带内联样式的 HTML 字符串。不落盘，关闭即清除。
+**HTML preview (implemented)**: opened via `window.open()` in a new tab, writing an HTML string with inline styles. Nothing is saved to disk; it clears when closed.
 
-**DOCX（占位，待实现）**：按钮已存在但禁用，Tooltip 提示"开发中"。计划通过后端 `python-docx` 实现，API 路径预留为 `/api/report/export-docx`。
+**DOCX (placeholder, pending)**: the button exists but is disabled, with a Tooltip saying "in development." Planned to be implemented on the backend with `python-docx`, with the API path reserved as `/api/report/export-docx`.
 
-## 设计取舍
+## Design tradeoffs
 
-**为何选 Markdown 而非直接 DOCX**：MD 无需依赖，前端即可生成，任意编辑器可打开，可转 PDF/DOCX。DOCX 格式更正式但需后端支持，作为后续扩展更合适。
+**Why Markdown instead of DOCX directly**: MD has no dependencies, can be generated entirely on the front end, opens in any editor, and can be converted to PDF/DOCX. DOCX is more formal but needs backend support, making it a better fit as a later extension.
 
-**折叠预览而非单一大文本框**：原型版本使用 `<pre>` 展示 raw markdown。问题：内容多时很难扫视，无法快速定位某章节是否正确。折叠面板让用户按需展开，并通过摘要徽章在折叠状态下仍能判断章节是否有内容。
+**Collapsible preview instead of a single large text box**: the prototype version used a `<pre>` block to display raw markdown. The problem: with a lot of content, it was hard to scan and impossible to quickly check whether a given section was correct. The collapsible panel lets users expand sections on demand, and a summary badge lets them judge whether a section has content even while collapsed.
 
-**Tooltip 替代常驻警告条**：「需先仿真」这类提示只在用户悬停该禁用项时才有意义。写死在页面上会产生视觉噪音，且在仿真完成后仍显示会造成混淆。
+**Tooltip instead of a persistent warning banner**: a hint like "run a simulation first" is only useful when the user hovers over the disabled item. Displaying it permanently on the page creates visual noise, and it would remain confusingly visible even after the simulation completes.

@@ -1,78 +1,78 @@
-# 0087 · 2026-05-27 · Sim · `simulation.schedules` 与 `plans` 共存语义（已被 ADR 0109 取代）
+# 0087 · 2026-05-27 · Sim · Coexistence semantics of `simulation.schedules` and `plans` (superseded by ADR 0109)
 
-> **状态更新（2026-06-17）**：本 ADR 中的 D3（references 保持向后兼容 `simulation.schedules`）已被 **ADR 0109** 取消。所有模型的仿真输入唯一合法位置为 `simulation.plans[*].schedules`，不再允许顶层 `simulation.schedules`。optimizer.schedules fallback 链也已废弃，见 ADR 0109。
+> **Status update (2026-06-17)**: D3 in this ADR (keeping backward compatibility for `simulation.schedules`) has been rescinded by **ADR 0109**. The only legal location for a model's simulation input is now `simulation.plans[*].schedules`; a top-level `simulation.schedules` is no longer allowed. The `optimizer.schedules` fallback chain has likewise been deprecated; see ADR 0109.
 
-## 背景
+## Background
 
-`simulation.plans` 功能引入后，YAML 中出现两种描述仿真输入方案的字段：
+After the `simulation.plans` feature was introduced, two fields describing the simulation-input plan appeared in the YAML:
 
-| 字段 | 语义 |
+| Field | Semantics |
 |------|------|
-| `simulation.schedules` | 旧格式：单方案默认调度，向后兼容 |
-| `simulation.plans` | 新格式：多命名方案列表，GUI 直接呈现为并行仿真方案 |
+| `simulation.schedules` | the old format: the default schedule for a single plan, kept for backward compatibility |
+| `simulation.plans` | the new format: a list of named plans, rendered directly by the GUI as parallel simulation plans |
 
-papers/ 下 14 个模型在加入 `plans` 后均同时保留了 `schedules`，导致：
-- GUI 实际不读 `schedules`（见下方行为分析），冗余存在
-- 建模者误以为 `schedules` 是 `plans` 的 fallback 默认值
+After adding `plans`, all 14 models under papers/ kept `schedules` as well, which led to:
+- The GUI never actually reading `schedules` (see the behavior analysis below), leaving it as redundant content
+- Modelers mistakenly assuming `schedules` served as a fallback default for `plans`
 
-## 观察到的 GUI 行为（Simulator.tsx）
+## Observed GUI behavior (Simulator.tsx)
 
-GUI 在无 session 的首次模型加载时：
+On a model's first load with no session, the GUI:
 
-1. **始终先解析 `simulation.schedules`**，将其转换为 `newInputEvents`
-2. **若 `simulation.plans.length > 0`**：
-   - 每个 plan 从自身的 `plan.schedules` 独立构建 `planEvents`
-   - `newInputEvents` 被丢弃（不赋值给任何 state）
-   - 第一个 plan 的 events 成为 `inputEvents`，plans 列表初始化完毕
-3. **若无 `plans`**：
-   - `newInputEvents` 成为默认单方案，初始化单 plan
+1. **Always parses `simulation.schedules` first**, converting it into `newInputEvents`
+2. **If `simulation.plans.length > 0`**:
+   - each plan builds its own `planEvents` independently from `plan.schedules`
+   - `newInputEvents` is discarded (never assigned to any state)
+   - the first plan's events become `inputEvents`, and the plans list is initialized
+3. **If there are no `plans`**:
+   - `newInputEvents` becomes the default single plan, and a single plan is initialized
 
-**结论：`simulation.schedules` 在 `plans` 存在时对 GUI 仿真标签完全无效。**
+**Conclusion: when `plans` is present, `simulation.schedules` has no effect on the GUI's simulation tab whatsoever.**
 
-## 决策
+## Decision
 
-### D1：`plans` 存在时 `schedules` 供 optimizer 使用，不供 GUI sim 使用
+### D1: when `plans` is present, `schedules` serves the optimizer, not the GUI sim tab
 
-明确两字段的语义边界：
+Making the semantic boundary of the two fields explicit:
 
-| 字段 | `plans` 存在时 | `plans` 不存在时 |
+| Field | When `plans` is present | When `plans` is absent |
 |------|--------------|----------------|
-| `simulation.schedules` | **仅**作为 `optimizer.schedules` 缺省的 fallback 背景 | GUI sim 默认单方案 + optimizer fallback |
-| `simulation.plans` | GUI sim 多方案来源（plans 列表） | — |
+| `simulation.schedules` | serves **only** as the fallback background for `optimizer.schedules`'s default | the GUI sim default single plan, plus the optimizer fallback |
+| `simulation.plans` | the source of the GUI sim's multiple plans (the plans list) | — |
 
-### D2：papers/ 模型强制使用 plans-only，删除冗余 schedules
+### D2: papers/ models are required to be plans-only, dropping the redundant schedules
 
-论文模型有 Pareto 前沿结果，加载时天然呈现多方案。继续保留 `schedules` 会带来：
-- GUI 不读却占 YAML 篇幅（噪声）
-- optimizer 背景来源模糊（隐式 fallback 难以追踪）
+Paper models have Pareto-front results, so multiple plans are naturally presented on load. Continuing to keep `schedules` around brings:
+- YAML bulk the GUI never reads (noise)
+- an ambiguous optimizer background source (an implicit fallback that's hard to trace)
 
-决定：**papers/ 下所有模型删除 `simulation.schedules`，仅保留 `simulation.plans`。**
+Decision: **all models under papers/ drop `simulation.schedules`, keeping only `simulation.plans`.**
 
-这些模型的 optimizer 决策变量覆盖全部 input 变量，无需 optimizer 背景，
-删除 `schedules` 后 fallback 链返回空背景，行为正确。
+These models' optimizer decision variables cover every input variable, so no optimizer background is needed;
+after dropping `schedules`, the fallback chain resolves to an empty background, which is correct behavior.
 
-### D3：其他模型（references/ 等）保持向后兼容
+### D3: other models (references/, etc.) keep backward compatibility
 
-非 papers 模型不做强制要求，`schedules` 单方案模式仍完全合法。
-新建具有 optimizer 的单方案模型可继续使用 `schedules`。
+Non-papers models are not required to make this change; the `schedules` single-plan mode remains fully legal.
+A newly built single-plan model with an optimizer can continue to use `schedules`.
 
-### D4：不更改当前 GUI 行为
+### D4: current GUI behavior is unchanged
 
-"plans 优先、schedules 丢弃"的行为已稳定，只补充文档。
+The "plans take priority, schedules discarded" behavior is already stable; only the documentation is being filled in.
 
-## optimizer.schedules fallback 链（完整规则）
+## The optimizer.schedules fallback chain (the complete rule)
 
 ```
-optimizer.schedules 是否定义？
-  ├─ 是 → 使用 optimizer.schedules（完全独立）
-  └─ 否 → 使用 simulation.schedules（向后兼容 fallback）
-              └─ simulation.schedules 也无 → 无固定背景（optimizer 仅用决策变量）
+Is optimizer.schedules defined?
+  |- Yes -> use optimizer.schedules (fully independent)
+  |- No  -> use simulation.schedules (backward-compatible fallback)
+              |- also absent -> no fixed background (the optimizer uses only its decision variables)
 ```
 
-`simulation.plans` 的存在不影响上述 fallback 链。
+The presence of `simulation.plans` does not affect the fallback chain above.
 
-## 影响的文件
+## Files affected
 
-- `docs/model.md` — 补充"两者共存时的行为"说明，并明确 papers 模型规范
-- `models/papers/**/*.yaml`（14 个）— 删除 `simulation.schedules` 块
-- 无代码变更（行为已符合预期，只缺文档）
+- `docs/model.md` — added a description of "the behavior when both coexist" and made the papers-model convention explicit
+- `models/papers/**/*.yaml` (14 files) — removed the `simulation.schedules` block
+- No code changes (the behavior already matched expectations; only documentation was missing)

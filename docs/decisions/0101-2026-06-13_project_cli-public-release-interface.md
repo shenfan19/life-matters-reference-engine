@@ -1,70 +1,70 @@
-# 0101 — CLI 升级为公开发布接口（面向 AI / 自动化场景）
+# 0101 — Upgrading the CLI into a Public Release Interface (for AI / Automation Scenarios)
 
-**日期**：2026-06-13
-**状态**：✅ 已实施（文档 + 代码：`--output-dir`、按模型分子目录、`batch.py`；不涉及 CI）
-**类别**：架构 / 接口设计
-**修订**：部分修订 ADR 0072、ADR 0091
+**Date:** 2026-06-13
+**Status:** Implemented (docs + code: `--output-dir`, per-model subdirectories, `batch.py`; CI not included)
+**Category:** Architecture / Interface Design
+**Revises:** partially revises ADR 0072, ADR 0091
 
 ---
 
-## 背景
+## Background
 
-ADR 0072 确立 GUI 是唯一正式用户接口；ADR 0091 在此基础上新增 `sim_cli/`，
-定位为"开发者/高级用户工具"——可编译为 exe 分发给有批量需求的合作研究者，
-但**不进入 GUI 文档、不向普通用户宣传**。
+ADR 0072 established the GUI as the sole formal user interface; ADR 0091 built on it by adding `sim_cli/`,
+positioned as a "developer/power-user tool" — one that could be compiled into an exe and distributed to
+collaborating researchers with batch needs, but **not covered in the GUI documentation, and not advertised to ordinary users**.
 
-随着 AI 助手（如 Claude Code、其他 LLM agent）越来越多地直接操作本仓库或被分发的发布包，
-出现了一类新的"用户"：**不通过浏览器交互、但需要运行仿真/优化并读取结果的 AI agent**。
-对这类用户，命令行接口（输入明确、输出结构化 CSV/日志、无需渲染）天然比 GUI 更合适。
+As AI assistants (such as Claude Code and other LLM agents) increasingly operate on this repository directly, or on distributed release packages,
+a new class of "user" has emerged: **AI agents that don't interact through a browser, but need to run simulations/optimizations and read back the results**.
+For this kind of user, a command-line interface — explicit input, structured output as CSV/logs, no rendering required — is naturally a better fit than a GUI.
 
-## 决策
+## Decision
 
-**`sim_cli/`（`lm-sim`）从"内部开发者工具"升级为面向 AI 与自动化脚本的正式公开接口，
-与 GUI（面向人类用户）并行存在，随代码 release 提供给外部使用者。**
+**`sim_cli/` (`lm-sim`) is upgraded from an "internal developer tool" to a formal, publicly released interface aimed at AI
+and automation scripts, existing alongside the GUI (which targets human users) and shipped to external users with each code release.**
 
-具体变更：
+Specific changes:
 
-1. **README 增加 CLI 入口**：在仓库结构和快速开始中说明 `lm-sim` 的用途与基本调用方式，
-   明确其目标用户是"脚本/AI agent"，与面向人类的 GUI 区分。
-2. **`docs/cli.md` 增加"AI / 自动化场景"说明**：强调输出为结构化 CSV + 日志，
-   适合被脚本或 agent 解析；补充此前缺失的 `--all-plans` 参数文档。
-3. **Release 产物包含 CLI**：发布包（GitHub Release）中附带 `dist/lm-sim.exe`（或源码运行方式），
-   而不仅是源码 + GUI。构建仍为手动 `pyinstaller sim_cli/build.spec`，本次不引入 CI 自动构建流程
-   （工作量评估后决定暂缓，未来需要时另开 ADR）。
-4. **`--output-dir` + 按模型分子目录**：`lm-sim` 新增 `--output-dir PATH` 参数（默认 `output/`），
-   输出统一写入 `<output-dir>/<模型名>/`。单模型调试循环下，同一模型的历史运行自然聚合在一个目录里；
-   批量场景下，编排层把批次目录作为 `--output-dir` 传入即可，模型间不冲突。
-5. **`script/test_batch.sh` → `sim_cli/batch.py`**：原 bash 批量脚本依赖 Git Bash，
-   在纯 Windows（无 bash）环境下与"公开发布给 AI"的定位冲突；改写为 `sim_cli/batch.py`，
-   纯 Python、进程内直接调用 `runner.py`，不经 subprocess/stdout 解析。
-   行为、参数、报告格式与原脚本一致，详见 ADR 0091 的 2026-06-13 修订。
+1. **Add a CLI entry to the README:** document `lm-sim`'s purpose and basic invocation in the repository structure and quick-start sections,
+   making clear that its target user is "scripts/AI agents," distinct from the human-facing GUI.
+2. **Add an "AI / automation scenarios" section to `docs/cli.md`:** emphasize that the output is structured CSV plus logs,
+   suitable for scripts or agents to parse; also fill in the previously missing documentation for the `--all-plans` parameter.
+3. **Release artifacts now include the CLI:** the release package (GitHub Release) now bundles `dist/lm-sim.exe` (or a source-run alternative),
+   not just the source code and GUI. The build remains a manual `pyinstaller sim_cli/build.spec`; this round does not introduce
+   automated CI builds (deferred after weighing the effort involved; a future ADR can revisit this if needed).
+4. **`--output-dir` plus per-model subdirectories:** `lm-sim` gains an `--output-dir PATH` parameter (default `output/`);
+   output is now uniformly written to `<output-dir>/<model-name>/`. In a single-model debugging loop, that model's run history
+   naturally accumulates in one directory; in a batch scenario, the orchestration layer simply passes the batch directory as `--output-dir`, and different models never conflict.
+5. **`script/test_batch.sh` → `sim_cli/batch.py`:** the original bash batch script depended on Git Bash,
+   which conflicted with the "publicly released to AI" positioning on plain Windows (no bash) environments;
+   it was rewritten as `sim_cli/batch.py`, pure Python, calling `runner.py` directly in-process rather than through subprocess/stdout parsing.
+   Behavior, parameters, and report format match the original script; see the 2026-06-13 revision to ADR 0091 for detail.
 
-不变的部分：
+What remains unchanged:
 
-- **GUI 仍是面向人类研究者的主接口**，图表、交互调参、历史存档等能力不会下沉到 CLI。
-- **CLI 不获得 GUI 才有的可视化能力**；功能集差异（见 `cli.md` "与 GUI 的关系"表）保持。
-- **不写回模型 YAML**（ADR 0091 的决定保留）。
-- HTTP API（`api_server.py`）仍是远程/Web 自动化场景的接口；CLI 面向本地/CI 场景（含本地运行的 AI agent）。
+- **The GUI is still the primary interface for human researchers** — charting, interactive parameter tuning, history archives, and similar capabilities will not be pushed down into the CLI.
+- **The CLI does not gain the GUI's visualization capabilities**; the feature-set gap (see the "Relationship with the GUI" table in `cli.md`) remains.
+- **Results are not written back to the model YAML** (the decision from ADR 0091 stands).
+- The HTTP API (`api_server.py`) remains the interface for remote/web automation scenarios; the CLI targets local/CI scenarios (including locally run AI agents).
 
-## 为什么现在做
+## Why Now
 
-| 原因 | 说明 |
+| Reason | Explanation |
 |------|------|
-| AI agent 是新增的现实用户群 | 不是假设性需求——本仓库的日常开发已大量由 AI agent 通过 CLI/脚本完成 |
-| CLI 已经功能完备 | ADR 0091 之后 CLI 已支持 sim/opt/warm-start/早停，无需新开发，只是改变"是否公开宣传" |
-| 文档成本低 | 不涉及代码改动；只是把已存在能力写入 README/docs，让外部使用者（含 AI）能发现并正确使用 |
+| AI agents are a real, new user population | Not a hypothetical need — day-to-day development on this very repository is already largely done by AI agents through the CLI/scripts |
+| The CLI was already feature-complete | After ADR 0091, the CLI already supported sim/opt/warm-start/early-stop; no new development was needed, only a change in whether it's publicly advertised |
+| Documentation cost is low | No code changes involved; this is simply writing already-existing capabilities into the README/docs so external users (including AI) can discover and use them correctly |
 
-## 被排除的方案
+## Rejected Alternatives
 
-| 方案 | 排除原因 |
+| Alternative | Reason rejected |
 |------|---------|
-| 同时建立 GitHub Actions 自动构建+发布 exe | 工作量较大且需要跨平台验证；本次仅做文档层改动，CI 留待后续 ADR |
-| 为 AI 场景单独开发新接口（如 MCP server） | 现有 CLI 已满足"输入 YAML → 输出 CSV/日志"的核心需求，无需重复建设 |
-| 把 CLI 能力合并进 GUI 文档统一描述 | CLI 和 GUI 目标用户、交互方式不同，混在一起会让两类读者都困惑，保持 `cli.md` 独立 |
+| Also set up GitHub Actions to auto-build and release the exe | Significant effort and needs cross-platform verification; this round is documentation-only, with CI left for a later ADR |
+| Build a separate new interface for AI scenarios (e.g. an MCP server) | The existing CLI already satisfies the core need of "YAML in → CSV/logs out," with no need to duplicate that effort |
+| Fold CLI capabilities into the GUI documentation as one unified description | The CLI and GUI have different target users and interaction models; mixing them together would confuse both kinds of readers, so `cli.md` stays independent |
 
-## 关联
+## Related
 
-- `docs/cli.md` — CLI 使用文档（本次更新）
-- `README.md` — 仓库说明（本次更新，新增 CLI 入口）
-- ADR 0072 — GUI-only 决策（本次部分修订：CLI 不再"不向用户宣传"，但 GUI 仍是人类主接口）
-- ADR 0091 — `sim_cli/` 批量工具（本次部分修订：CLI 从"合作者工具"扩展为"公开发布接口"）
+- `docs/cli.md` — CLI usage documentation (updated this round)
+- `README.md` — repository overview (updated this round, adding the CLI entry)
+- ADR 0072 — the GUI-only decision (partially revised this round: the CLI is no longer "not advertised to users," but the GUI remains the primary interface for humans)
+- ADR 0091 — the `sim_cli/` batch tool (partially revised this round: the CLI expands from a "collaborator tool" to a "public release interface")

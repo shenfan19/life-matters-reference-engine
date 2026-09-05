@@ -1,43 +1,43 @@
-# 0055 — `docs/` 公开 / `go/` 内部 分界规则
+# 0055 — The `docs/` public / `go/` internal boundary rule
 
-**日期**：2026-05-04  
-**状态**：✅ 已实施
-
----
-
-## 背景
-
-项目目录中存在两类文档：
-
-- 技术规范、架构决策、模型格式——适合外部读者和贡献者。
-- 论文策略、职业规划、商业分析、内部 AI 工作提示——不适合公开。
-
-两类文档混在 `docs/` 下，发布到 GitHub 时可能泄露内部信息。
+**Date**: 2026-05-04
+**Status**: implemented
 
 ---
 
-## 决策
+## Background
 
-| 目录 | 性质 | 发布 | 内容标准 |
+The project's directories contain two categories of documents:
+
+- Technical specifications, architecture decisions, model formats — suitable for external readers and contributors.
+- Paper strategy, career planning, business analysis, internal AI working prompts — not suitable for public release.
+
+Both categories were mixed together under `docs/`, risking leaking internal information when published to GitHub.
+
+---
+
+## Decision
+
+| Directory | Nature | Published | Content standard |
 |------|------|------|---------|
-| `docs/` | **公开** | ✅ 随代码发布 GitHub | 只包含外部读者可用的技术内容 |
-| `go/` | **内部** | ❌ 不发布 | 论文策略、职业规划、定位分析、AI 工作文档 |
-| `CLAUDE.md` | **内部** | ❌ 不提交 | Claude Code 工作指令，已加入 `.gitignore` |
+| `docs/` | **public** | published to GitHub with the code | only technical content usable by external readers |
+| `go/` | **internal** | not published | paper strategy, career planning, positioning analysis, AI working documents |
+| `CLAUDE.md` | **internal** | not committed | Claude Code working instructions, added to `.gitignore` |
 
-**禁止**：`docs/` 中引用 `go/` 路径；`docs/` 中出现论文编号（Paper N）、内部任务编号（c_matter_*）等内部标记。
-
----
-
-## 理由
-
-- GitHub 开源项目的 `docs/` 目录相当于对外的技术手册，用户和贡献者会直接阅读。
-- 内部规划文档若公开，会暴露未成熟的商业策略和个人职业路线，不符合专业发布标准。
-- 清晰分界使 AI 工作工具（CLAUDE.md）不随代码传播。
+**Forbidden**: `docs/` referencing a `go/` path; `docs/` containing internal markers such as paper numbers (Paper N) or internal task numbers (c_matter_*).
 
 ---
 
-## 实施
+## Rationale
 
-- `go/` 加入 `.gitignore`（或作为独立私有仓库管理）。
-- 已从 `docs/sim_design.md`、`docs/sim_requirements.md`、`docs/sim_impl.md` 中清除所有 `c_matter_*`、`c_paper_*` 内部引用。
-- `docs/sim_impl.md` 中的论文引用改为 `[scheduled:: YYYY-MM-DD]` 格式的发表计划注释（不含内部文件路径）。
+- The `docs/` directory of a GitHub open-source project functions as its external technical manual, read directly by users and contributors.
+- If internal planning documents were made public, they would expose immature business strategy and personal career plans, falling short of professional publication standards.
+- A clear boundary keeps AI working tools (CLAUDE.md) from propagating along with the code.
+
+---
+
+## Implementation
+
+- `go/` is added to `.gitignore` (or managed as a separate private repository).
+- All internal references such as `c_matter_*` and `c_paper_*` have been removed from `docs/sim_design.md`, `docs/sim_requirements.md`, and `docs/sim_impl.md`.
+- Paper references in `docs/sim_impl.md` were changed to publication-plan annotations in the `[scheduled:: YYYY-MM-DD]` format (containing no internal file paths).

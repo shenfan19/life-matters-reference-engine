@@ -1,37 +1,36 @@
-# ADR 0045 — 概率仿真与 Monte Carlo 架构：parameter 分布表达式、多 run 引擎、前端渲染
+# ADR 0045 — Probabilistic simulation and Monte Carlo architecture: parameter distribution expressions, multi-run engine, front-end rendering
 
-**日期**：2026-04-30（决策时间 2026-04-24，此时补录）；2026-06-04 补充：sim/opt MC 分离设计
-**状态**：已实施
+**Date**: 2026-04-30 (decided 2026-04-24, recorded retroactively); 2026-06-04 addendum: sim/opt MC separation design
+**Status**: implemented
 
-**2026-07-10 部分撤销**：决策二"GUI 的 simRuns/mcSeed 不再从 optimizer.mc 读取"已被
-[ADR 0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) 撤销——
-Opt tab 现在有独立的 `optMcRuns`/`optMcSeed`，真正绑定 `optimizer.mc`。同一份 ADR 0130 也
-记录了一个更严重的独立发现：`optimizer.mc.runs>1` 因 `reset_simulation()` 时序 bug 从未
-真正生效过，影响 19 个论文模型。
-
----
-
-## 背景
-
-模型中存在个体差异（如 `cognitive_efficiency`、`plague_susceptibility`、`insulin_sensitivity`），需要一种机制表达参数的不确定性，并让仿真在多条轨迹间可见这种不确定性。
+**Partially superseded 2026-07-10**: decision two, "the GUI's simRuns/mcSeed no longer read from optimizer.mc," was superseded by
+[ADR 0130](0130-2026-07-10_sim_opt-inner-mc-reset-bug-and-gui-decoupling.md) —
+the Opt tab now has its own `optMcRuns`/`optMcSeed`, genuinely bound to `optimizer.mc`. That same ADR 0130 also
+records a more serious, independent finding: `optimizer.mc.runs>1` had never actually taken effect, due to a
+`reset_simulation()` timing bug, affecting 19 paper models.
 
 ---
 
-## 决策
+## Background
 
-### 决策一：`parameter` 变量支持分布表达式
+Models contain individual variation (e.g. `cognitive_efficiency`, `plague_susceptibility`, `insulin_sensitivity`), which requires a mechanism to express parameter uncertainty and make that uncertainty visible across multiple simulation trajectories.
 
-`type: parameter` 的 `value` 字段可写分布字符串：
+---
 
+## Decision
 
-| 语法                | 含义         |
+### Decision one: `parameter` variables support distribution expressions
+
+The `value` field of a `type: parameter` variable can hold a distribution string:
+
+| Syntax | Meaning |
 | --------------------- | -------------- |
-| `normal(μ, σ)`    | 正态分布     |
-| `uniform(a, b)`     | 均匀分布     |
-| `lognormal(μ, σ)` | 对数正态分布 |
+| `normal(μ, σ)` | normal distribution |
+| `uniform(a, b)` | uniform distribution |
+| `lognormal(μ, σ)` | log-normal distribution |
 
-- **确定性模式**（MC=1）：取均值，等价于 `value: μ`
-- **MC 模式**（MC>1）：每条 run 用独立 `np.random.default_rng(seed)` 采样一次，整条 run 使用该采样值
+- **Deterministic mode** (MC=1): uses the mean, equivalent to `value: μ`
+- **MC mode** (MC>1): each run samples once with its own `np.random.default_rng(seed)`, and uses that sampled value throughout the run
 
 ```yaml
 insulin_sensitivity:
@@ -40,114 +39,113 @@ insulin_sensitivity:
   bounds: [0.2, 2.5]
 ```
 
-### 决策二：Sim MC 与 Opt MC 分离（2026-06-04 更新）
+### Decision two: separating Sim MC from Opt MC (2026-06-04 update)
 
-Sim 和 Opt 的 MC 配置完全分离，各自有独立的 `mc:` 块：
+Sim and Opt MC configuration are fully separated, each with its own `mc:` block:
 
-**Sim MC**（`simulation.mc`）：控制 GUI 可视化的 run 数和 seed。
+**Sim MC** (`simulation.mc`): controls the number of runs and seed for GUI visualization.
 
 ```yaml
 simulation:
   mc:
-    runs: 30      # 缺席或 runs=1 = 确定性模式
-    seed: 19      # 可选；缺席 = 每次随机
+    runs: 30      # absent or runs=1 = deterministic mode
+    seed: 19      # optional; absent = random each time
 ```
 
-**Opt MC**（`optimizer.mc`）：控制优化器每次候选评估时的内层 run 数和 seed。
+**Opt MC** (`optimizer.mc`): controls the number of inner runs and the seed used each time the optimizer evaluates a candidate.
 
 ```yaml
 optimization:
   mc:
-    runs: 5       # 每次候选评估运行 N 次取均值；缺席或 runs=1 = 单次评估
-    seed: 19      # 可选；缺席 = 每次随机
+    runs: 5       # run N times per candidate evaluation and average; absent or runs=1 = single evaluation
+    seed: 19      # optional; absent = random each time
   algorithm:
-    seed: 19      # NSGA-II 遗传算法 seed，与 MC 无关
+    seed: 19      # NSGA-II genetic-algorithm seed, unrelated to MC
 ```
 
-**关键分离原则**：
+**Key separation principle**:
 
-- `algorithm.seed` 只管 NSGA-II 种群初始化和变异随机性，**不**作为 mc.seed 的回退
-- `simulation.mc.seed` 和 `optimizer.mc.seed` 完全独立，不互相继承
-- 各自的 seed 与各自的 `mc:` 块写在一起，语义自明
+- `algorithm.seed` only governs NSGA-II population initialization and mutation randomness — it is **not** a fallback for mc.seed
+- `simulation.mc.seed` and `optimizer.mc.seed` are entirely independent and do not inherit from each other
+- Each seed lives alongside its own `mc:` block, so its meaning is self-evident
 
-**旧格式（已废弃）**：
+**Old format (deprecated)**:
 
 ```yaml
-# ❌ 旧格式（不再使用）
+# deprecated format (no longer used)
 optimization:
   mc:
-    enabled: true     # 用 runs 的存在/缺席代替 enabled
-    sim_runs: 20      # 已拆分为 simulation.mc.runs 和 optimizer.mc.runs
+    enabled: true     # replaced by the presence/absence of runs
+    sim_runs: 20      # split into simulation.mc.runs and optimizer.mc.runs
 ```
 
-### 决策三：前端图表渲染
+### Decision three: front-end chart rendering
 
-- N=1：单条实线
-- N>1：N 条半透明细线（opacity ≈ 0.25）+ 一条均值粗线（opacity = 1.0）
+- N=1: a single solid line
+- N>1: N semi-transparent thin lines (opacity ≈ 0.25) plus one bold mean line (opacity = 1.0)
 
-### 决策四：Opt 模式 —— 多条期望迭代
+### Decision four: Opt mode — multiple expectation iterations
 
-优化器每次评估一组参数时运行 `optimizer.mc.runs` 条仿真，取**均值**作为目标函数值，避免单条固定种子的泛化性问题。
+Each time the optimizer evaluates a set of parameters, it runs `optimizer.mc.runs` simulations and takes the **mean** as the objective-function value, avoiding the generalization problems of a single fixed-seed run.
 
-
-| 参数                | 默认 | 范围  |
+| Parameter | Default | Range |
 | --------------------- | ------ | ------- |
-| `optimizer.mc.runs` | 1    | 1–20 |
+| `optimizer.mc.runs` | 1 | 1-20 |
 
-### 决策五：随机种子管理
+### Decision five: random seed management
 
-**Sim 路径种子层级（1 个 master seed → N 条线）**：
+**Sim path seed hierarchy (1 master seed → N lines)**:
 
-- Session 启动时：`session_seed`（master）→ 派生 `[seed_1, ..., seed_N]` → 每条 run 独立采样
-- 所有 N 条曲线由 1 个 master seed 完全决定，用户无需管理多个 seed
-- `session_seed` 从 start API 返回，写入前端 state 并在工具栏 Tooltip 中显示
+- At session start: `session_seed` (master) → derives `[seed_1, ..., seed_N]` → each run samples independently
+- All N curves are fully determined by 1 master seed; the user does not need to manage multiple seeds
+- `session_seed` is returned from the start API, stored in front-end state, and shown in the toolbar Tooltip
 
-**用户可设定固定 seed**：
+**Users can set a fixed seed**:
 
-- YAML `simulation.mc.seed`（整数）→ 前端读取为 `mcSeed` → 随 `POST /api/simulation/start` 的 `seed` 字段传入
-- `mcSeed = null`（省略 YAML 字段）→ 后端每次随机生成 `session_seed`
-- `mcSeed = 整数` → 后端直接使用该值，相同 seed + 相同模型 = 完全相同的 N 条轨迹
-- Opt 引擎读取 `optimizer.mc.seed`（不回退到 `algorithm.seed`）
-- 前端工具栏：MC× 数量输入框旁附"种子"标签 + seed 输入框（`placeholder="随机"`）
+- YAML `simulation.mc.seed` (integer) → read on the front end as `mcSeed` → passed as the `seed` field of `POST /api/simulation/start`
+- `mcSeed = null` (the YAML field omitted) → the backend generates a random `session_seed` each time
+- `mcSeed = <integer>` → the backend uses that value directly; the same seed plus the same model produces exactly the same N trajectories
+- The opt engine reads `optimizer.mc.seed` (it does not fall back to `algorithm.seed`)
+- Front-end toolbar: an MC× count input next to a "seed" label and seed input box (`placeholder="random"`)
 
-**`mcSeed` / `simRuns` 的 UI 状态生命周期**：
+**UI state lifecycle for `mcSeed` / `simRuns`**:
 
-- 首次加载模型：从 YAML `simulation.mc.seed` / `simulation.mc.runs` 读取
-- 用户修改后：写入 `ModelSession`（localStorage），与 `simStartDate`、`stepValue` 等字段地位相同
-- 切换回同一模型：从 session 恢复用户修改值（不覆盖为 YAML 默认）
-- 切换到没有 session 的新模型：从该模型 YAML 读取（两个加载路径均覆盖：有 session / 无 session / 无 mc 块）
+- On first model load: read from YAML `simulation.mc.seed` / `simulation.mc.runs`
+- After a user edit: written into `ModelSession` (localStorage), at the same status as fields like `simStartDate`, `stepValue`
+- Switching back to the same model: the user's edited value is restored from the session (not overwritten by the YAML default)
+- Switching to a new model with no session: read from that model's YAML (both load paths are covered: with a session / without a session / without an mc block)
 
-### 决策六：MC 分叉可见性原则
+### Decision six: MC branch-visibility principle
 
-MC 分叉**只出现在被 MC 参数直接或间接影响的变量**。建模时需确保：
+MC branching **only appears in variables directly or indirectly affected by an MC parameter**. When building a model, ensure:
 
-- 有 `normal(...)` 的 parameter 必须出现在至少一个公式的表达式中
-- 观察分叉时应选择该 parameter 参与计算的 output 变量（而非 schedule 驱动的确定性变量）
+- A parameter with `normal(...)` must appear in the expression of at least one equation
+- When observing branching, choose an output variable that this parameter feeds into computationally (not a schedule-driven deterministic variable)
 
 ---
 
-## 结果
+## Outcome
 
 ```
 sim_engine/src/optimizer_engine.py
-  mc_runs 从 optimizer.mc.runs 读取（移除 enabled 字段，implicit: 缺席或 runs=1 = 单次）
-  mc_seed 从 optimizer.mc.seed 读取（不回退到 algorithm.seed）
-  algorithm.seed 只用于 NSGA-II 遗传算法
+  mc_runs read from optimizer.mc.runs (the enabled field removed; implicit: absent or runs=1 = single evaluation)
+  mc_seed read from optimizer.mc.seed (no fallback to algorithm.seed)
+  algorithm.seed used only for the NSGA-II genetic algorithm
 
 sim_engine/src/session_manager.py
-  start_session() 支持 sim_runs + seed（可选），预生成种子列表，顺序执行 N 条 run
-  batch_steps() 返回 N 组轨迹数据 + 均值组
+  start_session() supports sim_runs + an optional seed, pre-generates the seed list, runs N runs sequentially
+  batch_steps() returns N sets of trajectory data plus a mean set
 
 sim_gui/src/components/Simulator.tsx
-  simRuns / mcSeed 从 YAML simulation.mc.runs / simulation.mc.seed 读取（不再从 optimizer.mc 读取）
-  mcSeed 在所有模型加载路径无条件从 YAML 读取
+  simRuns / mcSeed read from YAML simulation.mc.runs / simulation.mc.seed (no longer from optimizer.mc)
+  mcSeed read unconditionally from YAML across every model-loading path
 
 docs/model.md
-  simulation.mc schema 新增 runs / seed 字段
-  optimizer.mc schema: enabled 字段移除，sim_runs → runs
-  algorithm.seed 注明"NSGA-II 遗传算法 seed，与 MC 无关"
+  simulation.mc schema gains runs / seed fields
+  optimizer.mc schema: enabled field removed, sim_runs → runs
+  algorithm.seed annotated as "NSGA-II genetic-algorithm seed, unrelated to MC"
 
 models/papers/**/*.yaml, models/test/**/*.yaml
-  所有 optimizer.mc 块迁移为 simulation.mc 块（enabled=true 模型）
-  enabled: false 模型的 mc 块删除（runs=1 或缺席即为确定性模式）
+  all optimizer.mc blocks migrated to simulation.mc blocks (for models with enabled=true)
+  mc blocks removed for models with enabled: false (runs=1 or absent is already deterministic mode)
 ```

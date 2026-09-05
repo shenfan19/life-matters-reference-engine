@@ -1,84 +1,84 @@
-# ADR 0122 — 报告导出重构与逐 Plan PNG 下载
+# ADR 0122 — Report export rework and per-plan PNG download
 
-**日期**：2026-07-02  
-**状态**：已采纳  
-**范围**：gui / `SimControlBar`, `OptControlBar`, `ReportButton`, `SimPlotTab`, `SimChart`, `Simulator/index`
-
----
-
-## 背景
-
-原报告按钮位于 Overview 标签页，通过 `createPortal` 注入工具栏。Overview 与 Report 合并为单一标签（`SimIntroTab`）后，产生三个问题：
-
-1. **Overview 无仿真曲线**：`SimIntroTab` 只列变量名，不渲染图表；同时 opt 工作流结束后 `simulationData` 为空，导致 Overview 持续显示"No data"。
-2. **报告按钮位置尴尬**：用户需先切回 Overview 才能导出报告，路径不直观。
-3. **MD 导出内含巨型 base64 字符串**：PNG 图片内嵌为 `data:image/png;base64,...`，在 GitHub、Obsidian 等所有标准 Markdown 查看器中均无法渲染，外观为乱码。
+**Date**: 2026-07-02
+**Status**: Accepted
+**Scope**: gui / `SimControlBar`, `OptControlBar`, `ReportButton`, `SimPlotTab`, `SimChart`, `Simulator/index`
 
 ---
 
-## 决策
+## Background
 
-### 1. 报告按钮提取为共用组件，通过 slot 挂载到工具栏
+The original report button lived on the Overview tab, injected into the toolbar via `createPortal`. After Overview and Report were merged into a single tab (`SimIntroTab`), three problems emerged:
 
-新建 `ReportButton.tsx`，包含所有导出逻辑（Markdown 生成、HTML 生成、ZIP 打包）。`SimControlBar` 与 `OptControlBar` 均新增 `reportButton?: React.ReactNode` slot prop。`Simulator/index` 在顶层构建 `reportButton` 元素后统一传入，不在 `SimIntroTab` 内部维护。
+1. **No simulation curves on Overview**: `SimIntroTab` only lists variable names, without rendering charts; meanwhile, after an opt workflow finishes, `simulationData` is empty, so Overview keeps showing "No data."
+2. **Awkward report button placement**: users had to switch back to Overview just to export a report, an unintuitive path.
+3. **The MD export embeds a giant base64 string**: PNG images are embedded as `data:image/png;base64,...`, which fails to render in any standard Markdown viewer (GitHub, Obsidian, etc.), appearing as garbled text.
 
-**放弃的方案**：维持两套独立的导出逻辑（sim 侧和 opt 侧各一份）——导致代码重复、行为不一致。
+---
 
-### 2. `effectiveSimData` 三级 fallback
+## Decision
 
-Overview 和报告使用的数据按优先级回退：
+### 1. Extract the report button into a shared component, mounted into the toolbar via a slot
+
+A new `ReportButton.tsx` was created, containing all export logic (Markdown generation, HTML generation, ZIP packaging). Both `SimControlBar` and `OptControlBar` gained a `reportButton?: React.ReactNode` slot prop. `Simulator/index` builds the `reportButton` element at the top level and passes it down uniformly, rather than maintaining it inside `SimIntroTab`.
+
+**Rejected approach**: keeping two separate export implementations (one for the sim side, one for the opt side) — this caused code duplication and inconsistent behavior.
+
+### 2. Three-tier fallback for `effectiveSimData`
+
+The data used by Overview and the report falls back in this priority order:
 
 ```
-simulationData（当前仿真结果）
-  → importedSimRuns 最后一条（历史归档仿真）
-  → comparedPlans 中第一条有数据的 plan（Pareto 解仿真）
+simulationData (the current simulation result)
+  → the last entry of importedSimRuns (a historically archived simulation)
+  → the first plan with data in comparedPlans (a Pareto-solution simulation)
 ```
 
-第三级是 opt 工作流的关键：opt 完成后 `simulationData` 始终为空，Pareto 解的轨迹存于 `comparedPlans`，没有这一回退则 Overview 和报告在 opt 场景下永远显示"No data"。
+The third tier is key for the opt workflow: after opt completes, `simulationData` is always empty, and the Pareto solution's trajectory lives in `comparedPlans`; without this fallback, Overview and the report would always show "No data" in opt scenarios.
 
-### 3. MD 导出改为 ZIP（report.md + images/ 目录）
+### 3. MD export switched to a ZIP (report.md + an images/ directory)
 
-| 格式 | 行为 |
+| Format | Behavior |
 |------|------|
-| **HTML 预览** | 新标签页打开，图片以 base64 内嵌，自包含单文件，无需改动 |
-| **MD 导出** | 下载 `.zip`，内含 `report.md`（相对路径引用图片）+ `images/` 目录（PNG 文件） |
+| **HTML preview** | Opened in a new tab, images embedded as base64, a self-contained single file, no change needed |
+| **MD export** | Downloads a `.zip` containing `report.md` (referencing images by relative path) plus an `images/` directory (PNG files) |
 
-Markdown 标准不支持 base64 data URL（GitHub、Obsidian、VS Code 等均不渲染）。ZIP + 相对路径是使 MD 文件可在任意查看器中正确显示图片的唯一通用方案。
+The Markdown standard does not support base64 data URLs (GitHub, Obsidian, VS Code, etc. all fail to render them). A ZIP with relative paths is the only universal approach that makes an MD file display images correctly in any viewer.
 
-### 4. 图片以"每变量 × 每 plan"为单位生成，不叠加
+### 4. Images generated per variable × per plan, not overlaid
 
-原方案在一张图里叠加所有 plan 曲线并附图例。
+The original approach overlaid every plan's curve onto a single chart with an accompanying legend.
 
-**放弃原因**：Plan 名称（如 `Sim 2026-05-01 · 1h`）过长，图内图例面积超过图表本身，可读性极差；多曲线叠加适合交互界面（有悬停提示），不适合静态导出图。
+**Reason for rejecting this**: plan names (e.g. `Sim 2026-05-01 · 1h`) are long, so the legend inside the chart takes up more area than the chart itself, severely hurting readability; overlaying multiple curves suits an interactive interface (which has hover tooltips), not a static exported image.
 
-**采纳方案**：  
-- 每变量 × 每 plan 各生成一张 PNG  
-- 文件名直接体现 plan 名称：`{varName}_{planLabel}.png`  
-- 多 plan 时 MD 中每张图前插入 `**— Plan 名 —**` 分隔
+**Adopted approach**:
+- Generate one PNG per variable × per plan.
+- The filename directly reflects the plan name: `{varName}_{planLabel}.png`.
+- With multiple plans, a `**— Plan name —**` separator is inserted in the MD before each image.
 
-`varToDataUrl` 增加 `planDatasets?: PlanResult[]` 参数：传入单个 plan 时使用该 plan 的颜色绘制单条曲线；图例仅在传入 2+ plan 且一次性生成所有 plan 叠加图时启用（目前不走该路径）。
+`varToDataUrl` gained a `planDatasets?: PlanResult[]` parameter: when a single plan is passed in, it draws a single curve using that plan's color; the legend is only enabled when 2+ plans are passed in for a one-shot overlay of all plans (a path not currently taken).
 
-### 5. 逐变量 PNG 下载按钮放在 SimPlotTab 的 Collapse extra slot
+### 5. Per-variable PNG download button placed in the SimPlotTab Collapse extra slot
 
-所有 `SimChart` 实例均以 `hideTitleBar` 模式渲染（SimPlotTab、SimIntroTab 均如此），`SimChart` 内部标题栏的下载按钮对用户不可见。Collapse 面板标题行的 `extra` slot 是用户实际看到 CSV 按钮的位置，PNG 按钮应与 CSV 并排于此。
+All `SimChart` instances render in `hideTitleBar` mode (both SimPlotTab and SimIntroTab), so `SimChart`'s internal title-bar download button is not visible to users. The Collapse panel title row's `extra` slot is where the user actually sees the CSV button, so the PNG button should sit alongside CSV there.
 
-新增 `exportVarPNG(varName, colorIndex)` 函数：
+A new `exportVarPNG(varName, colorIndex)` function was added:
 
-- **单 plan**：直接下载 `{varName}.png`
-- **多 plan**：下载 `{varName}_charts.zip`，每 plan 一张 PNG（各自独立，不叠加）
-
----
-
-## 结果
-
-- `ReportButton.tsx`（新文件）：包含 `buildChartImages()`、`buildMd(sources)`、`buildHtml(md)`、JSZip 打包逻辑
-- `SimControlBar.tsx` / `OptControlBar.tsx`：新增 `reportButton?` slot
-- `SimPlotTab.tsx`：新增 `exportVarPNG`，Collapse extra slot 改为 `[PNG] [CSV]` 双按钮
-- `SimChart.tsx`：`varToDataUrl` 增加 `planDatasets?` 参数，修正 early-return 条件（`activePlans.length === 0 && data.length === 0`），单 plan 时也将 plan 数据传入 `drawChartOnCtx` 以使用正确的 plan 颜色
-- `Simulator/index.tsx`：计算 `reportPlanDatasets`（镜像 SimPlotTab 的 comparedPlans 组装逻辑）和 `effectiveSimData`
+- **Single plan**: downloads `{varName}.png` directly.
+- **Multiple plans**: downloads `{varName}_charts.zip`, with one PNG per plan (each independent, not overlaid).
 
 ---
 
-## 未决
+## Outcome
 
-- Pareto 散点图（SimOptTab）的 PNG 导出尚未实现，建议后续在 Pareto 图组件同位置（图表标题旁）加相同的 PNG 按钮。
+- `ReportButton.tsx` (new file): contains `buildChartImages()`, `buildMd(sources)`, `buildHtml(md)`, and the JSZip packaging logic.
+- `SimControlBar.tsx` / `OptControlBar.tsx`: gained a `reportButton?` slot.
+- `SimPlotTab.tsx`: gained `exportVarPNG`; the Collapse extra slot now shows both `[PNG]` and `[CSV]` buttons.
+- `SimChart.tsx`: `varToDataUrl` gained a `planDatasets?` parameter, with the early-return condition fixed (`activePlans.length === 0 && data.length === 0`); for a single plan, its plan data is now also passed into `drawChartOnCtx` to use the correct plan color.
+- `Simulator/index.tsx`: computes `reportPlanDatasets` (mirroring SimPlotTab's comparedPlans assembly logic) and `effectiveSimData`.
+
+---
+
+## Open items
+
+- PNG export for the Pareto scatter plot (SimOptTab) is not yet implemented; a follow-up should add the same PNG button at the same location (next to the chart title) on the Pareto chart component.

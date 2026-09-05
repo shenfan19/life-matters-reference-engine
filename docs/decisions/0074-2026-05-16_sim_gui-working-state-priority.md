@@ -1,76 +1,76 @@
-# ADR 0074 — GUI Working State Layer：GUI 优先级高于 YAML Schedule
+# ADR 0074 — GUI Working State Layer: GUI Takes Priority Over the YAML Schedule
 
-**日期**：2026-05-16  
-**状态**：已采纳  
-**范围**：仿真引擎 `simulator_engine.py` + `simulation.py`
+**Date**: 2026-05-16
+**Status**: adopted
+**Scope**: simulation engine `simulator_engine.py` + `simulation.py`
 
 ---
 
-## 背景
+## Background
 
-ADR 0053 规定"YAML Schedule 优先于 GUI Regimen"。该规则的初衷是保护模型定义的时序行为不被用户误操作覆盖。
+ADR 0053 established that "the YAML schedule takes priority over the GUI regimen." The intent of that rule was to protect a model's defined temporal behavior from being accidentally overwritten by the user.
 
-但实际情况是：
+In practice, however:
 
-1. YAML schedule 在前端加载时已被解析为 `inputEvents`，用户在 GUI 中看到并编辑的就是这些值。
-2. 用户修改 inputEvents、或将 Opt 结果注入 inputEvents 后，引擎内的 `_apply_schedules()` 仍会在每步末尾覆盖这些值，导致 GUI 的任何修改对有 YAML schedule 的变量完全无效。
-3. F-OPT-SIM（将 Pareto 解应用到 Sim）和 F-MPLAN（多方案比较）均依赖 GUI 值能真正进入引擎——在当前优先级下，这两个功能对有 YAML schedule 的模型都是坏掉的。
+1. A YAML schedule is already parsed into `inputEvents` when loaded on the frontend, and what the user sees and edits in the GUI is exactly those values.
+2. After a user edits inputEvents, or an Opt result is injected into inputEvents, the engine's `_apply_schedules()` still overwrites those values at the end of every step, meaning any GUI edit for a variable with a YAML schedule has no effect at all.
+3. Both F-OPT-SIM (applying a Pareto solution to Sim) and F-MPLAN (multi-plan comparison) depend on GUI values actually reaching the engine — under the existing priority rule, both features are broken for any model that has a YAML schedule.
 
-## 问题根因
+## Root cause
 
-引擎步执行顺序：
+The engine's per-step execution order:
 
 ```python
-# simulator_engine.py 批步循环
-self._apply_regimens(model, session['regimens'], ...)  # 1. GUI 值写入
-model.step(_native_step)                               # 2. 内部调用：
-    └── _apply_schedules()                             #    YAML 覆盖 GUI 值 ← 问题所在
-    └── formulas execute                               #    用了 YAML 值，不是 GUI 值
+# simulator_engine.py batch-step loop
+self._apply_regimens(model, session['regimens'], ...)  # 1. GUI values are written in
+model.step(_native_step)                               # 2. internally calls:
+    └── _apply_schedules()                             #    the YAML overwrites the GUI values ← the problem
+    └── formulas execute                               #    using the YAML value, not the GUI value
 ```
 
-`_apply_schedules()` 已有 `manual_overrides` 跳过机制（`simulation.py:74`），但从未被激活用于 GUI regimen 场景。
+`_apply_schedules()` already has a `manual_overrides` skip mechanism (`simulation.py:74`), but it had never been activated for the GUI-regimen scenario.
 
-## 决定
+## Decision
 
-**反转 ADR 0053 对 GUI-controlled 变量的优先级规则**：
+**Reverse ADR 0053's priority rule for GUI-controlled variables**:
 
-- 有 GUI regimen 的变量：GUI 优先（`_apply_schedules` 跳过）
-- 没有 GUI regimen 的变量：YAML schedule 照常应用（向后兼容）
+- A variable with a GUI regimen: the GUI takes priority (`_apply_schedules` skips it)
+- A variable without a GUI regimen: the YAML schedule applies as before (backward compatible)
 
-**实现**：在 `simulator_engine.py` session 启动时，将有 GUI regimen 的变量写入 `base_model.manual_overrides`：
+**Implementation**: when a session starts in `simulator_engine.py`, write every variable with a GUI regimen into `base_model.manual_overrides`:
 
 ```python
-# session 启动，紧接 input_params 应用之后
+# right after input_params is applied, at session start
 for reg in (regimens or []):
     var = reg.get('variable', '')
     if var in base_model.variables:
         base_model.manual_overrides[var] = 'gui'
 ```
 
-MC 模式下，每个 `run_model` 是 `base_model` 的克隆，克隆方法（`_clone_model`）已复制 `manual_overrides`（`simulator_engine.py:1039`），无需额外处理。
+In MC mode, each `run_model` is a clone of `base_model`, and the clone method (`_clone_model`) already copies `manual_overrides` (`simulator_engine.py:1039`), so no extra handling is needed.
 
-## 与 ADR 0053 的关系
+## Relationship to ADR 0053
 
-ADR 0053 的以下规则**被本 ADR 修改**：
+The following rule from ADR 0053 **is modified by this ADR**:
 
-> "YAML Schedule 的优先级高于 GUI Regimen（`inputEvents`）"
+> "The YAML schedule takes priority over the GUI regimen (`inputEvents`)."
 
-修改后语义：
+Revised semantics:
 
-> "YAML Schedule 是加载时的默认值来源；一旦用户在 GUI 中配置了某变量的 regimen，该变量在本次 session 中由 GUI 全权控制，YAML Schedule 不再介入。"
+> "The YAML schedule is the source of default values at load time; once the user has configured a regimen for a variable in the GUI, that variable is fully controlled by the GUI for the rest of the session, and the YAML schedule no longer applies to it."
 
-ADR 0053 中关于 `optimizer` 路径的优先级规则（优化器 Regimen 优先级最高）不变。
+ADR 0053's priority rule for the `optimizer` path (the optimizer's regimen takes highest priority) is unchanged.
 
-## 影响
+## Consequences
 
-| 场景 | 变化前 | 变化后 |
+| Scenario | Before | After |
 |------|--------|--------|
-| 用户编辑 GUI inputEvents，变量有 YAML schedule | 编辑无效，YAML 覆盖 | 编辑生效 |
-| Opt 结果注入 inputEvents（F-OPT-SIM） | 无效 | 生效 |
-| F-MPLAN 多方案，各 plan 有独立 inputEvents | 所有 plan 跑相同 YAML schedule | 各 plan 独立 |
-| 没有 GUI regimen 的变量 | YAML schedule 生效 | 不变（兼容） |
+| User edits GUI inputEvents for a variable that has a YAML schedule | edit has no effect, overwritten by YAML | edit takes effect |
+| An Opt result is injected into inputEvents (F-OPT-SIM) | had no effect | takes effect |
+| F-MPLAN multi-plan, each plan with its own inputEvents | all plans ran the same YAML schedule | each plan is independent |
+| A variable with no GUI regimen | YAML schedule applies | unchanged (compatible) |
 
-## 不在范围
+## Out of scope
 
-- 永久修改 YAML 的 schedule 值（GUI 层是 session 级，不写回 YAML）
-- 修改 optimizer 路径的优先级（optimizer Regimen 已有独立实现）
+- Permanently modifying the schedule value in YAML (the GUI layer is session-scoped and is not written back to YAML)
+- Changing the priority of the optimizer path (the optimizer regimen already has its own independent implementation)

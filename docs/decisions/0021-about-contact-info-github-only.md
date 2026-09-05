@@ -1,49 +1,49 @@
-# 0021 — About 弹窗联系信息分层：项目 repo + 作者 email
+# 0021 — About dialog contact-info layering: project repo + author email
 
-**状态：** ✅ 已实施  
-**日期：** 2026-04-09
+**Status**: implemented
+**Date**: 2026-04-09
 
-## 背景
+## Background
 
-About 弹窗原先展示三项个人联系信息：邮件、个人 GitHub、主页。随着项目面向不同受众（普通用户 / coder / 学术用户），需要重新审视信息分层策略，并区分「项目信息」与「作者信息」。
+The About dialog originally displayed three pieces of personal contact information: email, personal GitHub, and homepage. As the project now addresses several different audiences (general users / coders / academic users), the information-layering strategy needed a rethink, distinguishing "project information" from "author information."
 
-## 决策
+## Decision
 
-About 弹窗按分隔线划分两个区域：
+The About dialog is divided into two areas by a divider:
 
-**分隔线上方（项目区）**
-- 项目名称、副标题、版本 · MIT License
-- 项目 GitHub repo 链接：`github.com/shenfan19/life-matters`
+**Above the divider (project area)**
+- Project name, subtitle, version · MIT License
+- Project GitHub repo link: `github.com/shenfan19/life-matters`
 
-**分隔线下方（作者区）**
+**Below the divider (author area)**
 - Fan Shen · Sun Yat-Sen University
-- 邮件：`shenfan@mail.sysu.edu.cn`
+- Email: `shenfan@mail.sysu.edu.cn`
 
-主页链接不在 About 弹窗出现。
+A homepage link no longer appears in the About dialog.
 
-## 理由
+## Rationale
 
-**GitHub repo 归属项目区，而非作者区：**
-用户从 About 弹窗点 GitHub，目的是找项目的 issue、源码、更新记录，链接到项目 repo 比个人主页更直接。
+**The GitHub repo belongs in the project area, not the author area:**
+A user clicking GitHub from the About dialog is looking for the project's issues, source code, or changelog; linking to the project repo serves that need more directly than a personal homepage.
 
-**邮件归属作者区：**
-项目受众本身较窄（医学/社会学方向 + coder），实际流量低，爬虫垃圾邮件风险可忽略。邮件是最直接的反馈和合作联系渠道，不放反而失去沟通入口。
+**Email belongs in the author area:**
+The project's audience is already fairly narrow (medical/sociological readers plus coders), so actual traffic is low and the risk of scraper spam is negligible. Email is the most direct feedback and collaboration channel, and omitting it would close off that path.
 
-**主页不放的原因：**
-学术用户通过搜索引擎或主动推广（作者发邮件时附上）进入，无需 About 弹窗引导。
+**Why the homepage is omitted:**
+Academic users arrive through search engines or direct outreach (the author includes it when emailing), so they don't need the About dialog to point them there.
 
-**联系渠道三层分级：**
+**Three-tier contact-channel hierarchy:**
 
-| 层级 | 入口 | 受众 |
+| Tier | Entry point | Audience |
 |------|------|------|
-| 1 — LM About 弹窗 | 项目 repo + 作者邮件 | 普通用户、coder |
-| 2 — GitHub profile | 邮件 + 主页 | 技术用户、主动寻找者 |
-| 3 — 主页 / 学校页面 | 完整学术信息 | 学术用户（搜索引擎或主动推广）|
+| 1 — LM About dialog | Project repo + author email | General users, coders |
+| 2 — GitHub profile | Email + homepage | Technical users, active seekers |
+| 3 — Homepage / institutional page | Full academic information | Academic users (via search engines or direct outreach) |
 
-**链接颜色：**
-repo 和 email 链接均使用 `c.textMute`（灰色），与版本号、单位名保持同一视觉层级，不与标题（`c.text`）竞争焦点。
+**Link color:**
+Both the repo and email links use `c.textMute` (gray), keeping the same visual tier as the version number and institution name, so they don't compete with the title (`c.text`) for attention.
 
-## 变更文件
+## Files changed
 
-- `game/src/components/AboutModal.tsx` — `AUTHOR` 改用 `repo` 字段；repo 链接移至分隔线上方；作者区改为 email only；链接色统一为 `c.textMute`
-- `sim_gui/src/App.tsx` — 同上
+- `game/src/components/AboutModal.tsx` — `AUTHOR` switched to a `repo` field; the repo link moved above the divider; the author area became email only; link color unified to `c.textMute`
+- `sim_gui/src/App.tsx` — same as above

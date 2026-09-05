@@ -1,68 +1,68 @@
-# ADR 0079 — Sim/Opt 工作区布局：4:6 百分比分列
+# ADR 0079 — Sim/Opt workspace layout: a 4:6 percentage split
 
-**日期**：2026-05-18
-**状态**：已决定
-**范围**：LM-Simulator sim_gui — `WorkspacePage` 组件
-
----
-
-## 背景
-
-Simulation 和 Optimization 标签页需要将操作面板（Setup/Inputs）与结果面板（Plot/Opt）并排展示。
-
-历史演变：
-1. 最初使用 `width: '34%'`（百分比，上限 440px）——比例合理，但有上限硬值
-2. 改为 `useResize(390, 220, 700)` 拖拽固定像素——解决了"太窄"的问题，但引入了新问题：opt 运行时，`optElapsed` / `optHistory` 频繁 setState 触发重渲染，百分比 34% 相对容器重新计算，出现明显 flickering
-3. 本次：改为 flex 百分比固定比例，去掉拖拽
+**Date**: 2026-05-18
+**Status**: decided
+**Scope**: LM-Simulator sim_gui — the `WorkspacePage` component
 
 ---
 
-## 问题
+## Background
 
-- 固定像素宽度（390px）在窄屏（< 700px 中央面板）时 setup 面板占比过大
-- 拖拽分隔线（`useResize`）在 opt 持续轮询场景下产生宽度 flickering
-- 当时"全宽修复"（`flex: 1` 补全整条宽度链）同步解决了根本问题，百分比布局因此可以可靠工作
+The Simulation and Optimization tabs need to show the control panel (Setup/Inputs) and the result panel (Plot/Opt) side by side.
+
+Historical evolution:
+1. Originally used `width: '34%'` (a percentage with a 440px cap) — a reasonable ratio, but with a hardcoded upper bound
+2. Changed to a draggable fixed-pixel width via `useResize(390, 220, 700)` — this solved the "too narrow" problem, but introduced a new one: while opt is running, frequent `setState` calls from `optElapsed` / `optHistory` trigger re-renders, and the 34% percentage gets recomputed relative to the container, producing noticeable flickering
+3. This round: switched to a fixed flex percentage ratio, dropping the drag handle
 
 ---
 
-## 决定
+## Problem
 
-`WorkspacePage` 内部采用 **flex 百分比固定比例**，暂定 4:6：
+- The fixed pixel width (390px) made the setup panel take up too much space on a narrow screen (a central panel < 700px)
+- The draggable divider (`useResize`) produced width flickering under opt's continuous-polling scenario
+- The earlier "full-width fix" (completing the whole width chain with `flex: 1`) resolved the root cause at the same time, so a percentage-based layout could now work reliably
+
+---
+
+## Decision
+
+`WorkspacePage` internally adopts a **fixed flex percentage ratio**, provisionally 4:6:
 
 ```jsx
-// Setup（输入、事件配置）
+// Setup (input and event configuration)
 <div style={{ flex: '0 0 40%', minWidth: 0, overflow: 'hidden' }}>
 
-// Result（图表、Pareto 前沿）
+// Result (charts, the Pareto front)
 <div style={{ flex: '0 0 60%', minWidth: 0, overflow: 'hidden' }}>
 ```
 
-两栏 `gap: 8px`，外层 `padding: 6px 10px`。
+The two columns have `gap: 8px`, and the outer container has `padding: 6px 10px`.
 
-### 选择 4:6 而非其他比例
+### Why 4:6 rather than another ratio
 
-| 比例 | 问题 |
+| Ratio | Problem |
 |------|------|
-| 3:7 | Setup 面板过窄，输入事件列表难以操作 |
-| 5:5 | Result 面板偏窄，图表展示受限 |
-| **4:6** | 1200px 和 800px 屏宽下均保持可用性，经验证通过 |
+| 3:7 | The Setup panel is too narrow, making the input-event list hard to operate |
+| 5:5 | The Result panel is on the narrow side, limiting chart display |
+| **4:6** | Stays usable at both 1200px and 800px screen widths, verified in practice |
 
-### 放弃拖拽
+### Dropping the drag handle
 
-`useResize` 拖拽增加了组件状态（resize state + MouseEvent handlers），且在 opt 高频更新场景下仍有 flickering 风险（即使改为像素也可能因父容器重绘触发）。百分比布局无需拖拽即可适配屏幕宽度变化。
+The `useResize` drag handle added component state (resize state plus `MouseEvent` handlers), and still carried flicker risk under opt's high-frequency update scenario (even switching to pixels could still trigger it via parent-container repaint). A percentage layout adapts to screen-width changes without needing a drag handle.
 
-若未来需要用户可调节比例，可在 Simulator 层用一个 `[0.4, 0.6]` 的 state 驱动两栏 flex-basis，配合防抖避免高频刷新。
-
----
-
-## 不影响的部分
-
-- Overview、Report 标签：不使用 `WorkspacePage`，布局不变
-- 左侧模型面板：仍使用 `useResize(280, 160, 400)` 像素拖拽（低频操作，无 flickering 风险）
+If a user-adjustable ratio is needed in the future, a `[0.4, 0.6]` state at the Simulator level could drive the two columns' flex-basis, paired with debouncing to avoid high-frequency refreshes.
 
 ---
 
-## 影响
+## Unaffected areas
 
-- `sim_gui/src/components/Simulator.tsx`：`WorkspacePage` 去掉 `setupW / startSetupDrag / c` props，内部硬编 40%/60%；移除对应 `useResize` 调用
-- `docs/ui_guidelines.md`：§1.0 全宽原则补充了百分比分列规范
+- The Overview and Report tabs: they don't use `WorkspacePage`, so their layout is unchanged
+- The left model panel: still uses pixel-based dragging via `useResize(280, 160, 400)` (a low-frequency operation, no flicker risk)
+
+---
+
+## Impact
+
+- `sim_gui/src/components/Simulator.tsx`: `WorkspacePage` drops the `setupW / startSetupDrag / c` props, hardcoding 40%/60% internally; the corresponding `useResize` call is removed
+- `docs/ui_guidelines.md`: §1.0 (the Full-Width Rule) gained a note on the percentage-split convention

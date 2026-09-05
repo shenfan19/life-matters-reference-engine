@@ -1,71 +1,71 @@
-# ADR 0089 — Session 精化：`useSession` 分离、`userEdited` 追踪、Warm-start Dirty 检测、非活跃模型 Opt 隔离
+# ADR 0089 — Session refinement: separating `useSession`, `userEdited` tracking, warm-start dirty detection, and inactive-model opt isolation
 
-**日期**：2026-05-30  
-**状态**：已实施  
-**范围**：LM-Simulator 前端（`sim_gui/`） + 仿真引擎 (`sim_engine/`)  
-**修订**：ADR 0082 D3 小节（刷新到 YAML），ADR 0077（session 模型重载按钮）
-
----
-
-## 背景
-
-本轮变更解决了四个独立但相关的问题：
-
-1. **Session 逻辑散落**：`readMS`、`writeMS`、`initModelSessions`、`modelSessionsRef`、`sessionReadyRef` 全部写在 `simUtils.ts` 和 `Simulator.tsx` 中，职责不清晰，难以维护。
-
-2. **无法区分"原始"与"已编辑"**：用户打开模型后只是看看但未改动，和用户运行了仿真/修改了 inputEvents，在 localStorage 里无从区分——模型树没有视觉反馈，用户不知道哪些模型有本地修改。
-
-3. **Warm-start 无退化提示**：用户运行过一次优化后，若修改了目标函数、约束或决策变量的搜索范围，"继续计算"仍显示绿色，用户不知道上次前沿与当前问题定义已经不匹配。此外，"继续计算"checkbox 只在 `hasExistingResults` 时才出现，首次加载时无法提前感知状态。
-
-4. **非活跃模型 Opt Tab 显示混乱**：用户切换到模型 B 浏览时，若模型 A 正在运行优化，模型 B 的 Opt Tab 会显示模型 A 的实时 Gen 计数器和 Log，造成混淆。
-
-另：warm-start 在部分场景下无法正确读取 YAML 中的 `optimizer.results`，导致含结果的模型加载后热启动复选框仍为 false。
+**Date**: 2026-05-30
+**Status**: implemented
+**Scope**: the LM-Simulator frontend (`sim_gui/`) plus the simulation engine (`sim_engine/`)
+**Revises**: ADR 0082 section D3 (refresh to YAML), ADR 0077 (the session model's reload button)
 
 ---
 
-## 决策
+## Background
 
-### D1：`useSession.ts` — Session 管理独立成 Hook
+This round of changes addresses four independent but related problems:
 
-将 `simUtils.ts` 中的 session 相关逻辑全部迁移到 `sim_gui/src/components/sim_tab/useSession.ts`：
+1. **Session logic scattered around**: `readMS`, `writeMS`, `initModelSessions`, `modelSessionsRef`, `sessionReadyRef` were all written directly in `simUtils.ts` and `Simulator.tsx`, with unclear responsibility boundaries and poor maintainability.
 
-**导出的 API：**
+2. **No way to distinguish "original" from "edited"**: when a user opens a model just to look, versus when the user has actually run a simulation or modified inputEvents, localStorage recorded no distinction — the model tree gave no visual feedback, and the user had no way to tell which models carried local modifications.
+
+3. **No degradation notice for warm-start**: once a user had run an optimization, if they then changed the objective function, a constraint, or a decision variable's search range, "continue computing" would still show green, giving no indication that the previous front no longer matches the current problem definition. In addition, the "continue computing" checkbox only appeared when `hasExistingResults` was true, so the state couldn't be sensed ahead of time on first load.
+
+4. **Confusing Opt-tab display for an inactive model**: when a user switched to model B to browse it while model A's optimization was still running, model B's Opt tab would show model A's live generation counter and log, causing confusion.
+
+Separately, warm-start in some scenarios failed to correctly read `optimizer.results` from the YAML, so a model with existing results still loaded with the warm-start checkbox left at false.
+
+---
+
+## Decision
+
+### D1: `useSession.ts` — session management factored into its own Hook
+
+All the session-related logic in `simUtils.ts` is migrated into `sim_gui/src/components/sim_tab/useSession.ts`:
+
+**Exported API:**
 
 ```ts
-// 工具函数（模块级，可单独 import）
+// utility functions (module-level, importable independently)
 readMS(): Record<string, ModelSession>
 writeMS(sessions): void
 
-// Hook
-useSession() → { modelSessionsRef, sessionReadyRef, persistSession, clearSession, getSession }
+// the Hook
+useSession() -> { modelSessionsRef, sessionReadyRef, persistSession, clearSession, getSession }
 ```
 
-| 方法 | 职责 |
+| Method | Responsibility |
 |------|------|
-| `persistSession(key, session)` | 写入 ref + 写入 localStorage |
-| `clearSession(key)` | 从 ref + localStorage 删除 |
-| `getSession(key)` | 读取 ref 中的 session |
+| `persistSession(key, session)` | writes to the ref, then to localStorage |
+| `clearSession(key)` | deletes from the ref, then from localStorage |
+| `getSession(key)` | reads a session from the ref |
 
-`initModelSessions()` 保留在 `useSession.ts`，负责首次加载时从 localStorage 恢复，并迁移旧格式（`sim_persist` 全局 inputEvents）。
+`initModelSessions()` stays in `useSession.ts`, responsible for restoring from localStorage on first load and migrating the old format (the global `sim_persist` inputEvents).
 
-`simUtils.ts` 删除对应的 `readMS`、`writeMS`、`initModelSessions` 导出，避免双重维护。
+`simUtils.ts` drops its `readMS`, `writeMS`, and `initModelSessions` exports, avoiding duplicate maintenance.
 
 ---
 
-### D2：`userEdited` Flag — 区分"原始"与"已编辑" Session
+### D2: the `userEdited` flag — distinguishing "original" from "edited" sessions
 
-**新增字段：** `ModelSession.userEdited?: boolean`
+**New field:** `ModelSession.userEdited?: boolean`
 
-`sessionEditedRef = useRef(false)` 在以下操作发生时设为 `true`：
-- 新增 / 修改 / 删除 inputEvent
-- 点击"运行仿真"（`startSimulation`）
-- 点击"运行优化"（`startOptimization`）
+`sessionEditedRef = useRef(false)` is set to `true` when any of the following occur:
+- adding / modifying / deleting an inputEvent
+- clicking "run simulation" (`startSimulation`)
+- clicking "run optimization" (`startOptimization`)
 
-每次保存 session 时，`userEdited: sessionEditedRef.current` 一并写入。
+Every time a session is saved, `userEdited: sessionEditedRef.current` is written along with it.
 
-**模型树 `(edited)` 标记：**
+**The model tree's `(edited)` marker:**
 
-`Simulator.tsx` 计算 `sessionKeys`：从 localStorage 所有 session 中筛选 `userEdited === true` 的 key，传给 `SimModelTree`。树在模型名后显示小字 `(edited)`（`c.primary` 色 + italic，`0.75em`），仅视觉提示，不影响功能。
+`Simulator.tsx` computes `sessionKeys`: from all localStorage sessions, it filters the keys where `userEdited === true` and passes them to `SimModelTree`. The tree shows a small `(edited)` label after the model name (in `c.primary` color, italic, `0.75em`), purely a visual cue with no functional effect.
 
 ```tsx
 const sessionKeys = new Set(
@@ -77,109 +77,109 @@ const sessionKeys = new Set(
 
 ---
 
-### D3：Warm-start Dirty 检测
+### D3: warm-start dirty detection
 
-**问题定义 Signature：**
+**A problem-definition signature:**
 
 ```ts
-buildProblemSignature(objectives, constraints, inputEvents) → string
+buildProblemSignature(objectives, constraints, inputEvents) -> string
 ```
 
-由目标函数 + 约束 + 所有决策变量的搜索范围（T1/T2/T3/T4 参数）拼接成一条字符串。
+Built by concatenating the objective function, the constraints, and every decision variable's search range (the T1/T2/T3/T4 parameters) into a single string.
 
-**状态：**
+**State:**
 
-- `lastRunSignature`：最近一次点击"运行优化"时记录的 signature
+- `lastRunSignature`: the signature recorded the last time "run optimization" was clicked
 - `warmStartDirty = lastRunSignature !== null && currentSignature !== lastRunSignature`
 
-**UI 行为：**
+**UI behavior:**
 
-| 状态 | checkbox 显示 |
+| State | Checkbox display |
 |------|--------------|
-| 无已有结果 | 灰色 disabled，Tooltip 说明无法热启动 |
-| 有结果，问题未改变 | 绿色"继续计算" |
-| 有结果，问题已改变 | 橙色"⚠ 继续计算"，Tooltip 警告匹配度下降 |
+| No existing results | gray, disabled, with a Tooltip explaining warm-start is unavailable |
+| Results exist, problem unchanged | a green "continue computing" |
+| Results exist, problem has changed | an orange "⚠ continue computing," with a Tooltip warning about reduced match quality |
 
-"继续计算"checkbox 从原来"仅 `hasExistingResults` 时显示"改为**始终可见**（无结果时 disabled），让用户在运行前就能感知热启动状态。
+The "continue computing" checkbox is changed from "shown only when `hasExistingResults`" to **always visible** (disabled when there are no results), so the user can sense the warm-start state before running.
 
-**重置：** 切换模型时 `lastRunSignature` 清空。
+**Reset:** `lastRunSignature` is cleared when switching models.
 
 ---
 
-### D4：`isActiveModel` — 非活跃模型 Opt Tab 隔离
+### D4: `isActiveModel` — isolating the Opt tab for an inactive model
 
-`SimOptTab` 新增 `isActiveModel?: boolean` prop（默认 `true`）。
+`SimOptTab` gained an `isActiveModel?: boolean` prop (defaulting to `true`).
 
-当 `isActiveModel === false`（即当前查看的模型不是正在运行优化的模型）时：
+When `isActiveModel === false` (that is, the model currently being viewed is not the model with a running optimization):
 
 ```ts
-const activeRunning = isActiveModel && optRunning;  // 实时 running 状态
-const activeHistory = isActiveModel ? optHistory : [];  // 实时历史
-const activeLogs    = isActiveModel ? optLogs    : [];  // 实时 log
+const activeRunning = isActiveModel && optRunning;  // the live running state
+const activeHistory = isActiveModel ? optHistory : [];  // the live history
+const activeLogs    = isActiveModel ? optLogs    : [];  // the live log
 const activeCurGen  = isActiveModel ? optCurGen  : 0;
 ```
 
-效果：非活跃模型的 Opt Tab 显示空 log、空历史图表、Gen 计数为 0，但**保留已完成的 `optResult`**（来自 session 或 YAML），不显示其他模型的实时数据。
+Effect: an inactive model's Opt tab shows an empty log, an empty history chart, and a generation count of 0, but **keeps the already-completed `optResult`** (from the session or the YAML) — it shows no other model's live data.
 
 ---
 
-### D5：Warm-start 结果读取 `rawContent` Fallback（Bug Fix）
+### D5: warm-start result reading falls back to `rawContent` (a bug fix)
 
-部分场景下（import 合并后的模型），`selectedModel.content.optimizer` 不含 `results` 块，但 `rawContent.optimizer.results` 有。
+In some scenarios (a model resulting from an import merge), `selectedModel.content.optimizer` had no `results` block, while `rawContent.optimizer.results` did.
 
-修复：
+Fix:
 
 ```ts
 const rawResults = optBlock?.results ?? selectedModel?.rawContent?.optimizer?.results;
 ```
 
-相关的所有 `optBlock.results` 引用统一改为 `rawResults`：
-- warm-start 复选框初始化
-- warm-start Modal 弹窗的 `reference.x` 读取
-- 传给 `xToInputEvents` 的 optBlock 参数加 fallback
+All related `optBlock.results` references are uniformly switched to `rawResults`:
+- the warm-start checkbox's initialization
+- the warm-start modal's `reference.x` reading
+- the `optBlock` parameter passed to `xToInputEvents` gained the fallback
 
 ---
 
-### D6：SimModelTree 精简
+### D6: SimModelTree simplification
 
-移除了两处被认为噪音大于价值的 UI 元素：
+Two UI elements judged to be more noise than value were removed:
 
-1. **运行状态条（running model status strip）**：树顶部绿色背景的"XX 正在运行"条，功能与树节点左侧双箭头 indicator（ADR 0085 D3）重复，移除。
+1. **The running-status strip**: the green "XX is running" bar at the top of the tree, whose function overlapped with the tree node's left-side double-arrow indicator (ADR 0085 D3); removed.
 
-2. **Session 模型的关闭按钮（×）**：用户上传的 session 模型可通过"重载"或直接忽略清理，主动关闭按钮增加误操作风险，移除。
+2. **The close button (x) on a session model**: a user-uploaded session model can be cleaned up via "reload" or simply ignored; an active close button added unnecessary risk of accidental clicks; removed.
 
 ---
 
-### D7：OptControlBar 按钮顺序重排
+### D7: reordering the OptControlBar buttons
 
-新顺序（左→右）：
+The new order (left to right):
 
 ```
-[运行/停止] [继续计算 checkbox] [Gen 计数] ... [参数控件] | [保存结果] [重载] | [YAML下载]
+[Run/Stop] [continue computing checkbox] [Gen count] ... [parameter controls] | [Save results] [Reload] | [YAML download]
 ```
 
-原顺序是 `[YAML下载] [重载]`，调整为先保存结果再下载，与用户工作流（运行→保存→下载）一致。
+The original order was `[YAML download] [Reload]`, adjusted to save results before downloading, matching the user's workflow (run -> save -> download).
 
-"保存结果"按钮（`SaveOutlined`）：
-- `scsMode = true`：保存到 session（`message.success`）
-- `scsMode = false`：调用 `saveResultsToFile`（写回 YAML）
-- 无 optResult 时 disabled
-
----
-
-### D8：Opt Log 复制/导出
-
-`SimOptTab` Log panel 新增两个按钮（右上角）：
-- **复制**（`CopyOutlined`）：`navigator.clipboard.writeText(logText)`
-- **导出 .txt**（`DownloadOutlined`）：文件名 `opt_log_<ISO时间>.txt`
-
-按钮在 `activeLogs.length === 0` 时 disabled。
+The "Save results" button (`SaveOutlined`):
+- `scsMode = true`: saves to the session (`message.success`)
+- `scsMode = false`: calls `saveResultsToFile` (writes back to the YAML)
+- disabled when there is no optResult
 
 ---
 
-### D9：Session 模型 `reloadFromYAML` 路径
+### D8: opt-log copy/export
 
-ADR 0082 D3 描述的"刷新到 YAML 默认值"流程，现在对 `session/` 模型有独立处理路径：
+`SimOptTab`'s Log panel gained two buttons (top right):
+- **Copy** (`CopyOutlined`): `navigator.clipboard.writeText(logText)`
+- **Export .txt** (`DownloadOutlined`): filename `opt_log_<ISO timestamp>.txt`
+
+Both buttons are disabled when `activeLogs.length === 0`.
+
+---
+
+### D9: the session-model `reloadFromYAML` path
+
+The "refresh to the YAML default" flow described in ADR 0082 D3 now has a separate handling path for `session/` models:
 
 ```ts
 const reloadFromYAML = () => {
@@ -187,7 +187,7 @@ const reloadFromYAML = () => {
   sessionReadyRef.current = false;
   sessionEditedRef.current = false;
   if (selectedKey.startsWith('session/')) {
-    // Session 模型：重新 setConfirmedModel 触发 YAML 重解析
+    // a session model: call setConfirmedModel again to trigger a YAML re-parse
     const sessModel = sessionModels.find(m => m.key === selectedKey);
     if (sessModel) { setConfirmedModel({ ...sessModel }); onModelSelect({ ...sessModel }); }
   } else {
@@ -196,45 +196,45 @@ const reloadFromYAML = () => {
 };
 ```
 
-ADR 0077 中"session/ 模型刷新按钮不显示"的规则**已废弃**：刷新按钮对所有模型（包括 session 模型）均可见，行为差异由 `reloadFromYAML` 内部处理。
+The rule from ADR 0077 that "the reload button is not shown for session/ models" is **now deprecated**: the reload button is visible for every model (session models included), and the behavioral difference is handled internally by `reloadFromYAML`.
 
 ---
 
-### D10：后端模块解耦（sim_engine）
+### D10: backend module decoupling (sim_engine)
 
-`optimizer_engine.py` 移除对 `SimulatorEngine` 私有方法的依赖：
+`optimizer_engine.py` no longer depends on `SimulatorEngine`'s private methods:
 
-| 旧调用 | 新调用 |
+| Old call | New call |
 |--------|--------|
 | `SimulatorEngine._apply_regimens(...)` | `apply_regimens(...)` from `regimen_runner` |
 | `SimulatorEngine._collect_param_distributions(...)` | `collect_param_distributions(...)` from `mc_utils` |
 | `SimulatorEngine._apply_parameter_sampling(...)` | `apply_parameter_sampling(...)` from `mc_utils` |
 | `simulator_engine._clone_model(m)` | `clone_model(m)` from `mc_utils` |
 
-优化器不再需要持有 `SimulatorEngine` 实例来访问这些工具函数，降低了模块耦合。
+The optimizer no longer needs to hold a `SimulatorEngine` instance just to access these utility functions, lowering module coupling.
 
 ---
 
-## 影响文件
+## Files affected
 
-| 文件 | 变更 |
+| File | Change |
 |------|------|
-| `sim_gui/src/components/sim_tab/useSession.ts` | **新建**：session 逻辑独立 hook |
+| `sim_gui/src/components/sim_tab/useSession.ts` | **new**: session logic factored into its own hook |
 | `sim_gui/src/types.ts` | `ModelSession.userEdited?: boolean` |
-| `sim_gui/src/components/Simulator.tsx` | 使用 `useSession`；`sessionEditedRef`；`sessionKeys`；`reloadFromYAML` 双路径；`rawContent` fallback |
-| `sim_gui/src/components/sim_tab/simUtils.ts` | 删除 `readMS`、`writeMS`、`initModelSessions` |
-| `sim_gui/src/components/sim_tab/SimModelTree.tsx` | `(edited)` 标记；移除运行状态条；移除 session 关闭按钮；重载按钮统一用 `onReloadModel` |
-| `sim_gui/src/components/sim_tab/SimOptTab.tsx` | `isActiveModel` prop；Log 复制/导出按钮 |
-| `sim_gui/src/components/opt_tab/OptControlBar.tsx` | 按钮重排；`warmStartDirty` prop；"继续计算"始终可见；`scsMode`/`onSaveResults` |
-| `sim_gui/src/components/opt_tab/useOptimizer.ts` | `buildProblemSignature`；`lastRunSignature`；`warmStartDirty` |
-| `sim_engine/src/optimizer_engine.py` | 移除对 `SimulatorEngine` 私有方法的依赖（见 D10） |
+| `sim_gui/src/components/Simulator.tsx` | uses `useSession`; `sessionEditedRef`; `sessionKeys`; the two-path `reloadFromYAML`; the `rawContent` fallback |
+| `sim_gui/src/components/sim_tab/simUtils.ts` | removed `readMS`, `writeMS`, `initModelSessions` |
+| `sim_gui/src/components/sim_tab/SimModelTree.tsx` | the `(edited)` marker; removed the running-status strip; removed the session close button; the reload button unified via `onReloadModel` |
+| `sim_gui/src/components/sim_tab/SimOptTab.tsx` | the `isActiveModel` prop; log copy/export buttons |
+| `sim_gui/src/components/opt_tab/OptControlBar.tsx` | reordered buttons; the `warmStartDirty` prop; "continue computing" always visible; `scsMode`/`onSaveResults` |
+| `sim_gui/src/components/opt_tab/useOptimizer.ts` | `buildProblemSignature`; `lastRunSignature`; `warmStartDirty` |
+| `sim_engine/src/optimizer_engine.py` | removed the dependency on `SimulatorEngine`'s private methods (see D10) |
 
 ---
 
-## 被否决的方案
+## Rejected approaches
 
-**将 `warmStartDirty` 自动强制冷启动**：过于激进——用户可能只是微调了约束，仍希望热启动加速搜索。改为提示而非强制。
+**Automatically forcing a cold start whenever `warmStartDirty`**: too aggressive — the user might have only tweaked a constraint slightly and still want the speed of a warm start. Changed to a warning rather than a forced action.
 
-**Opt Tab 在非活跃时完全禁用**：Opt Tab 是结果查看区，即使不是活跃运行模型，用户仍需查看该模型的历史 Pareto 结果，因此只隔离"实时数据"，保留"静态结果"。
+**Fully disabling the Opt tab when inactive**: the Opt tab is also a result-viewing area; even when not the active running model, the user still needs to view that model's historical Pareto results, so only the "live data" is isolated while the "static results" are kept.
 
-**session 模型保留关闭按钮**：session 模型通过 localStorage 持久化，"关闭"不等于"删除"，视觉上关闭后刷新页面又回来，行为混乱。移除更清晰——session 模型的生命周期由上传/刷新决定。
+**Keeping the close button on a session model**: a session model is persisted via localStorage, so "closing" doesn't mean "deleting" — visually closing it and then having it reappear on refresh is confusing behavior. Removing it is clearer — a session model's lifecycle is governed by upload/reload.

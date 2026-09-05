@@ -1,151 +1,151 @@
-# 实现细节
+# Implementation Detail
 
-> 本文档记录 Loader 模块的数据加载/组装机制，以及仿真引擎运行时若干未在 [design.md](design.md) 展开的实现细节（方程执行顺序、入仿真前的模型校验、GUI/CLI 接口层约束、中间结果暂存、编辑态与运行态快照）。
-> 整体数据流全景见 [design.md](design.md)；优化器设计见 [opt.md](opt.md)；校验层与插件系统的内部结构见 [architecture.md](architecture.md)。
+> This document records the Loader module's data-loading/assembly mechanism, and several implementation details of the simulation engine's runtime not expanded on in [design.md](design.md) (equation execution order, model validation before entering the simulation, interface-layer constraints for the GUI/CLI, intermediate-result staging, and the editing-state versus running-state snapshot).
+> For the full data-flow picture, see [design.md](design.md); for the optimizer design, see [opt.md](opt.md); for the validation layer's and the plugin system's internal structure, see [architecture.md](architecture.md).
 
-## Loader 模块（数据加载与组装）
+## The Loader module (data loading and assembly)
 
-Loader 是静态 YAML 与动态仿真环境的桥梁，负责解析 `models/source/` 和 `models/stories/` 中的模型，处理依赖导入，在内存中组装完整可执行的 `ModelStructure`。
+The Loader is the bridge between static YAML and the dynamic simulation environment, responsible for parsing models under `models/source/` and `models/stories/`, handling dependency imports, and assembling a complete, executable `ModelStructure` in memory.
 
-### 跨模型数据调用原则
+### The principle for cross-model data references
 
-- **`components/` 层**：只声明自己的变量和方程，不引用其他模型。
-- **`stories/` 层**：`imports` 多个 model，通过 `patches` 覆写参数。
+- **The `components/` layer**: declares only its own variables and equations, referencing no other model.
+- **The `stories/` layer**: `imports` multiple models, overriding parameters via `patches`.
 
-这避免模型间耦合，符合单一职责原则。
+This avoids coupling between models, following the single-responsibility principle.
 
-### 表达式求值架构（⭐⭐ 核心约束）
+### The expression-evaluation architecture (⭐⭐ a core constraint)
 
-**asteval 是方程表达式的安全沙箱层，不可用 Python 原生 `eval()` 直接替代。**
+**asteval is the safety-sandbox layer for equation expressions, and must not be replaced directly with Python's native `eval()`.**
 
-YAML 方程来自建模者手写，属于"不可信用户输入"。asteval 提供：
-- 无访问文件系统、网络、`__import__` 等危险操作的隔离执行环境
-- 内置数学函数（`sin`/`cos`/`max`/`min` 等）的安全版本
-- 语法错误的可控捕获，不会导致整个引擎崩溃
+A YAML equation is hand-written by a modeler and counts as "untrusted user input." asteval supplies:
+- An isolated execution environment with no access to the filesystem, network, `__import__`, or other dangerous operations
+- Safe versions of built-in math functions (`sin`/`cos`/`max`/`min`, etc.)
+- Controlled capture of syntax errors, so it never crashes the whole engine
 
-#### 运行时分层
+#### Runtime layering
 
-| 层 | 工具 | 职责 |
+| Layer | Tool | Responsibility |
 |----|------|------|
-| **验证层**（加载时） | `asteval` | 解析 + 语法检查；检测未定义变量 |
-| **编译层**（首次 step 前） | `ast.parse` + `exec` | 将表达式转为 Python 函数（`_build_equation_cache`） |
-| **执行层**（每步） | 原生 Python 函数调用 | `fn(*args)`，变量走 LOAD_FAST |
-| **回退层**（编译失败时） | `asteval.eval()` | 不中断仿真，保持兼容性 |
+| **Validation layer** (at load time) | `asteval` | Parsing plus syntax checking; detecting an undefined variable |
+| **Compilation layer** (before the first step) | `ast.parse` plus `exec` | Converting an expression into a Python function (`_build_equation_cache`) |
+| **Execution layer** (every step) | A native Python function call | `fn(*args)`, with variables passed via LOAD_FAST |
+| **Fallback layer** (on a compilation failure) | `asteval.eval()` | Does not interrupt the simulation, preserving compatibility |
 
-**禁止**：用 `eval(expr, symtable)` 或 `eval(compile(expr, ...), globals)` 直接替代 `asteval.eval()`，即使表达式已来自 YAML。asteval 在验证层和回退层不可绕过，见 ADR 0024、ADR 0068、ADR 0070。
+**Forbidden**: substituting `eval(expr, symtable)` or `eval(compile(expr, ...), globals)` directly for `asteval.eval()`, even for an expression already sourced from YAML. asteval cannot be bypassed at the validation layer or the fallback layer, see ADR 0024, ADR 0068, ADR 0070.
 
-### 变量命名冲突处理
+### Handling variable-naming conflicts
 
-多模型合并时：
-- **根模型（调用方）**定义的变量和方程**始终覆盖**被导入模型中的同名定义。
-- 语义歧义的同名变量（如两个模型都定义 `body_weight`）发出警告，要求在 `patches` 中明确指定。
+When merging multiple models:
+- A variable or equation defined by the **root model (the caller)** **always overrides** a same-named definition in an imported model.
+- A same-named variable with semantic ambiguity (e.g. two models both defining `body_weight`) issues a warning, requiring it to be explicitly specified in `patches`.
 
-### 架构约束检测
+### Architectural constraint detection
 
-- 禁止循环依赖（`A imports B imports A`）。
-- 禁止 `models/` 层 import `stories/` 层。
-- `models/` 层若包含 `optimizer` 字段，给出警告，建议迁移至 story 层。
+- Circular dependencies are forbidden (`A imports B imports A`).
+- The `models/` layer is forbidden from importing the `stories/` layer.
+- If the `models/` layer contains an `optimizer` field, a warning is issued, recommending it be migrated to the story layer.
 
-### Evidence 换算（加载期自动完成）
+### Evidence conversion (done automatically at load time)
 
-Loader 遍历 YAML `variables:` 中声明了 `evidence_type` 字段的条目，按该字段执行换算，换算结果原地写回 `self.variables`（`type` 仍是 `parameter`，不加 `_effective` 后缀），`equations`/`dynamics` 直接用该名字引用。8 种子类型的具体换算方程、溯源字段（`evidence_type`/`evidence_raw_value`）、已知实现细节（如 `hr` 的 `baseline_ref` 在基础换算路径上不校验目标类型）见 [evidence/conversion.md](evidence/conversion.md)；把换算结果自动接入某个状态变量 dynamics 的 `applies_to` 机制（校验顺序、生成的表达式模板、`rate_unit`/`step_unit` 换算）见 [evidence/applies_to.md](evidence/applies_to.md)。
+The Loader iterates over the entries in the YAML's `variables:` that declare an `evidence_type` field, performing the conversion according to that field, and writes the conversion result back in place into `self.variables` (`type` stays `parameter`, with no `_effective` suffix added), so `equations`/`dynamics` reference it directly by that name. For the specific conversion equations of the 8 subtypes, the traceability fields (`evidence_type`/`evidence_raw_value`), and known implementation details (such as `hr`'s `baseline_ref` not being validated for its target type on the base conversion path), see [evidence/conversion.md](evidence/conversion.md); for the `applies_to` mechanism that automatically wires a conversion result into some state variable's dynamics (the validation order, the generated expression template, `rate_unit`/`step_unit` conversion), see [evidence/applies_to.md](evidence/applies_to.md).
 
 ### Metadata description
 
-`metadata.description` 在运行时保持原始结构：可以是字符串，也可以是映射对象。后端只做类型校验，不固定字段集合，不补空字段。前端 Overview 页负责把字符串显示为单行 `Brief`，或按映射对象在 YAML 中的字段顺序显示所有非空字段。
+`metadata.description` keeps its original structure at runtime: it can be a string, or a mapping object. The backend only does type validation, without fixing a field set or padding empty fields. The frontend's Overview page is responsible for displaying a string as a single-line `Brief`, or displaying all non-empty fields in a mapping object's field order in the YAML.
 
-推荐字段名见 `model_design.md`，但 Loader 和 Simulator 不依赖这些推荐字段；新增字段会按 key 自动生成英文标签。
+The recommended field names are in `model_design.md`, but the Loader and Simulator do not depend on these recommended fields; a new field automatically generates an English label from its key.
 
-### 方程预编译为 Python 函数（ADR 0068）
+### Precompiling an equation into a Python function (ADR 0068)
 
-模型加载后首次调用 `step()` 时，`_build_equation_cache()` 对每条方程执行一次预编译：
+The first time `step()` is called after a model loads, `_build_equation_cache()` precompiles each equation once:
 
-1. `ast.parse()` 提取表达式引用的变量名（模型变量 + 步长符号）
-2. `exec()` 在隔离命名空间中生成具名参数函数：
+1. `ast.parse()` extracts the variable names an expression references (model variables plus step-size symbols)
+2. `exec()` generates a named-parameter function in an isolated namespace:
    ```python
    def _fn(blood_glucose, uptake, utilization, step): return blood_glucose + (uptake - utilization) * step
    ```
-3. 缓存 `(fn, [param_names])` 和排好序的方程列表
+3. Caches `(fn, [param_names])` and the sorted equation list
 
-每步调用 `fn(*[_get_arg(n) for n in params])`，变量通过位置参数传入，Python 内部走 `LOAD_FAST`，无字典查找开销。编译失败时回退到 `asteval.eval()`。
+Every step calls `fn(*[_get_arg(n) for n in params])`, passing variables in as positional arguments; internally, Python uses `LOAD_FAST`, with no dictionary-lookup overhead. On a compilation failure, it falls back to `asteval.eval()`.
 
 ---
 
-## 仿真引擎运行时
+## The simulation-engine runtime
 
-### 方程执行顺序
+### Equation execution order
 
-多个方程更新同一变量时，通过 `priority` 字段控制执行顺序：
-- 数字越小越先执行（如 `-100` 先于 `0`）。
-- 并行冲突变量用 `asteval` 顺序求值，避免隐式 race condition。
+When multiple equations update the same variable, the `priority` field controls the execution order:
+- A smaller number executes first (e.g. `-100` before `0`).
+- Conflicting variables in parallel are evaluated in order via `asteval`, avoiding an implicit race condition.
 
-### 模型校验（入仿真前）
+### Model validation (before entering the simulation)
 
-> 以下是历史设计草稿描述的统计校验构想（前向仿真统计发病率、与文献分组对比、对照 KM/RCT 结果），未实现，也不在当前路线图上。
+> The following is a statistical-validation concept described in a historical design draft (forward-simulating a statistical incidence rate, comparing against a literature group, benchmarking against KM/RCT results); it is not implemented and not on the current roadmap.
 
-当前实际实现是纯结构校验（`metadata`/`variables`/`equations` 字段是否存在、类型是否正确、`dynamics` 引用的变量是否已定义等），不涉及任何统计计算：
+The current actual implementation is pure structural validation (whether `metadata`/`variables`/`equations` fields exist, whether their types are correct, whether the variables `dynamics` references have been defined, etc.), involving no statistical computation at all:
 
 ```bash
 GET /api/validate/{file_path}
 POST /api/validate
 ```
 
-（`reference_engine/src/routes/files.py::_simple_yaml_validate`）校验未通过时返回错误列表，前端据此阻止进入仿真。
+(`reference_engine/src/routes/files.py::_simple_yaml_validate`) returns a list of errors when validation fails, which the frontend uses to block entering the simulation.
 
-### 接口层约束（⭐⭐ 核心约束）
+### Interface-layer constraints (⭐⭐ a core constraint)
 
-**GUI（`gui/`）是面向人类研究者的主接口；CLI（`cli/`）是面向 AI/自动化场景的正式公开接口
-（ADR 0101，修订 ADR 0072 的"CLI 不是正式接口"表述）。两者共用同一个引擎层，结果一致性由
-`test_verification/test_sim_cli_consistency.py` 自动回归验证（ADR 0111）。**
+**The GUI (`gui/`) is the primary interface aimed at human researchers; the CLI (`cli/`) is the formal, publicly released interface aimed at AI/automation scenarios
+(ADR 0101, revising ADR 0072's statement that "the CLI is not a formal interface"). Both share the same engine layer, and result consistency is automatically regression-tested by
+`test_verification/test_sim_cli_consistency.py` (ADR 0111).**
 
 ```
-人类用户 → gui（React）→ HTTP API（api_server.py）→ 引擎层（Python）
-AI/脚本  → cli（lm-sim）─────────────────────────→ 引擎层（Python）
+A human user -> gui (React) -> the HTTP API (api_server.py) -> the engine layer (Python)
+AI/a script  -> cli (lm-sim) ─────────────────────────────► the engine layer (Python)
 ```
 
-- **GUI 才有的能力不下沉到 CLI**：图表、交互调参、历史存档等仍只在 GUI 实现（见 `cli.md`"与 GUI 的关系"表）
-- **不把 CLI 作为测试入口**：测试直接 import 引擎层函数，不经 CLI 解析层（ADR 0072）
-- `optimizer_cli.py` 等内部调试文件暂留，不随代码发布，不在文档中介绍
+- **A capability that only the GUI has does not trickle down to the CLI**: charts, interactive parameter tuning, history archiving, etc. are still implemented only in the GUI (see the "Relationship with the GUI" table in `cli.md`)
+- **The CLI is not treated as a test entry point**: tests import the engine-layer functions directly, not going through the CLI's parsing layer (ADR 0072)
+- Internal debugging files such as `optimizer_cli.py` are kept for now, not shipped with the code release, and not introduced in the documentation
 
-背景与决策理由见 ADR 0072、ADR 0101。
+See ADR 0072 and ADR 0101 for the background and reasoning behind this decision.
 
-### 中间结果暂存（models/temp/）
+### Intermediate-result staging (models/temp/)
 
-opt 和仿真产生的中间文件存入 `models/temp/{job_id}/`，不依赖用户账号体系：
+Intermediate files produced by opt and simulation are stored in `models/temp/{job_id}/`, with no dependency on a user-account system:
 
 ```
 models/temp/
   {job_id}/
-    input_override.yaml   # opt 写回的 input，可直接喂给 sim
-    charts/               # 图表文件
+    input_override.yaml   # the input the opt writes back, feedable directly to sim
+    charts/               # chart files
     result.csv
 ```
 
-**前后端约定：**
-- 后端创建任务时生成 `job_id`（uuid）并返回
-- 前端将 `job_id` 存入 `localStorage`，刷新后可恢复
-- `GET /api/download/result/{job_id}/{filename}` 触发浏览器下载
-- 后端启动时清理超过 24h 的 temp 子目录
+**A frontend-backend convention:**
+- The backend generates a `job_id` (a uuid) when creating a task, and returns it
+- The frontend stores `job_id` in `localStorage`, recoverable after a refresh
+- `GET /api/download/result/{job_id}/{filename}` triggers a browser download
+- The backend clears any temp subdirectory older than 24h at startup
 
-详见 ADR 0061。
+See ADR 0061 for detail.
 
-### 编辑态刷新与运行态快照
+### Editing-state refresh versus running-state snapshot
 
-Simulator 的前端状态分为两类：
+The Simulator's frontend state falls into two categories:
 
-- **编辑态 UI 状态**：当前选中的 YAML、左侧树展开、tab、面板开合、字号、输入配置等，可以保存在 `localStorage`。
-- **源模型内容**：YAML 原文、resolved imports、变量、方程、`simulation`、`optimizer`，每次选择或手动刷新时都从后端重新读取，不把旧内容作为长期缓存。
+- **Editing-state UI state**: the currently selected YAML, the left tree's expansion state, the tab, panel open/closed states, font size, input configuration, etc., which can be saved in `localStorage`.
+- **Source model content**: the raw YAML text, resolved imports, variables, equations, `simulation`, and `optimizer`, re-read from the backend every time a selection is made or a manual refresh happens, never treated as a long-term cache of old content.
 
-仿真运行开始后，后端 session 持有启动时的 resolved model 对象，作为本次运行快照。之后即使 YAML 文件发生变化，已有 session 也不会半路切换模型；新建 session 才会读取新版 YAML。
+Once a simulation run starts, the backend session holds the resolved model object as it was at start time, as a snapshot for this run. Afterward, even if the YAML file changes, an existing session never switches models mid-run; only creating a new session reads the new YAML version.
 
-页面刷新或短暂断开后，前端可用本地保存的 `sessionId` 调用：
+After a page refresh or a brief disconnection, the frontend can use the locally saved `sessionId` to call:
 
 ```
 GET /api/simulation/session/{session_id}
 ```
 
-如果后端 session 仍存在，则恢复已有轨迹、进度、输出变量和随机种子；如果 session 已过期或后端重启，则保留本地最后一次静态结果供查看，但不能继续运行。
+If the backend session still exists, the existing trajectory, progress, output variables, and random seed are restored; if the session has expired or the backend has restarted, the last locally saved static result is kept for viewing, but the run cannot continue.
 
-Game 派生应用采用同一原则：选关/编辑态刷新 story/card YAML；一旦开局，当前对局固定开局时的 story/card snapshot，恢复页面时恢复对局状态。源文件更新只影响新开局，不污染进行中的牌局。
+The Game-derived application follows the same principle: selecting a level/editing state refreshes the story/card YAML; once a game begins, the current match is fixed to the story/card snapshot taken at the start, and restoring the page restores the match state. A source-file update only affects a newly started game and never contaminates a match in progress.
 
-详见 ADR 0064。
+See ADR 0064 for detail.

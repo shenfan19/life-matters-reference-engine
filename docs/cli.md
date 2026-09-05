@@ -1,134 +1,130 @@
 # Life Matters CLI (`lm-sim`)
 
-`cli/` 提供命令行批量运行接口，适合自动化仿真、脚本调度、开发调试，
-以及 **AI agent**（如 Claude Code 等）直接运行模型并读取结构化结果。  
-面向人类研究者的正式用户界面仍为 GUI（`gui/`）；CLI 不覆盖 GUI 的交互功能（图表、拖拽、历史存档等）。
+`cli/` supplies a command-line batch-run interface, suited to automated simulation, script scheduling, development debugging,
+and an **AI agent** (such as Claude Code) directly running a model and reading a structured result.  
+The formal user interface aimed at human researchers is still the GUI (`gui/`); the CLI does not cover the GUI's interactive features (charts, drag-and-drop, history archiving, etc.).
 
-完整数据流见 [`data_flow.md`](data_flow.md)。
-
----
-
-## 面向 AI / 自动化场景
-
-CLI 的输入输出均为文本/文件，适合被脚本或 AI agent 调用：
-
-- **输入**：模型 YAML 文件路径 + 可选的步骤标志（`--sim-only` / `--opt-only`，默认两者都跑），无需交互。
-- **输出**：结构化 CSV（仿真时间序列 / Pareto 前沿）+ 日志文件，路径在运行结束后打印到 stdout，可直接解析。
-- **退出码**：成功为 `0`，仿真/优化失败为 `1`（`batch.py` 按整批是否存在任意模型的任意步骤 FAIL 判定，不是单模型粒度）。
-- **无需图形环境**：可在 headless 容器、CI、SSH 会话中运行。
-
-随代码 release 发布的压缩包中包含可直接运行的 `lm-sim`（PyInstaller 编译产物），无需安装 Python 即可使用（见下方"编译为独立可执行文件"）。
+See [`data_flow.md`](data_flow.md) for the complete data flow.
 
 ---
 
-## 安装与运行
+## Aimed at AI / automation scenarios
 
-### 直接运行（需要 Python 环境）
+The CLI's input and output are both text/files, suited to being called by a script or an AI agent:
 
-从项目根目录执行：
+- **Input**: a model YAML file path plus an optional step flag (`--sim-only` / `--opt-only`, both run by default), needing no interaction.
+- **Output**: structured CSV (a simulation time series / a Pareto front) plus a log file, with the path printed to stdout when the run finishes, parseable directly.
+- **Exit code**: `0` on success, `1` on a simulation/optimization failure (`batch.py` judges by whether any step of any model in the whole batch failed, not at single-model granularity).
+- **No graphical environment needed**: it can run in a headless container, CI, or an SSH session.
+
+The archive shipped with each code release includes a directly runnable `lm-sim` (a PyInstaller build artifact), usable without installing Python (see "Compiling into a standalone executable" below).
+
+---
+
+## Installation and running
+
+### Running directly (requires a Python environment)
+
+Run from the project root:
 
 ```bash
-# 单模型（main.py）
-python cli/main.py <model.yaml>                # 同时跑 sim + opt
+# A single model (main.py)
+python cli/main.py <model.yaml>                # runs both sim and opt
 python cli/main.py <model.yaml> --sim-only
 python cli/main.py <model.yaml> --opt-only
 python cli/main.py <model.yaml> --opt-only --opt-continue
 python cli/main.py <model.yaml> --opt-only --opt-continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
 
-# 批量（batch.py，遍历文件夹，汇总报告，详见下方"批量运行"一节）
+# Batch (batch.py, walking a folder, a summary report, see "Batch running" below for detail)
 python cli/batch.py --input-dir models/papers --sim-only
 ```
 
-### 编译为独立可执行文件
+### Compiling into a standalone executable
 
 ```bash
 pyinstaller cli/build.spec
 ```
 
-产出 `dist/lm-sim.exe`（Windows）。发布时需将 `models/` 文件夹与 exe 放在同一目录。
+Produces `dist/lm-sim.exe` (Windows). When distributing it, the `models/` folder must sit in the same directory as the exe.
 
-> `build.spec` 目前只打包 `main.py`（单模型入口）。`batch.py` 暂无对应 exe，
-> 需要批量运行的用户仍需 `python cli/batch.py`（要求本机有 Python 环境）。
+> `build.spec` currently only packages `main.py` (the single-model entry point). `batch.py` has no corresponding exe yet;
+> a user needing batch runs still needs `python cli/batch.py` (requiring a local Python environment).
 
 ---
 
-## 路径配置
+## Path configuration
 
-模型库根目录、输出根目录、SCS 模式由 `reference_engine/src/paths.py` 统一解析，GUI 后端（`api_server.py`）
-和 CLI（本文档）共用同一份逻辑，不各自维护一套默认值：
+The model-library root, the output root, and SCS mode are all resolved uniformly by `reference_engine/src/paths.py`; the GUI backend (`api_server.py`)
+and the CLI (this document) share the same logic, rather than each maintaining its own set of defaults:
 
-| 环境变量 | 默认值 | 说明 |
+| Environment variable | Default | Description |
 |---------|--------|------|
-| `LM_MODELS_PATH` | `<项目根>/models` | 模型库根目录 |
-| `LM_OUTPUT_PATH` | `<项目根>/output` | CLI 输出根目录（GUI 暂不写盘，见"与 GUI 的关系"） |
-| `SCS_MODE` | `false` | 云端多用户部署的写保护开关，见 [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md) |
+| `LM_MODELS_PATH` | `<project root>/models` | The model-library root |
+| `LM_OUTPUT_PATH` | `<project root>/output` | The CLI output root (the GUI does not write to disk for now, see "Relationship with the GUI") |
+| `SCS_MODE` | `false` | The write-protection switch for a cloud multi-user deployment, see [ADR 0078](decisions/0078-2026-05-18_project_scs-mode-design.md) |
 
-复制项目根目录下的 `.env.example` 为 `.env` 并修改即可（`.env` 已在 `.gitignore`，不会被提交）；
-不设置时使用上表默认值，本地开发通常无需创建 `.env`。
-
----
-
-## 命令参数
-
-两个入口的"跑哪些步骤"参数完全一致：`--sim-only`/`--opt-only` 互斥，都不传则默认两者都跑。
-
-### `main.py`（单模型）
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `<model.yaml>` | （必填） | 模型文件路径（绝对路径或相对于项目根的路径） |
-| `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥。若模型定义了 `simulation.plans`，对每个方案各跑一次，输出多个 CSV（`<stem>__<plan_id>.csv`）；否则输出单个 `<stem>.csv` |
-| `--opt-only` | （跑 sim + opt） | 只运行优化器（NSGA-II），跳过仿真。与 `--sim-only` 互斥 |
-| `--opt-continue` | （不热启动） | 热启动：从模型 YAML 内嵌的 `optimization.results` 继续搜索。要求优化器步骤会运行（不能与 `--sim-only` 同传） |
-| `--opt-continue PATH` | — | 热启动：从指定的 `_opt.csv` 文件加载 Pareto 前沿（相对路径从项目根起算，或绝对路径） |
-| `--output-dir PATH` | `output/` | 指定输出根目录（相对项目根或绝对路径）。结果写入 `<PATH>/<模型名>/` |
-
-> 仿真步骤和优化步骤各写各自的日志文件（`*_sim.log` / `*_opt.log`），不会混在一起；两步骤都跑时按"先 sim 再 opt"顺序执行，sim 失败则不再跑 opt。
-
-> **模型未声明步骤时的静默跳过**：默认调用（不传 `--sim-only`/`--opt-only`）下，模型没有
-> `simulation:`/`simulator:` 块则跳过 sim，没有 `optimization:` 块则跳过 opt——打印一行提示，
-> 不算错误、退出码仍为 `0`（`main.py`/`batch.py` 都有这条 `model_declares_step()` 门控）。
-> 两步骤都被跳过时视为错误（退出码 `1`）。显式传 `--sim-only`/`--opt-only` 则不走这条门控，
-> 缺失对应步骤直接按失败处理。
-
-> **`--opt-continue` 与 `--sim-only` 同传**：报错 `Error: --opt-continue requires the optimizer step (remove --sim-only).`，退出码 `1`。
-> **模型没有 `optimization:` 块但显式传了 `--opt-continue`**（未传 `--opt-only`/`--sim-only`）：静默跳过门控被绕过，会照常尝试跑优化器，大概率因缺少 `optimization:` 配置而报错——这是预期行为（用户已明确要求优化器步骤），不是 bug。
-
-> **Monte Carlo 跑几次不是 CLI 参数**：跑 N 次仿真的次数和种子来自模型自己的 `simulation.mc.runs`/`simulation.mc.seed`（见 `model.md`），CLI 只是照着 YAML 跑，不提供 `--mc-runs`/`--seed` 这样的覆盖开关——和 `optimization.mc.*`（优化器的 MC 配置，也只在 YAML 里，从无对应 CLI flag）保持同一套规则：要改运行次数，编辑模型文件，不是命令行。`mc.runs` 缺省或为 1 即确定性模式（取分布均值，ADR 0045）；大于 1 时输出 `<stem>__run{i}.csv`（多方案为 `<stem>__<plan_id>__run{i}.csv`）。
-
-### `batch.py`（批量，遍历文件夹）
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--input-dir PATH` | `models/`（整个模型库） | 要扫描的模型文件夹（递归查找 `*.yaml`）。**相对路径从 `models/` 起算**（与 GUI 的文件树/`model_key` 同一套根目录约定，见下方"路径配置"），例如 `--input-dir test_fixtures/valid` 等价于 `models/test_fixtures/valid`；绝对路径不受影响。**注意**：`models/test_fixtures/invalid` 下是故意写错的错误检测 fixture，每个文件都预期 FAIL——扫描整个模型库（不传 `--input-dir`）或 `--input-dir test_fixtures` 时，报告里出现这些 FAIL 是设计如此，不是回归 |
-| `--output-dir PATH` | `output/`（项目根） | 批次目录的根路径（相对项目根，或绝对路径）；实际输出在 `<PATH>/<时间戳>/<模型名>/` 下 |
-| `--sim-only` | （跑 sim + opt） | 只运行仿真，跳过优化器。与 `--opt-only` 互斥 |
-| `--opt-only` | （跑 sim + opt） | 只运行优化器，跳过仿真。与 `--sim-only` 互斥 |
-
-> `batch.py` 不带参数运行等价于 `--help`（避免误跑默认文件夹）。
-> 与 `main.py` 的区别：输入是文件夹（`--input-dir`）而非单个模型文件，且无 `--opt-continue`（批量场景不支持热启动，多个模型也不可能共享一份热启动 CSV）；
-> **单模型内 sim 失败不会阻止该模型继续跑 opt**（sim/opt 各自独立 `try/except`，两步骤结果互不影响，与 `main.py`"sim 失败则不再跑 opt"的顺序执行语义不同）——批量场景下想看到两步骤各自的真实结果，即使 sim 已知失败也照常跑 opt。
-> Monte Carlo 同样按各自模型 YAML 里的 `mc.runs` 跑，不是 batch 的参数——这意味着如果某个模型声明了较大的 `mc.runs`，批量测试会按该模型的真实配置变慢。
+Copy `.env.example` in the project root to `.env` and edit it (`.env` is already in `.gitignore`, so it won't be committed);
+when not set, the defaults in the table above are used, and local development usually needs no `.env` at all.
 
 ---
 
-## 输出文件
+## Command parameters
 
-所有输出写入 `output/{模型名}/` 目录（`output/` 已加入 `.gitignore`，目录本身入 git）；
-用 `--output-dir` 可改变根目录，模型子目录的嵌套规则不变。  
-文件名格式：`{模型名}_{YYYY-MM-DD_HH-MM-SS}_{模式}.{扩展名}`
+The "which steps to run" parameters are identical across both entry points: `--sim-only`/`--opt-only` are mutually exclusive, and when neither is passed, both run by default.
 
-| 文件 | 说明 |
+### `main.py` (a single model)
+
+| Parameter | Default | Description |
+|------|--------|------|
+| `<model.yaml>` | (required) | The model file path (absolute, or relative to the project root) |
+| `--sim-only` | (runs sim plus opt) | Runs only the simulation, skipping the optimizer. Mutually exclusive with `--opt-only`. If the model defines `simulation.plans`, each plan is run once, outputting multiple CSVs (`<stem>__<plan_id>.csv`); otherwise a single `<stem>.csv` is output |
+| `--opt-only` | (runs sim plus opt) | Runs only the optimizer (NSGA-II), skipping the simulation. Mutually exclusive with `--sim-only` |
+| `--opt-continue` | (no warm start) | Warm-starts by continuing the search from the model YAML's embedded `optimization.results`. Requires the optimizer step to run (cannot be passed together with `--sim-only`) |
+| `--opt-continue PATH` | — | Warm-starts by loading a Pareto front from the specified `_opt.csv` file (a relative path counted from the project root, or an absolute path) |
+| `--output-dir PATH` | `output/` | Specifies the output root (relative to the project root, or absolute). Results are written to `<PATH>/<model name>/` |
+
+> The simulation step and the optimization step each write their own log file (`*_sim.log` / `*_opt.log`), never mixed together; when both steps run, they execute in "sim then opt" order, and if sim fails, opt does not run.
+
+> **Silently skipping a step a model doesn't declare**: under the default invocation (neither `--sim-only` nor `--opt-only` passed), if a model has no `simulation:`/`simulator:` block, sim is skipped, and if it has no `optimization:` block, opt is skipped — a line is printed, this does not count as an error, and the exit code is still `0` (both `main.py` and `batch.py` have this `model_declares_step()` gate). If both steps are skipped, it counts as an error (exit code `1`). Explicitly passing `--sim-only`/`--opt-only` bypasses this gate, and a missing corresponding step is treated directly as a failure.
+
+> **Passing `--opt-continue` together with `--sim-only`**: errors with `Error: --opt-continue requires the optimizer step (remove --sim-only).`, exit code `1`.
+> **A model with no `optimization:` block but `--opt-continue` explicitly passed** (without `--opt-only`/`--sim-only`): the silent-skip gate is bypassed, and the optimizer is attempted as usual, very likely erroring for lacking an `optimization:` configuration — this is expected behavior (the user has explicitly requested the optimizer step), not a bug.
+
+> **How many times Monte Carlo runs is not a CLI parameter**: the number of simulation runs and the seed come from the model's own `simulation.mc.runs`/`simulation.mc.seed` (see `model.md`); the CLI simply runs what the YAML says, offering no override switch like `--mc-runs`/`--seed` — following the same rule as `optimization.mc.*` (the optimizer's MC configuration, likewise only in YAML, with no corresponding CLI flag ever): to change the run count, edit the model file, not the command line. `mc.runs` absent or 1 means deterministic mode (taking the distribution mean, ADR 0045); above 1, the output is `<stem>__run{i}.csv` (or `<stem>__<plan_id>__run{i}.csv` for multiple plans).
+
+### `batch.py` (batch, walking a folder)
+
+| Parameter | Default | Description |
+|------|--------|------|
+| `--input-dir PATH` | `models/` (the whole model library) | The model folder to scan (recursively finding `*.yaml`). **A relative path is counted from `models/`** (the same root-directory convention as the GUI's file tree/`model_key`, see "Path configuration" above), e.g. `--input-dir test_fixtures/valid` is equivalent to `models/test_fixtures/valid`; an absolute path is unaffected. **Note**: everything under `models/test_fixtures/invalid` is a deliberately broken error-detection fixture, and every file there is expected to FAIL — when scanning the whole model library (no `--input-dir` passed) or `--input-dir test_fixtures`, these FAILs appearing in the report is by design, not a regression |
+| `--output-dir PATH` | `output/` (the project root) | The root path of the batch directory (relative to the project root, or absolute); the actual output lands under `<PATH>/<timestamp>/<model name>/` |
+| `--sim-only` | (runs sim plus opt) | Runs only the simulation, skipping the optimizer. Mutually exclusive with `--opt-only` |
+| `--opt-only` | (runs sim plus opt) | Runs only the optimizer, skipping the simulation. Mutually exclusive with `--sim-only` |
+
+> Running `batch.py` with no parameters is equivalent to `--help` (avoiding accidentally running the default folder).
+> The difference from `main.py`: the input is a folder (`--input-dir`) rather than a single model file, and there is no `--opt-continue` (a batch scenario does not support warm-starting, since multiple models could never share one warm-start CSV);
+> **within a single model, a sim failure does not stop that model's opt from running** (sim/opt each have their own independent `try/except`, with the two steps' results not affecting each other, unlike `main.py`'s "sim fails, opt does not run" sequential-execution semantics) — in a batch scenario, seeing each step's genuine result matters, so opt still runs even when sim is already known to have failed.
+> Monte Carlo likewise runs according to each model's own YAML `mc.runs`, not a batch parameter — meaning that if some model declares a large `mc.runs`, the batch test will slow down according to that model's actual configuration.
+
+---
+
+## Output files
+
+All output is written to the `output/{model name}/` directory (`output/` is already in `.gitignore`, with the directory itself tracked in git);
+`--output-dir` can change the root, without changing the model-subdirectory nesting rule.  
+The filename format: `{model name}_{YYYY-MM-DD_HH-MM-SS}_{mode}.{extension}`
+
+| File | Description |
 |------|------|
-| `*_sim.csv` | 仿真时间序列，每列一个输出变量；若模型定义了多个 `simulation.plans`，则为 `*_sim__<plan_id>.csv`（每个方案一个文件） |
-| `*_opt.csv` | Pareto 前沿表格，每行一个解（x 列 + f 列）；每代结束后实时覆盖，中断不丢 |
-| `*_{模式}.log` | 运行日志（含每代 feasible ratio） |
+| `*_sim.csv` | A simulation time series, one output variable per column; if the model defines multiple `simulation.plans`, it becomes `*_sim__<plan_id>.csv` (one file per plan) |
+| `*_opt.csv` | A Pareto-front table, one solution per row (x columns plus f columns); overwritten live after each generation finishes, nothing lost on interruption |
+| `*_{mode}.log` | The run log (including the feasible ratio per generation) |
 
-CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点击"保存结果到模型"，将 Pareto 前沿写回原始 YAML 的 `optimization.results` 块。
+The CLI does not output a YAML copy. To publish a result, import the CSV in the GUI's opt tab and click "Save results to the model," writing the Pareto front back into the original YAML's `optimization.results` block.
 
 ---
 
-## 运行时输出
+## Runtime output
 
 ```
   Life Matters CLI
@@ -142,140 +138,137 @@ CLI 不输出 YAML 副本。要发布结果，在 GUI opt tab 导入 CSV 后点�
   Gen  20 | eval:  1999 | feasible:  61% | best_f: [9.3,  2.3, 74.2]
 ```
 
-**`feasible` 字段含义**：当前代种群中满足所有硬约束的解的比例。  
-持续为 0% 说明约束过紧或初始状态本身违反约束，需检查模型设计。
+**What the `feasible` field means**: the fraction of the current generation's population satisfying every hard constraint.  
+If it stays at 0%, the constraints are too tight, or the initial state itself violates a constraint, and the model design should be checked.
 
 ---
 
-## 提前停止与热启动
+## Early stopping and warm-starting
 
-优化运行期间输入 `q` + Enter（任意终端均有效）：
+While an optimization is running, typing `q` plus Enter (works in any terminal):
 
-1. 当前代跑完后停止
-2. 已搜索到的 Pareto 前沿写入 `_opt.csv`
-3. 日志末尾记录一行 `Optimizer complete (stopped early): N solutions`（`main.py` 的 stdout
-   同时打印 `(stopped early — resume with --opt-continue)`；`batch.py` 不监听 `q`，不会触发此提前停止）
+1. Stops after the current generation finishes
+2. Writes the Pareto front found so far into `_opt.csv`
+3. Records a line at the end of the log, `Optimizer complete (stopped early): N solutions` (`main.py`'s stdout
+   also prints `(stopped early — resume with --opt-continue)`; `batch.py` does not listen for `q`, so this early stop never triggers there)
 
-> **每代自动保存**：`_opt.csv` 在每代结束后实时覆盖写入，即使终端意外关闭也不会丢失进度。
+> **Auto-saved every generation**: `_opt.csv` is overwritten live at the end of every generation, so progress is never lost even if the terminal closes unexpectedly.
 
-下次从停止点继续，有两种方式：
+There are two ways to continue from where it stopped next time:
 
 ```bash
-# 1. 从指定 _opt.csv 文件热启动（推荐：路径明确，不依赖模型文件是否已更新）
+# 1. Warm-start from a specified _opt.csv file (recommended: an explicit path, independent of whether the model file has since changed)
 python cli/main.py <model.yaml> --opt-only --opt-continue output/masld_insulin_a7_s2/2026-06-06_13-00-34_opt.csv
 
-# 2. 从模型 YAML 内嵌的 optimization.results 热启动（需先在 GUI 保存结果到模型）
+# 2. Warm-start from the model YAML's embedded optimization.results (requires first saving the result to the model in the GUI)
 python cli/main.py <model.yaml> --opt-only --opt-continue
 ```
 
 ---
 
-## 输入校验
+## Input validation
 
-CLI 与 GUI 在仿真/优化真正开始执行前，会校验模型里所有日期（`start_date`/`end_date`/
-`valid_start`/`valid_end`/`date_range`）和时间（`time_start`/`time_end`）字段的格式
-（`reference_engine/src/validation.py`，ADR 0118）。格式不合法时直接报错并停止，不会用默认值
-静默继续：
+Before the simulation/optimization actually starts executing, both the CLI and the GUI validate the format of every date field (`start_date`/`end_date`/
+`valid_start`/`valid_end`/`date_range`) and time field (`time_start`/`time_end`) in the model
+(`reference_engine/src/validation.py`, ADR 0118). When the format is invalid, it errors and stops directly, never silently continuing with a default value:
 
 ```
 Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected YYYY-MM-DD)
 ```
 
-这条校验和 sim/opt 执行核心共用同一份引擎层代码（见下"与 GUI 的关系"），所以 CLI 报错信息
-和 GUI 报错信息（出现在界面的提示框里）对同一个错误输入完全一致。CLI 端这条信息同时写入
-`运行时输出`一节描述的日志文件和标准输出。
+This validation shares the same engine-layer code as the sim/opt execution core (see "Relationship with the GUI" below), so for the same bad input, the CLI's error message
+and the GUI's error message (shown in an on-screen prompt box) are exactly identical. On the CLI side, this message is also written into
+the log file and standard output described in "Runtime output."
 
 ---
 
-## 日志设计
+## Logging design
 
-日志文件记录：
-- CLI 自身的进度消息（每代 `Gen N | eval | feasible | best_f`、各 plan 完成的步数）
-- 仿真/优化运行信息——模型规模（变量/方程数）、imports、起止日期与步长、output 变量列表、
-  schedule/regimen 变量名、NaN/越界告警、完成耗时与 schedule 命中次数（sim）；目标/约束/决策变量/
-  算法配置（opt）。这部分内容由 `reference_engine/src/run_logging.py`（sim）和 `optimizer_engine.py` 的
-  `log_cb` 机制（opt）生成，与 GUI 运行时日志面板显示的内容是同一份代码产出，只是落地渠道不同
-  （CLI 写日志文件，GUI 存进内存会话） —— 见 ADR 0119。
-- 引擎级别 WARNING / ERROR
+The log file records:
+- The CLI's own progress messages (`Gen N | eval | feasible | best_f` per generation, the steps completed for each plan)
+- Simulation/optimization run information — model scale (number of variables/equations), imports, start/end date and step size, the output-variable list,
+  schedule/regimen variable names, NaN/out-of-bounds warnings, completion time and schedule-hit count (sim); objectives/constraints/decision variables/
+  algorithm configuration (opt). This content is generated by `reference_engine/src/run_logging.py` (sim) and `optimizer_engine.py`'s
+  `log_cb` mechanism (opt), the same code output the GUI's runtime log panel displays, just landing through a different channel
+  (the CLI writes a log file, the GUI stores it in an in-memory session) — see ADR 0119.
+- Engine-level WARNING / ERROR
 
-日志与 CSV 使用相同时间戳命名，便于对应。
+The log and the CSV use the same timestamp for naming, making them easy to match up.
 
 ---
 
-## 与 GUI 的关系
+## Relationship with the GUI
 
-| 功能 | GUI | CLI |
+| Feature | GUI | CLI |
 |------|-----|-----|
-| 交互式参数调整 | ✅ | ❌ |
-| Pareto 前沿可视化 | ✅ | ❌ |
-| 批量/自动化运行 | ❌ | ✅ |
-| 结果文件输出 | 手动导出 | 自动（`output/<模型名>/`） |
-| 热启动 | ✅（界面勾选或导入 CSV） | `--opt-continue` |
-| CLI 结果导入 GUI | — | GUI opt tab "导入 CSV" |
-| Monte Carlo 多 run | ✅（界面可临时改 sim_runs/seed，覆盖 YAML，不回写） | 严格按模型 YAML 的 `mc.runs`/`mc.seed` 跑，无覆盖开关 |
+| Interactive parameter adjustment | Yes | No |
+| Pareto-front visualization | Yes | No |
+| Batch/automated running | No | Yes |
+| Result-file output | Manual export | Automatic (`output/<model name>/`) |
+| Warm-starting | Yes (a UI checkbox or importing a CSV) | `--opt-continue` |
+| Importing a CLI result into the GUI | — | The GUI opt tab's "Import CSV" |
+| Multiple Monte Carlo runs | Yes (the UI can temporarily change sim_runs/seed, overriding the YAML without writing back) | Strictly runs per the model YAML's `mc.runs`/`mc.seed`, with no override switch |
 
-CLI 与 GUI 共用同一个引擎层（`reference_engine/src/`），结果格式一致，可互通——sim 的执行核心
-（`apply_schedules` → `model.step()` 的循环）和 MC 种子派生都是同一份代码（见 ADR 0113），
-不是两份各自实现后凑巧一致。这个一致性由 `test_verification/test_sim_cli_consistency.py` 自动回归验证
-（见 ADR 0111/0112/0113）。
+The CLI and the GUI share the same engine layer (`reference_engine/src/`), with a consistent result format, and are interoperable — the sim execution core
+(the loop from `apply_schedules` to `model.step()`) and MC seed derivation are the same code (see ADR 0113),
+not two separately implemented copies that happen to agree. This consistency is automatically regression-tested by `test_verification/test_sim_cli_consistency.py`
+(see ADR 0111/0112/0113).
 
-### 按数据流拆分：哪些共用，哪些独立
+### Split by data flow: what's shared, what's independent
 
-把整条流水线（输入 → 校验 → 执行 → 日志/报错 → 结果输出）拆开看，更精确的边界是：
+Breaking the whole pipeline apart (input -> validation -> execution -> logging/error -> result output), a more precise boundary is:
 
-| 步骤 | GUI 独有 | CLI 独有 | 共用 |
+| Step | GUI-only | CLI-only | Shared |
 |---|---|---|---|
-| 入口/触发 | HTTP API，异步、session/job 轮询 | argparse，同步阻塞 | 都落到 `ReferenceEngine` 的方法上 |
-| 参数来源 | 请求体可运行时覆盖 regimens/MC runs，不回写 YAML | 严格只读 YAML | 解析后落到同一套 `ModelStructure` 字段 |
-| 模型加载/校验 | — | — | `LoaderEngine.fetch()`；`validation.py`（ADR 0118） |
-| MC 采样 | — | — | `mc_utils.py` |
-| Sim 执行核心 | 分批跑（`batch_steps`），支持暂停/恢复 | 一次跑到底 | `schedule_runner.advance_steps`（ADR 0113） |
-| Opt 执行核心 | 异步 Job，可取消 | 同步阻塞，`q`+Enter 提前停止 | `optimizer_engine.run_optimizer()` 整个函数 |
-| 进度/日志内容 | — | — | `run_logging.py`（sim）+ `log_cb`（opt），见 ADR 0119 |
-| 进度/日志落地 | 内存 `session['logs']`/`job['logs']`，前端面板展示 | 写入 `<stem>.log` 文件 | 内容来自同一份代码，只是出口不同 |
-| 报错 | `HTTPException` → 前端 `message.error()` | `logger.error()` + 退出码 1 | 同一个 `{"success": False, "error": str(e)}` |
-| 结果输出 | 手动导出 | 自动写入 `output/<模型名>/` | CSV 字段格式一致 |
+| Entry point/trigger | The HTTP API, asynchronous, session/job polling | argparse, synchronous and blocking | Both land on `ReferenceEngine`'s methods |
+| Parameter source | The request body can override regimens/MC runs at runtime, not written back to YAML | Strictly read-only from YAML | Once parsed, both land on the same set of `ModelStructure` fields |
+| Model loading/validation | — | — | `LoaderEngine.fetch()`; `validation.py` (ADR 0118) |
+| MC sampling | — | — | `mc_utils.py` |
+| The sim execution core | Runs in batches (`batch_steps`), supporting pause/resume | Runs straight through to the end in one go | `schedule_runner.advance_steps` (ADR 0113) |
+| The opt execution core | An asynchronous job, cancellable | Synchronous and blocking, `q`+Enter to stop early | The entire `optimizer_engine.run_optimizer()` function |
+| Progress/log content | — | — | `run_logging.py` (sim) plus `log_cb` (opt), see ADR 0119 |
+| Where progress/logs land | The in-memory `session['logs']`/`job['logs']`, shown in a frontend panel | Written to a `<stem>.log` file | The content comes from the same code, just a different exit channel |
+| Error handling | `HTTPException` -> the frontend's `message.error()` | `logger.error()` plus exit code 1 | The same `{"success": False, "error": str(e)}` |
+| Result output | Manual export | Automatically written to `output/<model name>/` | The CSV field format is consistent |
 
-暂停/恢复控制是唯一一处"合理且预期独立"的部分——CLI 同步阻塞执行，GUI 异步轮询，两种执行模型
-本身不共享同一种暂停机制。其余差异都是"批处理工具 vs 交互式服务"该有的 IO/触发方式不同，逻辑内核
-（校验、执行核心、日志内容、报错格式）都已经统一。
+Pause/resume control is the one place that is "reasonably and expectedly independent" — the CLI executes synchronously and blocking, the GUI polls asynchronously, and the two execution models don't share the same pause mechanism to begin with. Every other difference is just the expected IO/triggering difference between "a batch tool" and "an interactive service"; the logical core (validation, the execution core, log content, error format) is already unified.
 
 ---
 
-## 批量运行 (`cli/batch.py`)
+## Batch running (`cli/batch.py`)
 
-`cli/batch.py` 遍历一个文件夹下的所有 YAML，对每个模型依次运行仿真和优化器（默认两者都跑，可用 `--sim-only`/`--opt-only` 收窄），汇总结果到 Markdown 报告。
-与 `main.py` 同属 `cli/`，纯 Python 实现，不依赖 bash，可在 PyInstaller 编译的 `lm-sim` 同一环境下运行。
-运行示例与参数见上方"命令参数"一节。
+`cli/batch.py` walks every YAML under a folder, running the simulation and the optimizer for each model in turn (both by default, narrowable with `--sim-only`/`--opt-only`), summarizing the results into a Markdown report.
+Belonging to `cli/` alongside `main.py`, it's a pure Python implementation with no dependency on bash, and can run in the same environment as the PyInstaller-built `lm-sim`.
+See "Command parameters" above for a run example and the parameters.
 
-每次运行创建一个以秒级时间戳命名的批次目录（`<output-dir>/YYYY-MM-DD_HH-MM-SS/`），
-内部按 `lm-sim` 的统一规则再分模型子目录（`<模型名>/`），所有 CSV、log 和 `batch_report.md` 都放入该批次目录。并发运行多个进程不会冲突。
+Each run creates a batch directory named with a second-level timestamp (`<output-dir>/YYYY-MM-DD_HH-MM-SS/`),
+further split into per-model subdirectories inside it following `lm-sim`'s standard convention (`<model name>/`), with every CSV, log, and `batch_report.md` placed in that batch directory. Running multiple processes concurrently causes no conflict.
 
-### 报告
+### The report
 
-`batch_report.md` 中每个模型一行，包含 Sim / Opt 两列：
-- 实际运行且成功：`[✓ PASS](./<模型名>/xxx.csv)`（链接到结果 CSV）
-- 实际运行但失败：`✗ FAIL`，错误摘要列附带引擎日志中的最后一条 ERROR 消息
-- 未运行的步骤：`⏭ SKIP`——原因可能是传了 `--sim-only`/`--opt-only`，也可能是模型本身没有声明
-  对应的 `simulation:`/`simulator:` 或 `optimization:` 块（见上方"模型未声明步骤时的静默跳过"）
+`batch_report.md` has one row per model, with Sim and Opt columns:
+- Actually ran and succeeded: `[PASS](./<model name>/xxx.csv)` (linking to the result CSV)
+- Actually ran but failed: `FAIL`, with the error-summary column carrying the last ERROR message from the engine log
+- A step that didn't run: `SKIP` — this may be because `--sim-only`/`--opt-only` was passed, or because the model itself doesn't declare
+  the corresponding `simulation:`/`simulator:` or `optimization:` block (see "Silently skipping a step a model doesn't declare" above)
 
-单个模型崩溃不会中断整批运行；汇总区给出整体 PASS/FAIL 计数（按模型计，只要该模型实际运行的步骤全部成功即为 PASS）。
+A single model crashing does not interrupt the whole batch run; the summary section gives an overall PASS/FAIL count (per model, counted as PASS only if every step that actually ran for that model succeeded).
 
 ---
 
-## 目录结构
+## Directory structure
 
 ```
 cli/
-  main.py       # 单模型入口，argparse，dispatch
-  batch.py      # 批量入口：遍历文件夹，逐模型调用 runner，生成 batch_report.md
-  runner.py     # run_sim / run_opt，调用引擎
-  output.py     # 输出目录/CSV 写入与日志配置
-  progress.py   # 实时进度显示与停止信号监听
-  build.spec    # PyInstaller 构建配置
+  main.py       # the single-model entry point, argparse, dispatch
+  batch.py      # the batch entry point: walks a folder, calls the runner per model, generates batch_report.md
+  runner.py     # run_sim / run_opt, calling the engine
+  output.py     # output-directory/CSV writing and log configuration
+  progress.py   # live progress display and stop-signal listening
+  build.spec    # the PyInstaller build configuration
 
-output/                     # CLI 输出根目录（内容 gitignore，目录本身入 git）
-  <模型名>/                  # 按模型分子目录
+output/                     # the CLI output root (content gitignored, the directory itself tracked in git)
+  <model name>/              # subdirectory per model
     <timestamp>_sim.csv
     <timestamp>_opt.csv
     <timestamp>_<mode>.log

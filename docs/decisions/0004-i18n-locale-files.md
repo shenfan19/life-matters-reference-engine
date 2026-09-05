@@ -1,28 +1,28 @@
-# 0004 — 多语言方案：JSON locale 文件
+# 0004 — Multilingual scheme: JSON locale files
 
-**状态**：✅ 已实施  
-**日期**：2026-04-01
+**Status**: implemented
+**Date**: 2026-04-01
 
-## 背景
+## Background
 
-仿真器 UI 需要支持简体中文、繁体中文、英文三种语言。最初所有文字硬编码在组件中，切换语言时只有部分区域生效，繁体中文 locale 文件缺少 `sim.*` 命名空间，导致显示键名而非译文。
+The simulator UI needs to support Simplified Chinese, Traditional Chinese, and English. Originally all text was hardcoded in components, so switching languages only took effect in some areas; the Traditional Chinese locale file was missing the `sim.*` namespace, causing raw keys to be displayed instead of translated text.
 
-## 决策
+## Decision
 
-采用 JSON locale 文件方案（已有 `useI18n()` hook）：
+Adopt a JSON locale file scheme (building on the existing `useI18n()` hook):
 
-- locale 文件路径：`sim_gui/public/locales/sim/{zh-CN,zh-TW,en}.json`
-- 命名空间前缀统一为 `sim.*`，按功能分组：
-  - `sim.mode.*` — 模式切换标签
-  - `sim.control.*` — 运行控制按钮（run / pause / continue / step / reset / pending）
-  - `sim.scene.*` — 场景区域（locked, select_hint 等）
-  - `sim.section.*` — 左侧 accordion 各区名称
-  - `sim.chart.*` — 图表区域（no_data, export_csv 等）
-  - `sim.msg.*` — 消息/通知文字
-- 所有 UI 文字通过 `t('sim.xxx')` 调用，禁止在组件中硬编码中文或英文
+- Locale file path: `sim_gui/public/locales/sim/{zh-CN,zh-TW,en}.json`
+- Namespace prefix unified as `sim.*`, grouped by function:
+  - `sim.mode.*` — mode switch labels
+  - `sim.control.*` — run control buttons (run / pause / continue / step / reset / pending)
+  - `sim.scene.*` — scene area (locked, select_hint, etc.)
+  - `sim.section.*` — names of the left accordion sections
+  - `sim.chart.*` — chart area (no_data, export_csv, etc.)
+  - `sim.msg.*` — message/notification text
+- All UI text goes through `t('sim.xxx')`; hardcoding Chinese or English in components is forbidden
 
-## 后果
+## Consequences
 
-- ✅ 三种语言完整覆盖，切换即时生效
-- ✅ 键名分组清晰，新增文字只需同步三个文件
-- ⚠️ 新增 UI 文字时需手动同步三份 locale，漏加会显示键名（已有先例：zh-TW 曾缺失全部 sim.* 键）
+- Full coverage across all three languages, with instant switching
+- Keys are grouped clearly, so adding new text only requires updating three files
+- New UI text requires manually syncing all three locale files; missing an update shows the raw key (this has already happened once: zh-TW was once missing every `sim.*` key)

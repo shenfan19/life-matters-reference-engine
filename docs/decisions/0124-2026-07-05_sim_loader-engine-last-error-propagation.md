@@ -1,59 +1,39 @@
-# 0124 — LoaderEngine 错误信息透传：`fetch()` 新增 `last_error`
+# 0124 — LoaderEngine error-message propagation: `fetch()` gains `last_error`
 
-**日期**：2026-07-05
-**状态**：✅ 已接受
+**Date**: 2026-07-05
+**Status**: Accepted
 
 ---
 
-## 背景
+## Background
 
-审查引擎的错误检测机制时发现：`Loader`/`Validator`（`model_structure/loader.py`、
-`model_structure/validator.py`）本身已经能生成具体、可读的错误信息（如"检测到循环
-import"、"formula 缺少 step_unit"、"evidence 名称与 variables 重名"等），但 CLI/GUI
-加载模型的唯一入口 `LoaderEngine.fetch()`（`loader_engine.py`）在 `except Exception as e`
-分支里只把 `e` 写进日志，返回值是裸 `None`。
+Reviewing the current state of the engine's error-detection mechanism found that `Loader`/`Validator` (`model_structure/loader.py`, `model_structure/validator.py`) already generate specific, readable error messages (e.g. "circular import detected," "formula missing step_unit," "evidence name collides with variables") — but `LoaderEngine.fetch()` (`loader_engine.py`), the sole entry point through which the CLI/GUI load a model, only writes `e` to the log in its `except Exception as e` branch and returns a bare `None`.
 
-`ReferenceEngine.load_models()` 只返回 `self.loader.fetch(...) is not None` 这个布尔值，
-再往上传到 `run_simulation`/`run_simulation_mc`/`run_simulation_all_plans`
-（`reference_engine.py`）、`start_session`（`session_manager.py`）、`run_optimizer`
-（`optimizer_engine.py`）时，全部退化成同一句硬编码兜底："无法加载模型：{model_name}"/
-"Cannot load model: {model_name}"——具体原因只能翻日志文件，GUI 返回给前端的 JSON
-`{"success": false, "error": "无法加载模型：xxx"}` 完全看不出问题出在哪。
+`ReferenceEngine.load_models()` returns only the boolean `self.loader.fetch(...) is not None`, which propagates further up to `run_simulation`/`run_simulation_mc`/`run_simulation_all_plans` (`reference_engine.py`), `start_session` (`session_manager.py`), and `run_optimizer` (`optimizer_engine.py`), everywhere degrading into the same hardcoded fallback: "Cannot load model: {model_name}" — the specific cause can only be found by digging through the log file, and the JSON `{"success": false, "error": "Cannot load model: xxx"}` returned to the frontend by the GUI gives no indication of what actually went wrong.
 
-这意味着"错误检测机制"在校验逻辑本身是完整的，但主调用路径上的错误信息传递有缺口——
-检测到了，但没说清楚。
+This means the "error-detection mechanism" is complete in its validation logic itself, but there is a gap in how the error message propagates along the main call path — it was detected, but not communicated clearly.
 
-## 决策
+## Decision
 
-给 `LoaderEngine` 增加 `self.last_error: Optional[str]` 属性：
+Add a `self.last_error: Optional[str]` attribute to `LoaderEngine`:
 
-- `fetch()` 开头重置为 `None`；三个失败分支（循环依赖、文件未找到、`load_model`/
-  `validate_model` 抛出异常）各自把具体信息写入 `self.last_error`，再照常记日志、返回 `None`。
-- 调用方（`reference_engine.py` 3 处、`session_manager.py` 1 处、`optimizer_engine.py`
-  1 处）原来的硬编码兜底信息改为 `self.loader.last_error or f"无法加载模型：{model_name}"`
-  ——`last_error` 有值就用它，没有（理论上不会发生，保留兜底防止空指针式的裸错误）才退回旧文案。
+- `fetch()` resets it to `None` at the start; each of the three failure branches (circular dependency, file not found, `load_model`/`validate_model` raising an exception) writes its specific message into `self.last_error`, then logs and returns `None` as before.
+- The callers (3 sites in `reference_engine.py`, 1 in `session_manager.py`, 1 in `optimizer_engine.py`) had their hardcoded fallback message changed to `self.loader.last_error or f"Cannot load model: {model_name}"` — if `last_error` has a value, use it; if not (which should not happen in theory, kept only as a fallback against a bare null-pointer-style error) fall back to the old wording.
 
-不改变 `fetch()`/`load_models()` 的返回类型（仍是 `Optional[ModelStructure]`/`bool`），
-`last_error` 是旁路属性，不引入新的异常类型或返回值 schema 变化，向后兼容。
+This does not change the return type of `fetch()`/`load_models()` (still `Optional[ModelStructure]`/`bool`); `last_error` is a side-channel attribute, introducing no new exception type or return-value schema change — fully backward compatible.
 
-### 为什么不让 `fetch()` 直接抛异常
+### Why not have `fetch()` raise an exception directly
 
-`fetch()` 现有调用方（`scan_models()` 批量扫描整库、`merge_models()`）依赖它"失败返回
-`None`"的契约来跳过坏模型继续扫描下一个，改成抛异常会牵动这些调用点的 try/except
-结构；只加一个可选的错误信息旁路，改动面小、行为不变。
+Existing callers of `fetch()` (`scan_models()`, which scans the whole library in bulk, and `merge_models()`) depend on its contract of "returning `None` on failure" to skip a bad model and continue to the next one; switching to raising an exception would require touching the try/except structure at each of these call sites. Adding only an optional error-message side channel keeps the change surface small and behavior unchanged.
 
-## 结果
+## Outcome
 
-- `reference_engine/src/loader_engine.py`：新增 `self.last_error`，`fetch()` 三个失败点写入
-- `reference_engine/src/reference_engine.py`：3 处（`run_simulation`、`run_simulation_mc`、
-  `run_simulation_all_plans`）改为优先展示 `self.loader.last_error`
-- `reference_engine/src/session_manager.py`：`start_session` 同上
-- `reference_engine/src/optimizer_engine.py`：`run_optimizer` 同上
-- 回归锁定：`tests/errors/`（见 0125 †，life-matters-models 仓库）的 11 个用例全部通过
-  `ReferenceEngine.load_models()` 断言 `engine.loader.last_error` 包含具体原因，而不是只
-  断言返回值是 `False`——这正是本次要修的缺口
+- `reference_engine/src/loader_engine.py`: new `self.last_error`, written at the three failure points in `fetch()`
+- `reference_engine/src/reference_engine.py`: 3 sites (`run_simulation`, `run_simulation_mc`, `run_simulation_all_plans`) changed to prefer displaying `self.loader.last_error`
+- `reference_engine/src/session_manager.py`: same for `start_session`
+- `reference_engine/src/optimizer_engine.py`: same for `run_optimizer`
+- Regression coverage: all 11 test cases in `tests/errors/` (see ADR 0125 in the life-matters-models repository) now pass by asserting that `ReferenceEngine.load_models()` sets `engine.loader.last_error` to a message containing the specific cause, rather than only asserting the return value is `False` — this is precisely the gap being fixed here.
 
-## 未决
+## Open items
 
-- CLI 单模型路径（`cli/main.py`）目前仍只打印"Simulation failed. Check log for details."，
-  没有把 `result['error']` 展示到终端——这是 CLI 交互体验的独立问题，不在本次改动范围内。
+- The CLI's single-model path (`cli/main.py`) currently still only prints "Simulation failed. Check log for details.," without surfacing `result['error']` to the terminal — this is a separate CLI interaction-experience issue, out of scope for this change.
