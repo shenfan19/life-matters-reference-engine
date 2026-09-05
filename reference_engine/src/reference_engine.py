@@ -17,6 +17,7 @@ from .mc_utils import apply_parameter_sampling, collect_param_distributions, clo
 from .schedule_runner import advance_steps, precompute_sustained_divisors
 from .validation import validate_simulator_dates, validate_schedule_list
 from . import run_logging
+from . import paths
 from time import time as _time
 
 # Initialize the module's logger, used to record info and errors during simulation.
@@ -180,8 +181,9 @@ class ReferenceEngine(SessionManagerMixin):
             # Write the CSV file
             csv_output_path = output_path
             if not csv_output_path:
-                # Default output to the models/output/ directory
-                output_dir = os.path.join(self.loader.models_directory, "output")
+                # Default output to reference_engine's own OUTPUT_DIR (paths.py, LM_OUTPUT_PATH),
+                # never into the models/ directory — see paths.py for the .env override.
+                output_dir = str(paths.OUTPUT_DIR)
                 os.makedirs(output_dir, exist_ok=True)
                 csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_simulation.csv")
 
