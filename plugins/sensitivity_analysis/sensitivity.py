@@ -22,8 +22,8 @@ class SensitivityAnalysis:
         if len(sim_results) < 5:
             return {
                 'result_type': 'text',
-                'title': '敏感性分析',
-                'data': '需要至少 5 个仿真步骤。',
+                'title': 'Sensitivity Analysis',
+                'data': 'At least 5 simulation steps are required.',
             }
 
         sample = sim_results[0]
@@ -33,8 +33,8 @@ class SensitivityAnalysis:
         if len(all_vars) < 2:
             return {
                 'result_type': 'text',
-                'title': '敏感性分析',
-                'data': '需要至少 2 个数值变量。',
+                'title': 'Sensitivity Analysis',
+                'data': 'At least 2 numeric variables are required.',
             }
 
         target_var = params.get('target_var', '')
@@ -48,7 +48,7 @@ class SensitivityAnalysis:
         except ImportError:
             return {
                 'result_type': 'text',
-                'title': '敏感性分析',
+                'title': 'Sensitivity Analysis',
                 'error': 'numpy not installed',
             }
 
@@ -73,8 +73,8 @@ class SensitivityAnalysis:
         if not correlations:
             return {
                 'result_type': 'text',
-                'title': '敏感性分析',
-                'data': '所有变量方差为零，无法计算相关系数。',
+                'title': 'Sensitivity Analysis',
+                'data': 'All variables have zero variance; a correlation coefficient cannot be computed.',
             }
 
         self.ctx.log(
@@ -84,7 +84,7 @@ class SensitivityAnalysis:
 
         return {
             'result_type': 'json',
-            'title': f'敏感性分析 — 目标：{target_var}，{len(correlations)} 个变量',
+            'title': f'Sensitivity Analysis — target: {target_var}, {len(correlations)} variables',
             'data': {
                 'target': target_var,
                 'method': 'Pearson correlation',

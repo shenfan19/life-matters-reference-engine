@@ -1,46 +1,57 @@
-# 数值多值测试目录规范
+# Numerical multi-value test directory convention
 
-> 任务来源：`2026-06-19_task_code-trust-verification-infra` 任务4。
-> 与 `test_verification/test_sim_cli_consistency.py`（CLI/GUI 路径一致性回归）不同，本目录下的测试
-> 针对**单个模型变量在多组取值下的数值行为**，用于在改动方程/参数后快速发现"某个变量的
-> 输出不再符合预期"的回归。
+> Task origin: `2026-06-19_task_code-trust-verification-infra`, item 4. Unlike
+> `test_verification/test_sim_cli_consistency.py` (CLI/GUI path consistency regression), the
+> tests under this directory target **a single model variable's numerical behavior across
+> multiple values**, used to quickly catch a regression where "some variable's output no longer
+> matches expectations" after an equation/parameter change.
 
-## 目录结构
+## Directory structure
 
 ```
 test_verification/models/<model_name>/<variable_name>/test_*.py
 ```
 
-- `<model_name>`：`models/` 下某个 `.yaml` 文件的 `metadata.name`（不含路径前缀）。
-- `<variable_name>`：该模型里被测试的**输入变量**（`type: input` 或 `type: parameter`），
-  即 `pytest.mark.parametrize` 里取多组值的那个变量。
-- 同一个变量的多组测试用例放在它自己的文件夹下，不与其他变量的测试混在一个文件里——
-  改某个变量的方程时，只需要看这一个文件夹的测试是否还过。
+- `<model_name>`: the `metadata.name` of some `.yaml` file under `models/` (without a path prefix).
+- `<variable_name>`: the **input variable** being tested in that model (`type: input` or
+  `type: parameter`), i.e. the variable that takes multiple values in `pytest.mark.parametrize`.
+- Multiple test cases for the same variable live in their own folder, not mixed into one file with
+  another variable's tests — when an equation for a given variable changes, only that one folder's
+  tests need checking.
 
-## 写法约定
+## Writing convention
 
-- 用 `pytest.mark.parametrize` 枚举该变量的多组取值（通常对应模型 YAML 里已有的
-  `simulation.plans`，每个 plan 代表该变量的一组取值）。
-- 断言**关系**（比例、单调性、符号），不要硬编码引擎输出的具体浮点数——硬编码值在方程
-  微调后会大量误报，且新人看 diff 时分不清是真回归还是数值漂移。需要精确值比对的场景，
-  数值精度参照 `test_verification/verification_report.md` 第2节协议，文献对标参照 `models/validation/validation_report.md` 第1节协议，单独走验证，不放在这里。
-- 示例：`test_valid_mc_distributions/daily_dose/test_dose_scaling.py` ——
-  `test_valid_mc_distributions.yaml` 的 `daily_dose` 在 `low_dose`/`moderate_dose`/`high_dose`
-  三个 plan 里取 100/200/350 mg，断言 `plasma_conc`、`peak_plasma` 的确定性稳态值随剂量
-  严格线性缩放（该模型的吸收/清除方程对 `daily_dose` 是线性的，无饱和项）。
-- 示例（2026-07-10 新增）：`test_valid_plans/caloric_deficit/test_weight_loss_ordering.py` ——
-  三个命名 plan（conservative/balanced/aggressive）在 `caloric_deficit`/`exercise_minutes`
-  两个维度上依次加码，断言最终 `body_weight` 严格单调递减，并附带 `max(50.0, ...)` 地板夹紧
-  的余量检查，避免"恰好触底"导致假通过。
-- 示例（2026-07-10 新增，`models/papers/` 下的真实论文引用模型）：
-  `bergman_glucose_insulin/carb_intake_per_meal/test_intervention_beats_baseline.py` ——
-  四个命名 plan（无干预基线 → ADA标准 → 空腹运动+IF → 联合优化）断言 `insulin_sensitivity`
-  严格单调递增，且每个干预方案都以明显余量优于无干预基线；`hba1c` 只断言"干预 vs 基线"这一
-  大间距关系，不断言三个干预方案之间的严格排序——三者差距仅约 1e-5（模型自身文档记录的已知
-  简并：hba1c 平衡点由 `fasting_glucose_target` 主导，区分力有限），断言过细的排序会让测试
-  在正常参数调优下变脆。
+- Use `pytest.mark.parametrize` to enumerate the variable's values (usually corresponding to the
+  `simulation.plans` already in the model YAML, with each plan representing one set of values for
+  that variable).
+- Assert a **relationship** (a ratio, monotonicity, a sign), not a hardcoded specific float from
+  the engine's output — a hardcoded value produces a flood of false positives after a minor
+  equation tweak, and a newcomer reading the diff can't tell a real regression from numerical
+  drift. A scenario needing an exact-value comparison follows the numerical-precision protocol in
+  `test_verification/verification_report.md` §2, or the literature-benchmarking protocol in
+  `models/validation/validation_report.md` §1, handled separately, not here.
+- Example: `test_valid_mc_distributions/daily_dose/test_dose_scaling.py` —
+  `test_valid_mc_distributions.yaml`'s `daily_dose` takes 100/200/350 mg across its
+  `low_dose`/`moderate_dose`/`high_dose` plans, asserting that `plasma_conc` and `peak_plasma`'s
+  deterministic steady-state values scale strictly linearly with dose (this model's
+  absorption/clearance equations are linear in `daily_dose`, with no saturation term).
+- Example (added 2026-07-10): `test_valid_plans/caloric_deficit/test_weight_loss_ordering.py` —
+  three named plans (conservative/balanced/aggressive) escalate along both the
+  `caloric_deficit`/`exercise_minutes` dimensions in turn, asserting that the final `body_weight`
+  is strictly monotonically decreasing, with an added margin check against the `max(50.0, ...)`
+  floor clamp, to avoid a false pass from "just barely hitting the floor."
+- Example (added 2026-07-10, a real paper-referenced model under `models/papers/`):
+  `bergman_glucose_insulin/carb_intake_per_meal/test_intervention_beats_baseline.py` — four named
+  plans (no intervention baseline -> ADA standard -> fasting exercise + IF -> combined
+  optimization) assert that `insulin_sensitivity` is strictly monotonically increasing, and that
+  every intervention plan clearly beats the no-intervention baseline by a wide margin;
+  `hba1c` asserts only the wide "intervention vs. baseline" gap, not a strict ordering among the
+  three intervention plans — their pairwise gap is only about 1e-5 (a known degeneracy documented
+  in the model's own docs: the `hba1c` equilibrium point is dominated by `fasting_glucose_target`,
+  with limited discriminating power), and asserting too fine an ordering would make the test
+  brittle under normal parameter tuning.
 
-## 运行
+## Running
 
 ```bash
 pytest test_verification/models/

@@ -1,63 +1,63 @@
-# test_verification — 引擎代码的 pytest 验证套件
+# test_verification — the pytest verification suite for the engine code
 
-`test_verification/` 是仓库的 Python 单元/回归测试套件，用 `pytest` 驱动，验证的对象是**`cli/`、`reference_engine/` 里的代码本身有没有按预期实现**——不涉及某个具体模型 YAML 的数值是否符合文献/临床常识（那属于 `models/validation/`，见下方"和 models/test_fixtures/、models/validation/ 的关系"）。
+`test_verification/` is the repository's Python unit/regression test suite, driven by `pytest`, and what it verifies is **whether the code in `cli/` and `reference_engine/` itself implements what it's supposed to** — not whether some specific model YAML's numbers match the literature/clinical common sense (that belongs to `models/validation/`, see "Relationship with `models/test_fixtures/` and `models/validation/`" below).
 
-## 这个目录做什么 / 不做什么
+## What this directory does / doesn't do
 
-**做什么**：
-- 断言某个 Python 函数/接口在给定输入下产生预期输出（如 `apply_schedules()` 的 pulse reset 不应被 bounds 下限夹住：`test_schedule_runner.py`）。
-- 给历史 bug 上"回归锁定"——bug 修复后新增一个能复现该 bug 的用例，之后任何改动只要让它又失败，就说明该 bug 复发了（本目录几乎每个文件的 docstring 都写明了对应的 bug 背景和修复位置）。
-- 验证 CLI 和 GUI 两条路径共用同一个引擎层时结果是否完全一致（`test_sim_cli_consistency.py`）。
-- 验证引擎在遇到结构错误/配置错误的模型 YAML 时能否可靠失败、且报错信息能传到调用方（`errors/`）。
-- 验证具体模型的某个变量在多组参数取值下，数值关系（单调性、线性缩放等）是否符合该模型自身方程的预期（`models/`）。
+**What it does**:
+- Asserts that a given Python function/interface produces the expected output for a given input (e.g. `apply_schedules()`'s pulse reset should not be clamped by the bounds lower floor: `test_schedule_runner.py`).
+- Puts a "regression lock" on a historical bug — once a bug is fixed, a new test case reproducing it is added, so any later change that makes it fail again means the bug has come back (almost every file's docstring in this directory states the corresponding bug background and where it was fixed).
+- Verifies that the CLI and GUI paths produce exactly the same result when they share the same engine layer (`test_sim_cli_consistency.py`).
+- Verifies that the engine reliably fails, with the error propagated to the caller, when it encounters a structurally or configurationally broken model YAML (`errors/`).
+- Verifies that some specific model's variable follows the numerical relationship (monotonicity, linear scaling, etc.) expected from that model's own equations, across multiple parameter values (`models/`).
 
-**不做什么**：
-- 不验证模型的科学/文献可信度（`daily_dose` 该不该是 200mg 这种问题，不在这里回答）。
-- 不跑真实的浏览器/GUI 交互（那是 `gui/e2e/`，见下方"什么是冒烟测试"）。
-- 不做性能/负载测试。
+**What it doesn't do**:
+- It does not verify a model's scientific/literature credibility (whether `daily_dose` should be 200mg is not answered here).
+- It does not run real browser/GUI interactions (that's `gui/e2e/`, see "What is a smoke test" below).
+- It does not do performance/load testing.
 
-## 输入 / 输出
+## Input / output
 
-- **输入**：每个测试文件是自包含的 Python 代码，直接 `import` 引擎层模块（如 `reference_engine.src.reference_engine.ReferenceEngine`），不经过 CLI 的 `argparse` 层、不起 HTTP server（ADR 0072 的约束）。部分测试会加载 `models/test_fixtures/valid/` 或 `models/test_fixtures/invalid/` 下的 fixture YAML 作为输入数据。
-- **输出**：标准 pytest 结果——每个 `test_*` 函数 PASS/FAIL，失败时打印 assertion 的具体差异（不是像 `cli/batch.py` 那样生成一份 Markdown 报告）。
+- **Input**: each test file is self-contained Python code that `import`s the engine-layer modules directly (e.g. `reference_engine.src.reference_engine.ReferenceEngine`), without going through the CLI's `argparse` layer or starting an HTTP server (a constraint from ADR 0072). Some tests load a fixture YAML from `models/test_fixtures/valid/` or `models/test_fixtures/invalid/` as input data.
+- **Output**: standard pytest results — PASS/FAIL per `test_*` function, printing the specific assertion diff on failure (not a generated Markdown report like `cli/batch.py`).
 
-## 运行
+## Running
 
 ```bash
-./scripts/test.sh         # 配置在 scripts/pytest.ini，用这个脚本代替直接敲 pytest，跑全部
-pytest -c scripts/pytest.ini test_verification   # 等价的手动写法
-pytest test_verification/errors/           # 只跑错误检测用例
-pytest test_verification/models/           # 只跑数值回归用例
+./scripts/test.sh         # configured via scripts/pytest.ini; use this script instead of calling pytest directly, runs everything
+pytest -c scripts/pytest.ini test_verification   # the equivalent manual invocation
+pytest test_verification/errors/           # only run the error-detection cases
+pytest test_verification/models/           # only run the numerical-regression cases
 pytest test_verification/test_schedule_runner.py::test_pulse_value_not_inflated_by_nonzero_bounds_floor
 ```
 
-## 目录结构
+## Directory structure
 
 ```
 test_verification/
-├── verification_report.md       # 引擎实现正确性 + 数值精度验证的方法论与当前结果（verify 侧）
-├── test_capacity_limits.py       # 并发限流（P1/P2 公网部署防护）
-├── test_same_day_duration.py     # 同日模型（start_date == end_date）仿真时长回归
-├── test_schedule_runner.py       # apply_schedules() pulse reset 回归
-├── test_session_cleanup.py       # GUI session 空闲超时清理（P0 公网部署要求）
-├── test_sim_cli_consistency.py   # CLI/GUI 路径一致性（ADR 0045/0110/0112/0113）
-├── errors/                       # 错误检测机制回归，见 errors/README.md
-└── models/                       # 单模型变量数值回归，见 models/README.md
+├── verification_report.md       # the methodology and current results for engine implementation correctness + numerical precision (the Verify side)
+├── test_capacity_limits.py       # concurrency throttling (a P1/P2 public-deployment protection)
+├── test_same_day_duration.py     # simulation-duration regression for a same-day model (start_date == end_date)
+├── test_schedule_runner.py       # a regression for apply_schedules()'s pulse reset
+├── test_session_cleanup.py       # GUI session idle-timeout cleanup (a P0 public-deployment requirement)
+├── test_sim_cli_consistency.py   # CLI/GUI path consistency (ADR 0045/0110/0112/0113)
+├── errors/                       # regressions for the error-detection mechanism, see errors/README.md
+└── models/                       # single-model variable numerical regressions, see models/README.md
 ```
 
-## 什么是冒烟测试（smoke test）——以及为什么本目录基本不算
+## What is a smoke test — and why this directory is mostly not one
 
-术语常见混淆，按覆盖面/深度从浅到深排列：
+The terminology is often confused; ordered from shallow to deep in coverage/depth:
 
-- **冒烟测试（smoke test）**：跑一遍最基本的黄金路径，只确认"系统没有彻底坏掉"，不深究细节是否正确。特点是覆盖面广、断言少、跑得快。本仓库里真正的冒烟测试是 `gui/e2e/specs/run-simulation.spec.ts`——在真实浏览器里选模型、点仿真、确认结果面板真的收到了数据点，仅此而已，不检查数值对不对。
-- **单元测试（unit test）**：针对一个函数/一小段逻辑，断言具体行为，覆盖面窄、断言精确。本目录的 `errors/`、`test_schedule_runner.py` 等大多属于这一类。
-- **回归测试（regression test）**：不一定是"新"功能的测试，而是给一个已修复的历史 bug 做的锁定用例，目的是防止同一个 bug 以后又被改回来。本目录里几乎每个文件都兼具"单元测试"和"回归测试"两重身份——先是回归锁定（docstring 里写明对应哪次修复），顺带也验证了正常行为。
-- **一致性/集成测试**：跨越多个模块或多条路径（如 CLI 和 GUI 两条代码路径）验证结果一致，比单元测试覆盖面更宽，但仍是精确断言，不是"能跑就行"。`test_sim_cli_consistency.py` 属于这一类。
+- **A smoke test**: runs through the most basic golden path once, confirming only "the system isn't completely broken," without digging into whether the details are correct. Characterized by broad coverage, few assertions, and fast execution. This repository's real smoke test is `gui/e2e/specs/run-simulation.spec.ts` — selecting a model in a real browser, clicking simulate, and confirming the result panel actually received data points, nothing more, with no check on whether the numbers are correct.
+- **A unit test**: targets one function/a small piece of logic, asserting specific behavior, with narrow coverage and precise assertions. Most of this directory's `errors/`, `test_schedule_runner.py`, etc. fall into this category.
+- **A regression test**: not necessarily a test for "new" functionality, but a lock case written for a historical bug that's already been fixed, meant to prevent that same bug from being reintroduced later. Almost every file in this directory carries both identities, "unit test" and "regression test" — first a regression lock (the docstring states which fix it corresponds to), which incidentally also verifies normal behavior.
+- **A consistency/integration test**: verifies a result is consistent across multiple modules or paths (such as the CLI and GUI code paths), broader in coverage than a unit test but still making precise assertions, not just "it runs." `test_sim_cli_consistency.py` falls into this category.
 
-一句话区分：**冒烟测试问"系统还活着吗"，本目录问"这行代码做对了吗"。**
+In one sentence: **a smoke test asks "is the system still alive," this directory asks "was this line of code written correctly."**
 
-## 和 `models/test_fixtures/`、`models/validation/` 的关系
+## Relationship with `models/test_fixtures/` and `models/validation/`
 
-`models/test_fixtures/valid/`、`models/test_fixtures/invalid/` 下的 YAML 是"数据"，本目录（`test_verification/`）里的 pytest 用例是"断言"——两者测的是同一件事（引擎代码写得对不对），只是分放在两个仓库：不少测试直接读取 `models/test_fixtures/valid/*.yaml` 作为输入（如 `test_same_day_duration.py` 读取 `test_valid_same_day_duration.yaml`），断言的是引擎代码行为，不是模型科学内容，`cli/batch.py --input-dir test_fixtures/valid` 之类的批量跑法也是同一角色的另一种驱动方式。
+The YAML under `models/test_fixtures/valid/` and `models/test_fixtures/invalid/` is "data," and the pytest cases in this directory (`test_verification/`) are "assertions" — the two test the same thing (whether the engine code is written correctly), just split across two repositories: quite a few tests read `models/test_fixtures/valid/*.yaml` directly as input (e.g. `test_same_day_duration.py` reads `test_valid_same_day_duration.yaml`), asserting on the engine code's behavior, not the model's scientific content; a batch-running approach like `cli/batch.py --input-dir test_fixtures/valid` is just another way of driving the same role.
 
-`models/validation/`（含 `validation_report.md`）是完全不同的另一件事——测的是具体模型的输出是否符合文献/临床常识（"validate"），跟本目录、跟 `models/test_fixtures/` 都没有内容上的关系，只是同属"分层验证工作"的另一半，方法论关系见 `verification_report.md` 开篇。
+`models/validation/` (including `validation_report.md`) is an entirely different matter — it tests whether a specific model's output matches the literature/clinical common sense ("validate"), with no content overlap with this directory or with `models/test_fixtures/`; it is simply the other half of the same layered-validation effort, with the methodological relationship described at the start of `verification_report.md`.
