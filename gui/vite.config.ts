@@ -1,8 +1,8 @@
 // frontend/vite.config.ts
-// 修改记录:
-// 1. 添加 proxy 配置: 将 /api/* 请求代理到 Flask (localhost:5000)
-// 2. 保留 modelsPlugin (可选，如果想用 Vite 直接读取文件)
-// 3. 更新端口为 5173 (与架构文档一致)
+// Change log:
+// 1. Added a proxy config: proxies /api/* requests to Flask (localhost:5000)
+// 2. Kept modelsPlugin (optional, in case Vite is used to read files directly)
+// 3. Updated the port to 5173 (matching the architecture docs)
 
 import { defineConfig } from 'vite'
 import { configDefaults } from 'vitest/config'
@@ -11,18 +11,18 @@ import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
 
-// 【可选】扫描 models 目录生成文件列表的插件
-// 注意: 现在所有 /api 请求都会被代理到 Flask，所以这个插件可能不会被使用
-// 保留此代码以备将来切换架构时使用
+// [Optional] A plugin that scans the models directory to generate a file list
+// Note: all /api requests are now proxied to Flask, so this plugin may go unused
+// Kept in case the architecture is switched back in the future
 function modelsPlugin() {
   return {
     name: 'models-plugin',
     configureServer(_server: any) {
-      // 【注释】这些路由现在被代理到 Flask，不再由 Vite 处理
-      // 如果将来想让 Vite 直接读取文件，取消下面的注释
-      
+      // [Comment] These routes are now proxied to Flask, no longer handled by Vite
+      // If Vite should read files directly again in the future, uncomment the block below
+
       /*
-      // 添加虚拟模块，提供文件列表
+      // Add a virtual module providing the file list
       server.middlewares.use('/api/files', (req: any, res: any) => {
         const modelsDir = path.resolve(__dirname, '../../models')
         const fileTree = scanDirectory(modelsDir)
@@ -30,22 +30,22 @@ function modelsPlugin() {
         res.end(JSON.stringify({ success: true, data: fileTree }))
       })
 
-      // 读取 YAML 文件内容
+      // Read a YAML file's content
       server.middlewares.use('/api/file', (req: any, res: any) => {
         const filePath = req.url.replace('/api/file/', '')
         const fullPath = path.resolve(__dirname, '../../models', filePath)
-        
+
         try {
           const content = fs.readFileSync(fullPath, 'utf-8')
           const parsed = yaml.load(content)
           res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ 
-            success: true, 
-            data: { 
-              path: filePath, 
+          res.end(JSON.stringify({
+            success: true,
+            data: {
+              path: filePath,
               content: parsed,
-              raw: content 
-            } 
+              raw: content
+            }
           }))
         } catch (error: any) {
           res.statusCode = 500
@@ -57,18 +57,18 @@ function modelsPlugin() {
   }
 }
 
-// 递归扫描目录 (辅助函数)
+// Recursively scans a directory (a helper function)
 function scanDirectory(dirPath: string, basePath = ''): any[] {
   const items: any[] = []
-  
+
   try {
     const files = fs.readdirSync(dirPath)
-    
+
     files.forEach(file => {
       const fullPath = path.join(dirPath, file)
       const relativePath = path.join(basePath, file).replace(/\\/g, '/')
       const stat = fs.statSync(fullPath)
-      
+
       if (stat.isDirectory()) {
         items.push({
           title: file,
@@ -88,23 +88,23 @@ function scanDirectory(dirPath: string, basePath = ''): any[] {
   } catch (error) {
     console.error(`Error scanning directory ${dirPath}:`, error)
   }
-  
+
   return items
 }
 
 // modelsPlugin/scanDirectory/yaml: not wired into `plugins` below — kept per the
-// "保留此代码以备将来切换架构时使用" note above; `void` only silences the unused-symbol
-// check, it doesn't imply these are dead code to delete.
+// "kept in case the architecture is switched back in the future" note above; `void` only
+// silences the unused-symbol check, it doesn't imply these are dead code to delete.
 void yaml; void modelsPlugin; void scanDirectory;
 
-// Vite 配置
+// The Vite config
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:18080',  // FastAPI 端口 (已更改为 18080)
+        target: 'http://localhost:18080',  // the FastAPI port (changed to 18080)
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

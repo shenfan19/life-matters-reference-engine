@@ -1,41 +1,48 @@
-# 错误检测回归测试
+# Error-detection regression tests
 
-> 任务来源：错误检测机制审查（2026-07-05）。与 `test_verification/test_sim_cli_consistency.py`
-> （CLI/GUI 路径一致性）、`test_verification/models/`（单变量数值回归）不同，本目录验证的是
-> **引擎对结构错误/配置错误的检测和报错能力**：不只是能正确加载 `models/test_fixtures/valid/`
-> 下结构合法的模型，还要能在遇到 `models/test_fixtures/invalid/` 下故意写错的模型时可靠地失败，
-> 并把具体原因暴露给调用方。
+> Task origin: the error-detection mechanism review (2026-07-05). Unlike
+> `test_verification/test_sim_cli_consistency.py` (CLI/GUI path consistency) and
+> `test_verification/models/` (single-variable numerical regression), this directory verifies
+> the **engine's ability to detect and report a structural/configuration error**: not just that
+> it can correctly load a structurally valid model under `models/test_fixtures/valid/`, but that
+> it reliably fails when it encounters a deliberately broken model under
+> `models/test_fixtures/invalid/`, and surfaces the specific reason to the caller.
 
-## 测得住的两个前提
+## Two preconditions that make this testable
 
-1. **fixture 本身可信**：每个 `models/test_fixtures/invalid/*.yaml` 只故意写错一处，其余部分结构
-   合法（见该目录 README 的文件清单），所以一个测试失败能直接定位到具体哪个校验分支坏了。
-2. **走真实调用路径，不走底层内部函数**：所有测试通过 `ReferenceEngine.load_models()` /
-   `run_simulation()` 断言——这与 CLI（`cli/runner.py`）、GUI（`session_manager.py`）实际
-   加载模型的路径完全一致。这曾经不成立：`LoaderEngine.fetch()`（CLI/GUI 加载模型的唯一
-   入口）把 `Loader`/`Validator` 抛出的详细错误信息吞掉，只记日志，调用方只能拿到一个
-   `None`/`False`，看不到具体原因（`validate_model()` 本身早已能生成具体错误信息，缺口
-   在传递链路上）。修复见 `reference_engine/src/loader_engine.py` 的 `LoaderEngine.last_error`
-   属性；这些测试正是该修复的回归锁定。
+1. **The fixture itself is trustworthy**: each `models/test_fixtures/invalid/*.yaml` deliberately
+   breaks exactly one thing, with the rest of its structure valid (see that directory's README
+   for the file list), so a test failure points directly to exactly which validation branch broke.
+2. **It goes through the real call path, not a low-level internal function**: every test asserts
+   via `ReferenceEngine.load_models()` / `run_simulation()` — exactly matching the path the CLI
+   (`cli/runner.py`) and GUI (`session_manager.py`) actually use to load a model. This wasn't
+   always true: `LoaderEngine.fetch()` (the sole entry point the CLI/GUI use to load a model) used
+   to swallow the detailed error message raised by the `Loader`/`Validator`, only logging it,
+   leaving the caller with just a bare `None`/`False` and no way to see the specific reason
+   (`validate_model()` itself had long been capable of producing a specific error message; the gap
+   was in the propagation chain). The fix is in `reference_engine/src/loader_engine.py`'s
+   `LoaderEngine.last_error` property; these tests are exactly that fix's regression lock.
 
-## 文件组织
+## File organization
 
-- `test_structural_errors.py` — `validator.py`（step_size、optimization.method、方程未声明变量、
-  废弃符号 `dt`）
-- `test_import_errors.py` — `loader.py` 的 import/YAML 结构校验（循环 import、越出 models
-  根目录、顶层 YAML 非 mapping）
-- `test_evidence_errors.py` — `loader.py` 的 evidence 校验（`evidence_type` 声明在非
-  `parameter` 角色变量上、`applies_to` 缺 `baseline_ref`）
-- `test_date_errors.py` — `validation.py`（`end_date` 早于 `start_date`）；注意这一条**不**
-  在 `load_models()` 阶段失败，只在 `run_simulation()` 才失败，测试里已注明原因
+- `test_structural_errors.py` — `validator.py` (step_size, optimization.method, an equation
+  referencing an undeclared variable, the deprecated `dt` symbol)
+- `test_import_errors.py` — `loader.py`'s import/YAML-structure validation (a circular import,
+  escaping the models root directory, a non-mapping top-level YAML)
+- `test_evidence_errors.py` — `loader.py`'s evidence validation (`evidence_type` declared on a
+  variable whose role isn't `parameter`, `applies_to` missing `baseline_ref`)
+- `test_date_errors.py` — `validation.py` (`end_date` earlier than `start_date`); note that this
+  one does **not** fail at the `load_models()` stage, only at `run_simulation()` — the reason is
+  noted in the test itself
 
-## 运行
+## Running
 
 ```bash
 pytest test_verification/errors/
 ```
 
-## 新增一个错误检测用例
+## Adding a new error-detection case
 
-先在 `models/test_fixtures/invalid/README.md` 里确认（或新增）对应 fixture，再在这里对应的文件里加一个
-`assert not engine.load_models([...])` + `engine.loader.last_error` 包含关键子串的断言。
+First confirm (or add) the corresponding fixture in `models/test_fixtures/invalid/README.md`,
+then add an `assert not engine.load_models([...])` plus an assertion that `engine.loader.last_error`
+contains the key substring, in the corresponding file here.

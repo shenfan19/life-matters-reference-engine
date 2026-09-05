@@ -1,204 +1,203 @@
-# 引擎实现正确性与数值精度验证报告（Verification）
+# Engine Implementation Correctness and Numerical Precision Verification Report
 
-> 本文件回答的是 **verify** 侧的问题，即"这行引擎代码有没有把它声称要解的东西正确解出来"，不涉及模型本身是否代表真实生理或训练适应机制，那是 **validate** 侧的问题，见 `models/test_validation/validation_report.md`，该文件"Verify 前提"一节摘录了本文件的核心结论。两份文件是同一套分层验证工作的两半，配合阅读：本文件覆盖引擎实现正确性，即 pytest 套件，和数值精度，即解析解对比加步长收敛性检验；姊妹文件覆盖文献对标、优化合理性、API/IO 边界和逐模型科学内容核对。
+> This file answers the **verify** side of the question, i.e. "did this piece of engine code correctly solve the thing it claims to solve," and does not address whether the model itself represents a real physiological or training-adaptation mechanism — that is the **validate** side, see `models/test_validation/validation_report.md`, whose "Verify prerequisite" section excerpts this file's core conclusions. The two files are two halves of the same layered validation effort, meant to be read together: this file covers engine implementation correctness (the pytest suite) and numerical precision (comparison against analytical solutions plus step-size convergence testing); the sibling file covers literature benchmarking, optimization plausibility, API/IO boundaries, and per-model scientific-content checks.
 >
-> `test_verification/` 这个目录本身的定位，以及和 `models/test_fixtures/` 的关系，见同目录 [`README.md`](README.md)。
+> For what the `test_verification/` directory itself is for, and its relationship to `models/test_fixtures/`, see [`README.md`](README.md) in the same directory.
 
 ---
 
-## 1. 引擎实现正确性
+## 1. Engine implementation correctness
 
-### 1.1 自动化 pytest 套件
+### 1.1 The automated pytest suite
 
 
-| 套件                                                                           | 覆盖内容                                                                                                                                                                                                                              |
+| Suite                                                                           | Coverage                                                                                                                                                                                                                              |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test_verification/test_sim_cli_consistency.py`                                      | CLI 与 GUI 走同一份 sim/opt 核心代码路径，结果一致；MC 确定性，即 `runs=1` 时可复现，同 seed 结果一致                                                                                                                                  |
-| `test_verification/test_schedule_runner.py`、`test_verification/test_same_day_duration.py` | schedule/plan 时间窗口解析边界情况                                                                                                                                                                                                    |
-| `test_verification/errors/`                                                          | 引擎对结构错误、配置错误的检测能力：不仅能加载 `models/test_fixtures/valid/`，还要在 `models/test_fixtures/invalid/` 上可靠失败并暴露具体原因，各文件用途见 `models/test_fixtures/fixture_catalog.md` 第10节及各 `README.md` |
-| `test_verification/models/`                                                          | 单个模型变量在多组取值下的数值行为回归，断言比例、单调性、符号，不硬编码浮点数，见该目录 `README.md`                                                                                                                                   |
+| `test_verification/test_sim_cli_consistency.py`                                      | The CLI and GUI go through the same sim/opt core code path with consistent results; MC determinism, i.e. reproducible with `runs=1` and consistent results for the same seed                                                                                                                                  |
+| `test_verification/test_schedule_runner.py`, `test_verification/test_same_day_duration.py` | Edge cases in schedule/plan time-window parsing                                                                                                                                                                                                    |
+| `test_verification/errors/`                                                          | The engine's ability to detect a structural or configuration error: not just loading `models/test_fixtures/valid/` correctly, but also failing reliably on `models/test_fixtures/invalid/` and surfacing the specific reason; each file's purpose is in `models/test_fixtures/fixture_catalog.md` §10 and the respective `README.md` |
+| `test_verification/models/`                                                          | Regressions on a single model variable's numerical behavior across multiple values, asserting ratios, monotonicity, and sign without hardcoding floats, see that directory's `README.md`                                                                   |
 
-运行：
+Running:
 
 ```bash
 pytest test_verification/
 ```
 
-现状：全量套件当前可通过；`test_verification/models/` 目前只覆盖少数模型变量，远未覆盖 `models/` 下全部模型。
+Current state: the full suite currently passes; `test_verification/models/` currently covers only a handful of model variables, far from covering every model under `models/`.
 
-### 1.2 引擎维护者核对清单：尚未被自动化断言覆盖的实现细节
+### 1.2 An engine-maintainer checklist: implementation details not yet covered by an automated assertion
 
-以下五项全部是**引擎代码本身**的正确性要求，面向修改 `reference_engine/` 相关代码的维护者，即作者本人与未来的代码贡献者，不是面向使用 `sim`/`opt` 的建模者或最终用户；用户不需要读这一节。第一项虽然用 `state`/`input` 这两个模型 YAML 里的变量类型名称来描述规则，但规则本身是引擎的积分器该如何处理这两类变量，不是某个具体模型该怎么写，判断和执行都在引擎代码里，不在 YAML 文件里。以下几类实现细节目前没有专门的自动化断言，或断言只覆盖了已知具体案例，修改引擎相关代码后应抽样核对：
+The following five items are all correctness requirements of **the engine code itself**, aimed at a maintainer changing `reference_engine/`-related code — i.e. the author and future code contributors — not at a modeler or end user using `sim`/`opt`; a user does not need to read this section. The first item, though it describes the rule using the `state`/`input` variable-type names from a model YAML, is really a rule about how the engine's integrator should handle these two variable kinds, not about how a specific model should be written — the judgment and the enforcement both live in the engine code, not in a YAML file. None of the following implementation-detail categories currently has a dedicated automated assertion, or the assertion covers only a known specific case; they should be spot-checked whenever engine-related code changes:
 
-- **Euler 离散化的 step 处理**：`state` 速率方程应乘 `step`，`input` 脉冲方程不应乘 `step`，这是区分"速率量"与"瞬时量"两类物理语义的核心规则，写反会导致数值在细化步长时系统性偏离。
-- **MC 多 run 的 clone 顺序**：每个 run 应克隆初始状态而非上一个 run 的终态，否则多个 run 之间会产生虚假的相关性。
-- **NaN / Inf / 越界告警**：数值健康检查在异常输入下应正常触发，不静默吞掉。
-- **Optimizer 收敛性 sanity check**：NSGA-II、scipy 后端各跑一个已知案例，确认 Pareto 前沿非退化；反例是某模型多个解坍缩为单点。
-- **种子可复现性**：相同 seed 重跑两次数值一致；`session_seed`、`mc.seed`、`algorithm.seed` 三者用途不混用。
+- **Euler-discretization step handling**: a `state` rate equation should be multiplied by `step`, an `input` pulse equation should not be — this is the core rule distinguishing a "rate quantity" from an "instantaneous quantity," and getting it backwards causes a systematic deviation as the step size is refined.
+- **The clone order for a multi-run MC**: each run should clone the initial state, not the previous run's end state, or the runs will develop a spurious correlation with each other.
+- **NaN / Inf / out-of-bounds warnings**: the numerical health check should fire correctly on an abnormal input, not swallow it silently.
+- **Optimizer convergence sanity check**: run a known case on each of the NSGA-II and scipy backends, confirming the Pareto front is non-degenerate; a counterexample would be several solutions of some model collapsing to a single point.
+- **Seed reproducibility**: rerunning the same seed twice yields consistent numbers; the three uses of `session_seed`, `mc.seed`, and `algorithm.seed` are not conflated with each other.
 
 > [!note]+
-> 这里有点疑问，是给code的还是model的？第一条看起来是给model，其他的是给code的？如果需要人工校核，写在这里合适吗？给谁校核呢？应该是作者的工作，而不是给用户看的。这段很奇怪，解释一下，并做出处理。
+> There's a question here — is this for the code or the model? The first item looks like it's for the model, and the others for the code? If a human check is needed, is it appropriate to write it here? Who is supposed to do the check? This should be the author's job, not something for a user to see. This passage is odd — please explain and address it.
 >
 > > [!warning]
-> > 五项全部是引擎代码的正确性要求，不是模型内容要求。第一项看起来像"给 model"是因为它用 `state`/`input` 这两个 YAML 变量类型名称来描述规则，但规则本身是"引擎的积分器该怎么处理这两类变量"，建模者写 YAML 时不需要关心这条规则、也无法通过改 YAML 来满足或违反它，出错的位置永远在引擎的积分循环代码里，不在某个模型文件里。所以五项在"谁负责满足这条规则"这一点上是一致的：都是修改 `reference_engine/` 代码的人。关于"写在这里合不合适、给谁看"：这份报告是 `reference_engine` 公开仓库的一部分，本节的定位调整为面向引擎维护者，即作者本人和未来的代码贡献者的核对清单，不面向使用 `sim`/`opt` 的建模者或最终用户，已经在小节标题和开头加了一句话明确这个受众边界。内容本身，即哪些正确性属性还没有自动化断言覆盖，继续保留在报告里合适：这不是内部开发笔记或个人待办，而是诚实地公开"这些性质当前只能靠人工抽查确认，还没有测试兜底"这一验证覆盖缺口，这正是一份 Verification 报告该做的事，删掉反而会让报告显得比实际验证覆盖率更完整。
+> > All five items are correctness requirements on the engine code, not requirements on model content. The first one looks like "for the model" because it describes the rule using the YAML variable-type names `state`/`input`, but the rule itself is "how the engine's integrator should handle these two variable kinds" — a modeler writing YAML doesn't need to care about this rule and cannot satisfy or violate it by changing the YAML; the place where it could go wrong is always in the engine's integration-loop code, never in some model file. So the five items agree on "who is responsible for satisfying this rule": whoever changes `reference_engine/` code. On whether it's appropriate to write this here, and for whom: this report is part of the `reference_engine` public repository, and this section's scope has been adjusted to be a checklist aimed at engine maintainers — i.e. the author and future code contributors — not at a modeler or end user using `sim`/`opt`; a sentence has been added at the start of the subsection to make this audience boundary explicit. As for the content itself, i.e. which correctness properties aren't yet covered by an automated assertion, it's appropriate to keep that in the report: this isn't an internal dev note or a personal to-do list, it's an honest, public statement that "these properties can currently only be confirmed by manual spot-checking, with no test backing them up yet," which is exactly what a Verification report should do — removing it would make the report look more complete than its actual verification coverage.
 
 ---
 
-## 2. 数值精度验证：方法论与结果
+## 2. Numerical precision verification: methodology and results
 
-### 2.1 这套分层验证方法从何而来
+### 2.1 Where this layered verification method comes from
 
-本节采用的验证思路，借用的是计算科学与工程领域处理数值仿真可信度问题的通行框架，即 **Verification & Validation，V&V**。正式表述可见于机械工程界的 ASME V&V 10/20、航空航天界的 AIAA G-077 等标准，数值天气预报、有限元、有限差分、CFD 等数值方法领域普遍采用类似的思路，不是本项目自创的方法。这个框架把"数值仿真结果是否可信"拆成两个性质完全不同的问题：
+The verification approach in this section borrows the standard framework computational science and engineering uses to address numerical-simulation credibility: **Verification & Validation, V&V**. A formal statement can be found in standards such as ASME V&V 10/20 in mechanical engineering and AIAA G-077 in aerospace; numerical weather prediction, finite element, finite difference, CFD, and other numerical-method fields commonly adopt a similar approach — this is not a method invented for this project. This framework splits "is a numerical simulation result trustworthy" into two entirely different questions:
 
-- **Verification，本文件回答的问题**：不问模型是否符合现实，只问"这段代码有没有把它声称要解的那组方程正确解出来"。这是纯数值/软件问题，原则上不需要任何领域知识就能判断对错。检验手段通常有两类，一类是和已知精确解比较，即 *code verification*；另一类是观察数值解是否随离散步长细化而收敛到一个稳定值，即 *solution verification*，在有限元/CFD 语境下也叫网格无关性检验或 h-refinement study，即便没有精确解可用，这一步也总能做，因为它只需要比较"更粗"和"更细"两个离散化下的数值解本身。
-- **Validation，姊妹文件回答的问题**：假定求解已经足够准确，转而问"这组方程/参数本身是否代表真实世界"，只能拿模型输出去和已发表的实验/观测数据比较效应量是否落在合理范围内。
+- **Verification, the question this file answers**: doesn't ask whether the model matches reality, only "did this piece of code correctly solve the set of equations it claims to solve." This is a purely numerical/software question, and in principle can be judged correct or incorrect without any domain knowledge. There are usually two means of checking: one is comparison against a known exact solution, i.e. *code verification*; the other is observing whether the numerical solution converges to a stable value as the discretization step is refined, i.e. *solution verification* — in a finite-element/CFD context this is also called a mesh-independence check or an h-refinement study, and this step can always be done even with no exact solution available, since it only requires comparing the numerical solutions themselves under a "coarser" versus a "finer" discretization.
+- **Validation, the question the sibling file answers**: assuming the solution is already accurate enough, asks instead "does this set of equations/parameters itself represent the real world," which can only be judged by comparing the model's output against published experimental/observational data to see whether the effect size falls within a plausible range.
 
-之所以要把这两件事分开判断，是因为它们对应完全不同性质的错误，也需要完全不同的知识去定位：数值实现错了，该去查的是积分格式和代码；模型本身不准，该去查的是文献参数和机制假设。如果混在一起看"最终输出对不对"，一旦数字有偏差，会无法判断该往哪个方向排查。这正是本项目采用这套框架的原因：LM 同时涉及数值算法实现是否正确这一软件/数值方法问题，本文件负责；和模型是否代表真实的生理/训练适应机制这一生物医学/训练科学问题，`validation_report.md` 负责，是需要跨学科归因的场景，而 V&V 框架存在的意义正是让这类归因变得可操作。
+The reason for judging these two things separately is that they correspond to entirely different kinds of error, and locating them requires entirely different knowledge: a numerical-implementation error should be tracked down in the integration scheme and the code; an inaccurate model should be tracked down in the literature parameters and mechanistic assumptions. Looking only at "is the final output right or wrong" without separating them makes it impossible to tell which direction to investigate once a number is off. This is exactly why this project adopts this framework: LM involves both whether the numerical algorithm implementation is correct, a software/numerical-methods question this file is responsible for, and whether the model represents a real physiological/training-adaptation mechanism, a biomedical/training-science question `validation_report.md` is responsible for — a scenario needing cross-disciplinary attribution, and the whole point of the V&V framework is to make that kind of attribution actionable.
 
-对应到本项目的具体协议：
+Mapped onto this project's specific protocols:
 
-- **协议 V1，解析解逐日对比**，对应 *code verification*：Banister 模型有闭式解析解，用它检验 Euler 前向积分器的实现是否正确复现了这组常微分方程，与训练科学本身是否合理无关。
-- **协议 V2，步长收敛性检验**，对应 *solution verification*：不依赖解析解，只观察数值解是否随 `step_size` 细化而单调收敛。它和 V1 互补而非重复，某些实现错误，例如某处该乘 `step` 的地方漏乘，只在特定步长下恰好抵消，换一个步长才会暴露，这类问题单靠 V1 在单一步长下测不出来，必须靠 V2 的多步长网格才能发现。
+- **Protocol V1, a day-by-day comparison against the analytical solution**, corresponding to *code verification*: the Banister model has a closed-form analytical solution, used to check whether the Euler forward-integrator implementation correctly reproduces this set of ODEs, independent of whether the training science itself is sound.
+- **Protocol V2, a step-size convergence test**, corresponding to *solution verification*: doesn't depend on an analytical solution, only observes whether the numerical solution converges monotonically as `step_size` is refined. It complements rather than duplicates V1 — some implementation errors, such as a missing `step` multiplication somewhere that happens to cancel out exactly at a particular step size, only surface at a different step size, and this kind of issue can't be caught by V1 alone at a single step size; only V2's multi-step-size grid can find it.
 
-### 2.2 Banister 模型：解析解与标准参数
+### 2.2 The Banister model: the analytical solution and standard parameters
 
-恒定训练负荷 $w$ 下，Banister 双室模型有精确解析解：
+Under a constant training load $w$, the Banister two-compartment model has an exact analytical solution:
 
 $$
 a(t) = \frac{g \cdot w}{k_1}(1 - e^{-k_1 t}), \quad f(t) = \frac{h \cdot w}{k_2}(1 - e^{-k_2 t}), \quad p(t) = p_0 + a(t) - f(t)
 
 $$
 
-模型形式最早见于 Banister et al.（1975），标准参数取自 Morton et al.（1990）对该模型的参数标定：
+The model form first appears in Banister et al. (1975), and the standard parameters are taken from Morton et al. (1990)'s calibration of this model:
 
 
-| 参数         | 符号    | 值     |
+| Parameter         | Symbol    | Value     |
 | -------------- | --------- | -------- |
-| 适应增益     | $g$     | 1.0    |
-| 疲劳增益     | $h$     | 2.0    |
-| 适应时间常数 | $1/k_1$ | 45 天  |
-| 疲劳时间常数 | $1/k_2$ | 15 天  |
-| 初始表现     | $p_0$   | 494 AU |
+| Fitness gain     | $g$     | 1.0    |
+| Fatigue gain     | $h$     | 2.0    |
+| Fitness time constant | $1/k_1$ | 45 days  |
+| Fatigue time constant | $1/k_2$ | 15 days  |
+| Initial performance     | $p_0$   | 494 AU |
 
 > [!note]-
-> 参数有了参考文献，Banister模型来自哪里？也是这个参考文献吗？是的话要写清楚。
-> 注意，不只是这里，paper S1和validation report里包含banister 模型的地方，如果需要补充，也要补充清楚。
+> The parameters have a reference now — where does the Banister model itself come from? Is it the same reference? If so, please state it clearly.
+> Note, not just here — wherever paper S1 and the validation report touch on the Banister model, if it needs the same addition, add it clearly there too.
 >
 > > [!warning]
-> > 不是同一篇。模型形式本身，即体能/疲劳双室结构，最早由 Banister, E. W., Calvert, T. W., Savage, M. V., & Bach, T. (1975) 提出，A systems model of training for athletic performance，*Australian Journal of Sports Medicine*，7(3)，57–61；Morton, R. H., Fitz-Clarke, J. R., & Banister, E. W. (1990)，Modeling human performance in running，*Journal of Applied Physiology*，69(3)，1171–1177，是同一模型的后续参数标定与拟合研究，本节表格里的 g/h/k1/k2/p0 具体数值出自这篇 1990 文章，不是 1975 原始论文。本文件已在模型形式引入处补上 1975 引用，两者不再共用一个日期。核对了 paper S1 和 validation_report.md 里出现 Banister 模型的地方：S1 §6.2 已经同时引用了 Banister et al. 1975 和 Morton et al. 1990，参考文献列表也两条都在；validation_report.md 的 Banister 小节此前只引用了 Morton 1990 一篇，已补上 Banister 1975 作为模型形式的原始出处。
+> > Not the same paper. The model form itself, the fitness/fatigue two-compartment structure, was first proposed by Banister, E. W., Calvert, T. W., Savage, M. V., & Bach, T. (1975), A systems model of training for athletic performance, *Australian Journal of Sports Medicine*, 7(3), 57-61; Morton, R. H., Fitz-Clarke, J. R., & Banister, E. W. (1990), Modeling human performance in running, *Journal of Applied Physiology*, 69(3), 1171-1177, is a follow-up parameter-calibration and fitting study of the same model, and the specific g/h/k1/k2/p0 values in this section's table come from this 1990 paper, not the 1975 original. This file now adds the 1975 citation where the model form is introduced, so the two are no longer sharing one date. Checked everywhere paper S1 and validation_report.md mention the Banister model: S1 §6.2 already cites both Banister et al. 1975 and Morton et al. 1990, with both entries in the reference list; the Banister subsection of validation_report.md previously cited only Morton 1990, and has now had Banister 1975 added as the original source of the model form.
 
-### 2.3 协议 V1：解析解逐日对比
+### 2.3 Protocol V1: a day-by-day comparison against the analytical solution
 
-配置：恒定训练负荷 $w = 50$ AU/day，仿真 60 天，步长 $\Delta t = 1$ 天。逐日对比 LM 输出与解析解，计算误差百分比 $\text{error}(t) = |\hat p(t) - p(t)| / p(t) \times 100\%$。
+Configuration: a constant training load $w = 50$ AU/day, a 60-day simulation, a step size of $\Delta t = 1$ day. Compare the LM output against the analytical solution day by day, computing the percentage error $\text{error}(t) = |\hat p(t) - p(t)| / p(t) \times 100\%$.
 
-**通过标准**：最大误差小于 2%，为参数不确定性 ±15% 的七分之一。
+**Pass criterion**: a maximum error below 2%, one-seventh of the ±15% parameter uncertainty.
 
-**方法论说明，针对差值型/净值型输出的误差判定**：Banister 的 $p(t) = p_0 + a(t) - f(t)$ 是两个各自独立积分、量级相近的状态变量之差，fitness 与 fatigue 之差。这类"净值/差值型"输出有一个数学上必然的性质：$p(t)$ 本身可能在轨迹中经过局部极小值，不是单调增长的，而分量 $a(t)$ 与 $f(t)$ 各自的绝对误差在全程大致稳定；同样大小的绝对误差除以一个恰好较小的分母，百分比误差会在 $p(t)$ 经过低谷附近被放大，这是指标本身的数学性质，不代表积分器在那个时刻不准。判定这类差值型输出时，应优先看 $a(t)$ 与 $f(t)$ 各自的相对误差，尺度稳定，能反映积分器真实精度；差值本身的百分比误差只作诊断参考，不单独作为通过或不通过的依据，尤其是在差值经过局部极小值附近的区间。
+**A methodological note on judging error for a difference-type/net-value-type output**: Banister's $p(t) = p_0 + a(t) - f(t)$ is the difference between two independently integrated state variables of similar magnitude, fitness minus fatigue. This kind of "net-value/difference-type" output has a mathematically necessary property: $p(t)$ itself may pass through a local minimum along its trajectory rather than growing monotonically, while the absolute error of each component $a(t)$ and $f(t)$ stays roughly stable throughout; dividing the same-sized absolute error by a denominator that happens to be small amplifies the percentage error near where $p(t)$ passes through a trough — this is a mathematical property of the metric itself, not a sign that the integrator is inaccurate at that moment. When judging this kind of difference-type output, the relative error of $a(t)$ and $f(t)$ individually should be the primary reference, since their scale is stable and reflects the integrator's true precision; the percentage error of the difference itself serves only as a diagnostic reference, not as an independent pass/fail basis, especially in a region near where the difference passes through a local minimum.
 
-### 2.4 协议 V2：步长收敛性检验
+### 2.4 Protocol V2: a step-size convergence test
 
-**目标**：检验数值解是否随 `step_size` 细化而收敛到稳定值，对应有限元方法里的"网格无关性检验"。跟协议 V1 依赖解析解不同，步长收敛性检验不需要知道"真值"是什么，只需要观察数值解本身随步长变化的行为，因此对任何连续动力学模型都适用，不限于有解析解的 Banister。
+**Goal**: check whether the numerical solution converges to a stable value as `step_size` is refined, corresponding to a "mesh-independence check" in finite-element methods. Unlike Protocol V1, which depends on an analytical solution, a step-size convergence test doesn't need to know what the "true value" is — it only needs to observe how the numerical solution itself behaves as the step size changes, so it applies to any continuous dynamical model, not just Banister, which happens to have an analytical solution.
 
-**协议**，有解析解时如 Banister 可与 V1 合并执行：
+**Protocol** (when there is an analytical solution, as with Banister, this can be run together with V1):
 
-1. 固定其余全部配置，包括初始条件、参数、总仿真时长与区间，只改变 `simulation.step_size`，跑一组递减的步长，从 1 天到 12h 到 6h 到 3h 到 1h 到 30min。
-2. 若有解析解，每个步长下记录与解析解的相对误差，检验误差是否随步长减半而大致减半，这是一阶 Euler 截断误差的线性收敛特征。若没有解析解，改为比较相邻两个步长算出的数值解本身是否随步长变细而趋于一致。
-3. 同时在多个仿真区间与总时长上跑，不只测一个总时长：某些指标，如 Banister 的差值型 `performance`，在特定区间可能出现局部误差放大，只测一个总时长的终点容易掩盖这类非单调行为。
+1. Hold every other configuration fixed, including the initial conditions, parameters, and total simulation duration and range, and vary only `simulation.step_size`, running a decreasing sequence of step sizes from 1 day to 12h to 6h to 3h to 1h to 30min.
+2. If an analytical solution exists, record the relative error against it at each step size, checking whether the error roughly halves as the step size halves — this is the linear-convergence signature of first-order Euler truncation error. If there is no analytical solution, instead compare whether the numerical solutions from two adjacent step sizes converge toward each other as the step gets finer.
+3. Run this over multiple simulation ranges and total durations at once, not just one: some metrics, such as Banister's difference-type `performance`, can show a local error amplification over a specific range, and testing only the endpoint of one total duration can easily mask this kind of non-monotonic behavior.
 
-**通过标准**：误差或数值解本身随步长变细单调收敛；不要求所有步长与区间组合都低于某个固定阈值，阈值判断如 V1 的小于 2% 仍按各自协议自己的标准，V2 只负责确认"收敛性"这一独立维度，两者可能给出不同的通过或不通过结论。
+**Pass criterion**: the error, or the numerical solution itself, converges monotonically as the step size is refined; it is not required that every step-size/range combination fall below some fixed threshold — a threshold judgment such as V1's below-2% still follows that protocol's own standard, and V2 is responsible only for confirming the independent dimension of "convergence"; the two may give different pass/fail conclusions.
 
-### 2.5 当前执行结果
+### 2.5 Current execution results
 
-固化的步长网格 fixture 为 `models/test_fixtures/valid/test_valid_banister_v1_analytical.yaml`，1天步长，与 `test_valid_banister_v1_step_{12h,6h,3h,1h,30min}.yaml`，彼此只有 `simulation.step_size` 不同，其余物理量、参数、`date_range`，固定为最大的 60 天区间，完全一致，切换文件即可对比不同步长下的引擎输出。
+The fixed step-size-grid fixture is `models/test_fixtures/valid/test_valid_banister_v1_analytical.yaml`, at a 1-day step size, together with `test_valid_banister_v1_step_{12h,6h,3h,1h,30min}.yaml`, which differ from it only in `simulation.step_size`, with every other physical quantity, parameter, and `date_range` fixed to the same maximal 60-day range and otherwise identical — switching files is enough to compare the engine's output across step sizes.
 
-`training_load` 按全天持续窗口而非单点脉冲建模，`value: 50.0` 即"每天 50 AU"，动力学中状态自身的衰减项，即 $k_1 \cdot \text{fitness}$ 与 $k_2 \cdot \text{fatigue}$，乘 `step`，负荷输入项不乘 `step`。
+`training_load` is modeled as a continuous full-day window rather than a single-point pulse, with `value: 50.0` meaning "50 AU per day"; in the dynamics, the state's own decay terms, i.e. $k_1 \cdot \text{fitness}$ and $k_2 \cdot \text{fatigue}$, are multiplied by `step`, while the load input term is not.
 
-6 个步长乘 4 个仿真区间，即 7、14、30、60 天，的 `performance` 相对误差网格，阈值小于 2%，为协议 V1 字面定义：
+The `performance` relative-error grid across 6 step sizes times 4 simulation ranges, i.e. 7, 14, 30, 60 days, against the below-2% threshold from Protocol V1's literal definition:
 
 
-| step_size \ 区间(天) | 7        | 14       | 30       | 60       |
+| step_size \ range (days) | 7        | 14       | 30       | 60       |
 | ---------------------- | ---------- | ---------- | ---------- | ---------- |
-| 1天                  | 4.57%    | 7.08%    | 1.72% ✓ | 0.78% ✓ |
+| 1 day                  | 4.57%    | 7.08%    | 1.72% ✓ | 0.78% ✓ |
 | 12h                  | 2.23%    | 3.47%    | 0.86% ✓ | 0.38% ✓ |
 | 6h                   | 1.10% ✓ | 1.72% ✓ | 0.43% ✓ | 0.19% ✓ |
 | 3h                   | 0.55% ✓ | 0.86% ✓ | 0.21% ✓ | 0.10% ✓ |
 | 1h                   | 0.18% ✓ | 0.29% ✓ | 0.07% ✓ | 0.03% ✓ |
 | 30min                | 0.09% ✓ | 0.14% ✓ | 0.04% ✓ | 0.02% ✓ |
 
-同一网格里 `fitness` 与 `fatigue`，Euler 积分的直接对象，非差值指标，在全部 24 格中都单调、平滑地随步长变细而收敛，1天步长最差 2.72%，60 天区间、1天步长下二者误差分别只有 0.53%/0.24%，随步长每减半误差大致减半，符合一阶 Euler 截断误差的线性收敛特征。`performance` 列在 1天/12h 步长下于 14 天区间出现局部误差峰值，不是随区间单调变化，而 `fitness`/`fatigue` 两列在同样的 24 格里从未出现这种非单调现象，这正是 2.3 节所述"差值型指标误差在局部区间被放大"这一数学性质的具体体现，不代表积分器本身在这些区间不准。
+In the same grid, `fitness` and `fatigue` — the direct objects of the Euler integration, not a difference-type metric — converge monotonically and smoothly as the step size is refined across all 24 cells, with the 1-day step size's worst case at 2.72%; at the 60-day range and 1-day step size, their errors are only 0.53%/0.24% respectively, roughly halving with each halving of the step size, matching the linear-convergence signature of first-order Euler truncation error. The `performance` column shows a local error peak at the 14-day range under the 1-day/12h step sizes, not a monotonic change with range, whereas the `fitness`/`fatigue` columns never show this kind of non-monotonic behavior across the same 24 cells — this is exactly a concrete instance of the mathematical property described in §2.3, that a difference-type metric's error is amplified over a local range, and does not mean the integrator itself is inaccurate over those ranges.
 
-**结论**：
+**Conclusion**:
 
-- **协议 V2，收敛性**：全部 24 格上 `fitness`/`fatigue` 均单调收敛，通过。
-- **协议 V1，对 `performance`，阈值小于 2%**：`step_size ≤ 6h` 时对 7 至 60 天全部测试区间通过；`step_size = 1天` 仅在不小于 30 天区间通过，7/14 天区间因差值型指标的局部放大效应不通过，1天步长仅适合不小于 30 天尺度分析。V1/V2 均视为通过，可用于论文数值。
+- **Protocol V2, convergence**: `fitness`/`fatigue` converge monotonically across all 24 cells — passed.
+- **Protocol V1, for `performance`, threshold below 2%**: passes for all test ranges from 7 to 60 days when `step_size ≤ 6h`; at `step_size = 1 day`, it passes only for ranges of at least 30 days, failing at the 7/14-day ranges due to the local amplification effect of a difference-type metric — a 1-day step size is suitable only for analysis at a scale of 30 days or more. Both V1 and V2 are considered passed, and are usable for the paper's numbers.
 
-### 2.6 step_size 选取的通用启发式
+### 2.6 A general heuristic for choosing step_size
 
-**背景**：2.5 节"1天步长仅适合不小于 30 天尺度分析"是这一组具体参数，即 `training_load=50`、`g/h/k1/k2`，的经验观察，不能直接套到其他模型。`step_size` 与总仿真时长的比值不是决定性变量：`step=12h, day=14`，比值 1/28，的 `performance` 误差 3.47% 不通过，`step=6h, day=7`，比值同为 1/28，却只有 1.10% 通过，同一比值，结果相反。换成不受差值型指标局部极小值干扰的 `fitness`/`fatigue`，即 Euler 直接积分的状态变量本身，重新检验，比例关系依然不成立：`fatigue(t)` 是趋于饱和平台的指数曲线，相对误差随时间自然衰减，同样由曲线自身形状决定，不是比例关系。根本原因是数学结构性的：相对误差等于绝对误差除以真值，前者只取决于 `step_size`，后者取决于总时长和曲线形状，两个因子互相独立，压缩不进同一个比值变量。
+**Background**: §2.5's observation that "a 1-day step size is suitable only for analysis at a scale of 30 days or more" is an empirical observation for this one specific set of parameters, i.e. `training_load=50`, `g/h/k1/k2`, and cannot be directly applied to another model. The ratio of `step_size` to the total simulation duration is not the deciding variable: at `step=12h, day=14`, a ratio of 1/28, `performance`'s error is 3.47%, failing; at `step=6h, day=7`, the same ratio of 1/28, the error is only 1.10%, passing — the same ratio, opposite results. Switching to `fitness`/`fatigue`, which aren't disturbed by a difference-type metric's local minimum, i.e. the state variables the Euler integration acts on directly, and re-checking, the proportional relationship still doesn't hold: `fatigue(t)` is an exponential curve approaching a saturating plateau, and its relative error naturally decays over time, again determined by the curve's own shape, not a ratio relationship. The root cause is structurally mathematical: relative error equals absolute error divided by the true value, where the former depends only on `step_size` and the latter depends on the total duration and the curve's shape — the two factors are independent of each other and cannot be compressed into the same ratio variable.
 
-**更合理的基准是模型自身的最短特征时间尺度 τ_min**，取以下两者中较小值：
+**A more sound baseline is the model's own shortest characteristic timescale τ_min**, the smaller of the following two:
 
-1. 最窄的输入/regimen 事件窗口宽度，即 `time_end - time_start`，扫描模型内所有变量的所有 regimen 条目取最小值
-2. 最快的状态变量时间常数，各 `equation` 动力学里能读出特征衰减/响应速度的，取最短那个
+1. The narrowest input/regimen event window width, i.e. `time_end - time_start`, taking the minimum across every regimen entry of every variable in the model
+2. The fastest state variable's time constant, taking the shortest one readable from the characteristic decay/response speed in each `equation`'s dynamics
 
-**经验起点**，系数不是严格推导，借用数值方法里"分辨一个瞬态特征至少需要约10个采样点"的惯例，类似网格无关性检验里"网格至少要跨过最小特征尺寸的十分之一"：
+**An empirical starting point** (the coefficient is not strictly derived, borrowed from the numerical-methods convention that "resolving one transient feature needs roughly 10 sample points," similar to a mesh-independence check's convention that "the mesh must span at least a tenth of the smallest characteristic size"):
 
 $$
 \text{step\_size} \le \tau_{\min} / 10
 $$
 
-**用本组 fixture 交叉验证**：`training_load` 是全天窗口，24h 宽，疲劳时间常数 `1/k2=15天=360h` 远比输入窗口宽，不是限制项，因此 τ_min = 24h，启发式建议 `step_size ≤ 2.4h`。用已有的 6 步长网格逐格核对，含容易受局部极小值干扰的 `performance` 差值指标：
+**Cross-validated with this set of fixtures**: `training_load` is a full-day window, 24h wide; the fatigue time constant `1/k2=15 days=360h` is far looser than the input window and is not the limiting term, so τ_min = 24h, and the heuristic recommends `step_size ≤ 2.4h`. Checking this cell by cell against the existing 6-step-size grid, including the `performance` difference-type metric, which is easily disturbed by a local minimum:
 
-| step_size | 满足启发式，≤2.4h？ | day7 perf | day14 perf | day30 perf | day60 perf | fitness/fatigue |
+| step_size | Satisfies the heuristic, ≤2.4h? | day7 perf | day14 perf | day30 perf | day60 perf | fitness/fatigue |
 |---|---|---|---|---|---|---|
-| 24h | 否 | 4.57% ✗ | 7.08% ✗ | 1.72% ✓ | 0.78% ✓ | 均<3% |
-| 12h | 否 | 2.23% ✗ | 3.47% ✗ | 0.86% ✓ | 0.38% ✓ | 均<1.5% |
-| 6h  | 否 | 1.10% ✓ | 1.72% ✓ | 0.43% ✓ | 0.19% ✓ | 均<0.7% |
-| 3h  | 否 | 0.55% ✓ | 0.86% ✓ | 0.21% ✓ | 0.10% ✓ | 均<0.35% |
-| **1h** | **是** | 0.18% ✓ | 0.29% ✓ | 0.07% ✓ | 0.03% ✓ | 均<0.11% |
-| **30min** | **是** | 0.09% ✓ | 0.14% ✓ | 0.04% ✓ | 0.02% ✓ | 均<0.06% |
+| 24h | No | 4.57% ✗ | 7.08% ✗ | 1.72% ✓ | 0.78% ✓ | all <3% |
+| 12h | No | 2.23% ✗ | 3.47% ✗ | 0.86% ✓ | 0.38% ✓ | all <1.5% |
+| 6h  | No | 1.10% ✓ | 1.72% ✓ | 0.43% ✓ | 0.19% ✓ | all <0.7% |
+| 3h  | No | 0.55% ✓ | 0.86% ✓ | 0.21% ✓ | 0.10% ✓ | all <0.35% |
+| **1h** | **Yes** | 0.18% ✓ | 0.29% ✓ | 0.07% ✓ | 0.03% ✓ | all <0.11% |
+| **30min** | **Yes** | 0.09% ✓ | 0.14% ✓ | 0.04% ✓ | 0.02% ✓ | all <0.06% |
 
-**结果**：满足启发式，即 ≤2.4h，1h/30min 两档，的 step_size，在全部四个区间、全部三个指标，包括最病态的 `performance` day14 那一格，均通过小于 2% 阈值，绝对误差随 step_size 变细收敛得足够快，即使被局部放大的相对误差也压得下去。启发式给出的 2.4h 比实测真正需要的边界 6h 更保守，约2.5倍余量，方向安全但不是精确阈值，3h 明明实测已通过，仍会被启发式的严格数字判定"不满足"，系数"10"只是拍脑袋量级，不同模型可能需要不同松紧。
+**Result**: the step sizes satisfying the heuristic, i.e. ≤2.4h, the 1h/30min tier, pass the below-2% threshold across all four ranges and all three metrics, including the most pathological cell, `performance` at day14 — the absolute error converges fast enough as `step_size` is refined that even a locally amplified relative error is kept under control. The 2.4h the heuristic gives is more conservative than the 6h boundary actually needed in practice, about a 2.5x margin — the direction is safe but it is not a precise threshold; 3h would in fact have passed, yet the heuristic's strict number still judges it "not satisfying," and the coefficient "10" is only a rough order-of-magnitude guess, with different models potentially needing a looser or tighter one.
 
-**声明式限制，不是充要条件**：这条只用于**选起点**，不能替代真正验证，具体动力学形状，是否有局部极小值、是否饱和、非线性强弱，都会让"到底多细才够"产生模型特定的偏差。**任何新模型定稿前，仍应仿照本组 fixture 的做法自己跑一次协议 V2 的步长网格，即网格无关性检验，确认收敛，而不是直接套用这条经验方程的数字。**
+**A declarative constraint, not a necessary-and-sufficient condition**: this is only for **choosing a starting point**, and cannot substitute for actual verification — the specific dynamics' shape, whether there's a local minimum, saturation, or strong nonlinearity, all introduce model-specific deviation into "exactly how fine is fine enough." **Before finalizing any new model, still run Protocol V2's step-size grid yourself, following the approach used with this set of fixtures, i.e. a mesh-independence check, to confirm convergence, rather than directly applying this empirical formula's numbers.**
 
-复现命令为 `python reference_engine/scripts/validate_banister_step_grid.py`，自动跑全部 6 个步长乘 4 个检查点，交叉核对启发式与 2% 阈值，脚本内 `PASS`/`FAIL` 与上表一致。
+The reproduction command is `python reference_engine/scripts/validate_banister_step_grid.py`, which automatically runs all 6 step sizes times 4 checkpoints, cross-checking the heuristic against the 2% threshold; the script's own `PASS`/`FAIL` output matches the table above.
 
-运行方式：
+How to run:
 
 ```bash
-python reference_engine/scripts/validate_banister.py           # 协议 V1：单一步长（1天）逐日对比解析解
-python reference_engine/scripts/validate_banister_step_grid.py # 协议 V2 + 2.6 节启发式：6 步长 × 4 区间网格
+python reference_engine/scripts/validate_banister.py           # Protocol V1: a single step size (1 day), compared day by day against the analytical solution
+python reference_engine/scripts/validate_banister_step_grid.py # Protocol V2 + the §2.6 heuristic: a grid of 6 step sizes × 4 ranges
 ```
 
 ---
 
-## 附：与论文的对应关系
+## Appendix: correspondence with the paper
 
 
-| 测试项                            | 对应章节                  |
+| Test item                            | Corresponding section                  |
 | ----------------------------------- | ------------------------------- |
-| 第1节，引擎实现正确性           | Shen（2026）§5.1，软件工程质量 |
-| 第2节，数值精度，Banister V1/V2 | Shen（2026）§5.2，数值验证     |
+| §1, engine implementation correctness           | Shen (2026) §5.1, software engineering quality |
+| §2, numerical precision, Banister V1/V2 | Shen (2026) §5.2, numerical verification     |
 
-文献对标与优化合理性均见 `models/test_validation/validation_report.md`。
+Literature benchmarking and optimization plausibility are both in `models/test_validation/validation_report.md`.
 
 > [!note]-
-> paper 1这种称呼还是要去掉，按照引文格式写上去，然后末尾加入reference，这样规范处理
+> The "paper 1" style of naming should still be dropped — write it in citation format instead, and add a reference at the end, handling it properly this way.
 >
 > > [!warning]
-> > "Paper 1"改成了"S1 论文"，跟仓库和 validation_report.md 里统一使用的 S1/S2/S3/S4 命名对齐；原表第二行"文献对标见 Paper 2，优化合理性见 Paper 3"这个说法本身不准确，文献对标和优化合理性不是两篇独立论文各自负责一层，而是 `validation_report.md` 这一份文件横向覆盖全部论文案例的两类检验，"Paper 2"/"Paper 3"是旧版"层1/2/3"三层验证框架的遗留说法，已经改成直接指向 `validation_report.md`，不再暗示存在专门的"第二篇论文"和"第三篇论文"分管这两件事。文末新增了"参考文献"一节，本文件正文引用的 Banister 1975、Morton 1990 两篇按标准格式列出。
-> 
-> 不是这样，我是说，把S1论文整个题目引用出来，这样以后我改的话，可以只改参考文献里的名称。假设2026年发表的。
->
-> > [!warning]
-> > 明白了，现在改成了标准的作者-年份引用：表格两行都改成"Shen（2026）§5.1/§5.2"，跟正文引用 Banister/Morton 的格式完全一致；"参考文献"一节新增一条 S1 论文自己的条目，标题直接取自 S1 正文 §4.2 bibtex 块里已经定稿的题目，`Life Matters: A YAML Specification for Behavioral Intervention Optimization in Multi-Scale Health Dynamics`，年份按你说的假设为 2026，因为尚未正式发表，注明"Manuscript submitted for publication"而不是编造期刊卷期页码。以后如果标题、年份或期刊变了，只需要改这一条参考文献本身，正文里"Shen（2026）"这个引用标签不用跟着逐处改，除非年份本身也变。本文件目前只引用了 S1 这一篇，没有出现需要靠"2026a/2026b"区分同年多篇的情况；如果以后同一份文件里也要引用 S2/S3/S4，到时候再补后缀。
+> > Changed "Paper 1" to "the S1 paper," aligning with the S1/S2/S3/S4 naming used consistently across the repository and validation_report.md; the original table's second row, "literature benchmarking see Paper 2, optimization plausibility see Paper 3," was itself inaccurate — literature benchmarking and optimization plausibility aren't each owned by a separate paper, they are two kinds of checks that `validation_report.md`, a single file, covers across every paper case; "Paper 2"/"Paper 3" was leftover phrasing from the old "tier 1/2/3" three-tier validation framework, and has now been changed to point directly at `validation_report.md`, no longer implying there's a dedicated "second paper" and "third paper" each covering one of these. A "References" section has been added at the end, listing the two papers this file's body cites, Banister 1975 and Morton 1990, in standard format.
+> >
+> > Not quite — what I mean is, cite the S1 paper's full title, so that if I revise it later I only need to change the name in the reference list. Assume it's published in 2026.
+> >
+> > > [!warning]
+> > > Understood — this has now been changed to a standard author-year citation: both table rows now read "Shen (2026) §5.1/§5.2," exactly matching the format used in the body text for citing Banister/Morton; a new entry for the S1 paper itself has been added to the "References" section, with its title taken directly from the finalized title in the bibtex block in S1's body §4.2, `Life Matters: A YAML Specification for Behavioral Intervention Optimization in Multi-Scale Health Dynamics`, with the year assumed to be 2026 as you said — since it has not yet been formally published, it is noted as "Manuscript submitted for publication" rather than fabricating a journal volume/issue/page range. If the title, year, or journal changes later, only this one reference entry needs to change; the "Shen (2026)" citation label in the body doesn't need to be updated everywhere, unless the year itself also changes. This file currently cites only this one S1 paper, so there's no case yet of needing "2026a/2026b" to distinguish multiple papers from the same year; if this same file ever needs to cite S2/S3/S4 too, the suffix can be added then.
 
-## 参考文献
+## References
 
-Banister, E. W., Calvert, T. W., Savage, M. V., & Bach, T. (1975). A systems model of training for athletic performance. *Australian Journal of Sports Medicine*, 7(3), 57–61.
+Banister, E. W., Calvert, T. W., Savage, M. V., & Bach, T. (1975). A systems model of training for athletic performance. *Australian Journal of Sports Medicine*, 7(3), 57-61.
 
-Morton, R. H., Fitz-Clarke, J. R., & Banister, E. W. (1990). Modeling human performance in running. *Journal of Applied Physiology*, 69(3), 1171–1177.
+Morton, R. H., Fitz-Clarke, J. R., & Banister, E. W. (1990). Modeling human performance in running. *Journal of Applied Physiology*, 69(3), 1171-1177.
 
 Shen, F. (2026). Life Matters: A YAML Specification for Behavioral Intervention Optimization in Multi-Scale Health Dynamics. Manuscript submitted for publication.
-

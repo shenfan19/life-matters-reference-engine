@@ -1,14 +1,15 @@
-"""扫描 cli/、reference_engine/ 下是否有业务参数被硬编码成字面量常量。
+"""Scans `cli/` and `reference_engine/` for business parameters hardcoded as literal constants.
 
-背景：MC seed 等业务参数曾被直接写成字面量（如 seed=42）而不是读取 yaml/session 配置，
-导致 CLI 和 GUI 跑出不一致的结果（见 ADR 0113）。本脚本把这类字段名维护成一份黑名单，
-凡是 `<字段名>=<数字>` 或 `<字段名> = <数字>` 的赋值/调用形式都会被拦截。
+Background: a business parameter such as an MC seed was once written directly as a literal
+(e.g. seed=42) instead of being read from the yaml/session config, causing the CLI and GUI to
+produce inconsistent results (see ADR 0113). This script maintains a blacklist of such field
+names; any assignment/call form of `<field>=<number>` or `<field> = <number>` is flagged.
 
-行内加 `# allow-const` 注释可放行确实需要字面量的特例（如测试 fixture）。
+Add a `# allow-const` comment on a line to allow a genuine exception that needs a literal (e.g. a test fixture).
 
-用法：
-    python scripts/check_hardcoded_constants.py            # 扫描默认目录
-    python scripts/check_hardcoded_constants.py a.py b.py  # 只扫描给定文件（pre-commit 用）
+Usage:
+    python scripts/check_hardcoded_constants.py            # scan the default directories
+    python scripts/check_hardcoded_constants.py a.py b.py  # scan only the given files (used by pre-commit)
 """
 
 import re
@@ -17,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 已知因"业务参数被硬编码"而出过 bug 或存在该风险的字段名，按需追加。
+# Field names known to have caused a bug, or to be at risk of one, from "a business parameter being hardcoded"; append as needed.
 BUSINESS_CONST_FIELDS = [
     'seed',
     'n_runs',
@@ -74,16 +75,16 @@ def main(argv):
         for lineno, snippet, full_line in check_file(path):
             found = True
             rel = path.relative_to(ROOT) if path.is_absolute() else path
-            print(f'{rel}:{lineno}: 疑似硬编码业务参数 `{snippet}` —— {full_line}')
+            print(f'{rel}:{lineno}: suspected hardcoded business parameter `{snippet}` -- {full_line}')
 
     if found:
         print(
-            '\n以上字段应从 yaml/config/session 读取，不应直接写字面量常量。'
-            f'确认必须用字面量时，在该行加 `{SUPPRESS_COMMENT}` 放行。'
+            '\nThe fields above should be read from yaml/config/session, not written as a literal constant. '
+            f'When a literal is genuinely required, add `{SUPPRESS_COMMENT}` on that line to allow it.'
         )
         return 1
 
-    print('check_hardcoded_constants: OK，未发现硬编码业务参数。')
+    print('check_hardcoded_constants: OK, no hardcoded business parameters found.')
     return 0
 
 

@@ -1,18 +1,18 @@
-# Plugins 目录规范
+# Plugins Directory Convention
 
-## 结构规则
-- 支持1-2层目录
-- 插件必须包含 `manifest.yaml`
-- 超过2层会被忽略
+## Structure rules
+- Supports 1-2 levels of directories
+- A plugin must include a `manifest.yaml`
+- Anything beyond 2 levels deep is ignored
 
-## 推荐分类
+## Recommended categories
 plugins/
-├── preprocessors/    # 预处理
-├── optimizers/       # 优化算法
-├── exporters/        # 数据导出
-└── visualizers/      # 可视化
+├── preprocessors/    # preprocessing
+├── optimizers/       # optimization algorithms
+├── exporters/        # data export
+└── visualizers/      # visualization
 
-## 示例
+## Example
 plugins/
 └── optimizers/
     └── pymoo_plugin/

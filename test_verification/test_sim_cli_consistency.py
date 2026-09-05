@@ -1,21 +1,25 @@
-"""Sim/CLI 一致性回归测试（ADR 0045, ADR 0110, ADR 0112, ADR 0113）。
+"""Sim/CLI consistency regression tests (ADR 0045, ADR 0110, ADR 0112, ADR 0113).
 
-按 ADR 0072 的约束，测试直接 import 引擎层 Python 函数，不经 CLI argparse 层、不起 HTTP
-server。验证：
+Per ADR 0072's constraint, tests import the engine-layer Python functions directly, without
+going through the CLI's argparse layer or starting an HTTP server. Verifies:
 
-1. 给定同一份已解析的 plan/schedule 数据，CLI 路径（`run_simulation`，逐步写 CSV）和 GUI 路径
-   （`start_session` + `batch_steps`，逐步内存返回）跑出来的轨迹完全一致。
-2. 含分布参数（`parameter: normal(...)` 等）的模型，GUI 在 `sim_runs=1`（未显式要求 MC）时
-   必须是确定性结果（取均值），与 CLI 一致 —— 这条用例在 session_manager.py 的 MC 采样修复
-   之前会失败，修复后必须通过，作为该 bug 的回归锁定。
-3. MC（sim_runs/--mc-runs > 1）：CLI 的 `run_simulation_mc` 与 GUI 的
-   `start_session(sim_runs=N, seed=X)` 用同一个 master seed，必须逐 run 逐步产生完全相同的
-   采样参数和轨迹（ADR 0113：两边共用 `advance_steps` 执行核心 + `derive_seed_list` 种子派生）。
-4. Opt：GUI 路径未编辑时发给后端的 `optimizer_override`（这里直接取 YAML 的
-   `optimization.startpoint/objectives/constraints/algorithm` 本身，代表一次忠实的前端往返——
-   已用 `gui/src/components/sim_tab/optUtils.test.ts` 验证过该往返对 T1-T4 fixture 无损）
-   跑出的结果，必须与 CLI 冷启动（只覆盖 warm_start）完全一致（ADR 0112：seed 硬编码 + T4
-   `validRangeEnabled` 丢字段的回归锁定）。
+1. Given the same already-parsed plan/schedule data, the CLI path (`run_simulation`, writing a
+   CSV step by step) and the GUI path (`start_session` + `batch_steps`, returning step by step
+   in memory) produce exactly the same trajectory.
+2. For a model with a distribution parameter (`parameter: normal(...)`, etc.), the GUI at
+   `sim_runs=1` (MC not explicitly requested) must produce a deterministic result (using the
+   mean), matching the CLI — this case would fail before the MC-sampling fix in
+   session_manager.py and must pass after it, as that bug's regression lock.
+3. MC (sim_runs/--mc-runs > 1): the CLI's `run_simulation_mc` and the GUI's
+   `start_session(sim_runs=N, seed=X)` use the same master seed, and must produce exactly the
+   same sampled parameters and trajectory run-by-run, step-by-step (ADR 0113: both sides share
+   the `advance_steps` execution core plus `derive_seed_list` seed derivation).
+4. Opt: when the GUI path is unedited, the `optimizer_override` sent to the backend (here taken
+   directly from the YAML's own `optimization.startpoint/objectives/constraints/algorithm`,
+   representing a faithful frontend round trip — already verified lossless for the T1-T4 fixture
+   by `gui/src/components/sim_tab/optUtils.test.ts`) must produce a result identical to a CLI
+   cold start (overriding only warm_start) (ADR 0112: the regression lock for a hardcoded seed
+   plus a dropped T4 `validRangeEnabled` field).
 """
 
 import csv
