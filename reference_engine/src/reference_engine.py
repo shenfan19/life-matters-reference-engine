@@ -19,28 +19,28 @@ from .validation import validate_simulator_dates, validate_schedule_list
 from . import run_logging
 from time import time as _time
 
-# 初始化模块的日志记录器，用于记录仿真过程中的信息和错误。
+# Initialize the module's logger, used to record info and errors during simulation.
 logger = logging.getLogger(__name__)
 
 class ReferenceEngine(SessionManagerMixin):
-    """LM Reference Engine：负责运行和管理仿真/优化流程，提供黑盒评估接口，支持 CLI 和 GUI。"""
+    """The LM Reference Engine: runs and manages the simulation/optimization flow, exposing a black-box evaluation interface, supporting both the CLI and the GUI."""
     VALID_OUTPUT_TYPES = {'input', 'parameter', 'state'}
-    
+
     def __init__(self, models_directory: str = "models"):
         """
-        初始化仿真引擎。
-        :param models_directory: 模型目录路径。
+        Initializes the simulation engine.
+        :param models_directory: the path to the models directory.
         """
-        # 初始化 LoaderEngine 以加载模型，指定模型目录。
+        # Initialize a LoaderEngine to load models, given the models directory.
         self.loader = LoaderEngine(models_directory)
-        # 初始化当前模型为 None。
+        # Initialize the current model as None.
         self.current_model: Optional[ModelStructure] = None
-        # 初始化当前仿真步数。
+        # Initialize the current simulation step count.
         self.current_step = 0
-        # 初始化仿真时间（秒）。
+        # Initialize the simulation time (in seconds).
         self.time = 0.0
 
-        # ✅ 新增：GUI 会话管理
+        # GUI session management
         self.sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> session_data
 
     def _resolve_output_variables(self, model: ModelStructure) -> Tuple[List[str], List[str]]:
@@ -65,13 +65,13 @@ class ReferenceEngine(SessionManagerMixin):
                 if var_name in model.variables:
                     add_var(var_name)
                 else:
-                    warnings.append(f"output_variables 中的变量不存在，已跳过: {var_name}")
+                    warnings.append(f"A variable in output_variables does not exist, skipped: {var_name}")
 
         if types_selected:
             selected_types = {str(t) for t in raw_types}
             invalid_types = sorted(selected_types - self.VALID_OUTPUT_TYPES)
             if invalid_types:
-                warnings.append(f"output_types 包含未知类型，已忽略: {', '.join(invalid_types)}")
+                warnings.append(f"output_types contains unknown types, ignored: {', '.join(invalid_types)}")
             selected_types &= self.VALID_OUTPUT_TYPES
             for name, var in model.variables.items():
                 var_type = var.type.value if hasattr(var.type, 'value') else str(var.type)
@@ -82,41 +82,42 @@ class ReferenceEngine(SessionManagerMixin):
 
     def load_models(self, model_names: List[str], folder: Optional[str] = None) -> bool:
         """
-        加载指定名称的模型。
-        :param model_names: 模型名称列表（取第一个）。
-        :param folder: 子文件夹名称。
-        :return: 加载是否成功。
+        Loads the model with the given name.
+        :param model_names: a list of model names (only the first is used).
+        :param folder: a subfolder name.
+        :return: whether the load succeeded.
         """
-        # 使用 LoaderEngine 的 fetch 方法加载第一个模型。
+        # Load the first model via LoaderEngine's fetch method.
         self.current_model = self.loader.fetch(model_names[0], folder, use_cache=False)
-        # 返回加载是否成功的布尔值。
+        # Return whether the load succeeded.
         return self.current_model is not None
 
-    # ==================== 原有 CLI 功能（保持兼容）====================
-    
+    # ==================== The original CLI functionality (kept compatible) ====================
+
     def run_simulation(self, model_name: str, time_hours: float, folder: Optional[str] = None,
                       output_path: Optional[str] = None,
                       log_cb: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
         """
-        运行仿真主函数（CLI 使用）。
-        :param model_name: 模型名称。
-        :param time_hours: 仿真总时间（小时）。
-        :param folder: 子文件夹名称。
-        :param output_path: CSV 输出文件路径（可选）。
-        :param log_cb: 可选回调，接收运行信息文本行（模型大小/输出变量/告警/耗时统计），
-            与 GUI 的 session 日志面板（session_manager.py）共用 run_logging.py 的内容生成
-            逻辑，只是落地渠道不同（ADR 0119）。未提供时不产生这些信息（向后兼容）。
-        :return: 仿真结果字典。
+        The main simulation-running function (used by the CLI).
+        :param model_name: the model name.
+        :param time_hours: the total simulation time (in hours).
+        :param folder: a subfolder name.
+        :param output_path: the CSV output file path (optional).
+        :param log_cb: an optional callback receiving run-info text lines (model size / output variables /
+            warnings / timing stats); shares run_logging.py's content-generation logic with the GUI's session
+            log panel (session_manager.py), only differing in the output channel (ADR 0119). When not
+            provided, these messages are not produced (backward compatible).
+        :return: the simulation result dict.
         """
-        # 如果指定了模型名称但加载失败，返回错误信息。
+        # If a model name was given but loading fails, return an error.
         if model_name and not self.load_models([model_name], folder):
-            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
-        # 如果当前未加载模型，返回错误信息。
+            return {"success": False, "error": self.loader.last_error or f"Failed to load model: {model_name}"}
+        # If no model is currently loaded, return an error.
         if not self.current_model:
-            return {"success": False, "error": "未加载模型"}
+            return {"success": False, "error": "No model loaded"}
 
-        # 前置校验日期/时间字段格式，避免格式错误被深层逻辑悄悄回退为默认值
-        # （CLI 与 GUI 共用 validation.py，报错信息一致）。
+        # Upfront validation of date/time field formats, so a format error isn't silently defaulted deep in the logic
+        # (validation.py is shared between the CLI and GUI, so the error message is consistent).
         try:
             validate_simulator_dates(
                 self.current_model.simulator.get('start_date'),
@@ -124,28 +125,28 @@ class ReferenceEngine(SessionManagerMixin):
             )
             validate_schedule_list(getattr(self.current_model, 'schedule_entries', []))
         except ValueError as e:
-            logger.error(f"输入校验失败: {e}")
+            logger.error(f"Input validation failed: {e}")
             return {"success": False, "error": str(e)}
 
-        # 重置仿真步数和时间。
+        # Reset the simulation step count and time.
         self.current_step = 0
         self.time = 0.0
-        
-        # 从模型的 simulator 配置中获取时间步长（秒）。
-        step_size = self.current_model.simulator.get('step_size', 3600.0)  # 默认 1 小时
-        # 计算总仿真时间（秒）。
+
+        # Get the time step size (in seconds) from the model's simulator config.
+        step_size = self.current_model.simulator.get('step_size', 3600.0)  # default: 1 hour
+        # Compute the total simulation time (in seconds).
         total_time = time_hours * 3600.0
-        # 计算总步数。
+        # Compute the total step count.
         total_steps = int(total_time / step_size)
 
-        # 获取需要输出的变量列表
+        # Get the list of variables to output
         output_variables, output_warnings = self._resolve_output_variables(self.current_model)
 
-        # 准备 CSV 数据存储
+        # Prepare CSV data storage
         csv_data = []
         csv_headers = ['step', 'time'] + output_variables
 
-        # 从 schedule_entries 构建 schedule list（支持 time_start/time_end, pulse/sustained）
+        # Build the schedule list from schedule_entries (supporting time_start/time_end, pulse/sustained)
         start_date = self.current_model.simulator.get('start_date', '')
         raw_entries = getattr(self.current_model, 'schedule_entries', [])
         schedules = precompute_sustained_divisors(
@@ -157,7 +158,7 @@ class ReferenceEngine(SessionManagerMixin):
             run_logging.build_initial_logs(
                 self.current_model, model_name or self.current_model.metadata.name,
                 total_steps, step_size, output_variables, output_warnings,
-                schedule_vars, n_runs=1, session_seed=0, log_cb=log_cb,  # allow-const: 确定性单次仿真，无 MC 概念，n_runs/session_seed 恒为 1/0
+                schedule_vars, n_runs=1, session_seed=0, log_cb=log_cb,  # allow-const: a deterministic single simulation, no MC concept here, n_runs/session_seed are always 1/0
             )
         input_var_names = run_logging.input_variable_names(self.current_model, output_variables)
         hits: Dict[str, int] = {}
@@ -165,7 +166,7 @@ class ReferenceEngine(SessionManagerMixin):
         run_start_time = _time()
 
         try:
-            # 运行仿真，共用核心 advance_steps（CLI 与 GUI batch_steps 共用同一份循环体，见 ADR 0113）。
+            # Run the simulation, sharing the core advance_steps (the CLI and GUI batch_steps share the same loop body, see ADR 0113).
             rows, self.current_step, self.time = advance_steps(
                 self.current_model, schedules, step_size, total_steps,
                 self.current_step, self.time, output_variables, start_date,
@@ -176,14 +177,14 @@ class ReferenceEngine(SessionManagerMixin):
                 run_logging.check_value_warnings(self.current_model, rows, output_variables, warned, log_cb)
                 run_logging.accumulate_hits(rows, input_var_names, hits)
 
-            # 写入 CSV 文件
+            # Write the CSV file
             csv_output_path = output_path
             if not csv_output_path:
-                # 默认输出到 models/output/ 目录
+                # Default output to the models/output/ directory
                 output_dir = os.path.join(self.loader.models_directory, "output")
                 os.makedirs(output_dir, exist_ok=True)
                 csv_output_path = os.path.join(output_dir, f"{self.current_model.metadata.name}_simulation.csv")
-            
+
             with open(csv_output_path, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(csv_headers)
@@ -192,7 +193,7 @@ class ReferenceEngine(SessionManagerMixin):
             if log_cb:
                 run_logging.log_completion(_time() - run_start_time, self.current_step, hits, log_cb)
 
-            # 返回仿真结果，包括模型名称、当前状态、步数、时间和 CSV 路径。
+            # Return the simulation result, including the model name, current state, step count, time, and CSV path.
             return {
                 "success": True,
                 "model_name": self.current_model.metadata.name,
@@ -204,9 +205,9 @@ class ReferenceEngine(SessionManagerMixin):
                 "warnings": output_warnings,
             }
         except Exception as e:
-            # 记录仿真失败错误。
-            logger.error(f"仿真执行失败: {e}")
-            # 返回错误信息。
+            # Log the simulation failure.
+            logger.error(f"Simulation execution failed: {e}")
+            # Return the error.
             return {"success": False, "error": str(e)}
 
     def run_simulation_mc(self, model_name: Optional[str], time_hours: float,
@@ -215,19 +216,20 @@ class ReferenceEngine(SessionManagerMixin):
                           output_path_fn: Optional[Callable[[int], Optional[str]]] = None,
                           log_cb: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
         """
-        运行 n_runs 次仿真（Monte Carlo，CLI 使用），对应 GUI 的 sim_runs>1 路径
-        （session_manager.py 的 batch_steps 多 run 分支）。每个 run 用同一个
-        master seed（derive_seed_list）派生的独立种子采样分布参数，n_runs==1
-        时不采样（ADR 0045 确定性模式），与 run_simulation 行为一致。
-        :param output_path_fn: 可选回调 (run_idx) -> CSV 路径；未提供时不写 CSV。
-        :param log_cb: 同 run_simulation() 的 log_cb（ADR 0119）；只对 run 0 输出告警/
-            完成统计，与 GUI batch_steps 的多 run 分支取 run0 为代表一致。
+        Runs the simulation n_runs times (Monte Carlo, used by the CLI), corresponding to the GUI's
+        sim_runs>1 path (session_manager.py's batch_steps multi-run branch). Each run samples its
+        distribution parameters using an independent seed derived from the same master seed
+        (derive_seed_list); when n_runs==1, no sampling occurs (ADR 0045's deterministic mode),
+        matching run_simulation's behavior.
+        :param output_path_fn: an optional callback (run_idx) -> a CSV path; when not provided, no CSV is written.
+        :param log_cb: same as run_simulation()'s log_cb (ADR 0119); only outputs warnings/completion
+            stats for run 0, matching the GUI batch_steps multi-run branch's choice of run0 as the representative.
         :return: {"success", "model_name", "session_seed", "runs": [...], "error"?}
         """
         if model_name and not self.load_models([model_name], folder):
-            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
+            return {"success": False, "error": self.loader.last_error or f"Failed to load model: {model_name}"}
         if not self.current_model:
-            return {"success": False, "error": "未加载模型"}
+            return {"success": False, "error": "No model loaded"}
 
         base_model = self.current_model
         try:
@@ -314,7 +316,7 @@ class ReferenceEngine(SessionManagerMixin):
                 "warnings": output_warnings,
             }
         except Exception as e:
-            logger.error(f"MC 仿真执行失败: {e}")
+            logger.error(f"MC simulation execution failed: {e}")
             return {"success": False, "error": str(e)}
 
     def run_simulation_all_plans(self, model_name: str, time_hours: float, folder: Optional[str] = None,
@@ -322,20 +324,20 @@ class ReferenceEngine(SessionManagerMixin):
                                   n_runs: int = 1, seed: Optional[int] = None,
                                   log_cb: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
         """
-        对 simulation.plans 中的每一个 plan 各跑一遍仿真（CLI 使用）。
-        每个 plan 在独立加载的模型副本上运行（互不影响初始状态）。
-        :param output_path_fn: 可选回调 (plan_id, plan_index) -> CSV 路径；
-            未提供时不写 CSV，仅返回结果。
-        :param n_runs: >1 时每个 plan 改为调用 run_simulation_mc（每个 run 一个
-            `__run{i}` 后缀的 CSV），= 1 时行为与之前完全一致。
-        :param log_cb: 转发给 run_simulation()/run_simulation_mc()（ADR 0119）。
+        Runs a simulation for each plan in simulation.plans in turn (used by the CLI).
+        Each plan runs on an independently loaded model copy (so their initial states don't affect each other).
+        :param output_path_fn: an optional callback (plan_id, plan_index) -> a CSV path;
+            when not provided, no CSV is written, only the result is returned.
+        :param n_runs: when >1, each plan is run via run_simulation_mc instead (each run gets a CSV with a
+            `__run{i}` suffix); when =1, behavior is exactly as before.
+        :param log_cb: forwarded to run_simulation()/run_simulation_mc() (ADR 0119).
         :return: {"success": bool, "plans": [{"plan_id", "result"}], "error"?}
         """
         if not self.load_models([model_name], folder):
-            return {"success": False, "error": self.loader.last_error or f"无法加载模型：{model_name}"}
+            return {"success": False, "error": self.loader.last_error or f"Failed to load model: {model_name}"}
 
-        # 模型未定义 simulation.plans 时，按单个 "default" plan 运行
-        # （即不应用任何 schedules，与不带 --all-plans 的普通仿真一致）。
+        # When the model doesn't define simulation.plans, run it as a single "default" plan
+        # (i.e. no schedules applied, matching a plain simulation without --all-plans).
         plan_ids = list(self.current_model.plans.keys()) or ["default"]
 
         n_runs = max(1, int(n_runs))
@@ -366,5 +368,5 @@ class ReferenceEngine(SessionManagerMixin):
     # resume_session / reset_session / export_session_csv / get_session_info)
     # are provided by SessionManagerMixin — no duplication needed here.
 
-    # ==================== 模型克隆 / 分布参数工具 ====================
+    # ==================== Model cloning / distribution-parameter tools ====================
     # clone_model(), collect_param_distributions(), apply_parameter_sampling() → mc_utils.py

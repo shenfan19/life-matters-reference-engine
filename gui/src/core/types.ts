@@ -1,5 +1,5 @@
 // src/frontend/src/core/types.ts
-// 插件系统类型定义
+// Plugin-system type definitions
 
 export interface PluginManifest {
   id: string;

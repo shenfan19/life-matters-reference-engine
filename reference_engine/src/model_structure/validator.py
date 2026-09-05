@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 
 class Validator:
     def validate_model(self) -> bool:
-        # 验证模型的完整性和一致性
+        # Validates the model's completeness and consistency
         all_errors = []
-        unique_missing_vars = set()  # 用set自动去重
+        unique_missing_vars = set()  # use a set for automatic dedup
 
-        # 检查时间单位使用
+        # Check time-unit usage
         time_units = {'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'}
         for eq_name, equation in self.equations.items():
             if isinstance(equation.condition, str):
@@ -27,26 +27,27 @@ class Validator:
                 if 'dt' in vars_in_expr and not (vars_in_expr & time_units):
                     logger.warning(f"Equation {eq_name}: 'dt' used in dynamics for {var_name} without time unit (e.g., HOUR). Assuming dt in model's native time unit.")
 
-        # 验证 simulator
+        # Validate simulator
         if self.simulator:
             sim_step = self.simulator.get('step_size')
             if not isinstance(sim_step, (int, float)) or sim_step <= 0:
-                all_errors.append("simulation.step_size 必填且必须为正数（秒）。请在 simulation 块中声明 step_size: {value, unit}。")
+                all_errors.append("simulation.step_size is required and must be a positive number (in seconds). Declare step_size: {value, unit} in the simulation block.")
             if 'dt' in self.simulator and (not isinstance(self.simulator['dt'], (int, float)) or self.simulator['dt'] <= 0):
-                all_errors.append("simulator.dt 必须为正数。")
+                all_errors.append("simulator.dt must be a positive number.")
             if 'dt_unit' in self.simulator and self.simulator['dt_unit'] not in ['minute', 'hour', 'day', 'week', 'month', 'year']:
-                all_errors.append("simulator.dt_unit 无效。")
+                all_errors.append("simulator.dt_unit is invalid.")
 
-        # 验证 optimizer（修改部分：去除类型限制，仅检查存在）
+        # Validate optimizer (changed: dropped the type restriction, only checks existence)
         if self.optimizer:
             if 'method' not in self.optimizer:
-                all_errors.append("optimization 缺少 method。")
+                all_errors.append("optimization is missing method.")
             def _check_opt_var(param, section: str):
                 """
-                验证单个优化变量条目：
-                  - 字符串格式: 直接检查是否在 self.variables
-                  - 字典格式:   有 maps_to 则验证其指向的变量存在（格式 "var_name @ ..."）；
-                                无 maps_to 则验证 name 字段本身存在于 self.variables
+                Validates a single optimization-variable entry:
+                  - string format: checks directly whether it is in self.variables
+                  - dict format:   if maps_to is present, validates the variable it points to exists
+                                    (in the format "var_name @ ..."); if maps_to is absent, validates
+                                    that the name field itself exists in self.variables
                 """
                 if isinstance(param, str):
                     if param not in self.variables:
@@ -56,7 +57,7 @@ class Validator:
                     maps_to = param.get('maps_to', '')
                     name = param.get('name', '')
                     if maps_to:
-                        # 提取 "var_name @ [t1, t2]" 或 "var_name @ t" 中的变量名
+                        # Extract the variable name from "var_name @ [t1, t2]" or "var_name @ t"
                         target_var = maps_to.split('@')[0].strip()
                         if target_var and target_var not in self.variables:
                             all_errors.append(
@@ -93,10 +94,10 @@ class Validator:
                 is_valid = False
             return is_valid, errors, []
 
-        # 验证变量（简化：检查整体定义）
+        # Validate variables (simplified: checks the overall definition)
         def validate_variables() -> tuple[bool, list[str], list[dict]]:
             errors = []
-            missing_vars = []  # 移动到此处，聚焦整体缺失
+            missing_vars = []  # moved here, focused on the overall missing set
             is_valid = True
             for var_name, var in self.variables.items():
                 if not isinstance(var.description, str):
@@ -193,18 +194,18 @@ class Validator:
                 else:
                     errors.append(f"condition of equation '{eq_name}' invalid: expected bool, number, or string expression, got {type(equation.condition).__name__}")
                     is_valid = False
-                
-                # 🔧 修复：无论 dynamics 的 key 是否存在，都要验证表达式
+
+                # Fix: validate the expression regardless of whether the dynamics key already exists
                 for var, expr in equation.dynamics.items():
-                    # 首先检查 dynamics 的 key 是否存在
+                    # First check whether the dynamics key exists
                     if var not in self.variables:
                         missing_vars.append({
                             'variable': var,
                             'context': f"dynamics of equation '{eq_name}'"
                         })
                         is_valid = False
-                    
-                    # 🔧 关键修复：无论 key 是否存在，都要验证表达式中引用的变量
+
+                    # Key fix: validate the variables referenced in the expression regardless of whether the key exists
                     if isinstance(expr, (int, float)):
                         expr_str = str(expr)
                         missing_vars.extend(collect_undefined_vars(
@@ -219,55 +220,55 @@ class Validator:
                     else:
                         errors.append(f"dynamics for '{var}' in equation '{eq_name}' invalid: expected number or string expression, got {type(expr).__name__}")
                         is_valid = False
-            
+
             if missing_vars:
                 errors.append("Missing variables:")
                 for mv in missing_vars:
                     errors.append(f"  - {mv['variable']}: {mv['context']}")
-            
+
             return is_valid, errors, missing_vars
 
         def validate_equations() -> tuple[bool, list[str], list[dict]]:
-            """验证方程,收集所有缺失的变量"""
+            """Validates equations, collecting all missing variables"""
             errors = []
             missing_vars = []
             is_valid = True
-            
-            # 🔥 新方法: 使用 AST 直接提取变量,不依赖 asteval
+
+            # The new approach: extract variables directly via AST, not relying on asteval
             import ast
             import re
-            
+
             def extract_vars_from_expr(expr: str) -> set:
-                """从表达式中提取所有变量名"""
+                """Extracts all variable names from an expression"""
                 if not isinstance(expr, str):
                     return set()
-                
+
                 vars_found = set()
                 try:
-                    # 方法1: 使用 AST (更准确)
+                    # Method 1: use AST (more accurate)
                     tree = ast.parse(expr, mode='eval')
                     for node in ast.walk(tree):
                         if isinstance(node, ast.Name):
                             vars_found.add(node.id)
                 except:
-                    # 方法2: 使用正则表达式 (备用)
+                    # Method 2: use a regex (fallback)
                     vars_found = set(re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', expr))
-                
-                # 排除常见的函数和关键字
+
+                # Exclude common functions and keywords
                 exclude = {'sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs',
                         'max', 'min', 'sum', 'pow', 'round', 'floor', 'ceil',
                         'True', 'False', 'None', 'and', 'or', 'not', 'if', 'else',
                         'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR',
                         'step', 'step_size', 'dt', 't', 'time', 'pi', 'e'}
-                
+
                 return vars_found - exclude
-            
+
             valid_step_units = {'minute', 'hour', 'day'}
 
-            # 遍历所有方程
+            # Iterate over every equation
             for eq_name, equation in self.equations.items():
 
-                # 0. 仅当 dynamics 使用步长变量时才验证 step_unit
+                # 0. Only validate step_unit when dynamics actually uses a step-size variable
                 dyn_uses_step = any(
                     isinstance(expr, str) and bool(re.search(r'\b(step|dt|step_size)\b', expr))
                     for expr in equation.dynamics.values()
@@ -278,16 +279,16 @@ class Validator:
                         isinstance(expr, str) and bool(re.search(r'\b(dt|step_size)\b', expr))
                         for expr in equation.dynamics.values()
                     ):
-                        errors.append(f"equation '{eq_name}' 的 dynamics 使用了废弃符号 dt/step_size，请改用 step。")
+                        errors.append(f"equation '{eq_name}''s dynamics uses the deprecated symbol dt/step_size, use step instead.")
                         is_valid = False
                     if not step_unit:
-                        errors.append(f"equation '{eq_name}' 的 dynamics 使用步长变量，缺少必填字段 step_unit（minute | hour | day）。")
+                        errors.append(f"equation '{eq_name}''s dynamics uses a step-size variable but is missing the required step_unit field (minute | hour | day).")
                         is_valid = False
                     elif step_unit not in valid_step_units:
-                        errors.append(f"equation '{eq_name}' step_unit='{step_unit}' 无效，必须为 minute | hour | day。")
+                        errors.append(f"equation '{eq_name}' has step_unit='{step_unit}', which is invalid; it must be minute | hour | day.")
                         is_valid = False
 
-                # 1. 验证 condition
+                # 1. Validate condition
                 if isinstance(equation.condition, str):
                     vars_in_condition = extract_vars_from_expr(equation.condition)
                     for var in vars_in_condition:
@@ -297,18 +298,18 @@ class Validator:
                                 'context': f"condition of equation '{eq_name}'"
                             })
                             is_valid = False
-                
-                # 2. 验证 dynamics
+
+                # 2. Validate dynamics
                 for dyn_key, dyn_expr in equation.dynamics.items():
-                    # 2a. 检查 dynamics 的 key (左边) 是否定义
+                    # 2a. Check whether the dynamics key (the left-hand side) is defined
                     if dyn_key not in self.variables:
                         missing_vars.append({
                             'variable': dyn_key,
                             'context': f"dynamics key of equation '{eq_name}'"
                         })
                         is_valid = False
-                    
-                    # 2b. 检查 dynamics 的 value (右边) 中使用的变量
+
+                    # 2b. Check the variables used in the dynamics value (the right-hand side)
                     if isinstance(dyn_expr, str):
                         vars_in_expr = extract_vars_from_expr(dyn_expr)
                         for var in vars_in_expr:
@@ -319,15 +320,15 @@ class Validator:
                                 })
                                 is_valid = False
                     elif isinstance(dyn_expr, (int, float)):
-                        # 数字常量,无需检查
+                        # A numeric constant, no check needed
                         pass
-            
-            # 添加错误信息
+
+            # Add the error info
             if missing_vars:
                 errors.append("Missing variables:")
                 for mv in missing_vars:
                     errors.append(f"  - {mv['variable']}: {mv['context']}")
-            
+
             return is_valid, errors, missing_vars
 
         validators = [
@@ -338,7 +339,7 @@ class Validator:
         for section, validator in validators:
             valid, errors, missing_vars = validator()
             for mv in missing_vars:
-                unique_missing_vars.add(mv['variable'])  # 只收集变量名
+                unique_missing_vars.add(mv['variable'])  # collect only the variable name
             if errors:
                 all_errors.extend([f"{section}: {err}" for err in errors])
 
@@ -352,5 +353,5 @@ class Validator:
 
     def extract_vars_from_expr(self, expr: str):
         variables = extract_vars_from_expr(expr)
-        # 使用 variables 进行后续逻辑
+        # Use variables for the subsequent logic
         return variables

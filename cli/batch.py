@@ -223,21 +223,21 @@ def main() -> None:
         steps.append('opt')
 
     print('=' * 60)
-    print('  Life Matters 批量模型测试')
-    print(f'  文件夹：{folder}')
-    print(f'  模型数：{total}')
-    print(f'  运行步骤：{" + ".join(steps)}')
+    print('  Life Matters Batch Model Test')
+    print(f'  Folder: {folder}')
+    print(f'  Models: {total}')
+    print(f'  Steps run: {" + ".join(steps)}')
     print('=' * 60)
     print()
 
     report_lines = [
         '# Batch Test Report',
         '',
-        f'- 时间：{batch_stamp}',
-        f'- 文件夹：`{folder}`',
-        f'- 模型数：{total}',
+        f'- Time: {batch_stamp}',
+        f'- Folder: `{folder}`',
+        f'- Models: {total}',
         '',
-        '| # | 模型 | Sim | Opt | 错误摘要 |',
+        '| # | Model | Sim | Opt | Error summary |',
         '|---|------|-----|-----|---------|',
     ]
 
@@ -262,21 +262,21 @@ def main() -> None:
 
     report_lines += [
         '',
-        '## 汇总',
+        '## Summary',
         '',
-        f'- 通过：{pass_count} / {total}',
-        f'- 失败：{fail_count} / {total}',
+        f'- Passed: {pass_count} / {total}',
+        f'- Failed: {fail_count} / {total}',
     ]
     report_path.write_text('\n'.join(report_lines) + '\n', encoding='utf-8')
 
     print('=' * 60)
-    print(f'  完成：{pass_count} PASS，{fail_count} FAIL（共 {total} 个模型）')
-    print(f'  报告：{report_path}')
+    print(f'  Done: {pass_count} PASS, {fail_count} FAIL ({total} models total)')
+    print(f'  Report: {report_path}')
     print('=' * 60)
 
     if fail_rows:
         print()
-        print('  失败列表：')
+        print('  Failed:')
         for row in fail_rows:
             print(f'    {row}')
         sys.exit(1)

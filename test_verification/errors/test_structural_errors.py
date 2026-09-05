@@ -28,7 +28,7 @@ def test_invalid_step_size_is_rejected():
     engine = _make_engine()
     assert not engine.load_models(['test_fixtures/invalid/test_invalid_step_size'])
     assert 'step_size' in engine.loader.last_error
-    assert '正数' in engine.loader.last_error
+    assert 'positive number' in engine.loader.last_error
 
 
 def test_optimizer_missing_method_is_rejected():

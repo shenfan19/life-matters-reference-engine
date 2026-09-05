@@ -1,6 +1,7 @@
 # src/yaml_io.py
-"""libyaml 的 C 绑定比 PyYAML 纯 Python SafeLoader 快 5-8 倍（同一文件实测）。
-不可用时（如目标环境没装 libyaml）自动退回纯 Python SafeLoader，行为不变。
+"""libyaml's C bindings are 5-8x faster than PyYAML's pure-Python SafeLoader (measured on the same file).
+When unavailable (e.g. the target environment doesn't have libyaml installed), automatically falls
+back to the pure-Python SafeLoader, with no change in behavior.
 """
 import yaml
 

@@ -49,7 +49,19 @@ export function parseRating(raw: unknown): ParsedRating {
   return { score, note };
 }
 
-const RATING_MAX_STARS = 4; // 4 颗星使五个锚点 0/0.25/0.5/0.75/1.0 各自对应整数星数，不落在半星上
+export interface ParsedReviewed { reviewed: boolean; note: string }
+
+export function parseReviewed(raw: unknown): ParsedReviewed {
+  // Absent field defaults to reviewed: only an explicit `false - ...` line marks a model unreviewed.
+  if (raw == null) return { reviewed: true, note: '' };
+  const str = String(raw);
+  const m = str.match(/^(true|false)/i);
+  const reviewed = m ? m[1].toLowerCase() === 'true' : Boolean(raw);
+  const note = str.replace(/^(true|false)\s*-?\s*/i, '');
+  return { reviewed, note };
+}
+
+const RATING_MAX_STARS = 4; // 4 stars makes each of the five anchors 0/0.25/0.5/0.75/1.0 map to a whole star count, never a half star
 
 export function ratingStars(score: number): string {
   const halfSteps = Math.round(score * RATING_MAX_STARS * 2) / 2;

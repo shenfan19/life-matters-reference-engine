@@ -339,7 +339,7 @@ export function useSimulation({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
       }).then(res => res.json());
-      if (!r.success) throw new Error(r.error || '启动失败');
+      if (!r.success) throw new Error(r.error || 'Failed to start');
       return { sid: r.data.session_id, total: r.data.total_steps, planIdx: i, outputVars: r.data.output_variables };
     }));
 

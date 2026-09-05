@@ -1,8 +1,8 @@
 import React from 'react';
-import { Empty, Tooltip } from 'antd';
+import { Alert, Empty, Tooltip } from 'antd';
 import type { ModelFile, SimulationDataPoint, StepUnit } from '../../types';
 import { getC } from '../../core/theme';
-import { getDescriptionSections, getModelReferences, parseRating, ratingStars } from '../../core/modelUtils';
+import { getDescriptionSections, getModelReferences, parseRating, parseReviewed, ratingStars } from '../../core/modelUtils';
 import SimChart, { VAR_COLORS } from './SimChart';
 
 interface SimIntroTabProps {
@@ -114,6 +114,24 @@ const SimIntroTab: React.FC<SimIntroTabProps> = ({
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 8, gap: 8 }}>
 
       <Section id="meta" title={t('sim.report.section.intro')} badge={meta.name || undefined}>
+        {(() => {
+          const { reviewed, note } = parseReviewed(meta.reviewed);
+          if (reviewed) return (
+            <div style={{ marginBottom: 8, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', color: c.textMute }}>
+              {t('sim.intro.reviewed.reviewed_label')}{note ? `: ${note}` : ''}
+            </div>
+          );
+          const descFs = 'calc(var(--lm-font-size, 14px) * 0.8571)';
+          return (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 8, padding: '6px 12px' }}
+              message={<span style={{ fontSize: descFs }}>{t('sim.intro.reviewed.unreviewed_title')}</span>}
+              description={note ? <span style={{ fontSize: descFs }}>{note}</span> : undefined}
+            />
+          );
+        })()}
         {descSections.length > 0
           ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {descSections.map(section => (

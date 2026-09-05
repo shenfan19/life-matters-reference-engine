@@ -147,6 +147,8 @@
   "sim.var.type.parameter": "參數",
   "sim.var.type.evidence": "證據",
   "sim.intro.no_description": "暫無描述",
+  "sim.intro.reviewed.unreviewed_title": "範例模型，AI 生成，尚未審核",
+  "sim.intro.reviewed.reviewed_label": "已審核",
   "sim.intro.no_variables": "無變量",
   "sim.intro.type": "類型",
   "sim.intro.init_value": "初始值",

@@ -1,4 +1,4 @@
-// optUtils.test.ts — "忠诚性测试" (faithfulness test, ADR 0112)
+// optUtils.test.ts — a faithfulness test (ADR 0112)
 //
 // buildOptInputEventsFromYAML / buildOptRegimens are an independent
 // re-implementation (in TS) of the same optimization.startpoint.regimens

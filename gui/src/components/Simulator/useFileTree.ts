@@ -73,8 +73,10 @@ export function useFileTree({
     setTreeLoading(true);
     try {
       const cleanPath = filePath.replace(/^models\//, '');
-      // folder/modelName 从请求路径本身推导（server 原样回传 path），不必等第一个请求返回才算，
-      // 这样两个请求可以并发发出，不用串行等第一个 round trip 完成。
+      // folder/modelName are derived from the request path itself (the server echoes path back
+      // unchanged), so there's no need to wait for the first request to return before deriving
+      // them — the two requests can be fired concurrently instead of serially waiting on the
+      // first round trip to finish.
       const folder = cleanPath.includes('/') ? cleanPath.substring(0, cleanPath.lastIndexOf('/')) : undefined;
       const modelName = cleanPath.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'unknown';
       const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';

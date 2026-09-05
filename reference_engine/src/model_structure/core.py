@@ -10,70 +10,70 @@ import logging
 import os
 import yaml
 
-# 初始化模块的日志记录器
+# Initialize the module's logger
 logger = logging.getLogger(__name__)
 
 class ModelStructure(Loader, Validator, Simulation):
     def __init__(self, models_directory: str = "models"):
-        # 初始化元数据
+        # Initialize metadata
         self.metadata = None
-        # 初始化变量字典
+        # Initialize the variables dict
         self.variables = {}
-        # 初始化方程字典
+        # Initialize the equations dict
         self.equations = {}
-        # 初始化变量历史记录
+        # Initialize variable history
         self.variable_history = {}
-        # 初始化当前仿真步数
+        # Initialize the current simulation step count
         self.current_step = 0
-        # 初始化仿真时间（秒）
+        # Initialize the simulation time (in seconds)
         self.time = 0.0
-        # 初始化 asteval 解释器
+        # Initialize the asteval interpreter
         self.asteval = Interpreter()
-        # 初始化 asteval 符号表
+        # Initialize the asteval symbol table
         self._initialize_asteval()
-        # 初始化钩子字典
+        # Initialize the hooks dict
         self.hooks = {'pre_step': [], 'post_step': []}
-        # 初始化 simulator 和 optimizer
+        # Initialize simulator and optimizer
         self.simulator: Dict[str, Any] = {}
         self.optimizer: Dict[str, Any] = {}
-        # self.plans: plan_id → List[dict] 原始 schedule 条目，供 apply_schedules 使用
-        # self.schedule_entries: 当前激活 plan 的条目列表（run_simulation 前设置）
+        # self.plans: plan_id -> a List[dict] of raw schedule entries, used by apply_schedules
+        # self.schedule_entries: the entry list of the currently active plan (set before run_simulation)
         self.plans: Dict[str, Any] = {}
         self.schedule_entries: list = []
-        # 时间单位（来自 YAML simulator.time_unit，默认分钟）
+        # The time unit (from YAML simulator.time_unit, default minute)
         self.time_unit: str = 'minute'
-        # 跟踪已访问模型，防止循环依赖
+        # Tracks visited models, to guard against circular dependencies
         self.visited: Set[str] = set()
         self.models_directory = models_directory
-        # 当前文件名（无扩展名），由 loader.py 设置
+        # The current filename (no extension), set by loader.py
         self.current_filename: str = None
     def _initialize_asteval(self):
-        # 重建 Interpreter，让 asteval 自己注册所有内置函数，不破坏其内部状态
+        # Rebuild the Interpreter, letting asteval re-register all its built-in functions itself, without disturbing its internal state
         self.asteval = Interpreter()
-        # 追加时间单位常量（以秒为绝对值，供内部计算参考）
+        # Append time-unit constants (in absolute seconds, for internal computation reference)
         self.asteval.symtable['MINUTE'] = 60.0
         self.asteval.symtable['HOUR'] = 3600.0
         self.asteval.symtable['DAY'] = 86400.0
         self.asteval.symtable['WEEK'] = 604800.0
         self.asteval.symtable['MONTH'] = 2592000.0
         self.asteval.symtable['YEAR'] = 31536000.0
-        # 注入模型变量到符号表
+        # Inject model variables into the symbol table
         for var_name, var in self.variables.items():
             self.asteval.symtable[var_name] = var.value
-    
+
     def split_model(self, output_dir: str):
         """
-        将模型分解为独立方程文件和剩余文件，所有文件生成在 output_dir 目录下。
-        :param output_dir: 输出目录（如 models/splited/bcd/）
+        Decomposes a model into independent per-equation files plus a remainder file, all generated under output_dir.
+        :param output_dir: the output directory (e.g. models/splited/bcd/)
         """
-        # 确保输出目录存在
+        # Ensure the output directory exists
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        # 使用 self.current_filename 作为前缀
+        # Use self.current_filename as the prefix
         prefix = self.current_filename or 'unknown'
 
-        # 提取方程依赖变量
+        # Extract each equation's dependency variables
         equation_deps: Dict[str, Set[str]] = {}
         for eq_name, equation in self.equations.items():
             deps = set()
@@ -87,22 +87,22 @@ class ModelStructure(Loader, Validator, Simulation):
                     deps.add(var)
             equation_deps[eq_name] = deps
 
-        # 构建变量使用计数
+        # Build the variable usage count
         var_usage: Dict[str, int] = {}
         for deps in equation_deps.values():
             for var in deps:
                 var_usage[var] = var_usage.get(var, 0) + 1
 
-        # 识别独立方程
+        # Identify independent equations
         independent_equations = [
             eq_name for eq_name, deps in equation_deps.items()
             if all(var_usage.get(var, 0) == 1 for var in deps)
         ]
 
-        # 生成独立方程文件
+        # Generate a file per independent equation
         for eq_name in independent_equations:
             deps = equation_deps[eq_name]
-            # 过滤 variables，排除 'dt' 如果存在 // dt不再排除
+            # Filter variables, excluding 'dt' if present // 'dt' is no longer excluded
             filtered_vars = {
                 var: {
                     'description': self.variables[var].description,
@@ -110,7 +110,7 @@ class ModelStructure(Loader, Validator, Simulation):
                     'type': self.variables[var].type.value,
                     'unit': self.variables[var].unit,
                     'bounds': self.variables[var].bounds
-                } for var in deps if var in self.variables # 添加过滤条件：排除 'dt' // dt不再排除
+                } for var in deps if var in self.variables # Added filter condition: exclude 'dt' // 'dt' is no longer excluded
             }
             patch_data = {
                 'metadata': {
@@ -119,7 +119,7 @@ class ModelStructure(Loader, Validator, Simulation):
                     'author': self.metadata.author if self.metadata else '',
                     'description': f"Split module for equation {eq_name}",
                 },
-                'variables': filtered_vars,  # 使用过滤后的 variables
+                'variables': filtered_vars,  # use the filtered variables
                 'equations': {
                     eq_name: {
                         'description': self.equations[eq_name].description,
@@ -129,14 +129,14 @@ class ModelStructure(Loader, Validator, Simulation):
                     }
                 }
             }
-            # 直接在 output_dir 下生成文件
+            # Generate the file directly under output_dir
             split_file_path = os.path.join(output_dir, f"{prefix}_{eq_name}.yaml")
             with open(split_file_path, 'w', encoding='utf-8') as f:
                 yaml.safe_dump(patch_data, f, sort_keys=False, allow_unicode=True,
                             default_flow_style=False, indent=2)
             logger.info(f"Generated split file: {split_file_path}")
 
-        # 生成剩余模型文件
+        # Generate the remainder model file
         remaining_equations = {k: v for k, v in self.equations.items() if k not in independent_equations}
         remaining_vars = set()
         for equation in remaining_equations.values():
@@ -148,8 +148,8 @@ class ModelStructure(Loader, Validator, Simulation):
                 remaining_vars.update(self.extract_vars_from_expr(expr))
                 if var in self.variables:
                     remaining_vars.add(var)
-        
-        # 过滤 remaining_vars，排除 'dt' 如果存在
+
+        # Filter remaining_vars, excluding 'dt' if present
         filtered_remaining_vars = {
             var: {
                 'description': self.variables[var].description,
@@ -157,7 +157,7 @@ class ModelStructure(Loader, Validator, Simulation):
                 'type': self.variables[var].type.value,
                 'unit': self.variables[var].unit,
                 'bounds': self.variables[var].bounds
-            } for var in remaining_vars if var in self.variables # 添加过滤条件：排除 'dt'
+            } for var in remaining_vars if var in self.variables # Added filter condition: exclude 'dt'
         }
         remaining_data = {
             'metadata': {
@@ -166,7 +166,7 @@ class ModelStructure(Loader, Validator, Simulation):
                 'author': self.metadata.author if self.metadata else '',
                 'description': f"Remaining shared modules of {prefix}",
             },
-            'variables': filtered_remaining_vars,  # 使用过滤后的 variables
+            'variables': filtered_remaining_vars,  # use the filtered variables
             'equations': {
                 k: {
                     'description': v.description,
@@ -176,15 +176,15 @@ class ModelStructure(Loader, Validator, Simulation):
                 } for k, v in remaining_equations.items()
             }
         }
-        # 直接在 output_dir 下生成文件
+        # Generate the file directly under output_dir
         remaining_path = os.path.join(output_dir, f"{prefix}_remaining.yaml")
         with open(remaining_path, 'w', encoding='utf-8') as f:
             yaml.safe_dump(remaining_data, f, sort_keys=False, allow_unicode=True,
                         default_flow_style=False, indent=2)
         logger.info(f"Generated remaining file: {remaining_path}")
-        
+
     def export_to_yaml(self, file_path: str):
-        # 导出模型为 YAML 文件
+        # Export the model to a YAML file
         data = {
             'metadata': {
                 'name': self.metadata.name if self.metadata else '',
@@ -216,5 +216,5 @@ class ModelStructure(Loader, Validator, Simulation):
             'optimization': self.optimizer
         }
         with open(file_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True, 
-                        default_flow_style=False, indent=2)  # 添加 indent=2
+            yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True,
+                        default_flow_style=False, indent=2)  # add indent=2

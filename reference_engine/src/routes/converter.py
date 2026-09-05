@@ -18,7 +18,7 @@ class ConvertRequest(BaseModel):
 
 
 def _detect_pattern(expr: str):
-    """简单方程模式识别，返回 (pattern, delta_int)"""
+    """Simple equation pattern recognition, returns (pattern, delta_int)"""
     s = str(expr).strip()
     if re.fullmatch(r'-?\d+(\.\d+)?', s):
         return "P1", round(float(s))
@@ -35,7 +35,7 @@ def _detect_pattern(expr: str):
 
 @router.post("/api/convert")
 async def convert_scenario(request: ConvertRequest):
-    """将 scenario 自动转换为 game story 文件夹结构"""
+    """Automatically converts a scenario into a game story folder structure"""
     import json
     from datetime import date
 
@@ -141,7 +141,7 @@ async def convert_scenario(request: ConvertRequest):
         "health_mapping": {
             "source_variable": health_var,
             "scale": [h_min, h_max, 0, 100],
-            "display": "生命值",
+            "display": "Health",
         },
         "turns": {
             "total": total_turns,
@@ -150,12 +150,12 @@ async def convert_scenario(request: ConvertRequest):
             "player_hand_size": 5,
             "action_points": 3,
         },
-        "win_condition": {"type": "survive", "description": f"撑过 {total_turns} 个回合"},
-        "lose_condition": {"type": "health_zero", "description": "生命值归零"},
+        "win_condition": {"type": "survive", "description": f"Survive {total_turns} turns"},
+        "lose_condition": {"type": "health_zero", "description": "Health drops to zero"},
         "endings": [
-            {"grade": "S", "condition": "health >= 50", "title": "优秀"},
-            {"grade": "A", "condition": "health > 0", "title": "幸存"},
-            {"grade": "D", "condition": "health <= 0", "title": "失败"},
+            {"grade": "S", "condition": "health >= 50", "title": "Excellent"},
+            {"grade": "A", "condition": "health > 0", "title": "Survived"},
+            {"grade": "D", "condition": "health <= 0", "title": "Failed"},
         ],
         "env_deck": env_cards,
         "player_deck": player_cards,
@@ -191,5 +191,5 @@ async def convert_scenario(request: ConvertRequest):
         "success": True,
         "env_cards": len(env_cards),
         "player_cards": len(player_cards),
-        "message": f"生成完成：{len(env_cards)} 张环境牌，{len(player_cards)} 张玩家牌",
+        "message": f"Generation complete: {len(env_cards)} environment cards, {len(player_cards)} player cards",
     }

@@ -145,7 +145,7 @@ async def export_optimizer_csv(request: ExportOptCsvRequest):
     """Write the job's Pareto front to <OUTPUT_DIR>/<model>/ as a CSV, same format/
     naming convention as the CLI's _opt.csv (reference_engine/src/csv_export.py, shared
     with cli/output.py — neither entry point depends on the other).
-    Local-disk mirror of "保存结果到模型" — never touches the model YAML.
+    Local-disk mirror of "save results to the model" — never touches the model YAML.
     """
     if request.job_id not in app_state.optimizer_jobs:
         raise HTTPException(status_code=404, detail=f"Job not found: {request.job_id}")

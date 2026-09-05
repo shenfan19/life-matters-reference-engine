@@ -147,6 +147,8 @@
   "sim.var.type.parameter": "Paramètre",
   "sim.var.type.evidence": "Preuve",
   "sim.intro.no_description": "Aucune description",
+  "sim.intro.reviewed.unreviewed_title": "Modèle d'exemple, généré par IA, non encore vérifié",
+  "sim.intro.reviewed.reviewed_label": "Vérifié",
   "sim.intro.no_variables": "Aucune variable",
   "sim.intro.type": "Type",
   "sim.intro.init_value": "Init.",

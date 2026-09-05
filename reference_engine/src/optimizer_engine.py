@@ -324,7 +324,7 @@ def run_optimizer(engine, model_name: str,
     # ── MC settings ───────────────────────────────────────────────────────────
     mc_cfg = opt_block.get('mc', {})
     mc_runs = max(1, int(mc_cfg.get('runs', 1)))
-    # optimization.mc.seed 独立于 algorithm.seed（algorithm.seed 只用于 NSGA-II）
+    # optimization.mc.seed is independent of algorithm.seed (algorithm.seed is used only by NSGA-II)
     mc_seed_raw = mc_cfg.get('seed')
     mc_seed = int(mc_seed_raw) if mc_seed_raw is not None else None
 

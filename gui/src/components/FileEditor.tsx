@@ -188,9 +188,9 @@ export default function FileEditor({
     const missingVars: string[] = [];
     const unusedVars: string[] = [];
     for (const err of st.errors) {
-      const m1 = err.match(/dynamics 键 '([^']+)' 未在 variables 中定义/);
+      const m1 = err.match(/dynamics key '([^']+)' is not defined in variables/);
       if (m1) missingVars.push(m1[1]);
-      const m2 = err.match(/变量 '([^']+)' 已定义但未被任何方程使用/);
+      const m2 = err.match(/Variable '([^']+)' is defined but not used by any equation/);
       if (m2) unusedVars.push(m2[1]);
     }
     if (!base.variables) base.variables = {};

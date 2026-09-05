@@ -22,19 +22,19 @@ def _make_engine() -> ReferenceEngine:
 def test_circular_import_is_rejected():
     engine = _make_engine()
     assert not engine.load_models(['test_fixtures/invalid/test_invalid_import_circular_a'])
-    assert '循环' in engine.loader.last_error
+    assert 'Circular' in engine.loader.last_error
 
 
 def test_circular_import_is_rejected_from_either_side():
     engine = _make_engine()
     assert not engine.load_models(['test_fixtures/invalid/test_invalid_import_circular_b'])
-    assert '循环' in engine.loader.last_error
+    assert 'Circular' in engine.loader.last_error
 
 
 def test_import_escaping_models_root_is_rejected():
     engine = _make_engine()
     assert not engine.load_models(['test_fixtures/invalid/test_invalid_import_escapes_root'])
-    assert '超出 models 目录' in engine.loader.last_error
+    assert 'outside the models directory' in engine.loader.last_error
 
 
 def test_non_dict_yaml_is_rejected():
