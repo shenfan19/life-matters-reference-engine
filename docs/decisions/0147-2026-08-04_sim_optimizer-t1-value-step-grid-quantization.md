@@ -1,31 +1,31 @@
-# 0147 — 优化器 T1 决策变量新增 value_step 网格量化解码
+# 0147 — Adding value_step Grid-Quantization Decoding to the Optimizer's T1 Decision Variable
 
-**日期**：2026-08-04
-**状态**：✅ 已接受
+**Date**: 2026-08-04
+**Status**: ✅ accepted
 
 ---
 
-## 背景
+## Background
 
-优化器 T1 决策变量 `optimize.value: [lo, hi]` 此前只支持连续区间内的任意小数解，对按临床/工程可读精度取值的场景（例如喂养量按 5 mL 一档、代谢当量按 0.1 MET-h 一档）不友好——搜索算法给出的解可能是 `12.347` 这类无法直接执行的数字。T2 时间窗的 `time_step` 已经有"连续内部表示、解码时离散化到网格"的先例，T1 缺少对应字段。
+The optimizer's T1 decision variable `optimize.value: [lo, hi]` previously only supported an arbitrary decimal solution within a continuous interval, which was unfriendly to scenarios that need a value taken at clinical/engineering-readable precision (such as a feed volume in 5 mL increments, or a metabolic equivalent in 0.1 MET-h increments) — the search algorithm's solution might come out as something unactionable like `12.347`. T2's time window already had a precedent for this — "a continuous internal representation, discretized to a grid at decode time" — via `time_step`, but T1 lacked the equivalent field.
 
-## 决策
+## Decision
 
-`optimizer_parsing.py` 新增 `_snap_to_step(raw, lo, hi, step)`：把连续实数按 `step` 为间隔、以 `lo` 为网格锚点做四舍五入，并 clamp 回 `[lo, hi]` 范围，最后按 `step` 的小数位数做一次 `round()` 清除二进制浮点噪声。锚定 `lo` 而非 `0`，是为了在 `lo` 本身不是 `step` 整数倍时（如 `[0.9, 1.0]`）网格仍与搜索区间对齐。
+`optimizer_parsing.py` gained `_snap_to_step(raw, lo, hi, step)`: it rounds a continuous real number to the nearest multiple of `step` anchored at `lo`, clamps the result back into `[lo, hi]`, and finally runs one `round()` pass at `step`'s decimal precision to clear binary floating-point noise. Anchoring at `lo` rather than `0` keeps the grid aligned with the search interval even when `lo` itself isn't an integer multiple of `step` (e.g. `[0.9, 1.0]`).
 
-`optimize.value` 新增可选字段 `value_step`：声明后，解码阶段用 `_snap_to_step` 把内部连续值转换为执行值；不声明时行为不变，仍是连续解。
+`optimize.value` gained an optional `value_step` field: once declared, the decoding stage uses `_snap_to_step` to convert the internal continuous value into the executed value; when not declared, behavior is unchanged, still a continuous solution.
 
-**配套修复**：算法后端记录的 `pareto_front`/`best_x` 此前一直是 snap 前的原始连续值，与 `evaluate()` 实际用于跑仿真的 snap 后数值不一致，即结果表里显示的 x 和真正被仿真过的 x 对不上。修复方式是在结果产出后对 `pareto_front`/`best_x` 中带 `value_step` 的分量统一重新 snap 一遍，保证记录值与被仿真值一致。
+**An accompanying fix**: the `pareto_front`/`best_x` recorded by the algorithm backend had always held the raw pre-snap continuous value, inconsistent with the post-snap value `evaluate()` actually used to run the simulation — meaning the x shown in the results table didn't match the x that was actually simulated. The fix re-snaps every component with a `value_step` in `pareto_front`/`best_x` once more after the result is produced, guaranteeing the recorded value matches the simulated value.
 
-## 影响范围
+## Scope of impact
 
-- `reference_engine/src/optimizer_parsing.py`：新增 `_snap_to_step`。
-- `reference_engine/src/optimizer_engine.py`：T1 解码接入 `value_step`；结果产出后对 `pareto_front`/`best_x` 补做 snap。
-- `docs/opt.md`：T1 行说明新增 `value_step`，补充与 T2 `time_step` 的类比说明。
-- `gui/src/components/opt_tab/OptSetupTab.tsx`、`gui/src/types.ts`、`gui/src/components/sim_tab/optUtils.ts`：GUI 表单新增 `value_step` 输入与解析。
-- 四份 locale 文件新增对应字段的多语言文案。
+- `reference_engine/src/optimizer_parsing.py`: added `_snap_to_step`.
+- `reference_engine/src/optimizer_engine.py`: T1 decoding now uses `value_step`; `pareto_front`/`best_x` are re-snapped after the result is produced.
+- `docs/opt.md`: the T1 row's description gained `value_step`, with a note drawing the analogy to T2's `time_step`.
+- `gui/src/components/opt_tab/OptSetupTab.tsx`, `gui/src/types.ts`, `gui/src/components/sim_tab/optUtils.ts`: the GUI form gained a `value_step` input and its parsing.
+- The four locale files gained multilingual text for the corresponding field.
 
-## 结果
+## Result
 
-- T1 决策变量可选按可读精度离散化，与 T2 的 `time_step` 是同一种设计模式，用户心智负担不增加。
-- 结果记录中的 x 向量与实际仿真所用的 x 向量保持一致，消除了此前"表里的数字和真正跑过的数字对不上"的隐患。
+- T1's decision variable can optionally be discretized to a readable precision, the same design pattern as T2's `time_step`, adding no extra cognitive burden for the user.
+- The x vector in the recorded results now stays consistent with the x vector actually used in the simulation, eliminating the previous risk of "the number in the table doesn't match the number that was actually run."

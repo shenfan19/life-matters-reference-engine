@@ -1,82 +1,71 @@
-# ADR 0110 — Plan/Schedule 解析单一来源：后端 `self.plans`，前端不再重新解析 YAML
+# ADR 0110 — A Single Source of Truth for Plan/Schedule Parsing: the Backend's `self.plans`, the Frontend No Longer Re-Parses YAML
 
-**日期**: 2026-06-17
-**状态**: 已接受
-**范围**: sim_engine · sim_gui
+**Date**: 2026-06-17
+**Status**: accepted
+**Scope**: sim_engine · sim_gui
 
 ---
 
-## 背景
+## Background
 
-`docs/cli.md` 对外承诺"CLI 与 GUI 共用同一个引擎层，结果格式一致，可互通"。
-但 `simulation.plans[*].schedules` 这一段 YAML，实际上被两套互不相关的代码独立解析：
+`docs/cli.md` publicly promises that "the CLI and the GUI share the same engine layer, with a consistent, interchangeable result format."
+But the `simulation.plans[*].schedules` section of YAML was actually parsed independently by two unrelated pieces of code:
 
-| 路径 | 解析代码 |
+| Path | Parsing code |
 |------|---------|
-| CLI（及 GUI 后端的 `start_session`/`apply_regimens` 执行核心） | `ModelStructure._parse_schedule_entries()`（`sim_engine/src/model_structure/loader.py`），结果存入 `self.plans[plan_id]` |
-| GUI 前端的 plan 初始化 | `Simulator.tsx` 加载模型时，直接对 `selectedModel.content.simulation.plans` 重新实现 days mask、`date_range`→`valid_start/valid_end` 兼容、时间区间默认值等语义 |
+| The CLI (and the GUI backend's `start_session`/`apply_regimens` execution core) | `ModelStructure._parse_schedule_entries()` (`sim_engine/src/model_structure/loader.py`), storing the result into `self.plans[plan_id]` |
+| The GUI frontend's plan initialization | when `Simulator.tsx` loads a model, it re-implements the days mask, the `date_range` -> `valid_start`/`valid_end` compatibility, and the time-interval default semantics directly against `selectedModel.content.simulation.plans` |
 
-两套实现没有共享代码。即使用户在 GUI 里不做任何编辑、原样运行一个 YAML，"GUI 默认结果"
-与"CLI 结果"是否一致也完全没有机制保证——目前两边数值能对上，只是因为两份独立实现的细节
-碰巧写得一样，任何一边后续修改都可能在不知情的情况下使其分叉。
+The two implementations shared no code. Even when a user made no edits at all in the GUI and simply ran a YAML as-is, nothing mechanically guaranteed that "the GUI's default result" matched "the CLI's result" — the two currently agreed numerically only because the two independent implementations' details happened to be written the same way, and any later change on either side could silently make them diverge.
 
-## 决策
+## Decision
 
-**Plan/Schedule 的语义解析只保留一个实现：Python 的 `_parse_schedule_entries()`。前端不再
-自己解析 days/date_range/pulse-vs-sustained 语义，只做"后端结果 → UI 编辑状态"的无逻辑字段映射。**
+**Keep only one implementation for the semantic parsing of Plan/Schedule: Python's `_parse_schedule_entries()`. The frontend no longer parses the days/date_range/pulse-vs-sustained semantics itself, doing only a logic-free field mapping from "the backend's result" to "the UI's editing state."**
 
-1. **后端**：`GET /api/models/{model_name}` 的响应新增 `plans` 字段，原样返回
-   `ModelStructure.plans`（`sim_engine/src/routes/models.py`）。这个 dict 本来就是
-   `apply_regimens` 兼容的 regimen-dict 格式（CLI 已经在用），直接 JSON 序列化即可。
+1. **The backend**: the response of `GET /api/models/{model_name}` gains a `plans` field, returning `ModelStructure.plans` as-is (`sim_engine/src/routes/models.py`). This dict is already in the regimen-dict format that `apply_regimens` expects (the CLI already uses it), so it can be JSON-serialized directly.
 
-2. **前端**：`Simulator.tsx` 初始化 plan 列表时，仍从原始 YAML 的 `simulation.plans` 数组
-   取 `id`/`label`（纯展示元数据，后端解析结果里没有这两个字段），但每个 plan 的事件数据
-   改为从 `selectedModel.content.plans[planId]`（后端已解析好的 regimen 列表）取，
-   按 1 个 regimen-event → 1 个 `InputEvent` 做字段映射，不再自己判断 `date_range` 兜底、
-   days 长度、时间区间默认值等语义。
+2. **The frontend**: when `Simulator.tsx` initializes the plan list, it still takes `id`/`label` from the raw YAML's `simulation.plans` array (pure display metadata that the backend's parsed result doesn't carry), but each plan's event data now comes from `selectedModel.content.plans[planId]` (the regimen list already parsed by the backend), mapped one regimen-event to one `InputEvent`, with no more self-derived `date_range` fallback, days-length, or time-interval-default semantics.
 
 ```
 YAML simulation.plans[*].schedules
         │
         ▼
-ModelStructure._parse_schedule_entries()   ← 唯一语义解析点（CLI 和 GUI 后端共用）
+ModelStructure._parse_schedule_entries()   ← the single semantic-parsing point (shared by the CLI and the GUI backend)
         │
         ├──→ self.plans[plan_id]  ──→ CLI: schedule_entries → apply_regimens()
         │
-        └──→ GET /api/models/{name} 的 `plans` 字段
+        └──→ the `plans` field of GET /api/models/{name}
                     │
                     ▼
-        前端 Simulator.tsx：1 regimen-event → 1 InputEvent（无逻辑映射）
+        the frontend's Simulator.tsx: 1 regimen-event → 1 InputEvent (a logic-free mapping)
                     │
                     ▼
-        用户编辑 → buildRegimenPayload() → POST /api/simulation/start
+        a user edit → buildRegimenPayload() → POST /api/simulation/start
                     │
                     ▼
-              start_session() → 共用的 apply_regimens()
+              start_session() → the shared apply_regimens()
 ```
 
-## 不在本次范围内
+## Out of scope for this round
 
-- `simulation.schedules`（顶层扁平格式）/ `daily_inputs` 的前端默认输入事件构造
-  （`Simulator.tsx` 第 607-658 行附近）：这部分服务于"没有 plans 时的默认输入"展示，
-  跟 `_parse_schedule_entries` 无关，不属于本次要消除的重复。
-- 优化器路径（`optimizer.startpoint.schedules`）的解析：本身已经走 regimen-dict 格式
-  （ADR 0088），不受影响。
+- `simulation.schedules` (the top-level flat format) / `daily_inputs`'s frontend construction of default input events
+  (around lines 607-658 of `Simulator.tsx`): this part serves "the default-input display when there are no plans," which is unrelated to `_parse_schedule_entries` and is not part of the duplication being eliminated here.
+- Parsing the optimizer path (`optimizer.startpoint.schedules`): this already uses the regimen-dict format (ADR 0088) and is unaffected.
 
-## 结果
+## Result
 
 ```
 sim_engine/src/routes/models.py
-  data 新增 "plans": model.plans
+  data gains "plans": model.plans
 
 sim_gui/src/components/Simulator.tsx
-  yamlPlans 处理块改为查 selectedModel.content.plans[plan.id ?? `plan_${i}`]，
-  不再自己推导 days/date_range/时间区间语义
+  the yamlPlans handling block now looks up selectedModel.content.plans[plan.id ?? `plan_${i}`],
+  no longer deriving the days/date_range/time-interval semantics itself
 ```
 
-## 关联
+## Related
 
-- ADR 0076 — `simulation.plans` 格式引入
-- ADR 0100 — pulse/sustained `[time_start, time_end)` 区间约定
-- ADR 0109 — schedules 位置强制规范
-- `docs/cli.md`"与 GUI 的关系"一节的"结果格式一致"承诺
+- ADR 0076 — introducing the `simulation.plans` format
+- ADR 0100 — the pulse/sustained `[time_start, time_end)` interval convention
+- ADR 0109 — enforcing where schedules live
+- the "consistent result format" promise in `docs/cli.md`'s "Relationship with the GUI" section
