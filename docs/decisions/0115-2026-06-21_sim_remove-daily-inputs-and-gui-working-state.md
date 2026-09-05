@@ -1,63 +1,63 @@
-# ADR 0115 — 移除 `daily_inputs` / `_apply_schedules` / `manual_overrides`（plans 强制后的废稿清理）
+# ADR 0115 — Removing `daily_inputs` / `_apply_schedules` / `manual_overrides` (Cleaning Up Leftover Code Now That Plans Are Mandatory)
 
-**日期**: 2026-06-21
-**状态**: 已接受
-**范围**: sim_engine（`model_structure/` · `mc_utils.py` · `session_manager.py` · `optimizer_eval.py` · `regimen_runner.py`），model.md（`daily_inputs` 小节）
+**Date**: 2026-06-21
+**Status**: accepted
+**Scope**: sim_engine (`model_structure/` · `mc_utils.py` · `session_manager.py` · `optimizer_eval.py` · `regimen_runner.py`), model.md (the `daily_inputs` section)
 
 ---
 
-## 背景
+## Background
 
-ADR 0109 已将仿真输入方案的唯一合法位置强制收口到 `simulation.plans[*].schedules`。但代码里还留着一套更早、独立于 plan 的输入机制：
+ADR 0109 already made `simulation.plans[*].schedules` the sole legal location for a simulation's input plan. But the code still carried an older input mechanism, independent of plans:
 
-- `daily_inputs` YAML 字段（按天指定输入值）→ loader 解析为 `self.schedules: Dict[str, InputSchedule]`（`base.py` 的 `InputSchedule`/`SchedulePoint`）。
-- `Simulation._apply_schedules()`：每步在 `model.step()` 内部消费 `self.schedules`，按 pulse/step/linear 插值写入变量值。
-- `manual_overrides`：ADR 0074 引入，唯一目的是让 `_apply_schedules()` 跳过已被 GUI regimen 接管的变量（否则 `daily_inputs` 的值会在每步覆盖 GUI 编辑的值）。
+- The `daily_inputs` YAML field (specifying input values per day) -> parsed by the loader into `self.schedules: Dict[str, InputSchedule]` (`base.py`'s `InputSchedule`/`SchedulePoint`).
+- `Simulation._apply_schedules()`: consumed `self.schedules` inside `model.step()` every step, writing variable values via pulse/step/linear interpolation.
+- `manual_overrides`: introduced by ADR 0074, with the sole purpose of letting `_apply_schedules()` skip a variable already taken over by a GUI regimen (otherwise `daily_inputs`'s value would overwrite the GUI-edited value every step).
 
-现状核查：
+Current-state check:
 
-1. `models/` 目录下**没有任何 YAML 文件使用 `daily_inputs`**。
-2. plans 强制规范（ADR 0109）后，`daily_inputs` 和 `simulation.plans[*].schedules` 是两条平行但语义重叠的输入声明方式——前者是更早、更简单、不支持多 plan / GUI 编辑 / 优化器的版本。
-3. `manual_overrides` 的唯一读取点就是 `_apply_schedules()`（`simulation.py:71/74`）；`apply_regimens()`（`regimen_runner.py`，处理 plan-based schedule）从未读取它。一旦 `_apply_schedules()` 被删，`manual_overrides` 全仓库再无任何读取者，整套 ADR 0074 "GUI Working State Layer" 失去存在理由。
+1. **No YAML file anywhere under `models/` uses `daily_inputs`.**
+2. After the plans mandate (ADR 0109), `daily_inputs` and `simulation.plans[*].schedules` were two parallel, semantically overlapping ways of declaring input — the former being an earlier, simpler version that supports neither multiple plans, nor GUI editing, nor the optimizer.
+3. `manual_overrides`'s only read site was `_apply_schedules()` (`simulation.py:71/74`); `apply_regimens()` (`regimen_runner.py`, handling plan-based schedules) never read it. Once `_apply_schedules()` is deleted, `manual_overrides` has no reader left anywhere in the repository, and the entire ADR 0074 "GUI Working State Layer" mechanism loses its reason to exist.
 
-## 决策
+## Decision
 
-**整套删除，不保留兼容层：**
+**Remove the whole thing, with no compatibility layer kept:**
 
-| 删除对象 | 位置 |
+| What's removed | Location |
 |---------|------|
-| `SchedulePoint` / `InputSchedule` 数据类 | `model_structure/base.py` |
-| `self.schedules` 初始化 + `daily_inputs` 解析 | `model_structure/core.py` / `loader.py` |
-| `Simulation._apply_schedules()` 及其在 `step()` 内的调用 | `model_structure/simulation.py` |
-| `self.manual_overrides` 初始化、`clone_model()` 里的克隆、`optimizer_eval.py`/`session_manager.py` 里的写入 | `core.py` / `mc_utils.py` / `optimizer_eval.py` / `session_manager.py` |
-| YAML `daily_inputs` 小节（保留 `accumulators` 小节，二者本不耦合） | `life-matters-models/docs/model.md` |
+| The `SchedulePoint` / `InputSchedule` dataclasses | `model_structure/base.py` |
+| The `self.schedules` initialization plus `daily_inputs` parsing | `model_structure/core.py` / `loader.py` |
+| `Simulation._apply_schedules()` and its call inside `step()` | `model_structure/simulation.py` |
+| The `self.manual_overrides` initialization, its cloning in `clone_model()`, and its writes in `optimizer_eval.py`/`session_manager.py` | `core.py` / `mc_utils.py` / `optimizer_eval.py` / `session_manager.py` |
+| The YAML `daily_inputs` section (the `accumulators` section is kept, the two were never coupled) | `life-matters-models/docs/model.md` |
 
-`apply_regimens()`/`regimen_runner.py`（plan-based schedule 执行核心）不受影响——它是当前唯一受支持的输入执行路径。
+`apply_regimens()`/`regimen_runner.py` (the plan-based schedule execution core) is unaffected — it is the sole currently supported input-execution path.
 
-## 不在本次范围内
+## Out of scope for this round
 
-- `accumulators` 不动：它从任意 `source` 变量积分，不依赖 `daily_inputs`，是独立功能。
-- 不重命名 `apply_regimens`/`regimen_runner.py`（曾评估过 regimen→schedule 的命名统一提案，因会与本次删除前就存在的 `_apply_schedules` 撞名而搁置；见内部记录，本次删除后该撞名风险已消失，但仍非本次范围）。
-- 历史 ADR（0053、0074、0100、0110 等）提到 `daily_inputs`/`_apply_schedules`/`manual_overrides` 的段落不回填修改——ADR 是时间点记录，不retroactively改写。
+- `accumulators` is left unchanged: it integrates from an arbitrary `source` variable, doesn't depend on `daily_inputs`, and is an independent feature.
+- No rename of `apply_regimens`/`regimen_runner.py` (a regimen-to-schedule naming unification was previously evaluated and shelved because it would have collided with the then-still-existing `_apply_schedules`; recorded internally — that collision risk is now gone after this deletion, but a rename is still out of scope here).
+- Historical ADRs (0053, 0074, 0100, 0110, etc.) that mention `daily_inputs`/`_apply_schedules`/`manual_overrides` are not retroactively edited — an ADR is a point-in-time record, not something rewritten after the fact.
 
-## 结果
+## Result
 
 ```
-sim_engine/src/model_structure/base.py        删除 SchedulePoint / InputSchedule
-sim_engine/src/model_structure/core.py        删除 self.schedules / self.manual_overrides 初始化
-sim_engine/src/model_structure/loader.py      删除 daily_inputs 解析块 + 相关 import
-sim_engine/src/model_structure/simulation.py  删除 _apply_schedules() 方法 + step() 内调用
-sim_engine/src/mc_utils.py                    clone_model() 删除 schedules 克隆 + manual_overrides 继承
-sim_engine/src/optimizer_eval.py              删除 manual_overrides 写入（已无消费者）
-sim_engine/src/session_manager.py             删除 manual_overrides 写入 + 相关注释
-sim_engine/src/regimen_runner.py              删除引用已不存在的 _apply_schedules 的过时注释
-life-matters-models/docs/model.md                      删除 daily_inputs 小节，accumulators 独立成节
+sim_engine/src/model_structure/base.py        removed SchedulePoint / InputSchedule
+sim_engine/src/model_structure/core.py        removed the self.schedules / self.manual_overrides initialization
+sim_engine/src/model_structure/loader.py      removed the daily_inputs parsing block plus the related import
+sim_engine/src/model_structure/simulation.py  removed the _apply_schedules() method plus its call inside step()
+sim_engine/src/mc_utils.py                    clone_model() no longer clones schedules or inherits manual_overrides
+sim_engine/src/optimizer_eval.py              removed the manual_overrides write (had no consumer left)
+sim_engine/src/session_manager.py             removed the manual_overrides write plus the related comment
+sim_engine/src/regimen_runner.py              removed a stale comment referencing the now-gone _apply_schedules
+life-matters-models/docs/model.md                      removed the daily_inputs section, accumulators now its own standalone section
 ```
 
-验证：`pytest tests/` 8 个测试全部通过；`sim_engine` 模块全量 import 正常。
+Verification: all 8 tests in `pytest tests/` pass; a full import of the `sim_engine` module works normally.
 
-## 关联
+## Related
 
-- ADR 0074 — 本次删除的直接前提（其引入的 manual_overrides 机制现已无消费者）
-- ADR 0109 — plans 强制规范，daily_inputs 成为多余路径的根本原因
-- ADR 0110 — Plan/Schedule 解析单一来源
+- ADR 0074 — the direct precondition for this removal (the manual_overrides mechanism it introduced now has no consumer)
+- ADR 0109 — the plans mandate, the root reason daily_inputs became a redundant path
+- ADR 0110 — a single source of truth for Plan/Schedule parsing
