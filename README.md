@@ -1,15 +1,8 @@
 <img src="gui/public/favicon.svg" width="48" height="48" alt="Life Matters icon" />
 
-# Life Matters · Simulation Engine
+# Life Matters · Reference Engine
 
-> A cross-scale, multi-model dynamics simulation framework, running multi-objective optimization decisions over individual behavior (Regimen).
-
-This repository contains: the simulation backend (FastAPI), the simulation frontend GUI (React).  
-The YAML model library is maintained independently, see → **[life-matters-models](https://github.com/shenfan19/life-matters-models)**
-
----
-
-For the project's overall positioning and disclaimer, see → **[life-matters-models](https://github.com/shenfan19/life-matters-models)** (the LM project's foundation repository). This repository maintains only the simulation/optimization engine itself, for which the author is responsible.
+Life Matters (LM) is a cross-scale, multi-model dynamics simulation framework, running multi-objective optimization over individual-behavior decisions this project calls a Regimen. This repository holds the simulation backend, a FastAPI service, and the simulation frontend GUI, built in React; the YAML model library these components run is maintained independently at [life-matters-models](https://github.com/shenfan19/life-matters-models), whose README also states the project's overall positioning and disclaimer. This repository maintains only the simulation and optimization engine itself, for which the author is responsible.
 
 ---
 
@@ -22,8 +15,6 @@ cli/          The command-line interface (lm-sim plus the batch runner batch.py)
 scripts/      Development tooling scripts (i18n, AI assistance, code checks, etc.)
 docs/  Technical specifications and architecture decisions (ADRs)
 ```
-
-For the YAML model ecosystem, see → [life-matters-models](https://github.com/shenfan19/life-matters-models)
 
 ---
 
@@ -47,7 +38,7 @@ Inner loop (Modeller, not yet implemented)      Outer loop (Simulator, the curre
   fit to literature data         Pareto front output
 ```
 
-When the outer-loop optimizer has no single optimal solution, the result is by default presented as a Pareto front, handing the full set of better combinations to the user for evaluation and reference; see the [life-matters-models](https://github.com/shenfan19/life-matters-models) README for the origin of the naming.
+When the outer-loop optimizer has no single optimal solution, the result is by default presented as a Pareto front, handing the full set of better combinations to the user for evaluation and reference.
 
 ---
 
