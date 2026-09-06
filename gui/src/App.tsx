@@ -205,7 +205,8 @@ function TitleBar({ isDarkMode, onToggleDark, language, onLanguage, fontSize, on
 const AUTHOR = {
   name: 'Fan Shen',
   email: 'shenfan@mail.sysu.edu.cn',
-  repo: 'https://github.com/shenfan19/life-matters',
+  repo: 'https://github.com/shenfan19/life-matters-reference-engine',
+  modelsRepo: 'https://github.com/shenfan19/life-matters-models',
   version: 'v1.0',
 };
 
@@ -447,21 +448,38 @@ function App() {
               {t('about.subtitle')}
             </div>
 
-            {/* Version + repo */}
-            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginTop: 8, marginBottom: 12 }}>
+            {/* Version */}
+            <div style={{ color: c.textMute, fontFamily: 'monospace', fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginTop: 8, marginBottom: 16 }}>
               {AUTHOR.version}
             </div>
-            <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 24 }}>
-              <GithubOutlined /> github.com/shenfan19/life-matters
-            </a>
 
             {/* Author block */}
-            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <div style={{ color: c.text, fontWeight: 600, fontSize: 'calc(var(--lm-font-size, 14px) * 1.0714)', marginBottom: 4 }}>{AUTHOR.name}</div>
               <div style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', marginBottom: 12 }}>{t('about.affiliation')}</div>
               <a href={`mailto:${AUTHOR.email}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)' }}>
                 <MailOutlined /> {AUTHOR.email}
               </a>
+            </div>
+
+            {/* Repo links */}
+            <div style={{ marginBottom: 20 }}>
+              <a href={AUTHOR.modelsRepo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 6 }}>
+                <GithubOutlined /> github.com/shenfan19/life-matters-models
+              </a>
+              <a href={AUTHOR.repo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)' }}>
+                <GithubOutlined /> github.com/shenfan19/life-matters-reference-engine
+              </a>
+            </div>
+
+            {/* Citation block */}
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16, marginBottom: 20, textAlign: 'left' }}>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', fontWeight: 700, color: c.textSec, marginBottom: 6 }}>
+                {t('about.citation_label')}
+              </div>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.textMute, lineHeight: 1.5 }}>
+                {t('about.citation_text')}
+              </div>
             </div>
 
             {/* Disclaimer block */}

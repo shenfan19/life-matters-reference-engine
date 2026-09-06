@@ -125,6 +125,8 @@
   "about.subtitle_tooltip": "LM format 的參考實現：執行 V.E.S.O.（Variables、Equations、Simulation、Optimization）四個機制；理論上也可以有其他引擎實現同一規範",
   "about.affiliation": "中山大學",
   "about.homepage": "主頁",
+  "about.citation_label": "引用",
+  "about.citation_text": "Fan Shen. Life Matters format: A YAML Specification for Behavioral Intervention Simulation and Optimization in Life Dynamics. 論文已投遞，審稿中。",
   "about.close": "關閉",
   "statusBar.disclaimer": "模擬結果不構成醫學建議",
   "statusBar.backend": "後台",

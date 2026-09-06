@@ -125,6 +125,8 @@
   "about.subtitle_tooltip": "Reference implementation of the LM format: executes the four V.E.S.O. mechanisms (Variables, Equations, Simulation, Optimization); other engines may implement the same spec.",
   "about.affiliation": "Sun Yat-Sen University",
   "about.homepage": "Homepage",
+  "about.citation_label": "Citation",
+  "about.citation_text": "Fan Shen. Life Matters format: A YAML Specification for Behavioral Intervention Simulation and Optimization in Life Dynamics. Manuscript submitted for publication.",
   "about.close": "Close",
   "statusBar.disclaimer": "Simulation results are not medical advice",
   "statusBar.backend": "Backend",
