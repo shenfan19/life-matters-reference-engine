@@ -76,6 +76,8 @@ cd gui && npm run dev                             # http://localhost:5173
 
 `gui` forwards `/api` to the backend at `:18080` via the Vite proxy.
 
+**Online demo** (no install needed): [http://137.184.220.139](http://137.184.220.139). This address runs on temporary cloud infrastructure and may change without notice; this README is the authoritative place to find the current link — other documents (the models repo, the paper) point here rather than hardcoding the address themselves.
+
 ### Command-line interface (CLI)
 
 A run interface aimed at scripts and AI agents, with no need to start the backend/frontend:
@@ -124,6 +126,10 @@ The output is structured CSV plus logs, written to `output/<model name>/`. A com
 | [docs/decisions/README.md](docs/decisions/README.md) | An index of architecture decision records (ADRs) |
 
 ---
+
+## Citation
+
+See the [life-matters-models](https://github.com/shenfan19/life-matters-models#citation) README's Citation section.
 
 ## Acknowledgments
 
