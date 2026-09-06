@@ -255,7 +255,7 @@ export default function FileEditor({
                 const content = drafts[key] || metas[key];
                 if (!content) return;
                 const name = content?.metadata?.name || key.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'model';
-                const text = jsyaml.dump(content, { allowUnicode: true, sortKeys: false, indent: 2 });
+                const text = jsyaml.dump(content, { sortKeys: false, indent: 2 });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(new Blob([text], { type: 'text/yaml' }));
                 a.download = `${name}.yaml`;
