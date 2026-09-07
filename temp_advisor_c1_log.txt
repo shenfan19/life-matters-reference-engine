@@ -1,12 +1,0 @@
-
-  Life Matters CLI
-  Model : postpartum_recovery_opt_babynutrition__c1_returnwork_valuefix.yaml
-  Mode  : opt
-  Log   : postpartum_recovery_opt_babynutrition__c1_returnwork_valuefix_2026-08-15_13-04-40_opt.log
-
-  Type  q + Enter  at any time to stop and save current results.
-
-  Gen   1 | eval:     20 | feasible:  35% | best_f: [65.4]  Gen   2 | eval:     40 | feasible:  90% | best_f: [108]  Gen   3 | eval:     60 | feasible: 100% | best_f: [108]  Gen   4 | eval:     80 | feasible: 100% | best_f: [108]  Gen   5 | eval:    100 | feasible: 100% | best_f: [119]  Gen   6 | eval:    120 | feasible: 100% | best_f: [119]  Gen   7 | eval:    140 | feasible: 100% | best_f: [119]  Gen   8 | eval:    160 | feasible: 100% | best_f: [126]  Gen   9 | eval:    180 | feasible: 100% | best_f: [131]  Gen  10 | eval:    200 | feasible: 100% | best_f: [148]  Gen  11 | eval:    220 | feasible: 100% | best_f: [157]  Gen  12 | eval:    240 | feasible: 100% | best_f: [157]  Gen  13 | eval:    260 | feasible: 100% | best_f: [157]  Gen  14 | eval:    280 | feasible: 100% | best_f: [158]  Gen  15 | eval:    300 | feasible: 100% | best_f: [158]
-
-  Done
-  → postpartum_recovery_opt_babynutrition__c1_returnwork_valuefix_2026-08-15_13-04-40_opt.csv
