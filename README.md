@@ -125,8 +125,3 @@ See the [life-matters-models](https://github.com/shenfan19/life-matters-models#c
 ## Acknowledgments
 
 This project was developed with AI coding assistance for code generation, automated testing, and documentation.
-
-## License
-
-PolyForm Noncommercial 1.0.0 — free for academic and non-commercial use, commercial use requires a license.  
-See [LICENSE](LICENSE) or https://polyformproject.org/licenses/noncommercial/1.0.0/

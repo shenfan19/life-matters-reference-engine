@@ -8,7 +8,6 @@ type: software
 authors:
   - family-names: Shen
     given-names: Fan
-license-url: "https://polyformproject.org/licenses/noncommercial/1.0.0/"
 # TODO: once the paper has a final title/venue/DOI, add a `preferred-citation:`
 # block here (type: article) so citing tools point readers to the paper
 # instead of this repository. See reasoning in
