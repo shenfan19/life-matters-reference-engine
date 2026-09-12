@@ -63,7 +63,6 @@ if [[ ! -f "$ROOT/dist/lm-sim.exe" ]]; then
 fi
 
 cp "$ROOT/dist/lm-sim.exe" "$CLI_STAGE/"
-cp "$ROOT/LICENSE" "$CLI_STAGE/"
 cp "$ROOT/README.md" "$CLI_STAGE/"
 
 if [[ -d "$ROOT/models" ]]; then
@@ -100,7 +99,6 @@ echo "== Build GUI =="
 )
 
 cp -R "$ROOT/gui/dist/." "$GUI_STAGE/"
-cp "$ROOT/LICENSE" "$GUI_STAGE/"
 
 cat > "$GUI_STAGE/RUN_GUI.txt" <<'EOF'
 Life Matters GUI static release
