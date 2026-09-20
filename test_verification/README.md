@@ -42,7 +42,7 @@ test_verification/
 ├── test_session_cleanup.py       # GUI session idle-timeout cleanup (a P0 public-deployment requirement)
 ├── test_sim_cli_consistency.py   # CLI/GUI path consistency (ADR 0045/0110/0112/0113)
 ├── errors/                       # regressions for the error-detection mechanism, see errors/README.md
-└── models/                       # single-model variable numerical regressions, see models/README.md
+├── models/                       # single-model variable numerical regressions, see models/README.md
 ```
 
 ## What is a smoke test — and why this directory is mostly not one
