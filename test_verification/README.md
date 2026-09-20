@@ -42,8 +42,11 @@ test_verification/
 ├── test_session_cleanup.py       # GUI session idle-timeout cleanup (a P0 public-deployment requirement)
 ├── test_sim_cli_consistency.py   # CLI/GUI path consistency (ADR 0045/0110/0112/0113)
 ├── errors/                       # regressions for the error-detection mechanism, see errors/README.md
-└── models/                       # single-model variable numerical regressions, see models/README.md
+├── models/                       # single-model variable numerical regressions, see models/README.md
+└── human_body/                   # AI-run verification tooling for the virtual human component set (not pytest cases)
 ```
+
+`human_body/` holds the stability ladder, envelope sweep and report builder scripts for the virtual human. They are not collected by pytest and are run by the AI while debugging or refreshing the reports. `reference_engine/scripts/` is reserved for scripts that users run by hand, so ad hoc verification scripts go here, not there.
 
 ## What is a smoke test — and why this directory is mostly not one
 
