@@ -10,7 +10,7 @@ Inputs
     --envelope     JSON written by human_body_envelope.py run
 
 Usage (from repo root, LM_MODELS_PATH pointing at the model library):
-    python reference_engine/scripts/human_body_report.py all --sim-dir <dir> --ladder <dir> --envelope <json>
+    python test_verification/human_body/human_body_report.py all --sim-dir <dir> --ladder <dir> --envelope <json>
 """
 
 import argparse

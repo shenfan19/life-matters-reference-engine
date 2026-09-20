@@ -9,11 +9,11 @@ recovering after a transient input pulse, returning from perturbed initial state
 to step size, and, for the body composition system, conserving energy.
 
 Usage (from repo root):
-    python reference_engine/scripts/human_body_stability_ladder.py write-sims --out <dir>
-    python reference_engine/scripts/human_body_stability_ladder.py run --levels 1,2,3 --workers 16
-    python reference_engine/scripts/human_body_stability_ladder.py report --out <report.md>
-    python reference_engine/scripts/human_body_stability_ladder.py selftest
-    python reference_engine/scripts/human_body_stability_ladder.py selftest-faults --workers 16
+    python test_verification/human_body/human_body_stability_ladder.py write-sims --out <dir>
+    python test_verification/human_body/human_body_stability_ladder.py run --levels 1,2,3 --workers 16
+    python test_verification/human_body/human_body_stability_ladder.py report --out <report.md>
+    python test_verification/human_body/human_body_stability_ladder.py selftest
+    python test_verification/human_body/human_body_stability_ladder.py selftest-faults --workers 16
 
 The subset scenario files are generated on demand from the component files, so a new coupling
 in a component is picked up without editing any scenario.

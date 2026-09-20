@@ -11,8 +11,8 @@ step. Two questions are answered for each input and each horizon (2 and 8 years)
                      stays on the unremarkable side of a conventional clinical cut point
 
 Usage (from repo root, LM_MODELS_PATH pointing at the model library):
-    python reference_engine/scripts/human_body_envelope.py run --out <envelope.json> --workers 8
-    python reference_engine/scripts/human_body_envelope.py pairs --out <envelope_pairs.json> --workers 8
+    python test_verification/human_body/human_body_envelope.py run --out <envelope.json> --workers 8
+    python test_verification/human_body/human_body_envelope.py pairs --out <envelope_pairs.json> --workers 8
 
 `pairs` sweeps two inputs together on a grid of PAIR_LEVELS by PAIR_LEVELS for the pairs in PAIRS, the
 others staying at reference, and records which markers cross their cut point at each cell.
