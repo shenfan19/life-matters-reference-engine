@@ -56,3 +56,5 @@ test_verification/models/<model_name>/<variable_name>/test_*.py
 ```bash
 pytest test_verification/models/
 ```
+- Example (added 2026-09-19, a scenario level suite for the virtual human under `scenarios/medical/`): `virtual_human_daily/` and `virtual_human_appetite_daily/` run plans of `virtual_human_daily_2026.yaml` and `virtual_human_appetite_daily_2026.yaml` through the shared `run_scenario` fixture in `conftest.py`. They assert that the maintenance plan stays at its reference state (`reference_inputs/`), that energy surplus and deficit plans order body weight (`energy_intake/`), that sleep restriction moves seven markers in the documented direction (`sleep_hours/`), that a seven day step reproduces the one day end values within 2 percent (`step_size/`), and that lowest weight under a 1500 kcal plan falls strictly with dietary restraint (`dietary_restraint/`). The fixture reads the library from `LM_MODELS_PATH` and skips when the scenario is absent, so the suite still runs without life-matters-models checked out.
+
