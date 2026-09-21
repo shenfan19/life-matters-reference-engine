@@ -43,8 +43,12 @@ test_verification/
 ├── test_sim_cli_consistency.py   # CLI/GUI path consistency (ADR 0045/0110/0112/0113)
 ├── errors/                       # regressions for the error-detection mechanism, see errors/README.md
 ├── models/                       # single-model variable numerical regressions, see models/README.md
-└── human_body/                   # AI-run verification tooling for the virtual human component set (not pytest cases)
+├── human_body/                   # AI-run verification tooling for the virtual human component set (not pytest cases)
+├── validation_court/             # tooling of the adversarial model validation court: static lint, run preparation, grade derivation
+└── validator_calibration/        # calibration of the validation court with positive controls and injected faults
 ```
+
+`validation_court/` and `validator_calibration/` support the validation line V2 and its calibration node V1c. They are not collected by pytest. `derive_grade.py selftest` and `calibration.py selftest` check the tooling itself, and `lm_lint.py` gives a deterministic static baseline over the whole model library, and `select_models.py` resolves a selector such as a folder, a tag or a validation status into a model list for batch validation.
 
 `human_body/` holds the stability ladder, envelope sweep and report builder scripts for the virtual human. They are not collected by pytest and are run by the AI while debugging or refreshing the reports. `reference_engine/scripts/` is reserved for scripts that users run by hand, so ad hoc verification scripts go here, not there.
 
