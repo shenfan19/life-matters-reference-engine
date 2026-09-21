@@ -1,0 +1,16 @@
+# Positive controls of the validation court: models with a known good outcome.
+# The court should return one of expect_grades. A grade worse than B on a control counts as a false positive.
+# Paths are relative to the models root of the model library.
+controls:
+  - path: papers/lm_format/banister/banister_validation.yaml
+    expect_grades: [A, B]
+  - path: papers/lm_format/ckd_protein/ckd_protein_sim.yaml
+    expect_grades: [A, B]
+  - path: papers/lm_format/aircrew_circadian/aircrew_circadian_sim.yaml
+    expect_grades: [A, B]
+  - path: references/medical/medicine/pharmacology/statin_ldl_doseresponse_2026.yaml
+    expect_grades: [A, B]
+  - path: references/environmental/climate/co2_keeling_curve_2026.yaml
+    expect_grades: [A, B]
+  - path: references/risk/actuarial/gompertz_mortality_2026.yaml
+    expect_grades: [A, B]
