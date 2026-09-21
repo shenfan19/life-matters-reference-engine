@@ -8,7 +8,7 @@ populated a decoded entry's valid_end from a real date_end dimension or from
 the entry's own top-level date_range — never from the collapsed
 optimize.date_range value itself. The fixed end date was silently discarded,
 so the regimen kept firing all the way to the simulation's end_date instead
-of stopping where declared. See tasks/2026-08-12_task_optimizer-nsteps-and-t4-decode-audit.md
+of stopping where declared. See archive_tasks/2026-08-12_task_optimizer-nsteps-and-t4-decode-audit.md
 (life-matters-home) for the original diagnosis and full-library impact scan.
 """
 
