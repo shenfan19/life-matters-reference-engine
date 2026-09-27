@@ -13,7 +13,7 @@ ADR 0072 established the GUI as the sole formal user interface; ADR 0091 built o
 positioned as a "developer/power-user tool" — one that could be compiled into an exe and distributed to
 collaborating researchers with batch needs, but **not covered in the GUI documentation, and not advertised to ordinary users**.
 
-As AI assistants (such as AI coding assistant and other LLM agents) increasingly operate on this repository directly, or on distributed release packages,
+As AI assistants such as LLM coding agents increasingly operate on this repository directly, or on distributed release packages,
 a new class of "user" has emerged: **AI agents that don't interact through a browser, but need to run simulations/optimizations and read back the results**.
 For this kind of user, a command-line interface — explicit input, structured output as CSV/logs, no rendering required — is naturally a better fit than a GUI.
 

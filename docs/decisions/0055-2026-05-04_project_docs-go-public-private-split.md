@@ -22,7 +22,7 @@ Both categories were mixed together under `docs/`, risking leaking internal info
 |------|------|------|---------|
 | `docs/` | **public** | published to GitHub with the code | only technical content usable by external readers |
 | `go/` | **internal** | not published | paper strategy, career planning, positioning analysis, AI working documents |
-| `AI_INSTRUCTIONS.md` | **internal** | not committed | AI coding assistant working instructions, added to `.gitignore` |
+| local AI instructions file | **internal** | not committed | working instructions for AI coding assistants, kept out of version control |
 
 **Forbidden**: `docs/` referencing a `go/` path; `docs/` containing internal markers such as paper numbers (Paper N) or internal task numbers (c_matter_*).
 
@@ -32,7 +32,7 @@ Both categories were mixed together under `docs/`, risking leaking internal info
 
 - The `docs/` directory of a GitHub open-source project functions as its external technical manual, read directly by users and contributors.
 - If internal planning documents were made public, they would expose immature business strategy and personal career plans, falling short of professional publication standards.
-- A clear boundary keeps AI working tools (AI_INSTRUCTIONS.md) from propagating along with the code.
+- A clear boundary keeps local AI working instructions from propagating along with the code.
 
 ---
 

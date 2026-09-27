@@ -1,7 +1,7 @@
 # Life Matters CLI (`lm-sim`)
 
 `cli/` supplies a command-line batch-run interface, suited to automated simulation, script scheduling, development debugging,
-and an **AI agent** (such as AI coding assistant) directly running a model and reading a structured result.  
+and an **AI agent** directly running a model and reading a structured result.  
 The formal user interface aimed at human researchers is still the GUI (`gui/`); the CLI does not cover the GUI's interactive features (charts, drag-and-drop, history archiving, etc.).
 
 See [`data_flow.md`](data_flow.md) for the complete data flow.
