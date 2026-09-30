@@ -51,3 +51,5 @@ output/*
 # verification suite) — mirrors the models/temp/ convention: scratch work
 # stays gitignored until a human explicitly promotes it to a tracked path.
 reference_engine/scripts/temp/
+
+ledgers/
