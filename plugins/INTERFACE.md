@@ -5,6 +5,8 @@ A plugin is a self-contained folder with three parts:
 
 Drop the folder into `plugins/` and restart the backend — it is discovered automatically.
 
+A plugin can also ship its own page as a set of static files, a **bundle plugin** (`ui.type: bundle`), which the GUI shows as a full-page view. That kind is described in [README_bundle_plugins.md](README_bundle_plugins.md). This file is the contract for the backend side and for the older `component` kind.
+
 ---
 
 ## Directory Layout
@@ -35,21 +37,28 @@ backend:
 ui:
   type: component              # 'component' = render frontend.html in iframe
                                # 'none'      = no UI, backend only
+                               # 'bundle'    = a folder of static files, shown as a full-page
+                               #               view in the GUI, see README_bundle_plugins.md
   component_path: frontend.html
 ```
+
+`contract_version: 2` marks a manifest written for the bundle contract. A manifest without it is read as version 1 and keeps working as before.
+
+**Where the GUI shows a plugin.** The GUI lists only `bundle` plugins, as buttons in the strip between the model tree and the main area, below Overview, Simulation and Optimization. A `component` plugin is not hosted by the GUI at present, although the backend still serves its page at `/api/plugins/{id}/ui-page`.
 
 ---
 
 ## 2. `backend.py` — Python Interface
 
-Every plugin backend is a class with a single `run(inputs)` method.
+Every plugin backend is a class with a `run(inputs)` method. It may also define any number of `endpoint_<name>(inputs)` methods, which a page calls as `POST /api/plugins/{id}/<name>`. The name must match `^[a-z][a-z0-9_]*$`; a name with no such method returns 404. Details are in [README_bundle_plugins.md](README_bundle_plugins.md).
 
 ```python
 from typing import Any, Dict
 
 class MyPlugin:
     def __init__(self, context):
-        """context: PluginContext — provides log(), get_cached(), run_simulation()."""
+        """context: PluginContext — provides log(), get_cached(), run_simulation(),
+        load_model(path)."""
         self.ctx = context
 
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,7 +1,12 @@
 import os
+import re
 from pathlib import Path
 from typing import Dict, List
 from .yaml_io import safe_load
+
+class EndpointNotFound(Exception):
+    """The plugin has no endpoint of that name."""
+
 
 class PluginManager:
     def __init__(self, plugin_dir: str = "plugins"):
@@ -78,6 +83,23 @@ class PluginManager:
         
         return module
         
+    def call_endpoint(self, plugin_id: str, endpoint: str, inputs: dict, context):
+        """Calls a plugin endpoint. `run` calls run(inputs); any other name calls the
+        plugin class's endpoint_<name>(inputs)."""
+        if endpoint == 'run':
+            return self.run_plugin(plugin_id, inputs, context)
+        if not re.fullmatch(r'[a-z][a-z0-9_]*', endpoint):
+            raise EndpointNotFound(endpoint)
+        backend = self.plugins[plugin_id]['manifest'].get('backend')
+        if not backend:
+            raise EndpointNotFound(endpoint)
+        module = self.load_plugin(plugin_id)
+        instance = getattr(module, backend['class'])(context)
+        method = getattr(instance, f'endpoint_{endpoint}', None)
+        if not callable(method):
+            raise EndpointNotFound(endpoint)
+        return method(inputs)
+
     def run_plugin(self, plugin_id: str, inputs: dict, context):
         """Runs a plugin"""
         module = self.load_plugin(plugin_id)

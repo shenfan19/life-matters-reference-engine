@@ -4,6 +4,21 @@ This file records engineering changes to the LM Reference Engine repository (`cl
 
 The YAML model library is outside this file's coverage; it is maintained independently in [life-matters-models](https://github.com/shenfan19/life-matters-models), and each model's own change history is recorded in that file's `metadata.log` field.
 
+## [Unreleased]
+
+### GUI: the view rail and bundle plugins
+
+- Added a vertical strip, the view rail, between the model tree and the main area. Overview, Simulation and Optimization moved from the horizontal tab bar onto it as buttons with their own icons, a line follows them, and each plugin that declares `ui.type: bundle` adds one button below it. The horizontal tab bar is removed, and the model tree's collapse button moved to the top of the strip. Editing the model library adds a button above the line, closes any open plugin view, and locks the other buttons while it is open. The built-in buttons keep their `center-tab-*` test ids. Corresponds to ADR 0157.
+- A plugin view covers the main area in an iframe that is told the selected model, the theme and the language by `postMessage`, so a plugin page can follow the GUI.
+
+### Plugin system
+
+- Added the plugin UI type `bundle`: a plugin ships a folder of static files, served at `/api/plugins/{id}/bundle/{path}` with a path-containment check, and needs no CDN or in-browser compilation. Manifests may declare `contract_version: 2`; manifests without it behave as before.
+- Plugin backends may define `endpoint_<name>(inputs)` methods, called as `POST /api/plugins/{id}/<name>`; an unknown or malformed name returns 404, and an error raised inside a plugin returns 500.
+- Added `PluginContext.load_model(path)`, which reads a model by its path relative to the models directory with imports resolved, and refuses absolute paths and `..`. The model serialization shared with `GET /api/models/{name}` moved to `src/model_serialization.py`; the route's output is unchanged.
+- Added three demonstration plugins in `plugins/demo/` and a guide for writing a bundle plugin, `plugins/README_bundle_plugins.md`.
+- Added `test_verification/test_plugin_framework.py`.
+
 ## [1.0.0] - 2026-07-26
 
 ### LM format execution semantics: Regimen, Schedule, Plan

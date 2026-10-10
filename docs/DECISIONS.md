@@ -69,6 +69,7 @@
 | [0093](decisions/0093-2026-06-05_sim_runtime-log-panel.md) | The Sim/Opt runtime log panel: content layering (model info, NaN/bounds warnings, completion statistics) and its implementation | | Done |
 | [0140](decisions/0140-2026-08-03_sim_pareto-regroup-panel-and-decision-var-labels-fix.md) | **The Pareto Regroup panel (choosing axes/grouping from any objective/decision variable) plus a fix to decision-variable label conventions** | ⭐ | Done |
 | [0146](decisions/0146-2026-07-21_sim_opt-progress-snapshot-and-sim-pause-resume-sync.md) | **GUI sessions scoped per model: optimization-progress-snapshot persistence plus simulation pause/resume frontend-backend sync** | ⭐ | Done |
+| [0157](decisions/0157-2026-10-10_sim_bundle-plugins-and-view-rail.md) | **Bundle plugins and the view rail: a full-page plugin view, named backend endpoints, `PluginContext.load_model`, and one strip for the main area's views** | ⭐⭐ | Done |
 
 ---
 

@@ -70,7 +70,7 @@
 | `c.navHover` | `rgba(82,196,26,0.08)` | `rgba(0,122,51,0.06)` |
 
 **Scope of application (any element representing "currently active" must follow this)**:
-- A central-panel tab (Overview / Simulation / Optimization / Report, and a dynamic Builder tab)
+- A view-rail button (Overview / Simulation / Optimization, the model library editor button, and each plugin button)
 - A mode-switch control (the Sim / Opt Segmented control)
 - A selected node in the left tree (the Tree's `nodeSelectedBg`)
 - A selected tab on the left (Inputs / Vars / Equations)
@@ -158,7 +158,7 @@ Tabs: {
 - **A delete action**: use a red icon button (`danger`); a confirmation dialog is not required (a low-risk operation), but the action must be undoable or re-addable.
 - **An empty state**: every list/data area must show `<Empty>` when there is no data; a blank area is not allowed.
 - **A loading state**: an API request must show loading feedback (`Spin` or a skeleton) while in flight; silently waiting is not allowed.
-- **A collapsible sidebar**: a sidebar (such as the left model library) must support collapse/expand, and **the button that expands it must remain visible while collapsed** — typically placed in a fixed area on the opposite side (such as the leftmost edge of the central tab bar), not inside the sidebar itself (which disappears once collapsed). The collapsed state uses a directional arrow icon (`◀`/`▶`) paired with a Tooltip explaining its function.
+- **A collapsible sidebar**: a sidebar (such as the left model library) must support collapse/expand, and **the button that expands it must remain visible while collapsed** — typically placed in a fixed area on the opposite side (such as the top of the view rail between the model tree and the main area), not inside the sidebar itself (which disappears once collapsed). The collapsed state uses a directional arrow icon (`◀`/`▶`) paired with a Tooltip explaining its function.
 
 ---
 

@@ -1,0 +1,15 @@
+id: demo_b_image
+name: Plugin demo B
+version: '0.1'
+contract_version: 2
+description: Shows an image shipped inside the plugin folder. Used to check that a bundle can carry its own assets.
+author: LM Team
+type: demo
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: Plugin demo B
+  icon: PictureOutlined
+  order: 20

@@ -1,0 +1,15 @@
+id: demo_a_text
+name: Plugin demo A
+version: '0.1'
+contract_version: 2
+description: Shows a short text. Used to check that a bundle plugin loads and follows the theme.
+author: LM Team
+type: demo
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: Plugin demo A
+  icon: FileTextOutlined
+  order: 10

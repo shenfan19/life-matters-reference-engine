@@ -85,15 +85,13 @@ Date validation itself has two strictness levels: `_check_date_strict` (standard
 **The backend is fully functional**:
 
 - [`PluginManager`](../../reference_engine/src/plugin_manager.py) recursively scans for `manifest.yaml` under `plugins/` (up to 2 levels deep); `load_plugin`/`run_plugin` dynamically load a plugin's `backend.py` via `importlib`, instantiating and executing it.
-- [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) registers three endpoints, `/api/plugins` (list), `/api/plugins/{id}/ui-page` (an iframe page for a plugin's custom UI), and `/api/plugins/{id}/run` (execution), properly mounted in `api_server.py`.
-- [`plugin_context.py`](../../reference_engine/src/plugin_context.py)'s `PluginContext` gives a plugin a unified interface for logging/caching/(optionally) retriggering a simulation.
+- [`routes/plugins.py`](../../reference_engine/src/routes/plugins.py) registers four endpoints, `/api/plugins` (list), `/api/plugins/{id}/ui-page` (an iframe page for a `component` plugin's custom UI), `/api/plugins/{id}/bundle/{path}` (the static files of a `bundle` plugin, refusing any path outside the plugin's `ui.root`), and `POST /api/plugins/{id}/{endpoint}` (execution: `run` calls `run(inputs)`, any other name calls the plugin class's `endpoint_<name>(inputs)`, and an unknown name returns 404), properly mounted in `api_server.py`.
+- [`plugin_context.py`](../../reference_engine/src/plugin_context.py)'s `PluginContext` gives a plugin a unified interface for logging/caching/(optionally) retriggering a simulation, and `load_model(path)` for reading a model with its imports resolved.
 - There are currently two real plugins: `plugins/sensitivity_analysis/` (computes the Pearson correlation coefficient between state and objective variables, outputting tornado-chart data; its manifest notes it is intended for literature benchmarking at the Validate layer, "tier 2" in ADR 0056's three-tier framework) and `plugins/post_causal_inference/` (a Granger causality test, outputting a causal-graph edge list). Both manifests declare `ui.type: none`, meaning they supply no custom UI and can only be driven through a generic form component like `DynamicForm.tsx`.
 
-**The frontend has no integration at all** — a user cannot find any plugin entry point in the interface:
+**The frontend integrates only `bundle` plugins** (added 2026-10-07). A vertical strip between the model tree and the main area, [`ViewRail`](../../gui/src/components/plugins/ViewRail.tsx), holds a button for each view of the main area, Overview, Simulation and Optimization first, then one for each plugin whose manifest declares `ui.type: bundle`, and [`PluginHost`](../../gui/src/components/plugins/PluginHost.tsx) shows the chosen one in an iframe over the main area, sending it the selected model, the theme and the language by `postMessage`. The two existing analysis plugins declare `ui.type: none` and are still not reachable from the interface, and [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx), the generic form that calls `/api/plugins/{id}/run`, is still imported by nothing. How to write a bundle plugin is in [`plugins/README_bundle_plugins.md`](../../plugins/README_bundle_plugins.md). The decision is recorded in [ADR 0157](decisions/0157-2026-10-10_sim_bundle-plugins-and-view-rail.md).
 
-1. [`gui/src/components/DynamicForm.tsx`](../../gui/src/components/DynamicForm.tsx): the only generic form component that calls `/api/plugins/{id}/run`, has zero imports anywhere in the `gui/src` tree, and no page renders it.
-
-(The state above was first recorded on 2026-06-24, rechecked and confirmed still true on 2026-07-07; direction A's decisive first step was executed on 2026-07-10, see below.)
+(Before 2026-10-07 the frontend had no integration at all; that state was first recorded on 2026-06-24 and rechecked on 2026-07-07.)
 
 ### 2.3 Two possible future directions
 
@@ -101,7 +99,7 @@ Date validation itself has two strictness levels: `_check_date_strict` (standard
 
 What remains is a product-scope question, not just code cleanup, and is still undecided:
 
-- **Direction A (add a frontend entry point)**: keep the plugin system's overall architecture, and wire `DynamicForm.tsx` into some actual page (e.g. a model toolbar, or a standalone "Plugins" tab), making the two existing plugins (sensitivity analysis, causal inference) usable.
+- **Direction A (add a frontend entry point)**: keep the plugin system's overall architecture, and wire `DynamicForm.tsx` into some actual page (e.g. a model toolbar, or a standalone "Plugins" tab), making the two existing plugins (sensitivity analysis, causal inference) usable. Taken in part on 2026-10-07: the strip and iframe host described above exist for `bundle` plugins, while `DynamicForm.tsx` and the two analysis plugins are still unwired.
 - **Direction B (remove it entirely)**: judge that the plugin feature is a half-finished piece that never truly landed, and remove the `plugins/` subsystem altogether (`PluginManager`, `routes/plugins.py`, `plugin_context.py`, the two example plugins, `DynamicForm.tsx`), redesigning it if a genuine need for pluggable secondary analysis arises later.
 
 Which direction to choose depends on the priority of "post-simulation secondary analysis like sensitivity analysis/causal inference" on the product roadmap, not a purely technical judgment.

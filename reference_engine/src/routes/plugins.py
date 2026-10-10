@@ -1,7 +1,8 @@
 import logging
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 import app_state
+from src.plugin_manager import EndpointNotFound
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -116,20 +117,43 @@ async def get_plugin_ui_page(plugin_id: str, theme: str = 'light'):
     return HTMLResponse(content=html_content)
 
 
+@router.get("/api/plugins/{plugin_id}/bundle/{file_path:path}")
+async def get_plugin_bundle_file(plugin_id: str, file_path: str):
+    """Serves a bundle plugin's static files, only from the folder named by ui.root."""
+    if app_state.plugin_manager is None:
+        raise HTTPException(status_code=503, detail="Plugin system not initialized")
+    if plugin_id not in app_state.plugin_manager.plugins:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    plugin_info = app_state.plugin_manager.plugins[plugin_id]
+    ui_config = plugin_info['manifest'].get('ui', {})
+    if ui_config.get('type') != 'bundle':
+        raise HTTPException(status_code=400, detail="This plugin is not a bundle plugin")
+    root = (plugin_info['path'] / ui_config.get('root', 'dist')).resolve()
+    target = (root / (file_path or ui_config.get('entry', 'index.html'))).resolve()
+    if not target.is_relative_to(root):
+        raise HTTPException(status_code=400, detail="Path outside the plugin bundle")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(target)
+
+
 @router.post("/api/plugins/{plugin_id}/{endpoint}")
 async def call_plugin_backend(plugin_id: str, endpoint: str, payload: dict):
     if app_state.plugin_manager is None:
         raise HTTPException(status_code=503, detail="Plugin system not initialized")
+    if plugin_id not in app_state.plugin_manager.plugins:
+        raise HTTPException(status_code=404, detail="Plugin not found")
     try:
-        if endpoint == 'run':
-            from src.plugin_context import PluginContext
-            ctx = PluginContext(engine=app_state.engine)
-            result = app_state.plugin_manager.run_plugin(
-                plugin_id=plugin_id,
-                inputs=payload.get('inputs', {}),
-                context=ctx
-            )
-            return result
+        from src.plugin_context import PluginContext
+        ctx = PluginContext(engine=app_state.engine, loader=app_state.loader_engine)
+        return app_state.plugin_manager.call_endpoint(
+            plugin_id=plugin_id,
+            endpoint=endpoint,
+            inputs=payload.get('inputs', {}),
+            context=ctx
+        )
+    except EndpointNotFound:
         raise HTTPException(status_code=404, detail=f"Endpoint {endpoint} not supported")
     except HTTPException:
         raise

@@ -2,11 +2,13 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Input, Modal, Tooltip } from 'antd';
-import { BuildOutlined, CloseOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Input, Modal } from 'antd';
 import type { SimulatorProps, SimulationState, InputEvent, SimPlan } from '../../types';
 import FileEditor from '../FileEditor';
 import { useI18n } from '../../core/i18n';
+import ViewRail from '../plugins/ViewRail';
+import PluginHost from '../plugins/PluginHost';
+import { usePlugins } from '../plugins/usePlugins';
 import { getC } from '../../core/theme';
 import SimModelTree from '../sim_tab/SimModelTree';
 import SimSetupTab from '../sim_tab/SimSetupTab';
@@ -46,8 +48,11 @@ const Simulator: React.FC<SimulatorProps> = ({
   simMode: mode, onSimModeChange: setMode,
   fontSize,
 }) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const c = getC(isDarkMode);
+  const bundlePlugins = usePlugins();
+  const [pluginViewId, setPluginViewId] = useState<string | null>(null);
+  const pluginView = bundlePlugins.find(p => p.id === pluginViewId) ?? null;
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const SECTION_H = 26;
@@ -150,6 +155,10 @@ const Simulator: React.FC<SimulatorProps> = ({
   // needs to read it before useSession()/useExportImport() are available, which
   // useBuilderState's other functions (reloadFromYAML etc.) depend on.
   const [builderOpen, setBuilderOpen] = useState(false);
+  // Editing the model library takes over the main area, so an open plugin view is closed.
+  useEffect(() => {
+    if (builderOpen) setPluginViewId(null);
+  }, [builderOpen]);
 
   const [runOutputVars, setRunOutputVars] = useState<string[]>([]);
   const [outputWarnings, setOutputWarnings] = useState<string[]>([]);
@@ -574,65 +583,45 @@ const Simulator: React.FC<SimulatorProps> = ({
           />
         )}
 
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <ViewRail
+          builtins={[
+            { key: 'intro', label: t('sim.tab.overview') },
+            { key: 'simulation', label: t('sim.tab.simulation') },
+            { key: 'optimization', label: t('sim.tab.optimization') },
+          ]}
+          plugins={bundlePlugins}
+          activeId={pluginView?.id ?? (builderOpen ? 'builder' : centerTab)}
+          onSelectBuiltin={key => {
+            setPluginViewId(null);
+            setCenterTab(key);
+            if (key === 'simulation') setMode('sim');
+            if (key === 'optimization') setMode('opt');
+          }}
+          onSelectPlugin={setPluginViewId}
+          builderOpen={builderOpen}
+          builderLabel={t('sim.builder.label')}
+          builderCloseLabel={t('sim.builder.close_edit')}
+          builderLockedTip={t('sim.builder.tab_locked')}
+          onCloseBuilder={closeBuilder}
+          treeCollapsed={leftCollapsed}
+          onToggleTree={() => setLeftCollapsed(v => !v)}
+          treeToggleLabel={leftCollapsed ? t('sim.builder.expand_lib') : t('sim.builder.collapse_lib')}
+          c={c}
+        />
 
-          {/* Center tab bar */}
-          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${c.border}`, background: c.panel, flexShrink: 0, paddingLeft: 4 }}>
-            {/* Left panel collapse/expand toggle — always visible before Overview */}
-            <Tooltip title={leftCollapsed ? t('sim.builder.expand_lib') : t('sim.builder.collapse_lib')}>
-              <button
-                onClick={() => setLeftCollapsed(v => !v)}
-                style={{ padding: '5px 8px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', display: 'flex', alignItems: 'center', flexShrink: 0, borderBottom: '2px solid transparent', marginBottom: -1 }}
-              >
-                {leftCollapsed ? <RightOutlined style={{ fontSize: 11 }} /> : <LeftOutlined style={{ fontSize: 11 }} />}
-              </button>
-            </Tooltip>
-            {([
-              { key: 'intro',        label: t('sim.tab.overview') },
-              { key: 'simulation',   label: t('sim.tab.simulation') },
-              { key: 'optimization', label: t('sim.tab.optimization') },
-            ] as { key: CenterTab; label: string }[]).map(tab => {
-              const isActive = centerTab === tab.key;
-              const locked = builderOpen;
-              const color = locked ? c.textMute : (isActive ? c.primary : c.textMute);
-              const underline = (!locked && isActive) ? `2px solid ${c.primary}` : '2px solid transparent';
-              return (
-                <Tooltip key={tab.key} title={locked ? t('sim.builder.tab_locked') : undefined}>
-                  <button
-                    onClick={() => {
-                      if (locked) return;
-                      setCenterTab(tab.key);
-                      if (tab.key === 'simulation') setMode('sim');
-                      if (tab.key === 'optimization') setMode('opt');
-                    }}
-                    data-testid={`center-tab-${tab.key}`}
-                    style={{ padding: '6px 16px', border: 'none', cursor: locked ? 'not-allowed' : 'pointer', background: 'transparent', color, fontSize: 'var(--lm-font-size, 14px)', fontWeight: (!locked && isActive) ? 600 : 400, borderBottom: underline, marginBottom: -1, outline: 'none', transition: 'all 0.12s', opacity: locked ? 0.4 : 1 }}
-                  >
-                    {tab.label}
-                  </button>
-                </Tooltip>
-              );
-            })}
-            {/* Dynamic Builder tab */}
-            {builderOpen && (
-              <div style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
-                <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px 6px 16px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.primary, fontSize: 'var(--lm-font-size, 14px)', fontWeight: 600, borderBottom: `2px solid ${c.primary}`, marginBottom: -1, outline: 'none' }}
-                >
-                  <BuildOutlined style={{ fontSize: 12 }} />
-                  {t('sim.builder.label')}
-                </button>
-                <Tooltip title={t('sim.builder.close_edit')}>
-                  <button
-                    onClick={closeBuilder}
-                    style={{ padding: '4px 6px', border: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, outline: 'none', borderRadius: 4, display: 'flex', alignItems: 'center' }}
-                  >
-                    <CloseOutlined style={{ fontSize: 11 }} />
-                  </button>
-                </Tooltip>
-              </div>
-            )}
-          </div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+
+          {/* A plugin view covers the whole main area; the workbench below stays mounted underneath */}
+          {pluginView && (
+            <PluginHost
+              pluginId={pluginView.id}
+              title={pluginView.title}
+              selectedModel={selectedModel}
+              isDarkMode={isDarkMode}
+              language={language}
+              c={c}
+            />
+          )}
 
           {centerTab === 'intro' && (
             <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
