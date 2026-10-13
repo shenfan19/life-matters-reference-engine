@@ -9,6 +9,8 @@ export interface BundlePlugin {
   title: string;
   icon?: string;
   order: number;
+  // 'multi' makes the model tree show checkboxes while this plugin is open, and the page gets every checked model
+  modelSelection: 'single' | 'multi';
 }
 
 export function usePlugins(): BundlePlugin[] {
@@ -27,6 +29,7 @@ export function usePlugins(): BundlePlugin[] {
             title: m.ui.title || m.name || m.id,
             icon: m.ui.icon,
             order: typeof m.ui.order === 'number' ? m.ui.order : 1000,
+            modelSelection: m.ui.model_selection === 'multi' ? 'multi' : 'single',
           }))
           .sort((a: BundlePlugin, b: BundlePlugin) => a.order - b.order || a.title.localeCompare(b.title));
         setPlugins(bundles);

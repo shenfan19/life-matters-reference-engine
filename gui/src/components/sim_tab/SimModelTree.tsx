@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Empty, Input, Spin, Tooltip, Tree } from 'antd';
 import {
-  CaretRightFilled, ClusterOutlined, FilterOutlined,
+  CaretRightFilled, CloseCircleOutlined, ClusterOutlined, FilterOutlined,
   FolderOutlined, LoadingOutlined, ReloadOutlined,
   UnorderedListOutlined, EditOutlined, PlusOutlined, MergeCellsOutlined, UploadOutlined,
   ScissorOutlined,
@@ -49,6 +49,12 @@ interface SimModelTreeProps {
   scsMode?: boolean;
   sessionKeys?: Set<string>;
   onReloadModel?: () => void;
+  // Multi-select mode, used while a plugin that asked for ui.model_selection: multi is open.
+  // It shows the same checkboxes as the builder, with its own list of ticked keys.
+  multiSelectMode?: boolean;
+  multiCheckedKeys?: string[];
+  onToggleMultiChecked?: (key: string) => void;
+  onClearMultiChecked?: () => void;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -73,7 +79,14 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   scsMode = false,
   sessionKeys = new Set<string>(),
   onReloadModel,
+  multiSelectMode = false,
+  multiCheckedKeys = [],
+  onToggleMultiChecked,
+  onClearMultiChecked,
 }) => {
+  const checkboxMode = builderMode || multiSelectMode;
+  const checkedList = builderMode ? builderCheckedFiles : multiCheckedKeys;
+  const toggleChecked = builderMode ? onToggleBuilderFile : onToggleMultiChecked;
   const flattenTree = (nodes: DataNode[]): any[] => {
     let flat: any[] = [];
     nodes.forEach(n => {
@@ -89,19 +102,20 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   // Builder mode: custom title renderer with checkbox for leaf nodes
   const builderTitleRender = (node: any) => {
     if (!node.isLeaf) {
-      return <span style={{ color: c.textSec }}>{node.titleStr || node.title}</span>;
+      return <span data-testid={`model-tree-folder-${node.key}`} style={{ color: c.textSec }}>{node.titleStr || node.title}</span>;
     }
-    const checked = builderCheckedFiles.includes(node.key);
+    const checked = checkedList.includes(node.key);
     return (
       <span
         style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-        onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(node.key); }}
+        onClick={e => { e.stopPropagation(); toggleChecked?.(node.key); }}
       >
         <input
           type="checkbox"
           readOnly
           checked={checked}
-          onClick={e => { e.stopPropagation(); onToggleBuilderFile?.(node.key); }}
+          data-testid={`model-tree-check-${node.key}`}
+          onClick={e => { e.stopPropagation(); toggleChecked?.(node.key); }}
           style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0 }}
         />
         <span style={{ color: checked ? c.primary : c.text }}>
@@ -224,6 +238,20 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               />
             </Tooltip>
           </>
+        ) : multiSelectMode ? (
+          <>
+            <span style={{ color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+              {t('sim.tree.multi_ticked', { n: multiCheckedKeys.length })}
+            </span>
+            <Tooltip title={t('sim.tree.multi_clear')}>
+              <Button size="small" type="text" icon={<CloseCircleOutlined />}
+                data-testid="model-tree-multi-clear"
+                disabled={multiCheckedKeys.length === 0}
+                onClick={onClearMultiChecked}
+                style={{ color: c.textMute, padding: '0 3px' }}
+              />
+            </Tooltip>
+          </>
         ) : (
           <>
             <Tooltip title={t('sim.tree.import_yaml')}>
@@ -310,7 +338,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             onChange={e => setStoryFilter(e.target.value)}
             prefix={<FilterOutlined style={{ color: c.textMute }} />}
             style={{ flex: 1 }} />
-          {!builderMode && (
+          {!checkboxMode && (
             <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
               <Button size="small" type="text"
                 icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
@@ -322,7 +350,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
 
         <div>
           <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-            {builderMode ? (
+            {checkboxMode ? (
               <Tree
                 expandedKeys={expandedKeys}
                 onExpand={setExpandedKeys}

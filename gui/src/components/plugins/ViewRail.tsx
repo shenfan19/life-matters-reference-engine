@@ -5,10 +5,10 @@
 // built-in button appears above the line. A plugin button covers the whole main area
 // while it is open.
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import {
-  AppstoreOutlined, ApartmentOutlined, BarChartOutlined, BuildOutlined, CloseOutlined,
+  AppstoreOutlined, ApartmentOutlined, BarChartOutlined, BuildOutlined, CloseOutlined, ClusterOutlined,
   FileTextOutlined, LeftOutlined, PictureOutlined, RightOutlined, TableOutlined,
 } from '@ant-design/icons';
 import type { getC } from '../../core/theme';
@@ -43,11 +43,23 @@ const BUILTIN_ICONS: Record<BuiltinView, React.ReactNode> = {
   </>),
 };
 
+// The order the user dragged the plugin buttons into, kept in the browser. Plugins that are not in
+// the saved list, such as a newly installed one, follow in the order their manifests ask for.
+const ORDER_KEY = 'lm_plugin_button_order';
+
+function readSavedOrder(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter((x: unknown) => typeof x === 'string') : [];
+  } catch { return []; }
+}
+
 // Icons a plugin manifest may name in ui.icon. An unknown name falls back to AppstoreOutlined.
 const PLUGIN_ICONS: Record<string, React.ReactNode> = {
   ApartmentOutlined: <ApartmentOutlined />,
   AppstoreOutlined: <AppstoreOutlined />,
   BarChartOutlined: <BarChartOutlined />,
+  ClusterOutlined: <ClusterOutlined />,
   FileTextOutlined: <FileTextOutlined />,
   PictureOutlined: <PictureOutlined />,
   TableOutlined: <TableOutlined />,
@@ -78,6 +90,26 @@ const ViewRail: React.FC<Props> = ({
   builderOpen, builderLabel, builderCloseLabel, builderLockedTip, onCloseBuilder,
   treeCollapsed, onToggleTree, treeToggleLabel, c,
 }) => {
+  const [savedOrder, setSavedOrder] = useState<string[]>(readSavedOrder);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropBefore, setDropBefore] = useState<string | null>(null);
+
+  const ordered = useMemo(() => {
+    const byId = new Map(plugins.map(p => [p.id, p]));
+    const first = savedOrder.filter(id => byId.has(id)).map(id => byId.get(id)!);
+    const rest = plugins.filter(p => !savedOrder.includes(p.id));
+    return [...first, ...rest];
+  }, [plugins, savedOrder]);
+
+  const moveBefore = (id: string, beforeId: string) => {
+    if (id === beforeId) return;
+    const ids = ordered.map(p => p.id).filter(x => x !== id);
+    const at = ids.indexOf(beforeId);
+    ids.splice(at < 0 ? ids.length : at, 0, id);
+    setSavedOrder(ids);
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(ids)); } catch { /* order is just not remembered */ }
+  };
+
   const button = (opts: {
     key: string; label: string; icon: React.ReactNode; active: boolean;
     onClick?: () => void; locked?: boolean; tip?: string; testId?: string;
@@ -160,13 +192,38 @@ const ViewRail: React.FC<Props> = ({
         <div role="separator" style={{ height: 0, margin: '6px 10px', borderTop: `1px solid ${c.border}` }} />
       )}
 
-      {plugins.map(p => button({
-        key: p.id, label: p.title,
-        icon: (p.icon && PLUGIN_ICONS[p.icon]) || <AppstoreOutlined />,
-        active: activeId === p.id, onClick: () => onSelectPlugin(p.id),
-        locked: builderOpen, tip: builderOpen ? builderLockedTip : p.title,
-        testId: `plugin-rail-${p.id}`,
-      }))}
+      {ordered.map(p => (
+        <div
+          key={p.id}
+          draggable={!builderOpen}
+          data-testid={`plugin-rail-slot-${p.id}`}
+          onDragStart={e => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', p.id); }}
+          onDragOver={e => { if (dragId && dragId !== p.id) { e.preventDefault(); setDropBefore(p.id); } }}
+          onDrop={e => { e.preventDefault(); if (dragId) moveBefore(dragId, p.id); setDragId(null); setDropBefore(null); }}
+          onDragEnd={() => { setDragId(null); setDropBefore(null); }}
+          style={{
+            opacity: dragId === p.id ? 0.4 : 1,
+            borderTop: `2px solid ${dropBefore === p.id && dragId ? c.primary : 'transparent'}`,
+          }}
+        >
+          {button({
+            key: p.id, label: p.title,
+            icon: (p.icon && PLUGIN_ICONS[p.icon]) || <AppstoreOutlined />,
+            active: activeId === p.id, onClick: () => onSelectPlugin(p.id),
+            locked: builderOpen, tip: builderOpen ? builderLockedTip : p.title,
+            testId: `plugin-rail-${p.id}`,
+          })}
+        </div>
+      ))}
+      {/* Dropping below the last button moves the dragged one to the end. */}
+      {dragId && (
+        <div
+          data-testid="plugin-rail-end"
+          onDragOver={e => { e.preventDefault(); setDropBefore('__end__'); }}
+          onDrop={e => { e.preventDefault(); moveBefore(dragId, '__end__'); setDragId(null); setDropBefore(null); }}
+          style={{ flex: 1, minHeight: 24, borderTop: `2px solid ${dropBefore === '__end__' ? c.primary : 'transparent'}` }}
+        />
+      )}
     </div>
   );
 };

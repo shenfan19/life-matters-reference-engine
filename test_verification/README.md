@@ -45,6 +45,8 @@ test_verification/
 ├── models/                       # single-model variable numerical regressions, see models/README.md
 ```
 
+Verification scripts that belong to a specific model or model set do not live here. They sit beside the models in the models repository, for example `models/test_validation/human_body_stability/`, and find this engine through the sibling checkout or `LM_ENGINE_PATH`. `reference_engine/scripts/` is reserved for scripts that users run by hand. This directory only verifies the engine code itself.
+
 ## What is a smoke test — and why this directory is mostly not one
 
 The terminology is often confused; ordered from shallow to deep in coverage/depth:

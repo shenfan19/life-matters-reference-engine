@@ -42,7 +42,7 @@ While generating `test_report.md`, `pytest tests/` was actually run (22 tests, a
 - Added: `models/test/test_plan.md`, `models/test/test_report.md`
 - Removed: `docs/reference_engine/validation.md`, `life-matters-home/process/c_paper_model_verify_checklist.md`
 - Slimmed down: `life-matters-home/tasks/2026-06-25_task_prelaunch-publish-verification-checklist.md` (sections 1/3 replaced with pointers, internal-only tracking items retained)
-- Updated references: the root `README.md`, `docs/reference_engine/DECISIONS.md`, `docs/reference_engine/decisions/README.md`, `models/papers/README.md`, `life-matters-home/process/lm_update_checklist.md`, `life-matters-home/process/case_study_minipaper_methodology.md`, `tests/models/README.md`
+- Updated references: the root `README.md`, `docs/reference_engine/DECISIONS.md`, `docs/reference_engine/decisions/README.md`, `models/papers/README.md`, `life-matters-home/R0_format/lm_update_checklist.md`, `life-matters-home/R4_papers/case_study_minipaper_methodology.md`, `tests/models/README.md`
 
 ## Open items
 

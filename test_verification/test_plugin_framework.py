@@ -176,3 +176,22 @@ def test_load_model_unknown_model_raises():
 def test_load_model_needs_a_loader():
     with pytest.raises(RuntimeError):
         PluginContext().load_model(MODEL_PATH)
+
+
+def test_ve_graph_plugin_builds_nodes_and_arrows():
+    """The ve_graph plugin turns a model into variable nodes, equation nodes and arrows
+    from read variables to the equation and from the equation to the variables it updates."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('ve_graph_backend', ROOT / 'plugins' / 've_graph' / 'backend.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    ctx = PluginContext(loader=LoaderEngine(models_directory=str(MODELS_DIR)))
+    graph = module.VeGraph(ctx).endpoint_graph({'path': MODEL_PATH})
+    assert graph['success'], graph
+    ids = {n['id']: n for n in graph['nodes']}
+    assert any(n['kind'] == 'equation' for n in graph['nodes'])
+    assert any(n['kind'] == 'variable' for n in graph['nodes'])
+    for e in graph['edges']:
+        kinds = {ids[e['source']]['kind'], ids[e['target']]['kind']}
+        assert kinds == {'variable', 'equation'}, e
+    assert module.VeGraph(ctx).endpoint_graph({})['success'] is False

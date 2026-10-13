@@ -260,6 +260,8 @@
   "sim.tree.upload_yaml": "Téléverser un YAML local vers la Session",
   "sim.tree.merge_files": "Fusionner les fichiers sélectionnés",
   "sim.tree.select_files": "Sélectionnez d'abord 2+ fichiers",
+  "sim.tree.multi_ticked": "{n} cochés",
+  "sim.tree.multi_clear": "Tout décocher",
   "sim.tree.split_file": "Diviser le fichier sélectionné",
   "sim.tree.select_one_file": "Sélectionnez d'abord 1 fichier",
   "sim.tree.split_scs_disabled": "Mode local uniquement",

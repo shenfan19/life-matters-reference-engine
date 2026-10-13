@@ -1,0 +1,18 @@
+id: ve_graph
+name: VE Graph
+version: '0.1'
+contract_version: 2
+description: Draws the variables and equations of the selected model as a graph. Variables are circles, equations are squares, arrows run from input variables to equations and from equations to the variables they update.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: VeGraph
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: VE Graph
+  icon: ApartmentOutlined
+  order: 20

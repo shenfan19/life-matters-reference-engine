@@ -45,9 +45,10 @@ ui:
   title: My Plugin              # label and tooltip of the strip button; default is name
   icon: TableOutlined           # see the list below; default is AppstoreOutlined
   order: 40                     # position in the strip, small first; default is 1000
+  model_selection: single       # 'multi' turns the model tree into checkboxes, see section 4
 ```
 
-Icons you can name in `ui.icon`: `ApartmentOutlined`, `AppstoreOutlined`, `BarChartOutlined`, `FileTextOutlined`, `PictureOutlined`, `TableOutlined`. Any other name falls back to `AppstoreOutlined`.
+Icons you can name in `ui.icon`: `ApartmentOutlined`, `AppstoreOutlined`, `BarChartOutlined`, `ClusterOutlined`, `FileTextOutlined`, `PictureOutlined`, `TableOutlined`. Any other name falls back to `AppstoreOutlined`.
 
 Plugins with `ui.type: none` or `component` are not shown in the strip.
 
@@ -89,6 +90,10 @@ window.addEventListener('message', (e) => {
 ```
 
 `model.path` is the path of the model file relative to the models directory. Pass it to your backend to read the model, see section 6.
+
+**Several models.** A plugin that sets `ui.model_selection: multi` also gets the field `models`, a list of `{key, title, path}` in the order the models were ticked, and the model tree shows a checkbox on every model while the plugin view is open. `model` still holds the single selected model. Without `multi`, `models` is an empty list. `key` is what `POST /api/merge` and the other file routes take, and `path` is what `load_model` takes.
+
+**Button order.** A user can drag the plugin buttons into a different order, which the browser remembers. `ui.order` only sets the order for buttons the user has not moved.
 
 Follow the theme: the GUI has a dark and a light mode and a plugin page should look right in both. The demos switch a `data-theme` attribute on `<html>` and define their colors as CSS variables.
 
@@ -135,7 +140,8 @@ Rules:
 
 | Method | Purpose |
 |--------|---------|
-| `load_model(path)` | Loads a model by its path relative to the models directory, imports resolved, and returns the same shape as `GET /api/models/{name}`: `metadata`, `variables`, `equations`, `simulation`, `optimization`, `plans`, `imports`, `provenance`. Raises `ValueError` for an absolute path, a path containing `..`, or a model that cannot be found. |
+| `load_model(path, validate=True)` | Loads a model by its path relative to the models directory, imports resolved, and returns the same shape as `GET /api/models/{name}`: `metadata`, `variables`, `equations`, `simulation`, `optimization`, `plans`, `imports`, `provenance`. Raises `ValueError` for an absolute path, a path containing `..`, or a model that cannot be found. With `validate=False` it also loads a component that reads variables another component defines, which fails validation alone, and it bypasses the model cache so the unvalidated model is never returned to a validated request. |
+| `models_directory` | The absolute path of the models directory, read only. |
 | `run_simulation(...)` | Runs a full simulation, for plugins that need a fresh run. |
 | `log(message)` | Prints to the backend log. |
 | `get_cached(key)`, `set_cached(key, value)` | A cache that lives for one request. |

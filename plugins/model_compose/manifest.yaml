@@ -1,0 +1,19 @@
+id: model_compose
+name: Model Compose
+version: '0.1'
+contract_version: 2
+description: Shows how several models can be combined. Tick models in the tree, and models that share a variable are joined through that variable, with arrows showing which model writes it and which only reads it. A variable written by more than one model is flagged. A button merges the ticked models into a new model file.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: ModelCompose
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: Compose
+  icon: ClusterOutlined
+  order: 30
+  model_selection: multi

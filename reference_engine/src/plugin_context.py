@@ -32,11 +32,23 @@ class PluginContext:
 
     # ── model access ──────────────────────────────────────
 
-    def load_model(self, path: str) -> Dict:
+    @property
+    def models_directory(self) -> str:
+        """Absolute path of the models directory, for plugins that check or choose a path under it."""
+        if self._loader is None:
+            raise RuntimeError("LoaderEngine not injected into PluginContext")
+        return os.path.abspath(self._loader.models_directory)
+
+    def load_model(self, path: str, validate: bool = True) -> Dict:
         """Loads a model by its path relative to the models directory, imports resolved.
 
         Returns the same shape as ``GET /api/models/{name}``. Absolute paths and
         ``..`` are refused, so a plugin request cannot read outside models/.
+
+        ``validate=False`` loads a model that cannot stand alone, such as a component that
+        reads variables defined by another component. It bypasses the model cache in both
+        directions, so an unvalidated model is never handed to a caller that asked for a
+        validated one.
         """
         from src.model_serialization import model_to_dict
         if self._loader is None:
@@ -44,7 +56,7 @@ class PluginContext:
         norm = path.replace(os.sep, '/')
         if os.path.isabs(norm) or norm.startswith('/') or '..' in norm.split('/'):
             raise ValueError(f"Model path must be relative to models/: {path}")
-        model = self._loader.fetch(norm)
+        model = self._loader.fetch(norm, validate=validate, use_cache=validate)
         if model is None:
             raise ValueError(f"Model not found: {path}")
         return model_to_dict(model)

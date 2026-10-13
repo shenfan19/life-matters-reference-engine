@@ -469,6 +469,19 @@ async def validate_model(request: ValidateRequest):
 
 # ── Merge ──────────────────────────────────────────────────────────────────────
 
+def _merged_model_to_raw(model) -> dict:
+    """The merged ModelStructure as the plain dict its exported YAML would hold."""
+    import tempfile
+    fd, tmp = tempfile.mkstemp(suffix='.yaml')
+    os.close(fd)
+    try:
+        model.export_to_yaml(tmp)
+        with open(tmp, 'r', encoding='utf-8') as fh:
+            return safe_load(fh) or {}
+    finally:
+        os.unlink(tmp)
+
+
 @router.post("/api/merge")
 async def merge_models(request: MergeRequest):
     if not app_state.SCS_MODE:
@@ -483,7 +496,9 @@ async def merge_models(request: MergeRequest):
             result = app_state.loader_engine.merge_models(
                 model_names=request.files, folders=request.folders, output_path=abs_out)
             if result['success']:
-                merged = result.get('merged') or result
+                # merge_models returns the model object, which is neither JSON nor YAML serializable,
+                # so the route hands on the dict form of it.
+                merged = result.get('merged') or _merged_model_to_raw(result['data'])
         except Exception as e:
             logger.warning(f"Loader merge failed, falling back to simple merge: {e}")
 

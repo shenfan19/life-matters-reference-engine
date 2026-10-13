@@ -260,6 +260,8 @@
   "sim.tree.upload_yaml": "上传本地 YAML 到 Session",
   "sim.tree.merge_files": "合并选中文件",
   "sim.tree.select_files": "请先选择 2 个以上文件",
+  "sim.tree.multi_ticked": "已勾选 {n} 个",
+  "sim.tree.multi_clear": "清除全部勾选",
   "sim.tree.split_file": "拆分选中文件",
   "sim.tree.select_one_file": "请先选择 1 个文件",
   "sim.tree.split_scs_disabled": "仅本地模式下可用",

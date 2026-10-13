@@ -260,3 +260,5 @@ Restart the backend, call `GET /api/plugins` — you should see `hello_world` li
 | `sensitivity_analysis` | 📋 planned | One-at-a-time parameter perturbation + tornado chart |
 | `sbml_importer` | 📋 planned | Convert SBML/CellML to LM YAML |
 | `report_latex` | 📋 planned | Export simulation report as LaTeX / PDF |
+| `ve_graph` | ✅ bundle plugin | Draggable graph of the variables and equations of the selected model, see `ve_graph/docs/` |
+| `model_compose` | ✅ bundle plugin | Join ticked models through shared variables, flag write conflicts, merge into a new model, see `model_compose/docs/` |
