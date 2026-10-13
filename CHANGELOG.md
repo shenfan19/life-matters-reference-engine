@@ -30,6 +30,11 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 - Added three demonstration plugins in `plugins/demo/` and a guide for writing a bundle plugin, `plugins/README_bundle_plugins.md`.
 - Added `test_verification/test_plugin_framework.py`.
 
+### Fixes
+
+- `POST /api/merge` returned 500 in SCS mode when the merge succeeded, because the route passed the merged model object to the YAML writer. It now returns the merged model as plain data, in SCS mode for download and in write mode as before.
+- The pages of bundle plugins, including the three demo plugins, were ignored by the `dist/` rule of `.gitignore` and missing from clones. They are now tracked.
+
 ## [1.0.0] - 2026-07-26
 
 ### LM format execution semantics: Regimen, Schedule, Plan
