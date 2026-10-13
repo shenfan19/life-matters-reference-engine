@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VE Graph</title>
+<style id="graph-css">
+  :root {
+    --bg: #ffffff; --text: #1f1f1f; --mute: #8c8c8c; --border: #d9d9d9; --panel: #fafafa;
+    --state: #52c41a; --input: #1677ff; --parameter: #fa8c16; --equation: #8c8c8c; --edge: #8c8c8c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --text: #f0f0f0; --mute: #8c8c8c; --border: #303030; --panel: #1d1d1d;
+    --state: #49aa19; --input: #3c89e8; --parameter: #d87a16; --equation: #a6a6a6; --edge: #7a7a7a;
+  }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 13px -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  #bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  #bar button, #bar input[type=text] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; }
+  #bar button { cursor: pointer; }
+  #bar button:hover { border-color: var(--state); }
+  #bar button.on { border-color: var(--state); color: var(--state); }
+  #bar label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  #title { font-weight: 600; margin-right: 6px; }
+  #stats { color: var(--mute); margin-left: auto; }
+  #wrap { position: relative; flex: 1; min-height: 0; }
+  svg#canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  svg#canvas.panning { cursor: grabbing; }
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.2; }
+  .node { cursor: pointer; }
+  .node .shape { stroke: var(--bg); stroke-width: 1.5; }
+  .node.variable.state .shape { fill: var(--state); }
+  .node.variable.input .shape { fill: var(--input); }
+  .node.variable.parameter .shape { fill: var(--parameter); }
+  .node.equation .shape { fill: var(--equation); }
+  .node.pinned .shape { stroke: var(--text); stroke-width: 2; }
+  .node.selected .shape { stroke: var(--text); stroke-width: 3; }
+  .node text { fill: var(--text); font-size: 11px; pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+  .node.equation text { font-style: italic; }
+  .dim { opacity: 0.12; }
+  #arrow path { fill: var(--edge); }
+  #legend { position: absolute; left: 12px; top: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; line-height: 1.7; }
+  #legend i { display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
+  #legend i.c { border-radius: 50%; }
+  #detail { position: absolute; right: 12px; bottom: 12px; max-width: 380px; max-height: 50%; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; display: none; }
+  #detail h4 { margin: 0 0 4px; font-family: monospace; }
+  #detail .mute { color: var(--mute); }
+  #detail pre { margin: 4px 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+  #msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--mute); pointer-events: none; text-align: center; padding: 20px; }
+  #hint { position: absolute; left: 12px; bottom: 10px; color: var(--mute); font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="title">VE Graph</span>
+  <button id="b-mode"></button>
+  <button id="b-in">+</button>
+  <button id="b-out">&minus;</button>
+  <button id="b-fit"></button>
+  <label><input type="checkbox" id="c-param"><span id="l-param"></span></label>
+  <label><input type="checkbox" id="c-iso"><span id="l-iso"></span></label>
+  <input type="text" id="q" size="14">
+  <button id="b-unpin"></button>
+  <button id="b-svg"></button>
+  <span id="stats"></span>
+</div>
+<div id="wrap">
+  <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z"/>
+      </marker>
+    </defs>
+    <g id="world"><g id="edges"></g><g id="nodes"></g></g>
+  </svg>
+  <div id="legend"></div>
+  <div id="detail"></div>
+  <div id="msg"></div>
+  <div id="hint"></div>
+</div>
+<script>
+(() => {
+  const TEXT = {
+    en: { force: 'Mode: dynamic', layered: 'Mode: layered', fit: 'Fit', param: 'Hide parameters', iso: 'Hide unconnected',
+          search: 'Search name', unpin: 'Unpin all', svg: 'Export SVG', variable: 'variable', equation: 'equation',
+          state: 'state', input: 'input', parameter: 'parameter', unit: 'Unit', value: 'Value', cond: 'Condition',
+          hint: 'Drag a node to move it and pin it. Double-click a node to unpin. Wheel to zoom, drag background to pan.',
+          wait: 'Waiting for the GUI to say which model is selected.', none: 'Select a model in the tree.',
+          loading: 'Loading', fail: 'Could not read the model: ', empty: 'This model has no equations.',
+          nodes: 'nodes', edges: 'arrows', vars: 'variables', eqs: 'equations' },
+    zh: { force: '模式：动态', layered: '模式：分层', fit: '适应窗口', param: '隐藏参数', iso: '隐藏未连接',
+          search: '搜索名称', unpin: '取消全部固定', svg: '导出 SVG', variable: '变量', equation: '公式',
+          state: '状态', input: '输入', parameter: '参数', unit: '单位', value: '取值', cond: '条件',
+          hint: '拖动节点可移动并固定，双击节点取消固定，滚轮缩放，拖动空白处平移。',
+          wait: '等待 GUI 告知当前选中的模型。', none: '请在左侧模型树中选择一个模型。',
+          loading: '正在读取', fail: '无法读取模型：', empty: '该模型没有公式。',
+          nodes: '节点', edges: '箭头', vars: '变量', eqs: '公式' },
+  };
+  const q = new URLSearchParams(location.search);
+  let T = TEXT[(q.get('lang') || 'en').startsWith('zh') ? 'zh' : 'en'];
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = $('canvas'), world = $('world'), gEdges = $('edges'), gNodes = $('nodes');
+
+  function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light'; }
+  applyTheme(q.get('theme'));
+
+  // ---------- state ----------
+  let nodes = [], edges = [], byId = new Map(), modelName = '';
+  let mode = 'force';            // 'force' | 'layered'
+  let view = { x: 0, y: 0, k: 1 };
+  let alpha = 0, rafId = 0, tween = null, selectedId = null, loadToken = 0, autoFit = true;
+  const R = 10;                  // half size of a node shape
+
+  function setTexts() {
+    $('b-mode').textContent = mode === 'force' ? T.force : T.layered;
+    $('b-fit').textContent = T.fit; $('l-param').textContent = T.param; $('l-iso').textContent = T.iso;
+    $('q').placeholder = T.search; $('b-unpin').textContent = T.unpin; $('b-svg').textContent = T.svg;
+    $('hint').textContent = T.hint;
+    $('legend').replaceChildren();
+    [['c', 'state', T.state], ['c', 'input', T.input], ['c', 'parameter', T.parameter], ['s', 'equation', T.equation]].forEach(([shape, cls, label]) => {
+      const row = document.createElement('div');
+      const i = document.createElement('i'); i.className = shape; i.style.background = 'var(--' + cls + ')';
+      row.append(i, label); $('legend').appendChild(row);
+    });
+  }
+
+  function message(s) { $('msg').textContent = s || ''; }
+
+  // ---------- view ----------
+  function applyView() { world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); }
+  function zoomAt(cx, cy, factor) {
+    const k = Math.min(5, Math.max(0.05, view.k * factor)), f = k / view.k;
+    view.x = cx - (cx - view.x) * f; view.y = cy - (cy - view.y) * f; view.k = k; applyView();
+  }
+  function svgPoint(e) { const r = svg.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function visibleNodes() { return nodes.filter(n => n.visible); }
+  function fit() {
+    const vis = visibleNodes(); if (!vis.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    vis.forEach(n => { x0 = Math.min(x0, n.x - 40); y0 = Math.min(y0, n.y - 20); x1 = Math.max(x1, n.x + 40); y1 = Math.max(y1, n.y + 28); });
+    const r = svg.getBoundingClientRect(), w = r.width, h = r.height;
+    const k = Math.min(2, Math.max(0.05, Math.min(w / (x1 - x0), h / (y1 - y0)) * 0.95));
+    view.k = k; view.x = w / 2 - k * (x0 + x1) / 2; view.y = h / 2 - k * (y0 + y1) / 2; applyView();
+  }
+  svg.addEventListener('wheel', e => { e.preventDefault(); autoFit = false; const [x, y] = svgPoint(e); zoomAt(x, y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  $('b-in').onclick = () => { autoFit = false; const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 1.25); };
+  $('b-out').onclick = () => { autoFit = false; const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 0.8); };
+  $('b-fit').onclick = () => { autoFit = true; fit(); };
+
+  // ---------- drawing ----------
+  function el(name, attrs) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  function build(data) {
+    nodes = data.nodes.map(n => Object.assign({ x: 0, y: 0, vx: 0, vy: 0, pinned: false, visible: true }, n));
+    byId = new Map(nodes.map(n => [n.id, n]));
+    edges = data.edges.map(e => ({ s: byId.get(e.source), t: byId.get(e.target) })).filter(e => e.s && e.t);
+    const pair = new Set(edges.map(e => e.s.id + '>' + e.t.id));
+    edges.forEach(e => { e.curved = pair.has(e.t.id + '>' + e.s.id); });
+    nodes.forEach(n => { n.nbrs = new Set([n.id]); });
+    edges.forEach(e => { e.s.nbrs.add(e.t.id); e.t.nbrs.add(e.s.id); });
+
+    gEdges.replaceChildren(); gNodes.replaceChildren();
+    edges.forEach(e => { e.el = el('path', { class: 'edge', 'marker-end': 'url(#arrow)' }); gEdges.appendChild(e.el); });
+    nodes.forEach(n => {
+      const g = el('g', { class: 'node ' + n.kind + (n.vtype ? ' ' + n.vtype : '') });
+      g.appendChild(n.kind === 'variable'
+        ? el('circle', { class: 'shape', r: R })
+        : el('rect', { class: 'shape', x: -R, y: -R, width: 2 * R, height: 2 * R, rx: 2 }));
+      const t = el('text', { y: R + 13 }); t.textContent = n.label; g.appendChild(t);
+      const tip = el('title', {}); tip.textContent = n.label; g.appendChild(tip);
+      n.el = g; gNodes.appendChild(g); bindNode(n);
+    });
+  }
+
+  function filterNodes() {
+    const hideP = $('c-param').checked, hideI = $('c-iso').checked;
+    nodes.forEach(n => { n.visible = !((hideP && n.vtype === 'parameter') || (hideI && n.isolated)); });
+    nodes.forEach(n => { n.el.style.display = n.visible ? '' : 'none'; });
+    edges.forEach(e => { e.visible = e.s.visible && e.t.visible; e.el.style.display = e.visible ? '' : 'none'; });
+    const v = visibleNodes();
+    $('stats').textContent = `${v.length} ${T.nodes} (${v.filter(n => n.kind === 'variable').length} ${T.vars}, ${v.filter(n => n.kind === 'equation').length} ${T.eqs}), ${edges.filter(e => e.visible).length} ${T.edges}`;
+  }
+
+  function edgePath(e) {
+    const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    const x0 = e.s.x + ux * (R + 1), y0 = e.s.y + uy * (R + 1), x1 = e.t.x - ux * (R + 2), y1 = e.t.y - uy * (R + 2);
+    if (!e.curved) return `M${x0},${y0}L${x1},${y1}`;
+    const off = Math.min(40, d * 0.22), cx = (x0 + x1) / 2 - uy * off, cy = (y0 + y1) / 2 + ux * off;
+    return `M${x0},${y0}Q${cx},${cy} ${x1},${y1}`;
+  }
+  function draw() {
+    nodes.forEach(n => { if (n.visible) n.el.setAttribute('transform', `translate(${n.x},${n.y})`); });
+    edges.forEach(e => { if (e.visible) e.el.setAttribute('d', edgePath(e)); });
+  }
+
+  // ---------- layered layout ----------
+  function layered() {
+    const vis = visibleNodes(), ve = edges.filter(e => e.visible);
+    const out = new Map(vis.map(n => [n.id, []]));
+    ve.forEach(e => out.get(e.s.id).push(e.t));
+    const color = new Map(), order = [], back = new Set();
+    function dfs(n) {
+      color.set(n.id, 1);
+      for (const m of out.get(n.id)) {
+        const c = color.get(m.id);
+        if (c === 1) back.add(n.id + '>' + m.id); else if (!c) dfs(m);
+      }
+      color.set(n.id, 2); order.push(n);
+    }
+    // start from nodes with no incoming arrow so sources land on the left
+    const hasIn = new Set(ve.map(e => e.t.id));
+    vis.filter(n => !hasIn.has(n.id)).concat(vis).forEach(n => { if (!color.get(n.id)) dfs(n); });
+    const depth = new Map(vis.map(n => [n.id, 0]));
+    for (let i = order.length - 1; i >= 0; i--) {
+      const n = order[i];
+      for (const m of out.get(n.id)) if (!back.has(n.id + '>' + m.id)) depth.set(m.id, Math.max(depth.get(m.id), depth.get(n.id) + 1));
+    }
+    const layers = [];
+    order.slice().reverse().forEach(n => { const d = depth.get(n.id); (layers[d] = layers[d] || []).push(n); });
+    const pos = new Map();
+    const place = () => layers.forEach(L => L && L.forEach((n, i) => pos.set(n.id, i)));
+    place();
+    for (let sweep = 0; sweep < 4; sweep++) {
+      layers.forEach(L => {
+        if (!L) return;
+        const bc = n => { let s = 0, c = 0; n.nbrs.forEach(id => { if (id !== n.id && pos.has(id) && byId.get(id).visible) { s += pos.get(id); c++; } }); return c ? s / c : pos.get(n.id); };
+        const keys = new Map(L.map(n => [n.id, bc(n)]));
+        L.sort((a, b) => keys.get(a.id) - keys.get(b.id));
+        L.forEach((n, i) => pos.set(n.id, i));
+      });
+    }
+    const target = new Map();
+    layers.forEach((L, d) => { if (L) L.forEach((n, i) => target.set(n.id, [d * 190, (i - (L.length - 1) / 2) * 46])); });
+    return target;
+  }
+
+  function moveTo(target, then) {
+    cancelAnimationFrame(rafId); alpha = 0;
+    const from = visibleNodes().map(n => [n, n.x, n.y]), t0 = performance.now(), dur = 450;
+    (function step(now) {
+      const p = Math.min(1, (now - t0) / dur), s = p * p * (3 - 2 * p);
+      from.forEach(([n, x, y]) => { const [tx, ty] = target.get(n.id); n.x = x + (tx - x) * s; n.y = y + (ty - y) * s; });
+      draw();
+      if (p < 1) tween = requestAnimationFrame(step); else if (then) then();
+    })(t0);
+  }
+
+  // ---------- force layout ----------
+  function tick() {
+    const vis = visibleNodes(), ve = edges.filter(e => e.visible);
+    const spread = Math.max(1, Math.sqrt(vis.length / 30));   // bigger graphs get more room
+    for (let i = 0; i < vis.length; i++) {
+      const a = vis[i];
+      for (let j = i + 1; j < vis.length; j++) {
+        const b = vis[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 > 160000 * spread * spread) continue;
+        if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+        const d = Math.sqrt(d2), f = 4200 * spread * spread / d2 * alpha, fx = dx / d * f, fy = dy / d * f;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+    }
+    ve.forEach(e => {
+      const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, d = Math.hypot(dx, dy) || 1, f = (d - 120 * Math.sqrt(spread)) * 0.04 * alpha, fx = dx / d * f, fy = dy / d * f;
+      e.s.vx += fx; e.s.vy += fy; e.t.vx -= fx; e.t.vy -= fy;
+    });
+    vis.forEach(n => {
+      n.vx -= n.x * 0.01 * alpha; n.vy -= n.y * 0.01 * alpha;
+      if (n.pinned || n.dragging) { n.vx = n.vy = 0; return; }
+      n.vx *= 0.82; n.vy *= 0.82; n.x += n.vx; n.y += n.vy;
+    });
+    alpha *= 0.985;
+  }
+  function loop() {
+    for (let i = 0; i < 2; i++) tick();
+    draw();
+    if (alpha > 0.015) { rafId = requestAnimationFrame(loop); } else { rafId = 0; if (autoFit) fit(); }
+  }
+  function heat(a) { if (mode !== 'force') return; alpha = Math.max(alpha, a); if (!rafId) rafId = requestAnimationFrame(loop); }
+
+  function setMode(m) {
+    mode = m; setTexts();
+    cancelAnimationFrame(tween); cancelAnimationFrame(rafId); rafId = 0;
+    if (m === 'layered') moveTo(layered(), fit); else heat(0.6);
+  }
+  $('b-mode').onclick = () => setMode(mode === 'force' ? 'layered' : 'force');
+  $('c-param').onchange = $('c-iso').onchange = () => { filterNodes(); relayout(); };
+  function relayout() { if (mode === 'layered') moveTo(layered(), fit); else heat(0.8); }
+  $('b-unpin').onclick = () => { nodes.forEach(n => { n.pinned = false; n.el.classList.remove('pinned'); }); heat(0.5); };
+
+  // ---------- interaction ----------
+  function bindNode(n) {
+    n.el.addEventListener('pointerdown', ev => {
+      ev.stopPropagation(); n.el.setPointerCapture(ev.pointerId);
+      const sx = ev.clientX, sy = ev.clientY; let moved = false;
+      n.dragging = true;
+      const move = e => {
+        if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 4) return;
+        moved = true;
+        const [px, py] = svgPoint(e); n.x = (px - view.x) / view.k; n.y = (py - view.y) / view.k;
+        n.pinned = true; n.el.classList.add('pinned'); heat(0.3); if (mode === 'layered') draw();
+      };
+      const up = () => {
+        n.dragging = false; n.el.removeEventListener('pointermove', move); n.el.removeEventListener('pointerup', up); n.el.removeEventListener('pointercancel', up);
+        if (!moved) select(n.id);
+      };
+      n.el.addEventListener('pointermove', move); n.el.addEventListener('pointerup', up); n.el.addEventListener('pointercancel', up);
+    });
+    n.el.addEventListener('dblclick', ev => { ev.stopPropagation(); n.pinned = false; n.el.classList.remove('pinned'); heat(0.4); });
+    n.el.addEventListener('pointerenter', () => highlight(n.id));
+    n.el.addEventListener('pointerleave', () => highlight(null));
+  }
+  svg.addEventListener('pointerdown', e => {
+    if (e.target.closest && e.target.closest('.node')) return;
+    svg.setPointerCapture(e.pointerId); svg.classList.add('panning');
+    let lx = e.clientX, ly = e.clientY, moved = false;
+    const move = ev => { moved = true; autoFit = false; view.x += ev.clientX - lx; view.y += ev.clientY - ly; lx = ev.clientX; ly = ev.clientY; applyView(); };
+    const up = () => { svg.classList.remove('panning'); svg.removeEventListener('pointermove', move); svg.removeEventListener('pointerup', up); svg.removeEventListener('pointercancel', up); if (!moved) select(null); };
+    svg.addEventListener('pointermove', move); svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  });
+
+  let hoverId = null;
+  function refreshDim() {
+    const term = $('q').value.trim().toLowerCase();
+    const focus = hoverId || selectedId;
+    nodes.forEach(n => {
+      let dim = false;
+      if (focus) dim = !byId.get(focus).nbrs.has(n.id);
+      else if (term) dim = !n.label.toLowerCase().includes(term);
+      n.el.classList.toggle('dim', dim);
+    });
+    edges.forEach(e => {
+      let dim = false;
+      if (focus) dim = !(e.s.id === focus || e.t.id === focus);
+      else if (term) dim = !(e.s.label.toLowerCase().includes(term) || e.t.label.toLowerCase().includes(term));
+      e.el.classList.toggle('dim', dim);
+    });
+  }
+  function highlight(id) { hoverId = id; refreshDim(); }
+  $('q').oninput = refreshDim;
+
+  function select(id) {
+    selectedId = id;
+    nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
+    const box = $('detail');
+    if (!id) { box.style.display = 'none'; refreshDim(); return; }
+    const n = byId.get(id);
+    box.replaceChildren();
+    const h = document.createElement('h4'); h.textContent = n.label; box.appendChild(h);
+    const line = (s, cls) => { const p = document.createElement('div'); if (cls) p.className = cls; p.textContent = s; box.appendChild(p); };
+    if (n.kind === 'variable') {
+      line(`${T.variable} / ${T[n.vtype] || n.vtype}`, 'mute');
+      if (n.unit) line(`${T.unit}: ${n.unit}`);
+      if (n.value !== null && n.value !== undefined) line(`${T.value}: ${typeof n.value === 'object' ? JSON.stringify(n.value) : n.value}`);
+    } else {
+      line(T.equation, 'mute');
+      if (n.condition) line(`${T.cond}: ${n.condition}`);
+      Object.entries(n.expressions).forEach(([k, v]) => { const pre = document.createElement('pre'); pre.textContent = `${k} = ${v}`; box.appendChild(pre); });
+    }
+    if (n.description) line(n.description, 'mute');
+    box.style.display = 'block'; refreshDim();
+  }
+
+  // ---------- export ----------
+  $('b-svg').onclick = () => {
+    const vis = visibleNodes(); if (!vis.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    vis.forEach(n => { x0 = Math.min(x0, n.x - 60); y0 = Math.min(y0, n.y - 24); x1 = Math.max(x1, n.x + 60); y1 = Math.max(y1, n.y + 30); });
+    const clone = svg.cloneNode(true);
+    clone.removeAttribute('id'); clone.removeAttribute('class'); clone.removeAttribute('style');
+    clone.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+    clone.setAttribute('width', x1 - x0); clone.setAttribute('height', y1 - y0);
+    clone.querySelector('#world').removeAttribute('transform');
+    clone.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
+    clone.querySelectorAll('title').forEach(e => e.remove());
+    const cs = getComputedStyle(document.documentElement);
+    const vars = ['bg', 'text', 'state', 'input', 'parameter', 'equation', 'edge'].map(v => `--${v}:${cs.getPropertyValue('--' + v).trim()}`).join(';');
+    const style = document.createElementNS(NS, 'style');
+    style.textContent = $('graph-css').textContent + `\n:root{${vars}}\ntext{font-family:sans-serif}`;
+    clone.insertBefore(style, clone.firstChild);
+    const bg = el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: cs.getPropertyValue('--bg').trim() });
+    clone.insertBefore(bg, style.nextSibling);
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (modelName || 've_graph') + '_ve_graph.svg';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // ---------- loading ----------
+  async function show(selected) {
+    const token = ++loadToken;
+    cancelAnimationFrame(tween); cancelAnimationFrame(rafId); rafId = 0; alpha = 0;
+    if (!selected) { nodes = []; edges = []; gEdges.replaceChildren(); gNodes.replaceChildren(); select(null); $('stats').textContent = ''; $('title').textContent = 'VE Graph'; message(T.none); return; }
+    message(`${T.loading} ${selected.title} ...`);
+    let data;
+    try {
+      const res = await fetch('/api/plugins/ve_graph/graph', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: { path: selected.path } })
+      });
+      data = await res.json();
+    } catch (e) { if (token === loadToken) message(T.fail + e.message); return; }
+    if (token !== loadToken) return;
+    if (!data.success) { message(T.fail + (data.error || data.detail || 'unknown error')); return; }
+    modelName = data.name; $('title').textContent = 'VE Graph: ' + data.name;
+    selectedId = null; $('detail').style.display = 'none';
+    build(data); filterNodes();
+    message(data.edges.length ? '' : T.empty);
+    // seed positions from the layered layout, which also gives the force layout a good start
+    const seed = layered();
+    nodes.forEach(n => { const p = seed.get(n.id) || [0, 0]; n.x = p[0] + (Math.random() - 0.5) * 20; n.y = p[1] + (Math.random() - 0.5) * 20; });
+    draw(); autoFit = true; fit();
+    if (mode === 'force') { heat(1); } else { moveTo(seed, fit); }
+  }
+
+  let lastPath = undefined;
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'lm-init') return;
+    applyTheme(e.data.theme);
+    T = TEXT[String(e.data.lang || 'en').startsWith('zh') ? 'zh' : 'en']; setTexts();
+    const path = e.data.model ? e.data.model.path : null;
+    if (path !== lastPath) { lastPath = path; show(e.data.model); }
+  });
+  window.addEventListener('resize', () => { if (nodes.length) fit(); });
+  setTexts(); message(T.wait);
+  parent.postMessage({ type: 'lm-ready' }, '*');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Compose</title>
+<style id="graph-css">
+  :root {
+    --bg: #ffffff; --text: #1f1f1f; --mute: #8c8c8c; --border: #d9d9d9; --panel: #fafafa;
+    --model: #722ed1; --common: #6b8fb3; --coupling: #389e0d; --conflict: #f5222d; --warn: #d48806; --edge: #8c8c8c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --text: #f0f0f0; --mute: #8c8c8c; --border: #303030; --panel: #1d1d1d;
+    --model: #9254de; --common: #5b7da0; --coupling: #49aa19; --conflict: #ff4d4f; --warn: #faad14; --edge: #7a7a7a;
+  }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 13px -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  #bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  #bar button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; cursor: pointer; }
+  #bar button:hover:not(:disabled) { border-color: var(--coupling); }
+  #bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+  #bar select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; max-width: 260px; }
+  #bar button.primary { background: var(--model); border-color: var(--model); color: #fff; }
+  #title { font-weight: 600; margin-right: 6px; }
+  #stats { color: var(--mute); margin-left: auto; }
+  #wrap { position: relative; flex: 1; min-height: 0; }
+  svg#canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  svg#canvas.panning { cursor: grabbing; }
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; }
+  .edge.coupling { stroke: var(--coupling); }
+  .edge.conflict { stroke: var(--conflict); stroke-width: 2; }
+  .edge.none { stroke-dasharray: 4 4; }
+  .node { cursor: pointer; }
+  .node .shape { stroke: var(--bg); stroke-width: 1.5; }
+  .node.model .shape { fill: var(--model); }
+  .node.model text { fill: #fff; pointer-events: none; text-anchor: middle; dominant-baseline: central; font-size: 12px; font-weight: 600; }
+  .node.variable .shape { fill: var(--common); }
+  .node.variable.coupling .shape { fill: var(--coupling); }
+  .node.variable.conflict .shape { fill: var(--conflict); }
+  .node.variable.noted .shape { stroke: var(--warn); stroke-width: 3; }
+  .node.variable text.label { fill: var(--text); font-size: 11px; pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+  .node text.bang { fill: #fff; font-size: 12px; font-weight: 700; pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+  .node.pinned .shape { stroke: var(--text); stroke-width: 2; }
+  .node.selected .shape { stroke: var(--text); stroke-width: 3; }
+  .dim { opacity: 0.12; }
+  #arrow path, #arrow-coupling path, #arrow-conflict path { stroke: none; }
+  #arrow path { fill: var(--edge); }
+  #arrow-coupling path { fill: var(--coupling); }
+  #arrow-conflict path { fill: var(--conflict); }
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; }
+  #findings { left: 12px; top: 10px; width: 300px; max-height: calc(100% - 60px); overflow: auto; }
+  #findings h4 { margin: 8px 0 3px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+  #findings h4:first-child { margin-top: 0; }
+  #findings .item { padding: 2px 0; cursor: pointer; line-height: 1.35; }
+  #findings .item:hover { text-decoration: underline; }
+  #findings .item.static { cursor: default; text-decoration: none; }
+  #findings .conflict { color: var(--conflict); }
+  #findings .warn { color: var(--warn); }
+  #findings .ok { color: var(--coupling); }
+  #findings .mono, #detail .mono { font-family: monospace; }
+  #detail { right: 12px; bottom: 12px; max-width: 380px; max-height: 50%; overflow: auto; display: none; }
+  #detail h4 { margin: 0 0 4px; font-family: monospace; }
+  #detail .mute { color: var(--mute); }
+  #msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--mute); pointer-events: none; text-align: center; padding: 20px; }
+  #hint { position: absolute; left: 12px; bottom: 10px; color: var(--mute); font-size: 12px; }
+  #legend { position: absolute; right: 12px; top: 10px; line-height: 1.7; }
+  #legend i { display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
+  #legend i.c { border-radius: 50%; }
+  #legend i.r { border-radius: 2px; width: 16px; }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  #dialog { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; width: min(520px, 92vw); box-sizing: border-box; }
+  #dialog h3 { margin: 0 0 10px; }
+  #dialog ul { margin: 6px 0 10px; padding-left: 18px; }
+  #dialog .row { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+  #dialog .row span.folder { color: var(--mute); font-family: monospace; }
+  #dialog input[type=text] { flex: 1; font: 13px monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; }
+  #dialog .warnbox { color: var(--conflict); margin: 8px 0; }
+  #dialog .status { margin: 8px 0; min-height: 18px; }
+  #dialog .status.err { color: var(--conflict); }
+  #dialog .status.okk { color: var(--coupling); }
+  #dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  #dialog button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 14px; cursor: pointer; }
+  #dialog button.primary { background: var(--model); border-color: var(--model); color: #fff; }
+  #dialog button:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="title">Model Compose</span>
+  <button id="b-in">+</button>
+  <button id="b-out">&minus;</button>
+  <button id="b-fit"></button>
+  <button id="b-unpin"></button>
+  <button id="b-svg"></button>
+  <button id="b-merge" class="primary"></button>
+  <select id="sample" style="display:none"></select>
+  <span id="stats"></span>
+</div>
+<div id="wrap">
+  <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>
+      <marker id="arrow-coupling" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>
+      <marker id="arrow-conflict" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>
+    </defs>
+    <g id="world"><g id="edges"></g><g id="nodes"></g></g>
+  </svg>
+  <div id="findings" class="panel" style="display:none"></div>
+  <div id="legend" class="panel"></div>
+  <div id="detail" class="panel"></div>
+  <div id="msg"></div>
+  <div id="hint"></div>
+</div>
+<div id="overlay"><div id="dialog"></div></div>
+<script>
+(() => {
+  const TEXT = {
+    en: {
+      fit: 'Fit', unpin: 'Unpin all', svg: 'Export SVG', merge: 'Merge into new model', sample: 'Sample', sampleStats: x => `${x.n_models} models, ${x.n_coupling} couplings, ${x.n_conflict} conflicts`,
+      model: 'model', common: 'shared, read only', coupling: 'writer plus readers', conflict: 'written by several models',
+      writes: 'writes', reads: 'reads', declares: 'declares',
+      hint: 'Tick two or more models in the tree on the left. Drag a node to move and pin it, double-click to unpin, wheel to zoom.',
+      none: 'Tick two or more models in the tree on the left.', one: 'Tick at least one more model to compare.',
+      loading: 'Analysing', fail: 'Could not analyse the models: ',
+      stats: (m, s, c) => `${m} models, ${s} shared variables, ${c} written by several models`,
+      fConflict: 'Written by several models', fNotes: 'Differences, the model ticked later wins in a merge', fCouple: 'Coupling', fErr: 'Not loaded',
+      fConflictItem: (v, ms) => `${v} is written by ${ms}`,
+      fCoupleItem: (n) => `${n} variables carry values from one model to another.`,
+      fNone: 'No shared variables between these models.',
+      noteUnit: (v, vals) => `${v} has different units: ${vals}`,
+      noteType: (v, vals) => `${v} has different types: ${vals}`,
+      noteValue: (v, vals) => `${v} has different values: ${vals}`,
+      collision: (e, ms) => `Equation name ${e} exists in ${ms}, so the later one replaces the earlier one`,
+      includes: (a, b) => `${a} already imports ${b}`,
+      detModel: 'Model', detVar: 'Shared variable', unit: 'Unit', ofVars: 'variables', ofEqs: 'equations', role: 'Role in each model',
+      rWriter: 'writes it', rReader: 'reads it', rNone: 'declares it only', undecl: 'not declared there',
+      mTitle: n => `Merge ${n} models into a new model`, mFile: 'File name', mWarn: n => `Variables written by more than one model: ${n}. The merged model keeps every equation, so each of them is updated more than once per step.`,
+      mGo: 'Merge', mCancel: 'Cancel', mClose: 'Close', mWorking: 'Merging ...',
+      mBadName: 'Use letters, digits, underscore or hyphen, ending in .yaml', mExists: 'That file already exists. Choose another name.',
+      mDone: p => `Saved as ${p}. Reload the model tree to see it.`, mFail: 'Merge failed: ', mValid: 'Validation passed.', mInvalid: 'Validation reported problems: ',
+      mDownload: 'Merged model downloaded as ',
+    },
+    zh: {
+      fit: '适应窗口', unpin: '取消全部固定', svg: '导出 SVG', merge: '合并为新模型', sample: '示例', sampleStats: x => `${x.n_models} 个模型，${x.n_coupling} 处耦合，${x.n_conflict} 处冲突`,
+      model: '模型', common: '共用，只读取', coupling: '一个写入，其余读取', conflict: '被多个模型写入',
+      writes: '写入', reads: '读取', declares: '声明',
+      hint: '在左侧树里勾选两个或更多模型。拖动节点可移动并固定，双击取消固定，滚轮缩放。',
+      none: '请在左侧树里勾选两个或更多模型。', one: '再勾选至少一个模型才能比较。',
+      loading: '正在分析', fail: '无法分析这些模型：',
+      stats: (m, s, c) => `${m} 个模型，${s} 个共用变量，${c} 个被多个模型写入`,
+      fConflict: '被多个模型写入', fNotes: '需要核对的差异，合并时后勾选的模型生效', fCouple: '耦合', fErr: '未能加载',
+      fConflictItem: (v, ms) => `${v} 被 ${ms} 同时写入`,
+      fCoupleItem: (n) => `${n} 个变量把一个模型的结果传给另一个模型。`,
+      fNone: '这些模型之间没有共用变量。',
+      noteUnit: (v, vals) => `${v} 的单位不一致：${vals}`,
+      noteType: (v, vals) => `${v} 的类型不一致：${vals}`,
+      noteValue: (v, vals) => `${v} 的取值不一致：${vals}`,
+      collision: (e, ms) => `公式名 ${e} 同时出现在 ${ms}，合并时后者替换前者`,
+      includes: (a, b) => `${a} 已经导入了 ${b}`,
+      detModel: '模型', detVar: '共用变量', unit: '单位', ofVars: '个变量', ofEqs: '个公式', role: '在各模型中的角色',
+      rWriter: '写入它', rReader: '读取它', rNone: '只声明它', undecl: '该模型未声明',
+      mTitle: n => `把 ${n} 个模型合并为新模型`, mFile: '文件名', mWarn: n => `有 ${n} 个变量被多个模型写入。合并后保留全部公式，这些变量每一步会被更新多次。`,
+      mGo: '合并', mCancel: '取消', mClose: '关闭', mWorking: '正在合并 ...',
+      mBadName: '只能用字母、数字、下划线和连字符，并以 .yaml 结尾', mExists: '该文件已存在，请换一个名字。',
+      mDone: p => `已保存为 ${p}。刷新模型树即可看到。`, mFail: '合并失败：', mValid: '校验通过。', mInvalid: '校验报告了问题：',
+      mDownload: '合并后的模型已下载为 ',
+    },
+  };
+  const q = new URLSearchParams(location.search);
+  const pick = lang => TEXT[String(lang || 'en').startsWith('zh') ? 'zh' : 'en'];
+  let T = pick(q.get('lang'));
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = $('canvas'), world = $('world'), gEdges = $('edges'), gNodes = $('nodes');
+  const applyTheme = t => { document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light'; };
+  applyTheme(q.get('theme'));
+
+  let nodes = [], edges = [], byId = new Map(), data = null, models = [];
+  let view = { x: 0, y: 0, k: 1 };
+  let alpha = 0, rafId = 0, selectedId = null, hoverId = null, token = 0, lastKey = '', debounce = 0, autoFit = true;
+  const R = 10;
+
+  function el(name, attrs) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function message(s) { $('msg').textContent = s || ''; }
+  const shortName = p => String(p).replace(/\.ya?ml$/, '').split('/').pop();
+
+  function setTexts() {
+    $('b-fit').textContent = T.fit; $('b-unpin').textContent = T.unpin; $('b-svg').textContent = T.svg; $('b-merge').textContent = T.merge;
+    $('hint').textContent = activeSample ? activeSample.note[T === TEXT.zh ? 'zh' : 'en'] : T.hint;
+    $('legend').replaceChildren();
+    [['r', 'model', T.model], ['c', 'common', T.common], ['c', 'coupling', T.coupling], ['c', 'conflict', T.conflict]].forEach(([shape, cls, label]) => {
+      const row = document.createElement('div'); const i = document.createElement('i'); i.className = shape; i.style.background = 'var(--' + cls + ')';
+      row.append(i, label); $('legend').appendChild(row);
+    });
+    if (data) renderFindings();
+  }
+
+  // ---------- view ----------
+  function applyView() { world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); }
+  function svgPoint(e) { const r = svg.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function zoomAt(cx, cy, f) { const k = Math.min(5, Math.max(0.05, view.k * f)), g = k / view.k; view.x = cx - (cx - view.x) * g; view.y = cy - (cy - view.y) * g; view.k = k; applyView(); }
+  function fit() {
+    if (!nodes.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    nodes.forEach(n => { x0 = Math.min(x0, n.x - n.hw - 30); y0 = Math.min(y0, n.y - n.hh - 20); x1 = Math.max(x1, n.x + n.hw + 30); y1 = Math.max(y1, n.y + n.hh + 28); });
+    const r = svg.getBoundingClientRect();
+    const k = Math.min(nodes.some(n => n.floating) ? 1 : 2, Math.max(0.05, Math.min(r.width / (x1 - x0), r.height / (y1 - y0)) * 0.95));
+    view.k = k; view.x = r.width / 2 - k * (x0 + x1) / 2; view.y = r.height / 2 - k * (y0 + y1) / 2; applyView();
+  }
+  svg.addEventListener('wheel', e => { e.preventDefault(); autoFit = false; const [x, y] = svgPoint(e); zoomAt(x, y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  $('b-in').onclick = () => { autoFit = false; const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 1.25); };
+  $('b-out').onclick = () => { autoFit = false; const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 0.8); };
+  $('b-fit').onclick = () => { autoFit = true; fit(); };
+
+  // ---------- graph ----------
+  // Arrows by role: a writer points at the variable, a reader is pointed at by it, a model that only
+  // declares the variable is joined by a plain dashed line.
+  function build(result, keepPositions) {
+    const prev = new Map(nodes.map(n => [n.id, n]));
+    const mNodes = result.models.map(m => ({ id: 'm:' + m.path, kind: 'model', label: m.name || shortName(m.path), path: m.path, info: m }));
+    const vNodes = result.shared.map(s => ({ id: 'v:' + s.name, kind: 'variable', label: s.name, info: s, status: s.status, noted: s.notes.length > 0 }));
+    const all = mNodes.concat(vNodes);
+    all.forEach(n => {
+      const text = n.label.length;
+      if (n.kind === 'model') { n.hw = Math.min(110, Math.max(36, text * 3.6 + 14)); n.hh = 15; } else { n.hw = R; n.hh = R; }
+      const old = keepPositions ? prev.get(n.id) : null;
+      Object.assign(n, { x: old ? old.x : NaN, y: old ? old.y : NaN, vx: 0, vy: 0, pinned: old ? old.pinned : false });
+    });
+    const idx = new Map(all.map(n => [n.id, n]));
+    const es = [];
+    result.shared.forEach(s => {
+      Object.entries(s.roles).forEach(([path, role]) => {
+        const m = idx.get('m:' + path), v = idx.get('v:' + s.name); if (!m || !v) return;
+        const cls = s.status === 'conflict' ? 'conflict' : (s.status === 'coupling' ? 'coupling' : '');
+        if (role === 'writer') es.push({ s: m, t: v, cls, role });
+        else if (role === 'reader') es.push({ s: v, t: m, cls, role });
+        else es.push({ s: m, t: v, cls: 'none', role, noArrow: true });
+      });
+    });
+    nodes = all; edges = es; byId = idx;
+    nodes.forEach(n => { n.nbrs = new Set([n.id]); });
+    edges.forEach(e => { e.s.nbrs.add(e.t.id); e.t.nbrs.add(e.s.id); });
+    // a model that shares nothing with the others floats freely instead of being laid out
+    nodes.forEach(n => { n.floating = n.nbrs.size === 1; n.wx = (Math.random() - 0.5) * 0.8; n.wy = (Math.random() - 0.5) * 0.8; });
+    // seed the nodes that have no earlier position
+    const fresh = nodes.filter(n => Number.isNaN(n.x));
+    const ms = nodes.filter(n => n.kind === 'model'); let i = 0;
+    ms.forEach(n => { if (Number.isNaN(n.x) && n.floating) { const r = floatRect(n); n.x = r.x0 + Math.random() * (r.x1 - r.x0); n.y = r.y0 + Math.random() * (r.y1 - r.y0); } });
+    ms.forEach(n => { if (Number.isNaN(n.x)) { const a = (i++ / Math.max(1, ms.length)) * Math.PI * 2; n.x = Math.cos(a) * 220; n.y = Math.sin(a) * 160; } });
+    fresh.filter(n => n.kind === 'variable').forEach(n => {
+      const near = [...n.nbrs].map(id => byId.get(id)).filter(o => o && o !== n && !Number.isNaN(o.x));
+      const cx = near.reduce((a, o) => a + o.x, 0) / (near.length || 1), cy = near.reduce((a, o) => a + o.y, 0) / (near.length || 1);
+      n.x = cx + (Math.random() - 0.5) * 40; n.y = cy + (Math.random() - 0.5) * 40;
+    });
+
+    gEdges.replaceChildren(); gNodes.replaceChildren();
+    edges.forEach(e => {
+      const mk = e.noArrow ? null : (e.cls === 'conflict' ? 'url(#arrow-conflict)' : (e.cls === 'coupling' ? 'url(#arrow-coupling)' : 'url(#arrow)'));
+      e.el = el('path', Object.assign({ class: 'edge ' + e.cls }, mk ? { 'marker-end': mk } : {})); gEdges.appendChild(e.el);
+    });
+    const pair = new Set(edges.map(e => e.s.id + '>' + e.t.id));
+    edges.forEach(e => { e.curved = pair.has(e.t.id + '>' + e.s.id); });
+    nodes.forEach(n => {
+      const g = el('g', { class: 'node ' + n.kind + (n.status ? ' ' + n.status : '') + (n.noted ? ' noted' : '') + (n.pinned ? ' pinned' : '') });
+      if (n.kind === 'model') {
+        g.appendChild(el('rect', { class: 'shape', x: -n.hw, y: -n.hh, width: 2 * n.hw, height: 2 * n.hh, rx: 7 }));
+        const t = el('text', {}); t.textContent = n.label.length > 26 ? n.label.slice(0, 25) + '…' : n.label; g.appendChild(t);
+      } else {
+        g.appendChild(el('circle', { class: 'shape', r: R }));
+        if (n.status === 'conflict') { const b = el('text', { class: 'bang' }); b.textContent = '!'; g.appendChild(b); }
+        const t = el('text', { class: 'label', y: R + 13 }); t.textContent = n.label; g.appendChild(t);
+      }
+      const tip = el('title', {}); tip.textContent = n.label; g.appendChild(tip);
+      n.el = g; gNodes.appendChild(g); bindNode(n);
+    });
+  }
+
+  function boundary(n, ux, uy) {
+    if (n.kind === 'variable') return R;
+    const tx = Math.abs(ux) < 1e-6 ? Infinity : n.hw / Math.abs(ux), ty = Math.abs(uy) < 1e-6 ? Infinity : n.hh / Math.abs(uy);
+    return Math.min(tx, ty);
+  }
+  function edgePath(e) {
+    const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    const a = boundary(e.s, ux, uy) + 1, b = boundary(e.t, ux, uy) + 2;
+    const x0 = e.s.x + ux * a, y0 = e.s.y + uy * a, x1 = e.t.x - ux * b, y1 = e.t.y - uy * b;
+    if (!e.curved) return `M${x0},${y0}L${x1},${y1}`;
+    const off = 26, cx = (x0 + x1) / 2 - uy * off, cy = (y0 + y1) / 2 + ux * off;
+    return `M${x0},${y0}Q${cx},${cy} ${x1},${y1}`;
+  }
+  function draw() {
+    nodes.forEach(n => n.el.setAttribute('transform', `translate(${n.x},${n.y})`));
+    edges.forEach(e => e.el.setAttribute('d', edgePath(e)));
+  }
+
+  // ---------- force layout ----------
+  function tick() {
+    const spread = Math.max(1, Math.sqrt(nodes.length / 25));
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 > 250000 * spread * spread) continue;
+        if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+        const big = (a.kind === 'model' ? 2 : 1) * (b.kind === 'model' ? 2 : 1);
+        const d = Math.sqrt(d2), f = 4200 * big * spread * spread / d2 * alpha, fx = dx / d * f, fy = dy / d * f;
+        if (!a.floating) { a.vx += fx; a.vy += fy; }
+        if (!b.floating) { b.vx -= fx; b.vy -= fy; }
+      }
+    }
+    edges.forEach(e => {
+      const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, d = Math.hypot(dx, dy) || 1, f = (d - 140 * Math.sqrt(spread)) * 0.04 * alpha, fx = dx / d * f, fy = dy / d * f;
+      e.s.vx += fx; e.s.vy += fy; e.t.vx -= fx; e.t.vy -= fy;
+    });
+    nodes.forEach(n => {
+      if (n.floating) return;
+      n.vx -= n.x * 0.01 * alpha; n.vy -= n.y * 0.01 * alpha;
+      if (n.pinned || n.dragging) { n.vx = n.vy = 0; return; }
+      n.vx *= 0.82; n.vy *= 0.82; n.x += n.vx; n.y += n.vy;
+    });
+    alpha *= 0.985;
+  }
+  // Model boxes are wide, so the round-shaped repulsion alone lets them overlap. After every step, any two
+  // boxes that overlap, and any model box that covers a variable, are pushed apart along the shorter way out.
+  function separate() {
+    const pad = 10;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        if (a.kind !== 'model' && b.kind !== 'model') continue;
+        const ah = a.hh + (a.kind === 'variable' ? 16 : 0), bh = b.hh + (b.kind === 'variable' ? 16 : 0);
+        const ox = a.hw + b.hw + pad - Math.abs(a.x - b.x), oy = ah + bh + pad - Math.abs(a.y - b.y);
+        if (ox <= 0 || oy <= 0) continue;
+        const am = !(a.floating || a.pinned || a.dragging), bm = !(b.floating || b.pinned || b.dragging);
+        if (!am && !bm) continue;
+        const wa = am && bm ? 0.5 : (am ? 1 : 0), wb = 1 - wa;
+        if (ox < oy) { const d = (a.x < b.x ? -1 : 1) * ox; a.x += d * wa; b.x -= d * wb; }
+        else { const d = (a.y < b.y ? -1 : 1) * oy; a.y += d * wa; b.y -= d * wb; }
+      }
+    }
+  }
+  // The area a floating node may roam in: what is visible, minus the findings panel on the left.
+  function floatRect(n) {
+    const r = svg.getBoundingClientRect(), k = view.k;
+    const left = $('findings').style.display === 'none' ? 20 : 330;
+    return {
+      x0: (left - view.x) / k + n.hw, x1: (r.width - 20 - view.x) / k - n.hw,
+      y0: (20 - view.y) / k + n.hh, y1: (r.height - 40 - view.y) / k - n.hh - 14,
+    };
+  }
+  // Slow random drifting. Each node keeps its own heading, nudged a little every frame, and turns
+  // back when it meets the edge of the area.
+  function wander() {
+    nodes.forEach(n => {
+      if (!n.floating || n.pinned || n.dragging) return;
+      const r = floatRect(n), top = 0.5 / Math.sqrt(view.k);
+      n.wx += (Math.random() - 0.5) * 0.05; n.wy += (Math.random() - 0.5) * 0.05;
+      const sp = Math.hypot(n.wx, n.wy);
+      if (sp > top) { n.wx *= top / sp; n.wy *= top / sp; } else if (sp < top * 0.3) { n.wx *= 1.2; n.wy *= 1.2; }
+      n.x += n.wx; n.y += n.wy;
+      if (n.x < r.x0) n.wx = Math.abs(n.wx); else if (n.x > r.x1) n.wx = -Math.abs(n.wx);
+      if (n.y < r.y0) n.wy = Math.abs(n.wy); else if (n.y > r.y1) n.wy = -Math.abs(n.wy);
+    });
+  }
+  let wasHot = false;
+  function loop() {
+    const hot = alpha > 0.015;
+    if (hot) { for (let i = 0; i < 2; i++) tick(); wasHot = true; }
+    wander();
+    separate();
+    draw();
+    if (!hot && wasHot) { wasHot = false; if (autoFit) fit(); }
+    // the loop keeps running while a model floats, and stops once the layout has settled otherwise
+    rafId = (hot || nodes.some(n => n.floating && !n.pinned && !n.dragging)) ? requestAnimationFrame(loop) : 0;
+  }
+  function heat(a) { alpha = Math.max(alpha, a); if (!rafId) rafId = requestAnimationFrame(loop); }
+  $('b-unpin').onclick = () => { nodes.forEach(n => { n.pinned = false; n.el.classList.remove('pinned'); }); heat(0.5); };
+
+  // ---------- interaction ----------
+  function bindNode(n) {
+    n.el.addEventListener('pointerdown', ev => {
+      ev.stopPropagation(); n.el.setPointerCapture(ev.pointerId);
+      const sx = ev.clientX, sy = ev.clientY; let moved = false; n.dragging = true;
+      const move = e => {
+        if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 4) return; moved = true;
+        const [px, py] = svgPoint(e); n.x = (px - view.x) / view.k; n.y = (py - view.y) / view.k;
+        n.pinned = true; n.el.classList.add('pinned'); heat(0.3);
+      };
+      const up = () => { n.dragging = false; n.el.removeEventListener('pointermove', move); n.el.removeEventListener('pointerup', up); n.el.removeEventListener('pointercancel', up); if (!moved) select(n.id); };
+      n.el.addEventListener('pointermove', move); n.el.addEventListener('pointerup', up); n.el.addEventListener('pointercancel', up);
+    });
+    n.el.addEventListener('dblclick', ev => { ev.stopPropagation(); n.pinned = false; n.el.classList.remove('pinned'); heat(0.4); });
+    n.el.addEventListener('pointerenter', () => { hoverId = n.id; refreshDim(); });
+    n.el.addEventListener('pointerleave', () => { hoverId = null; refreshDim(); });
+  }
+  svg.addEventListener('pointerdown', e => {
+    if (e.target.closest && e.target.closest('.node')) return;
+    svg.setPointerCapture(e.pointerId); svg.classList.add('panning');
+    let lx = e.clientX, ly = e.clientY, moved = false;
+    const move = ev => { moved = true; autoFit = false; view.x += ev.clientX - lx; view.y += ev.clientY - ly; lx = ev.clientX; ly = ev.clientY; applyView(); };
+    const up = () => { svg.classList.remove('panning'); svg.removeEventListener('pointermove', move); svg.removeEventListener('pointerup', up); svg.removeEventListener('pointercancel', up); if (!moved) select(null); };
+    svg.addEventListener('pointermove', move); svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  });
+  function refreshDim() {
+    const focus = hoverId || selectedId;
+    nodes.forEach(n => n.el.classList.toggle('dim', !!focus && !byId.get(focus).nbrs.has(n.id)));
+    edges.forEach(e => e.el.classList.toggle('dim', !!focus && !(e.s.id === focus || e.t.id === focus)));
+  }
+  const roleText = r => ({ writer: T.rWriter, reader: T.rReader, none: T.rNone }[r]);
+  function select(id) {
+    selectedId = id; nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
+    const box = $('detail');
+    if (!id) { box.style.display = 'none'; refreshDim(); return; }
+    const n = byId.get(id); box.replaceChildren();
+    const h = document.createElement('h4'); h.textContent = n.label; box.appendChild(h);
+    const line = (s, cls) => { const p = document.createElement('div'); if (cls) p.className = cls; p.textContent = s; box.appendChild(p); };
+    if (n.kind === 'model') {
+      line(`${T.detModel}, ${n.info.n_variables} ${T.ofVars}, ${n.info.n_equations} ${T.ofEqs}`, 'mute'); line(n.path, 'mono mute');
+      const mine = data.shared.filter(s => s.roles[n.path]);
+      [['writer', T.writes], ['reader', T.reads], ['none', T.declares]].forEach(([r, label]) => {
+        const names = mine.filter(s => s.roles[n.path] === r).map(s => s.name);
+        if (names.length) line(`${label}: ${names.join(', ')}`);
+      });
+    } else {
+      const s = n.info; line(`${T.detVar}${s.unit ? ', ' + T.unit + ': ' + s.unit : ''}`, 'mute');
+      line(T.role, 'mute');
+      Object.entries(s.roles).forEach(([path, r]) => { const m = byId.get('m:' + path); line(`${m ? m.label : shortName(path)}: ${roleText(r)}${s.declares[path] === false ? ', ' + T.undecl : ''}`); });
+      s.notes.forEach(note => line(noteText(s.name, note), 'mute'));
+      if (s.description) line(s.description, 'mute');
+    }
+    box.style.display = 'block'; refreshDim();
+  }
+  const noteText = (v, note) => ({ unit: T.noteUnit, type: T.noteType, value: T.noteValue }[note.kind])(v, note.values.join(' / '));
+
+  // ---------- findings ----------
+  function renderFindings() {
+    const box = $('findings'); box.replaceChildren();
+    if (!data) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    const nameOf = p => { const m = byId.get('m:' + p); return m ? m.label : shortName(p); };
+    const section = (title, items, cls) => {
+      if (!items.length) return;
+      const h = document.createElement('h4'); h.textContent = title; box.appendChild(h);
+      items.forEach(it => { const d = document.createElement('div'); d.className = 'item ' + cls + (it.focus ? '' : ' static'); d.textContent = it.text; if (it.focus) d.onclick = () => { select(it.focus); const n = byId.get(it.focus); if (n) { const r = svg.getBoundingClientRect(); view.x = r.width / 2 - view.k * n.x; view.y = r.height / 2 - view.k * n.y; applyView(); } }; box.appendChild(d); });
+    };
+    const conflicts = data.shared.filter(s => s.status === 'conflict');
+    section(T.fConflict, conflicts.map(s => ({ focus: 'v:' + s.name, text: T.fConflictItem(s.name, Object.entries(s.roles).filter(([, r]) => r === 'writer').map(([p]) => nameOf(p)).join(', ')) })), 'conflict');
+    const notes = [];
+    data.shared.forEach(s => s.notes.forEach(n => notes.push({ focus: 'v:' + s.name, text: noteText(s.name, n) })));
+    data.collisions.forEach(c => notes.push({ text: T.collision(c.equation, c.paths.map(nameOf).join(', ')) }));
+    data.includes.forEach(i => notes.push({ text: T.includes(nameOf(i.model), nameOf(i.includes)) }));
+    section(T.fNotes, notes, 'warn');
+    const coupling = data.shared.filter(s => s.status === 'coupling').length;
+    if (coupling) section(T.fCouple, [{ text: T.fCoupleItem(coupling) }], 'ok');
+    if (!data.shared.length && data.models.length > 1) section(T.fCouple, [{ text: T.fNone }], 'warn');
+    const errs = Object.entries(data.errors || {});
+    section(T.fErr, errs.map(([p, e]) => ({ text: `${shortName(p)}: ${e}` })), 'conflict');
+  }
+
+  // ---------- export ----------
+  $('b-svg').onclick = () => {
+    if (!nodes.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    nodes.forEach(n => { x0 = Math.min(x0, n.x - n.hw - 40); y0 = Math.min(y0, n.y - n.hh - 24); x1 = Math.max(x1, n.x + n.hw + 40); y1 = Math.max(y1, n.y + n.hh + 30); });
+    const clone = svg.cloneNode(true);
+    ['id', 'class', 'style'].forEach(a => clone.removeAttribute(a));
+    clone.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`); clone.setAttribute('width', x1 - x0); clone.setAttribute('height', y1 - y0);
+    clone.querySelector('#world').removeAttribute('transform');
+    clone.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
+    clone.querySelectorAll('title').forEach(e => e.remove());
+    const cs = getComputedStyle(document.documentElement);
+    const vars = ['bg', 'text', 'model', 'common', 'coupling', 'conflict', 'warn', 'edge'].map(v => `--${v}:${cs.getPropertyValue('--' + v).trim()}`).join(';');
+    const style = document.createElementNS(NS, 'style'); style.textContent = $('graph-css').textContent + `\n:root{${vars}}\ntext{font-family:sans-serif}`;
+    clone.insertBefore(style, clone.firstChild);
+    clone.insertBefore(el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: cs.getPropertyValue('--bg').trim() }), style.nextSibling);
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'model_compose.svg';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // ---------- samples ----------
+  // Ready-made combinations offered by the backend, which has checked that each still behaves as described.
+  // Choosing one asks the host to tick those models, so the tree and the graph stay in step.
+  let samples = [], activeSample = null;
+  const lang = () => (T === TEXT.zh ? 'zh' : 'en');
+  function renderSamples() {
+    const sel = $('sample'); sel.replaceChildren();
+    const first = document.createElement('option'); first.value = ''; first.textContent = T.sample + ' ...'; sel.appendChild(first);
+    samples.forEach(x => { const o = document.createElement('option'); o.value = x.id; o.textContent = x.title[lang()] + ', ' + T.sampleStats(x); sel.appendChild(o); });
+    sel.value = activeSample ? activeSample.id : '';
+    sel.style.display = samples.length ? '' : 'none';
+  }
+  async function loadSamples() {
+    try { const d = (await post('/api/plugins/model_compose/samples', { inputs: {} })).d; samples = d.success ? d.samples : []; } catch (e) { samples = []; }
+    renderSamples();
+  }
+  $('sample').onchange = () => {
+    const x = samples.find(y => y.id === $('sample').value);
+    activeSample = x || null;
+    $('hint').textContent = x ? x.note[lang()] : T.hint;
+    if (x) parent.postMessage({ type: 'lm-set-models', paths: x.paths }, '*');
+  };
+
+  // ---------- merge ----------
+  const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); let d = {}; try { d = await r.json(); } catch (e) { /* not json */ } return { ok: r.ok, d }; };
+  async function openMerge() {
+    if (models.length < 2 || !data) return;
+    const names = data.models.map(m => m.name || shortName(m.path));
+    const sug = (await post('/api/plugins/model_compose/suggest_output', { inputs: { names } })).d;
+    const conflicts = data.shared.filter(s => s.status === 'conflict').length;
+    const dlg = $('dialog'); dlg.replaceChildren();
+    const h = document.createElement('h3'); h.textContent = T.mTitle(models.length); dlg.appendChild(h);
+    const ul = document.createElement('ul'); names.forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); }); dlg.appendChild(ul);
+    if (conflicts) { const w = document.createElement('div'); w.className = 'warnbox'; w.textContent = T.mWarn(conflicts); dlg.appendChild(w); }
+    const row = document.createElement('div'); row.className = 'row';
+    const lab = document.createElement('span'); lab.textContent = T.mFile; const folder = document.createElement('span'); folder.className = 'folder'; folder.textContent = (sug.folder || 'temp_merged_ai') + '/';
+    const input = document.createElement('input'); input.type = 'text'; input.value = sug.filename || 'merged_model.yaml';
+    row.append(lab, folder, input); dlg.appendChild(row);
+    const status = document.createElement('div'); status.className = 'status'; dlg.appendChild(status);
+    const bar = document.createElement('div'); bar.className = 'buttons';
+    const cancel = document.createElement('button'); cancel.textContent = T.mCancel; cancel.onclick = () => { $('overlay').style.display = 'none'; };
+    const go = document.createElement('button'); go.className = 'primary'; go.textContent = T.mGo; go.id = 'merge-go';
+    bar.append(cancel, go); dlg.appendChild(bar);
+    const setStatus = (s, cls) => { status.textContent = s; status.className = 'status ' + (cls || ''); };
+    go.onclick = async () => {
+      go.disabled = true; setStatus(T.mWorking);
+      const chk = (await post('/api/plugins/model_compose/check_output', { inputs: { filename: input.value } })).d;
+      if (!chk.success) { setStatus(chk.exists ? T.mExists : T.mBadName, 'err'); go.disabled = false; return; }
+      const res = await post('/api/merge', { files: models.map(m => m.key), output_path: chk.output_path });
+      if (!res.ok || !res.d.success) { setStatus(T.mFail + (res.d.detail || res.d.error || res.d.message || ''), 'err'); go.disabled = false; return; }
+      if (res.d.scs_mode) {
+        const blob = new Blob([res.d.yaml_text || ''], { type: 'text/yaml' }); const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = input.value; document.body.appendChild(a); a.click(); a.remove();
+        setStatus(T.mDownload + input.value, 'okk'); cancel.textContent = T.mClose; return;
+      }
+      let msg = T.mDone(chk.output_path), cls = 'okk';
+      const val = (await post('/api/validate', { file_path: chk.output_path })).d;
+      if (val && val.valid === true) msg += ' ' + T.mValid;
+      else if (val && val.valid === false) { msg += ' ' + T.mInvalid + (val.errors || []).slice(0, 2).join(' '); cls = 'err'; }
+      setStatus(msg, cls); cancel.textContent = T.mClose;
+    };
+    $('overlay').style.display = 'flex';
+  }
+  $('b-merge').onclick = openMerge;
+  $('overlay').addEventListener('pointerdown', e => { if (e.target === $('overlay')) $('overlay').style.display = 'none'; });
+
+  // ---------- loading ----------
+  function updateButtons() { $('b-merge').disabled = !(data && models.length >= 2); }
+  function updateStats() {
+    $('stats').textContent = data ? T.stats(data.models.length, data.shared.length, data.shared.filter(s => s.status === 'conflict').length) : '';
+  }
+  async function refresh(list) {
+    const my = ++token; models = list;
+    cancelAnimationFrame(rafId); rafId = 0; alpha = 0;
+    if (list.length === 0) { data = null; nodes = []; edges = []; gEdges.replaceChildren(); gNodes.replaceChildren(); select(null); renderFindings(); updateStats(); updateButtons(); message(T.none); return; }
+    message(`${T.loading} ...`);
+    let res;
+    try { res = (await post('/api/plugins/model_compose/compose', { inputs: { paths: list.map(m => m.path) } })).d; }
+    catch (e) { if (my === token) message(T.fail + e.message); return; }
+    if (my !== token) return;
+    if (!res.success) { message(T.fail + (res.error || res.detail || 'unknown error')); return; }
+    const keep = nodes.length > 0;
+    data = res; selectedId = null; $('detail').style.display = 'none';
+    build(res, keep); draw(); renderFindings(); updateStats(); updateButtons();
+    message(list.length === 1 ? T.one : '');
+    if (!keep) { autoFit = true; fit(); }
+    heat(keep ? 0.5 : 1);
+  }
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'lm-init') return;
+    applyTheme(e.data.theme); T = pick(e.data.lang); setTexts(); renderSamples(); updateStats();
+    const list = Array.isArray(e.data.models) ? e.data.models : [];
+    const key = list.map(m => m.path).join('|');
+    const bare = ps => ps.map(x => x.replace(/\.ya?ml$/, '')).join('|');   // the tree keys carry the file suffix, the samples do not
+    if (activeSample && bare(list.map(m => m.path)) !== bare(activeSample.paths)) { activeSample = null; $('hint').textContent = T.hint; renderSamples(); }
+    if (key !== lastKey) { lastKey = key; clearTimeout(debounce); debounce = setTimeout(() => refresh(list), 200); }
+  });
+  window.addEventListener('resize', () => { if (nodes.length) fit(); });
+  setTexts(); updateButtons(); message(T.none);
+  loadSamples();
+  parent.postMessage({ type: 'lm-ready' }, '*');
+})();
+</script>
+</body>
+</html>

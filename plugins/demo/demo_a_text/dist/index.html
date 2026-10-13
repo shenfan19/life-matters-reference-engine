@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugin demo A</title>
+<style>
+  :root { --bg: #ffffff; --text: #1f1f1f; --mute: #8c8c8c; --primary: #007A33; }
+  :root[data-theme="dark"] { --bg: #141414; --text: #f0f0f0; --mute: #8c8c8c; --primary: #52c41a; }
+  html, body { margin: 0; width: 100%; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px -apple-system, "Segoe UI", sans-serif; padding: 20px; box-sizing: border-box; }
+  h2 { margin: 0 0 12px; color: var(--primary); }
+  p { max-width: 60ch; line-height: 1.6; }
+  .mute { color: var(--mute); }
+  code { font-family: monospace; }
+</style>
+</head>
+<body>
+<h2>Plugin demo A</h2>
+<p>This page is a bundle plugin. It was loaded from the plugin's own folder, with no network request beyond the backend.</p>
+<p class="mute">Theme: <code id="theme">light</code>. Language: <code id="lang">-</code>.</p>
+<script>
+  const params = new URLSearchParams(location.search);
+  function apply(theme, lang) {
+    document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+    document.getElementById('theme').textContent = theme === 'dark' ? 'dark' : 'light';
+    document.getElementById('lang').textContent = lang || '-';
+  }
+  apply(params.get('theme'), params.get('lang'));
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'lm-init') apply(e.data.theme, e.data.lang);
+  });
+  parent.postMessage({ type: 'lm-ready' }, '*');
+</script>
+</body>
+</html>

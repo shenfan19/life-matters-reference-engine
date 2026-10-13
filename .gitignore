@@ -5,6 +5,8 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+# A bundle plugin ships its page as static files in its own dist folder, which must be tracked.
+!plugins/**/dist/
 release/
 *.egg-info/
 *.so
