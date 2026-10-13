@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plugin demo C</title>
+<title>My Plugin</title>
 <style>
+  /* Colors are CSS variables so that the page can follow the light and dark theme of the GUI. */
   :root { --bg: #ffffff; --text: #1f1f1f; --mute: #8c8c8c; --primary: #007A33; --border: #d9d9d9; }
   :root[data-theme="dark"] { --bg: #141414; --text: #f0f0f0; --mute: #8c8c8c; --primary: #52c41a; --border: #303030; }
   html, body { margin: 0; width: 100%; height: 100%; }
@@ -13,28 +14,26 @@
   .mute { color: var(--mute); }
   table { border-collapse: collapse; margin-top: 12px; }
   th, td { text-align: left; padding: 4px 16px 4px 0; border-bottom: 1px solid var(--border); }
-  code, td.name { font-family: monospace; }
+  td.name { font-family: monospace; }
 </style>
 </head>
 <body>
-<h2>Plugin demo C</h2>
+<h2>My Plugin</h2>
 <div id="out" class="mute">Waiting for the GUI to say which model is selected.</div>
 <script>
   const out = document.getElementById('out');
-  function apply(theme) { document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light'; }
-  apply(new URLSearchParams(location.search).get('theme'));
+  const PLUGIN_ID = 'my_plugin';        // must match the id in manifest.yaml
 
-  function text(el, s) { el.textContent = s; return el; }
+  // The theme also arrives in the query string, so the page looks right when it is opened on its own.
+  function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light'; }
+  applyTheme(new URLSearchParams(location.search).get('theme'));
 
-  // Shown when no model is selected: a small physiology model that loads on its own.
-  const SAMPLE = { title: 'banister_fitness_fatigue_2026', path: 'references/medical/physiology/banister_fitness_fatigue_2026' };
-
-  async function show(selected) {
-    const model = selected || SAMPLE;
+  async function show(model) {
+    if (!model) { out.className = 'mute'; out.textContent = 'No model is selected in the tree.'; return; }
     out.className = 'mute'; out.textContent = 'Loading ' + model.title + ' ...';
     let data;
     try {
-      const res = await fetch('/api/plugins/demo_c_fields/fields', {
+      const res = await fetch('/api/plugins/' + PLUGIN_ID + '/fields', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inputs: { path: model.path } })
@@ -44,34 +43,31 @@
     if (!data.success) { out.textContent = 'Could not read the model: ' + (data.error || data.detail || 'unknown error'); return; }
 
     out.className = ''; out.replaceChildren();
-    if (!selected) {
-      const note = document.createElement('p');
-      note.className = 'mute';
-      note.textContent = 'No model is selected in the tree, so a physiology sample is shown.';
-      out.appendChild(note);
-    }
     const summary = document.createElement('p');
     summary.textContent = data.name + ': ' + data.variable_count + ' variables ('
-      + Object.entries(data.by_type).map(([k, v]) => v + ' ' + k).join(', ') + '), '
-      + data.equation_count + ' equations.';
+      + Object.entries(data.by_type).map(([k, v]) => v + ' ' + k).join(', ') + '), ' + data.equation_count + ' equations.';
     out.appendChild(summary);
 
     const table = document.createElement('table');
     const head = table.insertRow();
-    ['Variable', 'Type', 'Unit'].forEach(h => head.appendChild(text(document.createElement('th'), h)));
+    ['Variable', 'Type', 'Unit'].forEach(h => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
     data.variables.forEach(v => {
       const row = table.insertRow();
-      const name = row.insertCell(); name.className = 'name'; name.textContent = v.name;
+      const name = row.insertCell(); name.className = 'name'; name.textContent = v.name;   // textContent, never innerHTML
       row.insertCell().textContent = v.type;
       row.insertCell().textContent = v.unit || '';
     });
     out.appendChild(table);
   }
 
+  // The GUI sends lm-init when the page is ready and again whenever the model, the theme or the language changes.
+  // With ui.model_selection: multi it also carries the list `models` of the models ticked in the tree.
+  let lastPath;
   window.addEventListener('message', (e) => {
     if (!e.data || e.data.type !== 'lm-init') return;
-    apply(e.data.theme);
-    show(e.data.model);
+    applyTheme(e.data.theme);
+    const path = e.data.model ? e.data.model.path : null;
+    if (path !== lastPath) { lastPath = path; show(e.data.model); }   // ask the backend again only when the model changed
   });
   parent.postMessage({ type: 'lm-ready' }, '*');
 </script>

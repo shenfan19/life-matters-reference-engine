@@ -1,5 +1,10 @@
-class DemoFields:
-    """Reads the model the GUI has selected and returns a few of its fields."""
+class MyPlugin:
+    """Reads the model the GUI has selected and returns a few of its fields.
+
+    A new instance is created for every call and this file is imported again each time, so keep no
+    state here. Every public endpoint is a method named endpoint_<name>, called by the page as
+    POST /api/plugins/<id>/<name>.
+    """
 
     MAX_VARIABLES = 12
 
@@ -11,6 +16,7 @@ class DemoFields:
         if not path:
             return {'success': False, 'error': 'No model path given'}
         try:
+            # imports are resolved; validate=False would also load a component that cannot stand alone
             model = self.ctx.load_model(path)
         except (ValueError, RuntimeError) as e:
             return {'success': False, 'error': str(e)}

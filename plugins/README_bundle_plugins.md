@@ -2,7 +2,7 @@
 
 A bundle plugin is a plugin whose interface is a small web app. The GUI shows it as a full-page view, next to Overview, Simulation and Optimization, and it can talk to the backend and to the GUI. This guide is all you need to write one. The older kind of plugin, a `run(inputs)` backend with no page, is described in [INTERFACE.md](INTERFACE.md).
 
-Three working examples are in [`demo/`](demo/): `demo_a_text` shows a text, `demo_b_image` shows an image shipped inside the plugin, `demo_c_fields` shows fields of the model selected in the GUI through a custom backend endpoint.
+A small template to copy is in [`docs/plugin_template/`](../docs/plugin_template/), and two complete plugins are in this folder: [`ve_graph/`](ve_graph/) draws a graph from the selected model, and [`model_compose/`](model_compose/) works on several ticked models. Each of them has a `docs/` folder.
 
 ---
 
@@ -18,9 +18,9 @@ plugins/
         └── ...           # scripts, styles, images
 ```
 
-The backend finds a plugin by looking for `manifest.yaml` in `plugins/`, up to two folders deep, so a category folder such as `plugins/demo/` is fine. Restart the backend after adding a plugin.
+The backend finds a plugin by looking for `manifest.yaml` in `plugins/`, up to two folders deep, so a category folder such as `plugins/visualizers/` is fine. Restart the backend after adding a plugin.
 
-`dist/` is just a folder of static files. It can be written by hand, as in the demos, or built by any tool, for example Vite. Whatever you use, make asset paths relative, such as `sample.svg` or `./assets/app.js`, because the page is served under `/api/plugins/{id}/bundle/`.
+`dist/` is just a folder of static files. It can be written by hand, as in the template, or built by any tool, for example Vite. Whatever you use, make asset paths relative, such as `sample.svg` or `./assets/app.js`, because the page is served under `/api/plugins/{id}/bundle/`.
 
 ---
 
@@ -97,7 +97,7 @@ window.addEventListener('message', (e) => {
 
 **Button order.** A user can drag the plugin buttons into a different order, which the browser remembers. `ui.order` only sets the order for buttons the user has not moved.
 
-Follow the theme: the GUI has a dark and a light mode and a plugin page should look right in both. The demos switch a `data-theme` attribute on `<html>` and define their colors as CSS variables.
+Follow the theme: the GUI has a dark and a light mode and a plugin page should look right in both. The template switches a `data-theme` attribute on `<html>` and define their colors as CSS variables.
 
 ---
 

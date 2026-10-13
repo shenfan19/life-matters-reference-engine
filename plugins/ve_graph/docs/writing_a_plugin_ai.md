@@ -6,7 +6,7 @@ This guide walks through the steps that every bundle plugin follows. The referen
 
 A plugin has a backend part and a page part, and either can be absent.
 
-- Page only: a static page that needs nothing from the engine, such as the text demo.
+- Page only: a static page that needs nothing from the engine, such as a plain explanation page.
 - Page and backend: the page asks the backend for data and draws it. VE Graph is of this kind, because reading and parsing a model is easier in Python next to the loader than in the browser.
 - Backend only: `ui.type: none`, called by tools through `POST /api/plugins/{id}/run`. The GUI does not show it.
 

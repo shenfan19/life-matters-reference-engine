@@ -1,0 +1,19 @@
+id: my_plugin                   # unique, snake_case; it becomes part of every URL of the plugin
+name: My Plugin
+version: '0.1'
+contract_version: 2
+description: A starting point for a bundle plugin. It shows fields of the model selected in the GUI.
+author: Your Name
+
+backend:
+  entry: backend.py
+  class: MyPlugin
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: My Plugin              # label and tooltip of the button in the view rail
+  icon: TableOutlined           # see the list of icons in README_bundle_plugins.md
+  order: 100                    # small first; the user can drag the buttons into another order
+  model_selection: single       # 'multi' turns the model tree into checkboxes, see README_bundle_plugins.md

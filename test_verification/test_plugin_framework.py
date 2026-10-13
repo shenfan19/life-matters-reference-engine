@@ -195,3 +195,24 @@ def test_ve_graph_plugin_builds_nodes_and_arrows():
         kinds = {ids[e['source']]['kind'], ids[e['target']]['kind']}
         assert kinds == {'variable', 'equation'}, e
     assert module.VeGraph(ctx).endpoint_graph({})['success'] is False
+
+
+def test_plugin_template_is_a_working_bundle_plugin(tmp_path):
+    """docs/plugin_template/ is the starting point for new plugins, so it must load, serve its page and answer."""
+    import shutil
+    shutil.copytree(ROOT / 'docs' / 'plugin_template', tmp_path / 'plugins' / 'my_plugin')
+    saved = (app_state.plugin_manager, app_state.loader_engine, app_state.engine)
+    app_state.plugin_manager = PluginManager(plugin_dir=str(tmp_path / 'plugins'))
+    app_state.loader_engine = LoaderEngine(models_directory=str(MODELS_DIR))
+    app_state.engine = None
+    try:
+        app = FastAPI()
+        app.include_router(plugin_routes.router)
+        c = TestClient(app)
+        assert 'my_plugin' in app_state.plugin_manager.plugins
+        assert 'lm-ready' in c.get('/api/plugins/my_plugin/bundle/').text
+        r = c.post('/api/plugins/my_plugin/fields', json={'inputs': {'path': MODEL_PATH}})
+        assert r.status_code == 200 and r.json()['success'] is True and r.json()['variable_count'] > 0
+        assert c.post('/api/plugins/my_plugin/fields', json={'inputs': {}}).json()['success'] is False
+    finally:
+        app_state.plugin_manager, app_state.loader_engine, app_state.engine = saved

@@ -4,6 +4,12 @@
 
 Life Matters (LM) is a cross-scale, multi-model dynamics simulation framework, running multi-objective optimization over individual-behavior decisions this project calls a Regimen. This repository holds the simulation backend, a FastAPI service, and the simulation frontend GUI, built in React; the YAML model library these components run is maintained independently at [life-matters-models](https://github.com/shenfan19/life-matters-models), whose README also states the project's overall positioning and disclaimer. This repository maintains only the simulation and optimization engine itself, for which the author is responsible.
 
+<p align="center">
+  <img src="docs/images/hero_optimization.webp" alt="The optimization page of the Reference Engine: a Pareto front over kidney function and muscle mass for a model of protein intake in chronic kidney disease." width="900">
+</p>
+
+<p align="center"><em>When objectives conflict, the result is a Pareto front, not a single answer. The screenshot shows the CKD protein intake model of the library.</em></p>
+
 ---
 
 ## Repository structure
