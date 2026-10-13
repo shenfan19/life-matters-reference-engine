@@ -47,6 +47,10 @@ Each entry of `shared` has these fields:
 
 The models are loaded without validation, so component models that need variables from another component can be analysed. The loader cache is bypassed for these loads.
 
+### samples
+
+Request: `{}`. Response: `samples`, the ready-made combinations that pass their check. Each has `id`, `title` and `note` as objects with `en` and `zh` texts, `paths` for the models, and the numbers `n_models`, `n_shared`, `n_coupling` and `n_conflict`. A combination whose models fail to load, or whose result no longer matches what it is meant to show, is left out of the list.
+
 ### suggest_output
 
 Request: `{"names": ["heater", "window"]}`. Response: `folder`, `filename` and `output_path`, an unused name such as `temp_merged_ai/merged_heater_window.yaml`. With more than three names the name ends in `_plus<k>`, and a numeric suffix is added when the name is taken.
@@ -84,6 +88,7 @@ The panel at the top left lists what needs a decision.
 - Drag and double-click: drag a node to move and pin it, double-click to release it. Unpin all releases every node.
 - Click: selects a node and shows its detail, which for a model lists the shared variables it writes, reads and declares, and for a variable lists the role of each model.
 - Export SVG: downloads the graph with the current theme colors.
+- Sample: a list of ready-made combinations, each shown with its title and numbers. Choosing one sends `lm-set-models` to the host, which ticks those models in the tree, and the note of the sample replaces the hint line at the bottom. Changing the ticks by hand clears the choice.
 - Merge into new model: enabled with two or more ticked models. It opens a dialog described in the design document.
 
-Positions of nodes that stay in the graph are kept when models are ticked or unticked, so the picture does not jump.
+Positions of nodes that stay in the graph are kept when models are ticked or unticked, so the picture does not jump. Models with no shared variable drift freely instead of sitting in a corner.

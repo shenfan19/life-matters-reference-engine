@@ -9,6 +9,7 @@ Model Compose shows how several models can be combined. The user ticks models in
 | How do I use the page and what do the colors and arrows mean | [interface_ai.md](interface_ai.md), section 3 |
 | What do the backend endpoints receive and return | [interface_ai.md](interface_ai.md), sections 1 and 2 |
 | What exactly happens when I press the merge button | [design_ai.md](design_ai.md), section 5 |
+| How are the samples chosen and checked | [design_ai.md](design_ai.md), section 7 |
 | Why is it built this way and what are its limits | [design_ai.md](design_ai.md) |
 | How is a plugin like this written | [writing_a_plugin_ai.md](../../ve_graph/docs/writing_a_plugin_ai.md) |
 | What changed in the host so that this plugin is possible | ADR 0158 in the engine decisions folder |
@@ -16,7 +17,7 @@ Model Compose shows how several models can be combined. The user ticks models in
 ## Files
 
 - manifest.yaml: identity, the strip button, and `model_selection: multi`.
-- backend.py: the endpoints `compose`, `suggest_output` and `check_output`.
+- backend.py: the endpoints `compose`, `samples`, `suggest_output` and `check_output`.
 - dist/index.html: the whole page, one file, no external library.
 - docs: this folder.
 

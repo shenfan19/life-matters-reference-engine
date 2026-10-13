@@ -1,7 +1,7 @@
 // gui/src/components/Simulator/index.tsx
 // State, effects, and business logic. UI split into sub-components.
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Input, Modal } from 'antd';
 import type { SimulatorProps, SimulationState, InputEvent, SimPlan } from '../../types';
 import FileEditor from '../FileEditor';
@@ -537,16 +537,30 @@ const Simulator: React.FC<SimulatorProps> = ({
   // ── multi-select for plugins that ask for it (ui.model_selection: multi) ──────
   const [multiChecked, setMultiChecked] = useState<string[]>([]);
   const multiSelectMode = pluginView?.modelSelection === 'multi' && !builderOpen;
-  const checkedModels = useMemo(() => {
-    if (!multiSelectMode) return [];
+  // every model leaf of the tree by key, for the plugin that asked for several models
+  const modelLeaves = useMemo(() => {
     const leaves = new Map<string, { key: string; title: string; path: string }>();
     const walk = (nodes: any[]) => nodes.forEach(n => {
       if (n.isLeaf) leaves.set(String(n.key), { key: String(n.key), title: n.titleStr || String(n.title), path: String(n.key) });
       if (n.children?.length) walk(n.children);
     });
     walk(storyTree);
-    return multiChecked.map(k => leaves.get(k)).filter((m): m is { key: string; title: string; path: string } => !!m);
-  }, [multiSelectMode, multiChecked, storyTree]);
+    return leaves;
+  }, [storyTree]);
+  const checkedModels = useMemo(() => {
+    if (!multiSelectMode) return [];
+    return multiChecked.map(k => modelLeaves.get(k)).filter((m): m is { key: string; title: string; path: string } => !!m);
+  }, [multiSelectMode, multiChecked, modelLeaves]);
+  // A multi-select plugin may ask for models by path, with or without the file suffix.
+  const setCheckedByPaths = useCallback((paths: string[]) => {
+    if (!multiSelectMode) return;
+    const keys: string[] = [];
+    paths.forEach(p => {
+      const key = [p, `${p}.yaml`, `${p}.yml`].find(k => modelLeaves.has(k));
+      if (key && !keys.includes(key)) keys.push(key);
+    });
+    setMultiChecked(keys);
+  }, [multiSelectMode, modelLeaves]);
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -636,6 +650,7 @@ const Simulator: React.FC<SimulatorProps> = ({
               title={pluginView.title}
               selectedModel={selectedModel}
               checkedModels={checkedModels}
+              onSetModels={setCheckedByPaths}
               isDarkMode={isDarkMode}
               language={language}
               c={c}

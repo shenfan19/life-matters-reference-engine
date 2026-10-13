@@ -193,3 +193,21 @@ def test_merge_route_in_scs_mode_returns_the_merged_model_without_writing(merge_
     assert set(body['raw']['equations']) == {'heat', 'leak'}
     assert set(yaml.safe_load(body['yaml_text'])['equations']) == {'heat', 'leak'}
     assert not (models_dir / 'temp_merged_ai').exists()
+
+
+def test_samples_are_dropped_when_their_models_are_missing(compose):
+    # the temporary models directory holds none of the library models the samples name
+    assert compose.endpoint_samples({}) == {'success': True, 'samples': []}
+
+
+def test_samples_against_the_library(compose):
+    from paths import MODELS_DIR
+    if not (Path(MODELS_DIR) / 'references').exists():
+        pytest.skip('model library not available')
+    real = PluginContext(loader=LoaderEngine(models_directory=str(MODELS_DIR)))
+    compose.ctx = real
+    samples = compose.endpoint_samples({})['samples']
+    assert samples, 'no sample passed its check against the library'
+    for s in samples:
+        assert 2 <= s['n_models'] <= 5 and len(s['paths']) == s['n_models']
+        assert set(s['title']) == {'en', 'zh'} and set(s['note']) == {'en', 'zh'}

@@ -8,6 +8,9 @@
 //                   asked for ui.model_selection: multi
 //   plugin -> host  { type: 'lm-ready' }   sent once the plugin can receive; the host
 //                                          answers with another lm-init
+//   plugin -> host  { type: 'lm-set-models', paths: [...] }   asks the host to tick exactly these
+//                                          models in the tree, in this order. Honoured only for
+//                                          a plugin with ui.model_selection: multi
 // The query string of the iframe carries theme and lang as well, so a plugin page
 // opened on its own still has them.
 
@@ -23,12 +26,14 @@ interface Props {
   title: string;
   selectedModel: ModelFile | null;
   checkedModels?: { key: string; title: string; path: string }[];
+  // called when the page asks for models to be ticked; paths are model paths without a file suffix
+  onSetModels?: (paths: string[]) => void;
   isDarkMode: boolean;
   language: string;
   c: ReturnType<typeof getC>;
 }
 
-const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedModels = NO_MODELS, isDarkMode, language, c }) => {
+const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedModels = NO_MODELS, onSetModels, isDarkMode, language, c }) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const theme = isDarkMode ? 'dark' : 'light';
   const src = `${API_BASE}/plugins/${encodeURIComponent(pluginId)}/bundle/?theme=${theme}&lang=${encodeURIComponent(language)}`;
@@ -49,10 +54,13 @@ const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedMo
     const onMessage = (e: MessageEvent) => {
       if (e.source !== frameRef.current?.contentWindow) return;
       if (e.data?.type === 'lm-ready') sendInit();
+      if (e.data?.type === 'lm-set-models' && Array.isArray(e.data.paths)) {
+        onSetModels?.(e.data.paths.filter((x: unknown) => typeof x === 'string'));
+      }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [sendInit]);
+  }, [sendInit, onSetModels]);
 
   return (
     <iframe

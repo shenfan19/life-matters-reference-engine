@@ -24,12 +24,14 @@ ADR 0157 gave a plugin a full-page view that is told about one selected model. T
 
 **4. Merging goes through the existing route.** The compose plugin does not write files itself. It proposes an unused file name under `temp_merged_ai/` through its own endpoint and posts the ticked model keys to `POST /api/merge`, so the write protection, the loader merge semantics and the session mode answer of that route apply unchanged. Names are limited to letters, digits, underscore and hyphen, an existing file is never overwritten, and the folder is gitignored by the `temp_` convention of the models repository.
 
-**5. The plugin buttons can be dragged into a new order.** A button is dragged onto another to be placed before it, or below the last one to go to the end. The order is kept in the browser under the key `lm_plugin_button_order`. Plugins that are not in the saved list, such as a newly installed one, follow in the order of `ui.order`. Dragging is off while the model library editor is open. The built-in views are not movable.
+**5. A page can ask the host to tick models.** A page sends `{type: 'lm-set-models', paths}` to its parent, and the host ticks exactly those models in the tree, in that order, then sends `lm-init` as usual. A path may be written with or without the file suffix, unknown paths are skipped, and the message is honoured only for a plugin with `ui.model_selection: multi`. The tree stays the single place where the selection is shown, so a preset chosen in the page is visible in the tree and the merge uses the same keys.
 
-**6. Two plugins use the new pieces.**
+**6. The plugin buttons can be dragged into a new order.** A button is dragged onto another to be placed before it, or below the last one to go to the end. The order is kept in the browser under the key `lm_plugin_button_order`. Plugins that are not in the saved list, such as a newly installed one, follow in the order of `ui.order`. Dragging is off while the model library editor is open. The built-in views are not movable.
+
+**7. Two plugins use the new pieces.**
 
 - `ve_graph`: a draggable graph of the variables and equations of the selected model, with a static layered mode and SVG export.
-- `model_compose`: models that share a variable are joined through that variable, with arrows from the model that writes it and to the models that read it. A variable written by more than one model is flagged, differences in unit, type and value are listed, and one button merges the ticked models into a new file.
+- `model_compose`: models that share a variable are joined through that variable, with arrows from the model that writes it and to the models that read it. A variable written by more than one model is flagged, differences in unit, type and value are listed, and one button merges the ticked models into a new file. A sample list offers ready-made combinations from the model library, each checked against the library when the list is requested and offered only if it still behaves as described.
 
 ## Alternatives considered
 
@@ -42,7 +44,7 @@ ADR 0157 gave a plugin a full-page view that is told about one selected model. T
 ## Scope of impact
 
 - `reference_engine/src/plugin_context.py`: `load_model(validate=...)`, `models_directory`.
-- `gui/src/components/plugins/`: `usePlugins.ts` reads `ui.model_selection`, `PluginHost.tsx` sends `models`, `ViewRail.tsx` reorders buttons and knows the cluster icon.
+- `gui/src/components/plugins/`: `usePlugins.ts` reads `ui.model_selection`, `PluginHost.tsx` sends `models` and relays `lm-set-models`, `ViewRail.tsx` reorders buttons and knows the cluster icon.
 - `gui/src/components/sim_tab/SimModelTree.tsx`: multi-select mode.
 - `gui/src/components/Simulator/index.tsx`: the ticked list and its wiring.
 - `gui/public/locales/engine/`: two strings in four languages.

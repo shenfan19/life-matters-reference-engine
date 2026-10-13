@@ -59,10 +59,23 @@ The force layout and interaction follow VE Graph. Differences for this page:
 
 - Model nodes are wide rounded rectangles with the name inside, and they repel more strongly, so models keep apart.
 - Arrows end on the border of a rectangle or circle, computed from the direction between centers.
+- A ticked model that shares no variable with any other ticked model is not laid out. It drifts slowly in random directions across the visible area, avoiding the findings panel, and turns back at the edges. Dragging it pins it in place, and double-click lets it drift again. Such a model leaves the drifting state as soon as a link to another model appears.
 - Node positions are kept across updates by node id, and a new variable node starts at the average position of the models it joins. Ticking another model therefore adds to the picture without rearranging it.
 - The view fits itself when the layout settles, and stops doing so after the user zooms or pans.
 
-## 7. Known limits
+## 7. Samples
+
+The sample list serves demonstrations, where a good picture matters more than a general tool. Each sample is a fixed list of model paths in the backend, with an expectation.
+
+- Coupling samples expect at least a stated number of couplings and no conflict, such as the insulin and liver pair, the stress and immune loop, or five body systems in one web.
+- Conflict samples expect at least a stated number of variables written by several models, such as two diet models or running and cycling, and show the red warning.
+- A no-link sample expects no shared variable, and shows models drifting apart.
+
+The list is checked every time it is requested. The backend runs the ordinary analysis on each sample, and a sample is offered only if every model loads and the counts match its expectation. A model that is renamed, moved or changed enough to break the sample therefore removes the sample from the list, instead of showing a wrong picture. The checks use counts and not exact variable names, so ordinary edits to a model do not remove its sample.
+
+Choosing a sample asks the host to tick the models, so the tree, the graph and the merge button all see the same selection. This is why the page sends `lm-set-models` and does not draw the sample on its own.
+
+## 8. Known limits
 
 - Detection is by variable name. Two models that use one name for different things look shared, and two that use different names for the same quantity do not. Unit and value differences are the only hint of the first case.
 - At most 12 models are analysed in one request.
@@ -70,8 +83,9 @@ The force layout and interaction follow VE Graph. Differences for this page:
 - A variable that no ticked model declares is not drawn, even when several of them use it.
 - The ticked list is kept for the session but not across a reload.
 - Session models that exist only in the browser cannot be ticked.
+- The sample list is a hand-written set. A random choice of connected models from the whole library is not offered, because it would load many models on every click and could pick pairs that look poor on a slide.
 
-## 8. Possible extensions
+## 9. Possible extensions
 
 - List variables that a ticked model reads but no ticked model provides, as the open inputs of a combination.
 - Offer an order for the merge, since the later model wins on declarations.

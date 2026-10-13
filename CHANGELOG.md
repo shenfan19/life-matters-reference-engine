@@ -14,12 +14,13 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 ### GUI: plugin multi-selection and button order
 
 - A plugin whose manifest sets `ui.model_selection: multi` turns the model tree into checkboxes while its view is open, and its page receives the ticked models in the `models` field of `lm-init`. The tree header shows the count and a button to clear the ticks. Corresponds to ADR 0158.
+- A multi-select plugin page can send `lm-set-models` to ask the host to tick given models in the tree, which the sample list of Model Compose uses. Corresponds to ADR 0158.
 - The plugin buttons in the view rail can be dragged into a new order, which the browser remembers. Plugins not in the saved order follow in the order of `ui.order`.
 
 ### Plugin system
 
 - Added `PluginContext.load_model(path, validate=False)` for models that cannot stand alone, which bypasses the model cache both ways, and the property `PluginContext.models_directory`.
-- Added two plugins, `ve_graph`, a draggable graph of the variables and equations of the selected model, and `model_compose`, which joins ticked models through their shared variables, flags variables written by more than one model, and merges the ticked models into a new file through `POST /api/merge`. Each has a `docs/` folder.
+- Added two plugins, `ve_graph`, a draggable graph of the variables and equations of the selected model, and `model_compose`, which joins ticked models through their shared variables, flags variables written by more than one model, and merges the ticked models into a new file through `POST /api/merge`. Model Compose also has a sample list of ready-made combinations that are checked against the model library before they are offered, and models that share nothing drift freely. Each plugin has a `docs/` folder.
 
 - Added the plugin UI type `bundle`: a plugin ships a folder of static files, served at `/api/plugins/{id}/bundle/{path}` with a path-containment check, and needs no CDN or in-browser compilation. Manifests may declare `contract_version: 2`; manifests without it behave as before.
 - Plugin backends may define `endpoint_<name>(inputs)` methods, called as `POST /api/plugins/{id}/<name>`; an unknown or malformed name returns 404, and an error raised inside a plugin returns 500.
