@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
 
 
 # ── App + CORS ──────────────────────────────────────────────────────────────────
-app = FastAPI(title="LifeMatters API", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="LifeMatters API", version="1.1.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -117,7 +117,7 @@ app.add_middleware(
 # ── Core endpoints (health) ─────────────────────────────────────────────────────
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "LifeMatters API", "version": "1.1.0"}
+    return {"status": "ok", "service": "LifeMatters API", "version": "1.1.1"}
 
 
 @app.get("/api/health")

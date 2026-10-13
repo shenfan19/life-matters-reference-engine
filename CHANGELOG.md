@@ -6,6 +6,22 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-13
+
+### Plugin system
+
+- Removed the three demonstration plugins. A template for a bundle plugin, with a manifest, a backend and a page, is in `docs/plugin_template/`, outside the folder that is scanned for plugins, together with a short guide. A test checks that the template loads, serves its page and answers its endpoint.
+
+### Fixes
+
+- The simulation chart no longer fails with a stack overflow when a run holds hundreds of thousands of points, such as a year of hourly steps with several plans and Monte Carlo repeats. The chart took the range of its values with `Math.min(...values)`, which passes every value as an argument and throws a `RangeError` past the argument limit of the engine, so the chart of a model with many plans stayed blank. The range is now computed in a loop.
+- The Pareto, regrouping and progress charts and the solution summary used the same spread form on lists bounded by the population size. They now use the same loop based helpers, so a large population cannot trigger the failure either.
+
+### Documentation
+
+- `docs/ui_guidelines.md` has a rule against spreading series that may hold simulation points into `Math.min`, `Math.max` or `push`, with the helpers to use instead.
+- The README opens with a screenshot of the optimization page.
+
 ## [1.1.0] - 2026-10-13
 
 ### GUI: the view rail and bundle plugins
