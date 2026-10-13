@@ -9,7 +9,7 @@ OUTPUT_FOLDER = 'temp_merged_ai'
 # repository, so a sample works on a clone of it. Each one is checked against the library when the list
 # is requested, and is offered only if it still behaves as described. `expect` is 'coupling' for models
 # that feed each other without a conflict, 'conflict' for models that write the same variables, and
-# 'none' for models that share nothing.
+# 'none' for models that share nothing. For the first two, every model must share a variable with another.
 DIET = 'references/medical/nutrition/diet/'
 FOOD = 'references/medical/nutrition/food/'
 FIT = 'references/medical/fitness/individual/'
@@ -17,10 +17,10 @@ FIT = 'references/medical/fitness/individual/'
 SAMPLES = [
     {
         'id': 'diet_effects', 'expect': 'coupling', 'min': 4,
-        'models': [DIET + 'simple_nutrition_2026_ag', FOOD + 'cooked_meat_2026_ag', FOOD + 'processed_meat_mortality_2026'],
-        'title': {'en': 'A diet model feeding two food models', 'zh': '饮食模型喂给两个食物模型'},
-        'note': {'en': 'The nutrition model writes the intake variables, and the food models read them.',
-                 'zh': '营养模型写入摄入变量，两个食物模型读取它们。'},
+        'models': [FOOD + 'cooked_meat_2026_ag', DIET + 'simple_nutrition_2026_ag', 'references/medical/disease/acute/flu_2026'],
+        'title': {'en': 'Food intake feeding two models', 'zh': '食物摄入喂给两个模型'},
+        'note': {'en': 'The cooked meat model writes the intake variables, the nutrition model reads all of them, and the flu model reads water intake.',
+                 'zh': '熟肉模型写入摄入变量，营养模型读取全部，流感模型读取其中的饮水量。'},
     },
     {
         'id': 'exercise_to_insulin', 'expect': 'coupling', 'min': 2,
@@ -190,9 +190,12 @@ class ModelCompose:
                 continue
             conflicts = sum(1 for x in r['shared'] if x['status'] == 'conflict')
             couplings = sum(1 for x in r['shared'] if x['status'] == 'coupling')
+            # a sample that is meant to show a relation must connect every one of its models
+            linked = {path for x in r['shared'] for path in x['roles']}
+            connected = len(linked) == len(sample['models'])
             ok = {
-                'coupling': couplings >= sample['min'] and conflicts == 0,
-                'conflict': conflicts >= sample['min'],
+                'coupling': couplings >= sample['min'] and conflicts == 0 and connected,
+                'conflict': conflicts >= sample['min'] and connected,
                 'none': not r['shared'],
             }[sample['expect']]
             if not ok:

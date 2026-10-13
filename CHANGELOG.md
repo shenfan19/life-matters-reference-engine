@@ -34,6 +34,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 - `POST /api/merge` returned 500 in SCS mode when the merge succeeded, because the route passed the merged model object to the YAML writer. It now returns the merged model as plain data, in SCS mode for download and in write mode as before.
 - The pages of bundle plugins, including the three demo plugins, were ignored by the `dist/` rule of `.gitignore` and missing from clones. They are now tracked.
+- The view rail is wider, so a long label such as Optimization is no longer broken in the middle of the word when its button is active.
 
 ## [1.0.0] - 2026-07-26
 

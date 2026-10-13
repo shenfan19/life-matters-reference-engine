@@ -67,11 +67,11 @@ The force layout and interaction follow VE Graph. Differences for this page:
 
 The sample list serves demonstrations, where a good picture matters more than a general tool. Each sample is a fixed list of model paths in the backend, with an expectation. Every model in a sample belongs to the public models repository, so the samples work on a clone of it.
 
-- Coupling samples expect at least a stated number of couplings and no conflict, such as a nutrition model feeding two food models, or a chain from rowing through interval training to insulin sensitivity in the diabetes model.
+- Coupling samples expect at least a stated number of couplings and no conflict, such as a food model feeding a nutrition model and a flu model, or a chain from rowing through interval training to insulin sensitivity in the diabetes model.
 - Conflict samples expect at least a stated number of variables written by several models, such as running, cycling and rowing, and show the red warning. A mixed sample, badminton and squash, shows one variable passing between the models and three written by both.
 - A no-link sample expects no shared variable, and shows models drifting apart.
 
-The list is checked every time it is requested. The backend runs the ordinary analysis on each sample, and a sample is offered only if every model loads and the counts match its expectation. A model that is renamed, moved or changed enough to break the sample therefore removes the sample from the list, instead of showing a wrong picture. The checks use counts and not exact variable names, so ordinary edits to a model do not remove its sample.
+The list is checked every time it is requested. The backend runs the ordinary analysis on each sample, and a sample is offered only if every model loads, the counts match its expectation, and, for a coupling or conflict sample, every model shares a variable with another one. A model that is renamed, moved or changed enough to break the sample therefore removes the sample from the list, instead of showing a wrong picture. The checks use counts and not exact variable names, so ordinary edits to a model do not remove its sample.
 
 Choosing a sample asks the host to tick the models, so the tree, the graph and the merge button all see the same selection. This is why the page sends `lm-set-models` and does not draw the sample on its own.
 

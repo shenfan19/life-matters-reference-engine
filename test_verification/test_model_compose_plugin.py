@@ -91,7 +91,9 @@ def compose(ctx):
     spec = importlib.util.spec_from_file_location('model_compose_backend', ROOT / 'plugins' / 'model_compose' / 'backend.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.ModelCompose(ctx)
+    instance = module.ModelCompose(ctx)
+    instance._module = module
+    return instance
 
 
 def test_load_model_without_validation_loads_a_component_and_skips_the_cache(ctx):
@@ -211,3 +213,25 @@ def test_samples_against_the_library(compose):
     for s in samples:
         assert 2 <= s['n_models'] <= 5 and len(s['paths']) == s['n_models']
         assert set(s['title']) == {'en', 'zh'} and set(s['note']) == {'en', 'zh'}
+
+
+LONER = HEADER.format(name='loner') + """variables:
+  unrelated_thing: {type: state, value: 1.0, unit: "1", description: Shares nothing}
+equations:
+  drift:
+    step_unit: hour
+    dynamics:
+      unrelated_thing: "unrelated_thing * 0.99"
+    priority: 4
+""" + SIM % 'unrelated_thing'
+
+
+def test_a_coupling_sample_must_connect_every_model(compose, models_dir):
+    (models_dir / 'fx' / 'loner.yaml').write_text(LONER, encoding='utf-8')
+    compose._module.SAMPLES[:] = [
+        {'id': 'good', 'expect': 'coupling', 'min': 1, 'models': ['fx/heater', 'fx/sensor'],
+         'title': {'en': 'a', 'zh': 'a'}, 'note': {'en': 'a', 'zh': 'a'}},
+        {'id': 'one_model_floats', 'expect': 'coupling', 'min': 1, 'models': ['fx/heater', 'fx/sensor', 'fx/loner'],
+         'title': {'en': 'b', 'zh': 'b'}, 'note': {'en': 'b', 'zh': 'b'}},
+    ]
+    assert [s['id'] for s in compose.endpoint_samples({})['samples']] == ['good']

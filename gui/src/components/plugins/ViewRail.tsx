@@ -149,7 +149,7 @@ const ViewRail: React.FC<Props> = ({
     <div
       data-testid="view-rail"
       style={{
-        width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto',
+        width: 84, flexShrink: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto',
         background: c.panel, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
       }}
     >
