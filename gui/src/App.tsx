@@ -207,7 +207,7 @@ const AUTHOR = {
   email: 'shenfan@mail.sysu.edu.cn',
   repo: 'https://github.com/shenfan19/life-matters-reference-engine',
   modelsRepo: 'https://github.com/shenfan19/life-matters-models',
-  version: 'v1.0',
+  version: 'v1.1.0',
 };
 
 // ─── Status bar ───────────────────────────────────────────────────────────────

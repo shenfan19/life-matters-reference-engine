@@ -4,6 +4,8 @@ message: >-
   published. Until then, please cite this repository directly using the
   metadata below.
 title: "LM Reference Engine"
+version: 1.1.0
+date-released: 2026-10-13
 type: software
 authors:
   - family-names: Shen

@@ -6,6 +6,8 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-13
+
 ### GUI: the view rail and bundle plugins
 
 - Added a vertical strip, the view rail, between the model tree and the main area. Overview, Simulation and Optimization moved from the horizontal tab bar onto it as buttons with their own icons, a line follows them, and each plugin that declares `ui.type: bundle` adds one button below it. The horizontal tab bar is removed, and the model tree's collapse button moved to the top of the strip. Editing the model library adds a button above the line, closes any open plugin view, and locks the other buttons while it is open. The built-in buttons keep their `center-tab-*` test ids. Corresponds to ADR 0157.
