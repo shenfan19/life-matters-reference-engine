@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Select } from 'antd';
 import { getC } from '../../core/theme';
 import { useI18n } from '../../core/i18n';
+import { minOf, maxOf } from '../sim_tab/chartMath';
 
 const SERIES_COLORS = ['#3b82d8', '#d89a1d', '#9254de', '#13a8a8', '#d4622f'];
 
@@ -70,7 +71,7 @@ const ParetoRegroupChart: React.FC<{
         points: points.filter((p: ChartPoint) => Math.round(p.gv * 100) / 100 === v).sort((a: ChartPoint, b: ChartPoint) => a.xv - b.xv),
       })).filter(g => g.points.length > 0);
     }
-    const gMin = Math.min(...gvs), gMax = Math.max(...gvs);
+    const gMin = minOf(gvs), gMax = maxOf(gvs);
     const nBins = 5;
     const width = (gMax - gMin) / nBins || 1;
     const bins = Array.from({ length: nBins }, (_, i) => ({
@@ -101,8 +102,8 @@ const ParetoRegroupChart: React.FC<{
     ctx.fillRect(0, 0, W, H);
 
     const xs = points.map((p: any) => p.xv), ys = points.map((p: any) => p.yv);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs);
-    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xMin = minOf(xs), xMax = maxOf(xs);
+    const yMin = minOf(ys), yMax = maxOf(ys);
     const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
     const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
     const toX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
@@ -154,7 +155,7 @@ const ParetoRegroupChart: React.FC<{
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const W = canvas.offsetWidth, H = canvas.offsetHeight;
     const xs = points.map((p: any) => p.xv), ys = points.map((p: any) => p.yv);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xMin = minOf(xs), xMax = maxOf(xs), yMin = minOf(ys), yMax = maxOf(ys);
     const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
     const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
     const toX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;

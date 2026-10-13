@@ -4,6 +4,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import JSZip from 'jszip';
 import type { SimulationDataPoint, PlanResult } from '../../types';
 import { getC } from '../../core/theme';
+import { valueRange } from './chartMath';
 
 export const VAR_COLORS = ['#007A33', '#52c41a', '#00897B', '#2E7D32', '#43A047', '#1565C0'];
 export const PLAN_COLORS = ['#e53935', '#1e88e5', '#ff7043', '#7b1fa2', '#0097a7', '#558b2f'];
@@ -45,7 +46,7 @@ function drawChartOnCtx(
     allValues = data.map(d => (d[varName] as number) ?? 0);
     if (runsData && runsData.length > 1) for (const rd of runsData) for (const d of rd) allValues.push((d[varName] as number) ?? 0);
   }
-  let minV = Math.min(...allValues); let maxV = Math.max(...allValues);
+  let { min: minV, max: maxV } = valueRange(allValues);
   if (minV === maxV) { minV -= 1; maxV += 1; }
   const step = niceTickStep(maxV - minV, 5);
   const yMin = Math.floor(minV / step) * step;

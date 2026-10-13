@@ -5,6 +5,7 @@ import { getC } from '../../core/theme';
 import ParetoChart from '../opt_tab/ParetoChart';
 import ParetoRegroupChart from '../opt_tab/ParetoRegroupChart';
 import OptProgressChart from '../opt_tab/OptProgressChart';
+import { minOf, maxOf } from './chartMath';
 
 interface SimOptTabProps {
   optResult: any;
@@ -134,7 +135,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       .filter(Number.isFinite)
       .map(v => objectiveDefs[j]?.direction === 'minimize' ? -v : v);
     return values.length
-      ? { min: Math.min(...values), max: Math.max(...values) }
+      ? { min: minOf(values), max: maxOf(values) }
       : { min: 0, max: 1 };
   });
   const hypervolume = (points: number[][], d: number): number => {
@@ -142,7 +143,7 @@ const SimOptTab: React.FC<SimOptTabProps> = ({
       .map(p => p.slice(0, d).map(v => Math.max(0, Math.min(1, v))))
       .filter(p => p.length === d && p.every(Number.isFinite));
     if (valid.length === 0 || d <= 0) return 0;
-    if (d === 1) return Math.max(...valid.map(p => p[0]));
+    if (d === 1) return maxOf(valid.map(p => p[0]));
     const cuts = [...new Set(valid.map(p => p[d - 1]).filter(v => v > 0).sort((a, b) => a - b))];
     let total = 0;
     let prev = 0;

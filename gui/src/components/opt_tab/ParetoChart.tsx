@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getC } from '../../core/theme';
+import { minOf, maxOf } from '../sim_tab/chartMath';
 
 const ParetoChart: React.FC<{
   result: any;
@@ -34,8 +35,8 @@ const ParetoChart: React.FC<{
     ctx.fillRect(0, 0, W, H);
 
     const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs);
-    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xMin = minOf(xs), xMax = maxOf(xs);
+    const yMin = minOf(ys), yMax = maxOf(ys);
     const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
     const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
     const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;
@@ -99,7 +100,7 @@ const ParetoChart: React.FC<{
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const W = canvas.offsetWidth, H = canvas.offsetHeight;
     const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xMin = minOf(xs), xMax = maxOf(xs), yMin = minOf(ys), yMax = maxOf(ys);
     const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
     const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
     const toCanvasX = (v: number) => PAD.l + ((v - xMin) / xRange) * plotW;

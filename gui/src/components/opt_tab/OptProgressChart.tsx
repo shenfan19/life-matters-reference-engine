@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { getC } from '../../core/theme';
 import { useI18n } from '../../core/i18n';
+import { minOf, maxOf } from '../sim_tab/chartMath';
 
 const OptProgressChart: React.FC<{
   history: any[];
@@ -29,8 +30,8 @@ const OptProgressChart: React.FC<{
     ctx.fillRect(0, 0, W, H);
     const pad = { l: 36, r: 10, t: 18, b: 24 };
     const xs = points.map(p => p.x), ys = points.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs);
-    let yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xMin = minOf(xs), xMax = maxOf(xs);
+    let yMin = minOf(ys), yMax = maxOf(ys);
     if (metric === 'feasible_ratio' || metric === 'hypervolume') { yMin = 0; yMax = Math.max(1, yMax); }
     const xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
     const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;

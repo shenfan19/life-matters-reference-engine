@@ -188,3 +188,5 @@ Tabs: {
 - **Animation**: use only for a state transition (expand/collapse, a progress bar); never for pure decoration. A transition should last 150-300ms.
 - **z-index**: Tooltip/Popover 100; Modal 200; a global Toast 300; never use `z-index: 9999` arbitrarily.
 - **Scrolling**: a content area sets `overflow: 'auto'`; page-level horizontal scrolling is forbidden; vertical scrolling is allowed but should have a visible indicator (don't hide the scrollbar).
+- **Large series**: never pass a list that may hold simulation or optimization points into a spread call such as `Math.min(...values)`, `Math.max(...values)` or `list.push(...items)`. A spread passes every element as an argument, and past a limit of roughly a hundred thousand elements it throws a `RangeError`, which blanks the chart. A year of hourly steps with several plans and Monte Carlo repeats holds hundreds of thousands of points. Use `minOf`, `maxOf` and `valueRange` from `components/sim_tab/chartMath.ts`, or a loop. A list whose size is bounded by the interface, such as a population or a list of variable names, is safe to spread.
+
