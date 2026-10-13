@@ -10,7 +10,7 @@
 ADR 0157 gave a plugin a full-page view that is told about one selected model. Two plugins written on top of it showed what that contract lacks.
 
 - A plugin that compares models needs several models at once. The model tree selects exactly one, so such a plugin would have to ship its own model list, duplicating the tree and its search and folders.
-- Component models, such as the human body subsystem files, read variables that another component defines. They fail validation when loaded alone, which is exactly the situation a plugin about composing models has to analyse, and `PluginContext.load_model` always validated.
+- Component models, which read variables that another component defines, fail validation when loaded alone, which is exactly the situation a plugin about composing models has to analyse, and `PluginContext.load_model` always validated.
 - A plugin writing a new model file would bypass the write protection that `POST /api/merge` applies in the public deployment mode, unless it goes through that route.
 - With more than a few plugins installed, the order the manifests give is not the order a user wants, and the strip had no way to change it.
 

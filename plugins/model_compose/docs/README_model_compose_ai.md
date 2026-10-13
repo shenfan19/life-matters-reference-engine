@@ -23,6 +23,6 @@ Model Compose shows how several models can be combined. The user ticks models in
 
 ## Tests
 
-- Backend: the analysis was run on the human body component models and on three small models written for the test, one of which updates a variable that another also updates.
+- Backend: the analysis is tested on three small models written for the test, one of which updates a variable that another also updates, and on the sample list against the public models repository.
 - Page: exercised in a headless browser with the analysis endpoint answered by the real backend function and the merge endpoints answered by stubs. It covers the empty and single-model states, the graph and findings, dragging, removing a model, and the merge dialog with the request that it sends.
 - Whole path: the GUI with the real backend was driven through ticking models in the tree, the graph following the ticks, and leaving the plugin view.

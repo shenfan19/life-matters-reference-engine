@@ -14,7 +14,7 @@ Every model is loaded with imports resolved. For each model the backend collects
 
 Two choices matter here.
 
-- Loading without validation. The component models of the human body fail validation alone, because their equations read variables that sit in other components. That failure is the very dependency to analyse. The load therefore skips validation and the loader cache, so an unvalidated model never reaches a caller that asked for a validated one.
+- Loading without validation. A component model whose equations read variables that another component defines fails validation alone. That failure is the very dependency to analyse. The load therefore skips validation and the loader cache, so an unvalidated model never reaches a caller that asked for a validated one.
 - Reads and writes of undeclared names count. A component asks another component for a variable by using its name without declaring it. If only declarations counted, such a link would never be drawn.
 
 A name that is read but declared by no ticked model, such as a function name, is not drawn. A variable that is not declared anywhere is out of scope, because the plugin cannot tell a missing variable from an unknown function.
@@ -65,10 +65,10 @@ The force layout and interaction follow VE Graph. Differences for this page:
 
 ## 7. Samples
 
-The sample list serves demonstrations, where a good picture matters more than a general tool. Each sample is a fixed list of model paths in the backend, with an expectation.
+The sample list serves demonstrations, where a good picture matters more than a general tool. Each sample is a fixed list of model paths in the backend, with an expectation. Every model in a sample belongs to the public models repository, so the samples work on a clone of it.
 
-- Coupling samples expect at least a stated number of couplings and no conflict, such as the insulin and liver pair, the stress and immune loop, or five body systems in one web.
-- Conflict samples expect at least a stated number of variables written by several models, such as two diet models or running and cycling, and show the red warning.
+- Coupling samples expect at least a stated number of couplings and no conflict, such as a nutrition model feeding two food models, or a chain from rowing through interval training to insulin sensitivity in the diabetes model.
+- Conflict samples expect at least a stated number of variables written by several models, such as running, cycling and rowing, and show the red warning. A mixed sample, badminton and squash, shows one variable passing between the models and three written by both.
 - A no-link sample expects no shared variable, and shows models drifting apart.
 
 The list is checked every time it is requested. The backend runs the ordinary analysis on each sample, and a sample is offered only if every model loads and the counts match its expectation. A model that is renamed, moved or changed enough to break the sample therefore removes the sample from the list, instead of showing a wrong picture. The checks use counts and not exact variable names, so ordinary edits to a model do not remove its sample.

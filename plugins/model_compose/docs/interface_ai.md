@@ -26,7 +26,7 @@ All three are called as `POST /api/plugins/model_compose/<name>` with a body of 
 
 ### compose
 
-Request: `{"paths": ["references/medical/physiology/human_body/glucose_insulin_2026", ...]}`, at most 12 paths, each relative to the models directory.
+Request: `{"paths": ["references/medical/nutrition/diet/simple_nutrition_2026_ag", ...]}`, at most 12 paths, each relative to the models directory.
 
 Response fields:
 
