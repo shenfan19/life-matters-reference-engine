@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
 import app_state
 from src.plugin_manager import EndpointNotFound
@@ -147,7 +148,9 @@ async def call_plugin_backend(plugin_id: str, endpoint: str, payload: dict):
     try:
         from src.plugin_context import PluginContext
         ctx = PluginContext(engine=app_state.engine, loader=app_state.loader_engine)
-        return app_state.plugin_manager.call_endpoint(
+        # A plugin endpoint may read many model files, so it runs in a worker thread and does not stop the server.
+        return await run_in_threadpool(
+            app_state.plugin_manager.call_endpoint,
             plugin_id=plugin_id,
             endpoint=endpoint,
             inputs=payload.get('inputs', {}),

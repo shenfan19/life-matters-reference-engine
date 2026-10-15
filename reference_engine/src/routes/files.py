@@ -7,6 +7,7 @@ import yaml
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import Optional, List
 import app_state
@@ -159,46 +160,71 @@ async def get_config():
 
 # ── File tree ──────────────────────────────────────────────────────────────────
 
-@router.get("/api/files")
-async def list_files():
+# The tree is built for every page load and reads the metadata of every model file, which for a library of
+# thousands of models took long enough to stall the whole server when done on the event loop. The metadata
+# of a file is kept until the file changes, and the tree is built in a worker thread.
+_FILE_META_CACHE: dict = {}
+
+
+def _file_metadata(item_path: str, entry=None) -> dict:
+    try:
+        # a directory entry already carries the size and time on Windows, so no further system call is needed
+        st = entry.stat() if entry is not None else os.stat(item_path)
+    except OSError:
+        return {}
+    stamp = (st.st_mtime_ns, st.st_size)
+    cached = _FILE_META_CACHE.get(item_path)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    file_metadata = {}
+    try:
+        with open(item_path, 'r', encoding='utf-8') as f:
+            data = safe_load(f)
+            if isinstance(data, dict):
+                file_metadata['category'] = data.get('category', 'unknown')
+                file_metadata['description'] = data.get('description', '')
+                file_metadata['difficulty'] = data.get('difficulty', '')
+                file_metadata['levels'] = data.get('levels', [])
+                meta = data.get('metadata', {})
+                file_metadata['tags'] = meta.get('tags', [])
+    except Exception as e:
+        logger.warning(f"Failed to read metadata from {item_path}: {e}")
+    _FILE_META_CACHE[item_path] = (stamp, file_metadata)
+    return file_metadata
+
+
+def _build_file_tree(models_dir: str) -> list:
     def build_tree(directory, base_path=''):
         items = []
         if not os.path.exists(directory):
             return items
         try:
-            for item in sorted(os.listdir(directory)):
-                item_path = os.path.join(directory, item)
+            with os.scandir(directory) as scan:
+                entries = sorted(scan, key=lambda e: e.name)
+            for entry in entries:
+                item = entry.name
+                item_path = entry.path
                 relative_path = os.path.join(base_path, item).replace('\\', '/')
-                if os.path.isdir(item_path):
+                if entry.is_dir():
                     if item in ['__pycache__', '.git']:
                         continue
                     children = build_tree(item_path, relative_path)
                     items.append({'title': item, 'key': relative_path, 'type': 'folder',
                                   'children': children if children else []})
                 elif item.endswith('.yaml') or item.endswith('.yml'):
-                    file_metadata = {}
-                    try:
-                        with open(item_path, 'r', encoding='utf-8') as f:
-                            data = safe_load(f)
-                            if isinstance(data, dict):
-                                file_metadata['category'] = data.get('category', 'unknown')
-                                file_metadata['description'] = data.get('description', '')
-                                file_metadata['difficulty'] = data.get('difficulty', '')
-                                file_metadata['levels'] = data.get('levels', [])
-                                meta = data.get('metadata', {})
-                                file_metadata['tags'] = meta.get('tags', [])
-                    except Exception as e:
-                        logger.warning(f"Failed to read metadata from {item_path}: {e}")
                     items.append({'title': item, 'key': relative_path, 'type': 'file',
-                                  'isLeaf': True, **file_metadata})
+                                  'isLeaf': True, **_file_metadata(item_path, entry)})
         except Exception as e:
             logger.error(f"Error scanning {directory}: {e}")
         return items
 
+    return [{'title': 'models', 'key': 'models', 'type': 'folder', 'children': build_tree(models_dir)}]
+
+
+@router.get("/api/files")
+async def list_files():
     try:
-        models_dir = app_state.MODELS_DIR
-        tree = [{'title': 'models', 'key': 'models', 'type': 'folder',
-                 'children': build_tree(str(models_dir))}]
+        tree = await run_in_threadpool(_build_file_tree, str(app_state.MODELS_DIR))
         return {'success': True, 'data': tree}
     except Exception as e:
         return {'success': False, 'error': str(e)}

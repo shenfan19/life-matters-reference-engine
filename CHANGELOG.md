@@ -21,6 +21,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Fixes
 
+- Starting the backend and loading the page no longer stall for minutes when the model library holds thousands of models. Startup loaded every model file only to log a few names, and nothing used the result, so it now counts the files. The file tree, the model list and the plugin endpoints used to do their work on the event loop, where one slow request stopped every other request, even the health check, so they now run in worker threads. The file tree keeps the metadata of each file until the file changes and builds from directory entries, which takes the second and later loads from seconds to under one second. The model list is kept for 60 seconds and requests that arrive during a scan share it, with `?refresh=true` to skip it. With 2097 models the backend answers 2 seconds after it starts and the page shows the tree in about 2 seconds.
 - The search box of the model tree now filters the tree view. It used to filter only the list view, so it had no effect in the tree view and in every view with checkboxes.
 
 ## [1.1.1] - 2026-10-13

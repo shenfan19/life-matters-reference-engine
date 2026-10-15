@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import os
 import logging
 import sys
 
@@ -71,15 +72,17 @@ async def lifespan(app: FastAPI):
             models_dir.mkdir(parents=True, exist_ok=True)
         app_state.loader_engine = LoaderEngine(models_directory=str(models_dir))
         logger.info("✅ Models system initialized")
+        # Only count the files. Loading every model here, which this once did to log a few names, took long
+        # enough for a library of thousands of models to delay the start by a minute or more and nothing used the result.
         try:
-            models = app_state.loader_engine.scan_models()
-            logger.info(f"   Found {len(models)} models")
-            for name in list(models.keys())[:5]:
-                logger.info(f"   - {name}")
-            if len(models) > 5:
-                logger.info(f"   ... and {len(models) - 5} more")
+            skip = {'merged', 'splited', 'output', '__pycache__', '.git', '_output'}
+            found = 0
+            for _root, dirs, files in os.walk(models_dir):
+                dirs[:] = [d for d in dirs if d not in skip]
+                found += sum(1 for f in files if f.endswith('.yaml'))
+            logger.info(f"   Found {found} model files")
         except Exception as e:
-            logger.warning(f"   Failed to scan models: {e}")
+            logger.warning(f"   Failed to count models: {e}")
     except Exception as e:
         logger.error(f"❌ Models system error: {e}")
         app_state.loader_engine = None
