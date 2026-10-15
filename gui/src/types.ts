@@ -54,7 +54,7 @@ export interface ModelFile {
     metadata?: any;
     variables?: Record<string, any>;
     equations?: Record<string, any>;
-    simulator?: any;
+    simulation?: any;
     optimization?: any;
     imports?: string[];
     validated?: boolean;

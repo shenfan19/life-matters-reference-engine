@@ -91,7 +91,7 @@ export function useBuilderState({
       type: content.type, category: content.category,
       content, rawContent: content,
       metadata: content.metadata, variables: content.variables,
-      equations: content.equations, simulator: content.simulator,
+      equations: content.equations, simulation: content.simulation,
       optimization: content.optimization, imports: content.imports,
       folder: 'session', validated: undefined, validationErrors: [],
     };
@@ -143,7 +143,7 @@ export function useBuilderState({
           type: raw.type, category: raw.category,
           content: raw, rawContent: raw,
           metadata: raw.metadata, variables: raw.variables,
-          equations: raw.equations, simulator: raw.simulator,
+          equations: raw.equations, simulation: raw.simulation,
           optimization: raw.optimization, imports: raw.imports,
           folder: 'session', validated: undefined, validationErrors: [],
         };
@@ -295,7 +295,7 @@ export function useBuilderState({
         type: content.type, category: content.category,
         content, rawContent: raw,
         metadata: content.metadata, variables: content.variables,
-        equations: content.equations, simulator: content.simulator,
+        equations: content.equations, simulation: content.simulation,
         optimization: content.optimization, imports: content.imports,
         provenance: content.provenance,
         folder: 'session',
@@ -316,7 +316,8 @@ export function useBuilderState({
         saveSession(next);
         return next;
       });
-      message.success(t('sim.msg.imported_file', { name: data.filename }));
+      const replaced = sessionModels.some(m => m.key === modelKey);
+      message.success(t(replaced ? 'sim.msg.replaced_file' : 'sim.msg.imported_file', { name: data.filename }));
     } catch (err: any) { message.error(err.message || t('sim.msg.read_file_failed')); }
   };
 

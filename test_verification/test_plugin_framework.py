@@ -159,7 +159,8 @@ def test_load_model_matches_get_models_route():
         body = TestClient(app).get(f'/api/models/{MODEL_PATH.rsplit("/", 1)[-1]}').json()
     finally:
         app_state.loader_engine = saved
-    assert body['variables'] == make_context().load_model(MODEL_PATH)['variables']
+    assert body['data']['variables'] == make_context().load_model(MODEL_PATH)['variables']
+    assert 'variables' not in body and 'simulator' not in body['data']   # one channel, and one name for the block
 
 
 @pytest.mark.parametrize('bad', ['../models/x', 'a/../../x', '/etc/passwd', 'C:/Windows/win.ini'])

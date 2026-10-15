@@ -39,6 +39,8 @@ The filter is state of the Simulator and is applied by pruning the tree it passe
 
 **5. Plugin versions.** A manifest's `version` is the plugin's own version and is independent of the engine's. The three plugins start at 0.1.0.
 
+**6. One channel and one name in the model API.** `GET /api/models/{name}` answers with `{success, data}`, where it used to repeat the content of `data` at the top level as well, and the block that sets the simulation is `simulation` only, where the answer, the loader, the command line and the writers of model files each handled `simulator` as an alias. The upload endpoint had its own hand-written copy of the structure, which read an attribute that no longer existed and made every upload fail, and it now answers with the shared `model_to_dict` like the other two routes, so the structure of a model is written in one place.
+
 ## Alternatives considered
 
 - **The plugin keeps its own model list and its own search.** Rejected for the reason ADR 0158 gave: it duplicates the tree. A filter on the tree also keeps the tick state in one place, so the models found in one plugin are the models the next plugin receives.
@@ -57,7 +59,8 @@ The filter is state of the Simulator and is applied by pruning the tree it passe
 - `gui/public/locales/engine/`: three strings in four languages.
 - `plugins/body_map/`, new, with a `docs/` folder and `sites.yaml`.
 - `plugins/ve_graph/`: the multi-model graph.
-- `plugins/README_bundle_plugins.md`, `docs/architecture.md`, `test_verification/test_plugin_framework.py`, `CHANGELOG.md`.
+- `reference_engine/src/model_serialization.py`, `routes/models.py`, `routes/files.py`, `model_structure/loader.py`, `cli/`: the single channel and the single name.
+- `plugins/README_bundle_plugins.md`, `docs/architecture.md`, `docs/cli.md`, `test_verification/test_plugin_framework.py`, `CHANGELOG.md`.
 
 ## Result
 

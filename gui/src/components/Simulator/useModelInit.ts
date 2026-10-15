@@ -116,7 +116,7 @@ export function useModelInit({
     }
 
     // Needed in both session and no-session branches
-    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator;
+    const sim = selectedModel?.content?.simulation;
 
     // ── 3. Session exists → restore user state, skip YAML defaults ──
     const session = modelSessionsRef.current[selectedModel.key];

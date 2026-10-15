@@ -66,7 +66,7 @@ This module solves a specific problem: `schedule_runner.py` and `optimizer_engin
 
 | Function | What it validates | Called by |
 |---|---|---|
-| `validate_simulator_dates` | `simulator.start_date`/`end_date` | `reference_engine.py`'s `run_simulation`/`run_simulation_mc`, `session_manager.py`'s `start_session`, `optimizer_engine.py` |
+| `validate_simulator_dates` | `simulation.start_date`/`end_date` | `reference_engine.py`'s `run_simulation`/`run_simulation_mc`, `session_manager.py`'s `start_session`, `optimizer_engine.py` |
 | `validate_schedule_list` | Each regimen event's `time_start`/`time_end`/`valid_start`/`valid_end` in the schedule list | The same as above (the sim path) |
 | `validate_optimizer_regimens` | The fixed-value and `optimize:` search-window time/date fields under `optimization.startpoint.regimens` | `optimizer_engine.run_optimizer` |
 

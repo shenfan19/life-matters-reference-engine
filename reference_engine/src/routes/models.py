@@ -63,7 +63,7 @@ async def get_model(model_name: str, folder: Optional[str] = None):
         if model is None:
             raise HTTPException(status_code=404, detail=f"Model not found: {model_name}")
         data = model_to_dict(model)
-        return {"success": True, "data": data, **data}
+        return {"success": True, "data": data}
     except HTTPException:
         raise
     except Exception as e:

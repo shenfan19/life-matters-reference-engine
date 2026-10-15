@@ -6,6 +6,11 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+### Breaking changes
+
+- `GET /api/models/{name}` answers with `{success, data}` only. The same content used to be repeated at the top level next to `data`, and anything that read `variables`, `equations` and the rest from the top level of the answer has to read them from `data`. The GUI and the plugins already did.
+- The block of a model that sets the simulation is `simulation` only. The key `simulator`, an old alias, is no longer read by the loader or the command line, no longer written when a model is exported, merged or created, and no longer returned by the model API. No model in the library used it. The internal attribute of the model object keeps its name.
+
 ### Plugin system
 
 - A bundle page can send `lm-filter-models` so that the model tree shows only the models it names, with the folders that hold them opened and a bar that names the filter and clears it, and `lm-open-plugin` to switch to another bundle plugin with the ticked models kept. The filter stays when the view changes, so models found in one plugin can be ticked and used in another. Corresponds to ADR 0159.
@@ -25,6 +30,8 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Fixes
 
+- A model imported into the session could not be removed, because the cross of a session row was lost when the model tree was split into its own component, although the handler was still wired. Each session row has its cross again, and uploading a file whose name is already in the session replaces that entry and says so.
+- The label of a date error names `simulation.start_date`, the block that models actually use, where it said `simulator`.
 - Importing a model file from the model tree always failed. The upload endpoint built its answer by reading `equation` from each equation, an attribute that stopped existing in the rename of 2026-08-09, so every upload ended in a 500, which the page could not parse and so showed nothing useful. The endpoint now answers with the same serialization as `GET /api/models/{name}`, and the page shows the reason when an upload is rejected.
 - Downloading a model from the optimization page failed with a 422 when no optimization had been run, or when "with results" was unticked, because the request then left out `results` and the endpoint required it. The endpoint now treats `results` as optional and exports the model as it is when it is left out, which also lets a model with no optimization block be downloaded, and the page shows the reason when a download is rejected, where it used to do nothing. Embedding results into a model with no optimization block is still refused.
 - Starting the backend and loading the page no longer stall for minutes when the model library holds thousands of models. Startup loaded every model file only to log a few names, and nothing used the result, so it now counts the files. The file tree, the model list and the plugin endpoints used to do their work on the event loop, where one slow request stopped every other request, even the health check, so they now run in worker threads. The file tree keeps the metadata of each file until the file changes and builds from directory entries, which takes the second and later loads from seconds to under one second. The model list is kept for 60 seconds and requests that arrive during a scan share it, with `?refresh=true` to skip it. With 2097 models the backend answers 2 seconds after it starts and the page shows the tree in about 2 seconds.

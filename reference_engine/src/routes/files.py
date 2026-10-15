@@ -58,21 +58,21 @@ _FILE_TEMPLATES = {
         "metadata": {"name": "New Model", "description": "", "tags": [], "version": "1.0"},
         "variables": {"example_var": {"initial_value": 0.0, "unit": "", "description": ""}},
         "equations": {},
-        "simulator": {"time_unit": "day", "step_size": 3600},
+        "simulation": {"time_unit": "day", "step_size": 3600},
     },
     "scenario": {
         "metadata": {"name": "New Scenario", "description": "", "tags": [], "version": "1.0"},
         "variables": {},
         "equations": {},
-        "simulator": {"time_unit": "day", "step_size": 3600},
+        "simulation": {"time_unit": "day", "step_size": 3600},
     },
 }
 
 
 def _simple_yaml_merge(files, output_path, models_root):
-    """Simple YAML merge: combine variables/equations/simulator from multiple files."""
+    """Simple YAML merge: combine variables/equations/simulation from multiple files."""
     merged = {'metadata': {'name': 'merged', 'description': '', 'tags': []},
-              'variables': {}, 'equations': {}, 'simulator': {}}
+              'variables': {}, 'equations': {}, 'simulation': {}}
     for f in (files or []):
         target = models_root / f.lstrip('/')
         if not target.exists():
@@ -84,8 +84,7 @@ def _simple_yaml_merge(files, output_path, models_root):
             continue
         merged['variables'].update(data.get('variables') or {})
         merged['equations'].update(data.get('equations') or {})
-        sim = data.get('simulator') or data.get('simulation') or {}
-        merged['simulator'].update(sim)
+        merged['simulation'].update(data.get('simulation') or {})
     if output_path:
         out = models_root / output_path.lstrip('/')
         out.parent.mkdir(parents=True, exist_ok=True)

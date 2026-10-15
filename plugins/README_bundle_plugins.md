@@ -144,7 +144,7 @@ Rules:
 
 | Method | Purpose |
 |--------|---------|
-| `load_model(path, validate=True)` | Loads a model by its path relative to the models directory, imports resolved, and returns the same shape as `GET /api/models/{name}`: `metadata`, `variables`, `equations`, `simulation`, `optimization`, `plans`, `imports`, `provenance`. Raises `ValueError` for an absolute path, a path containing `..`, or a model that cannot be found. With `validate=False` it also loads a component that reads variables another component defines, which fails validation alone, and it bypasses the model cache so the unvalidated model is never returned to a validated request. |
+| `load_model(path, validate=True)` | Loads a model by its path relative to the models directory, imports resolved, and returns the same structure as the `data` field of `GET /api/models/{name}`: `metadata`, `variables`, `equations`, `simulation`, `optimization`, `plans`, `imports`, `provenance`. Raises `ValueError` for an absolute path, a path containing `..`, or a model that cannot be found. With `validate=False` it also loads a component that reads variables another component defines, which fails validation alone, and it bypasses the model cache so the unvalidated model is never returned to a validated request. |
 | `models_directory` | The absolute path of the models directory, read only. |
 | `run_simulation(...)` | Runs a full simulation, for plugins that need a fresh run. |
 | `log(message)` | Prints to the backend log. |

@@ -87,6 +87,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   onBuilderUpload,
   sessionModels = [],
   onSelectSessionModel,
+  onClearSessionModel,
   scsMode = false,
   sessionKeys = new Set<string>(),
   onReloadModel,
@@ -361,6 +362,12 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                     {m.title}
                   </span>
                 </span>
+                <Tooltip title={t('sim.tree.session_remove')}>
+                  <Button size="small" type="text" icon={<CloseCircleOutlined />}
+                    data-testid={`model-tree-session-remove-${m.key}`}
+                    onClick={e => { e.stopPropagation(); onClearSessionModel?.(m.key); }}
+                    style={{ color: c.textMute, padding: '0 3px', flexShrink: 0 }} />
+                </Tooltip>
               </div>
               );
             })}

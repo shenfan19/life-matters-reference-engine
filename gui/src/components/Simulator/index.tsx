@@ -394,7 +394,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const provenance = selectedModel?.content?.provenance || selectedModel?.provenance || {};
   const resolveOutputVars = (): string[] => {
     const variables: Record<string, any> = selectedModel?.content?.variables || {};
-    const sim = selectedModel?.content?.simulation ?? selectedModel?.content?.simulator ?? {};
+    const sim = selectedModel?.content?.simulation ?? {};
     const rawVars = Array.isArray(sim.output_variables) ? sim.output_variables.map(String) : [];
     const rawTypes = Array.isArray(sim.output_types) ? sim.output_types.map(String) : [];
     if (rawVars.length === 0 && rawTypes.length === 0) return Object.keys(variables);

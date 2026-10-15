@@ -104,7 +104,7 @@ export function useFileTree({
         key: filePath, title: resolvedContent.metadata?.name || modelName,
         path: filePath, type: resolvedContent.type, category: resolvedContent.category,
         content: resolvedContent, rawContent: content, metadata: resolvedContent.metadata, variables: resolvedContent.variables,
-        equations: resolvedContent.equations, simulator: resolvedContent.simulator,
+        equations: resolvedContent.equations, simulation: resolvedContent.simulation,
         optimization: resolvedContent.optimization, imports: resolvedContent.imports,
         provenance: resolvedContent.provenance,
         folder,

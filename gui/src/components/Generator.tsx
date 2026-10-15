@@ -109,7 +109,7 @@ const Generator: React.FC<GeneratorProps> = ({ subPage }) => {
         };
         return acc;
       }, {} as Record<string, any>),
-      simulator: {
+      simulation: {
         step_size: 1,
         total_time: 1440,
         output_format: 'csv',

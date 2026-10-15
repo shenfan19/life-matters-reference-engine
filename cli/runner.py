@@ -37,7 +37,7 @@ def _model_name(model_path: Path, project_root: Path) -> str:
 
 
 def model_declares_step(model_path: Path, step: str) -> bool:
-    """Cheap raw-YAML check for whether a model declares a `simulation:`/`simulator:`
+    """Cheap raw-YAML check for whether a model declares a `simulation:`
     (step='sim') or `optimization:` (step='opt') block at all.
 
     Used to tell "model doesn't declare this step" (expected, skip) apart from
@@ -52,7 +52,7 @@ def model_declares_step(model_path: Path, step: str) -> bool:
         # loader in run_sim/run_opt hit it and report a proper FAIL.
         return True
     if step == 'sim':
-        return bool(data.get('simulation') or data.get('simulator'))
+        return bool(data.get('simulation'))
     return bool(data.get('optimization'))
 
 

@@ -295,8 +295,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
   const mt   = data?.metadata ?? data?.meta ?? {};
   const vars = data?.variables ?? {};
   const eqs = data?.equations  ?? {};
-  const simK = data?.simulator ? 'simulator' : 'simulation';
-  const sim  = data?.[simK]   ?? {};
+  const sim  = data?.simulation ?? {};
   const formatDescription = (description: any): string => {
     if (!description) return '';
     if (typeof description === 'string') return description;
@@ -492,7 +491,7 @@ function FileCard({ fileKey, meta, editing, draft, dirty, saving, totalCards,
                   <Row key={k} label={k} c={c} inline>
                     {editing ? (
                       <input type={typeof sim[k] === 'number' ? 'number' : 'text'} value={sim[k] ?? ''}
-                        onChange={e => onPatch(d => { if (d[simK]) d[simK][k] = typeof sim[k] === 'number' ? Number(e.target.value) : e.target.value; })}
+                        onChange={e => onPatch(d => { if (d.simulation) d.simulation[k] = typeof sim[k] === 'number' ? Number(e.target.value) : e.target.value; })}
                         style={{ fontFamily: 'monospace', padding: '2px 6px', border: `1px solid ${border}`, borderRadius: 3, background: bg, color: text, outline: 'none', width: '100%' }} />
                     ) : (
                       <span style={{ fontFamily: 'monospace', color: text }}>{String(sim[k])}</span>

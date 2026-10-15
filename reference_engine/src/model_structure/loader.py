@@ -161,15 +161,14 @@ class Loader:
 
             # The root model overrides the imported content
             merged_data = merge_dicts(merged_data, data)
-            local_sim = data.get('simulation') or data.get('simulator') or {}
+            local_sim = data.get('simulation') or {}
             if isinstance(local_sim, dict) and (
                 'output_variables' in local_sim or 'output_types' in local_sim
             ):
-                sim_key = 'simulation' if 'simulation' in merged_data else 'simulator'
-                if isinstance(merged_data.get(sim_key), dict):
+                if isinstance(merged_data.get('simulation'), dict):
                     for output_key in ('output_variables', 'output_types'):
                         if output_key not in local_sim:
-                            merged_data[sim_key].pop(output_key, None)
+                            merged_data['simulation'].pop(output_key, None)
             for var_name in (data.get('variables') or {}).keys():
                 merged_sources['variables'][var_name] = source_label
             for eq_name in (data.get('equations') or {}).keys():
@@ -392,9 +391,8 @@ class Loader:
                 step_unit=str(form_data.get('step_unit', '')).lower() or None,
             )
 
-        # Merging simulator and optimizer
-        # Supports the new 'simulation' field (backward compatible with 'simulator')
-        simulator_data = data.get('simulation', data.get('simulator', {}))
+        # Merging simulation and optimizer
+        simulator_data = data.get('simulation', {})
 
         # ── simulation.step_size is required; read the execution step size ──
         if 'start_date' in simulator_data and 'end_date' in simulator_data:

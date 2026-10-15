@@ -212,7 +212,7 @@ class ModelStructure(Loader, Validator, Simulation):
                     'dynamics': form.dynamics,
                 } for eq_name, form in self.equations.items()
             },
-            'simulator': self.simulator,
+            'simulation': self.simulator,
             'optimization': self.optimizer
         }
         with open(file_path, 'w', encoding='utf-8') as f:

@@ -30,7 +30,7 @@ def model_to_dict(model) -> dict:
     provenance = getattr(model, 'provenance', {}) or {}
     return {
         "metadata": metadata, "variables": variables, "equations": equations,
-        "simulation": model.simulator, "simulator": model.simulator,
+        "simulation": model.simulator,
         "optimization": model.optimizer,
         "plans": model.plans,
         "imports": provenance.get('imports', []),

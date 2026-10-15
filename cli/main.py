@@ -91,12 +91,12 @@ def main() -> None:
     if run_sim_step and run_opt_step:
         if not model_declares_step(model_path, 'sim'):
             run_sim_step = False
-            print('  (model has no simulation:/simulator: block — skipping sim step)')
+            print('  (model has no simulation: block — skipping sim step)')
         if not model_declares_step(model_path, 'opt') and args.warm is False:
             run_opt_step = False
             print('  (model has no optimization: block — skipping opt step)')
         if not run_sim_step and not run_opt_step:
-            print('Error: model declares neither simulation:/simulator: nor optimization: — nothing to run.')
+            print('Error: model declares neither simulation: nor optimization: — nothing to run.')
             sys.exit(1)
 
     root = _project_root()

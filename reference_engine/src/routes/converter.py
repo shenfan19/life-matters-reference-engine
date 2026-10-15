@@ -55,9 +55,9 @@ async def convert_scenario(request: ConvertRequest):
     metadata = scenario.get("metadata", {})
     variables = scenario.get("variables", {})
     equations = scenario.get("equations", {})
-    simulator = scenario.get("simulator", {})
+    simulation = scenario.get("simulation", {})
 
-    total_time = simulator.get("total_time", 365)
+    total_time = simulation.get("total_time", 365)
     total_turns = max(1, round(total_time / 30)) if isinstance(total_time, (int, float)) else 12
 
     out_dir = app_state.MODELS_DIR / "stories" / game_name

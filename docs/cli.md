@@ -85,7 +85,7 @@ The "which steps to run" parameters are identical across both entry points: `--s
 
 > The simulation step and the optimization step each write their own log file (`*_sim.log` / `*_opt.log`), never mixed together; when both steps run, they execute in "sim then opt" order, and if sim fails, opt does not run.
 
-> **Silently skipping a step a model doesn't declare**: under the default invocation (neither `--sim-only` nor `--opt-only` passed), if a model has no `simulation:`/`simulator:` block, sim is skipped, and if it has no `optimization:` block, opt is skipped — a line is printed, this does not count as an error, and the exit code is still `0` (both `main.py` and `batch.py` have this `model_declares_step()` gate). If both steps are skipped, it counts as an error (exit code `1`). Explicitly passing `--sim-only`/`--opt-only` bypasses this gate, and a missing corresponding step is treated directly as a failure.
+> **Silently skipping a step a model doesn't declare**: under the default invocation (neither `--sim-only` nor `--opt-only` passed), if a model has no `simulation:` block, sim is skipped, and if it has no `optimization:` block, opt is skipped — a line is printed, this does not count as an error, and the exit code is still `0` (both `main.py` and `batch.py` have this `model_declares_step()` gate). If both steps are skipped, it counts as an error (exit code `1`). Explicitly passing `--sim-only`/`--opt-only` bypasses this gate, and a missing corresponding step is treated directly as a failure.
 
 > **Passing `--opt-continue` together with `--sim-only`**: errors with `Error: --opt-continue requires the optimizer step (remove --sim-only).`, exit code `1`.
 > **A model with no `optimization:` block but `--opt-continue` explicitly passed** (without `--opt-only`/`--sim-only`): the silent-skip gate is bypassed, and the optimizer is attempted as usual, very likely erroring for lacking an `optimization:` configuration — this is expected behavior (the user has explicitly requested the optimizer step), not a bug.
@@ -173,7 +173,7 @@ Before the simulation/optimization actually starts executing, both the CLI and t
 (`reference_engine/src/validation.py`, ADR 0118). When the format is invalid, it errors and stops directly, never silently continuing with a default value:
 
 ```
-Simulation failed: Invalid date for simulator.start_date: '2026-13-99' (expected YYYY-MM-DD)
+Simulation failed: Invalid date for simulation.start_date: '2026-13-99' (expected YYYY-MM-DD)
 ```
 
 This validation shares the same engine-layer code as the sim/opt execution core (see "Relationship with the GUI" below), so for the same bad input, the CLI's error message
@@ -250,7 +250,7 @@ further split into per-model subdirectories inside it following `lm-sim`'s stand
 - Actually ran and succeeded: `[PASS](./<model name>/xxx.csv)` (linking to the result CSV)
 - Actually ran but failed: `FAIL`, with the error-summary column carrying the last ERROR message from the engine log
 - A step that didn't run: `SKIP` — this may be because `--sim-only`/`--opt-only` was passed, or because the model itself doesn't declare
-  the corresponding `simulation:`/`simulator:` or `optimization:` block (see "Silently skipping a step a model doesn't declare" above)
+  the corresponding `simulation:` or `optimization:` block (see "Silently skipping a step a model doesn't declare" above)
 
 A single model crashing does not interrupt the whole batch run; the summary section gives an overall PASS/FAIL count (per model, counted as PASS only if every step that actually ran for that model succeeded).
 

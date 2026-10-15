@@ -26,7 +26,7 @@ def _check_date_strict(value: Any, field: str) -> None:
 
 def _check_date_loose(value: Any, field: str) -> None:
     """YYYY-MM-DD, tolerating year 0 as an 'ancient date' placeholder — Python's
-    date class can't represent year 0, but simulator.start_date/end_date's
+    date class can't represent year 0, but simulation.start_date/end_date's
     duration calc (loader.py, optimizer_engine.py) explicitly supports it via
     approximate day arithmetic. Month/day are still calendar-checked, using a
     real leap year as a stand-in when year == 0 so '02-29' is accepted.
@@ -65,7 +65,7 @@ def _check_time(value: Any, field: str) -> None:
 
 
 def validate_simulator_dates(start_date: Optional[str], end_date: Optional[str],
-                              context: str = 'simulator') -> None:
+                              context: str = 'simulation') -> None:
     """Validate start_date/end_date format. Both are optional — `total_time`
     is a legitimate alternative to a date range — so missing dates are not
     an error, only malformed-but-present ones are.
