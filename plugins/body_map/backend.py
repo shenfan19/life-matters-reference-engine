@@ -5,6 +5,8 @@ import yaml
 
 MAX_MODELS = 24
 MAX_IMPORTS = 40
+SEARCH_FOLDERS = ('references', 'scenarios')
+HEAD_BYTES = 6000
 SITES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sites.yaml')
 
 
@@ -123,3 +125,48 @@ class BodyMap:
             'models': models,
             'truncated': len(paths) > MAX_MODELS,
         }
+
+    # search the library for the models that belong to one organ or one input
+
+    @staticmethod
+    def _head_facts(text: str, path: str) -> tuple:
+        """The words of a model's tags, path and name, read from the head of its file without parsing the YAML."""
+        tags = []
+        flow = re.search(r'^[ \t]+tags:[ \t]*\[([^\]]*)\]', text, re.M)
+        if flow:
+            tags = [t.strip().strip('\'"') for t in flow.group(1).split(',')]
+        else:
+            block = re.search(r'^[ \t]+tags:[ \t]*\n((?:[ \t]+-[^\n]*\n)+)', text, re.M)
+            if block:
+                tags = [re.sub(r'^[ \t]+-[ \t]*', '', ln).strip().strip('\'"') for ln in block.group(1).splitlines()]
+        name = re.search(r'^[ \t]+name:[ \t]*([^\n#]+)', text, re.M)
+        parts = [t for t in tags if t] + [path, name.group(1).strip().strip('\'"') if name else '']
+        return _words(' '.join(parts)), ' '.join(parts).lower()
+
+    def endpoint_search(self, inputs: dict) -> dict:
+        """The models of the library whose tags, path or name point to one organ or one input."""
+        kind, slot = inputs.get('kind'), str(inputs.get('id') or '')
+        if kind not in ('organ', 'input'):
+            return {'success': False, 'error': 'kind must be organ or input'}
+        rules = [r for r in _load_rules()['organs' if kind == 'organ' else 'inputs'] if r[0] == slot]
+        if not rules:
+            return {'success': False, 'error': 'Unknown ' + kind + ': ' + slot}
+        root = self.ctx.models_directory
+        paths = []
+        for folder in SEARCH_FOLDERS:
+            for dirpath, _dirs, files in os.walk(os.path.join(root, folder)):
+                for fn in files:
+                    if not fn.endswith('.yaml'):
+                        continue
+                    full = os.path.join(dirpath, fn)
+                    rel = os.path.relpath(full, root).replace('\\', '/')[:-5]
+                    try:
+                        with open(full, encoding='utf-8') as f:
+                            head = f.read(HEAD_BYTES)
+                    except OSError:
+                        continue
+                    words, joined = self._head_facts(head, rel)
+                    if _match(words, joined, rules):
+                        paths.append(rel)
+        paths.sort()
+        return {'success': True, 'kind': kind, 'id': slot, 'paths': paths, 'count': len(paths)}

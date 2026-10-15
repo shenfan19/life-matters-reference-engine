@@ -29,6 +29,10 @@
   .tag { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; }
   .tag.input { border-style: dashed; }
   .tag.hit { border-color: var(--text); }
+  .btn { font: inherit; font-size: 12px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; cursor: pointer; margin: 6px 6px 0 0; }
+  .btn:hover { border-color: var(--text); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  #tools { margin: 4px 0 10px; }
   #detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   #detail h3 { margin: 0 0 6px; font-size: 14px; }
   #detail ul { margin: 4px 0 0; padding-left: 18px; }
@@ -38,12 +42,12 @@
   .detail { fill: none; stroke: var(--line-dim); stroke-width: 1; stroke-dasharray: 2 3; }
   .pedestal { fill: none; stroke: var(--line-dim); }
   .slot { cursor: pointer; }
-  .slot .shape { fill: none; stroke: var(--line-dim); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .slot .shape { pointer-events: all; fill: none; stroke: var(--line-dim); stroke-width: 1; vector-effect: non-scaling-stroke; }
   .slot.has .shape { fill-opacity: 0.34; stroke-width: 1.5; }
   .slot:hover .shape { stroke: var(--ink); }
   .slot.dim, .node.dim, .lab-g.dim, .conn.dim, .stub.dim, .lead.dim { opacity: 0.2; }
   .sel-ring { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 3; }
-  .lead { fill: none; stroke-width: 1; }
+  .lead { fill: none; stroke-width: 1; pointer-events: none; }
   .stub { fill: none; stroke: var(--line-dim); stroke-width: 1; stroke-dasharray: 2 3; }
   .stub.lit { stroke-dasharray: none; }
   .conn { fill: none; stroke-width: 1.2; stroke-dasharray: 5 3; }
@@ -99,6 +103,7 @@
 <div id="side">
   <h2 id="title">Body Map</h2>
   <div id="msg" class="mute small"></div>
+  <div id="tools"><button class="btn" id="compose"></button></div>
   <div id="list"></div>
   <div id="detail" style="display:none"></div>
 </div>
@@ -124,8 +129,14 @@
       organsH: 'Organs', inputsH: 'Inputs',
       words: 'Matched words',
       components: 'Components',
-      hintSel: 'Click a model, an organ or an input to follow it. Dashed lines join the inputs of a model to its organs.',
-      imports: n => n + ' imported'
+      hintSel: 'Click a model, an organ or an input to follow it. Clicking an organ or an input also filters the model tree to the models that point to it.',
+      imports: n => n + ' imported',
+      lib: n => n + ' model' + (n === 1 ? '' : 's') + ' in the library point here. The model tree shows only these.',
+      libNone: 'No model in the library points here, so the tree is empty. This shows a gap in the library or in sites.yaml.',
+      searching: 'Searching the library ...',
+      tickAll: n => 'Tick the first ' + n,
+      clearFilter: 'Show all models in the tree',
+      compose: 'Open in Compose'
     },
     zh: {
       title: '人体定位',
@@ -141,8 +152,14 @@
       organsH: '器官', inputsH: '输入',
       words: '命中的词',
       components: '组件',
-      hintSel: '点模型、器官或输入来追踪。虚线把模型的输入连到它的器官。',
-      imports: n => '导入 ' + n + ' 个'
+      hintSel: '点模型、器官或输入来追踪。点器官或输入时，模型树会同时过滤成指向它的模型。',
+      imports: n => '导入 ' + n + ' 个',
+      lib: n => '库里有 ' + n + ' 个模型指向这里，模型树只显示它们。',
+      libNone: '库里没有模型指向这里，所以模型树是空的。这说明库或 sites.yaml 有缺口。',
+      searching: '正在检索模型库 ...',
+      tickAll: n => '勾选前 ' + n + ' 个',
+      clearFilter: '模型树显示全部',
+      compose: '到 Compose 合成'
     }
   };
   const pick = lang => TEXT[String(lang || 'en').startsWith('zh') ? 'zh' : 'en'];
@@ -179,6 +196,7 @@
     food:       { en: 'Food / water',   zh: '饮食',     at: [184, 64],  to: [128, 66],  glyph: 'M-7 -1 H7 A7 7 0 0 1 -7 -1 Z M-2 -4 q-1.5 -2 0 -4 M2 -4 q-1.5 -2 0 -4' },
     substances: { en: 'Smoke / alcohol', zh: '烟酒',    at: [206, 104], to: [134, 88],  glyph: 'M-7 2 H7 V6 H-7 Z M2 2 V6 M-3 -1 q2 -3 0 -7' },
     commute:    { en: 'Commute',        zh: '通勤',     at: [44, 478],  to: [85, 478],  glyph: 'M-7 -5 L-1 0 L-7 5 M0 -5 L6 0 L0 5' },
+    medication: { en: 'Medication',   zh: '药物',     at: [222, 150], to: [193, 150], glyph: 'M-6 3 L3 -6 a3.5 3.5 0 0 1 5 5 L-1 8 a3.5 3.5 0 0 1 -5 -5 Z M-1.5 -1.5 L1.5 1.5' },
     exercise:   { en: 'Exercise',       zh: '运动',     at: [196, 478], to: [155, 478], glyph: 'M-7 0 H7 M-5 -4 V4 M5 -4 V4 M-8 -2 V2 M8 -2 V2' }
   };
 
@@ -188,6 +206,8 @@
   let models = [];          // placed models: {path, name, error?, sites, inputs, color}
   let sel = null;           // {kind: 'model' | 'organ' | 'input', id}
   let token = 0;
+  let filt = null;          // the library search behind the tree filter: {kind, id, count, paths} while it runs {kind, id, pending}
+  let filtToken = 0;
 
   function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light'; }
   applyTheme(q.get('theme'));
@@ -368,7 +388,30 @@
 
   // ---- the side panel
 
-  function choose(kind, id) { sel = isSel(kind, id) ? null : { kind, id }; renderList(); paint(); renderDetail(); }
+  function choose(kind, id) { sel = isSel(kind, id) ? null : { kind, id }; renderList(); paint(); renderDetail(); syncFilter(); }
+
+  // An organ or an input filters the model tree to the models of the library that point to it; anything else clears the filter.
+  async function syncFilter() {
+    const my = ++filtToken;
+    if (!sel || sel.kind === 'model') {
+      if (filt) { filt = null; parent.postMessage({ type: 'lm-filter-models', paths: null }, '*'); renderDetail(); }
+      return;
+    }
+    const want = { kind: sel.kind, id: sel.id };
+    filt = { kind: want.kind, id: want.id, pending: true }; renderDetail();
+    let res;
+    try {
+      const r = await fetch('/api/plugins/' + PLUGIN_ID + '/search', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: want })
+      });
+      res = await r.json();
+    } catch (e) { res = { success: false, error: e.message }; }
+    if (my !== filtToken) return;
+    if (!res.success) { filt = null; message(T.fail + (res.error || res.detail || 'unknown error')); renderDetail(); return; }
+    filt = { kind: want.kind, id: want.id, count: res.count, paths: res.paths };
+    parent.postMessage({ type: 'lm-filter-models', paths: res.paths, label: (want.kind === 'organ' ? organName : inputName)(want.id) }, '*');
+    renderDetail();
+  }
 
   function renderList() {
     const f = focus();
@@ -429,13 +472,28 @@
         ul.appendChild(li);
       });
       d.appendChild(ul);
+      if (filt && filt.kind === sel.kind && filt.id === sel.id) {
+        if (filt.pending) d.appendChild(el('p', { class: 'small mute' }, T.searching));
+        else {
+          d.appendChild(el('p', { class: 'small' }, filt.count ? T.lib(filt.count) : T.libNone));
+          if (filt.count) {
+            const n = Math.min(filt.count, 12);
+            const tick = el('button', { class: 'btn' }, T.tickAll(n));
+            tick.addEventListener('click', () => parent.postMessage({ type: 'lm-set-models', paths: filt.paths.slice(0, 12) }, '*'));
+            d.appendChild(tick);
+          }
+          const clear = el('button', { class: 'btn' }, T.clearFilter);
+          clear.addEventListener('click', () => choose(sel.kind, sel.id));
+          d.appendChild(clear);
+        }
+      }
     }
   }
 
   function message(text) { $('msg').textContent = text; }
 
   function setTexts() {
-    $('title').textContent = T.title;
+    $('title').textContent = T.title; $('compose').textContent = T.compose;
     if (!models.length) message(T.none);
   }
 
@@ -472,6 +530,7 @@
     if (key !== lastKey) { lastKey = key; clearTimeout(debounce); debounce = setTimeout(() => refresh(list), 150); }
   });
 
+  $('compose').addEventListener('click', () => parent.postMessage({ type: 'lm-open-plugin', id: 'model_compose' }, '*'));
   buildFigure(); setTexts(); paint();
   parent.postMessage({ type: 'lm-ready' }, '*');
 })();

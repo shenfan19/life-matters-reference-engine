@@ -1,6 +1,6 @@
 id: ve_graph
 name: VE Graph
-version: '0.1'
+version: '0.1.0'
 contract_version: 2
 description: Draws the variables and equations of the selected model as a graph. Variables are circles, equations are squares, arrows run from input variables to equations and from equations to the variables they update.
 author: LM Team

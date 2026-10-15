@@ -258,3 +258,30 @@ def test_body_map_plugin_places_models_on_organs(tmp_path):
     assert by_path['liver_2026']['sites'][0]['slot'] == 'liver'   # a models/ prefix and .yaml suffix are accepted
 
     assert plugin.endpoint_locate({})['success'] is False
+
+
+def test_body_map_search_finds_the_models_of_an_organ_or_input(tmp_path):
+    """body_map search reads the head of every model file and returns the paths that point to one organ or input."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('body_map_backend_search', ROOT / 'plugins' / 'body_map' / 'backend.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    (tmp_path / 'references' / 'medical').mkdir(parents=True)
+    (tmp_path / 'scenarios').mkdir()
+    (tmp_path / 'sensitive').mkdir()
+    (tmp_path / 'references' / 'medical' / 'a_2026.yaml').write_text('metadata:\n  name: a\n  tags: [hepatic, fibrosis]\n', encoding='utf-8')
+    (tmp_path / 'references' / 'medical' / 'b_2026.yaml').write_text('metadata:\n  name: b\n  tags:\n    - liver\n    - steatosis\n', encoding='utf-8')
+    (tmp_path / 'references' / 'medical' / 'c_2026.yaml').write_text('metadata:\n  name: c\n  tags: [theory]\n', encoding='utf-8')
+    (tmp_path / 'scenarios' / 'run.yaml').write_text('metadata:\n  name: run\n  tags: [running]\n', encoding='utf-8')
+    (tmp_path / 'sensitive' / 'liver_x.yaml').write_text('metadata:\n  name: x\n  tags: [liver]\n', encoding='utf-8')
+
+    class Ctx:
+        models_directory = str(tmp_path)
+
+    plugin = module.BodyMap(Ctx())
+    organ = plugin.endpoint_search({'kind': 'organ', 'id': 'liver'})
+    assert organ['success'] and organ['paths'] == ['references/medical/a_2026', 'references/medical/b_2026']   # flow and block tag lists, sensitive/ not searched
+    assert plugin.endpoint_search({'kind': 'input', 'id': 'exercise'})['paths'] == ['scenarios/run']
+    assert plugin.endpoint_search({'kind': 'organ', 'id': 'no_such_organ'})['success'] is False
+    assert plugin.endpoint_search({'kind': 'other', 'id': 'liver'})['success'] is False

@@ -262,6 +262,8 @@
   "sim.tree.select_files": "Sélectionnez d'abord 2+ fichiers",
   "sim.tree.multi_ticked": "{n} cochés",
   "sim.tree.multi_clear": "Tout décocher",
+  "sim.tree.filtered": "Filtré par le plugin : {label} ({n})",
+  "sim.tree.filter_clear": "Afficher tous les modèles",
   "sim.tree.split_file": "Diviser le fichier sélectionné",
   "sim.tree.select_one_file": "Sélectionnez d'abord 1 fichier",
   "sim.tree.split_scs_disabled": "Mode local uniquement",

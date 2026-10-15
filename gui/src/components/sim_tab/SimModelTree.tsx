@@ -55,6 +55,10 @@ interface SimModelTreeProps {
   multiCheckedKeys?: string[];
   onToggleMultiChecked?: (key: string) => void;
   onClearMultiChecked?: () => void;
+  // A plugin may filter the tree to some models; the bar names the filter and clears it.
+  filterLabel?: string | null;
+  filterCount?: number;
+  onClearFilter?: () => void;
 }
 
 const SimModelTree: React.FC<SimModelTreeProps> = ({
@@ -83,6 +87,9 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
   multiCheckedKeys = [],
   onToggleMultiChecked,
   onClearMultiChecked,
+  filterLabel = null,
+  filterCount = 0,
+  onClearFilter,
 }) => {
   const checkboxMode = builderMode || multiSelectMode;
   const checkedList = builderMode ? builderCheckedFiles : multiCheckedKeys;
@@ -331,6 +338,19 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
               );
             })}
             <div style={{ borderBottom: `1px solid ${c.border}`, margin: '6px 0' }} />
+          </div>
+        )}
+        {filterLabel !== null && (
+          <div data-testid="model-tree-plugin-filter" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '3px 6px',
+            border: `1px solid ${c.primary}`, borderRadius: 4, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', color: c.text }}>
+            <FilterOutlined style={{ color: c.primary }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('sim.tree.filtered', { label: filterLabel, n: filterCount })}
+            </span>
+            <Tooltip title={t('sim.tree.filter_clear')}>
+              <Button size="small" type="text" icon={<CloseCircleOutlined />} onClick={onClearFilter}
+                data-testid="model-tree-plugin-filter-clear" style={{ color: c.textMute, padding: '0 3px' }} />
+            </Tooltip>
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>

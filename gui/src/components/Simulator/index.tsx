@@ -562,6 +562,44 @@ const Simulator: React.FC<SimulatorProps> = ({
     setMultiChecked(keys);
   }, [multiSelectMode, modelLeaves]);
 
+  // A plugin may ask the tree to show only some models, for example the models found for an organ.
+  const [pluginFilter, setPluginFilter] = useState<{ keys: Set<string>; label: string } | null>(null);
+  const expandedBeforeFilter = useRef<React.Key[] | null>(null);
+  const displayTree = useMemo(() => {
+    if (!pluginFilter) return storyTree;
+    const prune = (nodes: any[]): any[] => nodes.flatMap(n => {
+      if (n.isLeaf) return pluginFilter.keys.has(String(n.key)) ? [n] : [];
+      const kids = prune(n.children || []);
+      return kids.length ? [{ ...n, children: kids }] : [];
+    });
+    return prune(storyTree);
+  }, [storyTree, pluginFilter]);
+  const clearPluginFilter = useCallback(() => {
+    setPluginFilter(null);
+    if (expandedBeforeFilter.current) setExpandedKeys(expandedBeforeFilter.current);
+    expandedBeforeFilter.current = null;
+  }, [setExpandedKeys]);
+  const filterByPaths = useCallback((paths: string[] | null, label: string) => {
+    if (!paths) { clearPluginFilter(); return; }
+    const keys = new Set<string>();
+    paths.forEach(p => { const key = [p, `${p}.yaml`, `${p}.yml`].find(k => modelLeaves.has(k)); if (key) keys.add(key); });
+    // open every folder that still holds a model, and remember how the tree was before
+    const folders: React.Key[] = [];
+    const walk = (nodes: any[]): boolean => nodes.reduce((any, n) => {
+      if (n.isLeaf) return any || keys.has(String(n.key));
+      const has = walk(n.children || []);
+      if (has) folders.push(n.key);
+      return any || has;
+    }, false);
+    walk(storyTree);
+    if (!expandedBeforeFilter.current) expandedBeforeFilter.current = expandedKeys;
+    setExpandedKeys(folders);
+    setPluginFilter({ keys, label });
+  }, [clearPluginFilter, modelLeaves, storyTree, expandedKeys, setExpandedKeys]);
+  const openPlugin = useCallback((id: string) => {
+    if (bundlePlugins.some(p => p.id === id)) setPluginViewId(id);
+  }, [bundlePlugins]);
+
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Hidden file inputs */}
@@ -571,7 +609,8 @@ const Simulator: React.FC<SimulatorProps> = ({
 
         {!leftCollapsed && <SimModelTree
           width={leftW} SECTION_H={SECTION_H}
-          storyTree={storyTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
+          storyTree={displayTree} storyFilter={storyFilter} setStoryFilter={setStoryFilter}
+          filterLabel={pluginFilter?.label ?? null} filterCount={pluginFilter?.keys.size ?? 0} onClearFilter={clearPluginFilter}
           storyViewMode={storyViewMode} setStoryViewMode={setStoryViewMode}
           expandedKeys={expandedKeys} setExpandedKeys={setExpandedKeys}
           selectedKey={selectedKey}
@@ -651,6 +690,8 @@ const Simulator: React.FC<SimulatorProps> = ({
               selectedModel={selectedModel}
               checkedModels={checkedModels}
               onSetModels={setCheckedByPaths}
+              onFilterModels={filterByPaths}
+              onOpenPlugin={openPlugin}
               isDarkMode={isDarkMode}
               language={language}
               c={c}

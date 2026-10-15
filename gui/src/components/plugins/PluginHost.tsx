@@ -11,6 +11,10 @@
 //   plugin -> host  { type: 'lm-set-models', paths: [...] }   asks the host to tick exactly these
 //                                          models in the tree, in this order. Honoured only for
 //                                          a plugin with ui.model_selection: multi
+//   plugin -> host  { type: 'lm-filter-models', paths: [...] | null, label?: string }   shows only these
+//                                          models in the tree, with a bar that clears the filter. null clears it
+//   plugin -> host  { type: 'lm-open-plugin', id: 'model_compose' }   switches to another bundle plugin,
+//                                          the ticked models stay ticked
 // The query string of the iframe carries theme and lang as well, so a plugin page
 // opened on its own still has them.
 
@@ -28,12 +32,15 @@ interface Props {
   checkedModels?: { key: string; title: string; path: string }[];
   // called when the page asks for models to be ticked; paths are model paths without a file suffix
   onSetModels?: (paths: string[]) => void;
+  // called when the page asks for the tree to show only some models, or null to show all
+  onFilterModels?: (paths: string[] | null, label: string) => void;
+  onOpenPlugin?: (id: string) => void;
   isDarkMode: boolean;
   language: string;
   c: ReturnType<typeof getC>;
 }
 
-const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedModels = NO_MODELS, onSetModels, isDarkMode, language, c }) => {
+const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedModels = NO_MODELS, onSetModels, onFilterModels, onOpenPlugin, isDarkMode, language, c }) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const theme = isDarkMode ? 'dark' : 'light';
   const src = `${API_BASE}/plugins/${encodeURIComponent(pluginId)}/bundle/?theme=${theme}&lang=${encodeURIComponent(language)}`;
@@ -57,10 +64,15 @@ const PluginHost: React.FC<Props> = ({ pluginId, title, selectedModel, checkedMo
       if (e.data?.type === 'lm-set-models' && Array.isArray(e.data.paths)) {
         onSetModels?.(e.data.paths.filter((x: unknown) => typeof x === 'string'));
       }
+      if (e.data?.type === 'lm-filter-models') {
+        const paths = Array.isArray(e.data.paths) ? e.data.paths.filter((x: unknown) => typeof x === 'string') : null;
+        onFilterModels?.(paths, typeof e.data.label === 'string' ? e.data.label : '');
+      }
+      if (e.data?.type === 'lm-open-plugin' && typeof e.data.id === 'string') onOpenPlugin?.(e.data.id);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [sendInit, onSetModels]);
+  }, [sendInit, onSetModels, onFilterModels, onOpenPlugin]);
 
   return (
     <iframe

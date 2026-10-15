@@ -262,6 +262,8 @@
   "sim.tree.select_files": "Select 2+ files first",
   "sim.tree.multi_ticked": "{n} ticked",
   "sim.tree.multi_clear": "Clear all ticks",
+  "sim.tree.filtered": "Filtered by plugin: {label} ({n})",
+  "sim.tree.filter_clear": "Show all models",
   "sim.tree.split_file": "Split selected file",
   "sim.tree.select_one_file": "Select 1 file first",
   "sim.tree.split_scs_disabled": "Local mode only",

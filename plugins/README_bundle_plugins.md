@@ -29,7 +29,7 @@ The backend finds a plugin by looking for `manifest.yaml` in `plugins/`, up to t
 ```yaml
 id: my_plugin                   # unique, snake_case
 name: My Plugin
-version: '0.1'
+version: '0.1.0'                  # the plugin's own version, independent of the engine's
 contract_version: 2             # the contract described here
 description: One sentence about what it does.
 author: Your Name
@@ -94,6 +94,8 @@ window.addEventListener('message', (e) => {
 **Several models.** A plugin that sets `ui.model_selection: multi` also gets the field `models`, a list of `{key, title, path}` in the order the models were ticked, and the model tree shows a checkbox on every model while the plugin view is open. `model` still holds the single selected model. Without `multi`, `models` is an empty list. `key` is what `POST /api/merge` and the other file routes take, and `path` is what `load_model` takes.
 
 **Asking the host to tick models.** A plugin with `model_selection: multi` can send `{ type: 'lm-set-models', paths: ['references/.../a', 'references/.../b'] }` to its parent. The host ticks exactly those models in the tree, in that order, and answers with a new `lm-init`. A path may be written with or without the `.yaml` suffix, and a path that is not in the tree is skipped. The message is ignored for a plugin that did not ask for multi selection.
+
+**Filtering the tree and moving between plugins.** Any bundle page can send `{ type: 'lm-filter-models', paths: [...], label: 'Liver' }` to its parent. The model tree then shows only those models, opens the folders that hold them, and shows a bar with the label and a button that clears the filter. `paths` is a list of model paths with or without the `.yaml` suffix, and `paths: null` clears the filter. The filter stays when the user changes to another view. A page can also send `{ type: 'lm-open-plugin', id: 'model_compose' }` to switch to another bundle plugin, and models ticked in the tree stay ticked, so a page can find models, tick them and hand them to a plugin that works on them.
 
 **Button order.** A user can drag the plugin buttons into a different order, which the browser remembers. `ui.order` only sets the order for buttons the user has not moved.
 

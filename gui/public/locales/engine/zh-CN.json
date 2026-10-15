@@ -262,6 +262,8 @@
   "sim.tree.select_files": "请先选择 2 个以上文件",
   "sim.tree.multi_ticked": "已勾选 {n} 个",
   "sim.tree.multi_clear": "清除全部勾选",
+  "sim.tree.filtered": "插件过滤：{label}（{n} 个）",
+  "sim.tree.filter_clear": "显示全部模型",
   "sim.tree.split_file": "拆分选中文件",
   "sim.tree.select_one_file": "请先选择 1 个文件",
   "sim.tree.split_scs_disabled": "仅本地模式下可用",
