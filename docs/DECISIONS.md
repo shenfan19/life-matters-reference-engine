@@ -71,6 +71,7 @@
 | [0146](decisions/0146-2026-07-21_sim_opt-progress-snapshot-and-sim-pause-resume-sync.md) | **GUI sessions scoped per model: optimization-progress-snapshot persistence plus simulation pause/resume frontend-backend sync** | ⭐ | Done |
 | [0157](decisions/0157-2026-10-10_sim_bundle-plugins-and-view-rail.md) | **Bundle plugins and the view rail: a full-page plugin view, named backend endpoints, `PluginContext.load_model`, and one strip for the main area's views** | ⭐⭐ | Done |
 | [0158](decisions/0158-2026-10-12_sim_plugin-multi-model-selection-and-reorderable-rail.md) | **Multi-model selection for plugins and a reorderable plugin strip: ticked models reach the page, `load_model` without validation, draggable plugin buttons** | ⭐ | Done |
+| [0159](decisions/0159-2026-10-15_sim_plugin-tree-filter-body-map-and-multi-model-graph.md) | **Plugins that filter the model tree and switch views, the Body Map, a multi-model VE Graph and a searchable list view: the tree can be filtered by a plugin, and the model tree search works in every view** | ⭐ | Done |
 
 ---
 

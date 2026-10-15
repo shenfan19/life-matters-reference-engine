@@ -16,7 +16,7 @@ ADR 0157 gave a plugin a full-page view that is told about one selected model. T
 
 ## Decision
 
-**1. `ui.model_selection: multi` in the manifest.** A plugin that sets it makes the model tree show a checkbox on every model while that plugin view is open. The same checkbox rendering as the model library editor is reused, with its own list of ticked models that survives closing and reopening the plugin view within a session. The header of the tree shows how many are ticked and a button to clear them. The view toggle between tree and list is hidden in this mode. The default is `single`, which changes nothing for existing plugins.
+**1. `ui.model_selection: multi` in the manifest.** A plugin that sets it makes the model tree show a checkbox on every model while that plugin view is open. The same checkbox rendering as the model library editor is reused, with its own list of ticked models that survives closing and reopening the plugin view within a session. The header of the tree shows how many are ticked and a button to clear them. The view toggle between tree and list is hidden in this mode, which ADR 0159 reverses: the list view is available with checkboxes. The default is `single`, which changes nothing for existing plugins.
 
 **2. The ticked models reach the page.** `lm-init` gains a field `models`, a list of `{key, title, path}` in the order the models were ticked, empty unless the plugin asked for multi selection. The existing field `model` keeps the single selected model. A page that ignores `models` works as before.
 

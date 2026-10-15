@@ -8,12 +8,20 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Plugin system
 
-- VE Graph draws several ticked models together. Variables with the same name are one node, marked with a dashed ring, equations stay separate and take the color of their model, and the legend lists the models. The `graph` endpoint takes `paths` as well as `path`.
-- Body Map picks organs and inputs several at a time, with a switch between all of them and any of them, and its `search` endpoint takes a list of `picks` and a `mode`.
-- The model tree search box now filters the tree as well, where it used to filter only the list view, and matches the path of a model as well as its title. A count of matches is shown under it. The list view, which shows the title with its folders on a second line, is available while ticking models for a plugin or editing the library, and has the checkboxes there.
-- A bundle page can send `lm-filter-models` so that the model tree shows only the models it names, with a bar that clears the filter, and `lm-open-plugin` to switch to another bundle plugin with the ticked models kept. The Body Map uses them: clicking an organ or an input filters the tree to the models of the library that point to it, and a button opens Compose. The filter bar adds the locale keys `sim.tree.filtered` and `sim.tree.filter_clear`.
-- Plugin manifests carry their own version, independent of the engine's, and the three plugins start at 0.1.0.
-- Added the `body_map` plugin, a paper-doll body that shows where the ticked models act. Each model is placed on the organs its tags, path and name point to, using the keyword lists in `plugins/body_map/sites.yaml`, and a scenario lights up the organs of the components it imports. The figure also carries nine everyday inputs, air, food, work stress, study and social life, sleep, smoke and alcohol, medication, commute and exercise, that light up the same way, and dashed lines join the inputs of the followed model, organ or input to its organs. The page has a plain background with thin lines and a slow scanning band, and follows the light and dark theme. The icon name `UserOutlined` can now be used in `ui.icon`.
+- A bundle page can send `lm-filter-models` so that the model tree shows only the models it names, with the folders that hold them opened and a bar that names the filter and clears it, and `lm-open-plugin` to switch to another bundle plugin with the ticked models kept. The filter stays when the view changes, so models found in one plugin can be ticked and used in another. Corresponds to ADR 0159.
+- Added the `body_map` plugin, a paper-doll body that shows where the ticked models act. Each model is placed on one of fifteen organs from the words in its tags, path and name, using the keyword lists in `plugins/body_map/sites.yaml`, and a scenario lights up the organs of the components it imports. Nine everyday inputs, air, food, work stress, study and social life, sleep, smoke and alcohol, medication, commute and exercise, are placed the same way.
+- In the Body Map, organs and inputs can be picked several at a time with a switch between all of them and any of them. The picks filter the model tree to the models of the library that point to them, a button ticks the first twelve, a button opens Compose, and following a model, an organ or an input dims the rest and draws dashed lines from the inputs to the organs. The `search` endpoint takes a list of `picks` and a `mode`.
+- VE Graph draws several ticked models together. Variables with the same name are one node, marked with a dashed ring, equations stay separate and take the color of their model, and the legend lists the models. The `graph` endpoint takes `paths` as well as `path`, loads models without validation so that components which read each other's variables can be drawn together, and skips and reports a model that cannot be loaded.
+- Plugin manifests carry their own version, independent of the engine's, and the three plugins start at 0.1.0. The icon name `UserOutlined` can be used in `ui.icon`.
+
+### GUI: model tree
+
+- The list view shows the title of a model with its folders on a second line, sorted by title, and is available while ticking models for a plugin or editing the library, with the checkboxes there. It was hidden in those modes. Corresponds to ADR 0159.
+- The search box matches the path of a model as well as its title, and a count of matches is shown under it. Three locale keys are added in four languages.
+
+### Fixes
+
+- The search box of the model tree now filters the tree view. It used to filter only the list view, so it had no effect in the tree view and in every view with checkboxes.
 
 ## [1.1.1] - 2026-10-13
 
