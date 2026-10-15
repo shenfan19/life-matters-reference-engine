@@ -19,6 +19,11 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 - VE Graph draws several ticked models together. Variables with the same name are one node, marked with a dashed ring, equations stay separate and take the color of their model, and the legend lists the models. The `graph` endpoint takes `paths` as well as `path`, loads models without validation so that components which read each other's variables can be drawn together, and skips and reports a model that cannot be loaded.
 - Plugin manifests carry their own version, independent of the engine's, and the three plugins start at 0.1.0. The icon name `UserOutlined` can be used in `ui.icon`.
 
+### Testing
+
+- Added three end-to-end regression specs in `gui/e2e/specs`, for the model tree and the session area, the view rail and the three plugins, and the backend answers the page depends on, including that the server keeps answering while the file tree is built. A shared `helpers.ts` finds the models directory and waits for the tree.
+- Added a check for props that a component declares and never uses, `gui/scripts/find-unused-props.mjs` read by `test_verification/test_gui_prop_wiring.py`. It finds the kind of loss that hid the cross of the session rows, where a handler is still passed down but nothing draws its control, and a prop that is meant to stay unused is listed with its reason.
+
 ### Scripts
 
 - Added `stop.sh` and `stop.cmd`, plain shell and batch scripts that stop whatever is listening on the backend and GUI ports together with the processes it started, so a Ctrl+C that left a process behind no longer blocks the next start. Only a process that listens on a port is stopped, so a browser connected to the backend is left alone, and `--list` shows what is listening without stopping anything. They replace `scripts/kill_ports.py`, which also stopped programs that were merely connected to the port and left the processes under the one it stopped running.

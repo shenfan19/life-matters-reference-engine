@@ -30,3 +30,16 @@ We welcome contributions of every kind:
      Write your code and commit it (`git commit -m 'Add some AmazingFeature'`)
      Push to the branch (`git push origin featureAmazingFeature`)
      Open a Pull Request.
+
+## Testing
+
+Run these before a pull request. The first three are quick, and the end-to-end specs take about half a minute with the backend and the GUI already running.
+
+| Check | Command | What it guards |
+| --- | --- | --- |
+| Engine and API tests | `python -m pytest test_verification -q` from the repository root, with the models repository linked or copied as `models/` | simulation, optimization, loader, validation, the command line, the plugin framework, the routes |
+| Types | `cd gui && npx tsc --noEmit -p tsconfig.app.json` | the GUI type-checks with no errors |
+| Unused props | included in the pytest run as `test_gui_prop_wiring.py`, or `cd gui && node scripts/find-unused-props.mjs` | a prop that a component declares and never uses, which usually means a control was lost |
+| End to end | `cd gui && npx playwright test -c e2e/playwright.config.ts` | the model tree, the session area, the view rail, the plugins, the answers of the backend |
+
+Every fixed defect gets a test that fails while the defect is present. If the fix cannot be tested automatically, say why in the pull request. A build error about an unused name is a question about why it is unused, and deleting the name is not an answer.
