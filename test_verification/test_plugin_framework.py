@@ -216,3 +216,44 @@ def test_plugin_template_is_a_working_bundle_plugin(tmp_path):
         assert c.post('/api/plugins/my_plugin/fields', json={'inputs': {}}).json()['success'] is False
     finally:
         app_state.plugin_manager, app_state.loader_engine, app_state.engine = saved
+
+
+def test_body_map_plugin_places_models_on_organs(tmp_path):
+    """body_map places a model on the organs its tags, path and name point to, lets a scenario light up
+    the organs of the components it imports, and refuses unsafe or missing paths."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('body_map_backend', ROOT / 'plugins' / 'body_map' / 'backend.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    (tmp_path / 'fitness').mkdir()
+    (tmp_path / 'fitness' / 'running_2026.yaml').write_text(
+        'metadata:\n  name: running\n  tags: [fitness, vo2max]\n', encoding='utf-8')
+    (tmp_path / 'liver_2026.yaml').write_text('metadata:\n  name: liver\n  tags: [hepatic, fibrosis]\n', encoding='utf-8')
+    (tmp_path / 'lung_2026.yaml').write_text('metadata:\n  name: lung_fn\n  tags: [lung_function]\n', encoding='utf-8')
+    (tmp_path / 'scenario.yaml').write_text(
+        'metadata:\n  name: scenario\n  tags: [scenario]\nimports:\n  - liver_2026\n  - lung_2026\n', encoding='utf-8')
+    (tmp_path / 'abstract.yaml').write_text('metadata:\n  name: abstract\n  tags: [theory]\n', encoding='utf-8')
+
+    class Ctx:
+        models_directory = str(tmp_path)
+
+    plugin = module.BodyMap(Ctx())
+    out = plugin.endpoint_locate({'paths': ['fitness/running_2026', 'scenario', 'abstract', '../x', 'missing', 'models/liver_2026.yaml']})
+    assert out['success'] is True
+    by_path = {m['path']: m for m in out['models']}
+
+    running = {s['slot'] for s in by_path['fitness/running_2026']['sites']}
+    assert running == {'muscle', 'heart'}          # fitness folder and vo2max tag
+
+    scenario = {s['slot']: s for s in by_path['scenario']['sites']}
+    assert set(scenario) == {'liver', 'lung'}      # the scenario's own tags name no organ, its components do
+    assert scenario['liver']['via'] == ['liver'] and scenario['lung']['via'] == ['lung_fn']
+    assert by_path['scenario']['imports'] == 2
+
+    assert by_path['abstract']['sites'] == []      # nothing to place is not an error
+    assert 'error' not in by_path['abstract']
+    assert 'error' in by_path['../x'] and 'error' in by_path['missing']
+    assert by_path['liver_2026']['sites'][0]['slot'] == 'liver'   # a models/ prefix and .yaml suffix are accepted
+
+    assert plugin.endpoint_locate({})['success'] is False

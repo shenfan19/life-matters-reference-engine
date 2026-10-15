@@ -9,7 +9,7 @@ import React, { useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import {
   AppstoreOutlined, ApartmentOutlined, BarChartOutlined, BuildOutlined, CloseOutlined, ClusterOutlined,
-  FileTextOutlined, LeftOutlined, PictureOutlined, RightOutlined, TableOutlined,
+  FileTextOutlined, LeftOutlined, PictureOutlined, RightOutlined, TableOutlined, UserOutlined,
 } from '@ant-design/icons';
 import type { getC } from '../../core/theme';
 import type { BundlePlugin } from './usePlugins';
@@ -63,6 +63,7 @@ const PLUGIN_ICONS: Record<string, React.ReactNode> = {
   FileTextOutlined: <FileTextOutlined />,
   PictureOutlined: <PictureOutlined />,
   TableOutlined: <TableOutlined />,
+  UserOutlined: <UserOutlined />,
 };
 
 interface Props {

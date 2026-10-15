@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Body Map</title>
+<style>
+  :root { --bg: #ffffff; --panel: #fafafa; --text: #1f1f1f; --mute: #8c8c8c; --primary: #007A33; --border: #d9d9d9;
+          --body: #eef1f4; --body-line: #c3cad2; --slot: #b8c0c9; }
+  :root[data-theme="dark"] { --bg: #141414; --panel: #1b1b1b; --text: #f0f0f0; --mute: #8c8c8c; --primary: #52c41a; --border: #303030;
+          --body: #232930; --body-line: #3a444e; --slot: #4a5562; }
+  html, body { margin: 0; width: 100%; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px -apple-system, "Segoe UI", sans-serif; box-sizing: border-box; display: flex; }
+  #stage { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+  #stage svg { height: 100%; max-height: 760px; width: auto; max-width: 100%; }
+  #side { flex: 0 0 320px; border-left: 1px solid var(--border); background: var(--panel); padding: 16px; box-sizing: border-box; overflow-y: auto; }
+  h2 { margin: 0 0 4px; font-size: 16px; color: var(--primary); }
+  .mute { color: var(--mute); }
+  .small { font-size: 12px; }
+  #msg { margin: 6px 0 12px; }
+  .model { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; background: var(--bg); }
+  .model.on { border-color: var(--primary); }
+  .model.dim { opacity: 0.4; }
+  .model .top { display: flex; align-items: center; gap: 8px; }
+  .chip { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .model .name { font-weight: 600; word-break: break-all; }
+  .model .sites { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; }
+  .tag.hit { border-color: var(--primary); color: var(--primary); }
+  #detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+  #detail h3 { margin: 0 0 6px; font-size: 14px; }
+  #detail ul { margin: 4px 0 0; padding-left: 18px; }
+  .slot { cursor: pointer; }
+  .slot .shape { fill: var(--slot); fill-opacity: 0.25; stroke: var(--slot); stroke-width: 1.2; transition: fill-opacity .15s; }
+  .slot.has .shape { fill-opacity: 0.8; stroke-width: 1.6; }
+  .slot.sel .shape { stroke: var(--text); stroke-width: 2.4; }
+  .slot.dim .shape { fill-opacity: 0.12; }
+  .slot:hover .shape { stroke: var(--text); }
+  .lead { stroke: var(--slot); stroke-width: 1; fill: none; }
+  .lead.dim, .lab.dim { opacity: 0.25; }
+  .lab { font-size: 11px; fill: var(--text); cursor: pointer; }
+  .lab.empty { fill: var(--mute); }
+  .badge-bg { fill: var(--text); }
+  .badge-tx { font-size: 9px; fill: var(--bg); text-anchor: middle; font-weight: 700; }
+  #halo { fill: none; stroke: var(--primary); stroke-width: 0; stroke-opacity: 0.55; stroke-dasharray: 4 3; }
+  #halo.on { stroke-width: 3; }
+  #skinline { fill: none; stroke: var(--primary); stroke-width: 0; stroke-dasharray: 3 2; }
+  #skinline.on { stroke-width: 2.2; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="doll" viewBox="-70 0 380 580" xmlns="http://www.w3.org/2000/svg" role="img">
+    <rect id="halo" x="2" y="-4" width="236" height="574" rx="40"/>
+    <g id="silhouette" fill="var(--body)" stroke="var(--body-line)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="120" cy="50" r="28"/>
+      <rect x="108" y="74" width="24" height="26" rx="6"/>
+      <path d="M70 108 Q120 94 170 108 L176 252 Q176 292 158 304 L82 304 Q64 292 64 252 Z"/>
+      <path d="M62 114 L40 232 L36 296" fill="none" stroke="var(--body)" stroke-width="22"/>
+      <path d="M178 114 L200 232 L204 296" fill="none" stroke="var(--body)" stroke-width="22"/>
+      <path d="M102 300 L98 420 L96 524" fill="none" stroke="var(--body)" stroke-width="36"/>
+      <path d="M138 300 L142 420 L144 524" fill="none" stroke="var(--body)" stroke-width="36"/>
+    </g>
+    <path id="skinline" d="M70 108 Q120 94 170 108 L176 252 Q176 292 158 304 L82 304 Q64 292 64 252 Z M92 30 a28 28 0 1 1 56 0 a28 28 0 1 1 -56 0"/>
+    <g id="slots"></g>
+    <g id="labels"></g>
+  </svg>
+</div>
+<div id="side">
+  <h2 id="title">Body Map</h2>
+  <div id="msg" class="mute small"></div>
+  <div id="list"></div>
+  <div id="detail" style="display:none"></div>
+</div>
+<script>
+(function () {
+  const PLUGIN_ID = 'body_map';
+  const q = new URLSearchParams(location.search);
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const TEXT = {
+    en: {
+      title: 'Body Map',
+      none: 'Tick one or more models in the tree. Each one is placed on the organs it acts on.',
+      loading: 'Placing models ...',
+      fail: 'Could not place the models: ',
+      truncated: 'Only the first models are placed.',
+      unplaced: 'No organ found. Its tags, path and name contain none of the words in sites.yaml.',
+      placedOn: n => 'On ' + n + ' organ' + (n === 1 ? '' : 's'),
+      unplacedShort: 'Not placed',
+      via: n => 'through ' + n + ' imported component' + (n === 1 ? '' : 's'),
+      slotModels: 'Models on this organ',
+      words: 'Matched words',
+      components: 'Components',
+      hintSel: 'Click a model to see only its organs, click an organ to see its models.',
+      imports: n => n + ' imported'
+    },
+    zh: {
+      title: '人体定位',
+      none: '在模型树里勾选一个或多个模型，每个模型会被放到它作用的器官上。',
+      loading: '正在定位 ...',
+      fail: '定位失败：',
+      truncated: '只定位了前面的模型。',
+      unplaced: '没有找到器官。它的标签、路径和名字里没有 sites.yaml 中的任何词。',
+      placedOn: n => '落在 ' + n + ' 个器官',
+      unplacedShort: '未定位',
+      via: n => '经由 ' + n + ' 个导入组件',
+      slotModels: '这个器官上的模型',
+      words: '命中的词',
+      components: '组件',
+      hintSel: '点模型只看它的器官，点器官看上面有哪些模型。',
+      imports: n => '导入 ' + n + ' 个'
+    }
+  };
+  const pick = lang => TEXT[String(lang || 'en').startsWith('zh') ? 'zh' : 'en'];
+  let T = pick(q.get('lang'));
+  const isZh = () => T === TEXT.zh;
+
+  // Organ catalog. `shape` is static markup, `lab` is where the label sits: [x, y, side].
+  // Add an organ here and a keyword list for the same id in sites.yaml.
+  const SLOTS = {
+    brain:    { en: 'Brain',          zh: '脑',       shape: '<ellipse cx="120" cy="42" rx="19" ry="14"/>', lab: [-10, 36, 'l'] },
+    thyroid:  { en: 'Endocrine',      zh: '内分泌',   shape: '<path d="M108 88 q12 -6 24 0 l-4 10 q-8 3 -16 0z"/>', lab: [250, 90, 'r'] },
+    lung:     { en: 'Lung',           zh: '肺',       shape: '<ellipse cx="143" cy="140" rx="17" ry="28"/><ellipse cx="97" cy="140" rx="17" ry="28"/>', lab: [250, 128, 'r'] },
+    heart:    { en: 'Heart',          zh: '心脏',     shape: '<path d="M121 168 c-18 -12 -14 -26 -4 -26 c4 0 4 3 4 3 c0 0 0 -3 4 -3 c10 0 14 14 -4 26z"/>', lab: [-10, 150, 'l'] },
+    immune:   { en: 'Immune',         zh: '免疫',     shape: '<circle cx="163" cy="127" r="6"/><circle cx="77" cy="127" r="6"/><circle cx="120" cy="104" r="4"/>', lab: [250, 108, 'r'] },
+    liver:    { en: 'Liver',          zh: '肝脏',     shape: '<path d="M78 188 q22 -14 44 -2 l-2 16 q-24 8 -40 -2z"/>', lab: [-10, 190, 'l'] },
+    stomach:  { en: 'Stomach / gut',  zh: '胃肠',     shape: '<ellipse cx="144" cy="192" rx="13" ry="11"/><rect x="92" y="236" width="56" height="38" rx="14"/>', lab: [250, 200, 'r'] },
+    pancreas: { en: 'Pancreas',       zh: '胰腺',     shape: '<ellipse cx="122" cy="214" rx="20" ry="5.5"/>', lab: [250, 228, 'r'] },
+    kidney:   { en: 'Kidney',         zh: '肾脏',     shape: '<ellipse cx="92" cy="226" rx="6" ry="10"/><ellipse cx="148" cy="226" rx="6" ry="10"/>', lab: [-10, 228, 'l'] },
+    pelvis:   { en: 'Pelvis',         zh: '盆腔',     shape: '<ellipse cx="120" cy="292" rx="22" ry="11"/>', lab: [250, 296, 'r'] },
+    muscle:   { en: 'Muscle',         zh: '肌肉',     shape: '<ellipse cx="100" cy="364" rx="14" ry="42"/><ellipse cx="140" cy="364" rx="14" ry="42"/><ellipse cx="50" cy="168" rx="9" ry="24" transform="rotate(10 50 168)"/><ellipse cx="190" cy="168" rx="9" ry="24" transform="rotate(-10 190 168)"/>', lab: [-10, 360, 'l'] },
+    bone:     { en: 'Bone / joint',   zh: '骨骼',     shape: '<circle cx="142" cy="446" r="11"/><circle cx="98" cy="446" r="11"/><circle cx="97" cy="520" r="8"/><circle cx="143" cy="520" r="8"/>', lab: [250, 450, 'r'] },
+    blood:    { en: 'Blood',          zh: '血液',     shape: '<path d="M202 246 c-8 10 -6 18 0 18 c6 0 8 -8 0 -18z"/><path d="M38 246 c-8 10 -6 18 0 18 c6 0 8 -8 0 -18z"/>', lab: [250, 262, 'r'] },
+    skin:     { en: 'Skin',           zh: '皮肤',     shape: '', lab: [250, 40, 'r'] },
+    whole:    { en: 'Whole body',     zh: '全身',     shape: '', lab: [-10, 540, 'l'] }
+  };
+
+  // Eight colors for the models, each readable on the light and the dark panel.
+  const COLORS = ['#1677ff', '#fa541c', '#52c41a', '#722ed1', '#faad14', '#13c2c2', '#eb2f96', '#a0d911'];
+
+  let models = [];          // placed models: {path, name, error?, sites:[{slot,why,via}], color}
+  let selModel = null;      // a model path, or null
+  let selSlot = null;       // a slot id, or null
+  let token = 0;
+
+  function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light'; }
+  applyTheme(q.get('theme'));
+
+  function el(tag, attrs, text) {
+    const e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  const label = id => SLOTS[id][isZh() ? 'zh' : 'en'];
+  const titleOf = m => m.name || m.path.split('/').pop();
+
+  function slotsOf(path) { return models.filter(m => m.path === path).flatMap(m => (m.sites || []).map(s => s.slot)); }
+  function modelsOn(slot) { return models.filter(m => (m.sites || []).some(s => s.slot === slot)); }
+
+  // ---- the doll
+
+  function buildDoll() {
+    const slotsG = $('slots'), labG = $('labels');
+    slotsG.replaceChildren(); labG.replaceChildren();
+    Object.keys(SLOTS).forEach(id => {
+      const def = SLOTS[id];
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'slot'); g.dataset.slot = id;
+      if (def.shape) {
+        const holder = document.createElementNS(NS, 'g');
+        holder.innerHTML = def.shape;                 // static markup from the catalog above, never user text
+        Array.from(holder.children).forEach(c => { c.setAttribute('class', 'shape'); g.appendChild(c); });
+      }
+      g.addEventListener('click', () => pickSlot(id));
+      slotsG.appendChild(g);
+
+      const [lx, ly, side] = def.lab;
+      const lead = document.createElementNS(NS, 'path');
+      lead.setAttribute('class', 'lead'); lead.dataset.lead = id;
+      labG.appendChild(lead);
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('class', 'lab'); t.dataset.lab = id;
+      t.setAttribute('x', lx); t.setAttribute('y', ly); t.setAttribute('text-anchor', side === 'l' ? 'end' : 'start');
+      t.addEventListener('click', () => pickSlot(id));
+      labG.appendChild(t);
+    });
+  }
+
+  function anchorOf(id) {
+    const g = $('slots').querySelector('[data-slot="' + id + '"]');
+    if (!g || !g.firstChild) return null;
+    const b = g.firstChild.getBBox();
+    return [b.x + b.width / 2, b.y + b.height / 2];
+  }
+
+  function paint() {
+    const live = new Set(models.flatMap(m => (m.sites || []).map(s => s.slot)));
+    const focus = selModel ? new Set(slotsOf(selModel)) : null;
+    Object.keys(SLOTS).forEach(id => {
+      const on = modelsOn(id);
+      const g = $('slots').querySelector('[data-slot="' + id + '"]');
+      g.classList.toggle('has', on.length > 0);
+      g.classList.toggle('sel', selSlot === id);
+      g.classList.toggle('dim', !!focus && !focus.has(id));
+      g.querySelectorAll('.badge').forEach(b => b.remove());
+      g.querySelectorAll('.shape').forEach(s => { s.style.fill = on.length ? on[0].color : ''; });
+      const [lx, ly, side] = SLOTS[id].lab;
+      const t = $('labels').querySelector('[data-lab="' + id + '"]');
+      const lead = $('labels').querySelector('[data-lead="' + id + '"]');
+      const dim = !!focus && !focus.has(id);
+      t.textContent = label(id) + (on.length ? '  ' + on.length : '');
+      t.classList.toggle('empty', on.length === 0);
+      t.classList.toggle('dim', dim); lead.classList.toggle('dim', dim);
+      const a = anchorOf(id);
+      if (a && on.length) {
+        lead.setAttribute('d', 'M' + a[0] + ' ' + a[1] + ' L' + (lx + (side === 'l' ? 4 : -4)) + ' ' + (ly - 4));
+        lead.style.display = '';
+        // one dot per extra model next to the organ, so overlap reads at a glance
+        on.slice(0, 4).forEach((m, i) => {
+          const c = document.createElementNS(NS, 'circle');
+          c.setAttribute('class', 'badge'); c.setAttribute('r', 3.6);
+          c.setAttribute('cx', a[0] - 8 + i * 8); c.setAttribute('cy', a[1] + 15);
+          c.setAttribute('fill', m.color); c.setAttribute('stroke', 'var(--bg)'); c.setAttribute('stroke-width', 1);
+          g.appendChild(c);
+        });
+      } else {
+        lead.setAttribute('d', ''); lead.style.display = 'none';
+      }
+    });
+    $('halo').classList.toggle('on', live.has('whole') && (!focus || focus.has('whole')));
+    $('skinline').classList.toggle('on', live.has('skin') && (!focus || focus.has('skin')));
+  }
+
+  // ---- the side panel
+
+  function pickModel(path) { selModel = selModel === path ? null : path; selSlot = null; renderList(); paint(); renderDetail(); }
+  function pickSlot(id) { selSlot = selSlot === id ? null : id; selModel = null; renderList(); paint(); renderDetail(); }
+
+  function renderList() {
+    const list = $('list'); list.replaceChildren();
+    models.forEach(m => {
+      const card = el('div', { class: 'model' + (selModel === m.path ? ' on' : '') });
+      const dim = (selModel && selModel !== m.path) || (selSlot && !(m.sites || []).some(s => s.slot === selSlot));
+      if (dim) card.classList.add('dim');
+      const top = el('div', { class: 'top' });
+      const chip = el('span', { class: 'chip' }); chip.style.background = m.color;
+      top.appendChild(chip); top.appendChild(el('span', { class: 'name' }, titleOf(m)));
+      card.appendChild(top);
+      const sites = el('div', { class: 'sites' });
+      if (m.error) sites.appendChild(el('span', { class: 'small mute' }, m.error));
+      else if (!m.sites.length) sites.appendChild(el('span', { class: 'tag' }, T.unplacedShort));
+      else m.sites.forEach(s => sites.appendChild(el('span', { class: 'tag' + (selSlot === s.slot ? ' hit' : '') }, label(s.slot))));
+      card.appendChild(sites);
+      card.addEventListener('click', () => pickModel(m.path));
+      list.appendChild(card);
+    });
+  }
+
+  function renderDetail() {
+    const d = $('detail'); d.replaceChildren();
+    if (selModel) {
+      const m = models.find(x => x.path === selModel);
+      d.style.display = '';
+      d.appendChild(el('h3', null, titleOf(m)));
+      d.appendChild(el('div', { class: 'small mute' }, m.path + (m.imports ? '  ·  ' + T.imports(m.imports) : '')));
+      if (!m.sites.length) d.appendChild(el('p', { class: 'small' }, T.unplaced));
+      const ul = el('ul');
+      m.sites.forEach(s => {
+        const li = el('li');
+        li.appendChild(el('b', null, label(s.slot)));
+        const bits = [];
+        if (s.why.length) bits.push(T.words + ': ' + s.why.join(', '));
+        if (s.via.length) bits.push(T.via(s.via.length));
+        li.appendChild(el('span', { class: 'small mute' }, bits.length ? '  ' + bits.join('  ·  ') : ''));
+        if (s.via.length) li.appendChild(el('div', { class: 'small mute' }, T.components + ': ' + s.via.join(', ')));
+        ul.appendChild(li);
+      });
+      d.appendChild(ul);
+    } else if (selSlot) {
+      d.style.display = '';
+      d.appendChild(el('h3', null, label(selSlot)));
+      d.appendChild(el('div', { class: 'small mute' }, T.slotModels));
+      const ul = el('ul');
+      modelsOn(selSlot).forEach(m => {
+        const s = m.sites.find(x => x.slot === selSlot);
+        const li = el('li', null, titleOf(m));
+        li.appendChild(el('span', { class: 'small mute' }, s.why.length ? '  ' + s.why.join(', ') : ''));
+        ul.appendChild(li);
+      });
+      d.appendChild(ul);
+    } else {
+      d.style.display = 'none';
+    }
+  }
+
+  function message(text) { $('msg').textContent = text; }
+
+  function setTexts() {
+    $('title').textContent = T.title;
+    if (!models.length) message(T.none);
+  }
+
+  // ---- data
+
+  async function refresh(list) {
+    const my = ++token;
+    if (!list.length) { models = []; selModel = selSlot = null; renderList(); paint(); renderDetail(); message(T.none); return; }
+    message(T.loading);
+    let res;
+    try {
+      const r = await fetch('/api/plugins/' + PLUGIN_ID + '/locate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: { paths: list.map(m => m.path) } })
+      });
+      res = await r.json();
+    } catch (e) { if (my === token) message(T.fail + e.message); return; }
+    if (my !== token) return;
+    if (!res.success) { message(T.fail + (res.error || res.detail || 'unknown error')); return; }
+    models = res.models.map((m, i) => Object.assign({}, m, { color: COLORS[i % COLORS.length], sites: m.sites || [] }));
+    if (selModel && !models.some(m => m.path === selModel)) selModel = null;
+    renderList(); paint(); renderDetail();
+    message(res.truncated ? T.truncated : T.hintSel);
+  }
+
+  let lastKey = '', debounce = 0;
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'lm-init') return;
+    applyTheme(e.data.theme); T = pick(e.data.lang); setTexts(); renderList(); paint(); renderDetail();
+    // The tree ticks win; with none ticked the single selected model is shown, so the page is never empty by accident.
+    let list = Array.isArray(e.data.models) ? e.data.models : [];
+    if (!list.length && e.data.model) list = [e.data.model];
+    const key = list.map(m => m.path).join('|');
+    if (key !== lastKey) { lastKey = key; clearTimeout(debounce); debounce = setTimeout(() => refresh(list), 150); }
+  });
+
+  buildDoll(); setTexts(); paint();
+  parent.postMessage({ type: 'lm-ready' }, '*');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+id: body_map
+name: Body Map
+version: '0.1'
+contract_version: 2
+description: Shows where the ticked models act on a paper-doll body. Each model is placed on the organs its tags, path and name point to, and a model that touches several organs, or a scenario that imports several body components, lights up all of them.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: BodyMap
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: Body Map
+  icon: UserOutlined
+  order: 25
+  model_selection: multi

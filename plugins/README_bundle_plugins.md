@@ -2,7 +2,7 @@
 
 A bundle plugin is a plugin whose interface is a small web app. The GUI shows it as a full-page view, next to Overview, Simulation and Optimization, and it can talk to the backend and to the GUI. This guide is all you need to write one. The older kind of plugin, a `run(inputs)` backend with no page, is described in [INTERFACE.md](INTERFACE.md).
 
-A small template to copy is in [`docs/plugin_template/`](../docs/plugin_template/), and two complete plugins are in this folder: [`ve_graph/`](ve_graph/) draws a graph from the selected model, and [`model_compose/`](model_compose/) works on several ticked models. Each of them has a `docs/` folder.
+A small template to copy is in [`docs/plugin_template/`](../docs/plugin_template/), and three complete plugins are in this folder: [`ve_graph/`](ve_graph/) draws a graph from the selected model, [`model_compose/`](model_compose/) works on several ticked models, and [`body_map/`](body_map/) places the ticked models on the organs of a paper-doll body. Each of them has a `docs/` folder.
 
 ---
 
@@ -48,7 +48,7 @@ ui:
   model_selection: single       # 'multi' turns the model tree into checkboxes, see section 4
 ```
 
-Icons you can name in `ui.icon`: `ApartmentOutlined`, `AppstoreOutlined`, `BarChartOutlined`, `ClusterOutlined`, `FileTextOutlined`, `PictureOutlined`, `TableOutlined`. Any other name falls back to `AppstoreOutlined`.
+Icons you can name in `ui.icon`: `ApartmentOutlined`, `AppstoreOutlined`, `BarChartOutlined`, `ClusterOutlined`, `FileTextOutlined`, `PictureOutlined`, `TableOutlined`, `UserOutlined`. Any other name falls back to `AppstoreOutlined`.
 
 Plugins with `ui.type: none` or `component` are not shown in the strip.
 

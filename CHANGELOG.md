@@ -6,6 +6,10 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+### Plugin system
+
+- Added the `body_map` plugin, a paper-doll body that shows where the ticked models act. Each model is placed on the organs its tags, path and name point to, using the keyword lists in `plugins/body_map/sites.yaml`, and a scenario lights up the organs of the components it imports. Clicking a model shows only its organs, clicking an organ lists its models. The icon name `UserOutlined` can now be used in `ui.icon`.
+
 ## [1.1.1] - 2026-10-13
 
 ### Plugin system
