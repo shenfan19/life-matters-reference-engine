@@ -300,16 +300,19 @@ def test_ve_graph_joins_models_through_shared_variable_names():
     spec.loader.exec_module(module)
     ctx = PluginContext(loader=LoaderEngine(models_directory=str(MODELS_DIR)))
     plugin = module.VeGraph(ctx)
-    single = plugin.endpoint_graph({'paths': [MODEL_PATH]})
-    twice = plugin.endpoint_graph({'paths': [MODEL_PATH, MODEL_PATH]})
-    assert single['success'] and twice['success'], (single, twice)
+    other = 'test_fixtures/valid/test_valid_banister_v1_analytical'
+    if not (MODELS_DIR / f'{other}.yaml').exists():
+        pytest.skip('second fixture not available')
+    first = plugin.endpoint_graph({'paths': [MODEL_PATH]})
+    second = plugin.endpoint_graph({'paths': [other]})
+    twice = plugin.endpoint_graph({'paths': [MODEL_PATH, other]})
+    assert first['success'] and second['success'] and twice['success'], (first, second, twice)
     variables = lambda g: {n['id'] for n in g['nodes'] if n['kind'] == 'variable'}
     equations = lambda g: [n for n in g['nodes'] if n['kind'] == 'equation']
-    assert variables(twice) == variables(single)                       # same names, one node each
-    assert len(equations(twice)) == 2 * len(equations(single))         # equations are not merged
-    assert all(n['shared'] for n in twice['nodes'] if n['kind'] == 'variable')
-    assert not any(n['shared'] for n in single['nodes'] if n['kind'] == 'variable')
-    assert twice['shared'] == len(variables(twice))
+    assert variables(twice) == variables(first) | variables(second)    # same names are one node
+    assert len(equations(twice)) == len(equations(first)) + len(equations(second))   # equations are not merged
+    assert twice['shared'] == len(variables(first) & variables(second))
+    assert {n['id'] for n in twice['nodes'] if n['kind'] == 'variable' and n['shared']} == variables(first) & variables(second)
     ids = {n['id']: n for n in twice['nodes']}
     for e in twice['edges']:
         assert {ids[e['source']]['kind'], ids[e['target']]['kind']} == {'variable', 'equation'}
