@@ -16,7 +16,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Scripts
 
-- Added `stop.sh` and `stop.cmd`, which stop whatever is listening on the backend and GUI ports together with the processes it started, so a Ctrl+C that left a process behind no longer blocks the next start. `scripts/kill_ports.py`, which they call, now stops only a process that listens on the port, so a browser connected to the backend is left alone, ends the whole process tree, names what it stops, takes ports as arguments, has `--list`, and works on Linux as well.
+- Added `stop.sh` and `stop.cmd`, plain shell and batch scripts that stop whatever is listening on the backend and GUI ports together with the processes it started, so a Ctrl+C that left a process behind no longer blocks the next start. Only a process that listens on a port is stopped, so a browser connected to the backend is left alone, and `--list` shows what is listening without stopping anything. They replace `scripts/kill_ports.py`, which also stopped programs that were merely connected to the port and left the processes under the one it stopped running.
 
 ### GUI: model tree
 
