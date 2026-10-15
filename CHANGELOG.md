@@ -8,7 +8,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Plugin system
 
-- Added the `body_map` plugin, a paper-doll body that shows where the ticked models act. Each model is placed on the organs its tags, path and name point to, using the keyword lists in `plugins/body_map/sites.yaml`, and a scenario lights up the organs of the components it imports. The figure also carries eight everyday inputs, air, food, work stress, study and social life, sleep, smoke and alcohol, commute and exercise, that light up the same way, and dashed lines join the inputs of the followed model, organ or input to its organs. The page uses a flat neutral screen with thin lines and a scanning band, and follows the light and dark theme. The icon name `UserOutlined` can now be used in `ui.icon`.
+- Added the `body_map` plugin, a paper-doll body that shows where the ticked models act. Each model is placed on the organs its tags, path and name point to, using the keyword lists in `plugins/body_map/sites.yaml`, and a scenario lights up the organs of the components it imports. The figure also carries eight everyday inputs, air, food, work stress, study and social life, sleep, smoke and alcohol, commute and exercise, that light up the same way, and dashed lines join the inputs of the followed model, organ or input to its organs. The page has a plain background with thin lines and a slow scanning band, and follows the light and dark theme. The icon name `UserOutlined` can now be used in `ui.icon`.
 
 ## [1.1.1] - 2026-10-13
 

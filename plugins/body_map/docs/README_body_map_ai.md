@@ -1,6 +1,6 @@
 # Body Map plugin
 
-Body Map shows where models act on a paper-doll body. Tick one or more models in the tree and each one is placed on the organs it works on, in its own color, and on the everyday inputs it responds to: air, food and water, work stress, study and social life, sleep, smoke and alcohol, commute and exercise. The stage is a quiet instrument screen, one flat base color with thin lines, so color appears only where a model sits. A scenario that imports body components lights up the organs of every component it imports. Click a model, an organ or an input to follow it: the rest dims and dashed lines join the inputs of what you follow to its organs.
+Body Map shows where models act on a paper-doll body. Tick one or more models in the tree and each one is placed on the organs it works on, in its own color, and on the everyday inputs it responds to: air, food and water, work stress, study and social life, sleep, smoke and alcohol, commute and exercise. The stage has a plain background and thin lines, so color appears only where a model sits. A scenario that imports body components lights up the organs of every component it imports. Click a model, an organ or an input to follow it: the rest dims and dashed lines join the inputs of what you follow to its organs.
 
 ## What to open
 
