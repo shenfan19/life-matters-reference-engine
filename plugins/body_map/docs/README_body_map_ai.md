@@ -22,13 +22,13 @@ Body Map shows where models act on a paper-doll body. Tick one or more models in
 
 ## Filtering the model tree
 
-Clicking an organ or an input searches the whole library for the models that point to it, with the same keyword lists, and sends `lm-filter-models` so that the model tree shows only those models. The side panel says how many were found, with a button to tick the first twelve and one to clear the filter. Clicking again, or clicking a model, clears the filter. A button at the top of the panel sends `lm-open-plugin` to open Compose with the ticked models. A search that finds nothing leaves the tree empty and says so, which shows a gap in the library or in the keyword list.
+Organs and inputs can be picked several at a time. Each click adds one to the selection or takes it out, and a switch chooses whether a model must point to all of them or to any of them. For example the liver together with exercise leaves the models that work on the liver and respond to exercise. Clicking an organ or an input searches the whole library for the models that point to it, with the same keyword lists, and sends `lm-filter-models` so that the model tree shows only those models. The side panel says how many were found, with a button to tick the first twelve and one to clear the filter. Clicking again, or clicking a model, clears the filter. A button at the top of the panel sends `lm-open-plugin` to open Compose with the ticked models. A search that finds nothing leaves the tree empty and says so, which shows a gap in the library or in the keyword list.
 
 Only a model's own tags, path and name are searched. A scenario is found through what it says about itself, not through the components it imports.
 
 ## The `search` endpoint
 
-Request: `{"inputs": {"kind": "organ" | "input", "id": "liver"}}`. Response: `{success, kind, id, paths, count}`, with paths relative to the models directory and without a suffix. Only `references/` and `scenarios/` are searched, and each file is read for its first 6000 bytes with a regular expression, so a search over the library takes about a second.
+Request: `{"inputs": {"picks": [{"kind": "organ" | "input", "id": "liver"}], "mode": "and" | "or"}}`, and a single `kind` and `id` also works. Response: `{success, mode, paths, count}`, with paths relative to the models directory and without a suffix. Only `references/` and `scenarios/` are searched, and each file is read for its first 6000 bytes with a regular expression, so a search over the library takes about a second.
 
 ## The `locate` endpoint
 

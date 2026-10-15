@@ -16,3 +16,4 @@ ui:
   title: VE Graph
   icon: ApartmentOutlined
   order: 20
+  model_selection: multi

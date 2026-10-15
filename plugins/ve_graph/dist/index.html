@@ -37,6 +37,7 @@
   .node.selected .shape { stroke: var(--text); stroke-width: 3; }
   .node text { fill: var(--text); font-size: 11px; pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
   .node.equation text { font-style: italic; }
+  .node .ring { fill: none; stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 2; }
   .dim { opacity: 0.12; }
   #arrow path { fill: var(--edge); }
   #legend { position: absolute; left: 12px; top: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; line-height: 1.7; }
@@ -84,15 +85,17 @@
     en: { force: 'Mode: dynamic', layered: 'Mode: layered', fit: 'Fit', param: 'Hide parameters', iso: 'Hide unconnected',
           search: 'Search name', unpin: 'Unpin all', svg: 'Export SVG', variable: 'variable', equation: 'equation',
           state: 'state', input: 'input', parameter: 'parameter', unit: 'Unit', value: 'Value', cond: 'Condition',
-          hint: 'Drag a node to move it and pin it. Double-click a node to unpin. Wheel to zoom, drag background to pan.',
-          wait: 'Waiting for the GUI to say which model is selected.', none: 'Select a model in the tree.',
+          hint: 'Drag a node to move it and pin it. Double-click a node to unpin. Wheel to zoom, drag background to pan. With several models ticked, a dashed ring marks a variable they share.',
+          models: 'Models', shared: 'shared', fromModels: 'In models',
+          wait: 'Waiting for the GUI to say which model is selected.', none: 'Select a model in the tree, or tick several to draw them together.',
           loading: 'Loading', fail: 'Could not read the model: ', empty: 'This model has no equations.',
           nodes: 'nodes', edges: 'arrows', vars: 'variables', eqs: 'equations' },
     zh: { force: '模式：动态', layered: '模式：分层', fit: '适应窗口', param: '隐藏参数', iso: '隐藏未连接',
           search: '搜索名称', unpin: '取消全部固定', svg: '导出 SVG', variable: '变量', equation: '公式',
           state: '状态', input: '输入', parameter: '参数', unit: '单位', value: '取值', cond: '条件',
-          hint: '拖动节点可移动并固定，双击节点取消固定，滚轮缩放，拖动空白处平移。',
-          wait: '等待 GUI 告知当前选中的模型。', none: '请在左侧模型树中选择一个模型。',
+          hint: '拖动节点可移动并固定，双击节点取消固定，滚轮缩放，拖动空白处平移。勾选多个模型时，虚线圈标出它们共用的变量。',
+          models: '模型', shared: '共用', fromModels: '所在模型',
+          wait: '等待 GUI 告知当前选中的模型。', none: '请在左侧模型树中选择一个模型，或勾选多个模型一起画。',
           loading: '正在读取', fail: '无法读取模型：', empty: '该模型没有公式。',
           nodes: '节点', edges: '箭头', vars: '变量', eqs: '公式' },
   };
@@ -111,6 +114,8 @@
   let view = { x: 0, y: 0, k: 1 };
   let alpha = 0, rafId = 0, tween = null, selectedId = null, loadToken = 0, autoFit = true;
   const R = 10;                  // half size of a node shape
+  const MODEL_COLORS = ['#3b82c4', '#d98a2b', '#3f9e7a', '#b4619a', '#7a8896', '#c9534f', '#7b6fd0', '#9aa332'];
+  let modelNames = [];
 
   function setTexts() {
     $('b-mode').textContent = mode === 'force' ? T.force : T.layered;
@@ -123,6 +128,14 @@
       const i = document.createElement('i'); i.className = shape; i.style.background = 'var(--' + cls + ')';
       row.append(i, label); $('legend').appendChild(row);
     });
+    if (modelNames.length > 1) {
+      const head = document.createElement('div'); head.style.marginTop = '6px'; head.style.color = 'var(--mute)'; head.textContent = T.models; $('legend').appendChild(head);
+      modelNames.forEach((name, k) => {
+        const row = document.createElement('div');
+        const i = document.createElement('i'); i.style.background = MODEL_COLORS[k % MODEL_COLORS.length];
+        row.append(i, name); $('legend').appendChild(row);
+      });
+    }
   }
 
   function message(s) { $('msg').textContent = s || ''; }
@@ -167,6 +180,14 @@
       g.appendChild(n.kind === 'variable'
         ? el('circle', { class: 'shape', r: R })
         : el('rect', { class: 'shape', x: -R, y: -R, width: 2 * R, height: 2 * R, rx: 2 }));
+      const multi = modelNames.length > 1;
+      if (multi) {
+        const colorOf = name => MODEL_COLORS[modelNames.indexOf(name) % MODEL_COLORS.length];
+        const shape = g.firstChild;
+        if (n.kind === 'equation') shape.style.fill = colorOf(n.model);
+        else if (n.shared) g.insertBefore(el('circle', { class: 'ring', r: R + 5 }), shape);
+        else { shape.style.stroke = colorOf(n.models[0]); shape.style.strokeWidth = '3.5'; }
+      }
       const t = el('text', { y: R + 13 }); t.textContent = n.label; g.appendChild(t);
       const tip = el('title', {}); tip.textContent = n.label; g.appendChild(tip);
       n.el = g; gNodes.appendChild(g); bindNode(n);
@@ -350,10 +371,12 @@
     const line = (s, cls) => { const p = document.createElement('div'); if (cls) p.className = cls; p.textContent = s; box.appendChild(p); };
     if (n.kind === 'variable') {
       line(`${T.variable} / ${T[n.vtype] || n.vtype}`, 'mute');
+      if (modelNames.length > 1) line(`${T.fromModels}: ${n.models.join(', ')}`);
       if (n.unit) line(`${T.unit}: ${n.unit}`);
       if (n.value !== null && n.value !== undefined) line(`${T.value}: ${typeof n.value === 'object' ? JSON.stringify(n.value) : n.value}`);
     } else {
       line(T.equation, 'mute');
+      if (modelNames.length > 1) line(`${T.models}: ${n.model}`);
       if (n.condition) line(`${T.cond}: ${n.condition}`);
       Object.entries(n.expressions).forEach(([k, v]) => { const pre = document.createElement('pre'); pre.textContent = `${k} = ${v}`; box.appendChild(pre); });
     }
@@ -386,22 +409,22 @@
   };
 
   // ---------- loading ----------
-  async function show(selected) {
+  async function show(list) {
     const token = ++loadToken;
     cancelAnimationFrame(tween); cancelAnimationFrame(rafId); rafId = 0; alpha = 0;
-    if (!selected) { nodes = []; edges = []; gEdges.replaceChildren(); gNodes.replaceChildren(); select(null); $('stats').textContent = ''; $('title').textContent = 'VE Graph'; message(T.none); return; }
-    message(`${T.loading} ${selected.title} ...`);
+    if (!list.length) { modelNames = []; setTexts(); nodes = []; edges = []; gEdges.replaceChildren(); gNodes.replaceChildren(); select(null); $('stats').textContent = ''; $('title').textContent = 'VE Graph'; message(T.none); return; }
+    message(`${T.loading} ${list.map(m => m.title).join(', ')} ...`);
     let data;
     try {
       const res = await fetch('/api/plugins/ve_graph/graph', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: { path: selected.path } })
+        body: JSON.stringify({ inputs: { paths: list.map(m => m.path) } })
       });
       data = await res.json();
     } catch (e) { if (token === loadToken) message(T.fail + e.message); return; }
     if (token !== loadToken) return;
     if (!data.success) { message(T.fail + (data.error || data.detail || 'unknown error')); return; }
-    modelName = data.name; $('title').textContent = 'VE Graph: ' + data.name;
+    modelName = data.name; modelNames = data.models || []; setTexts(); $('title').textContent = 'VE Graph: ' + data.name;
     selectedId = null; $('detail').style.display = 'none';
     build(data); filterNodes();
     message(data.edges.length ? '' : T.empty);
@@ -417,8 +440,11 @@
     if (!e.data || e.data.type !== 'lm-init') return;
     applyTheme(e.data.theme);
     T = TEXT[String(e.data.lang || 'en').startsWith('zh') ? 'zh' : 'en']; setTexts();
-    const path = e.data.model ? e.data.model.path : null;
-    if (path !== lastPath) { lastPath = path; show(e.data.model); }
+    // Ticked models are drawn together; with none ticked the selected model is drawn alone.
+    let list = Array.isArray(e.data.models) ? e.data.models : [];
+    if (!list.length && e.data.model) list = [e.data.model];
+    const key = list.map(m => m.path).join('|');
+    if (key !== lastPath) { lastPath = key; show(list); }
   });
   window.addEventListener('resize', () => { if (nodes.length) fit(); });
   setTexts(); message(T.wait);

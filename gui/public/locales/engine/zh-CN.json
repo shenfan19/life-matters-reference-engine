@@ -73,6 +73,7 @@
   "sim.scene.toggle_tree": "切换树形",
   "sim.scene.locked": "已锁定",
   "sim.scene.no_scenarios": "无场景",
+  "sim.scene.matches": "匹配 {n} 个",
   "sim.scene.empty_hint": "请在左侧选择场景",
   "sim.scene.select_hint": "点击「待验证」验证并锁定场景",
   "sim.scene.click_to_start": "点击「运行」开始",

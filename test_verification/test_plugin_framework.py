@@ -283,5 +283,34 @@ def test_body_map_search_finds_the_models_of_an_organ_or_input(tmp_path):
     organ = plugin.endpoint_search({'kind': 'organ', 'id': 'liver'})
     assert organ['success'] and organ['paths'] == ['references/medical/a_2026', 'references/medical/b_2026']   # flow and block tag lists, sensitive/ not searched
     assert plugin.endpoint_search({'kind': 'input', 'id': 'exercise'})['paths'] == ['scenarios/run']
+    # several picks: a model must point to all of them with mode and, to any of them with mode or
+    picks = [{'kind': 'organ', 'id': 'liver'}, {'kind': 'input', 'id': 'exercise'}]
+    assert plugin.endpoint_search({'picks': picks, 'mode': 'and'})['paths'] == []
+    either = plugin.endpoint_search({'picks': picks, 'mode': 'or'})['paths']
+    assert either == ['references/medical/a_2026', 'references/medical/b_2026', 'scenarios/run']
     assert plugin.endpoint_search({'kind': 'organ', 'id': 'no_such_organ'})['success'] is False
     assert plugin.endpoint_search({'kind': 'other', 'id': 'liver'})['success'] is False
+
+
+def test_ve_graph_joins_models_through_shared_variable_names():
+    """With several models, variables of the same name are one node, and equations stay one node each."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('ve_graph_backend_multi', ROOT / 'plugins' / 've_graph' / 'backend.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    ctx = PluginContext(loader=LoaderEngine(models_directory=str(MODELS_DIR)))
+    plugin = module.VeGraph(ctx)
+    single = plugin.endpoint_graph({'paths': [MODEL_PATH]})
+    twice = plugin.endpoint_graph({'paths': [MODEL_PATH, MODEL_PATH]})
+    assert single['success'] and twice['success'], (single, twice)
+    variables = lambda g: {n['id'] for n in g['nodes'] if n['kind'] == 'variable'}
+    equations = lambda g: [n for n in g['nodes'] if n['kind'] == 'equation']
+    assert variables(twice) == variables(single)                       # same names, one node each
+    assert len(equations(twice)) == 2 * len(equations(single))         # equations are not merged
+    assert all(n['shared'] for n in twice['nodes'] if n['kind'] == 'variable')
+    assert not any(n['shared'] for n in single['nodes'] if n['kind'] == 'variable')
+    assert twice['shared'] == len(variables(twice))
+    ids = {n['id']: n for n in twice['nodes']}
+    for e in twice['edges']:
+        assert {ids[e['source']]['kind'], ids[e['target']]['kind']} == {'variable', 'equation'}
+    assert plugin.endpoint_graph({'paths': ['no/such/model']})['success'] is False

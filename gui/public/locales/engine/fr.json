@@ -73,6 +73,7 @@
   "sim.scene.toggle_tree": "Vue arbre",
   "sim.scene.locked": "Verrouillé",
   "sim.scene.no_scenarios": "Aucun scénario",
+  "sim.scene.matches": "Correspondances : {n}",
   "sim.scene.empty_hint": "Sélectionnez un scénario dans le panneau gauche",
   "sim.scene.select_hint": "Cliquez sur « Non vérifié » pour valider et verrouiller",
   "sim.scene.click_to_start": "Cliquez sur « Exécuter » pour démarrer",

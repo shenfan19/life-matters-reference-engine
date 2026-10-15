@@ -32,6 +32,9 @@
   .btn { font: inherit; font-size: 12px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; cursor: pointer; margin: 6px 6px 0 0; }
   .btn:hover { border-color: var(--text); }
   .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.on { border-color: var(--text); background: var(--panel); font-weight: 600; }
+  .pick { display: inline-block; margin: 0 4px 4px 0; padding: 0 8px; border: 1px solid var(--text); border-radius: 10px; font-size: 12px; cursor: pointer; }
+  .pick.input { border-style: dashed; }
   #tools { margin: 4px 0 10px; }
   #detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   #detail h3 { margin: 0 0 6px; font-size: 14px; }
@@ -124,18 +127,19 @@
       unplaced: 'No organ or input found. Its tags, path and name contain none of the words in sites.yaml.',
       unplacedShort: 'Not placed',
       via: n => 'through ' + n + ' imported component' + (n === 1 ? '' : 's'),
-      slotModels: 'Models on this organ',
+      slotModels: 'Models on the map',
       inputModels: 'Models driven by this input',
       organsH: 'Organs', inputsH: 'Inputs',
       words: 'Matched words',
       components: 'Components',
-      hintSel: 'Click a model, an organ or an input to follow it. Clicking an organ or an input also filters the model tree to the models that point to it.',
+      hintSel: 'Click a model, an organ or an input to follow it. Organs and inputs can be picked several at a time, and the model tree is filtered to the models that point to them.',
       imports: n => n + ' imported',
       lib: n => n + ' model' + (n === 1 ? '' : 's') + ' in the library point here. The model tree shows only these.',
       libNone: 'No model in the library points here, so the tree is empty. This shows a gap in the library or in sites.yaml.',
       searching: 'Searching the library ...',
       tickAll: n => 'Tick the first ' + n,
       clearFilter: 'Show all models in the tree',
+      modeAnd: 'All of them', modeOr: 'Any of them', picked: 'Selected', clearPicks: 'Clear selection',
       compose: 'Open in Compose'
     },
     zh: {
@@ -147,18 +151,19 @@
       unplaced: '没有找到器官或输入。它的标签、路径和名字里没有 sites.yaml 中的任何词。',
       unplacedShort: '未定位',
       via: n => '经由 ' + n + ' 个导入组件',
-      slotModels: '这个器官上的模型',
+      slotModels: '图上符合的模型',
       inputModels: '受这个输入驱动的模型',
       organsH: '器官', inputsH: '输入',
       words: '命中的词',
       components: '组件',
-      hintSel: '点模型、器官或输入来追踪。点器官或输入时，模型树会同时过滤成指向它的模型。',
+      hintSel: '点模型、器官或输入来追踪。器官和输入可以连续多选，模型树会同时过滤成指向它们的模型。',
       imports: n => '导入 ' + n + ' 个',
       lib: n => '库里有 ' + n + ' 个模型指向这里，模型树只显示它们。',
       libNone: '库里没有模型指向这里，所以模型树是空的。这说明库或 sites.yaml 有缺口。',
       searching: '正在检索模型库 ...',
       tickAll: n => '勾选前 ' + n + ' 个',
       clearFilter: '模型树显示全部',
+      modeAnd: '同时满足', modeOr: '满足任一', picked: '已选', clearPicks: '清除选择',
       compose: '到 Compose 合成'
     }
   };
@@ -204,7 +209,9 @@
   const COLORS = ['#3b82c4', '#d98a2b', '#3f9e7a', '#b4619a', '#7a8896', '#c9534f', '#7b6fd0', '#9aa332'];
 
   let models = [];          // placed models: {path, name, error?, sites, inputs, color}
-  let sel = null;           // {kind: 'model' | 'organ' | 'input', id}
+  // The selection is one model, {kind: 'model', id}, or several organs and inputs, {kind: 'picks', items: [{kind, id}], mode: 'and' | 'or'}.
+  let sel = null;
+  let pickMode = 'and';
   let token = 0;
   let filt = null;          // the library search behind the tree filter: {kind, id, count, paths} while it runs {kind, id, pending}
   let filtToken = 0;
@@ -230,24 +237,27 @@
   const inputsOf = m => (m.inputs || []).map(s => s.slot).filter(id => INPUTS[id]);
   const onOrgan = id => models.filter(m => organsOf(m).includes(id));
   const onInput = id => models.filter(m => inputsOf(m).includes(id));
-  const isSel = (kind, id) => !!sel && sel.kind === kind && sel.id === id;
+  const isSel = (kind, id) => !!sel && (sel.kind === 'model' ? kind === 'model' && sel.id === id : sel.items.some(x => x.kind === kind && x.id === id));
+  const pickName = x => (x.kind === 'organ' ? organName : inputName)(x.id);
 
   // What the current selection keeps in focus: the models, organs and inputs that stay bright, and the lines to draw.
   function focus() {
     if (!sel) return null;
+    const orgSel = new Set(), inpSel = new Set();
     let ms;
     if (sel.kind === 'model') ms = models.filter(m => m.path === sel.id);
-    else if (sel.kind === 'organ') ms = onOrgan(sel.id);
-    else ms = onInput(sel.id);
-    const organs = new Set(), inputs = new Set(), lines = [];
+    else {
+      sel.items.forEach(x => (x.kind === 'organ' ? orgSel : inpSel).add(x.id));
+      const has = (m, x) => (x.kind === 'organ' ? organsOf(m) : inputsOf(m)).includes(x.id);
+      ms = models.filter(m => (sel.mode === 'and' ? sel.items.every(x => has(m, x)) : sel.items.some(x => has(m, x))));
+    }
+    const organs = new Set(orgSel), inputs = new Set(inpSel), lines = [];
     ms.forEach(m => {
-      const os = organsOf(m).filter(o => sel.kind !== 'organ' || o === sel.id);
-      const is = inputsOf(m).filter(i => sel.kind !== 'input' || i === sel.id);
+      const os = organsOf(m).filter(o => !orgSel.size || orgSel.has(o));
+      const is = inputsOf(m).filter(i => !inpSel.size || inpSel.has(i));
       os.forEach(o => organs.add(o)); is.forEach(i => inputs.add(i));
       is.forEach(i => os.forEach(o => lines.push({ i, o, color: m.color })));
     });
-    if (sel.kind === 'organ') organs.add(sel.id);
-    if (sel.kind === 'input') inputs.add(sel.id);
     return { models: new Set(ms.map(m => m.path)), organs, inputs, lines };
   }
 
@@ -364,6 +374,8 @@
       g.classList.toggle('lit', on.length > 0);
       g.classList.toggle('dim', dim);
       g.querySelector('.base').style.stroke = on.length ? on[0].color : '';
+      g.querySelectorAll('.sel-ring').forEach(r => r.remove());
+      if (isSel('input', id)) g.appendChild(svgEl('circle', { class: 'sel-ring', r: 19 }));
       g.querySelector('.nlab').textContent = inputName(id) + (on.length ? '  ' + on.length : '');
       const stub = $('stubs').querySelector('[data-stub="' + id + '"]');
       stub.classList.toggle('lit', on.length > 0);
@@ -388,28 +400,40 @@
 
   // ---- the side panel
 
-  function choose(kind, id) { sel = isSel(kind, id) ? null : { kind, id }; renderList(); paint(); renderDetail(); syncFilter(); }
+  // A model is followed alone. Organs and inputs add up: each click adds one to the picks or takes it out.
+  function choose(kind, id) {
+    if (kind === 'model') sel = isSel('model', id) ? null : { kind: 'model', id };
+    else {
+      const items = sel && sel.kind === 'picks' ? sel.items.slice() : [];
+      const at = items.findIndex(x => x.kind === kind && x.id === id);
+      if (at >= 0) items.splice(at, 1); else items.push({ kind, id });
+      sel = items.length ? { kind: 'picks', items, mode: pickMode } : null;
+    }
+    renderList(); paint(); renderDetail(); syncFilter();
+  }
+  function setPickMode(mode) { pickMode = mode; if (sel && sel.kind === 'picks') { sel = { kind: 'picks', items: sel.items, mode }; renderList(); paint(); renderDetail(); syncFilter(); } }
+  const pickKey = () => sel && sel.kind === 'picks' ? sel.mode + ':' + sel.items.map(x => x.kind + '.' + x.id).join(',') : '';
 
-  // An organ or an input filters the model tree to the models of the library that point to it; anything else clears the filter.
+  // Picked organs and inputs filter the model tree to the models of the library that point to them; anything else clears the filter.
   async function syncFilter() {
     const my = ++filtToken;
-    if (!sel || sel.kind === 'model') {
+    if (!sel || sel.kind !== 'picks') {
       if (filt) { filt = null; parent.postMessage({ type: 'lm-filter-models', paths: null }, '*'); renderDetail(); }
       return;
     }
-    const want = { kind: sel.kind, id: sel.id };
-    filt = { kind: want.kind, id: want.id, pending: true }; renderDetail();
+    const key = pickKey(), items = sel.items, mode = sel.mode;
+    filt = { key, pending: true }; renderDetail();
     let res;
     try {
       const r = await fetch('/api/plugins/' + PLUGIN_ID + '/search', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: want })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: { picks: items, mode } })
       });
       res = await r.json();
     } catch (e) { res = { success: false, error: e.message }; }
     if (my !== filtToken) return;
     if (!res.success) { filt = null; message(T.fail + (res.error || res.detail || 'unknown error')); renderDetail(); return; }
-    filt = { kind: want.kind, id: want.id, count: res.count, paths: res.paths };
-    parent.postMessage({ type: 'lm-filter-models', paths: res.paths, label: (want.kind === 'organ' ? organName : inputName)(want.id) }, '*');
+    filt = { key, count: res.count, paths: res.paths };
+    parent.postMessage({ type: 'lm-filter-models', paths: res.paths, label: items.map(pickName).join(mode === 'and' ? ' + ' : ' / ') }, '*');
     renderDetail();
   }
 
@@ -461,18 +485,28 @@
       if (inputs.length) { d.appendChild(el('div', { class: 'small mute' }, T.inputsH)); d.appendChild(siteList(inputs, inputName)); }
       if (organs.length) { d.appendChild(el('div', { class: 'small mute' }, T.organsH)); d.appendChild(siteList(organs, organName)); }
     } else {
-      const organ = sel.kind === 'organ';
-      d.appendChild(el('h3', null, organ ? organName(sel.id) : inputName(sel.id)));
-      d.appendChild(el('div', { class: 'small mute' }, organ ? T.slotModels : T.inputModels));
-      const ul = el('ul');
-      (organ ? onOrgan(sel.id) : onInput(sel.id)).forEach(m => {
-        const s = (organ ? m.sites : m.inputs).find(x => x.slot === sel.id);
-        const li = el('li', null, titleOf(m));
-        li.appendChild(el('span', { class: 'small mute' }, s.why.length ? '  ' + s.why.join(', ') : ''));
-        ul.appendChild(li);
+      const head = el('div', { class: 'small mute' }, T.picked); d.appendChild(head);
+      const chips = el('div');
+      sel.items.forEach(x => {
+        const chip = el('span', { class: 'pick' + (x.kind === 'input' ? ' input' : '') }, pickName(x) + ' \u00d7');
+        chip.addEventListener('click', () => choose(x.kind, x.id));
+        chips.appendChild(chip);
       });
+      d.appendChild(chips);
+      if (sel.items.length > 1) {
+        const row = el('div');
+        [['and', T.modeAnd], ['or', T.modeOr]].forEach(([m, text]) => {
+          const b = el('button', { class: 'btn' + (sel.mode === m ? ' on' : '') }, text);
+          b.addEventListener('click', () => setPickMode(m));
+          row.appendChild(b);
+        });
+        d.appendChild(row);
+      }
+      d.appendChild(el('div', { class: 'small mute', style: 'margin-top:8px' }, T.slotModels));
+      const f = focus(), ul = el('ul');
+      models.filter(m => f.models.has(m.path)).forEach(m => ul.appendChild(el('li', null, titleOf(m))));
       d.appendChild(ul);
-      if (filt && filt.kind === sel.kind && filt.id === sel.id) {
+      if (filt && filt.key === pickKey()) {
         if (filt.pending) d.appendChild(el('p', { class: 'small mute' }, T.searching));
         else {
           d.appendChild(el('p', { class: 'small' }, filt.count ? T.lib(filt.count) : T.libNone));
@@ -482,11 +516,11 @@
             tick.addEventListener('click', () => parent.postMessage({ type: 'lm-set-models', paths: filt.paths.slice(0, 12) }, '*'));
             d.appendChild(tick);
           }
-          const clear = el('button', { class: 'btn' }, T.clearFilter);
-          clear.addEventListener('click', () => choose(sel.kind, sel.id));
-          d.appendChild(clear);
         }
       }
+      const clear = el('button', { class: 'btn' }, T.clearPicks);
+      clear.addEventListener('click', () => { sel = null; renderList(); paint(); renderDetail(); syncFilter(); });
+      d.appendChild(clear);
     }
   }
 

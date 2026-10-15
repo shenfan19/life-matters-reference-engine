@@ -2,6 +2,8 @@
 
 VE Graph draws the variables and equations of the model selected in the GUI as a graph. Variables are circles, equations are squares, and arrows run from the variables an equation reads to the equation, and from the equation to the variables it updates. Nodes can be dragged, the view can be zoomed and panned, and a layered layout gives a static, readable picture of the same graph.
 
+With several models ticked in the tree it draws them together. Variables with the same name become one node, so the models are joined through what they share. A dashed ring marks a variable that more than one model declares, equations are colored by their model, and a variable of one model only has an outline in that model's color. Equations are never merged, because two models may name their equations alike. The same name is taken to mean the same quantity, which the page cannot check, so a join is a place to look at, not a proof that the models are compatible.
+
 ## What to open
 
 | Question | Open |

@@ -61,6 +61,13 @@ interface SimModelTreeProps {
   onClearFilter?: () => void;
 }
 
+// A model matches the search text when the text is part of its title or of its path.
+const matchesText = (n: any, text: string) =>
+  !text || String(n.titleStr || n.title || '').toLowerCase().includes(text) || String(n.key).toLowerCase().includes(text);
+
+// The folders above a model, for the second line of a list row.
+const folderOf = (key: unknown) => String(key).split('/').slice(0, -1).join(' › ');
+
 const SimModelTree: React.FC<SimModelTreeProps> = ({
   width, SECTION_H, storyTree, storyFilter, setStoryFilter,
   storyViewMode, setStoryViewMode, expandedKeys, setExpandedKeys,
@@ -103,8 +110,28 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
     return flat;
   };
 
+  const filterText = storyFilter.trim().toLowerCase();
+  // The list is sorted by title, because the folder is shown on a second line of each row.
   const storyList = flattenTree(storyTree)
-    .filter(n => !storyFilter || n.titleStr?.toLowerCase().includes(storyFilter.toLowerCase()));
+    .filter(n => matchesText(n, filterText))
+    .sort((a, b) => String(a.displayTitle).localeCompare(String(b.displayTitle)));
+  // The tree keeps only the models that match, with the folders that hold them, all opened.
+  const filteredTree = React.useMemo(() => {
+    if (!filterText) return storyTree;
+    const prune = (nodes: DataNode[]): DataNode[] => nodes.flatMap(n => {
+      if (n.isLeaf) return matchesText(n, filterText) ? [n] : [];
+      const kids = prune(n.children || []);
+      return kids.length ? [{ ...n, children: kids }] : [];
+    });
+    return prune(storyTree);
+  }, [storyTree, filterText]);
+  const filteredFolders = React.useMemo(() => {
+    const keys: React.Key[] = [];
+    const walk = (nodes: DataNode[]) => nodes.forEach(n => { if (!n.isLeaf) { keys.push(n.key); walk(n.children || []); } });
+    if (filterText) walk(filteredTree);
+    return keys;
+  }, [filteredTree, filterText]);
+  const treeExpanded = filterText ? filteredFolders : expandedKeys;
 
   // Builder mode: custom title renderer with checkbox for leaf nodes
   const builderTitleRender = (node: any) => {
@@ -358,7 +385,7 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
             onChange={e => setStoryFilter(e.target.value)}
             prefix={<FilterOutlined style={{ color: c.textMute }} />}
             style={{ flex: 1 }} />
-          {!checkboxMode && (
+          {(
             <Tooltip title={storyViewMode === 'tree' ? t('sim.scene.toggle_list') : t('sim.scene.toggle_tree')}>
               <Button size="small" type="text"
                 icon={storyViewMode === 'tree' ? <UnorderedListOutlined /> : <ClusterOutlined />}
@@ -368,23 +395,33 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
           )}
         </div>
 
+        {filterText && (
+          <div data-testid="model-tree-match-count" style={{ marginBottom: 6, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)' }}>
+            {t('sim.scene.matches', { n: storyList.length })}
+          </div>
+        )}
+
         <div>
           <Spin spinning={treeLoading} indicator={<LoadingOutlined />}>
-            {checkboxMode ? (
-              <Tree
-                expandedKeys={expandedKeys}
-                onExpand={setExpandedKeys}
-                selectedKeys={[]}
-                treeData={storyTree}
-                titleRender={builderTitleRender}
-              />
+            {filterText && storyList.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sim.scene.no_scenarios')} style={{ marginTop: 16 }} />
             ) : storyViewMode === 'tree' ? (
-              <Tree expandedKeys={expandedKeys} onExpand={setExpandedKeys}
-                selectedKeys={selectedKey ? [selectedKey] : []}
-                onSelect={handleSelect}
-                treeData={storyTree}
-                titleRender={normalTitleRender}
-              />
+              checkboxMode ? (
+                <Tree
+                  expandedKeys={treeExpanded}
+                  onExpand={setExpandedKeys}
+                  selectedKeys={[]}
+                  treeData={filteredTree}
+                  titleRender={builderTitleRender}
+                />
+              ) : (
+                <Tree expandedKeys={treeExpanded} onExpand={setExpandedKeys}
+                  selectedKeys={selectedKey ? [selectedKey] : []}
+                  onSelect={handleSelect}
+                  treeData={filteredTree}
+                  titleRender={normalTitleRender}
+                />
+              )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {storyList.length === 0
@@ -394,10 +431,16 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                       const isRunning = m.key === runningModelKey;
                       return (
                       <div key={m.key}
-                        onClick={() => handleSelect([m.key])}
-                        style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', borderRadius: 4,
+                        data-testid={`model-tree-row-${m.key}`}
+                        onClick={() => (checkboxMode ? toggleChecked?.(m.key) : handleSelect([m.key]))}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 4,
                           cursor: 'pointer',
-                          background: isSelected ? c.rowHover : 'transparent', color: c.text }}>
+                          background: isSelected && !checkboxMode ? c.rowHover : 'transparent', color: c.text }}>
+                        {checkboxMode && (
+                          <input type="checkbox" readOnly checked={checkedList.includes(m.key)}
+                            data-testid={`model-tree-check-${m.key}`}
+                            style={{ width: 12, height: 12, cursor: 'pointer', accentColor: c.primary, flexShrink: 0 }} />
+                        )}
                         <span style={{ flex: 1, position: 'relative', fontSize: 'calc(var(--lm-font-size, 14px) * 0.8571)', minWidth: 0 }}>
                           {isRunning && (
                             <Tooltip title={t('sim.tree.running_tip')}>
@@ -412,7 +455,10 @@ const SimModelTree: React.FC<SimModelTreeProps> = ({
                               </span>
                             </Tooltip>
                           )}
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.displayTitle}</span>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            color: checkboxMode && checkedList.includes(m.key) ? c.primary : c.text }}>{m.displayTitle}</span>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            color: c.textMute, fontSize: '0.8em' }}>{folderOf(m.key)}</span>
                         </span>
                       </div>
                     );

@@ -144,13 +144,26 @@ class BodyMap:
         return _words(' '.join(parts)), ' '.join(parts).lower()
 
     def endpoint_search(self, inputs: dict) -> dict:
-        """The models of the library whose tags, path or name point to one organ or one input."""
-        kind, slot = inputs.get('kind'), str(inputs.get('id') or '')
-        if kind not in ('organ', 'input'):
-            return {'success': False, 'error': 'kind must be organ or input'}
-        rules = [r for r in _load_rules()['organs' if kind == 'organ' else 'inputs'] if r[0] == slot]
-        if not rules:
-            return {'success': False, 'error': 'Unknown ' + kind + ': ' + slot}
+        """The models of the library whose tags, path or name point to organs or inputs.
+
+        `picks` is a list of {kind, id}, and a single `kind` and `id` also works. With mode `and` a model must
+        point to every pick, with mode `or` to at least one."""
+        picks = inputs.get('picks')
+        if not picks and inputs.get('kind'):
+            picks = [{'kind': inputs.get('kind'), 'id': inputs.get('id')}]
+        if not isinstance(picks, list) or not picks:
+            return {'success': False, 'error': 'Nothing to search for'}
+        mode = 'and' if inputs.get('mode') == 'and' else 'or'
+        groups = _load_rules()
+        rule_sets = []
+        for pick in picks[:8]:
+            kind, slot = (pick or {}).get('kind'), str((pick or {}).get('id') or '')
+            if kind not in ('organ', 'input'):
+                return {'success': False, 'error': 'kind must be organ or input'}
+            rules = [r for r in groups['organs' if kind == 'organ' else 'inputs'] if r[0] == slot]
+            if not rules:
+                return {'success': False, 'error': 'Unknown ' + kind + ': ' + slot}
+            rule_sets.append(rules)
         root = self.ctx.models_directory
         paths = []
         for folder in SEARCH_FOLDERS:
@@ -166,7 +179,8 @@ class BodyMap:
                     except OSError:
                         continue
                     words, joined = self._head_facts(head, rel)
-                    if _match(words, joined, rules):
+                    hits = [bool(_match(words, joined, rules)) for rules in rule_sets]
+                    if all(hits) if mode == 'and' else any(hits):
                         paths.append(rel)
         paths.sort()
-        return {'success': True, 'kind': kind, 'id': slot, 'paths': paths, 'count': len(paths)}
+        return {'success': True, 'mode': mode, 'paths': paths, 'count': len(paths)}

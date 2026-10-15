@@ -72,6 +72,7 @@
   "sim.scene.toggle_tree": "Switch to Tree",
   "sim.scene.locked": "Locked",
   "sim.scene.no_scenarios": "No scenarios",
+  "sim.scene.matches": "Matches: {n}",
   "sim.scene.empty_hint": "Select a scenario from the left panel",
   "sim.scene.select_hint": "Click \"Unverified\" to validate and lock",
   "sim.scene.click_to_start": "Click \"Run\" to start",
