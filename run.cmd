@@ -11,6 +11,6 @@ start "LM Frontend" cmd /k "cd /d "%ROOT%gui" && npm run dev"
 echo.
 echo Backend:  http://127.0.0.1:18080
 echo Frontend: http://localhost:5173
-echo 关闭上面两个窗口即可停止；关不掉就跑 scripts\kill_ports.py 强制清理端口（python scripts\kill_ports.py）。
+echo 关闭上面两个窗口即可停止；关不掉就运行 stop.cmd 强制清理端口。
 echo.
 endlocal

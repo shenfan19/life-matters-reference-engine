@@ -14,6 +14,10 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 - VE Graph draws several ticked models together. Variables with the same name are one node, marked with a dashed ring, equations stay separate and take the color of their model, and the legend lists the models. The `graph` endpoint takes `paths` as well as `path`, loads models without validation so that components which read each other's variables can be drawn together, and skips and reports a model that cannot be loaded.
 - Plugin manifests carry their own version, independent of the engine's, and the three plugins start at 0.1.0. The icon name `UserOutlined` can be used in `ui.icon`.
 
+### Scripts
+
+- Added `stop.sh` and `stop.cmd`, which stop whatever is listening on the backend and GUI ports together with the processes it started, so a Ctrl+C that left a process behind no longer blocks the next start. `scripts/kill_ports.py`, which they call, now stops only a process that listens on the port, so a browser connected to the backend is left alone, ends the whole process tree, names what it stops, takes ports as arguments, has `--list`, and works on Linux as well.
+
 ### GUI: model tree
 
 - The list view shows the title of a model with its folders on a second line, sorted by title, and is available while ticking models for a plugin or editing the library, with the checkboxes there. It was hidden in those modes. Corresponds to ADR 0159.

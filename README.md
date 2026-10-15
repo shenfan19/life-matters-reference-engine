@@ -64,6 +64,15 @@ Start the backend plus frontend together with one command (dev mode, two windows
 run.cmd           # Windows
 ```
 
+If closing the windows or Ctrl+C leaves a process behind and the next start fails with "port in use", stop whatever is listening on the backend and GUI ports, with the processes it started:
+
+```bash
+./stop.sh         # macOS / Linux / Git Bash
+stop.cmd          # Windows
+```
+
+Add `--list` to only show what is listening, or a port number to stop only that port.
+
 Or start them separately by hand:
 
 ```bash
