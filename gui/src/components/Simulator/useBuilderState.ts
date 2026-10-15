@@ -275,8 +275,12 @@ export function useBuilderState({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, filename: file.name }),
       });
-      const data = await resp.json();
-      if (!data.success) { message.error(data.error || t('sim.msg.import_failed')); return; }
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.success) {
+        const detail = typeof data?.detail === 'string' ? data.detail : data?.error;
+        message.error(detail ? `${t('sim.msg.import_failed')}: ${detail}` : t('sim.msg.import_failed'));
+        return;
+      }
 
       // Backend resolved imports inline and deleted the temp file.
       // Build ModelFile directly from response — no second server call needed.

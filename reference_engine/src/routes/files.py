@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import app_state
 from yaml_io import safe_load
+from src.model_serialization import model_to_dict
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -403,31 +404,8 @@ async def upload_model_temp(payload: dict):
         model = app_state.loader_engine.fetch(temp_name, folder='temp', use_cache=False)
         if model is None:
             raise HTTPException(status_code=400, detail="Model could not be resolved — check imports paths")
-        provenance = getattr(model, 'provenance', {}) or {}
-        resolved = {
-            "metadata": {
-                "name": model.metadata.name if model.metadata else "",
-                "version": model.metadata.version if model.metadata else "",
-                "author": model.metadata.author if model.metadata else "",
-                "description": model.metadata.description if model.metadata else "",
-            },
-            "variables": {
-                k: {"description": v.description, "value": v.value, "unit": v.unit,
-                    "type": v.type.value if hasattr(v.type, 'value') else str(v.type)}
-                for k, v in model.variables.items()
-            },
-            "equations": {
-                k: {"description": f.description, "condition": f.condition,
-                    "priority": f.priority, "dynamics": f.dynamics, "equation": f.equation}
-                for k, f in model.equations.items()
-            },
-            "simulation": model.simulator,
-            "simulator": model.simulator,
-            "optimization": model.optimizer,
-            "imports": provenance.get('imports', []),
-            "provenance": provenance,
-            "resolved": True,
-        }
+        # the same shape as GET /api/models/{name}, so an uploaded model reads like one from the library
+        resolved = model_to_dict(model)
         return {"success": True, "raw": raw, "resolved": resolved, "filename": safe_name}
     finally:
         if temp_path.exists():

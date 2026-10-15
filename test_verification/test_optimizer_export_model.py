@@ -49,3 +49,28 @@ def test_export_of_a_model_without_optimization_works_without_results_and_refuse
 def test_export_refuses_a_path_outside_the_models_directory(client):
     r = client.post('/api/optimizer/export-model', json={'model_key': '../x.yaml'})
     assert r.status_code in (400, 404)
+
+
+def test_upload_temp_resolves_a_model_and_answers_with_its_structure(tmp_path, monkeypatch):
+    """POST /api/model/upload-temp read an attribute of Equation that no longer exists, so every upload ended in a 500."""
+    from routes import files as files_routes
+    from src.loader_engine import LoaderEngine
+    models = tmp_path / 'models'
+    models.mkdir()
+    monkeypatch.setattr(app_state, 'MODELS_DIR', models)
+    monkeypatch.setattr(app_state, 'loader_engine', LoaderEngine(models_directory=str(models)))
+    app = FastAPI()
+    app.include_router(files_routes.router)
+    text = (
+        'metadata:\n  name: up\n  version: "1.0"\n'
+        'variables:\n  x: {value: 1.0, type: state, unit: "1", description: x}\n  k: {value: 0.1, type: parameter, unit: "1", description: k}\n'
+        'equations:\n  decay:\n    description: decay\n    dynamics:\n      x: "x - k * x"\n'
+        'simulation:\n  step_size: 1\n  step_unit: day\n'
+    )
+    r = TestClient(app).post('/api/model/upload-temp', json={'text': text, 'filename': 'up.yaml'})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body['success'] is True and body['filename'] == 'up.yaml'
+    assert set(body['resolved']['variables']) == {'x', 'k'}
+    assert body['resolved']['equations']['decay']['dynamics'] == {'x': 'x - k * x'}
+    assert not list((models / 'temp').glob('*'))           # the temporary copy is removed
