@@ -317,3 +317,17 @@ def test_ve_graph_joins_models_through_shared_variable_names():
     for e in twice['edges']:
         assert {ids[e['source']]['kind'], ids[e['target']]['kind']} == {'variable', 'equation'}
     assert plugin.endpoint_graph({'paths': ['no/such/model']})['success'] is False
+
+
+def test_ve_graph_skips_a_model_that_cannot_be_loaded_and_keeps_the_rest():
+    """A missing model does not stop the others, and only when nothing loads is the answer an error."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('ve_graph_backend_skip', ROOT / 'plugins' / 've_graph' / 'backend.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    ctx = PluginContext(loader=LoaderEngine(models_directory=str(MODELS_DIR)))
+    plugin = module.VeGraph(ctx)
+    out = plugin.endpoint_graph({'paths': ['no/such/model', MODEL_PATH]})
+    assert out['success'] is True and [s['path'] for s in out['skipped']] == ['no/such/model']
+    assert out['nodes']
+    assert plugin.endpoint_graph({'paths': ['no/such/model']})['success'] is False

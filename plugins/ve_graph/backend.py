@@ -22,14 +22,23 @@ class VeGraph:
             return {'success': False, 'error': 'No model path given'}
         paths = [str(p) for p in paths][:MAX_MODELS]
 
-        loaded = []
+        # The graph is about structure, so models are loaded without validation. A component that reads variables
+        # another component defines fails validation alone but is exactly what one wants to see next to that other
+        # component. A model that cannot be loaded at all is skipped and reported, and does not stop the others.
+        loaded, skipped = [], []
         for path in paths:
             try:
-                loaded.append(self.ctx.load_model(path))
+                loaded.append(self.ctx.load_model(path, validate=False))
             except (ValueError, RuntimeError) as e:
-                return {'success': False, 'error': f'{path}: {e}'}
+                skipped.append({'path': path, 'error': str(e).splitlines()[0] if str(e) else 'cannot be loaded'})
+        if not loaded:
+            return {'success': False, 'error': '; '.join(f"{s['path']}: {s['error']}" for s in skipped)}
         multi = len(loaded) > 1
         names = [m['metadata']['name'] for m in loaded]
+        # a name read by one model counts when any of the loaded models declares it
+        declared = set()
+        for model in loaded:
+            declared |= set(model['variables'])
 
         var_nodes = {}      # variable name -> node, one per name across all models
         eq_nodes = []
@@ -65,8 +74,8 @@ class VeGraph:
                     reads |= extract_vars_from_expr(str(expr))
                 if eq.get('condition'):
                     reads |= extract_vars_from_expr(str(eq['condition']))
-                reads = {v for v in reads if v in variables}
-                writes = [v for v in dynamics if v in variables]
+                reads = {v for v in reads if v in declared}
+                writes = [v for v in dynamics if v in declared]
                 eq_id = ('eq:%d:%s' % (idx, eq_name)) if multi else 'eq:' + eq_name
                 eq_nodes.append({
                     'id': eq_id, 'kind': 'equation', 'label': eq_name, 'model': names[idx],
@@ -91,6 +100,7 @@ class VeGraph:
             'name': ' + '.join(names),
             'models': names,
             'shared': sum(1 for n in var_nodes.values() if n['shared']),
+            'skipped': skipped,
             'nodes': eq_nodes + list(var_nodes.values()),
             'edges': edges,
         }

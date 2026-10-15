@@ -86,7 +86,7 @@
           search: 'Search name', unpin: 'Unpin all', svg: 'Export SVG', variable: 'variable', equation: 'equation',
           state: 'state', input: 'input', parameter: 'parameter', unit: 'Unit', value: 'Value', cond: 'Condition',
           hint: 'Drag a node to move it and pin it. Double-click a node to unpin. Wheel to zoom, drag background to pan. With several models ticked, a dashed ring marks a variable they share.',
-          models: 'Models', shared: 'shared', fromModels: 'In models',
+          models: 'Models', shared: 'shared', fromModels: 'In models', skipped: 'not loaded',
           wait: 'Waiting for the GUI to say which model is selected.', none: 'Select a model in the tree, or tick several to draw them together.',
           loading: 'Loading', fail: 'Could not read the model: ', empty: 'This model has no equations.',
           nodes: 'nodes', edges: 'arrows', vars: 'variables', eqs: 'equations' },
@@ -94,7 +94,7 @@
           search: '搜索名称', unpin: '取消全部固定', svg: '导出 SVG', variable: '变量', equation: '公式',
           state: '状态', input: '输入', parameter: '参数', unit: '单位', value: '取值', cond: '条件',
           hint: '拖动节点可移动并固定，双击节点取消固定，滚轮缩放，拖动空白处平移。勾选多个模型时，虚线圈标出它们共用的变量。',
-          models: '模型', shared: '共用', fromModels: '所在模型',
+          models: '模型', shared: '共用', fromModels: '所在模型', skipped: '未能读取',
           wait: '等待 GUI 告知当前选中的模型。', none: '请在左侧模型树中选择一个模型，或勾选多个模型一起画。',
           loading: '正在读取', fail: '无法读取模型：', empty: '该模型没有公式。',
           nodes: '节点', edges: '箭头', vars: '变量', eqs: '公式' },
@@ -115,7 +115,7 @@
   let alpha = 0, rafId = 0, tween = null, selectedId = null, loadToken = 0, autoFit = true;
   const R = 10;                  // half size of a node shape
   const MODEL_COLORS = ['#3b82c4', '#d98a2b', '#3f9e7a', '#b4619a', '#7a8896', '#c9534f', '#7b6fd0', '#9aa332'];
-  let modelNames = [];
+  let modelNames = [], skippedList = [];
 
   function setTexts() {
     $('b-mode').textContent = mode === 'force' ? T.force : T.layered;
@@ -427,6 +427,9 @@
     modelName = data.name; modelNames = data.models || []; setTexts(); $('title').textContent = 'VE Graph: ' + data.name;
     selectedId = null; $('detail').style.display = 'none';
     build(data); filterNodes();
+    skippedList = data.skipped || [];
+    if (skippedList.length) $('stats').textContent += `, ${skippedList.length} ${T.skipped}`;
+    $('stats').title = skippedList.map(s => s.path + ': ' + s.error).join('\n');
     message(data.edges.length ? '' : T.empty);
     // seed positions from the layered layout, which also gives the force layout a good start
     const seed = layered();
