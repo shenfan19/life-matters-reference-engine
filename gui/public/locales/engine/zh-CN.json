@@ -482,6 +482,7 @@
   "sim.msg.plans_partial_fail": "完成，{n} 个方案失败",
   "sim.msg.dl_model_with_pareto": "已下载模型（含 {n} 个 Pareto 解）",
   "sim.msg.dl_model_no_opt": "已下载模型（无优化结果）",
+  "sim.msg.dl_model_failed": "下载模型失败",
   "sim.msg.no_pareto_to_export": "无 Pareto 解可导出",
   "sim.msg.csv_no_x_cols": "CSV 中未找到 x0, x1... 列，请确认是 _opt.csv 格式",
   "sim.msg.csv_no_valid": "未能解析任何有效解，请检查 CSV 格式",

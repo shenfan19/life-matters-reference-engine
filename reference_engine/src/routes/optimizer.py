@@ -19,7 +19,7 @@ class YamlOptRequest(BaseModel):
 
 class ExportModelRequest(BaseModel):
     model_key: str           # path relative to models/, e.g. "papers/paper2/foo.yaml"
-    results: Dict[str, Any]  # the optimization.results block to embed
+    results: Optional[Dict[str, Any]] = None  # the optimization.results block to embed; omitted to export the model as it is
     flatten_imports: bool = False  # if True, resolve all imports into a single flat YAML
 
 
@@ -99,7 +99,8 @@ async def get_optimizer_status(job_id: str):
 
 @router.post("/api/optimizer/export-model")
 async def export_model_with_results(request: ExportModelRequest):
-    """Read model YAML, embed optimization.results in memory, return YAML text.
+    """Read model YAML, embed optimization.results in memory when results are given, return YAML text.
+    Without results the model is exported as it is, which also works for a model with no optimization block.
     The server file is NEVER modified — this is a stateless operation.
     """
     import yaml
@@ -126,10 +127,10 @@ async def export_model_with_results(request: ExportModelRequest):
             with open(target, 'r', encoding='utf-8') as f:
                 data = safe_load(f) or {}
 
-        if not isinstance(data.get('optimization'), dict):
-            raise HTTPException(status_code=400, detail="Model has no optimization: block")
-
-        data['optimization']['results'] = request.results
+        if request.results is not None:
+            if not isinstance(data.get('optimization'), dict):
+                raise HTTPException(status_code=400, detail="Model has no optimization: block")
+            data['optimization']['results'] = request.results
         text = yaml.dump(data, allow_unicode=True, default_flow_style=False,
                          sort_keys=False, indent=2)
         name = (data.get('metadata') or {}).get('name', target.stem)

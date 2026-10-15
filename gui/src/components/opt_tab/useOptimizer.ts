@@ -316,7 +316,12 @@ export function useOptimizer({
         body: JSON.stringify({ model_key: modelKey, results, flatten_imports: flattenImports }),
       });
       const d = await r.json();
-      if (!d.success || !d.text) return;
+      if (!r.ok || !d.success || !d.text) {
+        // a rejected request answers with a `detail`, which used to be dropped without a word
+        const detail = typeof d?.detail === 'string' ? d.detail : (d?.error || `HTTP ${r.status}`);
+        message.error(`${t('sim.msg.dl_model_failed')}: ${detail}`);
+        return;
+      }
       const name = selectedModel.content?.metadata?.name || modelKey.split('/').pop()?.replace(/\.ya?ml$/i, '') || 'model';
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([d.text], { type: 'text/yaml' }));
@@ -324,7 +329,9 @@ export function useOptimizer({
       a.click();
       const n = results?.pareto_front?.length ?? 0;
       message.success(n > 0 ? t('sim.msg.dl_model_with_pareto', { n }) : t('sim.msg.dl_model_no_opt'));
-    } catch {}
+    } catch (e) {
+      message.error(`${t('sim.msg.dl_model_failed')}: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const exportOptCSV = () => {

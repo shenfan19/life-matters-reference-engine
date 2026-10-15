@@ -482,6 +482,7 @@
   "sim.msg.plans_partial_fail": "Terminé, {n} plans échoués",
   "sim.msg.dl_model_with_pareto": "Modèle téléchargé ({n} solutions Pareto)",
   "sim.msg.dl_model_no_opt": "Modèle téléchargé (sans résultats opt.)",
+  "sim.msg.dl_model_failed": "Échec du téléchargement du modèle",
   "sim.msg.no_pareto_to_export": "Aucune solution Pareto à exporter",
   "sim.msg.csv_no_x_cols": "Colonnes x0, x1... introuvables dans le CSV — confirmez qu'il s'agit d'un fichier _opt.csv",
   "sim.msg.csv_no_valid": "Aucune solution valide analysée — vérifiez le format CSV",
