@@ -12,21 +12,24 @@ def _words(text: str) -> set:
     return {w for w in re.split(r'[^a-z0-9]+', str(text).lower()) if w}
 
 
-def _load_rules() -> list:
-    """The slot keywords of sites.yaml as a list of (slot, exact words, word prefixes)."""
+def _load_rules() -> dict:
+    """The keywords of sites.yaml as {'organs': [...], 'inputs': [...]}, each a list of (slot, exact words, word prefixes)."""
     with open(SITES_FILE, encoding='utf-8') as f:
         raw = yaml.safe_load(f) or {}
-    rules = []
-    for slot, keywords in raw.items():
-        exact, prefixes = set(), []
-        for k in keywords or []:
-            k = str(k).lower()
-            if k.endswith('*'):
-                prefixes.append(k[:-1])
-            else:
-                exact |= _words(k) if '_' not in k else {k}
-        rules.append((str(slot), exact, prefixes))
-    return rules
+    groups = {}
+    for group in ('organs', 'inputs'):
+        rules = []
+        for slot, keywords in (raw.get(group) or {}).items():
+            exact, prefixes = set(), []
+            for k in keywords or []:
+                k = str(k).lower()
+                if k.endswith('*'):
+                    prefixes.append(k[:-1])
+                else:
+                    exact |= _words(k) if '_' not in k else {k}
+            rules.append((str(slot), exact, prefixes))
+        groups[group] = rules
+    return groups
 
 
 def _match(words: set, joined: str, rules: list) -> dict:
@@ -49,7 +52,7 @@ def _clean_path(path: str) -> str:
 
 
 class BodyMap:
-    """Places models on the organs of a paper-doll body from their tags, path and name."""
+    """Places models on the organs of a paper-doll body, and on the everyday inputs that reach it, from their tags, path and name."""
 
     def __init__(self, context):
         self.ctx = context
@@ -76,15 +79,16 @@ class BodyMap:
         # The folder names count too: fitness/individual/running_2026 is a muscle model.
         return name, tags, _words(' '.join(tags + [path, name])), ' '.join(tags + [path, name]).lower()
 
-    def _locate_one(self, path: str, rules: list) -> dict:
+    def _locate_one(self, path: str, groups: dict) -> dict:
         data = self._read_yaml(path)
         if data is None:
             return {'path': path, 'error': 'Model file not found or unreadable'}
         name, tags, words, joined = self._facts(path, data)
-        sites = {slot: {'slot': slot, 'why': why, 'via': []} for slot, why in _match(words, joined, rules).items()}
+        found = {g: {slot: {'slot': slot, 'why': why, 'via': []} for slot, why in _match(words, joined, rules).items()}
+                 for g, rules in groups.items()}
 
         # A scenario carries no body words of its own beyond its tags, so the components it imports
-        # light up their own organs, and the component is recorded as the reason.
+        # light up their own organs and inputs, and the component is recorded as the reason.
         imports = data.get('imports') or []
         imported = 0
         for imp in imports[:MAX_IMPORTS] if isinstance(imports, list) else []:
@@ -94,25 +98,28 @@ class BodyMap:
                 continue
             imported += 1
             sub_name, _, sub_words, sub_joined = self._facts(sub_path, sub)
-            for slot, why in _match(sub_words, sub_joined, rules).items():
-                site = sites.setdefault(slot, {'slot': slot, 'why': [], 'via': []})
-                site['via'].append(sub_name)
-                site['why'] += [w for w in why if w not in site['why']][:3]
+            for g, rules in groups.items():
+                for slot, why in _match(sub_words, sub_joined, rules).items():
+                    site = found[g].setdefault(slot, {'slot': slot, 'why': [], 'via': []})
+                    site['via'].append(sub_name)
+                    site['why'] += [w for w in why if w not in site['why']][:3]
 
         return {
             'path': path, 'name': name, 'tags': tags, 'imports': imported,
-            'sites': sorted(sites.values(), key=lambda s: s['slot']),
+            'sites': sorted(found['organs'].values(), key=lambda x: x['slot']),
+            'inputs': sorted(found['inputs'].values(), key=lambda x: x['slot']),
         }
 
     def endpoint_locate(self, inputs: dict) -> dict:
         paths = inputs.get('paths') or []
         if not isinstance(paths, list) or not paths:
             return {'success': False, 'error': 'No model paths given'}
-        rules = _load_rules()
-        models = [self._locate_one(_clean_path(p), rules) for p in paths[:MAX_MODELS]]
+        groups = _load_rules()
+        models = [self._locate_one(_clean_path(p), groups) for p in paths[:MAX_MODELS]]
         return {
             'success': True,
-            'slots': [r[0] for r in rules],
+            'slots': [r[0] for r in groups['organs']],
+            'input_slots': [r[0] for r in groups['inputs']],
             'models': models,
             'truncated': len(paths) > MAX_MODELS,
         }

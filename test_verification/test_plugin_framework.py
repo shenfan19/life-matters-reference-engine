@@ -245,6 +245,7 @@ def test_body_map_plugin_places_models_on_organs(tmp_path):
 
     running = {s['slot'] for s in by_path['fitness/running_2026']['sites']}
     assert running == {'muscle', 'heart'}          # fitness folder and vo2max tag
+    assert {i['slot'] for i in by_path['fitness/running_2026']['inputs']} == {'exercise'}   # an everyday input is placed the same way
 
     scenario = {s['slot']: s for s in by_path['scenario']['sites']}
     assert set(scenario) == {'liver', 'lung'}      # the scenario's own tags name no organ, its components do

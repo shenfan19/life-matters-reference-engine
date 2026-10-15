@@ -1,22 +1,33 @@
-# Which organ slot a model belongs to. A model is placed on a slot when one of the slot's keywords
+# Which organ slot, and which everyday input, a model belongs to. A model is placed on a slot when one of the slot's keywords
 # is a word of the model's tags, its path or its name. Words are the pieces left after splitting on
 # anything that is not a letter or digit, so `glucose_insulin_2026` gives `glucose`, `insulin`, `2026`.
 # A keyword ending in `*` matches every word that starts with it. The first matching slot is not
 # special: a model lights up every slot it matches.
 # Add a keyword here to move a model, or a slot to the page's catalog in dist/index.html to add an organ.
 
-brain: [brain, cognition, cognitive, nervous, neuro*, sleep, stress, mood, depression, anxiety, mental, psychology, stroke, memory, dementia, burnout, circadian, adherence, fatigue, adhd]
-thyroid: [thyroid, endocrine, hormone, cortisol, leptin, ghrelin, adrenal, neuroendocrine]
-lung: [lung, respiratory, smoking, fev1, pneumonia, asthma, copd, flu, oxygen]
-heart: [heart, cardiac, cardiovascular, cardio*, myocardial, hypertension, blood_pressure, vo2max, atherosclerosis, lipid, lipids, cholesterol]
-blood: [blood, hematology, iron, anemia, ferritin, hemoglobin, sepsis, anticoagulant]
-liver: [liver, hepatic, nafld, steatosis, alcohol, hepb, hcc, fibrosis, ketone]
-stomach: [stomach, digestive, gut, intake, appetite, food, diet, nutrition, meat, absorption, microbiome, intestine, colon, crc, meal]
-pancreas: [pancreas, glucose, insulin, diabetes, beta, bergman]
-kidney: [kidney, renal, ckd, gfr, creatinine, uric, gout, sodium, fluid, dialysis, hemodialysis]
-muscle: [muscle, fitness, exercise, training, sports, running, cycling, rowing, badminton, squash, hiit, sarcopenia, racket, banister, resistance, epoc, athlete]
-bone: [bone, skeletal, musculoskeletal, osteoporosis, osteo*, fracture, joint, calcium]
-immune: [immune, inflammation, infection, infectious, crp, fever, flu, sepsis, vaccine, vaccination, virus]
-skin: [skin, dermatology, wound, burn, sunburn, uv]
-pelvis: [pelvis, pregnancy, postpartum, breastfeeding, lactation, fertility, menstrual, reproductive, prostate, uterus, infant, newborn]
-whole: [human_body, aging, ageing, obesity, weight, body_composition, lifestyle, energy_balance, mortality, longevity]
+organs:
+  brain: [brain, cognition, cognitive, nervous, neuro*, sleep, stress, mood, depression, anxiety, mental, psychology, stroke, memory, dementia, burnout, circadian, adherence, fatigue, adhd]
+  thyroid: [thyroid, endocrine, hormone, cortisol, leptin, ghrelin, adrenal, neuroendocrine]
+  lung: [lung, respiratory, smoking, fev1, pneumonia, asthma, copd, flu, oxygen]
+  heart: [heart, cardiac, cardiovascular, cardio*, myocardial, hypertension, blood_pressure, vo2max, atherosclerosis, lipid, lipids, cholesterol]
+  blood: [blood, hematology, iron, anemia, ferritin, hemoglobin, sepsis, anticoagulant]
+  liver: [liver, hepatic, nafld, steatosis, alcohol, hepb, hcc, fibrosis, ketone]
+  stomach: [stomach, digestive, gut, intake, appetite, food, diet, nutrition, meat, absorption, microbiome, intestine, colon, crc, meal]
+  pancreas: [pancreas, glucose, insulin, diabetes, beta, bergman]
+  kidney: [kidney, renal, ckd, gfr, creatinine, uric, gout, sodium, fluid, dialysis, hemodialysis]
+  muscle: [muscle, fitness, exercise, training, sports, running, cycling, rowing, badminton, squash, hiit, sarcopenia, racket, banister, resistance, epoc, athlete]
+  bone: [bone, skeletal, musculoskeletal, osteoporosis, osteo*, fracture, joint, calcium]
+  immune: [immune, inflammation, infection, infectious, crp, fever, flu, sepsis, vaccine, vaccination, virus]
+  skin: [skin, dermatology, wound, burn, sunburn, uv]
+  pelvis: [pelvis, pregnancy, postpartum, breastfeeding, lactation, fertility, menstrual, reproductive, prostate, uterus, infant, newborn]
+  whole: [human_body, aging, ageing, obesity, weight, body_composition, lifestyle, energy_balance, mortality, longevity]
+
+inputs:
+  air: [air, pollution, pm25, particulate, ozone, ventilation, altitude, hypoxia, smog]
+  food: [food, diet, nutrition, intake, meal, meat, calorie, caloric, fasting, starvation, appetite, sodium, protein, water, hydration, feeding, breastfeeding]
+  stress: [work, job, occupational, burnout, stress, shift, nurse, overtime, workload, productivity, allostatic]
+  sleep: [sleep, circadian, insomnia, nap, bedtime, jetlag, shift]
+  commute: [commute, commuting, transport, traffic, driving, travel, jetlag]
+  exercise: [exercise, training, fitness, sports, running, cycling, rowing, hiit, resistance, workout, athlete, epoc, banister]
+  substances: [smoking, alcohol, tobacco, nicotine, caffeine, drinking, drug]
+  social: [social, screen, loneliness, school, exam, adolescent, opinion]
