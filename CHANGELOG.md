@@ -6,6 +6,8 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-18
+
 ### Breaking changes
 
 - `GET /api/models/{name}` answers with `{success, data}` only. The same content used to be repeated at the top level next to `data`, and anything that read `variables`, `equations` and the rest from the top level of the answer has to read them from `data`. The GUI and the plugins already did.
@@ -32,6 +34,12 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 - The list view shows the title of a model with its folders on a second line, sorted by title, and is available while ticking models for a plugin or editing the library, with the checkboxes there. It was hidden in those modes. Corresponds to ADR 0159.
 - The search box matches the path of a model as well as its title, and a count of matches is shown under it. Three locale keys are added in four languages.
+
+### GUI: links to a model and a plugin view
+
+- The address bar follows what is open, so a link opens a model on a tab. A link has the form `/model/<model path>/<tab>`, for example `/model/papers/lm_format/banister/banister_validation.yaml/sim`, where the tab is `overview`, `sim` or `opt`, and the path is the key the model tree already uses. Opening a link loads that model on that tab, with the simulation or optimization mode set to match, and takes the place of the model restored from the last visit. Changing the model or the tab writes a new address, and back and forward move between them. Models imported into the session exist only in the visitor's browser and get no link. The server needs no new route, because Nginx (`try_files`) and the Vite dev server already answer every path with `index.html`. The paths are read and written by `gui/src/core/urlRoute.ts` and `useUrlSync.ts`, without a router library. Corresponds to ADR 0160.
+- A plugin view has a link too: `/model/<model path>/plugin/<plugin id>` with the model selected, or `/plugin/<plugin id>` with none. For a plugin that takes several models, `?m=<model path>` repeated lists the models ticked in the model tree, and they are ticked again when the link is opened. The state kept inside a plugin page, such as the organs picked in the Body Map, is not part of the link. A link to a plugin the server does not have shows the model tabs.
+- A Copy link button in the toolbar above the tabs copies the link of the model and tab that are open. Three locale keys are added in four languages.
 
 ### Fixes
 

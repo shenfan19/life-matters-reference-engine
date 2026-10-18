@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { Button, Checkbox, Popover, Tooltip } from 'antd';
-import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ModelFile } from '../../types';
 
 interface GlobalModelToolbarProps {
@@ -14,6 +14,7 @@ interface GlobalModelToolbarProps {
   hasOptResult: boolean;
   onDownload: (opts: { withResults: boolean; flattenImports: boolean }) => void;
   onReload: () => void;
+  onCopyLink?: () => void;
   rightContent?: React.ReactNode;
   scsMode?: boolean;
   autoSaveLocal?: boolean;
@@ -24,7 +25,7 @@ interface GlobalModelToolbarProps {
 
 export function GlobalModelToolbar({
   selectedModel, isOtherRunning, simRunning, optRunning, hasOptResult,
-  onDownload, onReload, rightContent,
+  onDownload, onReload, onCopyLink, rightContent,
   scsMode, autoSaveLocal, onAutoSaveLocalChange,
   t, c,
 }: GlobalModelToolbarProps) {
@@ -78,6 +79,15 @@ export function GlobalModelToolbar({
           style={{ whiteSpace: 'nowrap', color: c.textSec }}
         >{t('sim.ctrl.reload_label')}</Button>
       </Tooltip>
+
+      {onCopyLink && (
+        <Tooltip title={t('sim.ctrl.copy_link_tip')}>
+          <Button size="small" icon={<LinkOutlined />}
+            onClick={onCopyLink}
+            style={{ whiteSpace: 'nowrap', color: c.textSec }}
+          >{t('sim.ctrl.copy_link')}</Button>
+        </Tooltip>
+      )}
 
       {!scsMode && onAutoSaveLocalChange && (
         <Tooltip title={t('sim.ctrl.auto_save_local_tip')}>

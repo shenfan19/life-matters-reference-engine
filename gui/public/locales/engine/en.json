@@ -497,6 +497,9 @@
   "sim.msg.opt_done": "Optimization complete — {n} Pareto solutions",
   "sim.msg.opt_failed": "Optimization failed",
 
+  "sim.ctrl.copy_link": "Copy link",
+  "sim.ctrl.copy_link_tip": "Copy a link that opens this model on this tab",
+  "sim.ctrl.copy_link_done": "Link copied",
   "sim.tab.overview": "Overview",
   "sim.tab.simulation": "Simulation",
   "sim.tab.optimization": "Optimization",

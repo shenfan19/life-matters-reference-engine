@@ -13,6 +13,7 @@ import { message } from 'antd';
 import type { Dispatch, SetStateAction } from 'react';
 import type { DataNode, ModelFile } from '../../types';
 import { API_BASE, readSP } from '../sim_tab/simUtils';
+import { getInitialRoute } from '../../core/urlRoute';
 
 interface UseFileTreeParams {
   storyTree: DataNode[];
@@ -30,7 +31,7 @@ export function useFileTree({
   setConfirmedModel, onModelSelect, setCenterTab, t,
 }: UseFileTreeParams) {
   const [treeLoading, setTreeLoading] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(() => readSP()?.selectedKey || null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(() => getInitialRoute()?.key ?? readSP()?.selectedKey ?? null);
   const [runningModelKey, setRunningModelKey] = useState<string | null>(null);
 
   const loadFileTree = async () => {

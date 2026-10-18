@@ -2,7 +2,7 @@
 // State, effects, and business logic. UI split into sub-components.
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Input, Modal } from 'antd';
+import { Input, Modal, message } from 'antd';
 import type { SimulatorProps, SimulationState, InputEvent, SimPlan } from '../../types';
 import FileEditor from '../FileEditor';
 import { useI18n } from '../../core/i18n';
@@ -31,10 +31,11 @@ import { useFileTree } from './useFileTree';
 import { useBuilderState } from './useBuilderState';
 import { useModelInit } from './useModelInit';
 import { usePersistedUI } from './usePersistedUI';
+import { useUrlSync } from './useUrlSync';
+import { getInitialRoute, routeTabToCenterTab, type CenterTab } from '../../core/urlRoute';
 import { ReportButton } from '../sim_tab/ReportButton';
 import type { PlanResult, SimulationDataPoint } from '../../types';
 
-type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
 const Simulator: React.FC<SimulatorProps> = ({
   selectedModel, state, setState,
@@ -51,7 +52,7 @@ const Simulator: React.FC<SimulatorProps> = ({
   const { t, language } = useI18n();
   const c = getC(isDarkMode);
   const bundlePlugins = usePlugins();
-  const [pluginViewId, setPluginViewId] = useState<string | null>(null);
+  const [pluginViewId, setPluginViewId] = useState<string | null>(getInitialRoute()?.plugin ?? null);
   const pluginView = bundlePlugins.find(p => p.id === pluginViewId) ?? null;
   const { width: leftW, startDrag: startLeftDrag } = useResize(280, 160, 400);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -80,8 +81,9 @@ const Simulator: React.FC<SimulatorProps> = ({
   }, [autoSaveLocal]);
 
   // ── center tab ───────────────────────────────────────────────────────────────
-  const [centerTab, setCenterTab] = useState<CenterTab>('intro');
-  const prevTabRef = useRef<CenterTab>('intro');
+  const initialLink = getInitialRoute();
+  const [centerTab, setCenterTab] = useState<CenterTab>(initialLink ? routeTabToCenterTab(initialLink.tab) : 'intro');
+  const prevTabRef = useRef<CenterTab>(centerTab);
 
   // ── file tree (loading + selection) ──────────────────────────────────────────
   const {
@@ -458,8 +460,16 @@ const Simulator: React.FC<SimulatorProps> = ({
     />
   ) : undefined;
 
+  const copyModelLink = () => {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link)
+      .then(() => message.success(t('sim.ctrl.copy_link_done')))
+      .catch(() => message.error(link));
+  };
+
   const ModelToolbar = (rightContent?: React.ReactNode) => (
     <GlobalModelToolbar
+      onCopyLink={selectedKey && !selectedKey.startsWith('session/') ? copyModelLink : undefined}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning}
       simRunning={simRunningOrPaused} optRunning={optRunning} hasOptResult={!!optResult}
       onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
@@ -561,6 +571,14 @@ const Simulator: React.FC<SimulatorProps> = ({
     });
     setMultiChecked(keys);
   }, [multiSelectMode, modelLeaves]);
+  const checkedPaths = useMemo(() => checkedModels.map(m => m.path), [checkedModels]);
+  useUrlSync({
+    selectedKey, setSelectedKey, centerTab, setCenterTab, setMode, loadFileContent,
+    pluginViewId, setPluginViewId, knownPluginIds: bundlePlugins.map(p => p.id),
+    checkedPaths, applyCheckedPaths: setCheckedByPaths,
+    canApplyChecked: multiSelectMode && modelLeaves.size > 0,
+    paused: builderOpen,
+  });
 
   // A plugin may ask the tree to show only some models, for example the models found for an organ.
   const [pluginFilter, setPluginFilter] = useState<{ keys: Set<string>; label: string } | null>(null);

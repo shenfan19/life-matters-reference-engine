@@ -497,6 +497,9 @@
   "sim.msg.opt_done": "優化完成，{n} 個 Pareto 解",
   "sim.msg.opt_failed": "優化失敗",
 
+  "sim.ctrl.copy_link": "複製連結",
+  "sim.ctrl.copy_link_tip": "複製可直接開啟目前模型與目前分頁的連結",
+  "sim.ctrl.copy_link_done": "連結已複製",
   "sim.tab.overview": "總覽",
   "sim.tab.simulation": "仿真",
   "sim.tab.optimization": "優化",

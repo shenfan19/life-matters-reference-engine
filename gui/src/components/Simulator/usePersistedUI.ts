@@ -13,6 +13,7 @@ import type {
   DataNode, InputEvent, ModelFile, ModelSession, SimPlan, SimulationState,
 } from '../../types';
 import { API_BASE, readSP, writeSP } from '../sim_tab/simUtils';
+import { getInitialRoute } from '../../core/urlRoute';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
@@ -68,7 +69,7 @@ export function usePersistedUI({
     if (storyTree.length === 0) loadFileTree();
   }, []);
 
-  const initialSelectedKey = useRef<string | null>(readSP()?.selectedKey ?? null);
+  const initialSelectedKey = useRef<string | null>(getInitialRoute()?.key ?? readSP()?.selectedKey ?? null);
   useEffect(() => {
     if (storyTree.length === 0) return;
     // Restore previously selected model
@@ -87,6 +88,9 @@ export function usePersistedUI({
   useEffect(() => {
     const saved = readSP();
     if (!saved) return;
+    // The saved results belong to the model that was open last, not to the one a link points to.
+    const linked = getInitialRoute();
+    if (linked?.key && linked.key !== saved.selectedKey) return;
     setState(prev => ({
       ...prev,
       simulationData: saved.simulationData || [],
@@ -163,7 +167,14 @@ export function usePersistedUI({
   }, [status, sessionId]);
 
   // ── auto-switch center tab to simulation when sim is running/completed ───────
+  // A link names its own tab, so a status restored from the last visit does not override it;
+  // a run started on this page does.
+  const skipAutoSwitch = useRef(getInitialRoute() !== null);
   useEffect(() => {
+    if (skipAutoSwitch.current) {
+      if (status !== 'running') return;
+      skipAutoSwitch.current = false;
+    }
     if (status === 'running' || status === 'completed') setCenterTab('simulation');
   }, [status]);
 }
