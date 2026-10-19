@@ -385,6 +385,7 @@ export function useSimulation({
       const totalSteps = sessions.reduce((sum, s) => sum + s.total, 0) || 1;
       const doneSteps = planData.reduce((sum, pd) => sum + pd.length, 0);
       set('progress', Math.round((doneSteps / totalSteps) * 100));
+      set('currentStep', doneSteps); set('totalSteps', totalSteps);
       setComparedPlans(prev => prev.map((r, i) => {
         const s = sessions.find(s => s.planIdx === i);
         return { ...r, data: [...planData[i]], runsData: planRunsData[i].map(rd => [...rd]), running: s ? !s.done : false };

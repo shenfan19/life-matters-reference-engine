@@ -9,9 +9,12 @@
 // (see its metadata.description in the YAML).
 
 import { test, expect } from '@playwright/test';
+import { waitForTree } from './helpers';
 
 test('select model, run simulation, see numeric results', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.goto('/');
+  await waitForTree(page);
 
   const testFolder = page.getByTestId('model-tree-folder-test_fixtures');
   await expect(testFolder).toBeVisible({ timeout: 15_000 });

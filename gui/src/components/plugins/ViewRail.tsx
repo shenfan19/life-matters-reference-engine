@@ -16,6 +16,10 @@ import type { BundlePlugin } from './usePlugins';
 
 export type BuiltinView = 'intro' | 'simulation' | 'optimization';
 
+// The tips open to the right, over the toolbar of the main area. If the pointer could enter a tip it would stay open
+// and take the click meant for the button below it, so the tips let the pointer through.
+const NO_POINTER = { root: { pointerEvents: 'none' as const } };
+
 // Own icons for the three built-in views, drawn on a 24 by 24 grid in the current color.
 const svg = (children: React.ReactNode) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -118,7 +122,7 @@ const ViewRail: React.FC<Props> = ({
     const { key, label, icon, active, onClick, locked, tip, testId } = opts;
     const color = locked ? c.textMute : (active ? c.primary : c.textSec);
     return (
-      <Tooltip key={key} title={tip ?? label} placement="right">
+      <Tooltip key={key} title={tip ?? label} placement="right" styles={NO_POINTER}>
         <button
           onClick={() => { if (!locked && onClick) onClick(); }}
           aria-label={label}
@@ -154,7 +158,7 @@ const ViewRail: React.FC<Props> = ({
         background: c.panel, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
       }}
     >
-      <Tooltip title={treeToggleLabel} placement="right">
+      <Tooltip title={treeToggleLabel} placement="right" styles={NO_POINTER}>
         <button
           onClick={onToggleTree}
           aria-label={treeToggleLabel}
@@ -176,7 +180,7 @@ const ViewRail: React.FC<Props> = ({
       {builderOpen && (
         <div style={{ position: 'relative' }}>
           {button({ key: 'builder', label: builderLabel, icon: <BuildOutlined />, active: activeId === 'builder' })}
-          <Tooltip title={builderCloseLabel} placement="right">
+          <Tooltip title={builderCloseLabel} placement="right" styles={NO_POINTER}>
             <button
               onClick={onCloseBuilder}
               aria-label={builderCloseLabel}

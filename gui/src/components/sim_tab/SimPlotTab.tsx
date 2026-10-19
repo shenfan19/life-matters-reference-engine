@@ -70,7 +70,7 @@ const SimPlotTab: React.FC<SimPlotTabProps> = ({
 
   const summaryItems = [
     ['Model', selectedModel?.title || '-'],
-    ['Points', String(simulationData.length)],
+    ['Points', String(isMultiPlan ? Math.max(0, ...(comparedPlans ?? []).map(p => p.data.length)) : simulationData.length)],
     ['Outputs', String(outputVars.length)],
     ['MC', `x${simRuns}${sessionSeed ? ` seed ${sessionSeed}` : ''}`],
     ['Range', `${simStartDate} ~ ${simEndDate}`],

@@ -467,13 +467,16 @@ const Simulator: React.FC<SimulatorProps> = ({
       .catch(() => message.error(link));
   };
 
+  // Reload means the model as the file has it and no results, so the simulation is cleared along with the session.
+  const reloadModel = () => { resetSimulation(); setComparedPlans([]); reloadFromYAML(); };
+
   const ModelToolbar = (rightContent?: React.ReactNode) => (
     <GlobalModelToolbar
       onCopyLink={selectedKey && !selectedKey.startsWith('session/') ? copyModelLink : undefined}
       selectedModel={selectedModel} isOtherRunning={isOtherRunning}
       simRunning={simRunningOrPaused} optRunning={optRunning} hasOptResult={!!optResult}
       onDownload={(opts) => downloadModelYAML(opts.flattenImports, opts.withResults)}
-      onReload={reloadFromYAML}
+      onReload={reloadModel}
       rightContent={rightContent}
       scsMode={scsMode} autoSaveLocal={autoSaveLocal} onAutoSaveLocalChange={setAutoSaveLocal}
       t={t} c={c as any}
@@ -653,7 +656,7 @@ const Simulator: React.FC<SimulatorProps> = ({
           onBuilderUpload={() => builderUploadRef.current?.click()}
           scsMode={scsMode}
           sessionKeys={sessionKeys}
-          onReloadModel={reloadFromYAML}
+          onReloadModel={reloadModel}
           multiSelectMode={multiSelectMode}
           multiCheckedKeys={multiChecked}
           onToggleMultiChecked={key => setMultiChecked(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
