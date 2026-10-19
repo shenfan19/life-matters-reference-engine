@@ -6,6 +6,10 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+### GUI
+
+- The About box links to the Life Matters project page and to the author's page, next to the two repositories.
+
 ## [1.2.0] - 2026-10-18
 
 ### Breaking changes

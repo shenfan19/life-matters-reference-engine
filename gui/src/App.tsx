@@ -4,7 +4,7 @@ import { ConfigProvider, App as AntdApp, theme, Popover, Tooltip } from 'antd';
 import {
   SunOutlined, MoonOutlined,
   LoadingOutlined,
-  GithubOutlined, MailOutlined, InfoCircleOutlined, SettingOutlined,
+  GithubOutlined, GlobalOutlined, MailOutlined, InfoCircleOutlined, SettingOutlined,
   LeftOutlined, RightOutlined,
 } from '@ant-design/icons';
 
@@ -207,6 +207,8 @@ const AUTHOR = {
   email: 'shenfan@mail.sysu.edu.cn',
   repo: 'https://github.com/shenfan19/life-matters-reference-engine',
   modelsRepo: 'https://github.com/shenfan19/life-matters-models',
+  projectPage: 'https://shenfan19.github.io/life-matters/',
+  homepage: 'https://shenfan19.github.io/',
   version: 'v1.2.0',
 };
 
@@ -464,6 +466,12 @@ function App() {
 
             {/* Repo links */}
             <div style={{ marginBottom: 20 }}>
+              <a href={AUTHOR.projectPage} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 6 }}>
+                <GlobalOutlined /> shenfan19.github.io/life-matters
+              </a>
+              <a href={AUTHOR.homepage} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 6 }}>
+                <GlobalOutlined /> shenfan19.github.io
+              </a>
               <a href={AUTHOR.modelsRepo} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: c.textMute, fontSize: 'calc(var(--lm-font-size, 14px) * 0.7857)', marginBottom: 6 }}>
                 <GithubOutlined /> github.com/shenfan19/life-matters-models
               </a>
