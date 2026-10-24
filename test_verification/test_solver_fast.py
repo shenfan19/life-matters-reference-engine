@@ -47,6 +47,73 @@ def test_fast_matches_reference(name, tmp_path):
     assert fast == ref
 
 
+def _numbers(text):
+    """CSV text as rows of floats, for a comparison that allows rounding in the last digits."""
+    if not isinstance(text, str):
+        return text
+    return [[float(x) for x in line.split(',')] if i else line for i, line in enumerate(text.splitlines())]
+
+
+@pytest.mark.skipif('numba' not in {s['id'] for s in solver_mod.list_solvers()}, reason='numba is not installed')
+@pytest.mark.parametrize('name', [f'test_fixtures/valid/{n}' for n in FIXTURES] + REAL)
+def test_numba_matches_reference(name, tmp_path):
+    ref = _numbers(_run(name, 'reference', tmp_path))
+    got = _numbers(_run(name, 'numba', tmp_path))
+    if not isinstance(ref, list):
+        assert got == ref
+        return
+    assert len(got) == len(ref) and got[0] == ref[0]
+    for a, b in zip(ref[1:], got[1:]):
+        assert b == pytest.approx(a, rel=1e-9, abs=1e-12)
+
+
+DIV_ZERO_MODEL = """
+metadata:
+  name: test_div_zero
+  lm_format_version: "1.0"
+  description: {problem: p, result: r, limitations: l}
+  tags: [test]
+variables:
+  x: {type: state, value: 1.0, unit: au, bounds: [0.0, 100.0], description: d}
+  y: {type: state, value: 0.0, unit: au, bounds: [-100.0, 100.0], description: d}
+equations:
+  grow:
+    description: x doubles until it hits its bound
+    condition: true
+    dynamics: {x: "x * 2"}
+    priority: 2
+  ratio:
+    description: divides by zero once x leaves zero, so the assignment must be skipped
+    condition: true
+    dynamics: {y: "1 / (x - x)"}
+    priority: 1
+simulation:
+  step_size: {value: 1, unit: day}
+  start_date: "2026-01-01"
+  end_date: "2026-01-10"
+  output_variables: [x, y]
+references: ["TEST"]
+"""
+
+
+def test_numba_hands_division_by_zero_to_the_python_semantics(tmp_path):
+    (tmp_path / 'test_div_zero.yaml').write_text(DIV_ZERO_MODEL, encoding='utf-8')
+    outs = {}
+    for sid in ('reference', 'fast', 'numba'):
+        solver_mod.set_default_solver(sid)
+        try:
+            engine = ReferenceEngine(models_directory=str(tmp_path))
+            assert engine.load_models(['test_div_zero'])
+            out = tmp_path / f'{sid}.csv'
+            result = engine.run_simulation(None, 240.0, output_path=str(out))
+            assert result['success'], result.get('error')
+            outs[sid] = out.read_text(encoding='utf-8')
+        finally:
+            solver_mod.set_default_solver('reference')
+    assert outs['fast'] == outs['reference'] == outs['numba']
+    assert all(line.split(',')[-1] == '0.0' for line in outs['reference'].splitlines()[1:])
+
+
 def test_fast_histories_identical_and_faster_on_long_runs():
     """Solver.run over 20000 steps of reference models: identical histories, less total time."""
     total = {'reference': 0.0, 'fast': 0.0}

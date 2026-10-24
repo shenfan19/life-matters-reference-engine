@@ -136,3 +136,4 @@ def pick_solver(required: Sequence[str], solver_id: Optional[str] = None) -> Sol
 register_solver(ReferenceSolver())
 
 from . import solver_fast  # noqa: E402,F401  (registers the fast solver)
+from . import solver_numba  # noqa: E402,F401  (registers the compiled solver when numba is installed)

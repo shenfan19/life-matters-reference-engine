@@ -8,7 +8,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Engine
 
-- Simulation, Monte Carlo and the optimizer advance a model through one `Solver` interface (`reference_engine/src/solver.py`, ADR 0163). The reference solver behaves as before. The schedule semantics are a pure input signal (`compute_inputs`, `apply_inputs`, `input_trajectory` in `schedule_runner.py`) that any solver can read; `apply_schedules` behaves as before. A second solver, `fast`, reproduces the reference solver exactly (conformance suite over 101 models) and runs about 2.3 times faster; `set_default_solver` switches the default. A registry with capability names lets a second solver be added without touching its callers.
+- Simulation, Monte Carlo and the optimizer advance a model through one `Solver` interface (`reference_engine/src/solver.py`, ADR 0163). The reference solver behaves as before. The schedule semantics are a pure input signal (`compute_inputs`, `apply_inputs`, `input_trajectory` in `schedule_runner.py`) that any solver can read; `apply_schedules` behaves as before. A second solver, `fast`, reproduces the reference solver exactly (conformance suite over 101 models) and runs about 2.3 times faster; `set_default_solver` switches the default. A third solver, `numba`, compiles the whole run when numba is installed (about 3 times faster than the reference solver once compiled) and falls back to `fast` for what it cannot reproduce. A registry with capability names lets a second solver be added without touching its callers.
 
 ### GUI
 
