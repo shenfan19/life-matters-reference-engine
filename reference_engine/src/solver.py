@@ -75,6 +75,7 @@ class ReferenceSolver(Solver):
 
 
 DEFAULT_SOLVER_ID = ReferenceSolver.id
+_default_id = DEFAULT_SOLVER_ID
 _REGISTRY: Dict[str, Solver] = {}
 
 
@@ -86,11 +87,18 @@ def register_solver(solver: Solver) -> None:
 
 def get_solver(solver_id: Optional[str] = None) -> Solver:
     """The solver registered under `solver_id`, or the default one."""
-    key = solver_id or DEFAULT_SOLVER_ID
+    key = solver_id or _default_id
     try:
         return _REGISTRY[key]
     except KeyError:
         raise KeyError(f"unknown solver '{key}', registered: {sorted(_REGISTRY)}") from None
+
+
+def set_default_solver(solver_id: str) -> None:
+    """Make `solver_id` the solver every caller gets when it does not name one."""
+    global _default_id
+    get_solver(solver_id)
+    _default_id = solver_id
 
 
 def list_solvers() -> List[Dict]:
@@ -126,3 +134,5 @@ def pick_solver(required: Sequence[str], solver_id: Optional[str] = None) -> Sol
 
 
 register_solver(ReferenceSolver())
+
+from . import solver_fast  # noqa: E402,F401  (registers the fast solver)
