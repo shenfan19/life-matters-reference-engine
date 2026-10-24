@@ -56,4 +56,8 @@ The conformance suite `test_verification/test_solver_fast.py` runs 101 models un
 
 A view that follows this contract can be added, replaced or removed without touching the others or the shell. One change in behavior: a model whose file sets `simulation.mc.runs` above 1 now sets the number of runs on the first visit whether or not it has an optimization block; before, the value was only taken when the optimization block was enabled.
 
-**18. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.
+**18. Verification.** `test_verification/behavior_snapshot/` hashes the full output of 10 simulation models, Monte Carlo runs and 7 optimization models. Its `golden.json` was recorded on the code before this ADR, and the default solver of the code after it reproduces all 33 cases, so the refactor changed no result. The conformance suite compares every other solver to the reference solver, and the end-to-end specs cover the views, the rail, deep links and the solver selector.
+
+**19. Open.** Plugins reach the solvers only through the old `PluginContext.run_simulation`, which does not take a solver, parameter overrides or return a `Trajectory`; a plugin that runs the model many times, such as sensitivity or uncertainty analysis, needs that call. The `batch` and `gradient` capabilities have no provider. The front-end core is an in-process interface; what a bundle plugin may read of it (run settings, the selected plan) is to be added to the messages when a plugin needs it.
+
+**20. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.

@@ -82,6 +82,7 @@ The "which steps to run" parameters are identical across both entry points: `--s
 | `--opt-continue` | (no warm start) | Warm-starts by continuing the search from the model YAML's embedded `optimization.results`. Requires the optimizer step to run (cannot be passed together with `--sim-only`) |
 | `--opt-continue PATH` | — | Warm-starts by loading a Pareto front from the specified `_opt.csv` file (a relative path counted from the project root, or an absolute path) |
 | `--output-dir PATH` | `output/` | Specifies the output root (relative to the project root, or absolute). Results are written to `<PATH>/<model name>/` |
+| `--solver ID` | `reference` | The solver that advances the model: `reference`, `fast`, or `numba` when numba is installed. Also set by the environment variable `LM_SOLVER`. See [solvers.md](solvers.md) |
 
 > The simulation step and the optimization step each write their own log file (`*_sim.log` / `*_opt.log`), never mixed together; when both steps run, they execute in "sim then opt" order, and if sim fails, opt does not run.
 
