@@ -10,10 +10,9 @@
 //   navigateToRunning, blockIfRunning, runningModelTitle
 
 import { useState } from 'react';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import type { MutableRefObject } from 'react';
 import { message, Modal } from 'antd';
 import type { ModelFile } from '../../types';
-import type { ImportedSimRun } from './useExportImport';
 import { API_BASE } from '../sim_tab/simUtils';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
@@ -36,8 +35,8 @@ interface UseBuilderStateParams {
   clearSession: (key: string) => void;
   sessionReadyRef: MutableRefObject<boolean>;
   sessionEditedRef: MutableRefObject<boolean>;
-  setImportedSimRuns: Dispatch<SetStateAction<ImportedSimRun[]>>;
-  simRunCounterRef: MutableRefObject<number>;
+  // told when the saved session of the selected model was thrown away, so the modules drop what they hold for it
+  onSessionReset: () => void;
   importFileRef: MutableRefObject<HTMLInputElement | null>;
   builderUploadRef: MutableRefObject<HTMLInputElement | null>;
   t: (key: string, params?: Record<string, string | number>) => string;
@@ -50,7 +49,7 @@ export function useBuilderState({
   selectedKey, setSelectedKey, runningModelKey, loadedModels,
   setConfirmedModel, onModelSelect, loadFileTree, loadFileContent,
   clearSession, sessionReadyRef, sessionEditedRef,
-  setImportedSimRuns, simRunCounterRef, importFileRef, builderUploadRef, t,
+  onSessionReset, importFileRef, builderUploadRef, t,
 }: UseBuilderStateParams) {
   const [sessionModels, setSessionModels] = useState<ModelFile[]>(() => {
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) || '[]'); } catch { return []; }
@@ -232,8 +231,7 @@ export function useBuilderState({
     clearSession(selectedKey);
     sessionReadyRef.current = false;
     sessionEditedRef.current = false;
-    setImportedSimRuns([]);
-    simRunCounterRef.current = 0;
+    onSessionReset();
     if (selectedKey.startsWith('session/')) {
       const sessModel = sessionModels.find(m => m.key === selectedKey);
       if (sessModel) { setConfirmedModel({ ...sessModel }); onModelSelect({ ...sessModel }); }

@@ -1,6 +1,7 @@
 // gui/src/components/Simulator/index.tsx
 // The shell of the simulator workbench: model tree, view rail, plugin host and the dialogs. The views
-// themselves are registered in views/registry.ts and render from the workbench state in useWorkbench.ts.
+// themselves are registered in views/registry.ts; each brings its own module, and all of them work on the core
+// (useCore.ts), see ADR 0163.
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Input, Modal } from 'antd';
@@ -10,11 +11,14 @@ import PluginHost from '../plugins/PluginHost';
 import SimModelTree from '../sim_tab/SimModelTree';
 import { useUrlSync } from './useUrlSync';
 import type { CenterTab } from '../../core/urlRoute';
-import { useWorkbench } from './useWorkbench';
+import { useCore } from './useCore';
+import { useModules, useSessionGate } from '../views/moduleHooks';
 import { getView, railViews } from '../views/registry';
 
 const Simulator: React.FC<SimulatorProps> = (props) => {
-  const wb = useWorkbench(props);
+  const core = useCore(props);
+  useModules(core);
+  useSessionGate(core);
   const {
     reloadModel, pluginView, builderOpen, storyTree, selectedKey, setSelectedKey, centerTab, setCenterTab,
     setMode, loadFileContent, pluginViewId, setPluginViewId, bundlePlugins, setExpandedKeys, expandedKeys,
@@ -26,7 +30,7 @@ const Simulator: React.FC<SimulatorProps> = (props) => {
     clearSessionModel, startLeftDrag, closeBuilder, setLeftCollapsed, selectedModel, language,
     mergeDialogOpen, merging, handleMerge, mergeOutPath, setMergeOutPath, newFileDialogOpen, creatingFile,
     handleCreateFile, setNewFilePath, newFilePath
-  } = wb;
+  } = core;
   const ActiveView = getView(centerTab)?.component;
 
 
@@ -202,7 +206,7 @@ const Simulator: React.FC<SimulatorProps> = (props) => {
           )}
 
           
-          {ActiveView && <ActiveView wb={wb} />}
+          {ActiveView && <ActiveView core={core} />}
 
           
 

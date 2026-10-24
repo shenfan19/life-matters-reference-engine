@@ -1,31 +1,31 @@
 // gui/src/components/views/BuilderView.tsx
+// The model editor. It works on the model library the core holds: the files ticked in the tree, the models of the
+// session, and the call that reloads the tree after an edit.
 
 import React from 'react';
 import FileEditor from '../FileEditor';
-import type { Workbench } from '../Simulator/useWorkbench';
-import type { ViewDef } from './registry';
+import type { ViewDef } from './api';
+import type { Core } from '../Simulator/useCore';
 import { BuildOutlined } from '@ant-design/icons';
 
-const BuilderView: React.FC<{ wb: Workbench }> = ({ wb }) => {
+const BuilderView: React.FC<{ core: Core }> = ({ core }) => {
   const {
     isDarkMode, c, scsMode, builderCheckedFiles, loadFileTree, uncheckBuilderFile, builderSessionMetas,
-    handleBuilderSessionUpdate, builderAutoEditKey
-  } = wb;
+    handleBuilderSessionUpdate, builderAutoEditKey,
+  } = core;
   return (
-
-          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <FileEditor
-              isDarkMode={isDarkMode} c={c}
-              scsMode={scsMode}
-              controlledFiles={builderCheckedFiles}
-              onReloadTree={loadFileTree}
-              onUncheckedFile={uncheckBuilderFile}
-              preloadedMetas={builderSessionMetas}
-              onSessionModelUpdate={handleBuilderSessionUpdate}
-              autoEditKey={builderAutoEditKey}
-            />
-          </div>
-        
+    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <FileEditor
+        isDarkMode={isDarkMode} c={c}
+        scsMode={scsMode}
+        controlledFiles={builderCheckedFiles}
+        onReloadTree={loadFileTree}
+        onUncheckedFile={uncheckBuilderFile}
+        preloadedMetas={builderSessionMetas}
+        onSessionModelUpdate={handleBuilderSessionUpdate}
+        autoEditKey={builderAutoEditKey}
+      />
+    </div>
   );
 };
 

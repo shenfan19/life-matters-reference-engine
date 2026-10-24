@@ -12,6 +12,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### GUI
 
+- The simulator workbench is a core and modules. The core (`useCore`) holds the model library, the shared run settings, the saved session, the runtime lock, navigation and an event bus; the simulation and the optimization each bring their own state and logic as a module, the overview and the model editor work on the core, and none of the views reads another view's internals (ADR 0163). On the first visit to a model whose file sets `simulation.mc.runs` above 1, the number of runs is now taken even without an optimization block.
 - The model editor has a button on the view rail at all times. All rail buttons, views and plugins alike, can be dragged into any order, and a right-click on the rail shows or hides each of them. The order and the hidden buttons are remembered in the browser.
 - The toolbar has a solver selector when the backend offers more than one solver. The choice is remembered in the browser and sent with every simulation and optimization.
 - Overview, Simulation, Optimization and the model editor are registered views (`views/registry.tsx`) drawn from one workbench state (`useWorkbench`), and the Simulator component is only the shell around them (ADR 0163). Nothing changes for the user.
