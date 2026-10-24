@@ -123,3 +123,26 @@ def test_solvers_endpoint():
     app.include_router(router)
     data = TestClient(app).get('/api/solvers').json()
     assert data['success'] and data['solvers'][0]['id'] == 'reference'
+
+
+def test_input_signal_is_pure_and_apply_matches_apply_schedules():
+    from reference_engine.src.schedule_runner import apply_inputs, compute_inputs, input_trajectory
+    model, schedules = _model()
+    schedules = precompute_sustained_divisors(schedules, 3600.0)
+    sig = compute_inputs(schedules, 0.0, 3600.0)
+    assert set(sig) == {'dose'} and sig['dose'] == [0.8]
+    assert compute_inputs(schedules, 3600.0, 7200.0) == {'dose': []}
+    # the signal alone, no model, is what a compiled solver reads
+    traj = input_trajectory(schedules, 3600.0, 48)
+    assert traj[0] == {'dose': 0.8} and traj[1] == {'dose': 0.0} and traj[24] == {'dose': 0.8}
+    # writing the signal gives the same state as apply_schedules
+    m1, _ = _model()
+    m2, _ = _model()
+    apply_schedules(m1, schedules, 0.0, 3600.0)
+    apply_inputs(m2, sig)
+    assert m1.variables['dose'].value == m2.variables['dose'].value == pytest.approx(0.8)
+
+
+def test_blank_variable_name_is_ignored():
+    from reference_engine.src.schedule_runner import compute_inputs
+    assert compute_inputs([{'variable': '', 'events': [{'value': 1}]}], 0.0, 3600.0) == {}

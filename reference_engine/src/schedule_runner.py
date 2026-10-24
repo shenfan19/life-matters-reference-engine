@@ -15,6 +15,7 @@
 
 import logging
 from datetime import date, timedelta
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,14 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float) -> list
     return out
 
 
-def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
-                     sim_start_date: str = '') -> None:
-    """Apply schedule events that fall in [prev_time, next_time) to the model.
+def compute_inputs(schedules: list, prev_time: float, next_time: float,
+                   sim_start_date: str = '') -> Dict[str, List[float]]:
+    """The input signal of the step window [prev_time, next_time): what every controlled variable receives.
+
+    Pure: it reads the schedules and the clock and touches no model, so any solver can ask for the
+    same signal. Returns {variable: [contribution, ...]}, one entry for every variable named by a
+    schedule (an empty list = nothing fires, the variable is off for this step) and one contribution
+    per firing event, in schedule order. The meaning of the signal is fixed here, once, for all solvers.
 
     Time convention:
       - prev_time / next_time are seconds of elapsed simulation time.
@@ -114,8 +120,8 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
           Opt path  — event-level string list like ["Mon", "Wed"]
       - valid_range is checked against sim_start_date + day offset.
 
-    Reset-then-accumulate semantics: all controlled variables are zeroed at
-    the start of each step, then every firing event accumulates its value.
+    Reset-then-accumulate semantics: every controlled variable starts the step at zero (an empty
+    contribution list) and every firing event adds its contribution (see `apply_inputs`).
 
     Each event's `[time_start, time_end)` interval is resolved by
     `resolve_time_interval` (ADR 0100/0127):
@@ -165,15 +171,16 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
     # be pulled up to bounds[0] when bounds[0] > 0 (e.g. an input variable
     # whose valid range is [0.3, 2.0]) — doing so silently inflates every
     # firing event's effective value by bounds[0].
+    signal: Dict[str, List[float]] = {}
     for sched in schedules:
         var = sched.get('variable', '')
-        if var in model.variables:
-            model.variables[var].value = 0.0
+        if var:
+            signal.setdefault(var, [])
 
     # ── Accumulate firing events ───────────────────────────────────────────────
     for sched in schedules:
         variable = sched.get('variable', '')
-        if variable not in model.variables:
+        if not variable:
             continue
 
         # Schedule-level valid_range check (GUI path)
@@ -258,17 +265,58 @@ def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
                 )
 
             if fires:
-                current = model.variables[variable].value
                 raw_value = float(ev.get('value', 0))
                 if ev.get('delivery') == 'level':
                     delta = raw_value
                 else:
                     delta = raw_value / ev.get('_n_steps', 1)
-                model.set_variable_value(variable, current + delta)
+                signal[variable].append(delta)
                 logger.debug(
                     "Schedule fired: %s += %s @ t=%.0fs (%s~%s)",
                     variable, delta, prev_time, time_start, time_end,
                 )
+    return signal
+
+
+def apply_inputs(model, signal: Dict[str, List[float]]) -> None:
+    """Write an input signal into `model`: zero every controlled variable, then add the contributions.
+
+    The reset bypasses set_variable_value's bounds clamp: the reset-to-zero "off" state is a
+    transient bookkeeping value, not a physical reading, so it must not be pulled up to
+    bounds[0] when bounds[0] > 0 (e.g. an input variable whose valid range is [0.3, 2.0]) -
+    doing so silently inflates every firing event's effective value by bounds[0]. Each
+    contribution then goes through the clamped setter, one after the other.
+    """
+    for var in signal:
+        if var in model.variables:
+            model.variables[var].value = 0.0
+    for var, deltas in signal.items():
+        if var not in model.variables:
+            continue
+        for delta in deltas:
+            model.set_variable_value(var, model.variables[var].value + delta)
+
+
+def apply_schedules(model, schedules: list, prev_time: float, next_time: float,
+                     sim_start_date: str = '') -> None:
+    """Apply the schedules' input signal for [prev_time, next_time) to the model.
+
+    compute_inputs (what arrives) followed by apply_inputs (writing it into the model)."""
+    apply_inputs(model, compute_inputs(schedules, prev_time, next_time, sim_start_date))
+
+
+def input_trajectory(schedules: list, step_size: float, n_steps: int, start_step: int = 0,
+                     sim_start_date: str = '') -> List[Dict[str, float]]:
+    """The summed input of every step of a run, {variable: total}, with no model involved.
+
+    This is what a solver that compiles the run ahead of time (or differentiates through it)
+    reads instead of calling compute_inputs step by step. The totals are the plain sum of the
+    contributions, without the per-contribution bounds clamp that apply_inputs applies to a model."""
+    out = []
+    for i in range(start_step, start_step + n_steps):
+        sig = compute_inputs(schedules, i * step_size, (i + 1) * step_size, sim_start_date)
+        out.append({v: sum(d) for v, d in sig.items()})
+    return out
 
 
 def advance_steps(model, schedules: list, step_size: float, n_steps: int,

@@ -8,7 +8,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### Engine
 
-- Simulation, Monte Carlo and the optimizer advance a model through one `Solver` interface (`reference_engine/src/solver.py`, ADR 0163). The reference solver behaves as before. A registry with capability names lets a second solver be added without touching its callers.
+- Simulation, Monte Carlo and the optimizer advance a model through one `Solver` interface (`reference_engine/src/solver.py`, ADR 0163). The reference solver behaves as before. The schedule semantics are a pure input signal (`compute_inputs`, `apply_inputs`, `input_trajectory` in `schedule_runner.py`) that any solver can read; `apply_schedules` behaves as before. A registry with capability names lets a second solver be added without touching its callers.
 
 ### GUI
 
