@@ -1,0 +1,195 @@
+{
+ "mc::test_fixtures/valid/test_valid_mc_distributions::low_dose": {
+  "runs": [
+   {
+    "csv_sha": "83317e2e123c80abd02e20005ad977f85acea7877eebbb69c2dc3e8539f35394",
+    "seed": 1264954011,
+    "state_sha": "eac895a5396eefe4c8658cc95d90c465350804be073b9950b259256e646f98b6"
+   },
+   {
+    "csv_sha": "dbfa975ae7b49ae0ddc2d9b35bde76010770f4265f905168251ceed110ddd809",
+    "seed": 902756589,
+    "state_sha": "a02f97b961994c65abd9f04646c92806fae712ddaad46cf1acadf361324d5a0d"
+   },
+   {
+    "csv_sha": "c9f3c5cef8e9c6578e0ab207f6a1f5a2e0d4212941791461dffb5283767254f6",
+    "seed": 765985137,
+    "state_sha": "2f950ac3190cfc9cd30bf52f730ce72fd0ea13a4fb3e1d531875a750c06590bf"
+   }
+  ]
+ },
+ "opt::test_fixtures/valid/test_valid_opt_inner_mc": {
+  "best_f_sha": "d589d964db3e8ccc976713fa1c3c43ed077d511dae7d42a5cc8e1bdd5fa618e7",
+  "best_x_sha": "768a5f6bf52e1f37f96023025417c5279be74c53bf4184722ce4e3eaeb7eb041",
+  "front_sha": "d7896d43369e3367f7f0fd5ceecb7930c463ccb32241a86da256ef25f6029fb4",
+  "n_solutions": 1,
+  "seconds": 3.4
+ },
+ "opt::test_fixtures/valid/test_valid_opt_metric_min": {
+  "best_f_sha": "38b4673792a154e85b72b63340deca6e2f6c7d0af6522a60e8a9fb7bc55b074b",
+  "best_x_sha": "8fe603e7588af772994dd6190e82f02566e3babd67cc1f03d502603c6bfa272a",
+  "front_sha": "b8ba4e857385e3a3813ef4225289bd51ad2aed88e32ff0813699b40b2e7a9a0b",
+  "n_solutions": 1,
+  "seconds": 0.2
+ },
+ "opt::test_fixtures/valid/test_valid_opt_t1_pareto": {
+  "best_f_sha": "5c27ebc7955cb44cfc3a0281aa077ff898b0f20d5d4f104ffdbfa28b9dc9ee32",
+  "best_x_sha": "780f33e7550bc835dfb2b036cfc5abe1624025d85fee673da0138db39c77836f",
+  "front_sha": "fd61dce9a3ce5e87805caa7fe7bb65e712d4711d96b074718835982fbb64d838",
+  "n_solutions": 30,
+  "seconds": 75.4
+ },
+ "opt::test_fixtures/valid/test_valid_opt_t1_single": {
+  "best_f_sha": "7bf21b3c3ebc8a257d2618abe4d23978afbc5fb90fc183ab67326150f8ba378c",
+  "best_x_sha": "aa5d9822392080f9b3d04fe8a9189f8f072eb90a8184cf60b7e330bb01a4ffc2",
+  "front_sha": "aba339faf20fbd917fb530af16fd43dbb95485809ecd839649c5b82326e1e8db",
+  "n_solutions": 1,
+  "seconds": 5.4
+ },
+ "opt::test_fixtures/valid/test_valid_opt_t2": {
+  "best_f_sha": "b5f3e8dc6a753000f5fe024a4e1892922ee54030c1af7ec27c31fad39b27bda2",
+  "best_x_sha": "fef045cf9b62e4ad95f1b574d129d9c260bee52d78e258ed984d6ebb330be381",
+  "front_sha": "c0e58fc547d434cf9e5e6fcde6882f5f041c2dc90c7622b0035f19f9d623af72",
+  "n_solutions": 20,
+  "seconds": 8.7
+ },
+ "opt::test_fixtures/valid/test_valid_opt_t3": {
+  "best_f_sha": "3a323a1b567d5ec3fa352d0524be0d9d271b453d6a7062997cc05b0bb364d6f2",
+  "best_x_sha": "07d60ef3216410ca07144366d8000b752f1c9386ddadc0e9fa72477ec00c56f4",
+  "front_sha": "c520185c2c6849dd70c372bc58fbf5bfb18d2431c0aa2081d94d72a88929477a",
+  "n_solutions": 30,
+  "seconds": 108.4
+ },
+ "opt::test_fixtures/valid/test_valid_opt_t4": {
+  "best_f_sha": "b1e4f47d6186e220f71bdcfc0dc70c20e77c14f7b8a050c81e440f0d9389781c",
+  "best_x_sha": "25426b4b36456614347cf3c4e1c5be0f57de8d7a864d064f764196e72bc22b49",
+  "front_sha": "d68129b6fbdf2f0444f73439f841cf62d4474bb91c6fcfa282fa917fe803deb2",
+  "n_solutions": 25,
+  "seconds": 18.0
+ },
+ "sim::papers/lm_format/ckd_protein/ckd_protein_sim::balanced": {
+  "csv_sha": "c578ac3bfa127c0a22f8a459833fb894a851a178adde50ed19a7ecfd52b347d4",
+  "state_sha": "3343b22317daa4550fd60b213ac3a2d34584e5610f43f31de9a44754b9c244a8",
+  "steps": 8736
+ },
+ "sim::papers/lm_format/ckd_protein/ckd_protein_sim::kidney_protect": {
+  "csv_sha": "9b22a19dd0ccd7004eff105f98862b849899e191feef6b93de6ce3bf446268ca",
+  "state_sha": "2d55a0b8df11fcd4385d08c81f243364c4bc7174e20208058dcf711ea6e529c1",
+  "steps": 8736
+ },
+ "sim::papers/lm_format/ckd_protein/ckd_protein_sim::muscle_preserve": {
+  "csv_sha": "f5f6fff405f398772ecbf7a7f76c7a8e66d814397d46a4ac66969e9ec7c5c8cd",
+  "state_sha": "b925351ba325124bc02a03fa52ae23980d4eaa2c69e39b266d6f892bb6cee95b",
+  "steps": 8736
+ },
+ "sim::papers/lm_format/ckd_protein/ckd_protein_sim::renal_optimized": {
+  "csv_sha": "2d63fba57e220c0f40516703b62b78c51624d3d7f64b26bdc3ae27e3e94708eb",
+  "state_sha": "c80db5d59cecd181642de3a6f1d2188e8c42092b7084364e08fd12a756555039",
+  "steps": 8736
+ },
+ "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::constant_baseline": {
+  "csv_sha": "bcecff715731fd221c383acff8c825a700826e3ed707a8166f112fad195e9611",
+  "state_sha": "855b36c984ff9eef464ecb541264ad5e3fcb8790f9fe5e43acd05a5bc7ed36dd",
+  "steps": 4344
+ },
+ "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::digestive_first": {
+  "csv_sha": "70ba0284c044bae48d7f362d5c2016649c14c7c96f1356275518f293021d7e55",
+  "state_sha": "0536256c8022c61069519c1f0d18c39b29177943d4e02ad7a1f6bab975907467",
+  "steps": 4344
+ },
+ "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::endocrine_first": {
+  "csv_sha": "90848b20e5d5f4ba0412f658be6091c9dda32eaab4ed3f1e7eec7091262f5d4b",
+  "state_sha": "7b01d724ec48a6136409c66c0bd6abbbbb3653cf5f50cbf2f2793c8d8348c7c3",
+  "steps": 4344
+ },
+ "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::liverfat_optimized": {
+  "csv_sha": "96233d64e3b2362ad123b4c2d363671d0cec7c276ea0fa4256dea5c7f92ffeb9",
+  "state_sha": "e6304737f62737290af5e4e428fc2a857b1896a734cf24e9f2451ed6de0cd869",
+  "steps": 4344
+ },
+ "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::baseline_A_guideline": {
+  "csv_sha": "d501900cb6b00314bd668b358667a798167a8ba4aa0cf9cee0b35770d7410e57",
+  "state_sha": "f78923d0ea78bb21be33d919bb4772a85019930defb7b22d7264df13a7bb0764",
+  "steps": 648
+ },
+ "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::early_bedtime": {
+  "csv_sha": "fe6c0a67f1636d37c944bdd1c0057c8f3bc395c1de94bef9a599d5c1e49fd533",
+  "state_sha": "86984325ac730e0788b2a5e0bd51ff7e7bf5d155b9936c6fdaece5803fa7b8fa",
+  "steps": 648
+ },
+ "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::nap_strategy": {
+  "csv_sha": "2e29408e2efbe6f088d9cba8b08034db8e403567cece4a978ad2be54cbbde401",
+  "state_sha": "3d1366f868be4b9dc95a0892fefcf98863573fc93b5a84ed2fa3089b96af7de6",
+  "steps": 648
+ },
+ "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::sleep_deprived_baseline": {
+  "csv_sha": "71176847022ea5d9aa88a967fafe665c65942f588db72547d8d1a514828aeca2",
+  "state_sha": "3d1366f868be4b9dc95a0892fefcf98863573fc93b5a84ed2fa3089b96af7de6",
+  "steps": 648
+ },
+ "sim::test_fixtures/valid/test_valid_banister_v1_step_6h::constant_w50": {
+  "csv_sha": "7dc5fadd53db875086ca41d468edcb4e1938d3443ed0b4c3b69ee146c3ee1ee8",
+  "state_sha": "df6e9250e4892b546d7b54fa1016ddeef66ccad2d667a09d1b77c2e6970e0398",
+  "steps": 240
+ },
+ "sim::test_fixtures/valid/test_valid_import_top::default": {
+  "csv_sha": "41761290bcc2c8fc89b9cb5999b31897c1537b2d237a7379c22dbcfc2d64756e",
+  "state_sha": "de1006e8f84f461a148c33f3962e417b69be1d12bfe6228090f8e10500e430e1",
+  "steps": 4320
+ },
+ "sim::test_fixtures/valid/test_valid_plans::aggressive": {
+  "csv_sha": "7b341a4017a11dead0227db0df019018ea43e98a1a25681cacec5aaf0327413b",
+  "state_sha": "a82e07154b4c9662cde02db175718e1e17676aa668609c00ef688862caac7512",
+  "steps": 4320
+ },
+ "sim::test_fixtures/valid/test_valid_plans::balanced": {
+  "csv_sha": "19c7c1fb94e03dfe90945ea00855ac4fc950bbf0da1bd27b8564d6bd82fe847d",
+  "state_sha": "7ad5ee432f1cdd8adf4f78dd3060f507203e2ff1fdea58d96175885d33c32842",
+  "steps": 4320
+ },
+ "sim::test_fixtures/valid/test_valid_plans::conservative": {
+  "csv_sha": "15b1d5881b8a66f7413a5ba6122360892df4201a0dba3447417a01c9d1f2c101",
+  "state_sha": "c0afb6d59b54a0d4da55c193e294aef2ae1e6f49de79e528e3539c12db90d133",
+  "steps": 4320
+ },
+ "sim::test_fixtures/valid/test_valid_pulse_reset_bounds_floor::default": {
+  "csv_sha": "e515bcc7420276ed4e457d7c0ee6a0bafd968810248096626077c133bfb054e2",
+  "state_sha": "586d58aa6ee5fda129503da60a982608c206dec1bf5bcb66b553ba57e6020b61",
+  "steps": 4
+ },
+ "sim::test_fixtures/valid/test_valid_schedules_phased::constant_load": {
+  "csv_sha": "dcc25e6f7c84041816fe756734d2ca9d2f4728eb85f04cde703d99fb4213ceba",
+  "state_sha": "2a7d27001a38d423be2595d0b2d611735065fc53067cd3624283822aa34db7f4",
+  "steps": 2856
+ },
+ "sim::test_fixtures/valid/test_valid_schedules_phased::periodized": {
+  "csv_sha": "a20d4bb4808fac3e08793ec1b7be379d114cd2110bb4294db9e27b6642b9a716",
+  "state_sha": "75031b2a18cc84627f1317dea939238d472e485961300747d383d00a583b7720",
+  "steps": 2856
+ },
+ "sim::test_fixtures/valid/test_valid_step_hour::high_dose": {
+  "csv_sha": "13a771299a96a97268a0580d648ee6e9514b06fb4e8500e892cf162217f8c408",
+  "state_sha": "31bff21b9f63a96b76ee829d6543ace915b084d450e312f9bc940935c0bfbf9e",
+  "steps": 696
+ },
+ "sim::test_fixtures/valid/test_valid_step_hour::low_dose": {
+  "csv_sha": "865298e0b87902fd50ef536ce9f6bc0eada4809e7dbd0915b1b45497c1b4ecb8",
+  "state_sha": "e27ba6f97b5544931e553f144c45ddfc54428bb5b7e7bdfe73afcfa6240282cf",
+  "steps": 696
+ },
+ "sim::test_fixtures/valid/test_valid_step_hour::moderate_dose": {
+  "csv_sha": "2c93fc642b13082ff9d6a6fbc735ecb1aa538dd3b10dfe541d96f31fd69ae3e1",
+  "state_sha": "2f1b08edd198307ec87e5f1daaf45dff5675cfe96102fee1fdedba9795877446",
+  "steps": 696
+ },
+ "sim::test_fixtures/valid/test_valid_sustained_mode::pulse": {
+  "csv_sha": "5344dc446c3c84b508609a300188f61755dd755d6d079432c922ad9bceef30b5",
+  "state_sha": "053dbddc0536347af3c1e90661b6cd583255a9a95d78781b1b22d135bb89a20c",
+  "steps": 120
+ },
+ "sim::test_fixtures/valid/test_valid_sustained_mode::sustained": {
+  "csv_sha": "78c5a74496e7aa355779d3153c011c639e271a8af6243637666dced60ef866b6",
+  "state_sha": "f77aeb4367c8d102c48ff5a8181e4805640287cb3bbc7efa26f3ccbbcc82883d",
+  "steps": 120
+ }
+}
