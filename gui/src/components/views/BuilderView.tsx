@@ -4,6 +4,7 @@ import React from 'react';
 import FileEditor from '../FileEditor';
 import type { Workbench } from '../Simulator/useWorkbench';
 import type { ViewDef } from './registry';
+import { BuildOutlined } from '@ant-design/icons';
 
 const BuilderView: React.FC<{ wb: Workbench }> = ({ wb }) => {
   const {
@@ -30,5 +31,5 @@ const BuilderView: React.FC<{ wb: Workbench }> = ({ wb }) => {
 
 export const view: ViewDef = {
   id: 'builder', labelKey: 'sim.builder.label', order: 40, component: BuilderView,
-  // no icon: the rail shows a button for the model editor only while the library is being edited
+  icon: <BuildOutlined />,
 };

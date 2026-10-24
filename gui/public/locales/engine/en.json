@@ -415,6 +415,8 @@
   "sim.builder.label": "Model Library",
   "sim.builder.close_edit": "Close editor (done)",
   "sim.builder.tab_locked": "Close model editor first",
+  "sim.rail.menu_title": "Show in the strip",
+  "sim.rail.reset": "Show all and reset order",
 
   "sim.ctrl.sim_label": "Sim",
   "sim.ctrl.dl_sim_tip": "Download simulation results (time series, CSV)",

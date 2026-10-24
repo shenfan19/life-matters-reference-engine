@@ -415,6 +415,8 @@
   "sim.builder.label": "模型庫",
   "sim.builder.close_edit": "關閉編輯（完成）",
   "sim.builder.tab_locked": "請先關閉模型庫編輯",
+  "sim.rail.menu_title": "在直欄中顯示",
+  "sim.rail.reset": "全部顯示並恢復順序",
 
   "sim.ctrl.sim_label": "仿真",
   "sim.ctrl.dl_sim_tip": "下載仿真結果（時間序列，CSV 格式）",

@@ -12,6 +12,7 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### GUI
 
+- The model editor has a button on the view rail at all times. All rail buttons, views and plugins alike, can be dragged into any order, and a right-click on the rail shows or hides each of them. The order and the hidden buttons are remembered in the browser.
 - The toolbar has a solver selector when the backend offers more than one solver. The choice is remembered in the browser and sent with every simulation and optimization.
 - Overview, Simulation, Optimization and the model editor are registered views (`views/registry.tsx`) drawn from one workbench state (`useWorkbench`), and the Simulator component is only the shell around them (ADR 0163). Nothing changes for the user.
 - Toasts and confirmation boxes are drawn again. antd 5 draws `message`, `notification` and `Modal.confirm` through a render call that React 19 removed, so the notice after Copy link, an upload, a download or a finished run was never shown, and neither was the reason of a failed upload or download. `main.tsx` now hands antd the React 19 render, which is what `@ant-design/v5-patch-for-react-19` does.

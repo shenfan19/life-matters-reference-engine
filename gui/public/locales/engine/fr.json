@@ -415,6 +415,8 @@
   "sim.builder.label": "Bibliothèque de modèles",
   "sim.builder.close_edit": "Fermer l'éditeur (terminé)",
   "sim.builder.tab_locked": "Fermez d'abord l'éditeur de modèles",
+  "sim.rail.menu_title": "Afficher dans la barre",
+  "sim.rail.reset": "Tout afficher et rétablir l'ordre",
 
   "sim.ctrl.sim_label": "Sim",
   "sim.ctrl.dl_sim_tip": "Télécharger les résultats de simulation (série temporelle, CSV)",

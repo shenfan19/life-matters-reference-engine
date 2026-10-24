@@ -165,19 +165,21 @@ const Simulator: React.FC<SimulatorProps> = (props) => {
           activeId={pluginView?.id ?? (builderOpen ? 'builder' : centerTab)}
           onSelectBuiltin={key => {
             setPluginViewId(null);
+            if (key === 'builder') { if (!builderOpen) openBuilder(); return; }
             setCenterTab(key as CenterTab);
             if (key === 'simulation') setMode('sim');
             if (key === 'optimization') setMode('opt');
           }}
           onSelectPlugin={setPluginViewId}
           builderOpen={builderOpen}
-          builderLabel={t('sim.builder.label')}
           builderCloseLabel={t('sim.builder.close_edit')}
           builderLockedTip={t('sim.builder.tab_locked')}
           onCloseBuilder={closeBuilder}
           treeCollapsed={leftCollapsed}
           onToggleTree={() => setLeftCollapsed(v => !v)}
           treeToggleLabel={leftCollapsed ? t('sim.builder.expand_lib') : t('sim.builder.collapse_lib')}
+          menuTitle={t('sim.rail.menu_title')}
+          menuResetLabel={t('sim.rail.reset')}
           c={c}
         />
 

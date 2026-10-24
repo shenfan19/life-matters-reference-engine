@@ -1,14 +1,14 @@
 // gui/src/components/plugins/ViewRail.tsx
-// A vertical strip between the model tree and the main area. It holds every view of the
-// main area as a button: Overview, Simulation and Optimization on top, then a line, then
-// one button for each bundle plugin. While the model library is being edited a fourth
-// built-in button appears above the line. A plugin button covers the whole main area
-// while it is open.
+// A vertical strip between the model tree and the main area. Every view of the main area is a button on it:
+// Overview, Simulation, Optimization, the model editor and each bundle plugin. The buttons can be dragged into
+// any order, and a right-click on the strip lists them with a tick each to show or hide them. Both choices are
+// kept in the browser. While the model library is being edited the other views are locked and the editor's
+// button has a cross that closes it. A plugin button covers the whole main area while it is open.
 
 import React, { useMemo, useState } from 'react';
-import { Tooltip } from 'antd';
+import { Checkbox, Dropdown, Tooltip } from 'antd';
 import {
-  AppstoreOutlined, ApartmentOutlined, BarChartOutlined, BuildOutlined, CloseOutlined, ClusterOutlined,
+  AppstoreOutlined, ApartmentOutlined, BarChartOutlined, CloseOutlined, ClusterOutlined,
   FileTextOutlined, LeftOutlined, PictureOutlined, RightOutlined, TableOutlined, UserOutlined,
 } from '@ant-design/icons';
 import type { getC } from '../../core/theme';
@@ -20,15 +20,20 @@ export type BuiltinView = string;
 // and take the click meant for the button below it, so the tips let the pointer through.
 const NO_POINTER = { root: { pointerEvents: 'none' as const } };
 
-// The order the user dragged the plugin buttons into, kept in the browser. Plugins that are not in
-// the saved list, such as a newly installed one, follow in the order their manifests ask for.
-const ORDER_KEY = 'lm_plugin_button_order';
+// The order the user dragged the buttons into and the ones they switched off, kept in the browser.
+// A button that is in neither list, such as a newly installed plugin, follows in its default order and is shown.
+const ORDER_KEY = 'lm_rail_order';
+const HIDDEN_KEY = 'lm_rail_hidden';
 
-function readSavedOrder(): string[] {
+function readIds(key: string): string[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(key) || '[]');
     return Array.isArray(raw) ? raw.filter((x: unknown) => typeof x === 'string') : [];
   } catch { return []; }
+}
+
+function writeIds(key: string, ids: string[]) {
+  try { localStorage.setItem(key, JSON.stringify(ids)); } catch { /* the choice is just not remembered */ }
 }
 
 // Icons a plugin manifest may name in ui.icon. An unknown name falls back to AppstoreOutlined.
@@ -44,15 +49,15 @@ const PLUGIN_ICONS: Record<string, React.ReactNode> = {
 };
 
 interface Props {
+  // the views that ship with the engine, in default order: Overview, Simulation, Optimization, the model editor
   builtins: { key: BuiltinView; label: string; icon: React.ReactNode }[];
   plugins: BundlePlugin[];
-  // the highlighted button: a built-in view, 'builder', or a plugin id
+  // the highlighted button: a view id or a plugin id
   activeId: string;
   onSelectBuiltin: (key: BuiltinView) => void;
   onSelectPlugin: (id: string) => void;
-  // model library editing: its button shows only while it is open and locks the built-in views
+  // model library editing: while it is open the other views are locked and its button has a close cross
   builderOpen: boolean;
-  builderLabel: string;
   builderCloseLabel: string;
   builderLockedTip: string;
   onCloseBuilder: () => void;
@@ -60,32 +65,60 @@ interface Props {
   treeCollapsed: boolean;
   onToggleTree: () => void;
   treeToggleLabel: string;
+  // the right-click menu
+  menuTitle: string;
+  menuResetLabel: string;
   c: ReturnType<typeof getC>;
 }
 
+interface Item { id: string; label: string; icon: React.ReactNode; builtin: boolean }
+
 const ViewRail: React.FC<Props> = ({
   builtins, plugins, activeId, onSelectBuiltin, onSelectPlugin,
-  builderOpen, builderLabel, builderCloseLabel, builderLockedTip, onCloseBuilder,
-  treeCollapsed, onToggleTree, treeToggleLabel, c,
+  builderOpen, builderCloseLabel, builderLockedTip, onCloseBuilder,
+  treeCollapsed, onToggleTree, treeToggleLabel, menuTitle, menuResetLabel, c,
 }) => {
-  const [savedOrder, setSavedOrder] = useState<string[]>(readSavedOrder);
+  const [savedOrder, setSavedOrder] = useState<string[]>(() => readIds(ORDER_KEY));
+  const [hidden, setHidden] = useState<string[]>(() => readIds(HIDDEN_KEY));
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropBefore, setDropBefore] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const ordered = useMemo(() => {
-    const byId = new Map(plugins.map(p => [p.id, p]));
+  // every button there could be, in the order the user chose
+  const all = useMemo<Item[]>(() => {
+    const defaults: Item[] = [
+      ...builtins.map(b => ({ id: b.key, label: b.label, icon: b.icon, builtin: true })),
+      ...plugins.map(p => ({
+        id: p.id, label: p.title, icon: (p.icon && PLUGIN_ICONS[p.icon]) || <AppstoreOutlined />, builtin: false,
+      })),
+    ];
+    const byId = new Map(defaults.map(i => [i.id, i]));
     const first = savedOrder.filter(id => byId.has(id)).map(id => byId.get(id)!);
-    const rest = plugins.filter(p => !savedOrder.includes(p.id));
+    const rest = defaults.filter(i => !savedOrder.includes(i.id));
     return [...first, ...rest];
-  }, [plugins, savedOrder]);
+  }, [builtins, plugins, savedOrder]);
+
+  // the editor stays on the rail while it is open, so it can always be closed
+  const shown = all.filter(i => !hidden.includes(i.id) || (i.id === 'builder' && builderOpen));
 
   const moveBefore = (id: string, beforeId: string) => {
     if (id === beforeId) return;
-    const ids = ordered.map(p => p.id).filter(x => x !== id);
+    const ids = all.map(i => i.id).filter(x => x !== id);
     const at = ids.indexOf(beforeId);
     ids.splice(at < 0 ? ids.length : at, 0, id);
     setSavedOrder(ids);
-    try { localStorage.setItem(ORDER_KEY, JSON.stringify(ids)); } catch { /* order is just not remembered */ }
+    writeIds(ORDER_KEY, ids);
+  };
+
+  const toggleHidden = (id: string) => {
+    const next = hidden.includes(id) ? hidden.filter(x => x !== id) : [...hidden, id];
+    setHidden(next);
+    writeIds(HIDDEN_KEY, next);
+  };
+
+  const resetLayout = () => {
+    setSavedOrder([]); setHidden([]);
+    writeIds(ORDER_KEY, []); writeIds(HIDDEN_KEY, []);
   };
 
   const button = (opts: {
@@ -123,86 +156,102 @@ const ViewRail: React.FC<Props> = ({
     );
   };
 
+  const menuItems = [
+    {
+      key: '__title', label: menuTitle, type: 'group' as const,
+      children: all.map(i => ({
+        key: i.id,
+        label: (
+          <span data-testid={`rail-menu-${i.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Checkbox checked={!hidden.includes(i.id)} />
+            <span style={{ display: 'flex', fontSize: 15 }}>{i.icon}</span>
+            <span>{i.label}</span>
+          </span>
+        ),
+      })),
+    },
+    { type: 'divider' as const },
+    { key: '__reset', label: <span data-testid="rail-menu-reset">{menuResetLabel}</span> },
+  ];
+
   return (
-    <div
-      data-testid="view-rail"
-      style={{
-        width: 84, flexShrink: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto',
-        background: c.panel, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
+    <Dropdown
+      trigger={['contextMenu']}
+      open={menuOpen}
+      onOpenChange={(open, info) => { if (!open && info?.source === 'menu') return; setMenuOpen(open); }}
+      menu={{
+        items: menuItems,
+        selectable: false,
+        onClick: ({ key }) => { if (key === '__reset') resetLayout(); else if (key !== '__title') toggleHidden(key); },
       }}
     >
-      <Tooltip title={treeToggleLabel} placement="right" styles={NO_POINTER}>
-        <button
-          onClick={onToggleTree}
-          aria-label={treeToggleLabel}
-          data-testid="view-rail-tree-toggle"
-          style={{ width: '100%', height: 24, padding: 0, border: 'none', outline: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          {treeCollapsed ? <RightOutlined style={{ fontSize: 11 }} /> : <LeftOutlined style={{ fontSize: 11 }} />}
-        </button>
-      </Tooltip>
+      <div
+        data-testid="view-rail"
+        style={{
+          width: 84, flexShrink: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto',
+          background: c.panel, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
+        }}
+      >
+        <Tooltip title={treeToggleLabel} placement="right" styles={NO_POINTER}>
+          <button
+            onClick={onToggleTree}
+            aria-label={treeToggleLabel}
+            data-testid="view-rail-tree-toggle"
+            style={{ width: '100%', height: 24, padding: 0, border: 'none', outline: 'none', cursor: 'pointer', background: 'transparent', color: c.textMute, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {treeCollapsed ? <RightOutlined style={{ fontSize: 11 }} /> : <LeftOutlined style={{ fontSize: 11 }} />}
+          </button>
+        </Tooltip>
 
-      {builtins.map(b => button({
-        key: b.key, label: b.label, icon: b.icon,
-        active: activeId === b.key, locked: builderOpen,
-        tip: builderOpen ? builderLockedTip : b.label,
-        onClick: () => onSelectBuiltin(b.key),
-        testId: `center-tab-${b.key}`,
-      }))}
-
-      {builderOpen && (
-        <div style={{ position: 'relative' }}>
-          {button({ key: 'builder', label: builderLabel, icon: <BuildOutlined />, active: activeId === 'builder' })}
-          <Tooltip title={builderCloseLabel} placement="right" styles={NO_POINTER}>
-            <button
-              onClick={onCloseBuilder}
-              aria-label={builderCloseLabel}
-              data-testid="view-rail-builder-close"
-              style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, padding: 0, border: 'none', outline: 'none', cursor: 'pointer', borderRadius: 4, background: 'transparent', color: c.textMute, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        {shown.map(i => {
+          const isBuilder = i.id === 'builder';
+          const locked = builderOpen && !isBuilder;
+          return (
+            <div
+              key={i.id}
+              draggable
+              data-testid={`rail-slot-${i.id}`}
+              onDragStart={e => { setDragId(i.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', i.id); }}
+              onDragOver={e => { if (dragId && dragId !== i.id) { e.preventDefault(); setDropBefore(i.id); } }}
+              onDrop={e => { e.preventDefault(); if (dragId) moveBefore(dragId, i.id); setDragId(null); setDropBefore(null); }}
+              onDragEnd={() => { setDragId(null); setDropBefore(null); }}
+              style={{
+                position: 'relative',
+                opacity: dragId === i.id ? 0.4 : 1,
+                borderTop: `2px solid ${dropBefore === i.id && dragId ? c.primary : 'transparent'}`,
+              }}
             >
-              <CloseOutlined style={{ fontSize: 10 }} />
-            </button>
-          </Tooltip>
-        </div>
-      )}
-
-      {plugins.length > 0 && (
-        <div role="separator" style={{ height: 0, margin: '6px 10px', borderTop: `1px solid ${c.border}` }} />
-      )}
-
-      {ordered.map(p => (
-        <div
-          key={p.id}
-          draggable={!builderOpen}
-          data-testid={`plugin-rail-slot-${p.id}`}
-          onDragStart={e => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', p.id); }}
-          onDragOver={e => { if (dragId && dragId !== p.id) { e.preventDefault(); setDropBefore(p.id); } }}
-          onDrop={e => { e.preventDefault(); if (dragId) moveBefore(dragId, p.id); setDragId(null); setDropBefore(null); }}
-          onDragEnd={() => { setDragId(null); setDropBefore(null); }}
-          style={{
-            opacity: dragId === p.id ? 0.4 : 1,
-            borderTop: `2px solid ${dropBefore === p.id && dragId ? c.primary : 'transparent'}`,
-          }}
-        >
-          {button({
-            key: p.id, label: p.title,
-            icon: (p.icon && PLUGIN_ICONS[p.icon]) || <AppstoreOutlined />,
-            active: activeId === p.id, onClick: () => onSelectPlugin(p.id),
-            locked: builderOpen, tip: builderOpen ? builderLockedTip : p.title,
-            testId: `plugin-rail-${p.id}`,
-          })}
-        </div>
-      ))}
-      {/* Dropping below the last button moves the dragged one to the end. */}
-      {dragId && (
+              {button({
+                key: i.id, label: i.label, icon: i.icon,
+                active: activeId === i.id,
+                onClick: () => (i.builtin ? onSelectBuiltin(i.id) : onSelectPlugin(i.id)),
+                locked, tip: locked ? builderLockedTip : i.label,
+                testId: i.builtin ? (isBuilder ? 'view-rail-builder' : `center-tab-${i.id}`) : `plugin-rail-${i.id}`,
+              })}
+              {isBuilder && builderOpen && (
+                <Tooltip title={builderCloseLabel} placement="right" styles={NO_POINTER}>
+                  <button
+                    onClick={onCloseBuilder}
+                    aria-label={builderCloseLabel}
+                    data-testid="view-rail-builder-close"
+                    style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, padding: 0, border: 'none', outline: 'none', cursor: 'pointer', borderRadius: 4, background: 'transparent', color: c.textMute, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <CloseOutlined style={{ fontSize: 10 }} />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+          );
+        })}
+        {/* Dropping below the last button moves the dragged one to the end; the empty rest of the rail is also where a right-click lands. */}
         <div
           data-testid="plugin-rail-end"
-          onDragOver={e => { e.preventDefault(); setDropBefore('__end__'); }}
-          onDrop={e => { e.preventDefault(); moveBefore(dragId, '__end__'); setDragId(null); setDropBefore(null); }}
-          style={{ flex: 1, minHeight: 24, borderTop: `2px solid ${dropBefore === '__end__' ? c.primary : 'transparent'}` }}
+          onDragOver={e => { if (dragId) { e.preventDefault(); setDropBefore('__end__'); } }}
+          onDrop={e => { e.preventDefault(); if (dragId) moveBefore(dragId, '__end__'); setDragId(null); setDropBefore(null); }}
+          style={{ flex: 1, minHeight: 24, borderTop: `2px solid ${dropBefore === '__end__' && dragId ? c.primary : 'transparent'}` }}
         />
-      )}
-    </div>
+      </div>
+    </Dropdown>
   );
 };
 

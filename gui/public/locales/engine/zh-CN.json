@@ -415,6 +415,8 @@
   "sim.builder.label": "模型库",
   "sim.builder.close_edit": "关闭编辑（完成）",
   "sim.builder.tab_locked": "请先关闭模型库编辑",
+  "sim.rail.menu_title": "在竖栏中显示",
+  "sim.rail.reset": "全部显示并恢复顺序",
 
   "sim.ctrl.sim_label": "仿真",
   "sim.ctrl.dl_sim_tip": "下载仿真结果（时间序列，CSV 格式）",
