@@ -115,14 +115,21 @@ def test_optimizer_runs_on_the_chosen_solver_and_records_it():
 
 
 def test_solvers_endpoint():
-    sys.path.insert(0, str(ROOT / 'reference_engine'))
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-    from routes.solvers import router
-    app = FastAPI()
-    app.include_router(router)
-    data = TestClient(app).get('/api/solvers').json()
-    assert data['success'] and data['solvers'][0]['id'] == 'reference'
+    # routes use the `src.` import root of the API server, so it runs in its own interpreter
+    import subprocess
+    code = (
+        "from fastapi import FastAPI\n"
+        "from fastapi.testclient import TestClient\n"
+        "from routes.solvers import router\n"
+        "app = FastAPI(); app.include_router(router)\n"
+        "d = TestClient(app).get('/api/solvers').json()\n"
+        "assert d['success'] and d['solvers'][0]['id'] == 'reference', d\n"
+    )
+    r = subprocess.run([sys.executable, '-c', code], cwd=str(ROOT / 'reference_engine' / 'src'),
+                       capture_output=True, text=True,
+                       env={**__import__('os').environ, 'PYTHONPATH': str(ROOT / 'reference_engine')})
+    assert r.returncode == 0, r.stderr
+
 
 
 def test_input_signal_is_pure_and_apply_matches_apply_schedules():
@@ -146,3 +153,23 @@ def test_input_signal_is_pure_and_apply_matches_apply_schedules():
 def test_blank_variable_name_is_ignored():
     from reference_engine.src.schedule_runner import compute_inputs
     assert compute_inputs([{'variable': '', 'events': [{'value': 1}]}], 0.0, 3600.0) == {}
+
+
+def test_trajectory_roundtrip_and_solver_stamp():
+    from reference_engine.src.result import Trajectory
+    model, schedules = _model()
+    traj = get_solver().simulate(model, schedules, 3600.0, 10)
+    assert len(traj) == 10 and traj.solver['id'] == 'reference'
+    assert traj.step == list(range(1, 11))
+    again = Trajectory.from_rows(traj.rows(), list(traj.columns), traj.solver)
+    assert again == traj
+    assert traj.history() is traj.columns
+
+
+def test_simulation_result_names_the_solver(tmp_path):
+    engine = ReferenceEngine(models_directory=str(ROOT / 'models'))
+    assert engine.load_models([MODEL])
+    engine.current_model.schedule_entries = engine.current_model.plans['default']
+    result = engine.run_simulation(None, 48.0, output_path=str(tmp_path / 'r.csv'))
+    assert result['success'], result.get('error')
+    assert result['solver']['id'] == 'reference'

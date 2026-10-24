@@ -13,6 +13,7 @@ backends in optimizer_backends.py declare the capabilities they need the same wa
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from .result import Trajectory
 from .schedule_runner import advance_steps, precompute_sustained_divisors
 
 # Capability names. A solver lists the ones it provides.
@@ -38,18 +39,20 @@ class Solver(ABC):
         """Advance `model` by `n_steps`. Returns (rows, end_step, end_time), one row per
         step as {'step', 'time', **{variable: value}}."""
 
-    def run(self, model, schedules: list, step_size: float, n_steps: int,
-            sim_start_date: str = '') -> Dict[str, List[float]]:
-        """Reset `model`, run it from time zero and return the history of every variable."""
+    def simulate(self, model, schedules: list, step_size: float, n_steps: int,
+                 sim_start_date: str = '') -> Trajectory:
+        """Reset `model`, run it from time zero and return the trajectory of every variable,
+        stamped with this solver's identity."""
         model.reset_simulation()
         schedules = precompute_sustained_divisors(schedules, step_size)
         names = list(model.variables)
         rows, _, _ = self.advance(model, schedules, step_size, n_steps, 0, 0.0, names, sim_start_date)
-        history: Dict[str, List[float]] = {n: [] for n in names}
-        for row in rows:
-            for n in names:
-                history[n].append(row[n])
-        return history
+        return Trajectory.from_rows(rows, names, self.info())
+
+    def run(self, model, schedules: list, step_size: float, n_steps: int,
+            sim_start_date: str = '') -> Dict[str, List[float]]:
+        """`simulate`, reduced to the per-variable history the optimizer evaluates."""
+        return self.simulate(model, schedules, step_size, n_steps, sim_start_date).history()
 
     def info(self) -> Dict:
         return {'id': self.id, 'version': self.version, 'capabilities': sorted(self.capabilities)}

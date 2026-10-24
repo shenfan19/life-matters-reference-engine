@@ -201,6 +201,7 @@ class SessionManagerMixin:
                     "warnings": output_warnings,
                     "sim_runs": n_runs,
                     "session_seed": session_seed,
+                    "solver": get_solver().info(),
                     "logs": initial_logs,
                 },
             }

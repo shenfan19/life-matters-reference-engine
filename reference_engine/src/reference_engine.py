@@ -206,6 +206,7 @@ class ReferenceEngine(SessionManagerMixin):
                 "csv_output": csv_output_path,
                 "output_variables": output_variables,
                 "warnings": output_warnings,
+                "solver": get_solver().info(),
             }
         except Exception as e:
             # Log the simulation failure.
@@ -317,6 +318,7 @@ class ReferenceEngine(SessionManagerMixin):
                 "runs": run_results,
                 "output_variables": output_variables,
                 "warnings": output_warnings,
+                "solver": get_solver().info(),
             }
         except Exception as e:
             logger.error(f"MC simulation execution failed: {e}")
