@@ -35,8 +35,8 @@ SIM_MODELS = [
     'test_fixtures/valid/test_valid_step_hour',
     'test_fixtures/valid/test_valid_import_top',
     'papers/lm_format/ckd_protein/ckd_protein_sim',
-    'papers/s2_masld_insulin/masld_insulin/masld_insulin_sim',
-    'papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim',
+    'papers/lm_format/aircrew_circadian/aircrew_circadian_sim',
+    'papers/lm_format/banister/banister_validation',
 ]
 MC_MODELS = [
     ('test_fixtures/valid/test_valid_mc_distributions', 'low_dose'),

@@ -67,6 +67,46 @@
   "n_solutions": 25,
   "seconds": 18.0
  },
+ "sim::papers/lm_format/aircrew_circadian/aircrew_circadian_sim::eastbound_long_layover": {
+  "csv_sha": "92c5ba0268ce53945cbf7d2cd4cc6dc72371da18d8447b06ca0003fb0d3403dd",
+  "state_sha": "9cb3f446cd628b4e66b804542a65bb685275f594c4f85ede07815dbcefa8fc9f",
+  "steps": 768
+ },
+ "sim::papers/lm_format/aircrew_circadian/aircrew_circadian_sim::eastbound_mid_layover": {
+  "csv_sha": "2604411d2a9261951e1a622aef8b4e17f462537215b9d77e4a0a92322c8485de",
+  "state_sha": "f6df235d720a16cd928093917a4f99d1b0530502ec6f5c617338aa8a3bef48f9",
+  "steps": 768
+ },
+ "sim::papers/lm_format/aircrew_circadian/aircrew_circadian_sim::eastbound_short_layover": {
+  "csv_sha": "8327aa4b2ed8d14f892d725ffea4ac68d191141ec9efbb4600417a3f64ea1d8f",
+  "state_sha": "84fc67b4bc08790e077fdcf5e9b470e3cfc37d59a5ef9de14ec30985a3b9f818",
+  "steps": 768
+ },
+ "sim::papers/lm_format/aircrew_circadian/aircrew_circadian_sim::eastbound_short_layover_optimized_light": {
+  "csv_sha": "f21560729f4c40a7127d3e24a3eea0125a4a1a56feb976a94be1b299fd45bd59",
+  "state_sha": "41b206577e5fb47681486920b4d1fcc82102172d2eaa25d95d0b92a29123e372",
+  "steps": 768
+ },
+ "sim::papers/lm_format/banister/banister_validation::daily_training": {
+  "csv_sha": "ed3c5dcb377cea9b43435577d13f763d1dedd52d8b9c9115a48a6a8707058768",
+  "state_sha": "50d7710614ab768292b26cb90139c5f52293543b8e6e687c868f1a2dd7b5353c",
+  "steps": 2856
+ },
+ "sim::papers/lm_format/banister/banister_validation::early_taper": {
+  "csv_sha": "a2c18de960d1257bb8cbc8ba34b9e8c1ea4cd84e0559c65195262fad0ead27e7",
+  "state_sha": "754b4abdd08a764b3c9d64058dbf698d73b434980553725566363e822d0ef400",
+  "steps": 2856
+ },
+ "sim::papers/lm_format/banister/banister_validation::five_day_training": {
+  "csv_sha": "d46c19e85b347246bab0684a784ccadd4e2364df147eef3a6f77e1d0218e21c8",
+  "state_sha": "0b2374d0c6aba2cbc4938110b7d4e40ba849dff0429f3637105fd2083d318592",
+  "steps": 2856
+ },
+ "sim::papers/lm_format/banister/banister_validation::opt_optimized": {
+  "csv_sha": "3ed0bbb177e8ce4e285d5670363415a0e14e48840912c1df775f4f5d694339c4",
+  "state_sha": "e7934208ef8a493d90c287ad514ce694ab7e6477d06b575bd2ca1fefc2ea23e6",
+  "steps": 2856
+ },
  "sim::papers/lm_format/ckd_protein/ckd_protein_sim::balanced": {
   "csv_sha": "c578ac3bfa127c0a22f8a459833fb894a851a178adde50ed19a7ecfd52b347d4",
   "state_sha": "3343b22317daa4550fd60b213ac3a2d34584e5610f43f31de9a44754b9c244a8",
@@ -86,46 +126,6 @@
   "csv_sha": "2d63fba57e220c0f40516703b62b78c51624d3d7f64b26bdc3ae27e3e94708eb",
   "state_sha": "c80db5d59cecd181642de3a6f1d2188e8c42092b7084364e08fd12a756555039",
   "steps": 8736
- },
- "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::constant_baseline": {
-  "csv_sha": "bcecff715731fd221c383acff8c825a700826e3ed707a8166f112fad195e9611",
-  "state_sha": "855b36c984ff9eef464ecb541264ad5e3fcb8790f9fe5e43acd05a5bc7ed36dd",
-  "steps": 4344
- },
- "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::digestive_first": {
-  "csv_sha": "70ba0284c044bae48d7f362d5c2016649c14c7c96f1356275518f293021d7e55",
-  "state_sha": "0536256c8022c61069519c1f0d18c39b29177943d4e02ad7a1f6bab975907467",
-  "steps": 4344
- },
- "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::endocrine_first": {
-  "csv_sha": "90848b20e5d5f4ba0412f658be6091c9dda32eaab4ed3f1e7eec7091262f5d4b",
-  "state_sha": "7b01d724ec48a6136409c66c0bd6abbbbb3653cf5f50cbf2f2793c8d8348c7c3",
-  "steps": 4344
- },
- "sim::papers/s2_masld_insulin/masld_insulin/masld_insulin_sim::liverfat_optimized": {
-  "csv_sha": "96233d64e3b2362ad123b4c2d363671d0cec7c276ea0fa4256dea5c7f92ffeb9",
-  "state_sha": "e6304737f62737290af5e4e428fc2a857b1896a734cf24e9f2451ed6de0cd869",
-  "steps": 4344
- },
- "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::baseline_A_guideline": {
-  "csv_sha": "d501900cb6b00314bd668b358667a798167a8ba4aa0cf9cee0b35770d7410e57",
-  "state_sha": "f78923d0ea78bb21be33d919bb4772a85019930defb7b22d7264df13a7bb0764",
-  "steps": 648
- },
- "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::early_bedtime": {
-  "csv_sha": "fe6c0a67f1636d37c944bdd1c0057c8f3bc395c1de94bef9a599d5c1e49fd533",
-  "state_sha": "86984325ac730e0788b2a5e0bd51ff7e7bf5d155b9936c6fdaece5803fa7b8fa",
-  "steps": 648
- },
- "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::nap_strategy": {
-  "csv_sha": "2e29408e2efbe6f088d9cba8b08034db8e403567cece4a978ad2be54cbbde401",
-  "state_sha": "3d1366f868be4b9dc95a0892fefcf98863573fc93b5a84ed2fa3089b96af7de6",
-  "steps": 648
- },
- "sim::papers/s3_systems_science_paradigm/sleep_schedule/sleep_schedule_sim::sleep_deprived_baseline": {
-  "csv_sha": "71176847022ea5d9aa88a967fafe665c65942f588db72547d8d1a514828aeca2",
-  "state_sha": "3d1366f868be4b9dc95a0892fefcf98863573fc93b5a84ed2fa3089b96af7de6",
-  "steps": 648
  },
  "sim::test_fixtures/valid/test_valid_banister_v1_step_6h::constant_w50": {
   "csv_sha": "7dc5fadd53db875086ca41d468edcb4e1938d3443ed0b4c3b69ee146c3ee1ee8",
