@@ -25,7 +25,7 @@ AGENTS.md
 
 # Ad hoc test-run outputs (models, sim/opt results, one-off scripts) —
 # convention is `temp_<name>/` anywhere in the repo, not new ad hoc names.
-temp_*/
+temp_*
 
 # Personal
 _saved_/
