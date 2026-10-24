@@ -103,6 +103,144 @@ def precompute_sustained_divisors(schedules: list, step_size_sec: float) -> list
     return out
 
 
+class InputSignal:
+    """The schedules of a run, read once, so that each step's signal is cheap to ask for.
+
+    Everything that does not depend on the clock is done here: the time strings, the day sets and
+    the date ranges are parsed, the sustained divisors are applied and events that can never fire
+    (an unreadable time) are dropped. `at(prev_time, next_time)` is then `compute_inputs` for one
+    step window and has exactly its meaning."""
+
+    def __init__(self, schedules: list, sim_start_date: str = ''):
+        try:
+            self.epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
+        except ValueError:
+            self.epoch = date(1900, 1, 1)
+        self._scheds = []
+        for sched in schedules:
+            variable = sched.get('variable', '')
+            if not variable:
+                continue
+            events = []
+            for ev in sched.get('events', []):
+                compiled = self._compile_event(ev)
+                if compiled is not None:
+                    events.append(compiled)
+            self._scheds.append({
+                'variable': variable,
+                'range': self._date_range(sched.get('valid_start', ''), sched.get('valid_end', ''))
+                         if sched.get('valid_range_enabled') else None,
+                'days_mask': sched.get('days', [True] * 7) if sched.get('days_enabled') else None,
+                'events': events,
+            })
+        # a step window with the same time of day and weekday gives the same signal, unless a date range is involved
+        self._dated = any(sc['range'] is not None or any(e[1] is not None for e in sc['events'])
+                          for sc in self._scheds)
+        self._cache: Dict[tuple, Dict[str, List[float]]] = {}
+        self.variables = []
+        for sc in self._scheds:
+            if sc['variable'] not in self.variables:
+                self.variables.append(sc['variable'])
+
+    @staticmethod
+    def _date_range(vs: str, ve: str):
+        """(start, end) dates; an unreadable one ends the check in the way the loop did: no filtering."""
+        def parse(x):
+            try:
+                return date.fromisoformat(x)
+            except ValueError:
+                return False
+        return (parse(vs) if vs else None, parse(ve) if ve else None)
+
+    @staticmethod
+    def _in_range(rng, sim_date) -> bool:
+        vs, ve = rng
+        if vs is not None:
+            if vs is False:
+                return True          # ValueError on the first comparison: the check is abandoned
+            if sim_date < vs:
+                return False
+        if ve is not None:
+            if ve is False:
+                return True
+            if sim_date > ve:
+                return False
+        return True
+
+    def _compile_event(self, ev):
+        ev_days = ev.get('days', [])
+        allowed = None
+        if ev_days:
+            allowed = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
+        vs, ve = ev.get('valid_start', ''), ev.get('valid_end', '')
+        rng = self._date_range(vs, ve) if (vs or ve) else None
+        time_start, time_end = resolve_time_interval(ev)
+        try:
+            if time_start != time_end:
+                t0h, t0m = map(int, time_start.split(':'))
+                t1h, t1m = map(int, time_end.split(':'))
+                t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
+                win = [(t0_sec, 86400), (0, t1_sec)] if t0_sec >= t1_sec else [(t0_sec, t1_sec)]
+                ev_sec = None
+            else:
+                hh, mm = map(int, time_start.split(':'))
+                ev_sec = hh * 3600 + mm * 60
+                win = None
+        except Exception:
+            return None
+        raw_value = float(ev.get('value', 0))
+        delta = raw_value if ev.get('delivery') == 'level' else raw_value / ev.get('_n_steps', 1)
+        return (allowed, rng, win, ev_sec, delta, time_start, time_end)
+
+    def at(self, prev_time: float, next_time: float) -> Dict[str, List[float]]:
+        """The signal of one step window. The answer is shared between equal windows: read it, do not change it."""
+        prev_day_idx = int(prev_time / 86400)
+        prev_sec_of_day = prev_time % 86400
+        next_sec_of_day = next_time % 86400
+        day_boundary_crossed = int(next_time / 86400) > prev_day_idx
+        sim_date = self.epoch + timedelta(days=prev_day_idx)
+        dow = sim_date.weekday()  # 0=Mon … 6=Sun, aligned to sim_start_date's real calendar weekday
+        key = (prev_sec_of_day, next_sec_of_day, day_boundary_crossed, dow, prev_day_idx if self._dated else 0)
+        hit = self._cache.get(key)
+        if hit is not None:
+            return hit
+        signal: Dict[str, List[float]] = {v: [] for v in self.variables}
+        if day_boundary_crossed:
+            step_ranges = [(prev_sec_of_day, 86400), (0, next_sec_of_day)]
+        else:
+            step_ranges = [(prev_sec_of_day, next_sec_of_day)]
+
+        for sc in self._scheds:
+            if sc['range'] is not None and not self._in_range(sc['range'], sim_date):
+                continue
+            mask = sc['days_mask']
+            if mask is not None and not (mask[dow] if dow < len(mask) else True):
+                continue
+            out = signal[sc['variable']]
+            for allowed, rng, win, ev_sec, delta, time_start, time_end in sc['events']:
+                if allowed is not None and dow not in allowed:
+                    continue
+                if rng is not None and not self._in_range(rng, sim_date):
+                    continue
+                if win is not None:
+                    # Sustained: fires whenever the step interval overlaps the daily window.
+                    fires = any(a0 < b1 and b0 < a1 for a0, a1 in step_ranges for b0, b1 in win)
+                elif day_boundary_crossed:
+                    fires = ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day
+                else:
+                    fires = prev_sec_of_day <= ev_sec < next_sec_of_day
+                if fires:
+                    out.append(delta)
+                    logger.debug(
+                        "Schedule fired: %s += %s @ t=%.0fs (%s~%s)",
+                        sc['variable'], delta, prev_time, time_start, time_end,
+                    )
+        if len(self._cache) > 200000:
+            self._cache.clear()
+        self._cache[key] = signal
+        return signal
+
+
 def compute_inputs(schedules: list, prev_time: float, next_time: float,
                    sim_start_date: str = '') -> Dict[str, List[float]]:
     """The input signal of the step window [prev_time, next_time): what every controlled variable receives.
@@ -154,128 +292,7 @@ def compute_inputs(schedules: list, prev_time: float, next_time: float,
     `days`/`valid_start`/`valid_end` only gate *which* days fire under either
     `delivery` mode; they do not change how much a firing day delivers.
     """
-    try:
-        epoch = date.fromisoformat(sim_start_date) if sim_start_date else date(1900, 1, 1)
-    except ValueError:
-        epoch = date(1900, 1, 1)
-
-    prev_day_idx = int(prev_time / 86400)
-    prev_sec_of_day = prev_time % 86400
-    next_sec_of_day = next_time % 86400
-    day_boundary_crossed = int(next_time / 86400) > prev_day_idx
-    dow = (epoch + timedelta(days=prev_day_idx)).weekday()  # 0=Mon … 6=Sun, aligned to sim_start_date's real calendar weekday
-
-    # ── Pulse reset: zero all controlled variables for this step ──────────────
-    # Bypasses set_variable_value's bounds clamp: the reset-to-zero "off" state
-    # is a transient bookkeeping value, not a physical reading, so it must not
-    # be pulled up to bounds[0] when bounds[0] > 0 (e.g. an input variable
-    # whose valid range is [0.3, 2.0]) — doing so silently inflates every
-    # firing event's effective value by bounds[0].
-    signal: Dict[str, List[float]] = {}
-    for sched in schedules:
-        var = sched.get('variable', '')
-        if var:
-            signal.setdefault(var, [])
-
-    # ── Accumulate firing events ───────────────────────────────────────────────
-    for sched in schedules:
-        variable = sched.get('variable', '')
-        if not variable:
-            continue
-
-        # Schedule-level valid_range check (GUI path)
-        if sched.get('valid_range_enabled'):
-            sim_date = epoch + timedelta(days=prev_day_idx)
-            vs, ve = sched.get('valid_start', ''), sched.get('valid_end', '')
-            try:
-                if vs and sim_date < date.fromisoformat(vs):
-                    continue
-                if ve and sim_date > date.fromisoformat(ve):
-                    continue
-            except ValueError:
-                pass
-
-        # Schedule-level day filter — boolean mask (GUI path)
-        if sched.get('days_enabled'):
-            days_mask = sched.get('days', [True] * 7)
-            if not (days_mask[dow] if dow < len(days_mask) else True):
-                continue
-
-        for ev in sched.get('events', []):
-            # Event-level day filter — string list (optimizer path: T3)
-            ev_days = ev.get('days', [])
-            if ev_days:
-                allowed = {_DAY_STR[d.lower()[:3]] for d in ev_days if d.lower()[:3] in _DAY_STR}
-                if dow not in allowed:
-                    continue
-
-            # Event-level date-range check (optimizer path: T4)
-            ev_valid_start = ev.get('valid_start', '')
-            ev_valid_end   = ev.get('valid_end', '')
-            if ev_valid_start or ev_valid_end:
-                sim_date = epoch + timedelta(days=prev_day_idx)
-                try:
-                    if ev_valid_start and sim_date < date.fromisoformat(ev_valid_start):
-                        continue
-                    if ev_valid_end and sim_date > date.fromisoformat(ev_valid_end):
-                        continue
-                except ValueError:
-                    pass
-
-            time_start, time_end = resolve_time_interval(ev)
-            if time_start != time_end:
-                # Sustained: fires whenever the step interval overlaps the
-                # daily [time_start, time_end) window.
-                try:
-                    t0h, t0m = map(int, time_start.split(':'))
-                    t1h, t1m = map(int, time_end.split(':'))
-                except Exception:
-                    continue
-                t0_sec, t1_sec = t0h * 3600 + t0m * 60, t1h * 3600 + t1m * 60
-                # Split the step interval and the [time_start, time_end) window
-                # into non-wrapping [start, end) ranges (each may wrap past
-                # midnight independently of the other), then test overlap.
-                step_ranges = (
-                    [(prev_sec_of_day, 86400), (0, next_sec_of_day)]
-                    if day_boundary_crossed
-                    else [(prev_sec_of_day, next_sec_of_day)]
-                )
-                win_ranges = (
-                    [(t0_sec, 86400), (0, t1_sec)]
-                    if t0_sec >= t1_sec
-                    else [(t0_sec, t1_sec)]
-                )
-                fires = any(
-                    a0 < b1 and b0 < a1
-                    for a0, a1 in step_ranges
-                    for b0, b1 in win_ranges
-                )
-            else:
-                # Pulse: fires once, at the instant time_start.
-                try:
-                    hh, mm = map(int, time_start.split(':'))
-                except Exception:
-                    continue
-                ev_sec = hh * 3600 + mm * 60
-
-                fires = (
-                    (ev_sec >= prev_sec_of_day or ev_sec < next_sec_of_day)
-                    if day_boundary_crossed
-                    else (prev_sec_of_day <= ev_sec < next_sec_of_day)
-                )
-
-            if fires:
-                raw_value = float(ev.get('value', 0))
-                if ev.get('delivery') == 'level':
-                    delta = raw_value
-                else:
-                    delta = raw_value / ev.get('_n_steps', 1)
-                signal[variable].append(delta)
-                logger.debug(
-                    "Schedule fired: %s += %s @ t=%.0fs (%s~%s)",
-                    variable, delta, prev_time, time_start, time_end,
-                )
-    return signal
+    return InputSignal(schedules, sim_start_date).at(prev_time, next_time)
 
 
 def apply_inputs(model, signal: Dict[str, List[float]]) -> None:
@@ -338,11 +355,12 @@ def advance_steps(model, schedules: list, step_size: float, n_steps: int,
     rows = []
     step = start_step
     time = start_time
+    signal = InputSignal(schedules, sim_start_date) if schedules else None
     for _ in range(n_steps):
         prev_time = time
         next_time = prev_time + step_size
-        if schedules:
-            apply_schedules(model, schedules, prev_time, next_time, sim_start_date=sim_start_date)
+        if signal is not None:
+            apply_inputs(model, signal.at(prev_time, next_time))
         model.step(step_size)
         step += 1
         time = next_time

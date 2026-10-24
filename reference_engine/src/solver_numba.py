@@ -25,7 +25,8 @@ from typing import Dict, List
 import numpy as np
 
 from .model_structure.base import TIME_UNIT_SECONDS
-from .schedule_runner import compute_inputs
+from .result import Trajectory
+from .schedule_runner import InputSignal, precompute_sustained_divisors
 from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, Solver, get_solver, register_solver
 from .solver_fast import _can_run_fast
 
@@ -143,12 +144,11 @@ class NumbaSolver(Solver):
     version = '1'
     capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC})
 
-    def advance(self, model, schedules, step_size, n_steps, start_step, start_time,
-                output_variables, sim_start_date=''):
-        fallback = get_solver('fast')
+    def _execute(self, model, schedules, step_size, n_steps, start_time, output_variables, sim_start_date):
+        """Run the compiled function. Returns (out, vals, times, index, vars_), or None when the run
+        has to be done by the fast solver. Nothing is written to the model."""
         if n_steps <= 0 or not _can_run_fast(model):
-            return fallback.advance(model, schedules, step_size, n_steps, start_step, start_time,
-                                    output_variables, sim_start_date)
+            return None
         names = list(model.variables)
         index = {n: i for i, n in enumerate(names)}
         try:
@@ -163,21 +163,20 @@ class NumbaSolver(Solver):
                  else step_size / unit_sec)
                 for _n, eq in model._sorted_equations
             ] or [0.0], dtype=float)
-
             times = self._times(start_time, step_size, n_steps)
+
             ctrl = sorted({s.get('variable', '') for s in schedules} & set(index)) if schedules else []
             contrib = np.full((n_steps, max(len(ctrl), 1), 1), np.nan)
             if ctrl:
-                signals: List[Dict[str, List[float]]] = [
-                    compute_inputs(schedules, times[k], times[k + 1], sim_start_date)
-                    for k in range(n_steps)
-                ]
+                reader = InputSignal(schedules, sim_start_date)
+                signals = [reader.at(times[k], times[k + 1]) for k in range(n_steps)]
                 width = max([len(d) for s in signals for d in s.values()] + [1])
                 contrib = np.full((n_steps, len(ctrl), width), np.nan)
                 for k, sig in enumerate(signals):
                     for c, var in enumerate(ctrl):
-                        for m, d in enumerate(sig.get(var, ())):
-                            contrib[k, c, m] = d
+                        d = sig.get(var)
+                        if d:
+                            contrib[k, c, :len(d)] = d
             ctrl_idx = np.array([index[v] for v in ctrl], dtype=np.int64)
             out_idx = np.array([index[v] for v in output_variables], dtype=np.int64)
             out = np.empty((n_steps, max(len(out_idx), 1)))
@@ -187,18 +186,11 @@ class NumbaSolver(Solver):
                 raise ArithmeticError('a value was not finite')
         except Exception as err:
             logger.debug("numba solver handed the run to the fast solver: %s", err)
-            return fallback.advance(model, schedules, step_size, n_steps, start_step, start_time,
-                                    output_variables, sim_start_date)
+            return None
+        return out, vals, times, index, vars_
 
-        rows = []
-        step, time = start_step, start_time
-        for k in range(n_steps):
-            step += 1
-            time = times[k + 1]
-            row = {'step': step, 'time': time}
-            for j, n in enumerate(output_variables):
-                row[n] = float(out[k, j])
-            rows.append(row)
+    @staticmethod
+    def _write_back(model, vals, index, vars_, step_size, n_steps):
         for v, x in zip(vars_, vals):
             v.value = float(x)
         for n, i in index.items():
@@ -206,7 +198,42 @@ class NumbaSolver(Solver):
         for _ in range(n_steps):
             model.time += step_size
         model.current_step += n_steps
-        return rows, step, time
+
+    def advance(self, model, schedules, step_size, n_steps, start_step, start_time,
+                output_variables, sim_start_date=''):
+        done = self._execute(model, schedules, step_size, n_steps, start_time, output_variables, sim_start_date)
+        if done is None:
+            return get_solver('fast').advance(model, schedules, step_size, n_steps, start_step, start_time,
+                                              output_variables, sim_start_date)
+        out, vals, times, index, vars_ = done
+        rows = []
+        step = start_step
+        for k in range(n_steps):
+            step += 1
+            row = {'step': step, 'time': times[k + 1]}
+            for j, n in enumerate(output_variables):
+                row[n] = float(out[k, j])
+            rows.append(row)
+        self._write_back(model, vals, index, vars_, step_size, n_steps)
+        return rows, step, times[n_steps]
+
+    def simulate(self, model, schedules, step_size, n_steps, sim_start_date=''):
+        """As Solver.simulate, but the trajectory is built from the arrays without a dict per step."""
+        model.reset_simulation()
+        schedules = precompute_sustained_divisors(schedules, step_size)
+        names = list(model.variables)
+        done = self._execute(model, schedules, step_size, n_steps, 0.0, names, sim_start_date)
+        if done is None:
+            rows, _, _ = get_solver('fast').advance(model, schedules, step_size, n_steps, 0, 0.0, names,
+                                                    sim_start_date)
+            return Trajectory.from_rows(rows, names, self.info())
+        out, vals, times, index, vars_ = done
+        self._write_back(model, vals, index, vars_, step_size, n_steps)
+        return Trajectory(
+            step=list(range(1, n_steps + 1)), time=times[1:],
+            columns={n: out[:, j].tolist() for j, n in enumerate(names)},
+            solver=self.info(),
+        )
 
     @staticmethod
     def _times(start: float, step_size: float, n: int) -> List[float]:

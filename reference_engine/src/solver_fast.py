@@ -16,7 +16,7 @@ import logging
 from typing import Dict, List, Sequence, Tuple
 
 from .model_structure.base import TIME_UNIT_SECONDS
-from .schedule_runner import compute_inputs
+from .schedule_runner import InputSignal
 from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, ReferenceSolver, Solver, register_solver
 
 logger = logging.getLogger(__name__)
@@ -69,13 +69,14 @@ class FastSolver(Solver):
         plan = self._plan(model, index, step_size, unit_sec)
         out_idx = [(n, index[n]) for n in output_variables]
 
+        signal_of = InputSignal(schedules, sim_start_date) if schedules else None
         rows: List[Dict] = []
         step, time = start_step, start_time
         model_time = model.time
         for _ in range(n_steps):
             prev_time, next_time = time, time + step_size
-            if schedules:
-                signal = compute_inputs(schedules, prev_time, next_time, sim_start_date)
+            if signal_of is not None:
+                signal = signal_of.at(prev_time, next_time)
                 for var in signal:
                     if var in index:
                         vals[index[var]] = 0.0
