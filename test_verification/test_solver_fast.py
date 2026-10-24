@@ -165,3 +165,27 @@ def test_environment_variable_and_unknown_default():
     assert r.stdout.strip() == 'fast', r.stderr
     with pytest.raises(KeyError):
         solver_mod.set_default_solver('nope')
+
+
+def test_gui_session_runs_on_the_named_solver():
+    out = {}
+    for sid in ('reference', 'fast', 'numba'):
+        engine = ReferenceEngine(models_directory=str(MODELS))
+        r = engine.start_session('test_fixtures/valid/test_valid_pulse_reset_bounds_floor', time_hours=96.0,
+                                 step_size=3600.0, solver=sid)
+        assert r['success'], r.get('error')
+        assert r['data']['solver']['id'] == sid
+        b = engine.batch_steps(r['data']['session_id'], 96)
+        assert b['success'], b.get('error')
+        out[sid] = b['data']['outputs']
+    assert out['fast'] == out['reference']
+    assert len(out['numba']) == len(out['reference'])
+    for a, b in zip(out['reference'], out['numba']):
+        assert b == pytest.approx(a, rel=1e-9, abs=1e-12)
+
+
+def test_session_with_an_unknown_solver_fails_cleanly():
+    engine = ReferenceEngine(models_directory=str(MODELS))
+    r = engine.start_session('test_fixtures/valid/test_valid_pulse_reset_bounds_floor', time_hours=24.0,
+                             step_size=3600.0, solver='nope')
+    assert not r['success'] and 'nope' in r['error']

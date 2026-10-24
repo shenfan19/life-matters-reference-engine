@@ -53,6 +53,7 @@ class SimulationStartRequest(BaseModel):
     regimens: Optional[List[RegimenData]] = None
     sim_runs: int = 1
     seed: Optional[int] = None
+    solver: Optional[str] = None
 
 
 class SimulationStepRequest(BaseModel):
@@ -81,6 +82,7 @@ async def start_simulation(request: SimulationStartRequest):
             regimens=regimens_raw,
             sim_runs=max(1, request.sim_runs),
             seed=request.seed,
+            solver=request.solver,
         )
         if result['success']:
             return result

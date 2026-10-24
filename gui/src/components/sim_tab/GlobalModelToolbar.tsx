@@ -2,9 +2,11 @@
 // Overview / Simulation / Optimization tabs, with tab-specific content appended on the right.
 
 import React, { useState } from 'react';
-import { Button, Checkbox, Popover, Tooltip } from 'antd';
+import { Button, Checkbox, Popover, Select, Tooltip } from 'antd';
 import { DownloadOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ModelFile } from '../../types';
+import { useSolvers } from '../../core/solverChoice';
+import { API_BASE } from './simUtils';
 
 interface GlobalModelToolbarProps {
   selectedModel: ModelFile | null;
@@ -29,6 +31,7 @@ export function GlobalModelToolbar({
   scsMode, autoSaveLocal, onAutoSaveLocalChange,
   t, c,
 }: GlobalModelToolbarProps) {
+  const { solvers, choice, choose } = useSolvers(API_BASE);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [withResults, setWithResults] = useState(true);
   const [flattenImports, setFlattenImports] = useState(true);
@@ -86,6 +89,16 @@ export function GlobalModelToolbar({
             onClick={onCopyLink}
             style={{ whiteSpace: 'nowrap', color: c.textSec }}
           >{t('sim.ctrl.copy_link')}</Button>
+        </Tooltip>
+      )}
+
+      {solvers.length > 1 && (
+        <Tooltip title={t('sim.ctrl.solver_tip')}>
+          <Select size="small" value={choice || solvers[0].id} onChange={choose}
+            disabled={simRunning || optRunning} data-testid="solver-select"
+            style={{ minWidth: 104 }}
+            options={solvers.map(s => ({ value: s.id, label: `${t('sim.ctrl.solver')}: ${s.id}` }))}
+          />
         </Tooltip>
       )}
 

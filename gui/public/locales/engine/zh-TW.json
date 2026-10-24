@@ -499,6 +499,8 @@
 
   "sim.ctrl.copy_link": "複製連結",
   "sim.ctrl.copy_link_tip": "複製可直接開啟目前模型與目前分頁的連結",
+  "sim.ctrl.solver": "求解器",
+  "sim.ctrl.solver_tip": "執行模擬與最佳化所用的求解器，預設由伺服器設定",
   "sim.ctrl.copy_link_done": "連結已複製",
   "sim.tab.overview": "總覽",
   "sim.tab.simulation": "仿真",

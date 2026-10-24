@@ -74,8 +74,9 @@ class SessionManagerMixin:
         regimens: Optional[List[Dict]] = None,
         sim_runs: int = 1,
         seed: Optional[int] = None,
+        solver: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Start a new simulation session (GUI path).
+        """Start a new simulation session (GUI path). `solver` names the solver the session runs on (default: the process default).
 
         Creates an independent model copy for each MC run, applies parameter
         sampling, and returns the session ID.
@@ -154,7 +155,9 @@ class SessionManagerMixin:
             # ADR 0131: precompute sustained-mode value/_n_steps divisors once
             regimens = precompute_sustained_divisors(regimens or [], step_size)
 
+            solver_obj = get_solver(solver)
             self.sessions[session_id] = {
+                'solver': solver_obj.id,
                 'model': runs[0]['model'],
                 'model_name': model_name,
                 'folder': folder,
@@ -201,7 +204,7 @@ class SessionManagerMixin:
                     "warnings": output_warnings,
                     "sim_runs": n_runs,
                     "session_seed": session_seed,
-                    "solver": get_solver().info(),
+                    "solver": solver_obj.info(),
                     "logs": initial_logs,
                 },
             }
@@ -248,7 +251,7 @@ class SessionManagerMixin:
 
                 actual_steps = min(steps, session['total_steps'] - session['current_step'])
 
-                outputs, session['current_step'], session['time'] = get_solver().advance(
+                outputs, session['current_step'], session['time'] = get_solver(session.get('solver')).advance(
                     model, session['regimens'], step_size, actual_steps,
                     session['current_step'], session['time'], output_variables, sim_start_date,
                 )
@@ -300,7 +303,7 @@ class SessionManagerMixin:
 
                 actual_steps = min(steps, session['total_steps'] - run['current_step'])
 
-                run_outputs, run['current_step'], run['time'] = get_solver().advance(
+                run_outputs, run['current_step'], run['time'] = get_solver(session.get('solver')).advance(
                     run_model, session['regimens'], step_size, actual_steps,
                     run['current_step'], run['time'], output_variables, sim_start_date,
                 )

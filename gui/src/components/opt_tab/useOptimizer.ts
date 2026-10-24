@@ -16,6 +16,7 @@ import type { InputEvent, ModelFile } from '../../types';
 import { hasAnyOpt, buildOptRegimens } from '../sim_tab/optUtils';
 import { API_BASE } from '../sim_tab/simUtils';
 import { readMS, writeMS } from '../sim_tab/useSession';
+import { solverField } from '../../core/solverChoice';
 
 type CenterTab = 'intro' | 'simulation' | 'optimization' | 'builder';
 
@@ -153,6 +154,7 @@ export function useOptimizer({
 
     const optRegimens = buildOptRegimens(inputEvents, activeInputVarNames);
     const optimizerOverride: Record<string, any> = {
+      ...solverField(),
       startpoint: { regimens: optRegimens },
       objectives: objectives.map(o => ({ variable: o.variable, metric: 'final', direction: o.direction })),
       constraints: constraints.map(con => ({

@@ -499,6 +499,8 @@
 
   "sim.ctrl.copy_link": "Copier le lien",
   "sim.ctrl.copy_link_tip": "Copier un lien qui ouvre ce modèle sur cet onglet",
+  "sim.ctrl.solver": "Solveur",
+  "sim.ctrl.solver_tip": "Solveur utilisé pour les simulations et les optimisations. Le défaut est fixé par le serveur",
   "sim.ctrl.copy_link_done": "Lien copié",
   "sim.tab.overview": "Aperçu",
   "sim.tab.simulation": "Simulation",

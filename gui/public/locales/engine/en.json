@@ -499,6 +499,8 @@
 
   "sim.ctrl.copy_link": "Copy link",
   "sim.ctrl.copy_link_tip": "Copy a link that opens this model on this tab",
+  "sim.ctrl.solver": "Solver",
+  "sim.ctrl.solver_tip": "Which solver runs simulations and optimizations. The default is set by the server",
   "sim.ctrl.copy_link_done": "Link copied",
   "sim.tab.overview": "Overview",
   "sim.tab.simulation": "Simulation",

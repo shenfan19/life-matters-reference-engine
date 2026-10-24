@@ -10,6 +10,7 @@ import { useState, useRef } from 'react';
 import { message } from 'antd';
 import type { InputEvent, ModelFile, PlanResult, SimPlan, SimulationDataPoint, SimulationState, StepUnit } from '../../types';
 import { API_BASE, PLAN_COLORS, xToInputEvents } from './simUtils';
+import { solverField } from '../../core/solverChoice';
 import yamlDump from 'js-yaml';
 
 const STEP_UNITS: Record<StepUnit, number> = { day: 86400, hour: 3600, minute: 60 };
@@ -139,6 +140,7 @@ export function useSimulation({
           regimens: buildRegimenPayload(inputEvents),
           sim_runs: simRuns,
           ...(mcSeed != null ? { seed: mcSeed } : {}),
+          ...solverField(),
         }),
       });
       const result = await resp.json();
@@ -278,7 +280,7 @@ export function useSimulation({
           }));
         const startResult = await fetch(`${API_BASE}/simulation/start`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns, ...(mcSeed != null ? { seed: mcSeed } : {}) }),
+          body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns, ...(mcSeed != null ? { seed: mcSeed } : {}), ...solverField() }),
         }).then(r => r.json());
         if (!startResult.success) throw new Error(startResult.error);
         const batchResult = await fetch(`${API_BASE}/simulation/batch`, {
@@ -337,7 +339,7 @@ export function useSimulation({
         }));
       const r = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns }),
+        body: JSON.stringify({ model_name: modelName, folder: selectedModel.folder, time_hours: timeHours, step_size: stepSizeSec, input_params: inputParams, regimens, sim_runs: simRuns, ...solverField() }),
       }).then(res => res.json());
       if (!r.success) throw new Error(r.error || 'Failed to start');
       return { sid: r.data.session_id, total: r.data.total_steps, planIdx: i, outputVars: r.data.output_variables };
