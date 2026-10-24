@@ -9,7 +9,7 @@ in optimizer_backends.py expect.
 
 from typing import Dict, List
 
-from .schedule_runner import apply_schedules, precompute_sustained_divisors
+from .solver import get_solver
 from .optimizer_parsing import _parse_condition
 
 
@@ -29,31 +29,19 @@ def _eval_metric(history: List[float], metric: str) -> float:
 
 def _run_sim(model, schedule_events_by_var: Dict[str, List[Dict]],
              step_size_sec: float, total_steps: int,
-             sim_start_date: str = '') -> Dict[str, List[float]]:
+             sim_start_date: str = '',
+             solver_id: str = None) -> Dict[str, List[float]]:
     """Run a full simulation and return per-variable history lists.
 
-    Uses apply_schedules() from schedule_runner (pulse reset + accumulate) — same
-    kernel as the GUI sim path, eliminating the duplicate implementation.
+    Goes through the registered solver (ADR 0160), the same one the GUI sim path uses,
+    so optimisation and simulation cannot drift apart.
     """
-    model.reset_simulation()
-
-    # Convert dict format → list format expected by apply_schedules
+    # Convert dict format → list format expected by the solver
     schedules_list = [
         {'variable': var_name, 'events': evts}
         for var_name, evts in schedule_events_by_var.items()
     ]
-    # ADR 0131: precompute sustained-mode value/_n_steps divisors once per run
-    schedules_list = precompute_sustained_divisors(schedules_list, step_size_sec)
-
-    history: Dict[str, List[float]] = {n: [] for n in model.variables}
-    for i in range(total_steps):
-        prev_t = i * step_size_sec
-        apply_schedules(model, schedules_list, prev_t, prev_t + step_size_sec, sim_start_date)
-        model.step(step_size_sec)
-        for n, v in model.variables.items():
-            history[n].append(v.value)
-
-    return history
+    return get_solver(solver_id).run(model, schedules_list, step_size_sec, total_steps, sim_start_date)
 
 
 def _eval_F(history: Dict[str, List[float]], objectives: List[Dict]) -> List[float]:

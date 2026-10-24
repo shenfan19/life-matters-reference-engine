@@ -14,7 +14,8 @@ from .model_structure import ModelStructure
 from .loader_engine import LoaderEngine
 from .session_manager import SessionManagerMixin
 from .mc_utils import apply_parameter_sampling, collect_param_distributions, clone_model, derive_seed_list
-from .schedule_runner import advance_steps, precompute_sustained_divisors
+from .schedule_runner import precompute_sustained_divisors
+from .solver import get_solver
 from .validation import validate_simulator_dates, validate_schedule_list
 from . import run_logging
 from . import paths
@@ -167,8 +168,8 @@ class ReferenceEngine(SessionManagerMixin):
         run_start_time = _time()
 
         try:
-            # Run the simulation, sharing the core advance_steps (the CLI and GUI batch_steps share the same loop body, see ADR 0113).
-            rows, self.current_step, self.time = advance_steps(
+            # Run the simulation, sharing the core solver advance (the CLI and GUI batch_steps share the same loop body, see ADR 0113).
+            rows, self.current_step, self.time = get_solver().advance(
                 self.current_model, schedules, step_size, total_steps,
                 self.current_step, self.time, output_variables, start_date,
             )
@@ -281,7 +282,7 @@ class ReferenceEngine(SessionManagerMixin):
 
             run_results = []
             for run_idx, run_model in enumerate(run_models):
-                rows, end_step, end_time = advance_steps(
+                rows, end_step, end_time = get_solver().advance(
                     run_model, schedules, step_size, total_steps,
                     0, 0.0, output_variables, start_date,
                 )

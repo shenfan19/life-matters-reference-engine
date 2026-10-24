@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .schedule_runner import advance_steps, precompute_sustained_divisors
+from .schedule_runner import precompute_sustained_divisors
+from .solver import get_solver
 from .mc_utils import collect_param_distributions, apply_parameter_sampling, clone_model, derive_seed_list
 from .validation import validate_simulator_dates, validate_schedule_list
 from . import run_logging
@@ -246,7 +247,7 @@ class SessionManagerMixin:
 
                 actual_steps = min(steps, session['total_steps'] - session['current_step'])
 
-                outputs, session['current_step'], session['time'] = advance_steps(
+                outputs, session['current_step'], session['time'] = get_solver().advance(
                     model, session['regimens'], step_size, actual_steps,
                     session['current_step'], session['time'], output_variables, sim_start_date,
                 )
@@ -298,7 +299,7 @@ class SessionManagerMixin:
 
                 actual_steps = min(steps, session['total_steps'] - run['current_step'])
 
-                run_outputs, run['current_step'], run['time'] = advance_steps(
+                run_outputs, run['current_step'], run['time'] = get_solver().advance(
                     run_model, session['regimens'], step_size, actual_steps,
                     run['current_step'], run['time'], output_variables, sim_start_date,
                 )

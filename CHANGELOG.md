@@ -6,6 +6,10 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+### Engine
+
+- Simulation, Monte Carlo and the optimizer advance a model through one `Solver` interface (`reference_engine/src/solver.py`, ADR 0163). The reference solver behaves as before. A registry with capability names lets a second solver be added without touching its callers.
+
 ### GUI
 
 - Toasts and confirmation boxes are drawn again. antd 5 draws `message`, `notification` and `Modal.confirm` through a render call that React 19 removed, so the notice after Copy link, an upload, a download or a finished run was never shown, and neither was the reason of a failed upload or download. `main.tsx` now hands antd the React 19 render, which is what `@ant-design/v5-patch-for-react-19` does.
