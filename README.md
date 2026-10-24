@@ -94,6 +94,7 @@ A run interface aimed at scripts and AI agents, with no need to start the backen
 python cli/main.py <model.yaml>              # runs both sim and opt
 python cli/main.py <model.yaml> --sim-only
 python cli/main.py <model.yaml> --opt-only
+python cli/main.py <model.yaml> --solver numba   # choose the solver: reference (default), fast, numba
 
 # Batch-run every model under a folder, generating batch_report.md
 python cli/batch.py --input-dir <models_folder>
@@ -122,6 +123,7 @@ The output is structured CSV plus logs, written to `output/<model name>/`. A com
 | [docs/requirements.md](docs/requirements.md) | The software requirements document |
 | [docs/opt.md](docs/opt.md) | The Optimizer's design and implementation (NSGA-II, scipy, embedded MC) |
 | [docs/cli.md](docs/cli.md) | An explanation of the CLI batch-run interface |
+| [docs/solvers.md](docs/solvers.md) | The solvers that advance a model (reference, fast, numba), how to choose one, their capabilities, and how to add one |
 | [docs/deploy_scs.md](docs/deploy_scs.md) | The SCS public-deployment guide (DigitalOcean and similar cloud hosts, systemd plus Nginx) |
 | [docs/evidence/conversion.md](docs/evidence/conversion.md) | Evidence's 8 subtype conversion equations and traceability fields (the authoritative implementation description) |
 | [docs/evidence/applies_to.md](docs/evidence/applies_to.md) | Evidence's `applies_to` mechanism for automatically wiring into dynamics |
@@ -131,6 +133,7 @@ The output is structured CSV plus logs, written to `output/<model name>/`. A com
 | [life-matters-models/models/test_fixtures/fixture_catalog.md](https://github.com/shenfan19/life-matters-models/blob/main/models/test_fixtures/fixture_catalog.md) | A complete overview of the test_fixtures fixtures: explaining each test case item by item, grouped by area, evidence/import/mc/opt/lm_score, etc. |
 | [docs/ui_guidelines.md](docs/ui_guidelines.md) | The frontend UI/UX design conventions (color tokens, i18n, responsiveness) |
 | [docs/data_flow.md](docs/data_flow.md) | The data-flow design |
+| [docs/architecture.md](docs/architecture.md) | The validation layer, the plugin system, the solvers, and the workbench as a core with modules |
 | [docs/decisions/README.md](docs/decisions/README.md) | An index of architecture decision records (ADRs) |
 
 ---
