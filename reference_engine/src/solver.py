@@ -10,6 +10,7 @@ needs a capability asks the registry for a solver that has it; the optimizer
 backends in optimizer_backends.py declare the capabilities they need the same way.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -137,3 +138,11 @@ register_solver(ReferenceSolver())
 
 from . import solver_fast  # noqa: E402,F401  (registers the fast solver)
 from . import solver_numba  # noqa: E402,F401  (registers the compiled solver when numba is installed)
+
+# LM_SOLVER picks the default solver of a whole process, the API server and the command line alike.
+import os as _os  # noqa: E402
+if _os.environ.get('LM_SOLVER'):
+    try:
+        set_default_solver(_os.environ['LM_SOLVER'])
+    except KeyError as _err:
+        logging.getLogger(__name__).warning("LM_SOLVER ignored: %s", _err.args[0])

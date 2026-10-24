@@ -67,6 +67,13 @@ def main() -> None:
             'Default: output/. Results are written to <output-dir>/<model-stem>/.'
         ),
     )
+    parser.add_argument(
+        '--solver', metavar='ID', default=None,
+        help=(
+            'Solver that advances the model: reference (default), fast, or numba when numba is '
+            'installed. Also set by the environment variable LM_SOLVER. See GET /api/solvers.'
+        ),
+    )
     args = parser.parse_args()
 
     run_sim_step = not args.opt_only
@@ -75,6 +82,15 @@ def main() -> None:
     if args.warm is not False and not run_opt_step:
         print('Error: --opt-continue requires the optimizer step (remove --sim-only).')
         sys.exit(1)
+
+    if args.solver:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from reference_engine.src.solver import set_default_solver
+        try:
+            set_default_solver(args.solver)
+        except KeyError as err:
+            print(f'Error: {err.args[0]}')
+            sys.exit(1)
 
     model_path = Path(args.model).resolve()
     if not model_path.exists():

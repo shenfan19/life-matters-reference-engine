@@ -135,3 +135,33 @@ def test_fast_histories_identical_and_faster_on_long_runs():
     assert compared >= 5
     print(f"{compared} models: reference {total['reference']:.2f}s, fast {total['fast']:.2f}s")
     assert total['fast'] < total['reference']
+
+
+def test_optimizer_on_each_solver_gives_the_same_front():
+    from reference_engine.src.optimizer_engine import run_optimizer
+    fronts = {}
+    for sid in ('reference', 'fast', 'numba'):
+        if sid not in {s['id'] for s in solver_mod.list_solvers()}:
+            continue
+        engine = ReferenceEngine(models_directory=str(MODELS))
+        r = run_optimizer(engine, 'test_fixtures/valid/test_valid_opt_t1_pareto',
+                          optimizer_override={'solver': sid, 'algorithm': {'population_size': 8, 'generations': 3, 'seed': 3}},
+                          progress_callback=lambda entry: False)
+        assert r['success'], r.get('error')
+        assert r['solver']['id'] == sid
+        fronts[sid] = [(tuple(p['x']), tuple(p['f'])) for p in r['pareto_front']]
+    ref = fronts['reference']
+    for sid, front in fronts.items():
+        assert len(front) == len(ref)
+        for (x1, f1), (x2, f2) in zip(ref, front):
+            assert x2 == pytest.approx(x1, rel=1e-9, abs=1e-12) and f2 == pytest.approx(f1, rel=1e-9, abs=1e-12)
+
+
+def test_environment_variable_and_unknown_default():
+    import subprocess, os
+    r = subprocess.run([sys.executable, '-c',
+                        'from reference_engine.src.solver import get_solver; print(get_solver().id)'],
+                       cwd=str(ROOT), capture_output=True, text=True, env={**os.environ, 'LM_SOLVER': 'fast'})
+    assert r.stdout.strip() == 'fast', r.stderr
+    with pytest.raises(KeyError):
+        solver_mod.set_default_solver('nope')
