@@ -14,38 +14,11 @@ import {
 import type { getC } from '../../core/theme';
 import type { BundlePlugin } from './usePlugins';
 
-export type BuiltinView = 'intro' | 'simulation' | 'optimization';
+export type BuiltinView = string;
 
 // The tips open to the right, over the toolbar of the main area. If the pointer could enter a tip it would stay open
 // and take the click meant for the button below it, so the tips let the pointer through.
 const NO_POINTER = { root: { pointerEvents: 'none' as const } };
-
-// Own icons for the three built-in views, drawn on a 24 by 24 grid in the current color.
-const svg = (children: React.ReactNode) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {children}
-  </svg>
-);
-
-const BUILTIN_ICONS: Record<BuiltinView, React.ReactNode> = {
-  // an eye: look over the whole model
-  intro: svg(<>
-    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
-    <circle cx="12" cy="12" r="3" />
-  </>),
-  // a trajectory: follow the model forward in time
-  simulation: svg(
-    <path d="M2.5 17c2.5-9 5.5-9 8 0s5.5 9 8 0" />
-  ),
-  // a target with an arrow: search for the best plan
-  optimization: svg(<>
-    <circle cx="11" cy="13" r="8" />
-    <circle cx="11" cy="13" r="4" />
-    <circle cx="11" cy="13" r="1" fill="currentColor" />
-    <path d="M21 3l-8 8M21 3h-4M21 3v4" />
-  </>),
-};
 
 // The order the user dragged the plugin buttons into, kept in the browser. Plugins that are not in
 // the saved list, such as a newly installed one, follow in the order their manifests ask for.
@@ -71,7 +44,7 @@ const PLUGIN_ICONS: Record<string, React.ReactNode> = {
 };
 
 interface Props {
-  builtins: { key: BuiltinView; label: string }[];
+  builtins: { key: BuiltinView; label: string; icon: React.ReactNode }[];
   plugins: BundlePlugin[];
   // the highlighted button: a built-in view, 'builder', or a plugin id
   activeId: string;
@@ -170,7 +143,7 @@ const ViewRail: React.FC<Props> = ({
       </Tooltip>
 
       {builtins.map(b => button({
-        key: b.key, label: b.label, icon: BUILTIN_ICONS[b.key],
+        key: b.key, label: b.label, icon: b.icon,
         active: activeId === b.key, locked: builderOpen,
         tip: builderOpen ? builderLockedTip : b.label,
         onClick: () => onSelectBuiltin(b.key),
