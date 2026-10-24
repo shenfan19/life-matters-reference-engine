@@ -27,7 +27,7 @@ import numpy as np
 from .model_structure.base import TIME_UNIT_SECONDS
 from .result import Trajectory
 from .schedule_runner import InputSignal, precompute_sustained_divisors
-from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, Solver, get_solver, register_solver
+from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_SNAPSHOT, CAP_STOCHASTIC, Solver, get_solver, register_solver
 from .solver_fast import _can_run_fast
 
 try:
@@ -142,7 +142,7 @@ def _compile(model, index):
 class NumbaSolver(Solver):
     id = 'numba'
     version = '1'
-    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC})
+    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, CAP_SNAPSHOT})
 
     def _execute(self, model, schedules, step_size, n_steps, start_time, output_variables, sim_start_date):
         """Run the compiled function. Returns (out, vals, times, index, vars_), or None when the run

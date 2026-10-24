@@ -189,3 +189,25 @@ def test_session_with_an_unknown_solver_fails_cleanly():
     r = engine.start_session('test_fixtures/valid/test_valid_pulse_reset_bounds_floor', time_hours=24.0,
                              step_size=3600.0, solver='nope')
     assert not r['success'] and 'nope' in r['error']
+
+
+@pytest.mark.parametrize('sid', ['reference', 'fast', 'numba'])
+def test_snapshot_and_restore_replay_the_same_future(sid):
+    if sid not in {s['id'] for s in solver_mod.list_solvers()}:
+        pytest.skip('solver not installed')
+    s = solver_mod.get_solver(sid)
+    assert solver_mod.CAP_SNAPSHOT in s.capabilities
+    engine = ReferenceEngine(models_directory=str(MODELS))
+    assert engine.load_models(['test_fixtures/valid/test_valid_pulse_reset_bounds_floor'])
+    model = engine.current_model
+    from reference_engine.src.schedule_runner import precompute_sustained_divisors
+    sched = precompute_sustained_divisors(
+        [{'variable': 'dose', 'events': [{'time_start': '08:00', 'value': 0.8}]}], 3600.0)
+    names = list(model.variables)
+    s.advance(model, sched, 3600.0, 10, 0, 0.0, names)
+    snap = s.snapshot(model)
+    first, _, _ = s.advance(model, sched, 3600.0, 30, 10, 10 * 3600.0, names)
+    s.restore(model, snap)
+    assert model.current_step == 10 and model.time == 10 * 3600.0
+    again, _, _ = s.advance(model, sched, 3600.0, 30, 10, 10 * 3600.0, names)
+    assert again == first

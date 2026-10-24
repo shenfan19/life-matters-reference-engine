@@ -55,6 +55,22 @@ class Solver(ABC):
         """`simulate`, reduced to the per-variable history the optimizer evaluates."""
         return self.simulate(model, schedules, step_size, n_steps, sim_start_date).history()
 
+    def snapshot(self, model) -> Dict:
+        """The state a run can be resumed from: every variable value, the step count and the time."""
+        return {
+            'values': {n: v.value for n, v in model.variables.items()},
+            'current_step': model.current_step,
+            'time': model.time,
+        }
+
+    def restore(self, model, snap: Dict) -> None:
+        """Put a model back to a state taken by `snapshot`, so a branch of the future can be tried again."""
+        for n, x in snap['values'].items():
+            model.variables[n].value = x
+            model.asteval.symtable[n] = x
+        model.current_step = snap['current_step']
+        model.time = snap['time']
+
     def info(self) -> Dict:
         return {'id': self.id, 'version': self.version, 'capabilities': sorted(self.capabilities)}
 
@@ -67,7 +83,7 @@ class ReferenceSolver(Solver):
 
     id = 'reference'
     version = '1'
-    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC})
+    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, CAP_SNAPSHOT})
 
     def advance(self, model, schedules, step_size, n_steps, start_step, start_time,
                 output_variables, sim_start_date=''):

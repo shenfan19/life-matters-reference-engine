@@ -17,7 +17,7 @@ from typing import Dict, List, Sequence, Tuple
 
 from .model_structure.base import TIME_UNIT_SECONDS
 from .schedule_runner import InputSignal
-from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, ReferenceSolver, Solver, register_solver
+from .solver import CAP_EVALUATE, CAP_EVENTS, CAP_SNAPSHOT, CAP_STOCHASTIC, ReferenceSolver, Solver, register_solver
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def _can_run_fast(model) -> bool:
 class FastSolver(Solver):
     id = 'fast'
     version = '1'
-    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC})
+    capabilities = frozenset({CAP_EVALUATE, CAP_EVENTS, CAP_STOCHASTIC, CAP_SNAPSHOT})
 
     def __init__(self):
         self._reference = ReferenceSolver()

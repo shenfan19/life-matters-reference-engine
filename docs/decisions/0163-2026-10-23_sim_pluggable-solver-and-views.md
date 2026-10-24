@@ -39,4 +39,8 @@ The conformance suite `test_verification/test_solver_fast.py` runs 101 models un
 
 **13. Choosing a solver in the GUI.** The toolbar shows a selector when the backend lists more than one solver (`GET /api/solvers`). The choice is kept in the browser (`lm_solver`), goes into the start request of every simulation (`solver`) and into the optimizer override, and a session keeps the solver it was started with. Without a choice the server default applies. The selector is disabled while a run is going.
 
-**14. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.
+**14. Snapshot and restore.** Every solver provides `snapshot(model)` and `restore(model, snap)`, the state a run can be resumed from (values, step count, time), and declares the `snapshot` capability. A branch of the future can be tried, the model put back and another tried, which receding-horizon control and tree search need. A test checks that the replay after a restore equals the first run on all three solvers.
+
+**15. Not done.** A differentiable solver needs JAX or a similar library, which is not a dependency of the engine; the `gradient` capability has no provider yet, so a gradient method would find no solver. The `batch` capability has none either. Bundle plugins for the simulation, optimization and editor views would need a message protocol for result streams and a write contract with a trust model, which ADR 0157 left open; they stay registered views.
+
+**16. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.
