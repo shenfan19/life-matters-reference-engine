@@ -147,6 +147,7 @@ from routes.simulation import router as simulation_router
 from routes.optimizer import router as optimizer_router
 from routes.converter import router as converter_router
 from routes.visits import router as visits_router
+from routes.solvers import router as solvers_router
 
 app.include_router(plugins_router)
 app.include_router(models_router)
@@ -155,6 +156,7 @@ app.include_router(simulation_router)
 app.include_router(optimizer_router)
 app.include_router(converter_router)
 app.include_router(visits_router)
+app.include_router(solvers_router)
 
 
 # ── Run ─────────────────────────────────────────────────────────────────────────

@@ -17,4 +17,6 @@ The engine had one way to advance a model through time and it was called directl
 
 **3. Capabilities.** A solver lists what it provides: `evaluate`, `batch`, `gradient`, `snapshot`, `events`, `stochastic`. `find_solvers(required)` returns the registered solvers that have all of them, so an optimizer that needs gradients is only offered a solver that has them. Only the reference solver is registered. The registry exists so a second solver can be added without touching the callers.
 
-**4. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.
+**4. The optimizer asks for a solver by capability.** `optimizer_backends.BACKEND_REQUIRES` lists what each search method needs from a solver, and `run_optimizer` calls `pick_solver` with it. The optimization block or the GUI override may name a solver with `solver:`, and a named solver that lacks a needed capability is refused with the missing ones listed. The result records `solver: {id, version, capabilities}`, because published results and validation grades depend on the solver that produced them. `GET /api/solvers` lists the registered solvers.
+
+**5. Not changed.** The meaning of the equations, the input semantics of ADR 0131 and ADR 0132, and the result format. A second solver has to reproduce the reference solver within a tolerance before it may be used for results that are published.

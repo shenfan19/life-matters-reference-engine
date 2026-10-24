@@ -100,4 +100,26 @@ def find_solvers(required: Sequence[str]) -> List[Solver]:
     return [s for s in _REGISTRY.values() if need <= s.capabilities]
 
 
+def pick_solver(required: Sequence[str], solver_id: Optional[str] = None) -> Solver:
+    """The solver a consumer with `required` capabilities runs on.
+
+    A named solver is used if it has the capabilities, otherwise the call fails with the
+    missing ones listed. Without a name the default solver is used if it fits, else the
+    first registered solver that does."""
+    need = set(required)
+    if solver_id:
+        chosen = get_solver(solver_id)
+        missing = need - chosen.capabilities
+        if missing:
+            raise ValueError(f"solver '{chosen.id}' lacks {sorted(missing)}")
+        return chosen
+    default = get_solver()
+    if need <= default.capabilities:
+        return default
+    fits = find_solvers(required)
+    if not fits:
+        raise ValueError(f"no registered solver provides {sorted(need)}")
+    return fits[0]
+
+
 register_solver(ReferenceSolver())

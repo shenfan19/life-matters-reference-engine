@@ -92,3 +92,34 @@ def test_solver_needs_an_id():
 
     with pytest.raises(ValueError):
         register_solver(Anonymous())
+
+
+def test_pick_solver_reports_missing_capability():
+    from reference_engine.src.solver import pick_solver
+    assert pick_solver(['evaluate']).id == 'reference'
+    with pytest.raises(ValueError):
+        pick_solver(['gradient'])
+    with pytest.raises(ValueError):
+        pick_solver(['gradient'], 'reference')
+
+
+def test_optimizer_runs_on_the_chosen_solver_and_records_it():
+    from reference_engine.src.optimizer_engine import run_optimizer
+    engine = ReferenceEngine(models_directory=str(ROOT / 'models'))
+    result = run_optimizer(engine, 'test_fixtures/valid/test_valid_opt_t1_single',
+                           optimizer_override={'algorithm': {'population_size': 6, 'generations': 2, 'seed': 1}},
+                           progress_callback=lambda entry: False)
+    assert result['success'], result.get('error')
+    assert result['solver']['id'] == 'reference'
+    assert 'evaluate' in result['solver']['capabilities']
+
+
+def test_solvers_endpoint():
+    sys.path.insert(0, str(ROOT / 'reference_engine'))
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routes.solvers import router
+    app = FastAPI()
+    app.include_router(router)
+    data = TestClient(app).get('/api/solvers').json()
+    assert data['success'] and data['solvers'][0]['id'] == 'reference'

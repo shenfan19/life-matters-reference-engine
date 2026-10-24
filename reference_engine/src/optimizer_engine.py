@@ -22,7 +22,8 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from .optimizer_parsing import _expand_time_window, _hhmm_to_min, _shift_time, _snap_to_step
 from .optimizer_eval import _run_sim, _eval_F, _eval_G
-from .optimizer_backends import _run_nsga2, _run_scipy
+from .optimizer_backends import _run_nsga2, _run_scipy, BACKEND_REQUIRES
+from .solver import pick_solver
 from .validation import validate_simulator_dates, validate_optimizer_regimens
 from .schedule_runner import resolve_time_interval
 
@@ -51,7 +52,7 @@ def run_optimizer(engine, model_name: str,
     # Apply frontend override (GUI state takes precedence over YAML defaults)
     if optimizer_override:
         for key in ('objectives', 'constraints', 'algorithm', 'method',
-                    'start_date', 'end_date', 'step_size', 'startpoint', 'mc'):
+                    'start_date', 'end_date', 'step_size', 'startpoint', 'mc', 'solver'):
             if key in optimizer_override:
                 opt_block[key] = optimizer_override[key]
 
@@ -343,6 +344,11 @@ def run_optimizer(engine, model_name: str,
     n_obj = len(objectives)
     n_con = len(constraints)
 
+    # ── solver: which computational core evaluates the candidates ─────────────
+    _backend = 'scipy' if (n_obj < 2 and method_raw in ('l-bfgs-b', 'l_bfgs_b', 'nelder-mead')) else 'nsga2'
+    solver = pick_solver(BACKEND_REQUIRES[_backend],
+                         (optimizer_override or {}).get('solver') or opt_block.get('solver'))
+
     # ── evaluation function ───────────────────────────────────────────────────
     rng_master = np.random.default_rng(mc_seed)
 
@@ -360,7 +366,7 @@ def run_optimizer(engine, model_name: str,
             if param_distributions:
                 run_rng = np.random.default_rng(int(rng_master.integers(0, 2**31)))
                 apply_parameter_sampling(m, param_distributions, rng=run_rng)
-            hist = _run_sim(m, events_map, step_size, total_steps, sim_start_date)
+            hist = _run_sim(m, events_map, step_size, total_steps, sim_start_date, solver_id=solver.id)
             F_accum += np.array(_eval_F(hist, objectives))
             if n_con:
                 G_accum += np.array(_eval_G(hist, constraints))
@@ -424,4 +430,5 @@ def run_optimizer(engine, model_name: str,
     result['regimen_event_labels'] = [e.get('label', f'Event {i+1}') for i, e in enumerate(reg_events)]
     result['decision_var_labels'] = decision_var_labels
     result['time_hours'] = time_hours
+    result['solver'] = solver.info()
     return result

@@ -11,6 +11,15 @@ from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
+# What each search method needs from the solver it evaluates on (see solver.py).
+# All current methods score a candidate by running it once and reading the trajectory,
+# so they only need black-box evaluation. A gradient method would list 'gradient' here
+# and only be offered a solver that provides it.
+BACKEND_REQUIRES = {
+    'nsga2': ('evaluate',),
+    'scipy': ('evaluate',),
+}
+
 
 # ── NSGA-II ────────────────────────────────────────────────────────────────────
 
