@@ -6,6 +6,8 @@ import SimPlotTab from '../sim_tab/SimPlotTab';
 import { PLAN_COLORS } from '../sim_tab/simUtils';
 import { WorkspacePage, ProgressStrip } from '../sim_tab/WorkspacePage';
 import type { Workbench } from '../Simulator/useWorkbench';
+import type { ViewDef } from './registry';
+import { svg } from './icons';
 import { buildToolbars } from './toolbars';
 
 const SimulationView: React.FC<{ wb: Workbench }> = ({ wb }) => {
@@ -72,4 +74,8 @@ const SimulationView: React.FC<{ wb: Workbench }> = ({ wb }) => {
   );
 };
 
-export default SimulationView;
+export const view: ViewDef = {
+  id: 'simulation', labelKey: 'sim.tab.simulation', order: 20, component: SimulationView,
+  // a trajectory: follow the model forward in time
+  icon: svg(<path d="M2.5 17c2.5-9 5.5-9 8 0s5.5 9 8 0" />),
+};

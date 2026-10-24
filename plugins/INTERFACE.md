@@ -252,6 +252,15 @@ Restart the backend, call `GET /api/plugins` — you should see `hello_world` li
 
 ---
 
+## 5b. Solvers and in-process views
+
+Two further extension points are not plugin folders. Both are described in ADR 0163.
+
+- **Solver**: a subclass of `Solver` in `reference_engine/src/solver.py` that implements `advance(...)` and lists its capabilities (`evaluate`, `batch`, `gradient`, `snapshot`, `events`, `stochastic`), added with `register_solver`. Simulation, Monte Carlo and the optimizer call the registered solver, and an optimizer backend names the capabilities it needs in `optimizer_backends.BACKEND_REQUIRES`. A solver used for published results has to reproduce the reference solver within a stated tolerance. `GET /api/solvers` lists what is registered.
+- **View**: a file `gui/src/components/views/<Name>View.tsx` that exports `view: ViewDef` (`id`, `labelKey`, `icon`, `order`, `component`). The component receives the workbench state `wb` from `useWorkbench`. The registry finds the file at build time, and a view with an icon gets a button on the view rail. A view that has to run in isolation, or comes from someone else, is a bundle plugin (`ui.type: bundle`) instead.
+
+---
+
 ## 6. Planned Plugins
 
 | Plugin | Status | Purpose |

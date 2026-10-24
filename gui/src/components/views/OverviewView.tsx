@@ -3,6 +3,8 @@
 import React from 'react';
 import SimIntroTab from '../sim_tab/SimIntroTab';
 import type { Workbench } from '../Simulator/useWorkbench';
+import type { ViewDef } from './registry';
+import { svg } from './icons';
 import { buildToolbars } from './toolbars';
 
 const OverviewView: React.FC<{ wb: Workbench }> = ({ wb }) => {
@@ -34,4 +36,11 @@ const OverviewView: React.FC<{ wb: Workbench }> = ({ wb }) => {
   );
 };
 
-export default OverviewView;
+export const view: ViewDef = {
+  id: 'intro', labelKey: 'sim.tab.overview', order: 10, component: OverviewView,
+  // an eye: look over the whole model
+  icon: svg(<>
+    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </>),
+};

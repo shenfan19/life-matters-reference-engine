@@ -5,6 +5,8 @@ import OptSetupTab from '../opt_tab/OptSetupTab';
 import SimOptTab from '../sim_tab/SimOptTab';
 import { WorkspacePage, ProgressStrip } from '../sim_tab/WorkspacePage';
 import type { Workbench } from '../Simulator/useWorkbench';
+import type { ViewDef } from './registry';
+import { svg } from './icons';
 import { buildToolbars } from './toolbars';
 
 const OptimizationView: React.FC<{ wb: Workbench }> = ({ wb }) => {
@@ -76,4 +78,13 @@ const OptimizationView: React.FC<{ wb: Workbench }> = ({ wb }) => {
   );
 };
 
-export default OptimizationView;
+export const view: ViewDef = {
+  id: 'optimization', labelKey: 'sim.tab.optimization', order: 30, component: OptimizationView,
+  // a target with an arrow: search for the best plan
+  icon: svg(<>
+    <circle cx="11" cy="13" r="8" />
+    <circle cx="11" cy="13" r="4" />
+    <circle cx="11" cy="13" r="1" fill="currentColor" />
+    <path d="M21 3l-8 8M21 3h-4M21 3v4" />
+  </>),
+};
