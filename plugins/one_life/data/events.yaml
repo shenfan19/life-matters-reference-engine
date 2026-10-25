@@ -1,0 +1,218 @@
+# The event deck. Every year, for every event the card can meet, one chance decides whether it happens that year,
+# and the chances come from the seed of the life alone. Two lives with the same seed meet the same events
+# at the same weeks, whatever the player chooses.
+#
+# tags_any:  the card needs at least one of these tags. Left out means every card.
+# p_year:    chance per year, multiplied by `tag_mult` for every tag of the card that appears there.
+# age:       the event can only happen at these ages.
+# weeks:     the duration is drawn between these two numbers of weeks.
+# effects:   what the event does to the inputs of the body model while it lasts. `set` replaces the value,
+#            `add` shifts it and `mul` scales it. Several events at once apply in order.
+# decision:  optional. The player picks one option, and the option's effects replace the event's effects.
+#            `default` is used until the player picks.
+
+events:
+  harvest_failure:
+    tags_any: [agrarian]
+    p_year: 0.06
+    age: [18, 100]
+    weeks: [16, 40]
+    title: {en: Harvest failure, zh: 歉收}
+    text:
+      en: The rains came wrong. The granary will not last until the next harvest.
+      zh: 雨水不对时节，粮仓撑不到下一季收成。
+    effects:
+      energy_intake: {mul: 0.65}
+      dietary_restraint: {set: 1.0}
+      diet_quality: {add: -0.1}
+      vitamin_c_mg: {mul: 0.6}
+    decision:
+      default: endure
+      options:
+        endure:
+          title: {en: Stay and tighten the belt, zh: 留下来勒紧腰带}
+          text: {en: You eat less and keep the land., zh: 少吃，守着地。}
+          effects:
+            energy_intake: {mul: 0.65}
+            dietary_restraint: {set: 1.0}
+            diet_quality: {add: -0.1}
+            vitamin_c_mg: {mul: 0.6}
+        migrate:
+          title: {en: Walk to the nearest town, zh: 走去最近的城镇}
+          text: {en: Alms and day labour feed you better, and the town is crowded and its water is worse., zh: 乞讨和打零工能多吃一点，但城里拥挤，水也更差。}
+          effects:
+            energy_intake: {mul: 0.85}
+            dietary_restraint: {set: 1.0}
+            crowding: {add: 0.25}
+            water_safety: {add: -0.15}
+            pathogen_challenge: {add: 0.15}
+
+  good_harvest:
+    tags_any: [agrarian]
+    p_year: 0.1
+    age: [18, 100]
+    weeks: [20, 40]
+    title: {en: A good year, zh: 丰年}
+    text:
+      en: The harvest is full. There is meat at the feast and fruit in the store.
+      zh: 收成饱满，节日里有肉，窖里有水果。
+    effects:
+      energy_intake: {mul: 1.1}
+      diet_quality: {add: 0.1}
+      vitamin_c_mg: {mul: 1.4}
+
+  epidemic_wave:
+    tags_any: [premodern]
+    p_year: 0.03
+    tag_mult: {urban: 1.8, maritime: 1.3}
+    age: [18, 100]
+    weeks: [8, 30]
+    title: {en: Epidemic, zh: 瘟疫流行}
+    text:
+      en: A sickness that kills in days has reached the neighbourhood.
+      zh: 一种几天内就要命的病到了附近。
+    effects:
+      epidemic_pressure: {set: 1.0}
+    decision:
+      default: stay
+      options:
+        stay:
+          title: {en: Stay where you live, zh: 留在原地}
+          text: {en: Your work, your home and your neighbours are here., zh: 活计、住处和邻居都在这里。}
+          effects:
+            epidemic_pressure: {set: 1.0}
+        flee:
+          title: {en: Leave for the countryside, zh: 出走到乡下}
+          text: {en: Fewer contacts, and no income and an uncertain welcome on the road., zh: 接触少得多，但没有收入，路上也难说被不被接纳。}
+          effects:
+            epidemic_pressure: {set: 0.35}
+            crowding: {add: -0.3}
+            energy_intake: {mul: 0.85}
+            dietary_restraint: {set: 1.0}
+            diet_quality: {add: -0.05}
+
+  conscription_war:
+    tags_any: [war_prone]
+    p_year: 0.05
+    age: [18, 45]
+    weeks: [26, 52]
+    title: {en: Called up, zh: 被征召}
+    text:
+      en: An army needs men, and the officer has a list.
+      zh: 军队要人，军官手里有一张名册。
+    effects:
+      injury_exposure: {set: 0.8}
+      crowding: {set: 0.9}
+      water_safety: {add: -0.2}
+      stress_load: {set: 0.8}
+    decision:
+      default: serve
+      options:
+        serve:
+          title: {en: Go with the column, zh: 随队出征}
+          text: {en: Rations and a place in the line, wounds and camp fever., zh: 有口粮，有队列里的位置，也有伤和营中发热。}
+          effects:
+            injury_exposure: {set: 0.8}
+            crowding: {set: 0.9}
+            water_safety: {add: -0.2}
+            stress_load: {set: 0.8}
+        hide:
+          title: {en: Hide in the hills, zh: 躲进山里}
+          text: {en: No battle, and a thin winter on what you can gather., zh: 不上战场，但冬天只能靠采集，吃得很少。}
+          effects:
+            injury_exposure: {set: 0.1}
+            energy_intake: {mul: 0.7}
+            dietary_restraint: {set: 1.0}
+            vitamin_c_mg: {mul: 0.7}
+            stress_load: {set: 0.7}
+
+  local_outbreak:
+    tags_any: [premodern]
+    p_year: 0.07
+    tag_mult: {urban: 1.5}
+    age: [18, 100]
+    weeks: [3, 8]
+    title: {en: Bloody flux in the quarter, zh: 街坊里闹痢疾}
+    text:
+      en: The well is fouled and half the street is sick.
+      zh: 井水被污染，半条街的人都病了。
+    effects:
+      pathogen_challenge: {set: 0.8}
+      water_safety: {add: -0.2}
+
+  serious_injury:
+    tags_any: [agrarian, maritime, mining, war_prone]
+    p_year: 0.02
+    age: [18, 70]
+    weeks: [4, 12]
+    title: {en: A serious injury, zh: 一次重伤}
+    text:
+      en: A fall, a blade, a rope that gave way.
+      zh: 一次摔落、一把刀、一根断掉的绳子。
+    effects:
+      injury_exposure: {set: 1.0}
+      stress_load: {add: 0.2}
+
+  malaria_season:
+    tags_any: [malarial]
+    p_year: 0.2
+    age: [18, 100]
+    weeks: [8, 20]
+    title: {en: A wet season of fevers, zh: 一个多发热的雨季}
+    text:
+      en: The standing water is wider than usual and the nights are loud with mosquitoes.
+      zh: 积水比往年更宽，夜里满是蚊子的嗡鸣。
+    effects:
+      vector_exposure: {add: 0.3}
+
+  flu_season:
+    tags_any: [modern]
+    p_year: 0.6
+    age: [18, 100]
+    weeks: [1, 3]
+    title: {en: A bad winter flu, zh: 一场厉害的冬季流感}
+    text:
+      en: A week in bed, then a slow week back.
+      zh: 床上躺一周，再慢慢缓一周。
+    effects:
+      pathogen_challenge: {set: 0.25}
+
+  job_strain:
+    tags_any: [modern]
+    p_year: 0.12
+    age: [22, 65]
+    weeks: [20, 52]
+    title: {en: A year of pressure at work, zh: 工作上高压的一年}
+    text:
+      en: A restructuring, a new boss, long evenings.
+      zh: 一次重组，一位新上司，晚上总要加班。
+    effects:
+      stress_load: {add: 0.25}
+      sleep_hours: {add: -0.7}
+    decision:
+      default: push_through
+      options:
+        push_through:
+          title: {en: Push through, zh: 硬扛过去}
+          text: {en: The role stays yours., zh: 位置保住。}
+          effects:
+            stress_load: {add: 0.25}
+            sleep_hours: {add: -0.7}
+        take_leave:
+          title: {en: Take a leave and change roles, zh: 休一段假并换岗位}
+          text: {en: Less pressure, and a smaller income for a while., zh: 压力小得多，收入暂时也少一些。}
+          effects:
+            stress_load: {add: 0.05}
+            sleep_hours: {add: -0.2}
+
+  road_trauma:
+    tags_any: [modern]
+    p_year: 0.015
+    age: [18, 85]
+    weeks: [2, 8]
+    title: {en: A road accident, zh: 一次交通事故}
+    text:
+      en: A collision that was nobody's plan.
+      zh: 一次谁也没有预料的碰撞。
+    effects:
+      injury_exposure: {set: 0.6}

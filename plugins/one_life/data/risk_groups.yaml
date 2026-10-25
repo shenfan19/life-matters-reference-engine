@@ -1,0 +1,33 @@
+# Names for the parts of the risk of death. The body model writes the yearly risk of death as an age term,
+# a lifestyle multiplier made of many terms, and a disease term made of burdens. The plugin splits the
+# expressions of the model into their terms and names every term by the first variable it reads that is listed here.
+# A term that reads no listed variable is named by its first variable, and a term without variables is `constant`.
+
+disease:
+  enteric_burden: {group: enteric, title: {en: Intestinal infection, zh: 肠道感染}}
+  tb_burden: {group: tb, title: {en: Tuberculosis, zh: 结核}}
+  malaria_burden: {group: malaria, title: {en: Malaria, zh: 疟疾}}
+  helminth_burden: {group: helminth, title: {en: Worm infection, zh: 寄生虫}}
+  wound_burden: {group: wound, title: {en: Wound infection, zh: 外伤感染}}
+  epidemic_burden: {group: epidemic, title: {en: Epidemic, zh: 流行病}}
+  scurvy_index: {group: scurvy, title: {en: Scurvy, zh: 坏血病}}
+  beriberi_index: {group: beriberi, title: {en: Beriberi, zh: 脚气病}}
+
+lifestyle:
+  sleep_hours: {group: sleep, title: {en: Sleep, zh: 睡眠}}
+  vo2max_rel: {group: fitness, title: {en: Fitness, zh: 心肺体能}}
+  bmi: {group: weight, title: {en: Body weight, zh: 体重}}
+  smoke_hist: {group: smoking, title: {en: Smoking, zh: 吸烟}}
+  systolic_bp: {group: blood_pressure, title: {en: Blood pressure, zh: 血压}}
+  hba1c: {group: glucose, title: {en: Blood sugar, zh: 血糖}}
+  alcohol_g: {group: alcohol, title: {en: Alcohol, zh: 酒精}}
+  crp: {group: inflammation, title: {en: Inflammation, zh: 炎症}}
+  gfr_effective: {group: kidney, title: {en: Kidney function, zh: 肾功能}}
+  aerobic_min: {group: activity, title: {en: Physical activity, zh: 体力活动}}
+  resistance_min: {group: activity, title: {en: Physical activity, zh: 体力活动}}
+  sex_female: {group: sex, title: {en: Sex reference, zh: 性别参照}}
+
+age:
+  title: {en: Age, zh: 年龄}
+constant:
+  title: {en: Model baseline, zh: 模型基线}

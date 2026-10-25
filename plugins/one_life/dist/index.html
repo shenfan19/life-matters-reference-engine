@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Life</title>
+<style>
+  :root { --bg: #ffffff; --panel: #f7f8fa; --text: #1f2933; --mute: #6b7785; --primary: #007A33; --border: #dde1e6; --danger: #b5483a; --soft: #eef0f3;
+          --s0: #1f2933; --s1: #2f6f9f; --s2: #c9772b; --s3: #3f8f4f; --s4: #8a63b3; --s5: #b5483a; --grid: #e3e6ea; --health: #8c99a6; }
+  :root[data-theme="dark"] { --bg: #141414; --panel: #1b1b1b; --text: #f0f0f0; --mute: #98a2ad; --primary: #52c41a; --border: #303030; --danger: #e0786a; --soft: #232323;
+          --s0: #f0f0f0; --s1: #6aa9d8; --s2: #e0a060; --s3: #6cc27d; --s4: #b392d9; --s5: #e0786a; --grid: #2a2a2a; --health: #7d8894; }
+  html, body { margin: 0; width: 100%; min-height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; box-sizing: border-box; }
+  * { box-sizing: border-box; }
+  #root { width: 100%; padding: 12px 16px 40px; }
+  #top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; }
+  #top h1 { margin: 0; font-size: 18px; color: var(--primary); }
+  .grow { flex: 1 1 auto; }
+  .mute { color: var(--mute); }
+  .small { font-size: 12px; }
+  .mono { font-family: "Cascadia Mono", Consolas, monospace; }
+  h2 { font-size: 16px; margin: 0 0 6px; }
+  h3 { font-size: 14px; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  .btn { font: inherit; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 12px; cursor: pointer; }
+  .btn:hover:not(:disabled) { border-color: var(--text); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.primary { color: var(--primary); border-color: var(--primary); font-weight: 600; }
+  .btn.on { background: var(--soft); border-color: var(--text); font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .cols { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .cols > .col { flex: 1 1 340px; min-width: 0; }
+  .cols > .wide { flex: 2 1 480px; min-width: 0; }
+  .card { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); padding: 10px 12px; margin-bottom: 12px; }
+  .card.plain { background: var(--bg); }
+  input[type=text], select { font: inherit; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; min-width: 12ch; }
+  .packs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pack { flex: 1 1 260px; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; background: var(--panel); cursor: pointer; }
+  .pack.on { border-color: var(--primary); outline: 1px solid var(--primary); outline-offset: -1px; }
+  .pack h3 { margin: 0 0 4px; }
+  .bar { height: 8px; background: var(--soft); border-radius: 4px; position: relative; overflow: hidden; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--s1); border-radius: 4px; }
+  .bar.bad > i { background: var(--s5); }
+  .bar.good > i { background: var(--s3); }
+  .meter { display: grid; grid-template-columns: minmax(9ch, 1.2fr) 2fr minmax(7ch, 0.8fr); gap: 4px 8px; align-items: center; font-size: 12px; }
+  .lever { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+  .lever > .head { flex: 1 1 100%; }
+  .lever .chips { margin-top: 0; flex: 1 1 200px; }
+  .lever:first-of-type { border-top: 0; }
+  .lever.off { opacity: 0.45; }
+  .pips { display: flex; gap: 4px; }
+  .pip { width: 26px; height: 26px; border-radius: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+  .pip.on { background: var(--primary); border-color: var(--primary); color: var(--bg); }
+  .pip:disabled { opacity: 0.35; cursor: default; }
+  .opt { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+  .opt:hover { border-color: var(--primary); }
+  .opt b { display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chip { font-size: 11px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--mute); }
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { display: flex; gap: 10px; padding: 4px 0; border-top: 1px solid var(--border); }
+  .log li:first-child { border-top: 0; }
+  .log .age { flex: 0 0 5ch; color: var(--mute); text-align: right; }
+  .big { font-size: 28px; font-weight: 600; line-height: 1.2; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--mute); font-weight: 500; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--primary); }
+  .neg { color: var(--danger); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--mute); margin-top: 4px; }
+  .legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--c, var(--s0)); margin-right: 5px; vertical-align: middle; }
+  .legend span.dash::before { border-top-style: dashed; }
+  svg text { fill: var(--mute); font: 11px "Segoe UI", "Microsoft YaHei", sans-serif; }
+  svg .grid { stroke: var(--grid); stroke-width: 1; }
+  svg .axis { stroke: var(--border); stroke-width: 1; }
+  svg .ev { stroke: var(--mute); stroke-width: 1; stroke-dasharray: 2 3; }
+  svg .readout { fill: var(--text); }
+  #busy { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.25); display: flex; align-items: center; justify-content: center; z-index: 20; }
+  #busy[hidden], .modal[hidden] { display: none; }
+  #busy .box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; display: flex; gap: 12px; align-items: center; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 30; display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; }
+  .modal .sheet { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; width: min(760px, 100%); }
+  .err { color: var(--danger); margin: 6px 0; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="top">
+    <h1 id="title"></h1>
+    <span class="grow"></span>
+    <button class="btn" id="restartBtn" hidden></button>
+    <button class="btn" id="langBtn"></button>
+    <button class="btn" id="aboutBtn"></button>
+  </div>
+  <div id="app"></div>
+</div>
+<div id="busy" hidden><div class="box"><div class="spinner"></div><div id="busyText"></div></div></div>
+<div id="about" class="modal" hidden><div class="sheet"><div id="aboutBody"></div><div class="row" style="margin-top:10px"><button class="btn" id="aboutClose"></button></div></div></div>
+<script>
+(function () {
+  'use strict';
+  const PLUGIN = 'one_life';
+  const q = new URLSearchParams(location.search);
+  const $ = id => document.getElementById(id);
+
+  // ---- text ---------------------------------------------------------------------------------------------
+  const TEXT = {
+    en: {
+      title: 'One Life', about: 'About the numbers', close: 'Close', langName: '中文',
+      tagline: 'Draw a birth. Live it on the virtual human. Then see what a different choice would have done under the same luck.',
+      loadingCatalog: 'Loading ...', modelMissing: 'The body model could not be loaded: ',
+      packH: 'What to live', worldH: 'Where to be born', worlds: { all: 'Anywhere in history', history: 'The past', modern: 'The present' },
+      years: n => n + ' years', startsAt: n => 'from age ' + n, seedH: 'Luck', seedText: 'The seed fixes the birth, the events and the fate line.', reroll: 'Draw again',
+      born: 'Be born', codeH: 'Pick up a life', codePlaceholder: 'Paste a life code', codeLoad: 'Load', codeBad: 'That is not a life code.',
+      busyRun: 'Living these years ...', busyCompare: 'Living the same life again, differently ...', busyDeath: 'Counting the ways ...',
+      man: 'a man', woman: 'a woman', bornAs: (card, sex) => 'Born as ' + sex + ': ' + card,
+      childChance: p => 'Chance of living through childhood: ' + p + '%.', childOk: 'You did.', childLost: 'You did not.',
+      childDeathH: age => 'Died in childhood, at ' + age,
+      childDeathText: 'This birth card gives a child less than even odds in some places and times. The body model starts at eighteen, so what happens before is a lookup and not a simulation.',
+      envH: 'Where you start', best: 'best reachable', limits: 'The limits of this place', envNote: 'Value now / best reachable here.',
+      ageNow: 'Age', poiNow: 'Chance of being alive',
+      phaseH: (a, b) => 'Ages ' + a + ' to ' + b, postureIntro: 'Set how you live these years. Points come from work and are spent on what protects the body.',
+      workH: 'Work', points: (inc, spent, left) => 'Livelihood points ' + inc + ', spent ' + spent + ', left ' + left,
+      noEffect: 'Nothing to gain here in this place', liveBtn: 'Live these years',
+      eventH: 'Something happens', eventWeeks: n => 'lasts about ' + n + ' weeks', mishapChip: (p, t) => p + '% chance of: ' + t, mishapHappened: t => 'It went wrong. ' + t,
+      outlookNote: 'Dashed: what to expect if you carry on and nothing unexpected happens.',
+      oddsNow: m => 'If you carry on like this, half of such lives reach ' + m + '.',
+      chartY: 'Chance of still being alive', chartHealth: 'Health score (right)', legendLife: 'Lived', legendOutlook: 'Outlook, no surprises', legendGhost: 'The same life carried on, for the odds', legendHealth: 'Health score', legendFate: 'Fate line',
+      logH: 'What happened', logNone: 'Nothing yet.', chose: t => 'You chose: ' + t,
+      diedAt: age => 'Died at ' + age, completedAt: age => 'Run complete at age ' + age, completedText: (sav, h) => 'You leave with ' + sav + ' unspent livelihood points and a health score of ' + h + '.',
+      lastYears: 'In the last two years', wholeLife: 'Over the whole life', heldDown: 'Held the risk down',
+      sourcesNote: 'Shares of the yearly risk of death in the body model, split with the model equations. The lifestyle part is shared among its terms in proportion to their log ratio, which is a convention and not a diagnosis.',
+      luckH: 'Luck and choices',
+      luck1: (m, a, b) => 'With these choices and these events, half of such lives reach ' + m + ', a quarter reach ' + b + ' and three quarters reach ' + a + '.',
+      luck2: n => 'This life lasted longer than about ' + n + ' in 100 such lives. The rest ended sooner, under the same choices and events.',
+      luckNone: 'The chance curve never fell far enough to show a median.',
+      whatIf: 'What if', whatIfText: 'The same seed keeps the events and the fate line. Only what you change moves.',
+      sweep: 'Where would the points have mattered most?', sweepText: 'Each variant puts every point of every phase into one thing.',
+      allIn: name => 'All points into ' + name, flip: (ev, opt) => ev + ': ' + opt,
+      elsewhere: 'Born elsewhere, same luck', elsewhereRun: 'Live it there', pickCard: 'Pick a birth',
+      thVariant: 'Variant', thDeath: 'Age at death', thChange: 'Change', thMedian: 'Median age', thEnd: 'Alive at the end', thHealth: 'Health at the end', thSavings: 'Unspent points',
+      baseName: 'As lived', noDeath: 'did not die', share: 'Life code', copy: 'Copy', copied: 'Copied', again: 'Live another life',
+      stateAtDeath: 'The body at the end',
+      aboutTitle: 'What these numbers are',
+      aboutLayers: [
+        'Three layers. The birth and the childhood are a lookup: a card with a hand-set chance of reaching eighteen. From eighteen on the life is the virtual human of this engine, run week by week on the inputs your choices and the events set. The events are drawn from the seed, so luck is the same in every replay.',
+        'Death is one number. The fate line is drawn once from the seed, and the person dies in the first week where the model chance of being alive falls to that line. A different choice changes the curve and not the line, which is why a replay is a fair comparison.',
+        'Livelihood points are a game device. They stand for what a household can put into food, care, housing, rest and exercise, and each place sets how far they can reach.'
+      ],
+      limitsH: 'Limits',
+    },
+    zh: {
+      title: '一生', about: '这些数字是什么', close: '关闭', langName: 'English',
+      tagline: '抽一个出生，在虚拟人身上把它过完，再看同样的运气下换一个选择会怎样。',
+      loadingCatalog: '加载中 ...', modelMissing: '身体模型无法加载：',
+      packH: '过什么样的人生', worldH: '出生在哪里', worlds: { all: '历史上任何地方', history: '过去', modern: '现在' },
+      years: n => n + ' 年', startsAt: n => '从 ' + n + ' 岁起', seedH: '运气', seedText: '种子决定出身、事件和命运线。', reroll: '重抽',
+      born: '出生', codeH: '接着一个人生', codePlaceholder: '粘贴人生码', codeLoad: '载入', codeBad: '这不是一个人生码。',
+      busyRun: '正在过这几年 ...', busyCompare: '正在用另一种方式把同一生再过一遍 ...', busyDeath: '正在清点 ...',
+      man: '男性', woman: '女性', bornAs: (card, sex) => '出生为' + sex + '：' + card,
+      childChance: p => '活过童年的机会：' + p + '%。', childOk: '你活过来了。', childLost: '你没有活过来。',
+      childDeathH: age => '童年夭折，' + age + ' 岁',
+      childDeathText: '这个出身在某些地方和时代里，孩子活下来的机会不到一半。身体模型从十八岁开始，所以之前只是查表，不是仿真。',
+      envH: '你从哪里开始', best: '可达到的最好', limits: '这个地方的上限', envNote: '当前值 / 这里能达到的最好。',
+      ageNow: '年龄', poiNow: '仍然活着的机会',
+      phaseH: (a, b) => a + ' 到 ' + b + ' 岁', postureIntro: '决定这几年怎么过。生计点来自劳作，花在保护身体的事上。',
+      workH: '劳作', points: (inc, spent, left) => '生计点 ' + inc + '，已花 ' + spent + '，剩 ' + left,
+      noEffect: '在这个地方花了也没有用', liveBtn: '过这几年',
+      eventH: '出了一件事', eventWeeks: n => '大约持续 ' + n + ' 周', mishapChip: (p, t) => p + '% 的可能：' + t, mishapHappened: t => '出了岔子。' + t,
+      outlookNote: '虚线：如果照这样过下去且没有意外，会是什么样。',
+      oddsNow: m => '照这样过下去，这样的人生有一半活到 ' + m + '。',
+      chartY: '仍然活着的机会', chartHealth: '健康评分（右）', legendLife: '已经过的', legendOutlook: '展望，没有意外', legendGhost: '同一生继续下去，用来算概率', legendHealth: '健康评分', legendFate: '命运线',
+      logH: '发生过的事', logNone: '还没有。', chose: t => '你选了：' + t,
+      diedAt: age => age + ' 岁去世', completedAt: age => '在 ' + age + ' 岁走完这一段', completedText: (sav, h) => '你带着 ' + sav + ' 点没花完的生计点和 ' + h + ' 的健康评分离开。',
+      lastYears: '最后两年', wholeLife: '整个一生', heldDown: '压低了风险的',
+      sourcesNote: '身体模型里年死亡风险的构成，用模型方程拆开。生活方式部分按各项在对数风险比里的占比分摊，这是一种约定，不是诊断。',
+      luckH: '运气与选择',
+      luck1: (m, a, b) => '在这些选择和这些事件下，这样的人生有一半活到 ' + m + '，四分之一活到 ' + b + '，四分之三活到 ' + a + '。',
+      luck2: n => '这一生比大约 ' + n + '% 的同类人生活得更久。',
+      luckNone: '存活机会曲线没有降到足够低，无法给出中位数。',
+      whatIf: '如果', whatIfText: '同一个种子保持事件和命运线不变，只有你改的地方在动。',
+      sweep: '点数花在哪里最值？', sweepText: '每个变体把每个阶段的全部点数都投进同一件事。',
+      allIn: name => '全部点数投入' + name, flip: (ev, opt) => ev + '：' + opt,
+      elsewhere: '出生在别处，运气相同', elsewhereRun: '在那里过一遍', pickCard: '选一个出身',
+      thVariant: '变体', thDeath: '去世年龄', thChange: '变化', thMedian: '中位年龄', thEnd: '结束时仍活着', thHealth: '结束时健康评分', thSavings: '没花完的点数',
+      baseName: '实际过的', noDeath: '没有去世', share: '人生码', copy: '复制', copied: '已复制', again: '再过一生',
+      stateAtDeath: '最后的身体状态',
+      aboutTitle: '这些数字是什么',
+      aboutLayers: [
+        '三层。出生和童年是查表：一张出身卡，带一个手工设定的活到十八岁的机会。十八岁之后，人生就是本引擎的虚拟人，在你的选择和事件设定的输入上按周运行。事件由种子抽出，所以每次回放运气都一样。',
+        '死亡只是一个数。命运线由种子一次抽出，模型给出的存活机会在哪一周降到这条线，这个人就在哪一周去世。换一个选择改变的是曲线而不是线，所以回放是公平的比较。',
+        '生计点是游戏手段。它代表一个家庭能投到饮食、医疗、住所、休息和锻炼上的力量，每个地方各自设定它能达到多高。'
+      ],
+      limitsH: '局限',
+    }
+  };
+  let lang = (q.get('lang') || navigator.language || 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  const T = (key, ...args) => { const v = (TEXT[lang][key] !== undefined ? TEXT[lang][key] : TEXT.en[key]); return typeof v === 'function' ? v(...args) : v; };
+  const tx = obj => (obj && (obj[lang] || obj.en)) || '';
+
+  // ---- state --------------------------------------------------------------------------------------------
+  const S = {
+    cat: null, error: '', busy: 0, busyText: '',
+    pack: 'full_life', world: 'all', seed: randomSeed(), codeText: '', codeError: false,
+    life: null, result: null, draft: null, token: 0,
+    compare: null, about: false,
+  };
+  function randomSeed() { return Math.floor(Math.random() * 2147483647); }
+
+  // ---- helpers ------------------------------------------------------------------------------------------
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'style') el.setAttribute('style', v);
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'value') el.value = v;
+      else if (v === true) el.setAttribute(k, '');
+      else el.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      el.appendChild(typeof kid === 'string' || typeof kid === 'number' ? document.createTextNode(String(kid)) : kid);
+    }
+    return el;
+  }
+  const NS = 'http://www.w3.org/2000/svg';
+  function svg(tag, attrs, ...kids) {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null) el.setAttribute(k, v);
+    for (const kid of kids.flat()) if (kid) el.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+    return el;
+  }
+  const pct = x => Math.round(x * 100);
+  function fmt(v) {
+    if (v === null || v === undefined) return '';
+    const a = Math.abs(v);
+    return a >= 100 ? String(Math.round(v)) : a >= 10 ? String(Math.round(v * 10) / 10) : String(Math.round(v * 100) / 100);
+  }
+  function inputLabel(name) { const e = S.cat.labels.inputs[name]; return e ? tx(e.title) : name; }
+  function cardTitle(id) { return tx(S.cat.cards[id].title); }
+  function riskTitle(row) {
+    const t = S.cat.risk_titles[row.name];
+    return t ? tx(t) : row.name;
+  }
+  function effectText(variable, op) {
+    const [kind, amount] = Object.entries(op)[0];
+    const sign = kind === 'set' ? '= ' + fmt(amount) : kind === 'add' ? (amount >= 0 ? '+ ' : '− ') + fmt(Math.abs(amount)) : '× ' + fmt(amount);
+    return inputLabel(variable) + ' ' + sign;
+  }
+  function encodeLife(life) { return btoa(unescape(encodeURIComponent(JSON.stringify(life)))); }
+  function decodeLife(code) {
+    const life = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+    if (!life || typeof life.seed !== 'number') throw new Error('bad');
+    return life;
+  }
+
+  async function api(endpoint, inputs, text) {
+    S.busy += 1; S.busyText = text || T('busyRun'); drawBusy();
+    try {
+      const res = await fetch('/api/plugins/' + PLUGIN + '/' + endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      if (data.success === false) throw new Error(data.error || 'failed');
+      return data;
+    } finally { S.busy -= 1; drawBusy(); }
+  }
+  function drawBusy() { $('busy').hidden = S.busy <= 0; $('busyText').textContent = S.busyText; }
+
+  // ---- chart --------------------------------------------------------------------------------------------
+  function seriesPaths(points, x, y) {
+    // The lived part and the outlook are drawn as separate paths that share their joint.
+    const paths = []; let cur = null;
+    points.forEach((p, i) => {
+      const zone = p.zone === 'life' ? 'life' : 'outlook';
+      if (!cur || cur.zone !== zone) {
+        const prev = cur ? cur.last : null;
+        cur = { zone, d: [], last: null };
+        if (prev) { cur.d.push(prev); }
+        paths.push(cur);
+      }
+      const pt = [x(p.age), y(p.survival)];
+      cur.d.push(pt); cur.last = pt;
+    });
+    return paths.map(p => ({ zone: p.zone, d: 'M' + p.d.map(pt => pt[0].toFixed(1) + ' ' + pt[1].toFixed(1)).join(' L') }));
+  }
+  function chart(opts) {
+    const width = Math.max(320, opts.width || 640), height = opts.height || 280;
+    const m = { l: 40, r: 38, t: 10, b: 28 };
+    const x0 = opts.startAge, x1 = Math.max(opts.endAge, x0 + 5);
+    const x = a => m.l + (a - x0) / (x1 - x0) * (width - m.l - m.r);
+    const y = s => m.t + (1 - s) * (height - m.t - m.b);
+    const root = svg('svg', { viewBox: '0 0 ' + width + ' ' + height, width: '100%', height: height, role: 'img' });
+    for (const s of [0, 0.25, 0.5, 0.75, 1]) {
+      root.appendChild(svg('line', { class: 'grid', x1: m.l, x2: width - m.r, y1: y(s), y2: y(s) }));
+      root.appendChild(svg('text', { x: m.l - 6, y: y(s) + 4, 'text-anchor': 'end' }, pct(s) + '%'));
+      root.appendChild(svg('text', { x: width - m.r + 6, y: y(s) + 4 }, String(pct(s))));
+    }
+    const step = x1 - x0 > 60 ? 10 : 5;
+    for (let a = Math.ceil(x0 / step) * step; a <= x1; a += step) {
+      root.appendChild(svg('line', { class: 'axis', x1: x(a), x2: x(a), y1: height - m.b, y2: height - m.b + 4 }));
+      root.appendChild(svg('text', { x: x(a), y: height - m.b + 16, 'text-anchor': 'middle' }, String(a)));
+    }
+    root.appendChild(svg('line', { class: 'axis', x1: m.l, x2: width - m.r, y1: height - m.b, y2: height - m.b }));
+    for (const ev of opts.events || []) {
+      if (ev.age < x0 || ev.age > x1) continue;
+      root.appendChild(svg('line', { class: 'ev', x1: x(ev.age), x2: x(ev.age), y1: m.t, y2: height - m.b }, svg('title', {}, ev.age.toFixed(0) + ' ' + ev.title)));
+    }
+    const pts = opts.series[0].points;
+    if (opts.health !== false && pts.length) {
+      const hp = pts.filter(p => p.health !== null && p.health !== undefined);
+      if (hp.length) {
+        const d = 'M' + hp.map(p => x(p.age).toFixed(1) + ' ' + y(p.health / 100).toFixed(1)).join(' L');
+        root.appendChild(svg('path', { d, fill: 'none', stroke: 'var(--health)', 'stroke-width': 1, opacity: 0.7 }));
+      }
+    }
+    opts.series.forEach((s, i) => {
+      for (const path of seriesPaths(s.points, x, y)) {
+        root.appendChild(svg('path', {
+          d: path.d, fill: 'none', stroke: s.color, 'stroke-width': i === 0 ? 2.2 : 1.8,
+          'stroke-dasharray': path.zone === 'outlook' ? '5 4' : null, 'stroke-linejoin': 'round'
+        }));
+      }
+    });
+    if (opts.fate !== undefined && opts.fate !== null) {
+      root.appendChild(svg('line', { x1: m.l, x2: width - m.r, y1: y(opts.fate), y2: y(opts.fate), stroke: 'var(--s5)', 'stroke-width': 1, 'stroke-dasharray': '2 3' }));
+      root.appendChild(svg('text', { x: width - m.r - 4, y: y(opts.fate) - 4, 'text-anchor': 'end', style: 'fill: var(--s5)' }, T('legendFate')));
+    }
+    if (opts.deathAge) {
+      root.appendChild(svg('line', { x1: x(opts.deathAge), x2: x(opts.deathAge), y1: m.t, y2: height - m.b, stroke: 'var(--s5)', 'stroke-width': 1.5 }));
+      root.appendChild(svg('circle', { cx: x(opts.deathAge), cy: y(opts.fate), r: 4, fill: 'var(--s5)' }));
+    }
+    const readout = svg('text', { class: 'readout', x: m.l + 6, y: m.t + 12 }, '');
+    root.appendChild(readout);
+    root.addEventListener('mousemove', e => {
+      const rect = root.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width * width;
+      const age = x0 + (px - m.l) / (width - m.l - m.r) * (x1 - x0);
+      let best = null;
+      for (const p of pts) if (!best || Math.abs(p.age - age) < Math.abs(best.age - age)) best = p;
+      readout.textContent = best ? T('ageNow') + ' ' + best.age.toFixed(0) + '   ' + T('poiNow') + ' ' + pct(best.survival) + '%' + (best.health !== null && best.health !== undefined ? '   ' + Math.round(best.health) : '') : '';
+    });
+    return root;
+  }
+  function legend(items) {
+    return h('div', { class: 'legend' }, items.map(it => h('span', { class: it.dash ? 'dash' : '', style: '--c:' + it.color }, it.label)));
+  }
+  function chartWidth() { const el = $('app'); return Math.max(320, (el.clientWidth || 700) * 0.6 - 24); }
+
+  // ---- screens ------------------------------------------------------------------------------------------
+  function render() {
+    $('title').textContent = T('title');
+    $('langBtn').textContent = T('langName');
+    $('restartBtn').textContent = T('again');
+    $('restartBtn').hidden = !S.result;
+    $('aboutBtn').textContent = T('about');
+    $('aboutClose').textContent = T('close');
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+    document.title = T('title');
+    const app = $('app');
+    app.textContent = '';
+    if (S.error) app.appendChild(h('div', { class: 'err' }, S.error));
+    if (!S.cat) { app.appendChild(h('p', { class: 'mute' }, T('loadingCatalog'))); drawAbout(); return; }
+    if (!S.cat.model_ok) app.appendChild(h('div', { class: 'err' }, T('modelMissing') + (S.cat.model_error || '')));
+    if (!S.result) app.appendChild(startScreen());
+    else app.appendChild(lifeScreen());
+    drawAbout();
+  }
+
+  function startScreen() {
+    const cat = S.cat;
+    const packs = Object.entries(cat.packs).map(([id, p]) => h('div', {
+      class: 'pack' + (S.pack === id ? ' on' : ''), onclick: () => { S.pack = id; render(); }
+    }, h('h3', {}, tx(p.title)), h('p', {}, tx(p.text)),
+       h('div', { class: 'small mute' }, (p.birth === 'fixed' ? cardTitle(p.card) + ', ' : '') + T('startsAt', p.start_age) + ', ' + T('years', p.years))));
+    const worlds = ['all', 'history', 'modern'].map(w => h('button', { class: 'btn' + (S.world === w ? ' on' : ''), onclick: () => { S.world = w; render(); } }, T('worlds')[w]));
+    const drawn = cat.packs[S.pack].birth === 'draw';
+    return h('div', {},
+      h('p', {}, T('tagline')),
+      h('div', { class: 'card plain' }, h('h2', {}, T('packH')), h('div', { class: 'packs' }, packs)),
+      drawn && h('div', { class: 'card plain' }, h('h2', {}, T('worldH')), h('div', { class: 'row' }, worlds)),
+      h('div', { class: 'card plain' }, h('h2', {}, T('seedH')),
+        h('div', { class: 'row' }, h('span', { class: 'mono' }, String(S.seed)),
+          h('button', { class: 'btn', onclick: () => { S.seed = randomSeed(); render(); } }, T('reroll'))),
+        h('p', { class: 'small mute' }, T('seedText'))),
+      h('div', { class: 'row', style: 'margin-bottom:14px' }, h('button', { class: 'btn primary', onclick: () => beBorn() }, T('born'))),
+      h('div', { class: 'card plain' }, h('h3', {}, T('codeH')),
+        h('div', { class: 'row' },
+          h('input', { type: 'text', id: 'codeBox', placeholder: T('codePlaceholder'), value: S.codeText, style: 'flex:1 1 260px', oninput: e => { S.codeText = e.target.value; } }),
+          h('button', { class: 'btn', onclick: loadCode }, T('codeLoad'))),
+        S.codeError && h('div', { class: 'err' }, T('codeBad'))));
+  }
+
+  function lifeRecord() {
+    const rec = { seed: S.seed, pack: S.pack, world: S.world, postures: {}, decisions: {} };
+    return rec;
+  }
+  async function beBorn() {
+    S.life = lifeRecord(); S.compare = null; S.draft = null;
+    await advance(true);
+  }
+  function loadCode() {
+    try {
+      const life = decodeLife(S.codeText);
+      S.codeError = false; S.life = { postures: {}, decisions: {}, ...life }; S.pack = S.life.pack || 'full_life'; S.world = S.life.world || 'all'; S.seed = S.life.seed;
+      S.compare = null; S.draft = null;
+      advance(true);
+    } catch (e) { S.codeError = true; render(); }
+  }
+
+  // Runs the life up to its next decision. The first call leaves out the outlook so that the page answers quickly,
+  // and a second call fills it in while the player reads.
+  async function advance(first) {
+    const token = ++S.token;
+    S.error = '';
+    try {
+      const res = await api('live', { life: S.life, outlook: false }, T('busyRun'));
+      if (token !== S.token) return;
+      S.result = res; S.life = res.life; S.draft = null;
+      render();
+      if (res.status === 'pending') {
+        const full = await api('live', { life: S.life, outlook: true }, T('busyRun')).catch(() => null);
+        if (full && token === S.token) { S.result = full; render(); }
+      }
+    } catch (e) { S.error = String(e.message || e); render(); }
+  }
+
+  function lifeScreen() {
+    const r = S.result, birth = r.birth;
+    const cols = h('div', { class: 'cols' });
+    const left = h('div', { class: 'wide' }), right = h('div', { class: 'col' });
+    left.appendChild(birthCard(r));
+    if (r.status === 'child_death') {
+      left.appendChild(h('div', { class: 'card' }, h('div', { class: 'big' }, T('childDeathH', fmt(r.death.age))), h('p', {}, T('childDeathText'))));
+      left.appendChild(h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: again }, T('again'))));
+      cols.append(left, right);
+      return cols;
+    }
+    if (r.timeline.length) left.appendChild(lifeChart(r));
+    else left.appendChild(envCard(r));
+    if (r.status === 'pending') {
+      right.appendChild(r.pending.kind === 'posture' ? posturePanel(r) : eventPanel(r));
+    } else {
+      left.appendChild(endPanel(r));
+    }
+    right.appendChild(logCard(r));
+    if (r.timeline.length) right.appendChild(envCard(r));
+    cols.append(left, right);
+    return cols;
+  }
+
+  function birthCard(r) {
+    const b = r.birth, card = S.cat.cards[b.card];
+    const sexName = b.sex === 'f' ? T('woman') : T('man');
+    const kids = [h('h2', {}, T('bornAs', tx(card.title), sexName)), h('p', {}, tx(card.story))];
+    if (b.child.chance < 1) kids.push(h('p', { class: 'small mute' }, T('childChance', pct(b.child.chance)) + ' ' + (b.child.survived ? T('childOk') : T('childLost'))));
+    return h('div', { class: 'card' }, kids);
+  }
+
+  function envCard(r) {
+    const env = r.birth.environment, labels = S.cat.labels.inputs;
+    const rows = [];
+    for (const [name, info] of Object.entries(env)) {
+      const meta = labels[name]; if (!meta) continue;
+      const up = meta.better === 'up';
+      const scale = meta.unit === '0 to 1' ? 1 : Math.max(info.value, info.limit || 0, 1) * 1.15;
+      const good = up ? info.value / scale : 1 - info.value / scale;
+      rows.push(h('div', { title: info.limit !== null && info.limit !== undefined ? T('best') + ': ' + fmt(info.limit) : T('limits') }, tx(meta.title)));
+      rows.push(h('div', { class: 'bar ' + (good > 0.66 ? 'good' : good < 0.33 ? 'bad' : '') }, h('i', { style: 'width:' + Math.max(3, Math.min(100, pct(good))) + '%' })));
+      rows.push(h('div', { class: 'mono' }, fmt(info.value) + (info.limit !== null && info.limit !== undefined && info.limit !== info.value ? ' / ' + fmt(info.limit) : '')));
+    }
+    return h('div', { class: 'card' }, h('h3', {}, T('envH')), h('div', { class: 'meter' }, rows),
+      h('div', { class: 'small mute', style: 'margin-top:6px' }, T('envNote')));
+  }
+
+  function logCard(r) {
+    const items = (r.events || []).map(e => {
+      const picked = e.options && e.decided ? e.options.find(o => o.id === e.option) : null;
+      return h('li', {}, h('span', { class: 'age' }, e.age.toFixed(0)),
+        h('span', {}, h('b', {}, tx(e.title)), ' ', tx(e.text), picked ? h('div', { class: 'small mute' }, T('chose', tx(picked.title))) : null,
+          e.mishap ? h('div', { class: 'small neg' }, T('mishapHappened', tx(e.mishap.title) + '. ' + tx(e.mishap.text))) : null));
+    });
+    return h('div', { class: 'card' }, h('h3', {}, T('logH')), items.length ? h('ul', { class: 'log' }, items) : h('div', { class: 'mute small' }, T('logNone')));
+  }
+
+  function lifeChart(r) {
+    const start = r.birth.start_age;
+    const points = r.timeline;
+    const last = points.length ? points[points.length - 1].age : start + 10;
+    const items = [{ label: T('legendLife'), color: 'var(--s0)' }];
+    if (points.some(p => p.zone === 'outlook')) items.push({ label: r.death ? T('legendGhost') : T('legendOutlook'), color: 'var(--s0)', dash: true });
+    items.push({ label: T('legendHealth'), color: 'var(--health)' });
+    if (r.death) items.push({ label: T('legendFate'), color: 'var(--s5)', dash: true });
+    const lines = [];
+    if (r.status === 'pending' && points.some(p => p.zone === 'outlook')) lines.push(h('p', { class: 'small mute' }, T('outlookNote')));
+    if (r.odds && r.status === 'pending' && r.odds.age_at_survival['0.5']) lines.push(h('p', { class: 'small' }, T('oddsNow', fmt(r.odds.age_at_survival['0.5']))));
+    return h('div', { class: 'card plain' },
+      h('div', { class: 'small mute' }, T('chartY') + ' · ' + T('chartHealth')),
+      chart({
+        width: chartWidth(), height: 280, startAge: start, endAge: Math.min(100, Math.ceil(last / 5) * 5),
+        series: [{ points, color: 'var(--s0)' }], events: (r.events || []).map(e => ({ age: e.age, title: tx(e.title) })),
+        fate: r.death ? r.death.fate : null, deathAge: r.death ? r.death.age : null
+      }),
+      legend(items), lines);
+  }
+
+  // The posture panel: work, then five levers paid from the points work brings.
+  function posturePanel(r) {
+    const p = r.pending, cat = S.cat;
+    if (!S.draft || S.draft.phase !== p.phase) S.draft = { phase: p.phase, posture: { ...p.carried } };
+    const d = S.draft.posture, spendNames = Object.keys(cat.levers.spend);
+    const income = p.income_by_work[d.work];
+    const spent = spendNames.reduce((a, n) => a + d[n], 0);
+    const phase = r.phases[p.phase];
+    const work = h('div', { class: 'row' }, cat.levers.work.levels.map((lv, i) => h('button', {
+      class: 'btn' + (d.work === i ? ' on' : ''), onclick: () => { d.work = i; fitDraft(p); render(); }
+    }, tx(lv) + ' · ' + p.income_by_work[i])));
+    const levers = spendNames.map(name => {
+      const meta = cat.levers.spend[name], values = p.spend_values[name];
+      const effective = Object.values(values).some(v => Math.abs(v[3] - v[0]) > 1e-9);
+      const pips = [0, 1, 2, 3].map(level => h('button', {
+        class: 'pip' + (d[name] === level ? ' on' : ''), disabled: !effective || (level > d[name] && spent - d[name] + level > income),
+        onclick: () => { d[name] = level; render(); }
+      }, String(level)));
+      const effects = effective ? Object.entries(values).filter(([, v]) => Math.abs(v[3] - v[0]) > 1e-9).slice(0, 3)
+        .map(([variable, v]) => h('span', { class: 'chip' }, inputLabel(variable) + ' ' + fmt(v[0]) + ' → ' + fmt(v[d[name]]) + (d[name] < 3 ? ' (' + fmt(v[3]) + ')' : ''))) : [h('span', { class: 'small mute' }, T('noEffect'))];
+      return h('div', { class: 'lever' + (effective ? '' : ' off') },
+        h('div', { class: 'head' }, h('b', {}, tx(meta.title)), ' ', h('span', { class: 'small mute' }, tx(meta.text))),
+        h('div', { class: 'pips' }, pips), h('div', { class: 'chips' }, effects));
+    });
+    return h('div', { class: 'card' },
+      h('h2', {}, T('phaseH', fmt(phase.start_age), fmt(phase.end_age))), h('p', { class: 'small mute' }, T('postureIntro')),
+      h('h3', {}, T('workH')), work,
+      h('p', { class: 'mono', style: 'margin:10px 0 4px' }, T('points', income, spent, income - spent)),
+      levers,
+      h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn primary', onclick: () => commitPosture(p) }, T('liveBtn'))));
+  }
+  function fitDraft(p) {
+    const d = S.draft.posture, names = Object.keys(S.cat.levers.spend), income = p.income_by_work[d.work];
+    while (names.reduce((a, n) => a + d[n], 0) > income) {
+      let top = names[names.length - 1];
+      for (const n of names.slice().reverse()) if (d[n] > d[top]) top = n;
+      d[top] -= 1;
+    }
+  }
+  function commitPosture(p) {
+    S.life.postures[String(p.phase)] = { ...S.draft.posture };
+    S.draft = null;
+    advance(false);
+  }
+
+  function eventPanel(r) {
+    const p = r.pending;
+    const options = p.options.map(o => h('button', { class: 'opt', onclick: () => { S.life.decisions[p.key] = o.id; advance(false); } },
+      h('b', {}, tx(o.title)), h('span', {}, tx(o.text)),
+      h('div', { class: 'chips' }, Object.entries(o.effects).map(([v, op]) => h('span', { class: 'chip' }, effectText(v, op))), o.mishap ? h('span', { class: 'chip', style: 'color: var(--danger)' }, T('mishapChip', pct(o.mishap.p), tx(o.mishap.title))) : null, h('span', { class: 'chip' }, T('eventWeeks', Array.isArray(o.weeks) ? (o.weeks[0] === o.weeks[1] ? o.weeks[0] : o.weeks[0] + (lang === 'zh' ? ' 到 ' : ' to ') + o.weeks[1]) : o.weeks)))));
+    return h('div', { class: 'card' }, h('h2', {}, T('eventH') + ' · ' + fmt(p.age)), h('h3', {}, tx(p.title)), h('p', {}, tx(p.text)), options);
+  }
+
+  // ---- the end of a life --------------------------------------------------------------------------------
+  function riskList(rows, title) {
+    if (!rows || !rows.length) return null;
+    const harm = rows.filter(x => x.share > 0).slice(0, 5), held = rows.filter(x => x.share < -0.005).slice(-2).reverse();
+    return h('div', { class: 'card plain' }, h('h3', {}, title),
+      h('div', { class: 'meter' }, harm.flatMap(x => [h('div', {}, riskTitle(x)), h('div', { class: 'bar bad' }, h('i', { style: 'width:' + Math.max(2, pct(x.share)) + '%' })), h('div', { class: 'mono' }, pct(x.share) + '%')])),
+      held.length ? h('div', { class: 'small mute', style: 'margin-top:6px' }, T('heldDown') + ': ' + held.map(riskTitle).join(', ')) : null);
+  }
+  function endPanel(r) {
+    const kids = [];
+    if (r.status === 'ended') {
+      kids.push(h('div', { class: 'card' }, h('div', { class: 'big' }, T('diedAt', fmt(r.death.age))),
+        r.odds && luckText(r)));
+    } else {
+      const last = r.timeline[r.timeline.length - 1];
+      kids.push(h('div', { class: 'card' }, h('div', { class: 'big' }, T('completedAt', fmt(last.age))), h('p', {}, T('completedText', r.savings, Math.round(last.health)))));
+    }
+    const srcs = r.sources || {};
+    const lists = h('div', { class: 'cols' },
+      srcs.final && h('div', { class: 'col' }, riskList(srcs.final, T('lastYears'))),
+      h('div', { class: 'col' }, riskList(srcs.life, T('wholeLife'))));
+    kids.push(lists, h('p', { class: 'small mute' }, T('sourcesNote')));
+    kids.push(whatIf(r));
+    kids.push(h('div', { class: 'card plain' }, h('h3', {}, T('share')),
+      h('div', { class: 'row' }, h('input', { type: 'text', readonly: true, value: encodeLife(S.life), style: 'flex:1 1 260px' }),
+        h('button', { class: 'btn', onclick: copyCode }, T('copy'))),
+      h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn primary', onclick: again }, T('again')))));
+    return h('div', {}, kids);
+  }
+  function luckText(r) {
+    const a = r.odds.age_at_survival;
+    const lines = [];
+    if (a['0.5']) lines.push(h('p', {}, T('luck1', fmt(a['0.5']), fmt(a['0.75']), fmt(a['0.25']))));
+    else lines.push(h('p', { class: 'mute' }, T('luckNone')));
+    lines.push(h('p', {}, T('luck2', Math.round((1 - r.death.fate) * 100))));
+    return h('div', {}, h('h3', {}, T('luckH')), lines);
+  }
+  function copyCode(e) {
+    const box = e.target.previousSibling; box.select();
+    try { navigator.clipboard.writeText(box.value); } catch (err) { document.execCommand('copy'); }
+    e.target.textContent = T('copied');
+  }
+  function again() { S.result = null; S.life = null; S.seed = randomSeed(); S.compare = null; S.token += 1; render(); }
+
+  // What if: variants of the finished life under the same luck.
+  function whatIf(r) {
+    const cat = S.cat;
+    const body = [h('p', { class: 'small mute' }, T('whatIfText'))];
+    const sweep = () => runCompare(r, allInVariants(r), T('busyCompare'));
+    body.push(h('div', { class: 'row' }, h('button', { class: 'btn', onclick: sweep }, T('sweep'))));
+    body.push(h('p', { class: 'small mute' }, T('sweepText')));
+    const flips = (r.events || []).filter(e => e.options && e.options.length > 1).slice(0, 2);
+    for (const e of flips) {
+      const other = e.options.filter(o => o.id !== e.option);
+      for (const o of other.slice(0, 1)) {
+        body.push(h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn', onclick: () => runCompare(r, [{ id: 'flip' + e.key, label: T('flip', tx(e.title), tx(o.title)), decisions: { [e.key]: o.id } }], T('busyCompare')) }, T('flip', tx(e.title), tx(o.title)))));
+      }
+    }
+    const choices = Object.entries(cat.cards).filter(([id, c]) => !c.pack_only || id === r.birth.card).map(([id, c]) => h('option', { value: id }, tx(c.title)));
+    const select = h('select', { id: 'elsewhere' }, choices);
+    body.push(h('div', { class: 'row', style: 'margin-top:10px' }, h('span', { class: 'small mute' }, T('elsewhere') + ':'), select,
+      h('button', { class: 'btn', onclick: () => { const id = select.value; runCompare(r, [{ id: 'card' + id, label: T('elsewhere') + ': ' + cardTitle(id), card: id, ignore_budget: true }], T('busyCompare')); } }, T('elsewhereRun'))));
+    if (S.compare) body.push(compareView(r));
+    return h('div', { class: 'card' }, h('h2', {}, T('whatIf')), body);
+  }
+  function allInVariants(r) {
+    const cat = S.cat, spend = Object.keys(cat.levers.spend);
+    return spend.filter(name => r.birth.levers_effective[name]).map(name => {
+      const postures = {};
+      for (const ph of r.phases) postures[String(ph.index)] = Object.fromEntries([['work', ph.posture.work], ...spend.map(n => [n, n === name ? Math.min(3, ph.income) : 0])]);
+      return { id: 'all_' + name, label: T('allIn', tx(cat.levers.spend[name].title)), postures };
+    });
+  }
+  async function runCompare(r, variants, text) {
+    S.error = '';
+    try {
+      const res = await api('compare', { life: S.life, variants }, text);
+      S.compare = res.variants; render();
+    } catch (e) { S.error = String(e.message || e); render(); }
+  }
+  function compareView(r) {
+    const colors = ['var(--s0)', 'var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
+    const rows = S.compare, finished = r.status === 'ended';
+    const base = rows[0];
+    const series = rows.map((v, i) => ({ points: v.timeline.map(t => ({ ...t, health: null, zone: 'life' })), color: colors[i % colors.length] }));
+    const end = Math.min(100, Math.ceil(Math.max(...rows.map(v => v.timeline.length ? v.timeline[v.timeline.length - 1].age : 0)) / 5) * 5);
+    const head = [h('th', {}, T('thVariant')), finished ? h('th', { class: 'num' }, T('thDeath')) : h('th', { class: 'num' }, T('thEnd')),
+      h('th', { class: 'num' }, T('thChange')), finished ? h('th', { class: 'num' }, T('thMedian')) : h('th', { class: 'num' }, T('thHealth')), h('th', { class: 'num' }, T('thSavings'))];
+    const lines = rows.map((v, i) => {
+      const name = i === 0 ? T('baseName') : (v.label || v.id);
+      let change = null, cls = '';
+      if (finished && v.death_age_change !== undefined && i > 0) { change = (v.death_age_change >= 0 ? '+' : '−') + fmt(Math.abs(v.death_age_change)); cls = v.death_age_change >= 0 ? 'pos' : 'neg'; }
+      if (!finished && i > 0 && v.survival_end !== null && base.survival_end !== null) { const dv = pct(v.survival_end - base.survival_end); change = (dv >= 0 ? '+' : '−') + Math.abs(dv) + '%'; cls = dv >= 0 ? 'pos' : 'neg'; }
+      return h('tr', {},
+        h('td', {}, h('span', { style: 'color:' + colors[i % colors.length] }, '■ '), name),
+        h('td', { class: 'num' }, finished ? (v.death_age === null ? T('noDeath') : fmt(v.death_age)) : pct(v.survival_end) + '%'),
+        h('td', { class: 'num ' + cls }, change || ''),
+        h('td', { class: 'num' }, finished ? (v.median_age === null ? '' : fmt(v.median_age)) : (v.health_end === null ? '' : Math.round(v.health_end))),
+        h('td', { class: 'num' }, v.savings === null || v.savings === undefined ? '' : v.savings));
+    });
+    return h('div', { style: 'margin-top:12px' },
+      chart({ width: chartWidth(), height: 260, startAge: r.birth.start_age, endAge: end, series, health: false, events: [], fate: r.death ? r.death.fate : null }),
+      h('table', {}, h('tr', {}, head), lines));
+  }
+
+  // ---- about --------------------------------------------------------------------------------------------
+  function drawAbout() {
+    $('about').hidden = !S.about;
+    if (!S.about) return;
+    const body = $('aboutBody'); body.textContent = '';
+    body.appendChild(h('h2', {}, T('aboutTitle')));
+    for (const t of T('aboutLayers')) body.appendChild(h('p', {}, t));
+    body.appendChild(h('h3', {}, T('limitsH')));
+    const lim = S.cat ? S.cat.limitations[lang] : [];
+    body.appendChild(h('ul', {}, lim.map(t => h('li', {}, t))));
+  }
+
+  // ---- wiring -------------------------------------------------------------------------------------------
+  $('restartBtn').addEventListener('click', () => again());
+  $('langBtn').addEventListener('click', () => { lang = lang === 'en' ? 'zh' : 'en'; render(); });
+  $('aboutBtn').addEventListener('click', () => { S.about = true; drawAbout(); });
+  $('aboutClose').addEventListener('click', () => { S.about = false; drawAbout(); });
+  $('about').addEventListener('click', e => { if (e.target === $('about')) { S.about = false; drawAbout(); } });
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (S.result) render(); }, 150); });
+
+  function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light'); }
+  applyTheme(q.get('theme'));
+  window.addEventListener('message', e => {
+    const d = e.data;
+    if (d && d.type === 'lm-init') {
+      applyTheme(d.theme);
+      const next = String(d.lang || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+      if (next !== lang) { lang = next; render(); }
+    }
+  });
+  parent.postMessage({ type: 'lm-ready' }, '*');
+
+  render();
+  fetch('/api/plugins/' + PLUGIN + '/catalog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: {} }) })
+    .then(r => r.json())
+    .then(data => { if (data.success === false) throw new Error(data.error); S.cat = data; render(); })
+    .catch(e => { S.error = String(e.message || e); render(); });
+})();
+</script>
+</body>
+</html>

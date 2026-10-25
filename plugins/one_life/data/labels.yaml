@@ -1,0 +1,39 @@
+# Names the page shows for the inputs of the environment and for the measures of the body.
+# better: up means a higher value is better for health, down means a lower value is.
+
+inputs:
+  water_safety: {title: {en: Safe water, zh: 饮水安全}, better: up, unit: '0 to 1'}
+  crowding: {title: {en: Crowding, zh: 居住拥挤}, better: down, unit: '0 to 1'}
+  vector_exposure: {title: {en: Mosquito exposure, zh: 蚊媒暴露}, better: down, unit: '0 to 1'}
+  medical_era: {title: {en: Medical care, zh: 医疗水平}, better: up, unit: '0 to 1'}
+  vitamin_c_mg: {title: {en: Vitamin C, zh: 维生素 C}, better: up, unit: mg/day}
+  diet_quality: {title: {en: Diet quality, zh: 饮食质量}, better: up, unit: '0 to 1'}
+  injury_exposure: {title: {en: Injury exposure, zh: 受伤风险}, better: down, unit: '0 to 1'}
+  aerobic_min: {title: {en: Aerobic activity, zh: 有氧活动}, better: up, unit: min/day}
+  sleep_hours: {title: {en: Sleep, zh: 睡眠}, better: up, unit: h/night}
+  stress_load: {title: {en: Stress, zh: 压力}, better: down, unit: '0 to 1'}
+  energy_intake: {title: {en: Food energy, zh: 食物能量}, unit: kcal/day}
+  dietary_restraint: {title: {en: Rationing, zh: 配给约束}, unit: '0 to 1'}
+  pathogen_challenge: {title: {en: Pathogen exposure, zh: 病原暴露}, unit: dose}
+  epidemic_pressure: {title: {en: Epidemic pressure, zh: 流行病压力}, unit: '0 to 1'}
+  iodine_ug: {title: {en: Iodine, zh: 碘摄入}, better: up, unit: ug/day}
+  thiamine_mg: {title: {en: Vitamin B1, zh: 维生素 B1}, better: up, unit: mg/day}
+  fiber_g: {title: {en: Fibre, zh: 膳食纤维}, unit: g/day}
+  resistance_min: {title: {en: Resistance work, zh: 抗阻活动}, better: up, unit: min/day}
+  alcohol_g: {title: {en: Alcohol, zh: 酒精}, better: down, unit: g/day}
+  smoking_cigs: {title: {en: Smoking, zh: 吸烟}, better: down, unit: cigarettes/day}
+  water_l: {title: {en: Drinking water, zh: 饮水量}, unit: L/day}
+  sodium_g: {title: {en: Sodium, zh: 钠摄入}, unit: g/day}
+
+measures:
+  health: {title: {en: Health score, zh: 综合健康评分}, unit: '0 to 100'}
+  sbp: {title: {en: Systolic blood pressure, zh: 收缩压}, unit: mmHg}
+  crp: {title: {en: C-reactive protein, zh: C 反应蛋白}, unit: mg/L}
+  hb: {title: {en: Haemoglobin, zh: 血红蛋白}, unit: g/dL}
+  glucose: {title: {en: Fasting glucose, zh: 空腹血糖}, unit: mg/dL}
+  vo2: {title: {en: Fitness, zh: 心肺体能}, unit: mL/kg/min}
+  fev1: {title: {en: Lung function, zh: 肺功能}, unit: '% of expected'}
+  scurvy: {title: {en: Scurvy index, zh: 坏血病指数}, unit: '0 to 1'}
+  wound: {title: {en: Wound infection, zh: 外伤感染负担}, unit: index}
+  infection: {title: {en: Infection load, zh: 感染负荷}, unit: index}
+  fatigue: {title: {en: Fatigue, zh: 疲劳}, unit: '0 to 1'}

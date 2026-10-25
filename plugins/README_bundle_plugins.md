@@ -2,7 +2,7 @@
 
 A bundle plugin is a plugin whose interface is a small web app. The GUI shows it as a full-page view, next to Overview, Simulation and Optimization, and it can talk to the backend and to the GUI. This guide is all you need to write one. The older kind of plugin, a `run(inputs)` backend with no page, is described in [INTERFACE.md](INTERFACE.md).
 
-A small template to copy is in [`docs/plugin_template/`](../docs/plugin_template/), and three complete plugins are in this folder: [`ve_graph/`](ve_graph/) draws a graph from the selected model, [`model_compose/`](model_compose/) works on several ticked models, and [`body_map/`](body_map/) places the ticked models on the organs of a paper-doll body. Each of them has a `docs/` folder.
+A small template to copy is in [`docs/plugin_template/`](../docs/plugin_template/), and four complete plugins are in this folder: [`ve_graph/`](ve_graph/) draws a graph from the selected model, [`model_compose/`](model_compose/) works on several ticked models, and [`body_map/`](body_map/) places the ticked models on the organs of a paper-doll body. A fourth, [`one_life/`](one_life/), keeps no model selection at all. It lives a whole life on the virtual human from a seed and answers what-if questions with a backend that runs the body model itself. Each of them has a `docs/` folder.
 
 ---
 

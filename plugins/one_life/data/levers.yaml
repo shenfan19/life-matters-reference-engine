@@ -1,0 +1,84 @@
+# What the player can set at the start of every phase of a life.
+#
+# A spend lever has levels 0 to 3 and every level costs one livelihood point. Level 0 leaves the card as it is.
+# Level 3 moves each input of the lever from the card value toward `to`, but never past the card's `limit`,
+# and never in the worse direction. Levels in between are evenly spaced. An input that the card does not set
+# starts from the model default.
+#
+# The work lever has levels 0, 1 and 2 for light, steady and heavy work. It costs nothing and sets how many
+# livelihood points the phase brings, and it changes activity, injury, stress and sleep by the work profile
+# of the card.
+
+spend:
+  nutrition:
+    title: {en: Food, zh: 饮食}
+    text:
+      en: More vegetables, fruit, fish and fresh food, and enough of them in the lean months.
+      zh: 多一些蔬果、鱼和新鲜食物，青黄不接时也不断顿。
+    effects:
+      diet_quality: {to: 0.9}
+      vitamin_c_mg: {to: 110}
+      iodine_ug: {to: 150}
+      thiamine_mg: {to: 1.2}
+      fiber_g: {to: 30}
+  care:
+    title: {en: Care, zh: 医疗照护}
+    text:
+      en: A healer or a clinic within reach, clean dressings, and rest when ill.
+      zh: 有医者或诊所可及，换洗干净的敷料，生病时能歇下来。
+    effects:
+      medical_era: {to: 1.0}
+  housing:
+    title: {en: Home and water, zh: 住所与饮水}
+    text:
+      en: Safer water, more space per person, and a net or a shutter against the mosquitoes.
+      zh: 更安全的水，更宽的居住空间，对付蚊子的网或窗板。
+    effects:
+      water_safety: {to: 1.0}
+      crowding: {to: 0.0}
+      vector_exposure: {to: 0.0}
+  rest:
+    title: {en: Rest, zh: 休息}
+    text:
+      en: Time for sleep and for evenings that are not work.
+      zh: 留出睡眠的时间，留出不用干活的晚上。
+    effects:
+      sleep_hours: {to: 8.0}
+      stress_load: {to: 0.1}
+  exercise:
+    title: {en: Exercise, zh: 锻炼}
+    text:
+      en: Time to walk fast, run or lift on purpose.
+      zh: 专门留出时间快走、跑步或抗阻。
+    effects:
+      aerobic_min: {to: 45}
+      resistance_min: {to: 20}
+
+work:
+  title: {en: Work, zh: 劳作}
+  text:
+    en: Heavier work brings more livelihood points. It also moves activity, injury, stress and sleep.
+    zh: 干重活换来更多生计点，同时改变活动量、受伤、压力和睡眠。
+  levels:
+    - {en: Light, zh: 轻}
+    - {en: Steady, zh: 平稳}
+    - {en: Heavy, zh: 重}
+  profiles:
+    manual:
+      aerobic_mul: [0.8, 1.0, 1.3]
+      injury_add: [-0.05, 0.0, 0.15]
+      stress_add: [-0.05, 0.0, 0.1]
+      sleep_add: [0.3, 0.0, -0.5]
+    mixed:
+      aerobic_mul: [0.9, 1.0, 1.2]
+      injury_add: [-0.02, 0.0, 0.08]
+      stress_add: [-0.08, 0.0, 0.15]
+      sleep_add: [0.3, 0.0, -0.6]
+    sedentary:
+      aerobic_mul: [1.3, 1.0, 0.7]
+      injury_add: [0.0, 0.0, 0.0]
+      stress_add: [-0.12, 0.0, 0.22]
+      sleep_add: [0.4, 0.0, -0.8]
+
+# The posture used for a phase that the player has not set yet.
+default_posture: {work: 1, nutrition: 0, care: 0, housing: 0, rest: 0, exercise: 0}

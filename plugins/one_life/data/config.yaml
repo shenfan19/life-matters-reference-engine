@@ -1,0 +1,58 @@
+# Settings shared by every life the plugin runs.
+
+# The body model every life is simulated on: a scenario that imports the virtual human components together
+# with the infectious and nutritional disease component, which carries the environment inputs
+# (water, crowding, mosquitoes, vitamin C, medical level, injury, epidemics).
+model: scenarios/medical/virtual_human_historical_weekly_2026
+
+# The solver of the engine that steps the body. `fast` gives the same numbers as the reference solver, to the last digit
+# in the lives that were compared, in about a third of the time. `numba` compiles for tens of seconds first and does
+# not pay off for a single life.
+solver: fast
+
+# The model has no childhood, so every life enters the body model at this age unless the pack says otherwise.
+adult_start_age: 18
+
+# A life is followed up to this age. Past it the projection stops.
+max_age: 100
+
+# The projection stops earlier when the chance of still being alive falls below this value.
+stop_survival: 0.0005
+
+# The model steps one week at a time. A year is this many steps.
+weeks_per_year: 52
+
+# Longest stretch simulated in one call, in weeks, so that the state can be read several times a year.
+chunk_weeks: 13
+
+# When a birth card does not survive to adulthood, the age at death is drawn from these bands.
+# Each band is [from age, to age, share of the childhood deaths]. The shares are hand-set.
+child_death_age_bands:
+  - [0.0, 1.0, 0.4]
+  - [1.0, 5.0, 0.4]
+  - [5.0, 18.0, 0.2]
+
+# Age at which each phase of a full life begins, as offsets in years from the start age.
+# The player sets a posture at the start of every phase.
+full_life_phase_offsets: [0, 7, 17, 27, 37, 47, 57, 67]
+
+# Livelihood points of a phase are the card's income for the chosen work level times this factor, by phase.
+# Later phases earn less because the body works less.
+full_life_income_factor: [1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 0.6, 0.5]
+
+# The words every page shows about what the numbers are.
+limitations:
+  en:
+    - The body model is the adult virtual human of this engine. It starts at age 18, so childhood is a single lookup chance set by hand for each birth card, not a simulation.
+    - The environment of each birth card, the livelihood points and the events are set values of an order of magnitude, not a reconstruction of a place or a year. They are meant to show how the body model responds, and comments and corrections are welcome.
+    - The model follows the expected burden of disease. Outbreaks, famines and wars enter only as the events listed here, and the risk of death is an average rate.
+    - The body starts from the adult male reference size for everyone, so body weight is not shown. Sex changes the references of the model, not the starting body.
+    - Pregnancy and childbirth are not in the body model, so the large risk of childbirth in earlier centuries is missing for women.
+    - One life is one draw of luck. The odds panel shows what the same choices give over many draws of luck.
+  zh:
+    - 身体部分是本引擎的成年虚拟人，从 18 岁进入，所以童年只是每张出身卡手工设定的一次查表机会，不是仿真。
+    - 每张出身卡的环境、生计点和事件都是量级设定，不是对某个地方某一年的重建。它们用来展示身体模型如何响应，欢迎意见与批评。
+    - 模型取疾病负担的期望值，暴发、饥荒和战争只以这里列出的事件进入，死亡风险是平均风险率。
+    - 身体从成年男性参考体型出发，不分性别，所以不展示体重。性别只改变模型里的参考值，不改变起始身体。
+    - 身体模型不含妊娠与分娩，所以早期世纪女性生育的巨大风险在这里缺失。
+    - 一生只是一次运气的抽取。概率面板显示同样的选择在许多次运气下的分布。

@@ -100,6 +100,7 @@
 | [0056](decisions/0056-2026-05-04_project_three-tier-validation-framework.md) | **The three-tier validation framework**: tier 1, numerical precision (analytical solutions) / tier 2, literature benchmarking (effect-size range) / tier 3, optimization plausibility | ⭐⭐ | Done (validation scripts still to be written) |
 | [0123](decisions/0123-2026-07-06_project_test-plan-and-report-consolidation.md) | **Test-document consolidation**: the validation protocol, engine numerical checks, and the model-by-model checklist merged into `models/test_validation/test_plan.md` (the outline) plus `test_report.md` (the report) | ⭐⭐ | Done |
 | [0163](decisions/0163-2026-10-23_sim_pluggable-solver-and-views.md) | **Pluggable solvers and views: one Solver interface behind simulation, Monte Carlo and the optimizer; the built-in views become registered views** | ⭐ | Done |
+| [0164](decisions/0164-2026-10-24_sim_one-life-plugin-replayable-lives-on-the-virtual-human.md) | **The One Life plugin: a life is a record and a run is a pure function of it; luck is a seed and one fate line that choices never move; the risk of death is named by reading its expressions out of the loaded model** | ⭐ | Done |
 | [0023](decisions/0023-models-runnable-from-gui.md) | Models can be run directly from the GUI's file tree; the standalone convention | ⭐ | Done |
 
 ---

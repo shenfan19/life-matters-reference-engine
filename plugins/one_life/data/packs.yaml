@@ -1,0 +1,178 @@
+# Packs. A pack fixes how a life is run: whether the birth is drawn, how long the run is, where the phases start,
+# and which events happen at fixed times. The random deck of events.yaml still applies to the tags of the card.
+#
+# birth:          draw means a random card of the chosen world, with the childhood chance. fixed means the card
+#                 named by `card`, entering the body model at `start_age` with no childhood.
+# phase_offsets:  start of each phase, in years from the start age.
+# years:          how many years the run lasts. A run that is survived to the end is a finished run.
+# scripted:       events at fixed times, with the same fields as an event of events.yaml plus `year` and `week`,
+#                 counted from the start age.
+
+packs:
+  full_life:
+    title: {en: A whole life, zh: 一生}
+    text:
+      en: Draw a birth, live from 18 until the end, and meet the events the place and time hold.
+      zh: 抽一个出生，从 18 岁活到终点，遇到那个地方那个时代会有的事。
+    birth: draw
+    years: 82
+    scripted: []
+
+  gold_rush_1849:
+    title: {en: Gold rush, zh: 淘金热}
+    text:
+      en: You are 24 and have paid for a passage to the diggings. Eight years of the voyage, the camp and the claim. The question is whether the gold is worth the body it costs.
+      zh: 你 24 岁，已经付了去矿区的船票。八年的航程、营地和矿权。问题是金子值不值身体付出的代价。
+    birth: fixed
+    card: gold_rush_miner
+    start_age: 24
+    years: 8
+    phase_offsets: [0, 2, 5]
+    income_factor: [1.0, 1.0, 0.9]
+    scripted:
+      - id: sea_passage
+        year: 0
+        week: 0
+        weeks: [22, 22]
+        title: {en: The passage, zh: 去矿区的航程}
+        text:
+          en: Two ways to get there. The long way round the Horn is months of salt meat on a crowded deck. Across the isthmus is quick, through mosquito country and bad water.
+          zh: 去矿区有两条路。绕过合恩角要在拥挤的甲板上吃几个月咸肉，横穿地峡路程短，但要经过蚊虫肆虐、水质很差的地带。
+        effects:
+          vitamin_c_mg: {set: 8}
+          crowding: {set: 0.9}
+          water_safety: {set: 0.25}
+          energy_intake: {mul: 0.9}
+        decision:
+          default: horn
+          options:
+            horn:
+              title: {en: Around the Horn, zh: 绕合恩角}
+              text: {en: Twenty-two weeks of ship food and no fresh fruit., zh: 二十二周船上的伙食，没有新鲜水果。}
+              effects:
+                vitamin_c_mg: {set: 8}
+                crowding: {set: 0.9}
+                water_safety: {set: 0.25}
+                energy_intake: {mul: 0.9}
+            isthmus:
+              title: {en: Across the isthmus, zh: 横穿地峡}
+              text: {en: Eight weeks, with fever country and river water to cross., zh: 八周，要过发热地带，喝河水。}
+              weeks: [8, 8]
+              effects:
+                vector_exposure: {set: 0.7}
+                water_safety: {set: 0.15}
+                pathogen_challenge: {set: 0.5}
+                crowding: {set: 0.8}
+              mishap:
+                p: 0.35
+                title: {en: Fever on the river, zh: 河上染了热病}
+                text: {en: The boatman took the shortcut through the swamp and half the party came down with fever., zh: 船夫抄近道穿过沼泽，一半的人染上了热病。}
+                effects:
+                  vector_exposure: {set: 0.95}
+                  pathogen_challenge: {set: 0.9}
+      - id: camp_flux
+        year: 1
+        week: 10
+        weeks: [6, 6]
+        title: {en: Flux in the camp, zh: 营地里闹痢疾}
+        text:
+          en: The creek below the tents is where everyone drinks and washes.
+          zh: 帐篷下面的小溪既是大家的饮水处，也是洗衣处。
+        effects:
+          pathogen_challenge: {set: 0.9}
+          water_safety: {add: -0.15}
+        decision:
+          default: river
+          options:
+            river:
+              title: {en: Drink from the creek, zh: 照样喝溪水}
+              text: {en: No time lost, and the flux is in your camp., zh: 不耽误时间，痢疾就在你的营地里。}
+              effects:
+                pathogen_challenge: {set: 0.9}
+                water_safety: {add: -0.15}
+            boil:
+              title: {en: Haul and boil your water, zh: 挑水煮开再喝}
+              text: {en: Wood, time and a smaller pile of dust., zh: 费柴费时间，淘出的沙也少一些。}
+              effects:
+                pathogen_challenge: {set: 0.35}
+                energy_intake: {mul: 0.95}
+      - id: snowbound_winter
+        year: 3
+        week: 40
+        weeks: [14, 14]
+        title: {en: Snowbound winter, zh: 大雪封山的冬天}
+        text:
+          en: The trail closes and the stores are salt pork, flour and whisky.
+          zh: 山路封了，存粮只有咸猪肉、面粉和威士忌。
+        effects:
+          vitamin_c_mg: {set: 10}
+          crowding: {set: 0.9}
+          energy_intake: {mul: 0.85}
+      - id: claim_collapse
+        year: 5
+        week: 20
+        weeks: [8, 8]
+        title: {en: The shaft gives way, zh: 矿道塌了}
+        text:
+          en: The timbering was never enough and the rains finished it.
+          zh: 支撑木从来不够，雨把它彻底冲垮。
+        effects:
+          injury_exposure: {set: 1.0}
+          stress_load: {add: 0.2}
+
+  walled_city_siege:
+    title: {en: Siege, zh: 围城}
+    text:
+      en: You are 30 and live inside a walled city when an army closes the roads. Three years and one hard decision, whether to stay behind the walls with what is left in the stores or to slip through the lines.
+      zh: 你 30 岁，住在一座有城墙的城里，一支军队封锁了道路。三年，一个艰难的决定，是留在城墙后靠剩下的存粮，还是设法穿过封锁线。
+    birth: fixed
+    card: walled_city_resident
+    start_age: 30
+    years: 3
+    phase_offsets: [0, 1]
+    income_factor: [1.0, 1.0]
+    scripted:
+      - id: supplies_cut
+        year: 0
+        week: 4
+        weeks: [40, 40]
+        title: {en: The roads are closed, zh: 道路被封}
+        text:
+          en: The granaries are counted and the bread ration is cut. Word goes round that a night crossing of the lines is possible for those who know the paths.
+          zh: 粮仓被清点，面包配给被削减。城里传言，熟悉小路的人可以在夜里穿过封锁线。
+        effects:
+          energy_intake: {set: 1300}
+          dietary_restraint: {set: 1.0}
+          vitamin_c_mg: {set: 10}
+          crowding: {set: 0.95}
+          water_safety: {add: -0.2}
+        decision:
+          default: hold_out
+          options:
+            hold_out:
+              title: {en: Stay behind the walls, zh: 留在城墙后}
+              text: {en: A ration of about thirteen hundred kilocalories for forty weeks, with the whole city in the same streets., zh: 四十周每天约一千三百千卡的配给，全城人挤在同样的街巷里。}
+              effects:
+                energy_intake: {set: 1300}
+                dietary_restraint: {set: 1.0}
+                vitamin_c_mg: {set: 10}
+                crowding: {set: 0.95}
+                water_safety: {add: -0.2}
+            slip_out:
+              title: {en: Slip through the lines at night, zh: 夜里设法穿过封锁线}
+              text: {en: Twelve weeks on the road and in the hills, with more to eat and the pickets in the way., zh: 十二周在路上和山里，吃得多一些，但哨卡就在路上。}
+              weeks: [12, 12]
+              effects:
+                energy_intake: {set: 1800}
+                dietary_restraint: {set: 1.0}
+                injury_exposure: {set: 0.6}
+                crowding: {set: 0.3}
+                stress_load: {set: 0.8}
+              mishap:
+                p: 0.3
+                title: {en: Caught between the lines, zh: 被堵在两军之间}
+                text: {en: A picket fired on the party and the road home was closed behind it., zh: 一处哨卡向这一行人开了火，回头的路也被封死。}
+                effects:
+                  injury_exposure: {set: 1.0}
+                  stress_load: {set: 0.95}
+                  energy_intake: {set: 1100}

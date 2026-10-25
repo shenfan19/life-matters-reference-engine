@@ -1,0 +1,398 @@
+# Birth cards. A card is the starting situation of a life: a set of inputs for the body model, the limits that
+# the player's spending cannot push past, a handful of livelihood points, and the chance of living through childhood.
+#
+# Every number here is a hand-set value of an order of magnitude. `survive_to_adult` is the one lookup of the
+# plugin: the body model starts at age 18, so childhood is a single chance and not a simulation.
+#
+# baseline: inputs of the body model that this card sets. The ones left out keep the model default.
+# limit:    the best value the player can reach for an input by spending, in the direction of better health.
+#           An input left out here has no limit other than the lever's own target.
+# income:   livelihood points per phase for light, steady and heavy work.
+# tags:     the events a card can meet are chosen by these words.
+# weight:   the chance of the card in a random draw, relative to the other cards of the same world.
+
+cards:
+  medieval_europe_peasant:
+    world: history
+    weight: 1.0
+    pack_only: false
+    tags: [agrarian, premodern, war_prone]
+    survive_to_adult: 0.62
+    work_profile: manual
+    income: [4, 5, 7]
+    title: {en: Peasant in medieval Europe, zh: 中世纪欧洲农民}
+    story:
+      en: A village of a few dozen households. The well is shared with the animals, winter means bread and little else, and the nearest healer is a day away.
+      zh: 几十户人家的村子。水井和牲畜共用，冬天只有面包，最近的医者要走一天。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 60
+      resistance_min: 15
+      diet_quality: 0.35
+      fiber_g: 35
+      sodium_g: 5
+      water_l: 2.0
+      water_safety: 0.4
+      crowding: 0.4
+      vector_exposure: 0.05
+      vitamin_c_mg: 30
+      energy_intake: 2500
+      alcohol_g: 20
+      stress_load: 0.4
+      injury_exposure: 0.1
+    limit:
+      medical_era: 0.25
+      water_safety: 0.65
+      crowding: 0.2
+      vector_exposure: 0.03
+      vitamin_c_mg: 60
+      diet_quality: 0.55
+      sleep_hours: 8.0
+      aerobic_min: 60
+      resistance_min: 15
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}
+
+  medieval_europe_city:
+    world: history
+    weight: 1.0
+    pack_only: false
+    tags: [urban, premodern, war_prone]
+    survive_to_adult: 0.55
+    work_profile: mixed
+    income: [5, 6, 8]
+    title: {en: Town dweller in medieval Europe, zh: 中世纪欧洲城镇居民}
+    story:
+      en: Narrow streets, a river that carries away the waste and also supplies the drinking water, and houses where several families share a room.
+      zh: 窄街，河水既冲走污物又供人饮用，几家人合住一间房。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 40
+      resistance_min: 10
+      diet_quality: 0.35
+      fiber_g: 30
+      sodium_g: 5
+      water_l: 2.0
+      water_safety: 0.2
+      crowding: 0.8
+      vector_exposure: 0.05
+      vitamin_c_mg: 25
+      energy_intake: 2500
+      alcohol_g: 20
+      stress_load: 0.45
+      injury_exposure: 0.05
+    limit:
+      medical_era: 0.3
+      water_safety: 0.55
+      crowding: 0.5
+      vector_exposure: 0.03
+      vitamin_c_mg: 50
+      diet_quality: 0.5
+      sleep_hours: 8.0
+      aerobic_min: 45
+      resistance_min: 10
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}
+
+  han_north_farmer:
+    world: history
+    weight: 1.0
+    pack_only: false
+    tags: [agrarian, premodern, war_prone]
+    survive_to_adult: 0.6
+    work_profile: manual
+    income: [4, 5, 7]
+    title: {en: Farmer on the northern plain in the age of the Three Kingdoms, zh: 三国时期北方平原农民}
+    story:
+      en: Millet and wheat, a canal for water, and armies that pass through the fields more often than the tax collector does.
+      zh: 小米和小麦，靠渠水，军队过境比收税的来得还勤。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 60
+      resistance_min: 15
+      diet_quality: 0.38
+      fiber_g: 30
+      sodium_g: 5
+      water_l: 2.0
+      water_safety: 0.5
+      crowding: 0.5
+      vector_exposure: 0.05
+      vitamin_c_mg: 45
+      energy_intake: 2500
+      alcohol_g: 10
+      stress_load: 0.45
+      injury_exposure: 0.1
+    limit:
+      medical_era: 0.25
+      water_safety: 0.7
+      crowding: 0.25
+      vector_exposure: 0.03
+      vitamin_c_mg: 70
+      diet_quality: 0.55
+      sleep_hours: 8.0
+      aerobic_min: 60
+      resistance_min: 15
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}
+
+  han_south_malarial:
+    world: history
+    weight: 1.0
+    pack_only: false
+    tags: [agrarian, premodern, malarial]
+    survive_to_adult: 0.5
+    work_profile: manual
+    income: [4, 5, 7]
+    title: {en: Farmer in the humid south in the age of the Three Kingdoms, zh: 三国时期湿热南方农民}
+    story:
+      en: Rice paddies and standing water, fruit most of the year, and a fever that returns every rainy season.
+      zh: 水田和积水，一年里多数时候有水果，每个雨季都有一场反复的发热。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 60
+      resistance_min: 10
+      diet_quality: 0.4
+      fiber_g: 30
+      sodium_g: 4
+      water_l: 2.5
+      water_safety: 0.3
+      crowding: 0.4
+      vector_exposure: 0.8
+      vitamin_c_mg: 60
+      thiamine_mg: 0.7
+      energy_intake: 2500
+      alcohol_g: 10
+      stress_load: 0.4
+      injury_exposure: 0.1
+    limit:
+      medical_era: 0.25
+      water_safety: 0.6
+      crowding: 0.25
+      vector_exposure: 0.4
+      vitamin_c_mg: 90
+      diet_quality: 0.55
+      thiamine_mg: 1.0
+      sleep_hours: 8.0
+      aerobic_min: 60
+      resistance_min: 10
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}
+
+  age_of_sail_sailor:
+    world: history
+    weight: 1.0
+    pack_only: false
+    tags: [maritime, premodern]
+    survive_to_adult: 0.62
+    work_profile: manual
+    income: [3, 4, 5]
+    title: {en: Deckhand in the age of sail, zh: 帆船时代的水手}
+    story:
+      en: Months between ports, salt meat and hard biscuit, a crowded forecastle, and a gum disease that every captain knows by name.
+      zh: 两港之间动辄数月，咸肉和硬饼干，拥挤的前舱，每个船长都叫得出名字的牙龈病。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 60
+      resistance_min: 20
+      diet_quality: 0.3
+      fiber_g: 20
+      sodium_g: 7
+      water_l: 2.0
+      water_safety: 0.4
+      crowding: 0.8
+      vector_exposure: 0.0
+      vitamin_c_mg: 16
+      energy_intake: 2700
+      alcohol_g: 30
+      stress_load: 0.5
+      injury_exposure: 0.25
+    limit:
+      medical_era: 0.2
+      water_safety: 0.5
+      crowding: 0.6
+      vitamin_c_mg: 40
+      diet_quality: 0.45
+      sleep_hours: 7.5
+      aerobic_min: 60
+      resistance_min: 20
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}
+
+  modern_high_income_urban:
+    world: modern
+    weight: 1.0
+    pack_only: false
+    tags: [modern, urban, high_income]
+    survive_to_adult: 0.995
+    work_profile: sedentary
+    income: [6, 8, 10]
+    title: {en: City dweller in a high income country, zh: 高收入国家的城市居民}
+    story:
+      en: Clean water at the tap, a clinic within the hour, a desk job, and a diet that leans on what is convenient.
+      zh: 水龙头里是干净的水，一小时内有诊所，坐办公室，饮食偏向方便的那一类。
+    baseline:
+      diet_quality: 0.55
+      aerobic_min: 15
+      resistance_min: 4
+      sleep_hours: 7.2
+      stress_load: 0.35
+      alcohol_g: 8
+    limit:
+      diet_quality: 0.85
+      sleep_hours: 8.0
+    calibration: {level: set_value, note: the model reference individual with a few lifestyle inputs moved to a typical urban office life}
+
+  modern_middle_income_rural:
+    world: modern
+    weight: 1.0
+    pack_only: false
+    tags: [modern, agrarian]
+    survive_to_adult: 0.98
+    work_profile: manual
+    income: [4, 5, 7]
+    title: {en: Farm household in a middle income country, zh: 中等收入国家的农户}
+    story:
+      en: A tap in the yard some days and a well on others, a clinic in the next town, and field work that keeps the body moving and the back sore.
+      zh: 院子里的水龙头时有时无，另有一口井，诊所在邻镇，田里的活让身体一直在动，也让腰酸。
+    baseline:
+      medical_era: 0.7
+      water_safety: 0.75
+      crowding: 0.2
+      vector_exposure: 0.1
+      vitamin_c_mg: 70
+      diet_quality: 0.5
+      aerobic_min: 45
+      resistance_min: 10
+      sleep_hours: 7.5
+      stress_load: 0.35
+      injury_exposure: 0.1
+    limit:
+      medical_era: 0.9
+      water_safety: 1.0
+      crowding: 0.0
+      vector_exposure: 0.0
+      diet_quality: 0.8
+      sleep_hours: 8.0
+      aerobic_min: 45
+    calibration: {level: set_value, note: an order of magnitude setting between the reference individual and the historical cards}
+
+  modern_low_income_fragile:
+    world: modern
+    weight: 1.0
+    pack_only: false
+    tags: [modern, agrarian, malarial]
+    survive_to_adult: 0.92
+    work_profile: manual
+    income: [3, 4, 5]
+    title: {en: Household in a low income and fragile region, zh: 低收入脆弱地区的家庭}
+    story:
+      en: Water carried from a source that is not always safe, a health post that runs out of medicine, and a rainy season in which the mosquitoes decide who works.
+      zh: 水从并不总是安全的水源挑回来，卫生所常断药，雨季里蚊子决定谁能下地。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.5
+      water_safety: 0.55
+      crowding: 0.45
+      vector_exposure: 0.3
+      vitamin_c_mg: 50
+      iodine_ug: 110
+      diet_quality: 0.4
+      aerobic_min: 50
+      resistance_min: 10
+      energy_intake: 2300
+      stress_load: 0.4
+      injury_exposure: 0.1
+    limit:
+      medical_era: 0.75
+      water_safety: 0.85
+      crowding: 0.25
+      vector_exposure: 0.1
+      vitamin_c_mg: 80
+      diet_quality: 0.6
+      iodine_ug: 150
+      sleep_hours: 8.0
+      aerobic_min: 50
+    calibration: {level: set_value, note: an order of magnitude setting between the reference individual and the historical cards}
+
+  gold_rush_miner:
+    world: history
+    weight: 0.0
+    pack_only: true
+    tags: [frontier, premodern, mining]
+    survive_to_adult: 1.0
+    work_profile: manual
+    income: [4, 6, 9]
+    title: {en: Gold seeker on the American frontier, zh: 美洲边疆的淘金者}
+    story:
+      en: Young, strong, and in debt for the passage. The river is the water supply and the toilet, the tent holds six, and the claim pays only if you keep digging.
+      zh: 年轻，强壮，还欠着船票钱。河既是水源也是厕所，帐篷住六个人，矿区只有一直挖才有收成。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.1
+      aerobic_min: 90
+      resistance_min: 30
+      diet_quality: 0.3
+      fiber_g: 18
+      sodium_g: 6
+      water_l: 3.0
+      water_safety: 0.25
+      crowding: 0.7
+      vector_exposure: 0.1
+      vitamin_c_mg: 20
+      energy_intake: 3200
+      alcohol_g: 40
+      smoking_cigs: 10
+      stress_load: 0.55
+      injury_exposure: 0.45
+    limit:
+      medical_era: 0.25
+      water_safety: 0.55
+      crowding: 0.5
+      vector_exposure: 0.05
+      vitamin_c_mg: 50
+      diet_quality: 0.5
+      sleep_hours: 7.5
+      aerobic_min: 90
+      resistance_min: 30
+    calibration: {level: set_value, note: a set of values for a camp of young men, not a reconstruction of a particular year or river}
+
+  walled_city_resident:
+    world: history
+    weight: 0.0
+    pack_only: true
+    tags: [urban, premodern, besieged]
+    survive_to_adult: 1.0
+    work_profile: mixed
+    income: [4, 5, 7]
+    title: {en: Resident of a walled city, zh: 城墙里的居民}
+    story:
+      en: A craftsman or a clerk with a house near the market, a share in a well, and neighbours on every side of the courtyard.
+      zh: 一个手艺人或书吏，家在集市附近，在一口井里有份，院子四面都是邻居。
+    baseline:
+      dietary_restraint: 0.0
+      medical_era: 0.0
+      aerobic_min: 40
+      resistance_min: 10
+      diet_quality: 0.4
+      fiber_g: 30
+      sodium_g: 5
+      water_l: 2.0
+      water_safety: 0.3
+      crowding: 0.7
+      vector_exposure: 0.05
+      vitamin_c_mg: 35
+      energy_intake: 2500
+      alcohol_g: 15
+      stress_load: 0.45
+      injury_exposure: 0.05
+    limit:
+      medical_era: 0.3
+      water_safety: 0.55
+      crowding: 0.5
+      vector_exposure: 0.03
+      vitamin_c_mg: 55
+      diet_quality: 0.55
+      sleep_hours: 8.0
+      aerobic_min: 45
+      resistance_min: 10
+    calibration: {level: set_value, note: environment taken from the historical weekly scenario of the model library}

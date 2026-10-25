@@ -1,0 +1,18 @@
+id: one_life
+name: One Life
+version: '0.1.0'
+contract_version: 2
+description: Draws a birth, lives it on the virtual human from adult life to death, and replays the same life with one thing decided differently. The birth and the childhood are a lookup. Everything after is the body model, so a choice shows up as a changed risk and can be traced to its parts.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: OneLife
+
+ui:
+  type: bundle
+  root: dist
+  entry: index.html
+  title: One Life
+  icon: FileTextOutlined
+  order: 30
