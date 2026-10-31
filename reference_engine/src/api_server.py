@@ -72,17 +72,8 @@ async def lifespan(app: FastAPI):
             models_dir.mkdir(parents=True, exist_ok=True)
         app_state.loader_engine = LoaderEngine(models_directory=str(models_dir))
         logger.info("✅ Models system initialized")
-        # Only count the files. Loading every model here, which this once did to log a few names, took long
-        # enough for a library of thousands of models to delay the start by a minute or more and nothing used the result.
-        try:
-            skip = {'merged', 'splited', 'output', '__pycache__', '.git', '_output'}
-            found = 0
-            for _root, dirs, files in os.walk(models_dir):
-                dirs[:] = [d for d in dirs if d not in skip]
-                found += sum(1 for f in files if f.endswith('.yaml'))
-            logger.info(f"   Found {found} model files")
-        except Exception as e:
-            logger.warning(f"   Failed to count models: {e}")
+        # The files are not counted here. Walking the library to log a number visited every folder, including tens of
+        # thousands of simulation output folders under temp_ directories, and delayed the start by close to a minute.
     except Exception as e:
         logger.error(f"❌ Models system error: {e}")
         app_state.loader_engine = None

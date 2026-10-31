@@ -9,6 +9,11 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 ### Plugin system
 
 - Added the `one_life` plugin. It draws a birth card, lives the life on the virtual human from eighteen to death, and replays it with one choice changed under the same luck. The birth and the childhood are a lookup, and from eighteen the body model is stepped week by week on inputs set by the card, the posture of each phase and the running events. Death is one fate line drawn from the seed, so a replay differs from the life only through what was changed, and the yearly risk of death is split into named parts by reading its expressions out of the loaded model. Three packs ship, a whole life, a gold rush and a siege, the last two with fixed events and with options that carry a chance of going wrong. The data files are `plugins/one_life/data/*.yaml`, the endpoints are `catalog`, `run` and `compare`, and at most three runs go at once.
+- One Life offers a choice of scenario and components (ADR 0165). `config.yaml` lists the scenarios, the page has a dropdown, and ticking components in the model tree runs the life on a custom scenario whose file is written under `temp_one_life_custom/`. New endpoints `scenarios` and `scenario_file`; `live` and `compare` take `base` and `models`.
+
+### Engine
+
+- The model tree no longer reads inside a folder with more than 200 subfolders, keeps its file metadata in `output/file_tree_meta_cache.json` across restarts, and the server no longer walks the library at start to count models. The tree used to take close to a minute with tens of thousands of simulation output folders under temp_ directories.
 
 ## [1.3.0] - 2026-10-24
 

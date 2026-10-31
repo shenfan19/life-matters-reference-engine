@@ -181,6 +181,9 @@ def validate_catalog(catalog: Dict[str, Any]) -> List[str]:
     config = catalog['config']
     if not isinstance(config.get('solver'), str):
         errors.append('config: solver must name a solver of the engine')
+    scenarios = config.get('scenarios')
+    if not isinstance(scenarios, list) or config['model'] not in scenarios:
+        errors.append('config: scenarios must be a list that includes the model')
     offsets = config['full_life_phase_offsets']
     if len(config['full_life_income_factor']) != len(offsets):
         errors.append('config: full_life_income_factor needs one entry per phase')

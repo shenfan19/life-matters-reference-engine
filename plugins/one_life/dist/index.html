@@ -85,6 +85,9 @@
   .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 30; display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; }
   .modal .sheet { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; width: min(760px, 100%); }
   .err { color: var(--danger); margin: 6px 0; }
+  #scen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+  #scen select { min-width: 28ch; max-width: 100%; }
+  #scen .warn { color: var(--danger); }
 </style>
 </head>
 <body>
@@ -96,6 +99,7 @@
     <button class="btn" id="langBtn"></button>
     <button class="btn" id="aboutBtn"></button>
   </div>
+  <div id="scen" hidden></div>
   <div id="app"></div>
 </div>
 <div id="busy" hidden><div class="box"><div class="spinner"></div><div id="busyText"></div></div></div>
@@ -110,6 +114,9 @@
   // ---- text ---------------------------------------------------------------------------------------------
   const TEXT = {
     en: {
+      scenH: 'Body model', scenCustom: 'custom (ticked components)', scenHint: 'Picking a scenario ticks its components in the model tree. Tick or untick a component there and the choice becomes custom.',
+      scenLacks: v => 'lacks inputs: ' + v, scenDownload: 'Download', scenSave: 'Save', scenSaveAsk: 'Name for the saved scenario',
+      scenSaved: p => 'Saved as ' + p, scenParts: n => n + ' components', scenNone: 'Tick at least one component.', scenChanged: 'The body model changed. Draw a new life to use it.',
       title: 'One Life', about: 'About the numbers', close: 'Close', langName: '中文',
       tagline: 'Draw a birth. Live it on the virtual human. Then see what a different choice would have done under the same luck.',
       loadingCatalog: 'Loading ...', modelMissing: 'The body model could not be loaded: ',
@@ -154,6 +161,9 @@
       limitsH: 'Limits',
     },
     zh: {
+      scenH: '身体模型', scenCustom: '自定义（左侧勾选的组件）', scenHint: '选一个场景会在左侧模型树里勾上它的组件。在左侧增减组件，这里就变成自定义。',
+      scenLacks: v => '缺少输入：' + v, scenDownload: '下载', scenSave: '保存', scenSaveAsk: '保存的场景名称',
+      scenSaved: p => '已保存为 ' + p, scenParts: n => n + ' 个组件', scenNone: '至少勾选一个组件。', scenChanged: '身体模型已更改，请重新抽一个人生来使用它。',
       title: '一生', about: '这些数字是什么', close: '关闭', langName: 'English',
       tagline: '抽一个出生，在虚拟人身上把它过完，再看同样的运气下换一个选择会怎样。',
       loadingCatalog: '加载中 ...', modelMissing: '身体模型无法加载：',
@@ -208,6 +218,7 @@
     pack: 'full_life', world: 'all', seed: randomSeed(), codeText: '', codeError: false,
     life: null, result: null, draft: null, token: 0,
     compare: null, about: false,
+    scen: [], scenId: null, ticked: [], scenNote: '',
   };
   function randomSeed() { return Math.floor(Math.random() * 2147483647); }
 
@@ -260,17 +271,97 @@
     return life;
   }
 
-  async function api(endpoint, inputs, text) {
-    S.busy += 1; S.busyText = text || T('busyRun'); drawBusy();
+  // ---- body model: scenario dropdown and the components ticked in the model tree -----------------------
+  const normPath = p => String(p).split('\\').join('/').replace(/^models\//, '').replace(/\.yaml$/, '');
+  function currentScenario() { return S.scen.find(x => x.path === S.scenId) || null; }
+  function isCustom() {
+    const sc = currentScenario();
+    if (!sc || !S.ticked.length) return false;
+    const a = new Set(S.ticked), b = new Set(sc.imports);
+    return a.size !== b.size || [...a].some(x => !b.has(x));
+  }
+  // Every call names the base scenario, and the ticked components when they differ from its imports.
+  function withModel(inputs) {
+    return { ...inputs, ...currentModel() };
+  }
+  function currentModel() {
+    const out = {};
+    if (S.scenId) out.base = S.scenId;
+    if (isCustom()) out.models = S.ticked.slice();
+    return out;
+  }
+  function modelKey() { return (S.scenId || '') + '|' + (isCustom() ? S.ticked.join(',') : ''); }
+  function askHost(paths) { parent.postMessage({ type: 'lm-set-models', paths }, '*'); }
+  function pickScenario(path) {
+    const sc = S.scen.find(x => x.path === path);
+    if (!sc) return;
+    S.scenId = path; S.ticked = sc.imports.slice();
+    askHost(sc.imports);
+    modelChanged(); drawScenario();
+  }
+  // A life already drawn was lived on the body it started with, so a changed body asks for a new life.
+  let livedOn = null;
+  // A changed body model starts a new life with the same seed.
+  function modelChanged() { if (livedOn !== null && modelKey() !== livedOn) beBorn(); }
+  function downloadText(name, text) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/yaml' }));
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function scenarioFile(save) {
+    let name = null;
+    if (save) { name = prompt(T('scenSaveAsk'), 'one_life_custom'); if (!name) return; }
+    try {
+      const res = await api('scenario_file', { name, save: !!save }, T('busyRun'));
+      if (save) S.scenNote = T('scenSaved', res.saved_as); else downloadText(res.name + '.yaml', res.yaml);
+      S.error = '';
+    } catch (e) { S.error = String(e.message || e); }
+    drawScenario(); render();
+  }
+  function drawScenario() {
+    const box = $('scen');
+    box.textContent = '';
+    if (!S.cat) { box.hidden = true; return; }
+    box.hidden = false;
+    const custom = isCustom(), sc = currentScenario();
+    const select = h('select', { onchange: e => { if (e.target.value) pickScenario(e.target.value); } },
+      S.scen.map(x => h('option', { value: x.path, selected: !custom && x.path === S.scenId }, x.title + (x.missing && x.missing.length ? ' *' : ''))));
+    if (custom) {
+      select.insertBefore(h('option', { value: '', selected: true }, T('scenCustom')), select.firstChild);
+      select.value = '';
+    }
+    box.appendChild(h('b', {}, T('seedH')));
+    box.appendChild(h('span', { class: 'mono' }, String(S.seed)));
+    box.appendChild(h('button', { class: 'btn primary', onclick: () => { S.seed = randomSeed(); beBorn(); } }, T('reroll')));
+    box.appendChild(h('button', { class: 'btn', onclick: () => { const code = prompt(T('codePlaceholder'), ''); if (code) loadCode(code); } }, T('codeLoad')));
+    box.appendChild(h('span', { class: 'grow' }));
+    if (!S.scen.length) return;
+    box.appendChild(h('b', {}, T('scenH')));
+    box.appendChild(select);
+    box.appendChild(h('span', { class: 'small mute' }, T('scenParts', S.ticked.length || (sc ? sc.imports.length : 0))));
+    if (custom) {
+      box.appendChild(h('button', { class: 'btn', onclick: () => scenarioFile(false) }, T('scenDownload')));
+      box.appendChild(h('button', { class: 'btn', onclick: () => scenarioFile(true) }, T('scenSave')));
+    }
+    const lack = custom ? null : sc;
+    if (lack && lack.missing && lack.missing.length) box.appendChild(h('span', { class: 'small warn' }, T('scenLacks', lack.missing.join(', '))));
+    if (sc && sc.error) box.appendChild(h('span', { class: 'small warn' }, sc.error));
+    if (S.scenNote) box.appendChild(h('span', { class: 'small' }, S.scenNote));
+    box.appendChild(h('div', { class: 'small mute', style: 'flex:1 1 100%' }, T('scenHint')));
+  }
+
+  // A silent call runs behind the page: no overlay, so the player can keep deciding, and it can be abandoned.
+  async function api(endpoint, inputs, text, silent, signal) {
+    if (!silent) { S.busy += 1; S.busyText = text || T('busyRun'); drawBusy(); }
     try {
       const res = await fetch('/api/plugins/' + PLUGIN + '/' + endpoint, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: withModel(inputs) }), signal
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || res.statusText);
       if (data.success === false) throw new Error(data.error || 'failed');
       return data;
-    } finally { S.busy -= 1; drawBusy(); }
+    } finally { if (!silent) { S.busy -= 1; drawBusy(); } }
   }
   function drawBusy() { $('busy').hidden = S.busy <= 0; $('busyText').textContent = S.busyText; }
 
@@ -356,10 +447,11 @@
 
   // ---- screens ------------------------------------------------------------------------------------------
   function render() {
+    drawScenario();
     $('title').textContent = T('title');
     $('langBtn').textContent = T('langName');
     $('restartBtn').textContent = T('again');
-    $('restartBtn').hidden = !S.result;
+    $('restartBtn').hidden = true;
     $('aboutBtn').textContent = T('about');
     $('aboutClose').textContent = T('close');
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -369,33 +461,9 @@
     if (S.error) app.appendChild(h('div', { class: 'err' }, S.error));
     if (!S.cat) { app.appendChild(h('p', { class: 'mute' }, T('loadingCatalog'))); drawAbout(); return; }
     if (!S.cat.model_ok) app.appendChild(h('div', { class: 'err' }, T('modelMissing') + (S.cat.model_error || '')));
-    if (!S.result) app.appendChild(startScreen());
+    if (!S.result) app.appendChild(h('p', { class: 'mute' }, T('loadingCatalog')));
     else app.appendChild(lifeScreen());
     drawAbout();
-  }
-
-  function startScreen() {
-    const cat = S.cat;
-    const packs = Object.entries(cat.packs).map(([id, p]) => h('div', {
-      class: 'pack' + (S.pack === id ? ' on' : ''), onclick: () => { S.pack = id; render(); }
-    }, h('h3', {}, tx(p.title)), h('p', {}, tx(p.text)),
-       h('div', { class: 'small mute' }, (p.birth === 'fixed' ? cardTitle(p.card) + ', ' : '') + T('startsAt', p.start_age) + ', ' + T('years', p.years))));
-    const worlds = ['all', 'history', 'modern'].map(w => h('button', { class: 'btn' + (S.world === w ? ' on' : ''), onclick: () => { S.world = w; render(); } }, T('worlds')[w]));
-    const drawn = cat.packs[S.pack].birth === 'draw';
-    return h('div', {},
-      h('p', {}, T('tagline')),
-      h('div', { class: 'card plain' }, h('h2', {}, T('packH')), h('div', { class: 'packs' }, packs)),
-      drawn && h('div', { class: 'card plain' }, h('h2', {}, T('worldH')), h('div', { class: 'row' }, worlds)),
-      h('div', { class: 'card plain' }, h('h2', {}, T('seedH')),
-        h('div', { class: 'row' }, h('span', { class: 'mono' }, String(S.seed)),
-          h('button', { class: 'btn', onclick: () => { S.seed = randomSeed(); render(); } }, T('reroll'))),
-        h('p', { class: 'small mute' }, T('seedText'))),
-      h('div', { class: 'row', style: 'margin-bottom:14px' }, h('button', { class: 'btn primary', onclick: () => beBorn() }, T('born'))),
-      h('div', { class: 'card plain' }, h('h3', {}, T('codeH')),
-        h('div', { class: 'row' },
-          h('input', { type: 'text', id: 'codeBox', placeholder: T('codePlaceholder'), value: S.codeText, style: 'flex:1 1 260px', oninput: e => { S.codeText = e.target.value; } }),
-          h('button', { class: 'btn', onclick: loadCode }, T('codeLoad'))),
-        S.codeError && h('div', { class: 'err' }, T('codeBad'))));
   }
 
   function lifeRecord() {
@@ -403,22 +471,22 @@
     return rec;
   }
   async function beBorn() {
-    S.life = lifeRecord(); S.compare = null; S.draft = null;
+    S.life = lifeRecord(); S.compare = null; S.draft = null; livedOn = modelKey(); S.scenNote = '';
     await advance(true);
   }
-  function loadCode() {
+  function loadCode(text) {
     try {
-      const life = decodeLife(S.codeText);
-      S.codeError = false; S.life = { postures: {}, decisions: {}, ...life }; S.pack = S.life.pack || 'full_life'; S.world = S.life.world || 'all'; S.seed = S.life.seed;
-      S.compare = null; S.draft = null;
+      const life = decodeLife(text);
+      S.life = { postures: {}, decisions: {}, ...life }; S.pack = S.life.pack || 'full_life'; S.world = S.life.world || 'all'; S.seed = S.life.seed;
+      S.compare = null; S.draft = null; livedOn = modelKey(); S.scenNote = '';
       advance(true);
-    } catch (e) { S.codeError = true; render(); }
+    } catch (e) { S.error = T('codeBad'); render(); }
   }
 
-  // Runs the life up to its next decision. The first call leaves out the outlook so that the page answers quickly,
-  // and a second call fills it in while the player reads.
+  let outlookCall = null;
   async function advance(first) {
     const token = ++S.token;
+    if (outlookCall) { outlookCall.abort(); outlookCall = null; }
     S.error = '';
     try {
       const res = await api('live', { life: S.life, outlook: false }, T('busyRun'));
@@ -426,7 +494,12 @@
       S.result = res; S.life = res.life; S.draft = null;
       render();
       if (res.status === 'pending') {
-        const full = await api('live', { life: S.life, outlook: true }, T('busyRun')).catch(() => null);
+        // The outlook of the whole span is a second run. It waits a moment and gives way to the next decision.
+        await new Promise(resolve => setTimeout(resolve, 400));
+        if (token !== S.token) return;
+        const call = outlookCall = new AbortController();
+        const full = await api('live', { life: S.life, outlook: true }, null, true, call.signal).catch(() => null);
+        if (outlookCall === call) outlookCall = null;
         if (full && token === S.token) { S.result = full; render(); }
       }
     } catch (e) { S.error = String(e.message || e); render(); }
@@ -606,7 +679,7 @@
     try { navigator.clipboard.writeText(box.value); } catch (err) { document.execCommand('copy'); }
     e.target.textContent = T('copied');
   }
-  function again() { S.result = null; S.life = null; S.seed = randomSeed(); S.compare = null; S.token += 1; render(); }
+  function again() { S.seed = randomSeed(); beBorn(); }
 
   // What if: variants of the finished life under the same luck.
   function whatIf(r) {
@@ -696,6 +769,10 @@
     const d = e.data;
     if (d && d.type === 'lm-init') {
       applyTheme(d.theme);
+      if (Array.isArray(d.models) && S.scen.length) {
+        const next = d.models.map(m => normPath(m.path));
+        if (next.length || S.ticked.length) { S.ticked = next; modelChanged(); drawScenario(); }
+      }
       const next = String(d.lang || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
       if (next !== lang) { lang = next; render(); }
     }
@@ -705,7 +782,14 @@
   render();
   fetch('/api/plugins/' + PLUGIN + '/catalog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: {} }) })
     .then(r => r.json())
-    .then(data => { if (data.success === false) throw new Error(data.error); S.cat = data; render(); })
+    .then(data => { if (data.success === false) throw new Error(data.error); S.cat = data; render(); return api('scenarios', {}, T('loadingCatalog')).catch(() => ({ scenarios: [] })); })
+    .then(data => {
+      S.scen = data.scenarios;
+      const def = S.scen.find(x => x.default) || S.scen[0];
+      S.scenId = def ? def.path : null;
+      drawScenario();
+      return beBorn();
+    })
     .catch(e => { S.error = String(e.message || e); render(); });
 })();
 </script>

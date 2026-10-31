@@ -12,6 +12,15 @@ Life Matters (LM) is a cross-scale, multi-model dynamics simulation framework, r
 
 ---
 
+## What Life Matters is not
+
+- **Not a medical AI.** It does not diagnose, prescribe or advise on treatment, and it does not replace a clinician.
+- **Not a digital twin of a body.** It does not model any specific person or connect to personal health data. A model describes the typical dynamics of a population under a given arrangement.
+- **Not built on human medical data.** Parameters come from summary results already published in papers. No patient records, genetic data or wearable data are used.
+- **Not a single answer.** When goals conflict it shows the trade-offs as a Pareto front and leaves the judgment to the reader.
+
+---
+
 ## Repository structure
 
 ```

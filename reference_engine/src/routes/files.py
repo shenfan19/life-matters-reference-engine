@@ -1,5 +1,6 @@
 """File/model CRUD, validate, merge, split, search, story, folders, config."""
 
+import json
 import os
 import re
 import uuid
@@ -165,6 +166,44 @@ async def get_config():
 # of a file is kept until the file changes, and the tree is built in a worker thread.
 _FILE_META_CACHE: dict = {}
 
+# The cache is also kept in a file under output/, so that a restart of the server does not read every model again.
+# Reading the whole library once took close to a minute.
+_META_CACHE_FILE = None
+_META_CACHE_DIRTY: set = set()
+_META_CACHE_LOADED = False
+
+
+def _meta_cache_file():
+    global _META_CACHE_FILE
+    if _META_CACHE_FILE is None:
+        from paths import OUTPUT_DIR
+        _META_CACHE_FILE = os.path.join(str(OUTPUT_DIR), 'file_tree_meta_cache.json')
+    return _META_CACHE_FILE
+
+
+def _load_meta_cache() -> None:
+    global _META_CACHE_LOADED
+    if _META_CACHE_LOADED:
+        return
+    _META_CACHE_LOADED = True
+    try:
+        with open(_meta_cache_file(), 'r', encoding='utf-8') as f:
+            for path, (mtime, size, meta) in json.load(f).items():
+                _FILE_META_CACHE.setdefault(path, ((mtime, size), meta))
+    except (OSError, ValueError, TypeError):
+        pass
+
+
+def _save_meta_cache() -> None:
+    try:
+        os.makedirs(os.path.dirname(_meta_cache_file()), exist_ok=True)
+        tmp = _meta_cache_file() + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump({path: [stamp[0], stamp[1], meta] for path, (stamp, meta) in _FILE_META_CACHE.items()}, f, ensure_ascii=False, default=str)
+        os.replace(tmp, _meta_cache_file())
+    except (OSError, TypeError, ValueError) as e:
+        logger.warning(f"Could not save the model tree cache: {e}")
+
 
 def _file_metadata(item_path: str, entry=None) -> dict:
     try:
@@ -174,7 +213,7 @@ def _file_metadata(item_path: str, entry=None) -> dict:
         return {}
     stamp = (st.st_mtime_ns, st.st_size)
     cached = _FILE_META_CACHE.get(item_path)
-    if cached and cached[0] == stamp:
+    if cached and tuple(cached[0]) == stamp:
         return cached[1]
     file_metadata = {}
     try:
@@ -190,17 +229,23 @@ def _file_metadata(item_path: str, entry=None) -> dict:
     except Exception as e:
         logger.warning(f"Failed to read metadata from {item_path}: {e}")
     _FILE_META_CACHE[item_path] = (stamp, file_metadata)
+    _META_CACHE_DIRTY.add(item_path)
     return file_metadata
+
+
+# A folder with more subfolders than this is an output dump, such as one folder per simulation run, and not a place
+# where models are kept. It is listed, but its subfolders are not read: on Windows each folder costs about a
+# millisecond to open, and 15000 of them under temp_ folders once made the model tree take a minute to appear.
+MAX_SUBFOLDERS_READ = 200
 
 
 def _build_file_tree(models_dir: str) -> list:
     def build_tree(directory, base_path=''):
         items = []
-        if not os.path.exists(directory):
-            return items
         try:
             with os.scandir(directory) as scan:
                 entries = sorted(scan, key=lambda e: e.name)
+            dump = sum(1 for e in entries if e.is_dir()) > MAX_SUBFOLDERS_READ
             for entry in entries:
                 item = entry.name
                 item_path = entry.path
@@ -208,7 +253,7 @@ def _build_file_tree(models_dir: str) -> list:
                 if entry.is_dir():
                     if item in ['__pycache__', '.git']:
                         continue
-                    children = build_tree(item_path, relative_path)
+                    children = [] if dump else build_tree(item_path, relative_path)
                     items.append({'title': item, 'key': relative_path, 'type': 'folder',
                                   'children': children if children else []})
                 elif item.endswith('.yaml') or item.endswith('.yml'):
@@ -218,7 +263,12 @@ def _build_file_tree(models_dir: str) -> list:
             logger.error(f"Error scanning {directory}: {e}")
         return items
 
-    return [{'title': 'models', 'key': 'models', 'type': 'folder', 'children': build_tree(models_dir)}]
+    _load_meta_cache()
+    tree = [{'title': 'models', 'key': 'models', 'type': 'folder', 'children': build_tree(models_dir)}]
+    if _META_CACHE_DIRTY:
+        _save_meta_cache()
+        _META_CACHE_DIRTY.clear()
+    return tree
 
 
 @router.get("/api/files")

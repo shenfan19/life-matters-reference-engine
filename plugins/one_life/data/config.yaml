@@ -5,6 +5,15 @@
 # (water, crowding, mosquitoes, vitamin C, medical level, injury, epidemics).
 model: scenarios/medical/virtual_human_historical_weekly_2026
 
+# The scenarios the page offers in its dropdown. Picking one ticks the components it imports in the model tree.
+# A life needs the environment inputs of the infectious and nutritional disease component, so a scenario without
+# them is listed with the inputs it lacks.
+scenarios:
+  - scenarios/medical/virtual_human_historical_weekly_2026
+  - scenarios/medical/virtual_human_decade_weekly_2026
+  - scenarios/medical/virtual_human_daily_2026
+  - scenarios/medical/virtual_human_appetite_daily_2026
+
 # The solver of the engine that steps the body. `fast` gives the same numbers as the reference solver, to the last digit
 # in the lives that were compared, in about a third of the time. `numba` compiles for tens of seconds first and does
 # not pay off for a single life.

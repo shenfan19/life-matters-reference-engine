@@ -602,7 +602,7 @@ def test_catalog_endpoint_lists_cards_levers_and_labels(plugin):
 
 @needs_models
 def test_the_body_model_has_every_input_the_data_names(plugin):
-    env_real = plugin._env()
+    env_real = plugin._env({})
     assert env_real.splitter.available
 
 
@@ -703,3 +703,34 @@ def test_the_fast_solver_gives_the_numbers_of_the_reference_solver(plugin):
             body.close()
         ends.append((rows[-1]['survival_prob'], state2['survival_prob'], state2['annual_hazard'], state2['health_score']))
     assert ends[0] == pytest.approx(ends[1], rel=1e-9)
+
+
+@needs_models
+def test_scenarios_list_their_components_and_what_a_life_lacks(plugin):
+    out = plugin.endpoint_scenarios({})
+    assert out['success']
+    by_path = {s['path']: s for s in out['scenarios']}
+    default = by_path[CATALOG['config']['model']]
+    assert default['default'] and default['imports'] and default['missing'] == []
+    assert any(s['missing'] for s in out['scenarios'])
+
+
+@needs_models
+def test_same_components_run_the_base_scenario_and_other_components_a_custom_one(plugin):
+    catalog = load_catalog()
+    base = plugin.endpoint_scenarios({})['scenarios'][0]
+    assert plugin._model_path(catalog, {'models': list(reversed(base['imports']))}) == base['path']
+    custom = plugin._model_path(catalog, {'models': base['imports'][:-1]})
+    assert custom.startswith('temp_one_life_custom/')
+    with pytest.raises(ValueError):
+        plugin._model_path(catalog, {'base': '../outside'})
+
+
+@needs_models
+def test_scenario_file_is_the_base_with_the_ticked_imports(plugin):
+    import yaml
+    base = plugin.endpoint_scenarios({})['scenarios'][0]
+    out = plugin.endpoint_scenario_file({'models': base['imports'][:3]})
+    assert out['success'] and 'saved_as' not in out
+    assert yaml.safe_load(out['yaml'])['imports'] == base['imports'][:3]
+    assert plugin.endpoint_scenario_file({'models': ['no/such/model']})['success'] is False

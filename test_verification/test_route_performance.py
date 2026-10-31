@@ -57,3 +57,35 @@ def test_model_list_scans_once_for_concurrent_requests(monkeypatch):
     assert all(a['total'] == 1 for a in answers)
     asyncio.run(models_routes.list_models(refresh=True))
     assert len(calls) == 2                                  # refresh skips the kept list
+
+
+def test_file_tree_does_not_read_inside_a_folder_with_a_flood_of_subfolders(tmp_path):
+    (tmp_path / 'keep.yaml').write_text('metadata:\n  name: k\n', encoding='utf-8')
+    dump = tmp_path / 'temp_runs'
+    dump.mkdir()
+    (dump / 'top.yaml').write_text('metadata:\n  name: t\n', encoding='utf-8')
+    for i in range(files_routes.MAX_SUBFOLDERS_READ + 1):
+        run = dump / f'run_{i}'
+        run.mkdir()
+        (run / 'inside.yaml').write_text('metadata:\n  name: i\n', encoding='utf-8')
+    tree = files_routes._build_file_tree(str(tmp_path))
+    top = {c['title']: c for c in tree[0]['children']}
+    temp = {c['title']: c for c in top['temp_runs']['children']}
+    assert 'top.yaml' in temp                                # files of the folder itself are still listed
+    assert temp['run_0']['type'] == 'folder' and temp['run_0']['children'] == []
+
+
+def test_file_tree_metadata_survives_a_restart(tmp_path, monkeypatch):
+    (tmp_path / 'a.yaml').write_text('metadata:\n  name: a\n  tags: [x]\n', encoding='utf-8')
+    monkeypatch.setattr(files_routes, '_META_CACHE_FILE', str(tmp_path / 'cache' / 'meta.json'))
+    monkeypatch.setattr(files_routes, '_META_CACHE_LOADED', False)
+    files_routes._FILE_META_CACHE.clear()
+    files_routes._build_file_tree(str(tmp_path))
+    files_routes._FILE_META_CACHE.clear()                   # a new process starts with an empty cache
+    monkeypatch.setattr(files_routes, '_META_CACHE_LOADED', False)
+    reads = []
+    real = files_routes.safe_load
+    monkeypatch.setattr(files_routes, 'safe_load', lambda f: reads.append(1) or real(f))
+    tree = files_routes._build_file_tree(str(tmp_path))
+    assert reads == []
+    assert {c['title']: c for c in tree[0]['children']}['a.yaml']['tags'] == ['x']
