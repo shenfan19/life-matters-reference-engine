@@ -8,10 +8,10 @@ With several models ticked in the tree it draws them together. Variables with th
 
 | Question | Open |
 |----------|------|
-| How do I use the page and what does each control do | [interface_ai.md](interface_ai.md), section 4 |
-| What does the backend endpoint receive and return | [interface_ai.md](interface_ai.md), sections 1 to 3 |
-| Why is it built this way and what are its limits | [design_ai.md](design_ai.md) |
-| How is a plugin like this written from scratch | [writing_a_plugin_ai.md](writing_a_plugin_ai.md) |
+| How do I use the page and what does each control do | [interface.md](interface.md), section 4 |
+| What does the backend endpoint receive and return | [interface.md](interface.md), sections 1 to 3 |
+| Why is it built this way and what are its limits | [design.md](design.md) |
+| How is a plugin like this written from scratch | [writing_a_plugin.md](writing_a_plugin.md) |
 | What is the general contract of every bundle plugin | [README_bundle_plugins.md](../../README_bundle_plugins.md) |
 
 ## Files

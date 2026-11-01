@@ -6,12 +6,12 @@ Model Compose shows how several models can be combined. The user ticks models in
 
 | Question | Open |
 |----------|------|
-| How do I use the page and what do the colors and arrows mean | [interface_ai.md](interface_ai.md), section 3 |
-| What do the backend endpoints receive and return | [interface_ai.md](interface_ai.md), sections 1 and 2 |
-| What exactly happens when I press the merge button | [design_ai.md](design_ai.md), section 5 |
-| How are the samples chosen and checked | [design_ai.md](design_ai.md), section 7 |
-| Why is it built this way and what are its limits | [design_ai.md](design_ai.md) |
-| How is a plugin like this written | [writing_a_plugin_ai.md](../../ve_graph/docs/writing_a_plugin_ai.md) |
+| How do I use the page and what do the colors and arrows mean | [interface.md](interface.md), section 3 |
+| What do the backend endpoints receive and return | [interface.md](interface.md), sections 1 and 2 |
+| What exactly happens when I press the merge button | [design.md](design.md), section 5 |
+| How are the samples chosen and checked | [design.md](design.md), section 7 |
+| Why is it built this way and what are its limits | [design.md](design.md) |
+| How is a plugin like this written | [writing_a_plugin.md](../../ve_graph/docs/writing_a_plugin.md) |
 | What changed in the host so that this plugin is possible | ADR 0158 in the engine decisions folder |
 
 ## Files
