@@ -42,7 +42,7 @@ The virtual human of the model library follows an adult body week by week, with 
 
 ## Scope of impact
 
-- New: `plugins/one_life/` with `manifest.yaml`, `backend.py`, the package `one_life_core/`, `data/`, `dist/index.html` and `docs/README_one_life_ai.md`. `test_verification/test_plugin_one_life.py` holds the tests.
+- New: `plugins/one_life/` with `manifest.yaml`, `backend.py`, the package `one_life_core/`, `data/`, `dist/index.html` and `docs/README_one_life.md`. `test_verification/test_plugin_one_life.py` holds the tests.
 - Changed: `CHANGELOG.md` and `plugins/README_bundle_plugins.md`. The engine core, the plugin framework and the GUI are not changed.
 - Needed from the model library: the scenario named in `config.yaml` and the inputs the data files use. A missing input is reported when the plugin starts.
 
