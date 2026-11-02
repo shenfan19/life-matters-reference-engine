@@ -7,6 +7,7 @@ title: "LM Reference Engine"
 version: 1.3.0
 date-released: 2026-10-24
 type: software
+license: MIT
 authors:
   - family-names: Shen
     given-names: Fan

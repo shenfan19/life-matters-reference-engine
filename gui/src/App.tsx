@@ -13,16 +13,25 @@ const FONT_SIZE_MIN = 12;
 const FONT_SIZE_MAX = 20;
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-// HeartPulseIcon: heart split green/white left vs right — sim identity
+// HeartPulseIcon: tilted heart split into two inverted halves — sim identity
 // CardPulseIcon:  card outline + heart suit + QRS trace — game identity
 
 const HeartPulseIcon = ({ size = 16 }: { size?: number | string }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} style={{ verticalAlign: 'middle' }}>
-    {/* Heart split down the centerline, fore/background colors inverted left vs right */}
-    <rect x="0" y="0" width="12" height="24" fill="#007A33" />
-    <rect x="12" y="0" width="12" height="24" fill="#ffffff" />
-    <path d="M12,19.51 C6.9,15.26 3.5,11.86 3.5,8.46 A5.1,5.1,0,0,1,12,5.91 Z" fill="#ffffff" />
-    <path d="M12,5.91 A5.1,5.1,0,0,1,20.5,8.46 C20.5,11.86 17.1,15.26 12,19.51 Z" fill="#007A33" />
+    {/* Heart split along a tilted line, fore/background colors inverted across it */}
+    <defs>
+      <clipPath id="lm-tile"><rect width="24" height="24" rx="4" /></clipPath>
+      <clipPath id="lm-hl"><rect x="-30" y="-30" width="42" height="84" transform="translate(1.648 0.982) rotate(-25 12 12.7)" /></clipPath>
+      <clipPath id="lm-hr"><rect x="12" y="-30" width="42" height="84" transform="translate(1.648 0.982) rotate(-25 12 12.7)" /></clipPath>
+    </defs>
+    <g clipPath="url(#lm-tile)">
+      <g transform="translate(1.648 0.982) rotate(-25 12 12.7)">
+        <rect x="-30" y="-30" width="42" height="84" fill="#1f5c46" />
+        <rect x="12" y="-30" width="42" height="84" fill="#f6f1e8" />
+      </g>
+      <g clipPath="url(#lm-hl)"><path transform="translate(1.648 0.982) rotate(-25 12 12.7) translate(12 12.7) scale(1.04) translate(-12 -12.7)" d="M12,19.51 C6.9,15.26 3.5,11.86 3.5,8.46 A5.1,5.1,0,0,1,12,5.91 A5.1,5.1,0,0,1,20.5,8.46 C20.5,11.86 17.1,15.26 12,19.51 Z" fill="#f6f1e8" /></g>
+      <g clipPath="url(#lm-hr)"><path transform="translate(1.648 0.982) rotate(-25 12 12.7) translate(12 12.7) scale(1.04) translate(-12 -12.7)" d="M12,19.51 C6.9,15.26 3.5,11.86 3.5,8.46 A5.1,5.1,0,0,1,12,5.91 A5.1,5.1,0,0,1,20.5,8.46 C20.5,11.86 17.1,15.26 12,19.51 Z" fill="#1f5c46" /></g>
+    </g>
   </svg>
 );
 

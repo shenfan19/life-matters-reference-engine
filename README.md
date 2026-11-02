@@ -154,3 +154,7 @@ See the [life-matters-models](https://github.com/shenfan19/life-matters-models#c
 ## Acknowledgments
 
 This project was developed with AI coding assistance for code generation, automated testing, and documentation.
+
+## License
+
+MIT · Copyright (c) 2026 Fan Shen
