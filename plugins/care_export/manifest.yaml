@@ -1,0 +1,13 @@
+id: care_export
+name: Care Export
+version: '0.1.0'
+contract_version: 2
+description: Turns LM disease models into a Care for You condition pack. A recipe says which Care needs the disease drives, what the care actions do to the model and what the player gets to observe; the plugin renames and checks the equations, fits them to Care's expression subset and writes the model file, the condition template and an import zip.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: CareExport
+
+ui:
+  type: none

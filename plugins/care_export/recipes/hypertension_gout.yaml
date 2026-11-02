@@ -1,0 +1,92 @@
+# Recipe: LM hypertension and gout model -> a new Care for You condition "htn_gout".
+#
+# Care has no such condition, so the recipe also carries the Care condition template: the needs, the
+# actions and the first lines the game shows. The model is slow (a two-week time constant), so the
+# slow equations are sped up 24 times; one game hour then stands for one day of the source model.
+recipe_version: 1
+source: references/medical/disease/chronic/hypertension_gout_2026
+prefix: htgo
+version: "1.0"
+
+condition:
+  id: htn_gout
+  label: 高血压合并痛风
+  template:
+    version: 1
+    label: 高血压合并痛风
+    needs:
+      medicine: { label: 该吃药了, icon: "💊", rate: 0.06 }
+      bp: { label: 该量血压了, icon: "🩺", rate: 0.04 }
+      lab: { label: 该复查尿酸了, icon: "🧪", rate: 0.03 }
+    actions:
+      medicine: { label: 陪吃药, hold: 5, min: 5, effect: { medicine: -1 } }
+      bp: { label: 量血压, hold: 3, min: 5, effect: { bp: -1 } }
+      labtest: { label: 陪着去抽血化验, hold: 8, min: 30, effect: { lab: -1 } }
+      selfmed: { label: 自己吃药, selfonly: true, self: [adult, elder], hold: 1, min: 3, effect: { medicine: -0.8 } }
+      selfbp: { label: 自己量血压, selfonly: true, self: [adult, elder], hold: 1, min: 5, effect: { bp: -0.7 } }
+    lines:
+      request:
+        medicine: ["药，是不是该吃了？", "{ta}看了看药盒。"]
+        bp: ["今天还没量血压。", "{ta}揉了揉太阳穴。"]
+        lab: ["医生说过要复查尿酸。", "{ta}提了一句，脚趾那里有点不舒服。"]
+
+inputs:
+  diuretic_dose: ignore                # fed by the medicine action below
+  purine_intake: schedule              # a level for the whole day, from the model's default plan
+  weight_loss_rate: ignore
+
+pulses:
+  medicine: [{ input: diuretic_dose, total: 12.5, minutes: 60 }]
+  selfmed: [{ input: diuretic_dose, total: 12.5, minutes: 60 }]
+
+# Care time runs faster than the source model's days: these equations take one day per game hour.
+step_scale:
+  bp_dynamics: 24
+  ua_dynamics: 24
+
+needs:
+  bp: { kind: monitor, signal: systolic_bp, lo: 130, hi: 165, rate: 0.04, gain: 1.5 }
+  lab: { kind: monitor, signal: uric_acid, lo: 420, hi: 540, rate: 0.03, gain: 1.5 }
+
+default_preset: moderate
+presets:
+  mild:
+    params: { bp_baseline: 146.0, ua_baseline: 440.0 }
+    state: { systolic_bp: 146.0, uric_acid: 440.0 }
+  moderate:
+    params: { bp_baseline: 158.0, ua_baseline: 480.0 }
+    state: { systolic_bp: 158.0, uric_acid: 480.0 }
+  advanced:
+    params: { bp_baseline: 172.0, ua_baseline: 540.0 }
+    state: { systolic_bp: 172.0, uric_acid: 540.0 }
+
+readouts:
+  - id: bp
+    label: 血压
+    label_en: Blood pressure
+    value: systolic_bp
+    unit: mmHg
+    scale: [100, 200]
+    reveal_by: [bp, selfbp]
+    bands:
+      - { upto: 129, tone: ok, word: 很平稳, word_en: Steady }
+      - { upto: 149, tone: watch, word: 稍微高了一点, word_en: A little high }
+      - { tone: alert, word: 偏高，今天少盐, word_en: "High, go easy on salt today" }
+  - id: uric
+    label: 尿酸
+    label_en: Uric acid
+    value: uric_acid
+    unit: μmol/L
+    scale: [250, 700]
+    reveal_by: [labtest]
+    bands:
+      - { upto: 420, tone: ok, word: 在正常范围, word_en: In the normal range }
+      - { upto: 540, tone: watch, word: 有点偏高, word_en: A bit high }
+      - { tone: alert, word: 偏高，注意饮食, word_en: "High, watch the diet" }
+
+effects:
+  frailty: "0.002 * max(0.0, systolic_bp - 140.0) / 20.0"
+
+story:
+  intro: 血压和尿酸要同时照顾，吃药降了血压，尿酸却可能升高。所以每隔一阵量血压，再陪着去化验一次尿酸，两个数字一起看。
+  intro_en: "Blood pressure and uric acid have to be watched together: the pill that lowers the pressure can raise the uric acid. So check the pressure now and then, and go for the blood test now and then, and read both numbers."

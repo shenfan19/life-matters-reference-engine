@@ -1,0 +1,60 @@
+# Recipe: LM diabetes model -> Care for You condition "diabetes".
+#
+# The equations are the source model's. This file decides what Care feeds into them and what the
+# player gets to see. Care already has a hand-written diabetes model; this one replaces it when
+# installed (metadata.supersedes), so the two never run at the same time.
+recipe_version: 1
+source: references/medical/disease/metabolic/diabetes_2026
+prefix: dmlm
+version: "1.0"
+
+condition:
+  id: diabetes
+  supersedes: cond_diabetes
+
+# What feeds each input variable of the source model.
+inputs:
+  carb_intake: { schedule: auto }      # the model's own default plan: breakfast, lunch, dinner
+  insulin_injection: ignore            # declared by the source model but used by no equation
+  exercise_intensity: ignore           # Care has no exercise action for this condition yet
+
+# What a Care action or a story choice does in the model. Keys are Care action ids or choice keys.
+pulses:
+  carb_heavy: [{ input: carb_intake, total: 35, minutes: 30 }]    # dinner choice: braised pork
+  carb_low: [{ input: carb_intake, total: -25, minutes: 30 }]     # dinner choice: grain porridge
+
+# Care needs the model drives. "monitor" makes a need that grows faster while a signal is high and is
+# reset by the player's check. "direct" maps a state variable of the model onto a need.
+needs:
+  sugar: { kind: monitor, signal: blood_glucose, lo: 110, hi: 220, rate: 0.05, gain: 1.5 }
+
+default_preset: moderate
+presets:                               # the source model keeps its constants inside the equations, so the severity levels set the starting state
+  mild:
+    state: { insulin_sensitivity: 0.9, beta_cell_function: 0.9 }
+  moderate:
+    state: { insulin_sensitivity: 0.75, beta_cell_function: 0.8 }
+  advanced:
+    state: { insulin_sensitivity: 0.55, beta_cell_function: 0.6 }
+
+readouts:
+  - id: glucose
+    label: 血糖
+    label_en: Blood glucose
+    value: blood_glucose
+    unit: mg/dL
+    scale: [60, 300]
+    reveal_by: [sugar, selfsugar]
+    bands:
+      - { upto: 69, tone: alert, word: 偏低，先吃点东西, word_en: "Low, have something to eat" }
+      - { upto: 140, tone: ok, word: 很平稳, word_en: Steady }
+      - { upto: 180, tone: watch, word: 稍微高了一点, word_en: A little high }
+      - { tone: alert, word: 偏高，晚饭清淡些, word_en: "High, keep dinner light" }
+
+effects:
+  frailty: "0.002 * complication_score / 100.0"
+  mood: "-0.02 * max(0.0, (blood_glucose - 190.0) / 100.0)"
+
+story:
+  intro: 糖尿病是慢病，不是急症。重要的是每天的小事：隔一阵测一次血糖，晚饭不要太重。测过血糖，才看得到数字。
+  intro_en: "Diabetes is a slow companion, not an emergency. What matters is the small daily things: a check now and then, a dinner that is not too heavy. The number only shows after a check."
