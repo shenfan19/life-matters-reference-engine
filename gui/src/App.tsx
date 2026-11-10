@@ -517,6 +517,16 @@ function App() {
               </div>
             </div>
 
+            {/* Downstream applications */}
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, marginTop: 20, textAlign: 'left' }}>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 1.0714)', fontWeight: 700, color: c.textSec, marginBottom: 12 }}>
+                {t('about.downstream_title')}
+              </div>
+              <div style={{ fontSize: 'calc(var(--lm-font-size, 14px) * 0.9286)', color: c.textSec, lineHeight: 1.65 }}>
+                {t('about.downstream')}
+              </div>
+            </div>
+
             <button
               onClick={() => setAboutOpen(false)}
               style={{

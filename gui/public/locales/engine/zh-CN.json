@@ -124,6 +124,8 @@
   "sim.msg.component_model_hint": "此文件为库组件——不依赖关联模型时仿真结果可能不完整",
   "about.subtitle": "医学与社会仿真与优化",
   "about.subtitle_tooltip": "LM format 的参考实现：执行 V.E.S.O.（Variables、Equations、Simulation、Optimization）四个机制；理论上也可以有其他引擎实现同一规范",
+  "about.downstream_title": "下游应用",
+  "about.downstream": "Care for You 与 The Teleporter 是 LM 的两个下游应用项目。Care for You 用 LM 风格的模型模拟家庭日常照看，The Teleporter 用 LM 格式的模型模拟派遣到历史转折点。",
   "about.affiliation": "中山大学",
   "about.homepage": "主页",
   "about.citation_label": "引用",
