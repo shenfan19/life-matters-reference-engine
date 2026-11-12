@@ -1,0 +1,13 @@
+id: game_bridge
+name: Game Bridge
+version: '0.1.0'
+contract_version: 2
+description: Lets games use LM models without knowing them. A bridge file next to each model says which game-neutral concept its variables answer to; a system file asks for concepts and the plugin picks the models, joins them into one flat model and exports it for Care for You, Teleporter or any LM engine.
+author: LM Team
+
+backend:
+  entry: backend.py
+  class: GameBridge
+
+ui:
+  type: none

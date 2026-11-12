@@ -1,0 +1,21 @@
+# Bridge for references/medical/disease/metabolic/diabetes_2026.
+# The equations stay as they are. This file says which concept each variable answers to.
+bridge_version: 1
+model: references/medical/disease/metabolic/diabetes_2026
+tags: [diabetes]
+
+provides:
+  glycemic_level:
+    var: blood_glucose
+    scale: [70, 300]
+  frailty:
+    rate: "0.002 * complication_score / 100.0"
+  mood_valence:
+    rate: "0.02 * max(0.0, (blood_glucose - 190.0) / 100.0)"
+
+requires:
+  carb_intake:
+    var: carb_intake
+  activity_load:
+    var: exercise_intensity
+    optional: true

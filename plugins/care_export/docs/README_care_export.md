@@ -69,7 +69,7 @@ Care's own engine (frontend/src/backend/lm.js in the game repository) is checked
 
 ## 5. Limits
 
-- Standalone models only. A model that imports another is refused.
+- Standalone models only. A model that imports another is refused. Several models that feed each other can be joined first by the game_bridge plugin, which writes one flat model that this converter accepts.
 - The game has fixed Care needs and actions. The recipe maps onto them, and an input that no Care action feeds simply stays at its default. The source diabetes model has an insulin input that none of its equations uses, so the pill action has no effect in the converted model, and the recipe says so by not mapping it.
 - Slow processes keep their real speed unless the recipe speeds them up with `step_scale`.
 - Time inside the game is not the model's calendar. Dates in the source plan are ignored, and the daily routine repeats every day.

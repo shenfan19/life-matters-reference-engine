@@ -1,0 +1,9 @@
+# The glucose side of a person with diabetes, as a game asks for it.
+system_version: 1
+id: diabetes_care
+goal: [glycemic_level, frailty, mood_valence]
+include_tags: [diabetes]
+supply_from_game: [carb_intake, activity_load]
+policy:
+  min_ratings: {}
+pins: {}
