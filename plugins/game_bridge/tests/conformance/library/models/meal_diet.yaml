@@ -1,0 +1,41 @@
+metadata:
+  name: meal_diet
+  version: '1.0'
+  lm_format_version: '1.0'
+  generated: false
+  source: A small meal model written for the conformance tests of the game bridge. It turns the grams of a meal into the carbohydrate a glucose model eats.
+  description:
+    problem: A meal arrives as grams of food and a part of it reaches the gut as carbohydrate.
+    method: The carbohydrate flux is the meal input times a fixed absorbed fraction.
+    limitations: A test fixture. It has no digestion delay and no composition of food.
+  ratings:
+    confidence: 0.5 - test fixture
+variables:
+  meal_g:
+    type: input
+    value: 0
+    unit: g
+  absorb:
+    type: parameter
+    value: 0.8
+  carb_flux:
+    type: state
+    value: 0
+    unit: g
+    bounds: [0, 500]
+equations:
+  absorb_meal:
+    step_unit: minute
+    priority: 10
+    dynamics:
+      carb_flux: meal_g * absorb
+simulation:
+  step_size: {value: 1, unit: minute}
+  start_date: '2026-01-01'
+  end_date: '2026-04-01'
+  plans:
+    - id: default
+      regimens:
+        - {variable: meal_g, time_start: '08:00', value: 50, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: ['2026-01-01', '2026-04-01']}
+        - {variable: meal_g, time_start: '12:00', value: 70, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: ['2026-01-01', '2026-04-01']}
+        - {variable: meal_g, time_start: '18:00', value: 60, days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun], date_range: ['2026-01-01', '2026-04-01']}

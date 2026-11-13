@@ -1,0 +1,8 @@
+bridge_version: 1
+model: references/medical/physiology/human_body/renal_fluid_2026
+namespace: shared
+tags: [human_body, renal_fluid]
+provides:
+  # hydration_index is 1 when the body is watered and falls with thirst; 0.7 is a heavy shortage, so the scale runs downward
+  hydration_deficit: {var: hydration_index, scale: [1.0, 0.7]}
+requires: {}

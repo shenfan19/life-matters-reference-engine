@@ -26,6 +26,8 @@ STEP_HOURS = {'second': 1 / 3600, 'minute': 1 / 60, 'hour': 1.0, 'day': 24.0, 'w
 ROLES = ('readout', 'handle', 'context')
 COMBINE_VAR = ('replace', 'max')
 COMBINE_RATE = ('sum_rate', 'product')
+NAMESPACES = ('own', 'shared')
+HANDLE_MODES = ('level', 'total')
 LEVEL_BAND = 1000.0          # priority band per dependency level, see compose()
 MAX_MEMBER_PRIORITY = 100.0
 # Names that every LM expression may use without declaring them.
@@ -111,7 +113,10 @@ def substitute_expr(expr, mapping):
 class Vocabulary:
     def __init__(self, data):
         self.concepts = dict((data or {}).get('concepts') or {})
+        self.version = (data or {}).get('vocabulary_version')
         problems = []
+        if not isinstance(self.version, int) or isinstance(self.version, bool) or self.version < 1:
+            problems.append('vocabulary_version must be a whole number of 1 or more')
         for cid, c in self.concepts.items():
             if not re.fullmatch(r'[a-z][a-z0-9_]*', cid):
                 problems.append(f'concept "{cid}": the id must be lowercase letters, digits and underscore')
@@ -121,11 +126,19 @@ class Vocabulary:
                 problems.append(f'concept "{cid}": combine must be one of {COMBINE_VAR}')
             if c.get('rate_combine', 'sum_rate') not in COMBINE_RATE:
                 problems.append(f'concept "{cid}": rate_combine must be one of {COMBINE_RATE}')
+            if c.get('role') == 'handle' and c.get('mode') not in HANDLE_MODES:
+                problems.append(f'concept "{cid}": a handle needs mode, one of {HANDLE_MODES}')
+            if c.get('role') != 'handle' and 'mode' in c:
+                problems.append(f'concept "{cid}": mode belongs to handles only')
         if problems:
             raise BridgeError(problems)
 
     def role(self, cid):
         return self.concepts[cid]['role']
+
+    def mode(self, cid):
+        """How a write to a handle is meant: level or total."""
+        return self.concepts[cid]['mode']
 
     def combine(self, cid):
         """How several models that each give the concept a variable are joined: replace (only one allowed) or max."""
@@ -198,6 +211,8 @@ def check_bridge(bridge, model, vocab):
     if bridge.get('bridge_version') != BRIDGE_VERSION:
         problems.append(f'{who}: bridge_version must be {BRIDGE_VERSION}')
     names = model_names(model)
+    if bridge.get('namespace', 'own') not in NAMESPACES:
+        problems.append(f'{who}: namespace must be one of {NAMESPACES}')
     for section in ('provides', 'requires'):
         for cid, spec in (bridge.get(section) or {}).items():
             if cid not in vocab.concepts:
@@ -206,14 +221,24 @@ def check_bridge(bridge, model, vocab):
             role = vocab.role(cid)
             spec = spec or {}
             if section == 'provides':
-                if ('var' in spec) == ('rate' in spec):
-                    problems.append(f'{who}: provides "{cid}" needs exactly one of var and rate')
+                if sum(k in spec for k in ('var', 'rate', 'expr')) != 1:
+                    problems.append(f'{who}: provides "{cid}" needs exactly one of var, expr and rate')
                 if 'var' in spec:
                     if spec['var'] not in names:
                         problems.append(f'{who}: provides "{cid}": variable "{spec["var"]}" is not declared')
+                if 'var' in spec or 'expr' in spec:
                     sc = spec.get('scale')
-                    if role == 'readout' and not (isinstance(sc, list) and len(sc) == 2 and sc[0] < sc[1]):
-                        problems.append(f'{who}: provides "{cid}": a readout needs scale [lo, hi] with lo < hi')
+                    if role == 'readout' and not (isinstance(sc, list) and len(sc) == 2 and sc[0] != sc[1]):
+                        problems.append(f'{who}: provides "{cid}": a readout needs scale [lo, hi] with lo different from hi (hi below lo reverses it)')
+                    if role != 'readout' and 'expr' in spec:
+                        problems.append(f'{who}: provides "{cid}" with expr, but expressions apply to readouts only')
+                if 'expr' in spec:
+                    try:
+                        unknown = names_in(spec['expr']) - set(names) - LM_BUILTINS
+                        if unknown:
+                            problems.append(f'{who}: provides "{cid}": expr reads unknown names {sorted(unknown)}')
+                    except SyntaxError as e:
+                        problems.append(f'{who}: provides "{cid}": expr is not valid syntax ({e.msg})')
                 if 'rate' in spec:
                     if role != 'readout':
                         problems.append(f'{who}: provides "{cid}" with rate, but rates apply to readouts only')
@@ -268,8 +293,16 @@ def resolve(system, lib):
     """Choose the models of a system. Returns a plan dict; raises BridgeError listing every unsatisfied need."""
     if system.get('system_version') != SYSTEM_VERSION:
         raise BridgeError([f'system_version must be {SYSTEM_VERSION}'])
-    vocab, bridges = lib.vocab, lib.bridges()
+    vocab, bridges = lib.vocab, dict(lib.bridges())
     problems, choices = [], []
+    # models joined into the shared namespace without a bridge file of their own: they provide and require no concept
+    for key in system.get('shared_models') or []:
+        if key in bridges:
+            problems.append(f'shared_models: "{key}" has a bridge file, list it in include_models or by tag instead')
+        elif not lib.model_path(key):
+            problems.append(f'shared_models: model "{key}" not found under {lib.models_dir}')
+        else:
+            bridges[key] = {'bridge_version': BRIDGE_VERSION, 'model': key, 'namespace': 'shared', 'provides': {}, 'requires': {}, 'tags': [], '_implicit': True}
     goal = list(system.get('goal') or [])
     supply = set(system.get('supply_from_game') or [])
     pins = dict(system.get('pins') or {})
@@ -324,6 +357,9 @@ def resolve(system, lib):
             problems.append(f'include_models: "{key}" has no bridge file')
         else:
             include(key, 'listed in include_models')
+    for key in system.get('shared_models') or []:
+        if key in bridges and bridges[key].get('_implicit'):
+            include(key, 'listed in shared_models')
 
     def pick(cid, cands):
         if cid in pins:
@@ -416,14 +452,15 @@ def resolve(system, lib):
 
     # readout providers: combine rule must be satisfiable
     for cid in goal:
-        provs = [k for k in provider_in(cid) if 'var' in (bridges[k]['provides'][cid] or {})]
+        provs = [k for k in provider_in(cid) if {'var', 'expr'} & set(bridges[k]['provides'][cid] or {})]
         comb = vocab.combine(cid)
         if comb == 'replace' and len(provs) > 1:
             problems.append(f'concept "{cid}" combines by replace, but {provs} all provide it; pin one')
     if problems:
         raise BridgeError(problems)
     return {'system': system.get('id', 'system'), 'members': included, 'feeds': feeds, 'level': level, 'choices': choices,
-            'goal': goal, 'supply': sorted(supply)}
+            'goal': goal, 'supply': sorted(supply), 'bridges': bridges, 'step_size': system.get('step_size'),
+            'dates': [system.get('start_date'), system.get('end_date')]}
 
 
 def _has_cycle(nodes, feeds):
@@ -465,12 +502,16 @@ def compose(plan, lib, prefixes=None):
         reads the provider's value of the same step (no lag), see LEVEL_BAND;
       - an input that nobody provides stays an input, and is listed as a handle of the concept.
     """
-    vocab, bridges = lib.vocab, lib.bridges()
+    vocab, bridges = lib.vocab, plan.get('bridges') or lib.bridges()
     problems, warnings = [], []
     members = plan['members']
+    shared = [k for k in members if bridges[k].get('namespace') == 'shared']
     taken, pre = set(), {}
     for k in members:
         explicit = (prefixes or {}).get(k)
+        if k in shared:
+            pre[k] = ''                 # a shared member keeps its names, so that the components of one body read each other by name
+            continue
         pre[k] = explicit if explicit is not None else ('' if len(members) == 1 else _prefix_for(k, taken))
         taken.add(pre[k])
     flat = {'metadata': {}, 'variables': {}, 'equations': {}}
@@ -482,8 +523,14 @@ def compose(plan, lib, prefixes=None):
             problems.append(f'{k}: the model imports other models; compose standalone models, or add the imported ones as members')
         names_of[k] = model_names(m)
         pr = [e.get('priority', 0) for e in (m.get('equations') or {}).values()]
-        if pr and (max(pr) > MAX_MEMBER_PRIORITY or min(pr) < -MAX_MEMBER_PRIORITY):
+        if pr and k not in shared and (max(pr) > MAX_MEMBER_PRIORITY or min(pr) < -MAX_MEMBER_PRIORITY):
             problems.append(f'{k}: equation priorities must stay within +-{MAX_MEMBER_PRIORITY:g} so the bands of the dependency levels do not overlap')
+    shared_names = {}
+    for k in shared:
+        for n, kind in names_of[k].items():
+            if n in shared_names and shared_names[n][0] != k:
+                problems.append(f'{k} and {shared_names[n][0]} both declare "{n}" in the shared namespace; compose does not choose between them')
+            shared_names[n] = (k, kind)
     if problems:
         raise BridgeError(problems)
 
@@ -496,6 +543,9 @@ def compose(plan, lib, prefixes=None):
             spec = spec or {}
             var = spec['var']
             provs = [pk for pk in members if pk != ck and cid in (bridges[pk].get('provides') or {}) and 'var' in (bridges[pk]['provides'][cid] or {})]
+            if cid not in plan['supply'] and not provs and any(pk != ck and 'expr' in ((bridges[pk].get('provides') or {}).get(cid) or {}) for pk in members):
+                problems.append(f'{ck} requires "{cid}", which a member provides by an expression only; an expression cannot be wired into another model')
+                continue
             if cid in plan['supply'] or not provs:
                 handles.setdefault(cid, []).append(q(pre[ck], var))
                 continue
@@ -503,6 +553,9 @@ def compose(plan, lib, prefixes=None):
                 problems.append(f'{ck} requires "{cid}" and {provs} all provide it; compose cannot choose, pin one')
                 continue
             pk = provs[0]
+            if ck in shared or pk in shared:
+                problems.append(f'{ck} requires "{cid}" from {pk}, and one of them is in the shared namespace; shared components read each other by name and are not wired by concept')
+                continue
             wired[(ck, var)] = (pk, bridges[pk]['provides'][cid]['var'], spec.get('convert'))
     if problems:
         raise BridgeError(problems)
@@ -540,11 +593,15 @@ def compose(plan, lib, prefixes=None):
                 foreign_all.setdefault(k, set()).update(fo)
             d['dynamics'] = {}
             for var, expr in (eq.get('dynamics') or {}).items():
+                if var not in rename and k in shared and var in shared_names:
+                    rename = {**rename, var: var}       # a hook: this component updates a variable another shared component declares
                 if var not in rename:
                     problems.append(f'{k}.equations.{en}: updates "{var}", which the model does not declare')
                     continue
                 d['dynamics'][rename[var]], fo = rename_expr(expr, rename, f'{k}.equations.{en}.{var}', problems)
                 foreign_all.setdefault(k, set()).update(fo)
+            if q(p, en) in flat['equations']:
+                problems.append(f'{k}.equations.{en}: an equation of this name is already in the flat model; shared members need distinct equation names')
             flat['equations'][q(p, en)] = d
     # wire equations
     for (ck, var), (pk, pvar, conv) in wired.items():
@@ -571,11 +628,17 @@ def compose(plan, lib, prefixes=None):
         st = (models[k].get('simulation') or {}).get('step_size') or {}
         steps_h.append(float(st.get('value', 1)) * STEP_HOURS.get(str(st.get('unit', 'hour')), 1.0))
     fine = min(steps_h) if steps_h else 1.0
+    chosen = plan.get('step_size')
+    if chosen:
+        fine = float(chosen.get('value', 1)) * STEP_HOURS.get(str(chosen.get('unit', 'hour')), 1.0)
     sim = {'step_size': {'value': _nice(fine * 60), 'unit': 'minute'}}
-    first_sim = (models[members[0]].get('simulation') or {})
-    for key in ('start_date', 'end_date'):
-        if first_sim.get(key):
-            sim[key] = first_sim[key]
+    first_sim = next((models[k].get('simulation') for k in members if (models[k].get('simulation') or {}).get('start_date')), None) or {}
+    for key, given in zip(('start_date', 'end_date'), plan.get('dates') or [None, None]):
+        if given or first_sim.get(key):
+            sim[key] = str(given) if given else first_sim[key]
+    if chosen and not (sim.get('start_date') and sim.get('end_date')):
+        sim.setdefault('start_date', '2026-01-01')
+        sim.setdefault('end_date', '2027-01-01')
     regimens = []
     for k in members:
         for plan_ in (models[k].get('simulation') or {}).get('plans') or []:
@@ -616,8 +679,8 @@ def compose(plan, lib, prefixes=None):
         flat['metadata']['description'] = copy.deepcopy((models[members[0]].get('metadata') or {}).get('description') or flat['metadata']['description'])
 
     # bridge description for the game
-    br = {'bridge_version': BRIDGE_VERSION, 'system': plan['system'],
-          'step_minutes': _nice(fine * 60), 'readouts': {}, 'handles': {}, 'context': {}, 'rates': {},
+    br = {'bridge_version': BRIDGE_VERSION, 'system': plan['system'], 'vocabulary_version': vocab.version,
+          'step_minutes': _nice(fine * 60), 'readouts': {}, 'handles': {}, 'modes': {}, 'context': {}, 'rates': {},
           'members': {k: pre[k] for k in members},
           'wires': [{'from': q(pre[pk], pv), 'to': q(pre[ck], v)} for (ck, v), (pk, pv, _c) in wired.items()]}
     for cid in plan['goal']:
@@ -627,6 +690,10 @@ def compose(plan, lib, prefixes=None):
             if sp and 'var' in sp:
                 lo, hi = sp.get('scale', [0, 1])
                 srcs.append({'var': q(pre[k], sp["var"]), 'lo': lo, 'hi': hi})
+            elif sp and 'expr' in sp:
+                lo, hi = sp['scale']
+                text, _ = rename_expr(sp['expr'], {n: q(pre[k], n) for n in names_of[k]}, f'{k}.provides.{cid}', problems)
+                srcs.append({'expr': text, 'lo': lo, 'hi': hi})
         if srcs:
             br['readouts'][cid] = {'combine': vocab.combine(cid), 'sources': srcs}
     for k in members:
@@ -635,10 +702,14 @@ def compose(plan, lib, prefixes=None):
                 expr, _ = rename_expr(sp['rate'], {n: q(pre[k], n) for n in names_of[k]}, f'{k}.provides.{cid}', problems)
                 br['rates'].setdefault(cid, {'combine': vocab.rate_combine(cid), 'terms': []})['terms'].append(expr)
     for cid, vs in handles.items():
-        (br['context'] if vocab.role(cid) == 'context' else br['handles'])[cid] = vs
+        if vocab.role(cid) == 'context':
+            br['context'][cid] = vs
+        else:
+            br['handles'][cid] = vs
+            br['modes'][cid] = vocab.mode(cid)
     if problems:
         raise BridgeError(problems)
-    for sect in ('readouts', 'handles', 'context', 'rates'):
+    for sect in ('readouts', 'handles', 'modes', 'context', 'rates'):
         if not br[sect]:
             del br[sect]
     report = {'system': plan['system'], 'members': {k: pre[k] for k in members}, 'choices': plan['choices'],
@@ -655,8 +726,12 @@ def read_concepts(bridge, state):
     """Reference for a game runtime: the value 0 to 1 of every readout concept, from a dict of flat variable values.
     A source maps its variable linearly from [lo, hi] to [0, 1] and clips; several sources join by the concept's combine."""
     out = {}
+    env = {**_RT_FUNCS, **state}
     for cid, spec in (bridge.get('readouts') or {}).items():
-        vals = [min(1.0, max(0.0, (state[s['var']] - s['lo']) / (s['hi'] - s['lo']))) for s in spec['sources']]
+        vals = []
+        for s in spec['sources']:
+            x = state[s['var']] if 'var' in s else eval(s['expr'], {'__builtins__': {}}, env)
+            vals.append(min(1.0, max(0.0, (x - s['lo']) / (s['hi'] - s['lo']))))
         out[cid] = max(vals)
     return out
 

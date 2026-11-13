@@ -1,0 +1,8 @@
+bridge_version: 1
+model: references/medical/physiology/human_body/musculoskeletal_2026
+namespace: shared
+tags: [human_body, musculoskeletal]
+provides:
+  # muscle_strength is 1 for the reference body; half of it reads as the loss of the ability to move, so the scale runs downward
+  mobility_loss: {var: muscle_strength, scale: [1.0, 0.5]}
+requires: {}

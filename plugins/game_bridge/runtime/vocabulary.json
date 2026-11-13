@@ -1,0 +1,145 @@
+{
+ "vocabulary_version": 4,
+ "concepts": {
+  "hydration_deficit": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Shortage of body water. 0 is well hydrated, 1 is the extreme."
+  },
+  "energy_deficit": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Shortage of food energy. 0 is satisfied, 1 is starving."
+  },
+  "fatigue": {
+   "domain": "body",
+   "role": "readout",
+   "combine": "max",
+   "description": "Tiredness from effort and lack of rest."
+  },
+  "glycemic_level": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Blood glucose, scaled from a low-normal to a clearly high value."
+  },
+  "blood_pressure_level": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Blood pressure, scaled from normal to a clearly high value."
+  },
+  "mobility_loss": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Loss of the ability to move, from joints, muscles or nerves."
+  },
+  "infection_burden": {
+   "domain": "body",
+   "role": "readout",
+   "combine": "max",
+   "description": "How much infection the body carries and how ill it makes the person."
+  },
+  "injury_burden": {
+   "domain": "body",
+   "role": "readout",
+   "combine": "max",
+   "description": "Lasting damage from injury."
+  },
+  "frailty": {
+   "domain": "body",
+   "role": "readout",
+   "description": "Overall loss of reserve. Models mostly give it a rate, not a variable."
+  },
+  "oxygen_deficit": {
+   "domain": "body",
+   "role": "readout",
+   "combine": "max",
+   "description": "Shortage of oxygen in the blood, from thin air, damaged lungs or poisoning. 0 is normal saturation, 1 is severe."
+  },
+  "nutrient_deficit": {
+   "domain": "body",
+   "role": "readout",
+   "combine": "max",
+   "description": "Lack of a vitamin or mineral the body cannot make, as in scurvy, beriberi or goitre. 0 is well supplied, 1 is the pool run dry."
+  },
+  "mood_valence": {
+   "domain": "mind",
+   "role": "readout",
+   "description": "How bad the person feels, in valence. 0 is good, 1 is the worst. Models mostly give it a rate."
+  },
+  "psychological_strain": {
+   "domain": "mind",
+   "role": "readout",
+   "combine": "max",
+   "description": "Stress, homesickness and the weight of circumstances."
+  },
+  "loneliness": {
+   "domain": "mind",
+   "role": "readout",
+   "description": "Lack of company felt by the person."
+  },
+  "food_intake": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "total",
+   "description": "Food eaten at a meal, in grams."
+  },
+  "carb_intake": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "total",
+   "description": "Carbohydrate reaching the gut, in grams per step as the consuming model expects."
+  },
+  "fluid_intake": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "total",
+   "description": "Fluid drunk."
+  },
+  "activity_load": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "level",
+   "description": "Physical effort."
+  },
+  "medication_dose": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "total",
+   "description": "Dose of the medicine a model is built around."
+  },
+  "sleep_duration": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "level",
+   "description": "Hours of sleep per night, as the consuming model expects."
+  },
+  "psychological_demand": {
+   "domain": "mind",
+   "role": "handle",
+   "mode": "level",
+   "description": "Load of stress put on the person, from 0 for none to 1 for constant extreme pressure."
+  },
+  "injury_exposure": {
+   "domain": "body",
+   "role": "handle",
+   "mode": "level",
+   "description": "How exposed the person is to wounds, from 0 for a safe place to 1 for war or dangerous labour."
+  },
+  "social_contact": {
+   "domain": "mind",
+   "role": "handle",
+   "mode": "level",
+   "description": "Time spent with others."
+  },
+  "pathogen_exposure": {
+   "domain": "body",
+   "role": "context",
+   "description": "Intensity of exposure to a pathogen, worked out by the game for a place and a time."
+  },
+  "social_recognition": {
+   "domain": "society",
+   "role": "context",
+   "description": "How far the society of a time and place recognises the person, for example by sex. The game picks the parameter set."
+  }
+ }
+}

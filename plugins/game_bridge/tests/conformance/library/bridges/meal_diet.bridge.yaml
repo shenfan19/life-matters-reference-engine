@@ -1,0 +1,7 @@
+bridge_version: 1
+model: meal_diet
+tags: [conformance_diet]
+provides:
+  carb_intake: {var: carb_flux}
+requires:
+  food_intake: {var: meal_g}

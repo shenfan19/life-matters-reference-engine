@@ -1,0 +1,8 @@
+# A population model on its own: it is not a component of a body and keeps its names under a prefix when it is composed with others.
+bridge_version: 1
+model: references/social/psychology/panic/collective_panic_2026
+tags: [collective_panic]
+provides:
+  # panic_index is 0 to 100 and the model puts the point where order breaks down near 17; 50 is a general panic
+  psychological_strain: {var: panic_index, scale: [0.0, 50.0]}
+requires: {}

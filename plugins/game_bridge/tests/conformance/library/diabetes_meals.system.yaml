@@ -1,0 +1,9 @@
+# Diabetes with a meal model in front of it, the system the engine parity of the conformance tests runs.
+system_version: 1
+id: diabetes_meals
+goal: [glycemic_level, frailty, mood_valence]
+include_tags: [diabetes]
+supply_from_game: [food_intake, activity_load]
+policy:
+  min_ratings: {}
+pins: {}

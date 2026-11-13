@@ -1,0 +1,8 @@
+bridge_version: 1
+model: references/medical/physiology/human_body/body_composition_energy_2026
+namespace: shared
+tags: [human_body, body_composition_energy]
+provides:
+  # energy_balance is absorbed energy minus expenditure in kcal per day; a surplus reads as 0, a deficit of 1500 kcal per day as 1
+  energy_deficit: {var: energy_balance, scale: [0.0, -1500.0]}
+requires: {}

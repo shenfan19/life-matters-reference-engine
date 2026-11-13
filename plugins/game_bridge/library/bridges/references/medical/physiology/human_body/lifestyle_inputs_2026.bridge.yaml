@@ -1,0 +1,15 @@
+# The input layer of the human body. It maps the inputs a game can write to concepts; the units are those of the variable, per internal step of the
+# system, and the system of the traveler steps a day at a time. The other inputs of the layer (sleep, stress, sodium, exposure to wounds, vector and
+# water safety, the vitamins) have no concept in the vocabulary yet; they keep their reference values.
+bridge_version: 1
+model: references/medical/physiology/human_body/lifestyle_inputs_2026
+namespace: shared
+tags: [human_body, lifestyle_inputs]
+provides: {}
+requires:
+  fluid_intake: {var: water_l}
+  activity_load: {var: aerobic_min}
+  pathogen_exposure: {var: epidemic_pressure}
+  sleep_duration: {var: sleep_hours}
+  psychological_demand: {var: stress_load}
+  injury_exposure: {var: injury_exposure}

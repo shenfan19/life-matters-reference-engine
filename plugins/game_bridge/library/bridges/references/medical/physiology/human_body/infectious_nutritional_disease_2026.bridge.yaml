@@ -1,0 +1,16 @@
+bridge_version: 1
+model: references/medical/physiology/human_body/infectious_nutritional_disease_2026
+namespace: shared
+tags: [human_body, infectious_nutritional_disease]
+provides:
+  # six expected burdens, each from 0 to 1; the readout is the worst of them
+  infection_burden:
+    expr: "max(enteric_burden, tb_burden, malaria_burden, helminth_burden, wound_burden, epidemic_burden)"
+    scale: [0.0, 1.0]
+  # infection of wounds after trauma is the lasting damage of an injury in this component
+  injury_burden: {var: wound_burden, scale: [0.0, 1.0]}
+  # each pool is 1 at the modern recommended intake; the readout is how far the lowest pool has fallen
+  nutrient_deficit:
+    expr: "max(0.0, 1.0 - min(vitc_pool, thiamine_pool, iodine_pool))"
+    scale: [0.0, 1.0]
+requires: {}

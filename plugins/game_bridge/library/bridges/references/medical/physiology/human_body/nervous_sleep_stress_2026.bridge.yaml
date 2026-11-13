@@ -1,0 +1,11 @@
+# A component of the human body: it declares no input of its own and reads the others by name, so it joins a system in the shared namespace.
+bridge_version: 1
+model: references/medical/physiology/human_body/nervous_sleep_stress_2026
+namespace: shared
+tags: [human_body, nervous_sleep_stress]
+provides:
+  # fatigue_index runs from 0 to 1, the rested reference is 0.15
+  fatigue: {var: fatigue_index, scale: [0.15, 1.0]}
+  # sympathetic_tone is 1 at rest and rises with stress, short sleep, fever and thirst; 2 is a heavy load
+  psychological_strain: {var: sympathetic_tone, scale: [1.0, 2.0]}
+requires: {}

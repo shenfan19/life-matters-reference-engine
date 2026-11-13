@@ -4,11 +4,12 @@ Endpoints (POST /api/plugins/game_bridge/<name>):
   concepts   the vocabulary, the bridge files found, and problems in them
   systems    the system files shipped in library/systems
   compose    resolve one system and return the flat model, the bridge description and a report
-  export     compose, then export for a target: lm, care or tp
+  export     compose, then export for a target: lm, lmcore, care or tp
 
 From a terminal, without the engine (only PyYAML is needed):
   python plugins/game_bridge/backend.py check   --models ../life-matters-models/models
   python plugins/game_bridge/backend.py compose library/systems/diabetes_care.system.yaml --models ../life-matters-models/models --out out
+  python plugins/game_bridge/backend.py export lmcore library/systems/diabetes_care.system.yaml --models ... --out out
   python plugins/game_bridge/backend.py export care library/systems/diabetes_care.system.yaml --recipe ../care_export/recipes/diabetes.yaml --models ... --out out
   python plugins/game_bridge/backend.py export tp   library/systems/diabetes_care.system.yaml --models ... --out out --instance traveler --step-days 0.25
 """
@@ -43,6 +44,13 @@ def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)
+
+
+def lmcore_files(res):
+    """The two JSON documents the LM core of the runtime reads: the flat model and the bridge description."""
+    sid = res['bridge']['system']
+    return {f'{sid}.lm.json': json.dumps(res['model'], ensure_ascii=False, indent=1, default=str),
+            f'{sid}.bridge.json': json.dumps(res['bridge'], ensure_ascii=False, indent=2)}
 
 
 def write_composed(res, out):
@@ -86,6 +94,8 @@ class GameBridge:
             res = br.compose_system(load_system(str(inputs.get('system', ''))), self._lib())
             if target == 'lm':
                 return {'success': True, 'model_yaml': br.dump_yaml(res['model']), 'bridge': res['bridge'], 'report': res['report']}
+            if target == 'lmcore':
+                return {'success': True, 'files': lmcore_files(res), 'report': res['report']}
             if target == 'care':
                 recipe = br.load_yaml(str(inputs['recipe'])) if os.path.isfile(str(inputs.get('recipe', ''))) else inputs.get('recipe_data')
                 if not recipe:
@@ -115,7 +125,7 @@ def main(argv=None):
         if name != 'check':
             p.add_argument('--out', default='game_bridge_out')
         if name == 'export':
-            p.add_argument('target', choices=['lm', 'care', 'tp'])
+            p.add_argument('target', choices=['lm', 'lmcore', 'care', 'tp'])
             p.add_argument('--recipe', help='care: a care_export recipe file')
             p.add_argument('--instance', default='traveler', help='tp: name prefix of the variables')
             p.add_argument('--step-days', type=float, default=0.25, help='tp: the step of the era file, in days')
@@ -136,6 +146,10 @@ def main(argv=None):
         if args.cmd == 'compose' or args.target == 'lm':
             write_composed(res, args.out)
             print('wrote', os.path.join(args.out, res['bridge']['system'] + '.lm.yaml'), res['report']['counts'])
+        elif args.target == 'lmcore':
+            for name, text in lmcore_files(res).items():
+                write(os.path.join(args.out, name), text)
+            print('wrote', ', '.join(lmcore_files(res)), 'for the LM core of the runtime', res['report']['counts'])
         elif args.target == 'care':
             if not args.recipe:
                 raise br.BridgeError(['export care needs --recipe'])

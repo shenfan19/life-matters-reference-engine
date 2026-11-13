@@ -28,7 +28,7 @@ TP_FUNCS = {'min', 'max', 'abs', 'exp', 'log', 'sqrt', 'sin', 'cos', 'floor', 'r
 def _vars_of(bridge, concept):
     """Flat variable names that answer to a concept, in any section of the bridge description."""
     if concept in (bridge.get('readouts') or {}):
-        return [s['var'] for s in bridge['readouts'][concept]['sources']]
+        return [s['var'] for s in bridge['readouts'][concept]['sources'] if 'var' in s]
     for sect in ('handles', 'context'):
         if concept in (bridge.get(sect) or {}):
             return list(bridge[sect][concept])
@@ -286,7 +286,10 @@ def _tp_expr(expr, rename, aux, factor, problems, where):
 def _rename_bridge(b, rename):
     for r in (b.get('readouts') or {}).values():
         for s in r['sources']:
-            s['var'] = rename[s['var']]
+            if 'var' in s:
+                s['var'] = rename[s['var']]
+            else:
+                s['expr'] = br.substitute_expr(s['expr'], {k: v.replace('.', '__') for k, v in rename.items()}).replace('__', '.')
     for sect in ('handles', 'context'):
         for c, vs in (b.get(sect) or {}).items():
             b[sect][c] = [rename[v] for v in vs]

@@ -1,0 +1,8 @@
+bridge_version: 1
+model: references/medical/physiology/human_body/respiratory_2026
+namespace: shared
+tags: [human_body, respiratory]
+provides:
+  # resting oxygen saturation is 98 percent; below 90 is a clear shortage and 85 is severe, so the scale runs downward
+  oxygen_deficit: {var: spo2, scale: [98.0, 85.0]}
+requires: {}

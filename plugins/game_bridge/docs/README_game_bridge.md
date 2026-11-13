@@ -15,6 +15,7 @@ The output does not depend on how a game runs it. A game that rewrites the equat
 | What do I get out and how do I run it | Sections 7 and 8 |
 | Which command or endpoint do I call | Section 9 |
 | How do I know it is faithful, and what can it not do | Sections 10 and 11 |
+| What runs a composed system inside a game, and how it gets there | Section 8.6 and [README_core_interface.md](README_core_interface.md) |
 
 ## 1. The layers
 
@@ -40,6 +41,9 @@ The fields of a concept:
 | role | readout, handle or context |
 | combine | readouts only. How several models that each give a variable are joined: `replace` allows one provider, `max` takes the largest. Default `replace` |
 | rate_combine | readouts only. How the rates several models give are joined: `sum_rate` adds, `product` multiplies. Default `sum_rate` |
+| mode | handles only, required. `level` holds the written value for the whole window of a step, `total` is an amount put in once in the window and spread over it. A write with the other mode is dropped |
+
+The file carries `vocabulary_version`, which rises whenever a concept is added or removed or changes its mode or meaning. It is copied into the bridge description and into every init message, so a core built for one vocabulary refuses another.
 
 The vocabulary stays small on purpose: a concept is added only when a model provides it or a game consumes it.
 
@@ -64,7 +68,9 @@ requires:
 |-----|---------|
 | tags | Names a system can ask for, for example the condition |
 | provides.C.var | A variable of the model that answers to concept C |
-| provides.C.scale | `[lo, hi]`. A readout is the variable mapped linearly from this range to 0..1 and clipped. Required for a readout given by a variable |
+| provides.C.scale | `[lo, hi]`, with lo different from hi. A readout is the variable (or expression) mapped linearly from this range to 0..1 and clipped. When hi is below lo the scale runs downward, which is how a quantity that falls when things go badly, such as oxygen saturation, becomes a deficit. Required for a readout given by a variable or an expression |
+| provides.C.expr | An expression in the model's names, instead of `var`. For a readout the model has no single variable for, such as the worst of several burdens. A readout given by an expression cannot be wired into another model |
+| namespace | `own` (default) or `shared`. See section 6 |
 | provides.C.rate | An expression in the model's names. The model's push on a readout that has no variable of its own, such as frailty and mood. The unit of a rate is defined by the adapter that uses it |
 | requires.C.var | The model's input (or state) that the concept C feeds. If the model reads it without declaring it, the bridge declares it as an input |
 | requires.C.optional | If true, a missing provider is not an error and the variable keeps its default |
@@ -82,6 +88,9 @@ goal: [glycemic_level, frailty, mood_valence]   # what the game will read
 include_tags: [diabetes]                         # members named by tag
 include_models: []                               # members named by path
 supply_from_game: [carb_intake, activity_load]   # handles or contexts the game writes
+shared_models: []                                # members that need no bridge file, joined into the shared namespace (section 6)
+step_size: { value: 1, unit: day }               # optional: the step of the flat model, instead of the finest step of the members
+start_date: "2026-01-01"                         # optional, with end_date: the dates of the flat model when no member has them
 policy:
   min_ratings: { confidence: 0.25 }              # a provider must reach these scores in metadata.ratings
   exclude: []                                    # models never to choose
@@ -107,6 +116,7 @@ Every choice is written to the report with its reason.
 - Plans: the default regimens of the members are kept for the inputs that stay inputs, and dropped, with a warning, for the ones that are wired.
 - Metadata: ratings are the lowest of the members, the review status of an unreviewed source is kept, and a single-member system keeps the source's description. The model is marked as generated.
 - A member that imports other models is refused. Add the imported models as members instead.
+- Shared namespace: the components of one body (the human body of the models repository) declare almost nothing of their own and read each other's variables by name, the way the engine joins them when a scenario imports them. A bridge file with `namespace: shared`, or a model listed in the system's `shared_models`, joins without a prefix, so every name means the same variable in every shared member. A shared component may update a variable another shared component declares (a hook). Two shared members declaring one name are an error. Equation names must be distinct, and the priorities of shared members are kept as they are, because shared members are never wired by concept (a wire between a shared member and any other is refused). The result is what the engine builds from an import of the same files, and a test shows the two agree to the last digit.
 
 ## 7. What comes out
 
@@ -122,12 +132,14 @@ The bridge description:
 
 | Key | Meaning |
 |-----|---------|
-| readouts.C.sources | List of `{var, lo, hi}`. The readout C is each variable mapped to 0..1 and clipped, joined by `combine` |
+| readouts.C.sources | List of `{var, lo, hi}` or `{expr, lo, hi}`. The readout C is each variable or expression mapped to 0..1 and clipped, joined by `combine` |
 | rates.C.terms, combine | The expressions the members give C, joined by sum or product |
 | handles.C | The variables the game writes for C. A concept several members need lists several variables |
 | context.C | Same for context concepts |
 | members, wires | Prefix per model, and which variable follows which |
 | step_minutes | The step of the flat model |
+| modes | The mode of every handle, from the vocabulary |
+| vocabulary_version | The version of the vocabulary the description was made with |
 
 `read_concepts` and `read_rates` in bridge.py are the reference for a runtime: a few lines each.
 
@@ -139,7 +151,7 @@ Run `<id>.lm.yaml` in the LM Reference Engine, or any LM-compatible engine, and 
 
 ### 8.2 JavaScript in the browser
 
-Load the flat model, run its equations as LM format section 3.3 says (descending priority, conditions, writes clamped to bounds, each equation's own `step_unit`), and read concepts as section 7 says. Nothing else is needed: no imports, no bridge file, no vocabulary at run time. The expression checks below say which functions the flat model uses.
+Load the flat model, run its equations as LM format section 3.3 says (descending priority, conditions, writes clamped to bounds, each equation's own `step_unit`), and read concepts as section 7 says. Nothing else is needed: no imports, no bridge file, no vocabulary at run time. The runtime of section 8.6 is this JavaScript. The expression checks below say which functions the flat model uses.
 
 ### 8.3 Care for You
 
@@ -170,9 +182,22 @@ Load the flat model, run its equations as LM format section 3.3 says (descending
 
 A name or function a target does not have is reported, and nothing is written.
 
+### 8.6 The runtime
+
+`runtime/` is a small JavaScript module with no dependency and no mention of any game. It holds two computational cores that answer the same messages, described in [README_core_interface.md](README_core_interface.md): the LM core, which runs a flat model, and the lookup core, which answers from a table. A game imports `runtime/index.js`.
+
+```
+python plugins/game_bridge/backend.py export lmcore <system file> --models ... --out out     the flat model and the bridge description as JSON
+python plugins/game_bridge/tools/build_lookup.mjs ...                                         a table for the lookup core
+python plugins/game_bridge/tools/vendor.py copy <folder in the game>                          the runtime, with a version stamp
+python plugins/game_bridge/tools/vendor.py check <folder in the game>                         fails if the copy was changed
+```
+
+The game keeps the copied folder as it is; a change needed in the runtime is made here and copied again.
+
 ## 9. Commands
 
-From a terminal, without the engine. Only PyYAML is needed.
+From a terminal, without the engine. Only PyYAML is needed; the tools of the runtime need node.
 
 ```
 python plugins/game_bridge/backend.py check   --models ../life-matters-models/models
@@ -185,19 +210,28 @@ As a plugin of the Reference Engine it answers `concepts`, `systems`, `compose` 
 
 ## 10. How faithful it is
 
+`python plugins/game_bridge/tests/run_all.py` runs every test of the plugin: the three groups of `test_bridge.py` described next, the copy tool, the check that the runtime holds no game word, the messages of both cores against the schema, and the conformance tests of the cores in `tests/conformance`. The conformance fixtures are committed, so they need neither the models repository nor the Care repository.
+
 `python plugins/game_bridge/tests/test_bridge.py` runs three groups.
 
 - Small models written in the test: the vocabulary, every bridge check, every way a choice can fail (no provider, a tie, a pin that does not provide, a cycle, a policy that removes all candidates), a chain of three members and the order of its equations, names, wires, the exports, and the recipe placeholders.
 - Parity with the LM Reference Engine, on the real diabetes model with a small diet in front of it. The composed model and the diabetes model fed the carbohydrate by hand agree to the last digit after 72 hours, so the wired input as a state works in the engine. The Care model made from the composed system, run by the care_export evaluator, agrees with the engine to 1e-8. A single-member system gives the same Care model as care_export alone.
-- Teleporter: every equation of the fragment is compiled with Teleporter's own `js/expr.js` through node and evaluated at five states, and the result equals the source expression (35 cases, difference 0). It needs node and the game-teleporter folder next to this repository, or `TP_PATH`.
+- Teleporter: every equation of the fragment is compiled with Teleporter's own `js/expr.js` through node and evaluated at five states, and the result equals the source expression. This is done for the diabetes fragment (35 cases) and for the whole `traveler_stay` fragment (855 cases, difference below 2e-16). It needs node and the game-teleporter folder next to this repository, or `TP_PATH`.
+- The shared namespace: `traveler_stay` composed from the seventeen components, and a scenario that imports the same seventeen files, run in the engine for 30 days, give the same 203 variables to the last digit.
 
 The parity groups need the models repository (`LM_MODELS_PATH` or a sibling folder) and are skipped without it.
 
 ## 11. Limits
 
+- The scales of the readouts in the bridge files of the human body components are starting values, not calibrated. They are meant to be tuned with batch runs against a target for the readouts of each stress level.
+- `collective_panic` is a population quantity. Its bridge file says which concept it answers, `traveler_stay` does not use it, and a system that does should pin the provider of `psychological_strain`.
+
 - Members must be standalone models. Imports are refused.
 - Priorities of a member's equations must stay within plus or minus 100.
-- The library has one real bridge file so far, for diabetes_2026. A model without a bridge file is invisible to a system.
+- The library has bridge files for diabetes_2026, the human body components that answer the readouts of a stay in a hard place (nervous_sleep_stress, renal_fluid, respiratory, body_composition_energy, musculoskeletal, infectious_nutritional_disease), their input layer lifestyle_inputs, and collective_panic. A model without a bridge file is invisible to a system, unless a system lists it in `shared_models`.
+- `loneliness` has no provider in the library. `traveler_stay` leaves it out of its goals; a game computes it from `social_contact` until a component exists.
+- The input layer of the human body has twenty-five inputs. Six are mapped to concepts: fluid_intake, activity_load, pathogen_exposure, sleep_duration, psychological_demand and injury_exposure. Sodium, vector exposure, water safety and the vitamins and iodine have no concept, so a game cannot write them and they stay at their reference values. The vocabulary has 25 concepts, the limit above which it is reviewed.
+- The units of a handle are those of the variable that answers to it, per internal step of the system: `fluid_intake` is litres per day, `activity_load` minutes per day, `sleep_duration` hours per night and `psychological_demand` and `injury_exposure` scores from 0 to 1 in `traveler_stay`, grams per step for `carb_intake` in the diabetes systems.
 - The unit of a `rate` is not defined by the bridge. The adapter that uses it fixes it. Care uses it as care_export's `effects`.
 - A cycle between members is refused, although a real feedback loop could be modelled with one step of lag. That is not built.
 - Teleporter has neither the LM time symbols (`t`, `HOUR` and so on) nor per-equation step units, so an expression that reads them is reported.

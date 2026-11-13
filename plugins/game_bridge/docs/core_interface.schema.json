@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core_interface.schema.json",
+  "title": "Core interface of the game bridge, contract version 1",
+  "description": "Every message between an adapter and a computational core. See README_core_interface.md.",
+  "oneOf": [
+    { "$ref": "#/$defs/hello" },
+    { "$ref": "#/$defs/init" },
+    { "$ref": "#/$defs/step" },
+    { "$ref": "#/$defs/readouts" },
+    { "$ref": "#/$defs/snapshot" }
+  ],
+  "$defs": {
+    "concept": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "mode": { "enum": ["level", "total"] },
+    "number_map": { "type": "object", "additionalProperties": { "type": "number" } },
+    "hello": {
+      "type": "object",
+      "required": ["v", "kind", "name", "core_kind", "runtime_version", "step_minutes", "readouts", "handles", "snapshot"],
+      "properties": {
+        "v": { "const": 1 },
+        "kind": { "const": "hello" },
+        "name": { "type": "string" },
+        "core_kind": { "enum": ["lm", "lookup", "ai"] },
+        "runtime_version": { "type": "string" },
+        "vocabulary_version": { "type": ["integer", "null"] },
+        "system": { "type": "string" },
+        "step_minutes": { "type": "number" },
+        "readouts": { "type": "array", "items": { "$ref": "#/$defs/concept" } },
+        "rates": { "type": "array", "items": { "$ref": "#/$defs/concept" } },
+        "handles": {
+          "type": "object",
+          "additionalProperties": { "type": "object", "required": ["mode"], "properties": { "mode": { "type": ["string", "null"] } } }
+        },
+        "context": { "type": "array", "items": { "$ref": "#/$defs/concept" } },
+        "presets": { "type": "array", "items": { "type": "string" } },
+        "snapshot": { "type": "boolean" },
+        "tolerance": { "type": "object", "additionalProperties": { "type": ["number", "null"] } },
+        "table": { "type": "object" }
+      }
+    },
+    "init": {
+      "type": "object",
+      "required": ["v", "kind", "subjects"],
+      "properties": {
+        "v": { "const": 1 },
+        "kind": { "const": "init" },
+        "vocabulary_version": { "type": "integer" },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "preset": { "type": ["string", "null"] },
+              "seed": { "type": "integer" },
+              "context": { "$ref": "#/$defs/number_map" },
+              "clock": {
+                "type": "object",
+                "properties": { "start_date": { "type": "string" }, "minute_of_day": { "type": "number" } }
+              },
+              "overrides": { "$ref": "#/$defs/number_map" }
+            }
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["v", "kind", "minutes", "subjects"],
+      "properties": {
+        "v": { "const": 1 },
+        "kind": { "const": "step" },
+        "minutes": { "type": "number" },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "handles"],
+            "properties": {
+              "id": { "type": "string" },
+              "handles": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["concept", "mode", "value"],
+                  "properties": {
+                    "concept": { "$ref": "#/$defs/concept" },
+                    "mode": { "$ref": "#/$defs/mode" },
+                    "value": { "type": "number" },
+                    "source": { "enum": ["preset", "dispatch", "player", "event"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "readouts": {
+      "type": "object",
+      "required": ["v", "kind", "subjects"],
+      "properties": {
+        "v": { "const": 1 },
+        "kind": { "const": "readouts" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "readouts", "drives", "warnings"],
+            "properties": {
+              "id": { "type": "string" },
+              "readouts": { "$ref": "#/$defs/number_map" },
+              "drives": { "type": "array", "items": { "$ref": "#/$defs/concept" } },
+              "rates": { "$ref": "#/$defs/number_map" },
+              "warnings": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["v", "kind", "core", "runtime_version", "system", "subject", "state"],
+      "properties": {
+        "v": { "const": 1 },
+        "kind": { "const": "snapshot" },
+        "core": { "enum": ["lm", "lookup", "ai"] },
+        "runtime_version": { "type": "string" },
+        "system": { "type": "string" },
+        "subject": { "type": "string" },
+        "state": { "type": "object" }
+      }
+    }
+  }
+}

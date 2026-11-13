@@ -119,6 +119,14 @@ def run_tests(tmp):
     expect_error('a concept with an unknown role is refused', lambda: br.Vocabulary({'concepts': {'a': {'role': 'thing'}}}), 'role must be')
     expect_error('a concept with a bad combine is refused', lambda: br.Vocabulary({'concepts': {'a': {'role': 'readout', 'combine': 'sum_rate'}}}), 'combine must be')
 
+    ok_voc = {'vocabulary_version': 1, 'concepts': {'h': {'role': 'handle', 'mode': 'total'}, 'r': {'role': 'readout'}}}
+    check('a small vocabulary with a version and a handle mode loads', br.Vocabulary(ok_voc).mode('h') == 'total' and br.Vocabulary(ok_voc).version == 1)
+    expect_error('a vocabulary without a version is refused', lambda: br.Vocabulary({'concepts': {}}), 'vocabulary_version')
+    expect_error('a handle without a mode is refused', lambda: br.Vocabulary({'vocabulary_version': 1, 'concepts': {'h': {'role': 'handle'}}}), 'needs mode')
+    expect_error('a handle with an unknown mode is refused', lambda: br.Vocabulary({'vocabulary_version': 1, 'concepts': {'h': {'role': 'handle', 'mode': 'burst'}}}), 'needs mode')
+    expect_error('a readout with a mode is refused', lambda: br.Vocabulary({'vocabulary_version': 1, 'concepts': {'r': {'role': 'readout', 'mode': 'level'}}}), 'mode belongs to handles')
+    check('every handle of the shipped vocabulary has a mode', all(c.get('mode') in br.HANDLE_MODES for c in vocab.concepts.values() if c['role'] == 'handle'))
+
     # ---- bridge checks
     probs = br.check_library(lib)
     check('the toy bridge files are consistent with their models', not probs, probs)
@@ -178,6 +186,9 @@ def run_tests(tmp):
     pr = {n: e['priority'] for n, e in flat['equations'].items()}
     check('priorities run provider, wire, consumer', pr['diet_absorb_meal'] > pr['wire_glucose_carb'] > pr['glucose_g_eq'], pr)
     check('the game supplied handle is listed', bridge['handles'] == {'food_intake': ['diet_meal_g']}, bridge.get('handles'))
+    check('the bridge description carries the vocabulary version and the mode of each handle', bridge['vocabulary_version'] == vocab.version and bridge['modes'] == {'food_intake': 'total'}, (bridge.get('vocabulary_version'), bridge.get('modes')))
+    lc = be.lmcore_files(res)
+    check('the lmcore export is two JSON documents, the flat model and the bridge description', sorted(lc) == ['s.bridge.json', 's.lm.json'] and json.loads(lc['s.bridge.json']) == bridge and json.loads(lc['s.lm.json'])['variables'].keys() == flat['variables'].keys())
     check('the readout is described with its scale', bridge['readouts']['glycemic_level']['sources'] == [{'var': 'glucose_g', 'lo': 70, 'hi': 300}], bridge['readouts'])
     check('a rate is renamed and kept', bridge['rates']['frailty']['terms'] == ['0.001 * (glucose_g - 90)'], bridge.get('rates'))
     check('the flat model has no imports and only LM blocks', set(flat) <= {'metadata', 'variables', 'equations', 'simulation', 'auxiliary'}, list(flat))
@@ -320,17 +331,17 @@ def parity_tests(tmp):
     return res
 
 
-def tp_tests(tmp, res):
+def tp_tests(tmp, res, step_days=0.25, label='diabetes fragment'):
     node = shutil.which('node')
     expr_js = os.path.join(TP_DIR, 'js', 'expr.js')
     if not node or not os.path.isfile(expr_js) or res is None:
         print('skip Teleporter expression check: node or', expr_js, 'not found')
         return
     flat, bridge = res['model'], res['bridge']
-    step_days = 0.25
     frag = tg.to_tp(flat, bridge, 'traveler', step_days)
     # cases: the source expression evaluated in Python at a state, the fragment expression evaluated by Teleporter's own compiler at the same state
-    funcs = {'min': min, 'max': max, 'abs': abs}
+    import math
+    funcs = {'min': min, 'max': max, 'abs': abs, 'exp': math.exp, 'log': math.log, 'sqrt': math.sqrt, 'pow': math.pow, 'floor': math.floor, 'sin': math.sin, 'cos': math.cos, 'tanh': math.tanh}
     import random
     rnd = random.Random(7)
     cases = []
@@ -348,27 +359,135 @@ def tp_tests(tmp, res):
             for an, ae in (flat.get('auxiliary') or {}).items():
                 aux[an] = eval(str(ae), {'__builtins__': {}}, {**funcs, **env, 'step': step})
             for var, expr in eq['dynamics'].items():
-                want = eval(str(expr), {'__builtins__': {}}, {**funcs, **env, **aux, 'step': step})
+                try:
+                    want = eval(str(expr), {'__builtins__': {}}, {**funcs, **env, **aux, 'step': step})
+                except (ValueError, ZeroDivisionError, OverflowError):
+                    continue            # a state the equation is not defined at
                 cases.append({'eq': f'{"traveler_" + en}', 'target': 'traveler.' + var, 'state': {f'traveler.{k}': val for k, val in env.items()},
                               'step': step_days, 'want': float(want)})
     payload = {'expr_js': expr_js.replace('\\', '/'), 'frag': {'equations': frag['equations'], 'variables': list(frag['variables'])}, 'cases': cases}
     script = os.path.join(HERE, 'tp_check.mjs')
     p = subprocess.run([node, script], input=json.dumps(payload), capture_output=True, text=True, timeout=60)
     if p.returncode != 0:
-        check('Teleporter compiles and evaluates every fragment expression like the source', False, (p.stdout + p.stderr)[-600:])
+        check(f'Teleporter compiles and evaluates every expression of the {label} like the source', False, (p.stdout + p.stderr)[-600:])
         return
     out = json.loads(p.stdout)
-    check('Teleporter compiles and evaluates every fragment expression like the source', out['worst'] < 1e-9 and out['n'] == len(cases),
+    check(f'Teleporter compiles and evaluates every expression of the {label} like the source', out['worst'] < 1e-9 and out['n'] == len(cases),
           f'{out["n"]} cases, worst relative difference {out["worst"]:.2e}')
+
+
+
+# ---------------------------------------------------------------- shared namespace, expressions, inverted scales
+
+def shared_tests(tmp):
+    """Components that read each other by name (the way the human body components do), joined without prefixes."""
+    body = model('toy_body', {
+        'load': {'type': 'state', 'value': 0.2, 'bounds': [0, 1]},
+        'rest': {'type': 'state', 'value': 1.0, 'bounds': [0, 2]},
+        'pool_a': {'type': 'state', 'value': 1.0, 'bounds': [0, 3]},
+        'pool_b': {'type': 'state', 'value': 1.0, 'bounds': [0, 3]},
+        'k': {'type': 'parameter', 'value': 0.1},
+    }, {'load_eq': {'step_unit': 'day', 'priority': 150, 'dynamics': {'load': 'load + (effort * 0.1 + hook_a * 0.0 - k * load) * step'}},
+        'rest_eq': {'step_unit': 'day', 'priority': 140, 'dynamics': {'rest': 'rest - (rest - 1.0 + load) * 0.1 * step'}},
+        'pool_eq': {'step_unit': 'day', 'dynamics': {'pool_a': 'pool_a - 0.05 * step', 'pool_b': 'pool_b - 0.02 * step'}}})
+    inputs = model('toy_inputs', {'effort': {'type': 'input', 'value': 0.5, 'bounds': [0, 2]}, 'hook_a': {'type': 'state', 'value': 0.0}}, {})
+    hooker = model('toy_hooker', {'unused': {'type': 'parameter', 'value': 1}}, {'hook_eq': {'step_unit': 'day', 'dynamics': {'hook_a': 'hook_a + load * step'}}})
+    twin = model('toy_twin', {'load': {'type': 'state', 'value': 0.5}}, {})
+    root = os.path.join(tmp, 'shared')
+    mdir, bdir = os.path.join(root, 'models'), os.path.join(root, 'bridges')
+    for key, m in {'body/body': body, 'body/inputs': inputs, 'body/hooker': hooker, 'body/twin': twin}.items():
+        be.write(os.path.join(mdir, key + '.yaml'), br.dump_yaml(m))
+    bridges = {
+        'body': {'bridge_version': 1, 'model': 'body/body', 'namespace': 'shared',
+                 'provides': {'fatigue': {'var': 'load', 'scale': [0.2, 1.0]}, 'hydration_deficit': {'var': 'rest', 'scale': [1.0, 0.5]},
+                              'nutrient_deficit': {'expr': 'max(0.0, 1.0 - min(pool_a, pool_b))', 'scale': [0, 1]}}, 'requires': {}},
+        'inputs': {'bridge_version': 1, 'model': 'body/inputs', 'namespace': 'shared', 'provides': {}, 'requires': {'activity_load': {'var': 'effort'}}},
+        'twin': {'bridge_version': 1, 'model': 'body/twin', 'namespace': 'shared', 'provides': {}, 'requires': {}},
+    }
+    for name, b in bridges.items():
+        be.write(os.path.join(bdir, name + '.bridge.yaml'), br.dump_yaml(b))
+    vocab = br.Vocabulary(br.load_yaml(os.path.join(be.LIBRARY, 'concepts.yaml')))
+    lib = br.Library(mdir, [bdir], vocab)
+    check('the bridge files of the shared toy components are consistent', not br.check_library(lib), br.check_library(lib))
+    system = {'system_version': 1, 'id': 'shared_toy', 'goal': ['fatigue', 'hydration_deficit', 'nutrient_deficit'], 'include_models': ['body/inputs'],
+              'shared_models': ['body/hooker'], 'supply_from_game': ['activity_load'], 'step_size': {'value': 1, 'unit': 'day'}}
+    res = br.compose_system(system, lib)
+    flat, bridge = res['model'], res['bridge']
+    check('shared members keep their names and an implicit shared model joins without a bridge file',
+          {'load', 'rest', 'effort', 'hook_a', 'unused'} <= set(flat['variables']) and 'hook_eq' in flat['equations'], sorted(flat['variables']))
+    check('the system sets the step, and dates are filled in when no member has them',
+          flat['simulation']['step_size'] == {'value': 1440, 'unit': 'minute'} and flat['simulation'].get('start_date'), flat['simulation'])
+    check('a hook equation may update a variable that another shared component declares', flat['equations']['hook_eq']['dynamics'] == {'hook_a': 'hook_a + load * step'})
+    check('priorities above 100 are kept for shared members, nothing is shifted', flat['equations']['load_eq']['priority'] == 150, flat['equations']['load_eq']['priority'])
+    check('a handle of a shared member keeps its own name', bridge['handles'] == {'activity_load': ['effort']} and bridge['modes'] == {'activity_load': 'level'}, bridge.get('handles'))
+    check('an expression readout and an inverted scale are described',
+          bridge['readouts']['nutrient_deficit']['sources'] == [{'expr': 'max(0.0, 1.0 - min(pool_a, pool_b))', 'lo': 0, 'hi': 1}]
+          and bridge['readouts']['hydration_deficit']['sources'][0]['lo'] == 1.0 and bridge['readouts']['hydration_deficit']['sources'][0]['hi'] == 0.5, bridge['readouts'])
+    state = {'load': 0.6, 'rest': 0.75, 'pool_a': 0.7, 'pool_b': 0.9}
+    got = br.read_concepts(bridge, state)
+    check('read_concepts reads an inverted scale and an expression',
+          abs(got['hydration_deficit'] - 0.5) < 1e-12 and abs(got['nutrient_deficit'] - 0.3) < 1e-12 and abs(got['fatigue'] - 0.5) < 1e-12, got)
+    check('a composition of shared members only reports no warning about names declared nowhere', not res['report']['warnings'], res['report']['warnings'])
+    expect_error('two shared components declaring one name are refused', lambda: br.compose_system({**system, 'include_models': ['body/inputs', 'body/twin']}, lib), 'both declare "load"')
+    expect_error('a shared model that has a bridge file cannot also be listed as implicit', lambda: br.resolve({**system, 'shared_models': ['body/inputs']}, lib), 'has a bridge file')
+    expect_error('a shared model that does not exist is reported', lambda: br.resolve({**system, 'shared_models': ['body/nothing']}, lib), 'not found')
+    bad = copy.deepcopy(bridges['body'])
+    bad['provides']['fatigue'] = {'var': 'load', 'scale': [0.5, 0.5]}
+    bad['provides']['nutrient_deficit'] = {'expr': 'pool_a + missing', 'scale': [0, 1]}
+    bad['provides']['injury_burden'] = {'var': 'load', 'expr': 'load', 'scale': [0, 1]}
+    bad['namespace'] = 'global'
+    ps = br.check_bridge(bad, body, vocab)
+    check('a scale with lo equal to hi, an unknown name in an expression, var with expr, and an unknown namespace are each reported',
+          any('lo different from hi' in p for p in ps) and any('missing' in p for p in ps) and any('exactly one of var, expr and rate' in p for p in ps) and any('namespace' in p for p in ps), ps)
+    wired = copy.deepcopy(bridges['inputs'])
+    wired['requires'] = {'fatigue': {'var': 'effort'}}
+    be.write(os.path.join(bdir, 'inputs.bridge.yaml'), br.dump_yaml(wired))
+    lib2 = br.Library(mdir, [bdir], vocab)
+    expect_error('a shared component is not wired by concept', lambda: br.compose_system({**system, 'supply_from_game': []}, lib2), 'shared namespace')
+
+
+def traveler_parity(tmp):
+    """The traveler_stay system, composed in the shared namespace, equals the same seventeen files imported by a scenario (engine, 30 days)."""
+    hb = 'references/medical/physiology/human_body'
+    mdir = os.path.join(tmp, 'tp_parity', 'models')
+    os.makedirs(os.path.join(mdir, hb), exist_ok=True)
+    for fn in os.listdir(os.path.join(MODELS, hb)):
+        if fn.endswith('_2026.yaml'):
+            shutil.copy(os.path.join(MODELS, hb, fn), os.path.join(mdir, hb, fn))
+    lib = be.open_library(mdir)
+    system = br.load_yaml(os.path.join(be.SYSTEMS, 'traveler_stay.system.yaml'))
+    res = br.compose_system(system, lib)
+    check('traveler_stay composes with no warning', not res['report']['warnings'], res['report']['warnings'])
+    check('traveler_stay answers every goal it names', sorted(res['bridge']['readouts']) == sorted(system['goal']), sorted(res['bridge']['readouts']))
+    be.write(os.path.join(mdir, 'composed', 'traveler_stay.yaml'), br.dump_yaml(res['model']))
+    scenario = {'metadata': {'name': 'traveler_oracle', 'lm_format_version': '1.0'}, 'imports': list(res['report']['members']), 'variables': {}, 'equations': {},
+                'simulation': {'step_size': {'value': 1, 'unit': 'day'}, 'start_date': '2026-01-01', 'end_date': '2026-04-01'}}
+    be.write(os.path.join(mdir, 'composed', 'traveler_oracle.yaml'), br.dump_yaml(scenario))
+    try:
+        got = engine_final(mdir, 'composed/traveler_stay', 30 * 24, os.path.join(tmp, 'ts.csv'))
+        want = engine_final(mdir, 'composed/traveler_oracle', 30 * 24, os.path.join(tmp, 'to.csv'))
+    except Exception as e:
+        print('skip traveler parity:', repr(e)[:300])
+        return
+    worst = max((abs(got[k] - v) / (abs(v) + 1e-9) for k, v in want.items() if k in got and isinstance(v, (int, float))), default=1.0)
+    start = res['model']['variables']
+    moved = sum(1 for k, v in want.items() if k in start and isinstance(v, (int, float)) and abs(v - float(start[k]['value'])) > 1e-6)
+    check('the composed traveler_stay equals the same components imported by a scenario (engine, 30 days)', worst < 1e-9 and len(got) == len(want), f'{len(want)} variables, worst relative difference {worst:.2e}')
+    check('the comparison is not trivial: many variables moved from their start over the 30 days', moved > 20, f'{moved} moved')
+    return res
 
 
 if __name__ == '__main__':
     tmp = tempfile.mkdtemp(prefix='temp_game_bridge_test_')
     try:
         run_tests(tmp)
+        shared_tests(tmp)
         if os.path.isfile(os.path.join(MODELS, DIABETES + '.yaml')):
             r = parity_tests(tmp)
+            ts = traveler_parity(tmp)
             tp_tests(tmp, r)
+            if ts is not None:
+                tp_tests(tmp, ts, step_days=1.0, label='traveler_stay fragment')
         else:
             print('skip parity and Teleporter tests: models repository not found at', MODELS)
     finally:

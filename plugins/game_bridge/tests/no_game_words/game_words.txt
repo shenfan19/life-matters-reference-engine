@@ -1,0 +1,38 @@
+# Words that belong to a game and must not appear anywhere in runtime/, in code, comments or data.
+# A line starting with "w:" is matched as a whole English word, ignoring case ("mood" does not match "mood_valence", because an underscore
+# is part of a word). Any other line is matched as a piece of text, which is how the Chinese words are written.
+w:need
+w:needs
+w:mood
+w:moods
+w:star
+w:stars
+w:dispatch
+w:dispatcher
+w:player
+w:players
+w:teleporter
+w:traveler
+w:traveller
+w:care
+w:caregiver
+w:caregiving
+w:quest
+w:npc
+w:hunger
+w:thirst
+w:coin
+w:coins
+w:gold
+w:shop
+w:inventory
+w:cutscene
+需求
+心情
+星数
+派遣
+玩家
+看护
+旅行者
+来客
+穿越

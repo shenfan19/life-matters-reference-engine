@@ -6,8 +6,11 @@
 #
 # combine       how several models that each give a readout a variable are joined: replace allows one provider, max takes the largest
 # rate_combine  how the rates that several models give a readout are joined: sum_rate adds them, product multiplies them
+# mode          handles only. How a write is meant: level holds the value for the whole window of the step, total is an amount put in
+#               once in the window and spread over it by the core. A write with the other mode is dropped.
+# vocabulary_version goes up whenever a concept is added, removed or changes its mode or meaning, and travels in the init message.
 # Add a concept only when a model provides it or a game consumes it. The vocabulary stays small on purpose.
-vocabulary_version: 1
+vocabulary_version: 4
 
 concepts:
   # ---- readouts: body
@@ -51,11 +54,22 @@ concepts:
     role: readout
     description: Overall loss of reserve. Models mostly give it a rate, not a variable.
 
+  oxygen_deficit:
+    domain: body
+    role: readout
+    combine: max
+    description: Shortage of oxygen in the blood, from thin air, damaged lungs or poisoning. 0 is normal saturation, 1 is severe.
+  nutrient_deficit:
+    domain: body
+    role: readout
+    combine: max
+    description: Lack of a vitamin or mineral the body cannot make, as in scurvy, beriberi or goitre. 0 is well supplied, 1 is the pool run dry.
+
   # ---- readouts: mind
   mood_valence:
     domain: mind
     role: readout
-    description: How bad the mood is. 0 is good, 1 is the worst. Models mostly give it a rate.
+    description: How bad the person feels, in valence. 0 is good, 1 is the worst. Models mostly give it a rate.
   psychological_strain:
     domain: mind
     role: readout
@@ -70,26 +84,47 @@ concepts:
   food_intake:
     domain: body
     role: handle
+    mode: total
     description: Food eaten at a meal, in grams.
   carb_intake:
     domain: body
     role: handle
+    mode: total
     description: Carbohydrate reaching the gut, in grams per step as the consuming model expects.
   fluid_intake:
     domain: body
     role: handle
+    mode: total
     description: Fluid drunk.
   activity_load:
     domain: body
     role: handle
+    mode: level
     description: Physical effort.
   medication_dose:
     domain: body
     role: handle
+    mode: total
     description: Dose of the medicine a model is built around.
+  sleep_duration:
+    domain: body
+    role: handle
+    mode: level
+    description: Hours of sleep per night, as the consuming model expects.
+  psychological_demand:
+    domain: mind
+    role: handle
+    mode: level
+    description: Load of stress put on the person, from 0 for none to 1 for constant extreme pressure.
+  injury_exposure:
+    domain: body
+    role: handle
+    mode: level
+    description: How exposed the person is to wounds, from 0 for a safe place to 1 for war or dangerous labour.
   social_contact:
     domain: mind
     role: handle
+    mode: level
     description: Time spent with others.
 
   # ---- context: given by the scenario

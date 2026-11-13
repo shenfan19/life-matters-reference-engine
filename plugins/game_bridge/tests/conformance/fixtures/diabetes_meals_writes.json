@@ -1,0 +1,6451 @@
+{
+ "fixture_version": 1,
+ "kind": "engine",
+ "source": {
+  "reference": "LM Reference Engine, ReferenceSolver",
+  "system": "diabetes_meals",
+  "members": {
+   "references/medical/disease/metabolic/diabetes_2026": "diabetes",
+   "meal_diet": "meal_diet"
+  }
+ },
+ "model": {
+  "metadata": {
+   "name": "diabetes_meals",
+   "version": "1.0",
+   "lm_format_version": "1.0",
+   "generated": true,
+   "source": "Composed by the game bridge from: references/medical/disease/metabolic/diabetes_2026 as \"diabetes\", meal_diet as \"meal_diet\"",
+   "description": {
+    "problem": "System \"diabetes_meals\" composed from 2 model(s).",
+    "method": "Member models renamed with a prefix and joined by wire equations; see bridge.members and bridge.wires.",
+    "limitations": "Inherits every limitation of its members. Ratings are the lowest of the members."
+   },
+   "ratings": {
+    "importance": "0.75 - 糖尿病是全球最重大代谢流行病，综合动力学模型复用价值极高；noref，有import记录但参数质量限制广泛复用",
+    "variable": "0.25 - noref标记，12个变量均无文献来源，参数需校准",
+    "equation": "0.25 - 参数缺乏文献来源，方程为定性近似，未见独立复现",
+    "simulation": "0.5 - 未发现阻断性todo，但未与独立文献目标数值比对",
+    "optimization": "0.5 - 决策变量搜索前沿方向合理，未独立验证是否退化",
+    "confidence": "0.25 - 未发现阻断性todo，但未与独立文献目标数值比对"
+   },
+   "reviewed": "false - Batch-drafted with AI assistance, not yet manually reviewed."
+  },
+  "variables": {
+   "diabetes_blood_glucose": {
+    "description": "血糖浓度",
+    "value": 95,
+    "unit": "mg/dL",
+    "type": "state",
+    "bounds": [
+     30,
+     600
+    ]
+   },
+   "diabetes_fasting_glucose": {
+    "description": "空腹血糖",
+    "value": 85,
+    "unit": "mg/dL",
+    "type": "state",
+    "bounds": [
+     50,
+     300
+    ]
+   },
+   "diabetes_plasma_insulin": {
+    "description": "血浆胰岛素",
+    "value": 8,
+    "unit": "μU/mL",
+    "type": "state",
+    "bounds": [
+     1,
+     300
+    ]
+   },
+   "diabetes_insulin_sensitivity": {
+    "description": "胰岛素敏感性",
+    "value": 0.75,
+    "unit": "指数",
+    "type": "state",
+    "bounds": [
+     0.1,
+     1.0
+    ]
+   },
+   "diabetes_beta_cell_function": {
+    "description": "β细胞功能",
+    "value": 0.8,
+    "unit": "系数",
+    "type": "state",
+    "bounds": [
+     0,
+     1.0
+    ]
+   },
+   "diabetes_complication_score": {
+    "description": "并发症综合指数",
+    "value": 0,
+    "unit": "分",
+    "type": "state",
+    "bounds": [
+     0,
+     100
+    ]
+   },
+   "diabetes_kidney_function": {
+    "description": "肾功能",
+    "value": 1.0,
+    "unit": "系数",
+    "type": "state",
+    "bounds": [
+     0.1,
+     1.0
+    ]
+   },
+   "diabetes_inflammation_level": {
+    "description": "炎症水平",
+    "value": 1.0,
+    "unit": "指数",
+    "type": "state",
+    "bounds": [
+     0.5,
+     5.0
+    ]
+   },
+   "diabetes_health_score": {
+    "description": "总体健康评估",
+    "value": 100,
+    "unit": "分",
+    "type": "state",
+    "bounds": [
+     0,
+     100
+    ]
+   },
+   "diabetes_carb_intake": {
+    "description": "碳水摄入 Wired from another model by the bridge.",
+    "value": 0,
+    "unit": "g",
+    "type": "state"
+   },
+   "diabetes_insulin_injection": {
+    "description": "胰岛素注射",
+    "value": 0,
+    "unit": "U",
+    "type": "input"
+   },
+   "diabetes_exercise_intensity": {
+    "description": "运动强度",
+    "value": 0,
+    "unit": "MET",
+    "type": "input"
+   },
+   "meal_diet_meal_g": {
+    "type": "input",
+    "value": 0,
+    "unit": "g"
+   },
+   "meal_diet_absorb": {
+    "type": "parameter",
+    "value": 0.8
+   },
+   "meal_diet_carb_flux": {
+    "type": "state",
+    "value": 0,
+    "unit": "g",
+    "bounds": [
+     0,
+     500
+    ]
+   }
+  },
+  "equations": {
+   "diabetes_glucose_dynamics": {
+    "description": "血糖受摄入与代谢影响",
+    "step_unit": "minute",
+    "priority": 5.0,
+    "condition": true,
+    "dynamics": {
+     "diabetes_blood_glucose": "diabetes_blood_glucose + (diabetes_carb_intake * 2 - diabetes_blood_glucose * diabetes_insulin_sensitivity * diabetes_plasma_insulin * 0.001 - diabetes_exercise_intensity * 0.5) * step"
+    }
+   },
+   "diabetes_insulin_secret_dynamics": {
+    "description": "胰岛素随血糖升高而分泌",
+    "step_unit": "minute",
+    "priority": 5.0,
+    "condition": "diabetes_blood_glucose > 100",
+    "dynamics": {
+     "diabetes_plasma_insulin": "diabetes_plasma_insulin + (diabetes_blood_glucose - 100) * diabetes_beta_cell_function * 0.05 * step - diabetes_plasma_insulin * 0.1 * step"
+    }
+   },
+   "diabetes_damage_dynamics": {
+    "description": "高血糖累积损伤",
+    "step_unit": "minute",
+    "priority": 3.0,
+    "condition": "diabetes_blood_glucose > 180",
+    "dynamics": {
+     "diabetes_complication_score": "diabetes_complication_score + (diabetes_blood_glucose - 180) * 0.01 * step",
+     "diabetes_inflammation_level": "diabetes_inflammation_level + 0.005 * step"
+    }
+   },
+   "diabetes_health_calc": {
+    "description": "综合健康指数",
+    "priority": 1.0,
+    "condition": true,
+    "dynamics": {
+     "diabetes_health_score": "max(0, 100 - diabetes_complication_score - abs(diabetes_blood_glucose - 95) * 0.2 - (5 - diabetes_inflammation_level * 10))"
+    }
+   },
+   "meal_diet_absorb_meal": {
+    "step_unit": "minute",
+    "priority": 1010.0,
+    "dynamics": {
+     "meal_diet_carb_flux": "meal_diet_meal_g * meal_diet_absorb"
+    }
+   },
+   "wire_diabetes_carb_intake": {
+    "description": "Wire: diabetes_carb_intake follows meal_diet_carb_flux. Generated by the game bridge.",
+    "step_unit": "hour",
+    "priority": 500.0,
+    "dynamics": {
+     "diabetes_carb_intake": "meal_diet_carb_flux"
+    }
+   }
+  },
+  "simulation": {
+   "step_size": {
+    "value": 1,
+    "unit": "minute"
+   },
+   "start_date": "2026-01-01",
+   "end_date": "2026-04-01",
+   "plans": [
+    {
+     "id": "default",
+     "label": "Default plan of the member models",
+     "regimens": [
+      {
+       "variable": "diabetes_exercise_intensity",
+       "time_start": "07:00",
+       "value": 3.0,
+       "days": [
+        "Mon",
+        "Wed",
+        "Fri"
+       ],
+       "date_range": [
+        "2026-01-01",
+        "2026-04-01"
+       ],
+       "label": "有氧运动（MET）"
+      },
+      {
+       "variable": "meal_diet_meal_g",
+       "time_start": "08:00",
+       "value": 50,
+       "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+       ],
+       "date_range": [
+        "2026-01-01",
+        "2026-04-01"
+       ]
+      },
+      {
+       "variable": "meal_diet_meal_g",
+       "time_start": "12:00",
+       "value": 70,
+       "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+       ],
+       "date_range": [
+        "2026-01-01",
+        "2026-04-01"
+       ]
+      },
+      {
+       "variable": "meal_diet_meal_g",
+       "time_start": "18:00",
+       "value": 60,
+       "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+       ],
+       "date_range": [
+        "2026-01-01",
+        "2026-04-01"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "bridge": {
+  "bridge_version": 1,
+  "system": "diabetes_meals",
+  "vocabulary_version": 4,
+  "step_minutes": 1,
+  "readouts": {
+   "glycemic_level": {
+    "combine": "replace",
+    "sources": [
+     {
+      "var": "diabetes_blood_glucose",
+      "lo": 70,
+      "hi": 300
+     }
+    ]
+   }
+  },
+  "handles": {
+   "activity_load": [
+    "diabetes_exercise_intensity"
+   ],
+   "food_intake": [
+    "meal_diet_meal_g"
+   ]
+  },
+  "modes": {
+   "activity_load": "level",
+   "food_intake": "total"
+  },
+  "rates": {
+   "frailty": {
+    "combine": "sum_rate",
+    "terms": [
+     "0.002 * diabetes_complication_score / 100.0"
+    ]
+   },
+   "mood_valence": {
+    "combine": "sum_rate",
+    "terms": [
+     "0.02 * max(0.0, (diabetes_blood_glucose - 190.0) / 100.0)"
+    ]
+   }
+  },
+  "members": {
+   "references/medical/disease/metabolic/diabetes_2026": "diabetes",
+   "meal_diet": "meal_diet"
+  },
+  "wires": [
+   {
+    "from": "meal_diet_carb_flux",
+    "to": "diabetes_carb_intake"
+   }
+  ]
+ },
+ "tolerance": {
+  "relative": 1e-09,
+  "absolute": 1e-12
+ },
+ "name": "diabetes_meals_writes",
+ "description": "Composed diabetes and meals, no preset, meals written as totals and activity as levels in calls of 15 minutes, 48 hours.",
+ "init": {
+  "subjects": [
+   {
+    "id": "s",
+    "preset": null
+   }
+  ]
+ },
+ "calls": [
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 50.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.15,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.2,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 70.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 60.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 25.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 50.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.15,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.2,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 70.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "activity_load",
+     "mode": "level",
+     "value": 0.4,
+     "source": "dispatch"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 60.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": [
+    {
+     "concept": "food_intake",
+     "mode": "total",
+     "value": 25.0,
+     "source": "player"
+    }
+   ]
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  },
+  {
+   "minutes": 15,
+   "handles": []
+  }
+ ],
+ "expected": [
+  {
+   "after_call": 0,
+   "variables": {
+    "diabetes_blood_glucose": 86.79992926243749,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07304317070624995
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 1,
+   "variables": {
+    "diabetes_blood_glucose": 79.30766021014897,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0404680878702129
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 2,
+   "variables": {
+    "diabetes_blood_glucose": 72.4620978548459,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.010704773281938668
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 3,
+   "variables": {
+    "diabetes_blood_glucose": 66.20742071587837,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.24148414317567,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 4,
+   "variables": {
+    "diabetes_blood_glucose": 60.49262562933348,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 98.0985251258667,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 5,
+   "variables": {
+    "diabetes_blood_glucose": 55.27111184763431,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 97.05422236952685,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 6,
+   "variables": {
+    "diabetes_blood_glucose": 50.50030103822031,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 96.10006020764406,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 7,
+   "variables": {
+    "diabetes_blood_glucose": 46.14129008262444,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 95.22825801652489,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 8,
+   "variables": {
+    "diabetes_blood_glucose": 42.15853384473063,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 94.43170676894613,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 9,
+   "variables": {
+    "diabetes_blood_glucose": 38.51955532137575,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 93.70391106427515,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 10,
+   "variables": {
+    "diabetes_blood_glucose": 35.19468081174698,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 93.03893616234939,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 11,
+   "variables": {
+    "diabetes_blood_glucose": 32.156797946038985,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.4313595892078,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 12,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 13,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 14,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 15,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 16,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 17,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 18,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 19,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 20,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 21,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 22,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 23,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 24,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 25,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 26,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 27,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 28,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 29,
+   "variables": {
+    "diabetes_blood_glucose": 30,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 92.0,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 30,
+   "variables": {
+    "diabetes_blood_glucose": 104.13631204837215,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 7.365452481934885,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 2.666666666666667,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 3.3333333333333335,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 2.666666666666667
+   },
+   "readouts": {
+    "glycemic_level": 0.14841874803640065
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 31,
+   "variables": {
+    "diabetes_blood_glucose": 99.11754566034593,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12659802461019967
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 32,
+   "variables": {
+    "diabetes_blood_glucose": 95.906789822806,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11263821662089567
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 33,
+   "variables": {
+    "diabetes_blood_glucose": 92.80004133310361,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09913061449175481
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 34,
+   "variables": {
+    "diabetes_blood_glucose": 89.7939310380077,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08606056973046826
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 35,
+   "variables": {
+    "diabetes_blood_glucose": 85.77730502314657,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.15,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.06859697836150681
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 36,
+   "variables": {
+    "diabetes_blood_glucose": 81.52149327708965,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.2,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.05009344903082455
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 37,
+   "variables": {
+    "diabetes_blood_glucose": 78.88073367513852,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0386118855440805
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 38,
+   "variables": {
+    "diabetes_blood_glucose": 76.32551729614569,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.027502249113676915
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 39,
+   "variables": {
+    "diabetes_blood_glucose": 73.85307310294878,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.016752491751951235
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 40,
+   "variables": {
+    "diabetes_blood_glucose": 71.46071982174335,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.006350955746710233
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 41,
+   "variables": {
+    "diabetes_blood_glucose": 69.1458630343415,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.8291726068683,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 42,
+   "variables": {
+    "diabetes_blood_glucose": 66.90599236462147,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.3811984729243,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 43,
+   "variables": {
+    "diabetes_blood_glucose": 64.73867875611823,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 98.94773575122365,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 44,
+   "variables": {
+    "diabetes_blood_glucose": 62.641571837802076,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 98.52831436756041,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 45,
+   "variables": {
+    "diabetes_blood_glucose": 60.6123973751886,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 98.12247947503772,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 46,
+   "variables": {
+    "diabetes_blood_glucose": 58.64895480401591,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 97.72979096080319,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 47,
+   "variables": {
+    "diabetes_blood_glucose": 56.74911484381454,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 97.34982296876291,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 48,
+   "variables": {
+    "diabetes_blood_glucose": 54.910817188781934,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.9238734404111337,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 96.98216343775638,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 49,
+   "variables": {
+    "diabetes_blood_glucose": 161.34982396357634,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 10.694014289455072,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 91.73003520728473,
+    "diabetes_carb_intake": 3.733333333333334,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 4.666666666666667,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 3.733333333333334
+   },
+   "readouts": {
+    "glycemic_level": 0.3971731476677232
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 50,
+   "variables": {
+    "diabetes_blood_glucose": 135.51243079166966,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 16.384196200437668,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 96.89751384166607,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.28483665561595506
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 51,
+   "variables": {
+    "diabetes_blood_glucose": 116.03692466440855,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 10.292425650687665,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.20016054201916758
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 52,
+   "variables": {
+    "diabetes_blood_glucose": 106.4644943601306,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 5.030449859286794,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.15854127982665478
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 53,
+   "variables": {
+    "diabetes_blood_glucose": 102.33435221103625,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.1389536358863657,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1405841400479837
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 54,
+   "variables": {
+    "diabetes_blood_glucose": 100.68985913546875,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.13343417015421197
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 55,
+   "variables": {
+    "diabetes_blood_glucose": 99.56302593068251,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12853489535079354
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 56,
+   "variables": {
+    "diabetes_blood_glucose": 98.44880326167727,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12369044896381422
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 57,
+   "variables": {
+    "diabetes_blood_glucose": 97.34705000232003,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11890021740139144
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 58,
+   "variables": {
+    "diabetes_blood_glucose": 96.2576266058386,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11416359393842868
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 59,
+   "variables": {
+    "diabetes_blood_glucose": 95.1803950871467,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10947997863976829
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 60,
+   "variables": {
+    "diabetes_blood_glucose": 94.11521900536704,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10484877828420451
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 61,
+   "variables": {
+    "diabetes_blood_glucose": 93.06196344654963,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1002694062893462
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 62,
+   "variables": {
+    "diabetes_blood_glucose": 92.02049500658403,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09574128263732186
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 63,
+   "variables": {
+    "diabetes_blood_glucose": 90.99068177430237,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09126383380131467
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 64,
+   "variables": {
+    "diabetes_blood_glucose": 89.97239331477167,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08683649267292028
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 65,
+   "variables": {
+    "diabetes_blood_glucose": 88.96550065277312,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0824586984903179
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 66,
+   "variables": {
+    "diabetes_blood_glucose": 87.96987625646625,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07812989676724456
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 67,
+   "variables": {
+    "diabetes_blood_glucose": 86.98539402123585,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07384953922276456
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 68,
+   "variables": {
+    "diabetes_blood_glucose": 83.0276281812018,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.05664186165739916
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 69,
+   "variables": {
+    "diabetes_blood_glucose": 79.11415420932221,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.03962675743183569
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 70,
+   "variables": {
+    "diabetes_blood_glucose": 75.24447642958594,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.022802071432982365
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 71,
+   "variables": {
+    "diabetes_blood_glucose": 74.40240578567395,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.019140894720321516
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 72,
+   "variables": {
+    "diabetes_blood_glucose": 73.56975886298358,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.015520690708624245
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 73,
+   "variables": {
+    "diabetes_blood_glucose": 72.74643019943477,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.011941000867107693
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 74,
+   "variables": {
+    "diabetes_blood_glucose": 71.93231551318719,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.008401371796466049
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 75,
+   "variables": {
+    "diabetes_blood_glucose": 162.76384380549268,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 11.34462010426898,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 91.44723123890147,
+    "diabetes_carb_intake": 3.2,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 4.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 3.2
+   },
+   "readouts": {
+    "glycemic_level": 0.40332106002388124
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 76,
+   "variables": {
+    "diabetes_blood_glucose": 135.89223083002238,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 16.731274593143894,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 96.82155383399552,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.2864879601305321
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 77,
+   "variables": {
+    "diabetes_blood_glucose": 116.06948391519968,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 10.400929015159068,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.20030210397912906
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 78,
+   "variables": {
+    "diabetes_blood_glucose": 106.42681061643819,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 5.045361740224255,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.15837743746277474
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 79,
+   "variables": {
+    "diabetes_blood_glucose": 102.2976895829658,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.1296284882847307,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.14042473731724261
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 80,
+   "variables": {
+    "diabetes_blood_glucose": 100.66362047589197,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1333200890256173
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 81,
+   "variables": {
+    "diabetes_blood_glucose": 99.53708091133045,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12842209091882803
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 82,
+   "variables": {
+    "diabetes_blood_glucose": 98.42314859638422,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12357890694080097
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 83,
+   "variables": {
+    "diabetes_blood_glucose": 97.3216824416963,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11878992365954912
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 84,
+   "variables": {
+    "diabetes_blood_glucose": 133.38207732146716,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 7.164677116636685,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 97.32358453570657,
+    "diabetes_carb_intake": 1.3333333333333335,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 1.6666666666666667,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 1.3333333333333335
+   },
+   "readouts": {
+    "glycemic_level": 0.2755742492237703
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 85,
+   "variables": {
+    "diabetes_blood_glucose": 120.28799603478035,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 9.37369252990563,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.94240079304393,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.21864346102078414
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 86,
+   "variables": {
+    "diabetes_blood_glucose": 109.98911851930225,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 6.0915826763958805,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.17386573269261849
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 87,
+   "variables": {
+    "diabetes_blood_glucose": 104.40193277921149,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 3.1651358356653465,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1495736207791804
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 88,
+   "variables": {
+    "diabetes_blood_glucose": 101.76357390079325,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1.4480098871895193,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1381024952208402
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 89,
+   "variables": {
+    "diabetes_blood_glucose": 100.50331591013651,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1326231126527674
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 90,
+   "variables": {
+    "diabetes_blood_glucose": 99.37857033465315,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12773291449849195
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 91,
+   "variables": {
+    "diabetes_blood_glucose": 98.26641193202191,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12289744318270396
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 92,
+   "variables": {
+    "diabetes_blood_glucose": 97.16669983756732,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1181160862502927
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 93,
+   "variables": {
+    "diabetes_blood_glucose": 96.07929476304878,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11338823810021208
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 94,
+   "variables": {
+    "diabetes_blood_glucose": 95.00405897901827,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10871329990877508
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 95,
+   "variables": {
+    "diabetes_blood_glucose": 93.9408562973759,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10409067955380827
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 96,
+   "variables": {
+    "diabetes_blood_glucose": 92.88955205412023,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09951979153965318
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 97,
+   "variables": {
+    "diabetes_blood_glucose": 91.85001309229214,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09500005692300932
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 98,
+   "variables": {
+    "diabetes_blood_glucose": 90.82210774510924,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09053090323960537
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 99,
+   "variables": {
+    "diabetes_blood_glucose": 89.80570581928899,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08611176443169126
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 100,
+   "variables": {
+    "diabetes_blood_glucose": 88.80067857855872,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08174208077634225
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 101,
+   "variables": {
+    "diabetes_blood_glucose": 87.80689872735005,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07742129881456541
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 102,
+   "variables": {
+    "diabetes_blood_glucose": 86.82424039467568,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07314887128119862
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 103,
+   "variables": {
+    "diabetes_blood_glucose": 85.85257911818674,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.06892425703559452
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 104,
+   "variables": {
+    "diabetes_blood_glucose": 84.89179182840861,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.06474692099308094
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 105,
+   "variables": {
+    "diabetes_blood_glucose": 83.94175683315302,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.060616334057187055
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 106,
+   "variables": {
+    "diabetes_blood_glucose": 83.00235380210472,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.05653197305262923
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 107,
+   "variables": {
+    "diabetes_blood_glucose": 82.07346375158046,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.05249332065904549
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 108,
+   "variables": {
+    "diabetes_blood_glucose": 81.15496902945885,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.04849986534547328
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 109,
+   "variables": {
+    "diabetes_blood_glucose": 80.24675330027846,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.044551101305558505
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 110,
+   "variables": {
+    "diabetes_blood_glucose": 79.34870153050306,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.04064652839349158
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 111,
+   "variables": {
+    "diabetes_blood_glucose": 78.46069997395162,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.036785652060659216
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 112,
+   "variables": {
+    "diabetes_blood_glucose": 77.58263615739122,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.03296798329300531
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 113,
+   "variables": {
+    "diabetes_blood_glucose": 76.71439886629146,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.029193038549093307
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 114,
+   "variables": {
+    "diabetes_blood_glucose": 75.85587813073808,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.025460339698861204
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 115,
+   "variables": {
+    "diabetes_blood_glucose": 75.0069652115043,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.02176941396306215
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 116,
+   "variables": {
+    "diabetes_blood_glucose": 74.16755258627803,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.01811979385338276
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 117,
+   "variables": {
+    "diabetes_blood_glucose": 73.33753393604333,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.014511017113231864
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 118,
+   "variables": {
+    "diabetes_blood_glucose": 72.516804131614,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.010942626659191282
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 119,
+   "variables": {
+    "diabetes_blood_glucose": 71.7052592203182,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.007414170523122597
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 120,
+   "variables": {
+    "diabetes_blood_glucose": 70.9027964128318,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.00392520179492089
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 121,
+   "variables": {
+    "diabetes_blood_glucose": 70.10931407015927,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.00047527856590987667
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 122,
+   "variables": {
+    "diabetes_blood_glucose": 69.32471169076024,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.86494233815205,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 123,
+   "variables": {
+    "diabetes_blood_glucose": 68.54888989782002,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.70977797956401,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 124,
+   "variables": {
+    "diabetes_blood_glucose": 67.78175042666258,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.55635008533251,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 125,
+   "variables": {
+    "diabetes_blood_glucose": 67.0231961123047,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 99.40463922246094,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 126,
+   "variables": {
+    "diabetes_blood_glucose": 144.2148616418265,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 7.229547342055012,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 95.1570276716347,
+    "diabetes_carb_intake": 2.666666666666667,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 3.3333333333333335,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 2.666666666666667
+   },
+   "readouts": {
+    "glycemic_level": 0.3226733114862022
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 127,
+   "variables": {
+    "diabetes_blood_glucose": 127.33566729832967,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 12.11799033246145,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 98.53286654033407,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.24928550999273769
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 128,
+   "variables": {
+    "diabetes_blood_glucose": 113.22779843761599,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 8.048882063754188,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.18794694972876516
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 129,
+   "variables": {
+    "diabetes_blood_glucose": 105.69866138277034,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 4.1542489404224785,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.15521157122943627
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 130,
+   "variables": {
+    "diabetes_blood_glucose": 102.22551624248695,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1.8713145454355966,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.14011094018472586
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 131,
+   "variables": {
+    "diabetes_blood_glucose": 99.64494314883835,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.15,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1288910571688624
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 132,
+   "variables": {
+    "diabetes_blood_glucose": 97.03765319741665,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.2,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1175550139018115
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 133,
+   "variables": {
+    "diabetes_blood_glucose": 95.95169230049787,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11283344478477333
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 134,
+   "variables": {
+    "diabetes_blood_glucose": 94.8778845320893,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10816471535690998
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 135,
+   "variables": {
+    "diabetes_blood_glucose": 93.81609388496173,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10354823428244231
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 136,
+   "variables": {
+    "diabetes_blood_glucose": 92.7661858739605,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0989834168433065
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 137,
+   "variables": {
+    "diabetes_blood_glucose": 91.72802751897152,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09446968486509355
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 138,
+   "variables": {
+    "diabetes_blood_glucose": 90.70148732807844,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09000646664381931
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 139,
+   "variables": {
+    "diabetes_blood_glucose": 89.68643528090787,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0855931968735125
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 140,
+   "variables": {
+    "diabetes_blood_glucose": 88.68274281216114,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08122931657461364
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 141,
+   "variables": {
+    "diabetes_blood_glucose": 87.69028279533052,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07691427302317616
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 142,
+   "variables": {
+    "diabetes_blood_glucose": 86.70892952659737,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07264751968085814
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 143,
+   "variables": {
+    "diabetes_blood_glucose": 85.73855870891072,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.06842851612569877
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 144,
+   "variables": {
+    "diabetes_blood_glucose": 84.77904743624393,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.06425672798366926
+   },
+   "rates": {
+    "frailty": 0.0,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 145,
+   "variables": {
+    "diabetes_blood_glucose": 186.19835016656265,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 17.579750680725244,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.07059952843464601,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0099999999999998,
+    "diabetes_health_score": 86.78973043825282,
+    "diabetes_carb_intake": 3.733333333333334,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 4.666666666666667,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 3.733333333333334
+   },
+   "readouts": {
+    "glycemic_level": 0.5052102181154897
+   },
+   "rates": {
+    "frailty": 1.4119905686929203e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 146,
+   "variables": {
+    "diabetes_blood_glucose": 144.32800607837288,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 22.157245618517734,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 95.21535184359851,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.3231652438190125
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 147,
+   "variables": {
+    "diabetes_blood_glucose": 117.98488921809854,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 12.659329087272935,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.2086299531221676
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 148,
+   "variables": {
+    "diabetes_blood_glucose": 106.509168210427,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 5.676551334577118,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1587355139583783
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 149,
+   "variables": {
+    "diabetes_blood_glucose": 102.01874452438072,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.1936814159319082,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.13921193271469878
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 150,
+   "variables": {
+    "diabetes_blood_glucose": 100.39520856950989,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.13215308073699952
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 151,
+   "variables": {
+    "diabetes_blood_glucose": 99.27167283722369,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12726814277053777
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 152,
+   "variables": {
+    "diabetes_blood_glucose": 98.16071073827828,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12243787277512297
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 153,
+   "variables": {
+    "diabetes_blood_glucose": 97.06218155952067,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11766165895443768
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 154,
+   "variables": {
+    "diabetes_blood_glucose": 95.97594616253689,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11293889635885603
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 155,
+   "variables": {
+    "diabetes_blood_glucose": 94.90186696602896,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10826898680882158
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 156,
+   "variables": {
+    "diabetes_blood_glucose": 93.83980792838895,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1036513388190824
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 157,
+   "variables": {
+    "diabetes_blood_glucose": 92.78963453046806,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09908536752377418
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 158,
+   "variables": {
+    "diabetes_blood_glucose": 91.75121375853873,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09457049460234228
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 159,
+   "variables": {
+    "diabetes_blood_glucose": 90.72441408744712,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.09010614820629181
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 160,
+   "variables": {
+    "diabetes_blood_glucose": 89.70910546395436,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08569176288675807
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 161,
+   "variables": {
+    "diabetes_blood_glucose": 88.70515929026423,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.08132677952288797
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 162,
+   "variables": {
+    "diabetes_blood_glucose": 87.71244840773497,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.0770106452510216
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 163,
+   "variables": {
+    "diabetes_blood_glucose": 86.73084708077356,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.07274281339466764
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 164,
+   "variables": {
+    "diabetes_blood_glucose": 82.77592990839236,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.055547521340836334
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 165,
+   "variables": {
+    "diabetes_blood_glucose": 78.86527272435838,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.038544664018949466
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 166,
+   "variables": {
+    "diabetes_blood_glucose": 74.9983802094315,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.4,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.021732087867093488
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 167,
+   "variables": {
+    "diabetes_blood_glucose": 74.15906366007111,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.01808288547857005
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 168,
+   "variables": {
+    "diabetes_blood_glucose": 73.32914001050484,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.014474521784803669
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 169,
+   "variables": {
+    "diabetes_blood_glucose": 72.50850414357923,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.010906539754692307
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 170,
+   "variables": {
+    "diabetes_blood_glucose": 71.6970521185204,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.007378487471827841
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 171,
+   "variables": {
+    "diabetes_blood_glucose": 162.5753657499167,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 11.286263731994723,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 91.56587990928975,
+    "diabetes_carb_intake": 3.2,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 4.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 3.2
+   },
+   "readouts": {
+    "glycemic_level": 0.40250159021702914
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 172,
+   "variables": {
+    "diabetes_blood_glucose": 135.82264247612503,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 16.685600572834744,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 96.91642456404807,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.2861854020701088
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 173,
+   "variables": {
+    "diabetes_blood_glucose": 116.05276663083853,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 10.381843651490923,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.20022942013408057
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 174,
+   "variables": {
+    "diabetes_blood_glucose": 106.42562713197952,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 5.039855110927837,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.15837229187817184
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 175,
+   "variables": {
+    "diabetes_blood_glucose": 102.29977289101376,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 2.1289429706930756,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1404337951783207
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 176,
+   "variables": {
+    "diabetes_blood_glucose": 100.66572281490684,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.13332922963002974
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 177,
+   "variables": {
+    "diabetes_blood_glucose": 99.53915972279815,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12843112922955716
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 178,
+   "variables": {
+    "diabetes_blood_glucose": 98.42520414360459,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12358784410262864
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 179,
+   "variables": {
+    "diabetes_blood_glucose": 97.32371498502252,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11879876080444574
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 180,
+   "variables": {
+    "diabetes_blood_glucose": 133.38361327463625,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 7.165224515872523,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 97.40423040434584,
+    "diabetes_carb_intake": 1.3333333333333335,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 1.6666666666666667,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 1.3333333333333335
+   },
+   "readouts": {
+    "glycemic_level": 0.2755809272810272
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 181,
+   "variables": {
+    "diabetes_blood_glucose": 120.28868472877076,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 9.374107584713292,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.21864645534248156
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 182,
+   "variables": {
+    "diabetes_blood_glucose": 109.98936228265394,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 6.091784827252967,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.17386679253327803
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 183,
+   "variables": {
+    "diabetes_blood_glucose": 104.40200265220041,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 3.1652143556876795,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.14957392457478438
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 184,
+   "variables": {
+    "diabetes_blood_glucose": 101.76358553404393,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1.4480344705884944,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.138102545800191
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 185,
+   "variables": {
+    "diabetes_blood_glucose": 100.50331734933476,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.13262311891015116
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 186,
+   "variables": {
+    "diabetes_blood_glucose": 99.37857175774516,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.12773292068584854
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 187,
+   "variables": {
+    "diabetes_blood_glucose": 98.26641333918786,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1228974493008168
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 188,
+   "variables": {
+    "diabetes_blood_glucose": 97.16670122898553,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1181160922999371
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 189,
+   "variables": {
+    "diabetes_blood_glucose": 96.07929613889543,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.11338824408215405
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 190,
+   "variables": {
+    "diabetes_blood_glucose": 95.00406033946766,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.10871330582377242
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  },
+  {
+   "after_call": 191,
+   "variables": {
+    "diabetes_blood_glucose": 93.94085764260028,
+    "diabetes_fasting_glucose": 85,
+    "diabetes_plasma_insulin": 1,
+    "diabetes_insulin_sensitivity": 0.75,
+    "diabetes_beta_cell_function": 0.8,
+    "diabetes_complication_score": 0.11904694072691627,
+    "diabetes_kidney_function": 1.0,
+    "diabetes_inflammation_level": 1.0199999999999996,
+    "diabetes_health_score": 100,
+    "diabetes_carb_intake": 0.0,
+    "diabetes_insulin_injection": 0,
+    "diabetes_exercise_intensity": 0.0,
+    "meal_diet_meal_g": 0.0,
+    "meal_diet_absorb": 0.8,
+    "meal_diet_carb_flux": 0.0
+   },
+   "readouts": {
+    "glycemic_level": 0.1040906854026099
+   },
+   "rates": {
+    "frailty": 2.3809388145383254e-06,
+    "mood_valence": 0.0
+   }
+  }
+ ]
+}

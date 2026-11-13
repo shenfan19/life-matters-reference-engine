@@ -1,0 +1,26 @@
+# The body of a person staying some days in a hard place, as a game asks for it: the human body components that answer these readouts,
+# the input layer that feeds them, and the rest of the body that the components read by name.
+#
+# loneliness is not a goal: no model provides it. A game computes it from social_contact itself until a component exists.
+system_version: 1
+id: traveler_stay
+goal: [fatigue, infection_burden, hydration_deficit, energy_deficit, injury_burden, mobility_loss, psychological_strain, oxygen_deficit, nutrient_deficit]
+include_models:
+  - references/medical/physiology/human_body/lifestyle_inputs_2026
+shared_models:
+  - references/medical/physiology/human_body/digestive_gut_2026
+  - references/medical/physiology/human_body/neuroendocrine_axes_2026
+  - references/medical/physiology/human_body/glucose_insulin_2026
+  - references/medical/physiology/human_body/hepatic_metabolism_2026
+  - references/medical/physiology/human_body/lipid_profile_2026
+  - references/medical/physiology/human_body/cardiovascular_2026
+  - references/medical/physiology/human_body/immune_inflammation_2026
+  - references/medical/physiology/human_body/hematology_iron_2026
+  - references/medical/physiology/human_body/aging_health_summary_2026
+  - references/medical/physiology/human_body/appetite_intake_regulation_2026
+supply_from_game: [fluid_intake, activity_load, pathogen_exposure, sleep_duration, psychological_demand, injury_exposure]
+step_size: {value: 1, unit: day}
+policy:
+  min_ratings: {}
+pins:
+  psychological_strain: references/medical/physiology/human_body/nervous_sleep_stress_2026
