@@ -6,6 +6,10 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ## [Unreleased]
 
+### GUI
+
+- The About dialog shows Life Matters（大德曰生） in all supported languages. The workbench title and citation metadata continue to use the existing English project name.
+
 ### Plugin system
 
 - Added the `care_export` plugin. It converts an LM disease model into a disease model for the game Care for You with a recipe file: names are prefixed, expressions are checked against the subset the game understands, the model's own daily plan becomes the day's routine, and the recipe says which game needs the disease drives and what the care actions do. The output is a model file, a condition template and an import zip. The converted model reproduces the engine on the diabetes model to 7e-6 and on the hypertension and gout model exactly, and the game's own engine reproduces the plugin's evaluator exactly.
