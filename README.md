@@ -2,6 +2,8 @@
 
 # Life Matters · Reference Engine
 
+[Homepage](https://shenfan19.github.io/life-matters/) · [Project site](https://lifematters.dev/) · [Online demo](https://ref-engine.lifematters.dev) · [Model library](https://github.com/shenfan19/life-matters-models)
+
 Life Matters (LM) is a cross-scale, multi-model dynamics simulation framework, running multi-objective optimization over individual-behavior decisions this project calls a Regimen. This repository holds the simulation backend, a FastAPI service, and the simulation frontend GUI, built in React; the YAML model library these components run is maintained independently at [life-matters-models](https://github.com/shenfan19/life-matters-models), whose README also states the project's overall positioning and disclaimer. This repository maintains only the simulation and optimization engine itself, for which the author is responsible.
 
 <p align="center">
@@ -91,7 +93,7 @@ cd gui && npm run dev                             # http://localhost:5173
 
 `gui` forwards `/api` to the backend at `:18080` via the Vite proxy.
 
-**Online demo** (no install needed): [http://137.184.220.139](http://137.184.220.139). This address runs on temporary cloud infrastructure and may change without notice; this README is the authoritative place to find the current link — other documents (the models repo, the paper) point here rather than hardcoding the address themselves.
+**Online demo** (no install needed): [https://ref-engine.lifematters.dev](https://ref-engine.lifematters.dev). This README is the authoritative place to find the current link — other documents (the models repo, the paper) point here rather than hardcoding the address themselves.
 
 **Links to a model.** The address bar follows what is open, so a model can be linked to: `/model/<model path>/<tab>` opens a model on `overview`, `sim` or `opt`, `/model/<model path>/plugin/<plugin id>` and `/plugin/<plugin id>` open a plugin view, and a plugin link may end in `?m=<model path>` for the models ticked in the tree. The Copy link button above the tabs copies the current address. Behind Nginx the rule `try_files $uri /index.html` is needed, and `scripts/scs_setup.sh` already writes it. Details are in [ADR 0160](docs/decisions/0160-2026-10-17_sim_deep-links-to-model-and-tab.md).
 
