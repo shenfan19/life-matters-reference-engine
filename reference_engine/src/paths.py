@@ -62,7 +62,3 @@ MAX_CONCURRENT_SIMS = int(os.getenv("LM_MAX_CONCURRENT_SIMS", "5"))
 # this machine is written here instead (.env), not in the source code.
 EXTRA_CORS_ORIGINS = [o.strip() for o in os.getenv("LM_EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
 
-# A private query token for the anonymous visit counter (routes/visits.py): a random string in
-# the URL path, not hardcoded in the source. When unconfigured, the stats endpoint returns a
-# blanket 404, not exposing the fact that a stats endpoint even exists.
-STATS_TOKEN = os.getenv("LM_STATS_TOKEN", "")

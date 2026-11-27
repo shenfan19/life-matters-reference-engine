@@ -8,7 +8,11 @@ The YAML model library is outside this file's coverage; it is maintained indepen
 
 ### GUI
 
-- Visits to the online demo are counted by the shared anonymous counting service at pulse.lifematters.dev instead of the backend `/api/visit` counter, which the page no longer calls. No identifier is sent.
+- Visits to the online demo are counted by the shared anonymous counting service at pulse.lifematters.dev. No identifier is sent.
+
+### Backend
+
+- Removed the backend visit counter: the `/api/visit` and `/api/stats/<token>` endpoints, `routes/visits.py`, the `LM_STATS_TOKEN` setting and its generation in `scripts/scs_setup.sh`.
 - The About dialog shows Life Matters（大德曰生） in all supported languages. The workbench title and citation metadata continue to use the existing English project name.
 
 ### Plugin system
